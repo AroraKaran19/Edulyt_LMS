@@ -1,11 +1,11 @@
 import React from "react";
 
-const IndividualInternshipPage = ({
+const IndividualInternshipPage = async ({
   params,
 }: {
-  params: { internshipId: string };
+  params: Promise<{ internshipId: string }>;
 }) => {
-  const internshipId = params.internshipId;
+  const { internshipId } = await params;
 
   return (
     <div>

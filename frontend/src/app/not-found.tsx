@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Home, ArrowLeft, Search, Book, Users, Mail } from 'lucide-react';
+import { Home, ArrowLeft } from 'lucide-react';
 import OrangeButton from '@/components/ui/OrangeButton';
 
 const NotFound = () => {
@@ -23,8 +23,8 @@ const NotFound = () => {
           </h1>
           
           <p className="text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
-            The page you're looking for seems to have wandered off. 
-            Don't worry, even the best students sometimes take a wrong turn!
+            The page you&apos;re looking for seems to have wandered off. 
+            Don&apos;t worry, even the best students sometimes take a wrong turn!
           </p>
 
           {/* Action Buttons */}

@@ -1,15 +1,18 @@
-import React from 'react'
+import React from "react";
 
-const IndividualCoursePage = ({ params }: { params: { courseId: string } }) => {
-
-	const courseId = params.courseId
+const IndividualCoursePage = async ({
+  params,
+}: {
+  params: Promise<{ courseId: string }>;
+}) => {
+  const { courseId } = await params;
 
   return (
     <div>
-        <h1>Individual Course Page</h1>
-        <p>Course ID: {courseId}</p>
+      <h1>Individual Course Page</h1>
+      <p>Course ID: {courseId}</p>
     </div>
-  )
-}
+  );
+};
 
-export default IndividualCoursePage
+export default IndividualCoursePage;
