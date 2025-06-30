@@ -1,2 +1,5 @@
 // Models - Data layer for Edulyt platform
-export {}; 
+// Mongoose schemas and models
+
+export * from './instructor.schema';
+export * from './course.schema'; 
