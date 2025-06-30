@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
-import { cn } from "@/lib/utils";
-import "./globals.css";
+import "@/app/globals.css";
+import Navbar from "@/components/shared/Navbar/Navbar";
+import Footer from "@/components/shared/Footer/Footer";
 
 export const metadata: Metadata = {
   title: "Edulyt",
@@ -14,8 +15,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={cn("antialiased")}>
-        {children}
+      <body className="antialiased">
+        <Navbar />
+        <main className="flex min-h-screen flex-col pt-[78px] relative overflow-hidden">
+          {children}
+        </main>
+        <Footer />
       </body>
     </html>
   );
