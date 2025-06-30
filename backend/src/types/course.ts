@@ -1,0 +1,109 @@
+// Course-related types for Edulyt platform
+
+import { Instructor } from './instructor';
+
+export interface CourseLesson {
+    id: string;
+    title: string;
+    duration?: string; // e.g., "abc", "15min"
+    videoUrl?: string;
+    materials?: string[];
+    completed?: boolean; // whether on going or completed by the instructor
+}
+
+export interface CourseModule {
+    id: string;
+    title: string;
+    duration: string; // e.g., "1hr 30min"
+    lessons: CourseLesson[];
+    description?: string;
+}
+
+export interface CoursePlan {
+    id: string;
+    name: string; // e.g., "Elite", "Essential"
+    price: number;
+    currency: string;
+    features: string[];
+    isRecommended?: boolean;
+}
+
+
+export interface FeaturedReview {
+    id: string;
+    studentName: string;
+    rating: number;
+    comment: string;
+    date: Date;
+    verified?: boolean;
+}
+
+export interface FAQ {
+    id: string;
+    question: string;
+    answer: string;
+    order: number;
+}
+
+export interface Course {
+    // Basic Information
+    id: string;
+    title: string;
+    subtitle?: string; // e.g., "Unlock the Power of Data with Python"
+    description: string;
+    shortDescription?: string;
+    category: string;
+    subcategory?: string;
+    thumbnail: string;
+    images?: string[];
+    previewVideoUrl: string;
+
+    isBestseller: boolean;
+    isFeatured?: boolean;
+    isCertified: boolean;
+
+    // Metrics
+    totalRatings: number;
+    enrolledCount: number;
+    totalLectures: number;
+
+    // Course Details
+    language: string;
+    skillLevel: string; // e.g., "College Students", "Beginner", "Intermediate"
+    duration?: string;
+    lastUpdated: Date;
+
+    // Content
+    modules: CourseModule[];
+    whatYouWillLearn: string[];
+    whoShouldJoin: string;
+    prerequisites?: string[];
+
+    // Instructor
+    instructor: Instructor[];
+
+    // Pricing Plans
+    plans: CoursePlan[];
+
+    // Reviews
+    featuredReviews: FeaturedReview[];
+
+    // USP & Features
+    features: string[];
+
+    // FAQs
+    faqs: FAQ[];
+
+    // Administrative
+    isActive: boolean;
+    createdAt: Date;
+    updatedAt: Date;
+    createdBy: string;
+    tags?: string[];
+
+    // SEO
+    slug: string;
+    metaTitle?: string;
+    metaDescription?: string;
+    keywords?: string[];
+} 
