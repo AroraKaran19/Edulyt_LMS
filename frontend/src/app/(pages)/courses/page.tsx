@@ -1,7 +1,12 @@
 import React from "react";
+import TopCoursesSection from "./components/TopCoursesSection";
 
 const CoursePage = () => {
-  return <div>CoursePage</div>;
+  return (
+    <>
+      <TopCoursesSection />
+    </>
+  );
 };
 
 export default CoursePage;

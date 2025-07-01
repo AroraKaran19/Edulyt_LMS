@@ -29,15 +29,6 @@ const Navbar = () => {
       href: "/internships",
       featureBox: "100+",
     },
-    {
-      label: "Contact",
-      href: "/contact",
-    },
-    {
-      label: "Affiliations",
-      href: "/affiliations",
-      featureBox: "NEW",
-    },
   ];
 
   return (

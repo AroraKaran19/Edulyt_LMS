@@ -1,1 +1,18 @@
 @import "tailwindcss";
+
+/* Fonts */
+@font-face {
+	font-family: "Coolvetica Regular";
+	src: url("/fonts/coolvetica/CoolveticaRg.otf") format("opentype");
+	font-weight: 800;
+}
+
+html {
+  scroll-behavior: smooth;
+  scrollbar-color: #f77124 #ffe9db;
+  scrollbar-width: thin;
+}
+
+@theme {
+	--font-coolvetica: "Coolvetica Regular", sans-serif;
+}
