@@ -1,7 +1,7 @@
 "use client";
 import React, { useRef, useState, useEffect } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
-import { Autoplay, Scrollbar } from "swiper/modules";
+import { Autoplay } from "swiper/modules";
 import "swiper/css";
 import { CourseCardProps } from "@/types";
 import CourseCard from "./CourseCard";
@@ -164,7 +164,7 @@ const CoursesCarousel = ({ courses }: { courses: CourseCardProps[] }) => {
       </Swiper>
       <div 
         ref={scrollbarRef}
-        className="scrollbar-container mt-4 w-[600px] h-6 p-1 bg-gray-200 rounded-full overflow-hidden cursor-pointer"
+        className="scrollbar-container mt-4 w-[600px] h-6 p-1 bg-[#EDEDED] rounded-full overflow-hidden cursor-pointer"
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
