@@ -1,5 +1,6 @@
 "use client";
 import React, { createContext, useContext, useState } from "react";
+import { Filter } from "@/types";
 
 interface CourseFilterContextType {
   search: string;
@@ -11,30 +12,21 @@ interface CourseFilterContextType {
   handleFilterClick: (filter: Filter) => void;
 }
 
-interface Filter {
-  label: string;
-  value: string;
-  featureBox?: {
-    value: string;
-  }
-}
-
 const CourseFilterContext = createContext<CourseFilterContextType | null>(null);
 
 const CourseFilterProvider = ({ children }: { children: React.ReactNode }) => {
   const [search, setSearch] = useState("");
-  const [filters, setFilters] = useState<Filter[]>(
-    [
-      {
-        label: "All",
-        value: "all",
-      },
-      {
+  const [filters, setFilters] = useState<Filter[]>([
+    {
+      label: "All",
+      value: "all",
+    },
+    {
       label: "Data Science",
       value: "data-science",
       featureBox: {
         value: "100+",
-      }
+      },
     },
     {
       label: "Machine Learning",
@@ -45,14 +37,16 @@ const CourseFilterProvider = ({ children }: { children: React.ReactNode }) => {
       value: "ai",
       featureBox: {
         value: "200+",
-      }
+      },
     },
     {
       label: "Web Development",
       value: "web-development",
     },
   ]);
-  const [selectedFilter, setSelectedFilter] = useState<{ label: string; value: string }[]>([
+  const [selectedFilter, setSelectedFilter] = useState<
+    { label: string; value: string }[]
+  >([
     {
       label: "All",
       value: "all",
@@ -63,11 +57,17 @@ const CourseFilterProvider = ({ children }: { children: React.ReactNode }) => {
     if (filter.value === "all") {
       setSelectedFilter([filters[0]]);
     } else {
-      const isCurrentlySelected = selectedFilter.some((f) => f.value === filter.value);
-      
+      const isCurrentlySelected = selectedFilter.some(
+        (f) => f.value === filter.value
+      );
+
       if (isCurrentlySelected) {
-        const newSelection = selectedFilter.filter((f) => f.value !== filter.value);
-        setSelectedFilter(newSelection.length === 0 ? [filters[0]] : newSelection);
+        const newSelection = selectedFilter.filter(
+          (f) => f.value !== filter.value
+        );
+        setSelectedFilter(
+          newSelection.length === 0 ? [filters[0]] : newSelection
+        );
       } else {
         // If clicking on a new filter, add it and remove "All" if present
         const withoutAll = selectedFilter.filter((f) => f.value !== "all");
@@ -78,7 +78,15 @@ const CourseFilterProvider = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <CourseFilterContext.Provider
-      value={{ search, setSearch, filters, setFilters, selectedFilter, setSelectedFilter, handleFilterClick }}
+      value={{
+        search,
+        setSearch,
+        filters,
+        setFilters,
+        selectedFilter,
+        setSelectedFilter,
+        handleFilterClick,
+      }}
     >
       {children}
     </CourseFilterContext.Provider>

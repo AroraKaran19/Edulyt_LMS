@@ -4,9 +4,10 @@ import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay } from "swiper/modules";
 import "swiper/css";
 import { CourseCardProps } from "@/types";
-import CourseCard from "./CourseCard";
+import TopCourseCard from "./TopCourseCard";
 import { cn } from "@/lib/utils";
 import type { Swiper as SwiperType } from "swiper";
+import { useMediaQuery } from "usehooks-ts";
 
 const CoursesCarousel = ({ courses }: { courses: CourseCardProps[] }) => {
   const swiperRef = useRef<SwiperType | null>(null);
@@ -14,30 +15,39 @@ const CoursesCarousel = ({ courses }: { courses: CourseCardProps[] }) => {
   const [scrollProgress, setScrollProgress] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [slidesPerView, setSlidesPerView] = useState(1);
+  const isMobile = useMediaQuery("(max-width: 768px)");
+  const isTablet = useMediaQuery("(max-width: 1024px)");
+  const isDesktop = useMediaQuery("(max-width: 1440px)");
+  const scrollbarWidth = isMobile ? 300 : isTablet ? 400 : isDesktop ? 500 : 600;
 
-  const totalSlides = courses.length * 4;
-  
-      const getThumbWidth = () => {
-      const visibleRatio = slidesPerView / totalSlides;
-      const scrollbarWidth = 600; // Total scrollbar width
-      const padding = 8; // p-1 = 4px on each side = 8px total
-      const availableWidth = scrollbarWidth - padding;
-      const minWidth = 60; 
-      const maxWidth = 200;
-      const calculatedWidth = Math.max(minWidth, Math.min(maxWidth, visibleRatio * availableWidth));
-      return `${calculatedWidth}px`;
-    };
+  const originalSlidesCount = courses.length * 4;
+
+  const getThumbWidth = () => {
+    const visibleRatio = slidesPerView / originalSlidesCount;
+    const padding = 8; // p-1 = 4px on each side = 8px total
+    const availableWidth = scrollbarWidth - padding;
+    const minWidth = 60;
+    const maxWidth = 200;
+    const calculatedWidth = Math.max(
+      minWidth,
+      Math.min(maxWidth, visibleRatio * availableWidth)
+    );
+    return `${calculatedWidth}px`;
+  };
 
   // Handle global mouse events for drag functionality
   useEffect(() => {
     const handleGlobalMouseMove = (e: MouseEvent) => {
       if (!isDragging || !swiperRef.current || !scrollbarRef.current) return;
-      
+
       const rect = scrollbarRef.current.getBoundingClientRect();
-      const clickPosition = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-      const targetSlide = Math.floor(clickPosition * totalSlides);
-      
-      swiperRef.current.slideTo(targetSlide);
+      const clickPosition = Math.max(
+        0,
+        Math.min(1, (e.clientX - rect.left) / rect.width)
+      );
+      const targetSlide = Math.floor(clickPosition * originalSlidesCount);
+
+      swiperRef.current.slideToLoop(targetSlide);
     };
 
     const handleGlobalMouseUp = () => {
@@ -45,25 +55,25 @@ const CoursesCarousel = ({ courses }: { courses: CourseCardProps[] }) => {
     };
 
     if (isDragging) {
-      document.addEventListener('mousemove', handleGlobalMouseMove);
-      document.addEventListener('mouseup', handleGlobalMouseUp);
+      document.addEventListener("mousemove", handleGlobalMouseMove);
+      document.addEventListener("mouseup", handleGlobalMouseUp);
     }
 
     return () => {
-      document.removeEventListener('mousemove', handleGlobalMouseMove);
-      document.removeEventListener('mouseup', handleGlobalMouseUp);
+      document.removeEventListener("mousemove", handleGlobalMouseMove);
+      document.removeEventListener("mouseup", handleGlobalMouseUp);
     };
-  }, [isDragging, totalSlides]);
+  }, [isDragging, originalSlidesCount]);
 
   // Handle scrollbar click and drag
   const handleScrollbarClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!swiperRef.current || !scrollbarRef.current) return;
-    
+
     const rect = scrollbarRef.current.getBoundingClientRect();
     const clickPosition = (e.clientX - rect.left) / rect.width;
-    const targetSlide = Math.floor(clickPosition * totalSlides);
-    
-    swiperRef.current.slideTo(targetSlide);
+    const targetSlide = Math.floor(clickPosition * originalSlidesCount);
+
+    swiperRef.current.slideToLoop(targetSlide);
   };
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -81,8 +91,10 @@ const CoursesCarousel = ({ courses }: { courses: CourseCardProps[] }) => {
   };
 
   const onSlideChange = (swiper: SwiperType) => {
-    const progress = swiper.progress;
-    setScrollProgress(progress);
+    // For loop mode, calculate progress based on real index
+    const realIndex = swiper.realIndex;
+    const progress = realIndex / (originalSlidesCount - 1);
+    setScrollProgress(Math.max(0, Math.min(1, progress)));
     setSlidesPerView(swiper.slidesPerViewDynamic());
   };
 
@@ -103,10 +115,6 @@ const CoursesCarousel = ({ courses }: { courses: CourseCardProps[] }) => {
           opacity: 1 !important;
           transform: scale(1) !important;
         }
-
-        .swiper-slide-active .course-card {
-          border: 2px solid #f77124 !important;
-        }
       `}</style>
 
       <Swiper
@@ -118,9 +126,13 @@ const CoursesCarousel = ({ courses }: { courses: CourseCardProps[] }) => {
         effect="coverflow"
         grabCursor={true}
         centeredSlides={true}
-        loop={false}
+        loop={true}
         onSlideChange={onSlideChange}
-        onProgress={(swiper, progress) => setScrollProgress(progress)}
+        onProgress={(swiper) => {
+          const realIndex = swiper.realIndex;
+          const progress = realIndex / (originalSlidesCount - 1);
+          setScrollProgress(Math.max(0, Math.min(1, progress)));
+        }}
         onResize={(swiper) => setSlidesPerView(swiper.slidesPerViewDynamic())}
         autoplay={{
           delay: 2500,
@@ -135,7 +147,7 @@ const CoursesCarousel = ({ courses }: { courses: CourseCardProps[] }) => {
         className={cn("w-full h-full px-4 !py-4 sm:px-0")}
         breakpoints={{
           0: {
-            slidesPerView: 1,
+            slidesPerView: 1.2,
             spaceBetween: 0,
           },
           768: {
@@ -156,25 +168,41 @@ const CoursesCarousel = ({ courses }: { courses: CourseCardProps[] }) => {
           },
         }}
       >
-        {[...courses, ...courses, ...courses, ...courses].map((course, index) => (
-          <SwiperSlide key={`${course.title}-${index}`}>
-            <CourseCard {...course} />
-          </SwiperSlide>
-        ))}
+        {[...courses, ...courses, ...courses, ...courses].map(
+          (course, index) => (
+            <SwiperSlide key={`${course.title}-${index}`}>
+              {({ isActive }) => (
+                <TopCourseCard
+                  {...course}
+                  className={
+                    isActive
+                      ? "border-2 border-[#f77124] shadow-[0_0_2px_3px_rgba(233,117,0,0.5)]"
+                      : ""
+                  }
+                />
+              )}
+            </SwiperSlide>
+          )
+        )}
       </Swiper>
-      <div 
+      <div
         ref={scrollbarRef}
-        className="scrollbar-container mt-4 w-[600px] h-6 p-1 bg-[#EDEDED] rounded-full overflow-hidden cursor-pointer"
+        className="scrollbar-container mt-4 h-6 p-1 bg-[#EDEDED] rounded-full overflow-hidden cursor-pointer"
+        style={{
+          width: scrollbarWidth + "px",
+        }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
       >
-        <div 
+        <div
           className="scrollbar-thumb bg-white h-full rounded-full transition-all duration-300 ease-out"
           style={{
             width: getThumbWidth(),
-            transform: `translateX(${scrollProgress * (592 - parseInt(getThumbWidth()))}px)`,
+            transform: `translateX(${
+              scrollProgress * (scrollbarWidth - 8 - parseInt(getThumbWidth()))
+            }px)`,
           }}
         ></div>
       </div>

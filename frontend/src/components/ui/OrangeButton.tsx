@@ -12,15 +12,14 @@ interface OrangeButtonProps {
   glow?: boolean;
 }
 
-const OrangeButton = ({ children, className, onClick, blinkIcon, glow }: OrangeButtonProps) => {
+const OrangeButton = ({ children, className, onClick, blinkIcon, glow=true }: OrangeButtonProps) => {
   return (
     <button
       className={cn(
         "bg-[#F77124] text-white px-6 py-3 rounded-2xl cursor-pointer",
-        className,
         blinkIcon && "flex items-center gap-2",
         glow && "shadow-[0_0_2px_3px_rgba(247,173,36,1)]",
-        "lg:px-4 lg:py-2.5"
+        className
       )}
       onClick={onClick}
     >

@@ -23,6 +23,7 @@ const Navbar = () => {
     {
       label: "Courses",
       href: "/courses",
+      featureBox: "10+",
     },
     {
       label: "Internships",
@@ -83,7 +84,7 @@ const Navbar = () => {
           </WhiteButton>
         </Link>
         <Link href="/signup" className="hidden lg:block">
-          <OrangeButton className="text-xs font-semibold" blinkIcon glow>
+          <OrangeButton className="text-xs font-semibold lg:px-4 lg:py-2.5" blinkIcon glow>
             Register Now
           </OrangeButton>
         </Link>

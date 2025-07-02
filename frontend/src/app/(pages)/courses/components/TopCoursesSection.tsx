@@ -8,7 +8,7 @@ const TopCoursesSection = () => {
       title: "Data Science: Zero to Hundred",
       image: "/CourseCardDemo.jpg",
       bestSeller: true,
-      enrollStudents: 100,
+      enrollStudents: "100",
       rating: 4.5,
       totalRating: 100,
       mentors: [
@@ -30,12 +30,14 @@ const TopCoursesSection = () => {
         },
       ],
       startingPrice: 100,
+      category: "Data Science",
+      discount: 50,
     },
     {
       title: "Data Science: Zero to Hundred",
       image: "/CourseCardDemo.jpg",
       bestSeller: true,
-      enrollStudents: 100,
+      enrollStudents: "100",
       rating: 4.5,
       totalRating: 100,
       mentors: [
@@ -45,12 +47,13 @@ const TopCoursesSection = () => {
         },
       ],
       startingPrice: 100,
+      category: "Data Science",
     },
     {
       title: "Data Science: Zero to Hundred",
       image: "/CourseCardDemo.jpg",
       bestSeller: true,
-      enrollStudents: 100,
+      enrollStudents: "100",
       rating: 4.5,
       totalRating: 100,
       mentors: [
@@ -60,12 +63,13 @@ const TopCoursesSection = () => {
         },
       ],
       startingPrice: 100,
+      category: "Data Science",
     },
     {
       title: "Data Science: Zero to Hundred",
       image: "/CourseCardDemo.jpg",
       bestSeller: true,
-      enrollStudents: 100,
+      enrollStudents: "100",
       rating: 4.5,
       totalRating: 100,
       mentors: [
@@ -75,6 +79,7 @@ const TopCoursesSection = () => {
         },
       ],
       startingPrice: 100,
+      category: "Data Science",
     },
   ];
 

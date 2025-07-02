@@ -4,11 +4,19 @@ export interface NavItem {
 	featureBox?: string;
 }
 
+export interface Filter {
+  label: string;
+  value: string;
+  featureBox?: {
+    value: string;
+  };
+}
+
 export interface CourseCardProps {
   image: string;
   title: string;
   bestSeller?: boolean;
-  enrollStudents: number;
+  enrollStudents: string;
   rating: number;
   totalRating: number;
   mentors: {
@@ -17,4 +25,6 @@ export interface CourseCardProps {
   }[];
   startingPrice: number;
   className?: string;
+  discount?: number;
+  category: string;
 }

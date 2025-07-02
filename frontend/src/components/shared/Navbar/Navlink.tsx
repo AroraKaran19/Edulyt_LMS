@@ -32,7 +32,7 @@ const Navlink = ({ href, label, featureBox }: NavItem) => {
           className={cn(
             "text-[10px] font-medium bg-black text-white py-0.25 px-2 rounded-full transition-colors duration-400 ease-in-out select-none",
             {
-              "bg-[#2B1508] text-white": isActive,
+              "bg-[#F77124] text-white": isActive,
             }
           )}
         >
