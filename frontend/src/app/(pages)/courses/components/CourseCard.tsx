@@ -9,6 +9,7 @@ import { Plus } from "lucide-react";
 import React from "react";
 
 const CourseCard = ({
+  id,
   image,
   title,
   bestSeller,
@@ -19,6 +20,7 @@ const CourseCard = ({
   startingPrice,
   discount,
   className,
+  style,
 }: CourseCardProps) => {
   return (
     <div
@@ -26,6 +28,7 @@ const CourseCard = ({
         "course-card w-full bg-white rounded-2xl p-3 flex items-stretch border-2 border-[rgb(233,117,0)] shadow-[0_0_2px_4px_rgba(233,117,0,0.3)] gap-4",
         className
       )}
+      style={style}
     >
       <div className="course-image w-2/5 h-full rounded-2xl overflow-hidden relative">
         <img
@@ -42,13 +45,9 @@ const CourseCard = ({
         )}
       </div>
       <div className="course-content w-3/5 h-full flex flex-col">
-        {bestSeller ? (
-          <BestsellerBadge enrollStudents={enrollStudents} />
-        ) : (
-          <div className="mt-[20px]"></div>
-        )}
+        {bestSeller && <BestsellerBadge enrollStudents={enrollStudents} />}
         <p
-          className={cn("text-2xl font-bold mt-2 font-coolvetica select-none")}
+          className="text-2xl font-bold mt-2 font-coolvetica select-none"
         >
           {title}
         </p>
@@ -56,6 +55,7 @@ const CourseCard = ({
           rating={rating}
           totalRating={totalRating}
           className="mt-2 text-xs"
+          courseId={id}
         />
         <div className="mentors mt-2 flex gap-2 select-none mb-2 flex-col sm:flex-row items-start sm:items-center">
           {mentors.map((mentor, index) => {

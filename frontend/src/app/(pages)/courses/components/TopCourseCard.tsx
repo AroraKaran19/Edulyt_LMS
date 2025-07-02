@@ -9,6 +9,7 @@ import MentorCard from "@/components/ui/course/MentorCard";
 import OrangeButton from "@/components/ui/OrangeButton";
 
 const TopCourseCard = ({
+  id,
   image,
   title,
   bestSeller,
@@ -51,6 +52,7 @@ const TopCourseCard = ({
         rating={rating}
         totalRating={totalRating}
         className="mt-2"
+        courseId={id}
       />
       <div className={cn("mentors mt-2 flex gap-2 items-center select-none")}>
         {mentors.map((mentor, index) => {

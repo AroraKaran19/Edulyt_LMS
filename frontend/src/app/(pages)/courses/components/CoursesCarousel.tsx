@@ -7,7 +7,6 @@ import { CourseCardProps } from "@/types";
 import TopCourseCard from "./TopCourseCard";
 import { cn } from "@/lib/utils";
 import type { Swiper as SwiperType } from "swiper";
-import { useMediaQuery } from "usehooks-ts";
 
 const CoursesCarousel = ({ courses }: { courses: CourseCardProps[] }) => {
   const swiperRef = useRef<SwiperType | null>(null);
@@ -15,10 +14,32 @@ const CoursesCarousel = ({ courses }: { courses: CourseCardProps[] }) => {
   const [scrollProgress, setScrollProgress] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [slidesPerView, setSlidesPerView] = useState(1);
-  const isMobile = useMediaQuery("(max-width: 768px)");
-  const isTablet = useMediaQuery("(max-width: 1024px)");
-  const isDesktop = useMediaQuery("(max-width: 1440px)");
-  const scrollbarWidth = isMobile ? 300 : isTablet ? 400 : isDesktop ? 500 : 600;
+  const [windowWidth, setWindowWidth] = useState(0);
+  
+  // Custom media query hook that's hydration-safe
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth);
+    };
+    
+    // Set initial width after hydration
+    handleResize();
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+  
+  const getScrollbarWidth = () => {
+    // Use default width during SSR to prevent hydration mismatch
+    if (windowWidth === 0) return 500;
+    
+    if (windowWidth <= 767) return 300;
+    if (windowWidth >= 768 && windowWidth <= 1023) return 400;
+    if (windowWidth >= 1024 && windowWidth <= 1439) return 500;
+    return 600;
+  };
+  
+  const scrollbarWidth = getScrollbarWidth();
 
   const originalSlidesCount = courses.length * 4;
 
@@ -104,19 +125,6 @@ const CoursesCarousel = ({ courses }: { courses: CourseCardProps[] }) => {
 
   return (
     <div className="courses-carousel flex flex-col gap-4 items-center">
-      <style jsx global>{`
-        .swiper-slide {
-          transition: all 0.3s ease;
-          opacity: 0.9;
-          transform: scale(0.9);
-        }
-
-        .swiper-slide-active {
-          opacity: 1 !important;
-          transform: scale(1) !important;
-        }
-      `}</style>
-
       <Swiper
         onSwiper={(swiper) => {
           swiperRef.current = swiper;
@@ -148,7 +156,7 @@ const CoursesCarousel = ({ courses }: { courses: CourseCardProps[] }) => {
         breakpoints={{
           0: {
             slidesPerView: 1.2,
-            spaceBetween: 0,
+            spaceBetween: 5,
           },
           768: {
             slidesPerView: 2.2,
@@ -174,11 +182,14 @@ const CoursesCarousel = ({ courses }: { courses: CourseCardProps[] }) => {
               {({ isActive }) => (
                 <TopCourseCard
                   {...course}
-                  className={
-                    isActive
-                      ? "border-2 border-[#f77124] shadow-[0_0_2px_3px_rgba(233,117,0,0.5)]"
-                      : ""
-                  }
+                  className={cn(
+                    {
+                      "border-2 border-[#f77124] shadow-[0_0_2px_3px_rgba(233,117,0,0.5)] opacity-100 scale-100":
+                        isActive,
+                      "opacity-90 scale-90": !isActive,
+                    },
+                    "transition-all duration-300 ease-out"
+                  )}
                 />
               )}
             </SwiperSlide>

@@ -13,6 +13,7 @@ export interface Filter {
 }
 
 export interface CourseCardProps {
+  id: string;
   image: string;
   title: string;
   bestSeller?: boolean;
@@ -27,4 +28,5 @@ export interface CourseCardProps {
   className?: string;
   discount?: number;
   category: string;
+  style?: React.CSSProperties;
 }

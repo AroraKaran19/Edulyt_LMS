@@ -5,6 +5,7 @@ import { CourseCardProps } from "@/types";
 const TopCoursesSection = () => {
   const topCourses: CourseCardProps[] = [
     {
+      id: "1",
       title: "Data Science: Zero to Hundred",
       image: "/CourseCardDemo.jpg",
       bestSeller: true,
@@ -34,6 +35,7 @@ const TopCoursesSection = () => {
       discount: 50,
     },
     {
+      id: "2",
       title: "Data Science: Zero to Hundred",
       image: "/CourseCardDemo.jpg",
       bestSeller: true,
@@ -50,6 +52,7 @@ const TopCoursesSection = () => {
       category: "Data Science",
     },
     {
+      id: "3",
       title: "Data Science: Zero to Hundred",
       image: "/CourseCardDemo.jpg",
       bestSeller: true,
@@ -66,6 +69,7 @@ const TopCoursesSection = () => {
       category: "Data Science",
     },
     {
+      id: "4",
       title: "Data Science: Zero to Hundred",
       image: "/CourseCardDemo.jpg",
       bestSeller: true,

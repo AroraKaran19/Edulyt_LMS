@@ -1,15 +1,26 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { useMediaQuery } from "usehooks-ts";
 import { NavItem } from "@/types";
 
 const Navlink = ({ href, label, featureBox }: NavItem) => {
   const pathname = usePathname();
-  const isMobile = useMediaQuery("(max-width: 768px)");
+  const [windowWidth, setWindowWidth] = useState(0);
+  
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth);
+    };
+    
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+  
+  const isMobile = windowWidth > 0 && windowWidth <= 768;
   const isActive =
     pathname === href || (href !== "/" && pathname.startsWith(href));
 
