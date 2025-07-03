@@ -5,7 +5,8 @@ import {
   CourseModule, 
   CoursePlan, 
   FeaturedReview, 
-  FAQ 
+  FAQ,
+  PlanDetails
 } from '../types';
 
 // Course Lesson Schema
@@ -64,40 +65,31 @@ const courseModuleSchema = new Schema<CourseModule>({
   }
 }, { _id: false });
 
-// Course Plan Schema
-const coursePlanSchema = new Schema<CoursePlan>({
-  id: {
-    type: String,
-    required: true
-  },
-  name: {
-    type: String,
-    required: true,
-    trim: true
-  },
+// Plan Details Schema
+const planDetailsSchema = new Schema<PlanDetails>({
   price: {
     type: Number,
     required: true,
     min: 0
   },
-  currency: {
-    type: String,
-    required: true,
-    trim: true,
-    default: 'USD'
-  },
   features: [{
     type: String,
     required: true,
     trim: true
-  }],
-  isRecommended: {
-    type: Boolean,
-    default: false
-  }
+  }]
 }, { _id: false });
 
-
+// Course Plan Schema
+const coursePlanSchema = new Schema<CoursePlan>({
+  professionals: {
+    type: planDetailsSchema,
+    required: true
+  },
+  collegeStudents: {
+    type: planDetailsSchema,
+    required: true
+  }
+}, { _id: false });
 
 // Featured Review Schema
 const featuredReviewSchema = new Schema<FeaturedReview>({
@@ -283,7 +275,7 @@ const courseSchema = new Schema<Course>({
   }],
   
   // Pricing Plans
-  plans: [coursePlanSchema],
+  plan: coursePlanSchema,
   
   // Reviews
   featuredReviews: [featuredReviewSchema],

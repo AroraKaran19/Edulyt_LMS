@@ -20,15 +20,15 @@ export interface CourseModule {
     description?: string;
 }
 
-export interface CoursePlan {
-    id: string;
-    name: string; // e.g., "Elite", "Essential"
+export interface PlanDetails {
     price: number;
-    currency: string;
     features: string[];
-    isRecommended?: boolean;
 }
 
+export interface CoursePlan {
+    professionals: PlanDetails;
+    collegeStudents: PlanDetails;
+}
 
 export interface FeaturedReview {
     id: string;
@@ -83,7 +83,7 @@ export interface Course {
     instructor: Instructor[];
 
     // Pricing Plans
-    plans: CoursePlan[];
+    plan: CoursePlan;
 
     // Reviews
     featuredReviews: FeaturedReview[];
