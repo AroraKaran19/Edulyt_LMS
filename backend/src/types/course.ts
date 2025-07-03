@@ -9,6 +9,7 @@ export interface CourseLesson {
     videoUrl?: string;
     materials?: string[];
     completed?: boolean; // whether on going or completed by the instructor
+    isForCollegeStudent?: boolean; // whether this lesson is accessible to college students
 }
 
 export interface CourseModule {
