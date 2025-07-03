@@ -206,11 +206,6 @@ const courseSchema = new Schema<Course>({
   },
   
   // Flags
-  isBestseller: {
-    type: Boolean,
-    required: true,
-    default: false
-  },
   isFeatured: {
     type: Boolean,
     default: false

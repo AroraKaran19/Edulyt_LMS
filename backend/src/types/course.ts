@@ -59,7 +59,6 @@ export interface Course {
     images?: string[];
     previewVideoUrl: string;
 
-    isBestseller: boolean;
     isFeatured?: boolean;
     isCertified: boolean;
 
