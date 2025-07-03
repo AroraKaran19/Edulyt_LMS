@@ -33,7 +33,7 @@ const Navbar = () => {
   ];
 
   return (
-    <header className="w-full fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md h-[78px] flex items-center px-8 justify-between">
+    <header className="navbar w-full fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md h-[78px] flex items-center px-8 justify-between shadow-[0_0_1px_2px_rgba(0,0,0,0.1)]">
       <div className="logo h-[52px] min-h-[24px] flex-none w-1/3 flex items-center lg:w-1/4">
         <Link
           href="/"

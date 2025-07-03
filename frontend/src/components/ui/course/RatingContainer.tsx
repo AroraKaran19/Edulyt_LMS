@@ -5,12 +5,12 @@ import { useRouter } from "next/navigation";
 
 const RatingContainer = ({
   rating,
-  totalRating,
+  ratingCount,
   className,
   courseId,
 }: {
   rating: number;
-  totalRating: number;
+  ratingCount: number;
   className?: string;
   courseId: string;
 }) => {
@@ -26,13 +26,24 @@ const RatingContainer = ({
       <span className="font-bold text-[#F7AD24] flex gap-2 flex-wrap items-center">
         <span
           className="whitespace-nowrap underline cursor-pointer flex gap-2 items-center"
-          onClick={() => router.push(`/courses/${courseId}/#ratings`)}
+          onClick={(e) => {
+            e.stopPropagation();
+            router.push(`/courses/${courseId}#ratings`);
+          }}
         >
           <Star className="w-4 h-4 text-[#F7AD24]" fill="#F7AD24" />
           {rating} Rating
         </span>
-        <span className="font-normal text-gray-500">
-          (more than {totalRating} reviews)
+        <span className="font-normal text-gray-500 break-all">
+          {ratingCount > 100 ? (
+            `(more than ${ratingCount} reviews)`
+          ) : (
+            ratingCount === 1 ? (
+              `(${ratingCount} review)`
+            ) : (
+              `(${ratingCount} reviews)`
+            )
+          )}
         </span>
       </span>
     </div>

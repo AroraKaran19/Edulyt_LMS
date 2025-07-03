@@ -1,91 +1,11 @@
+"use client";
 import React from "react";
 import CoursesCarousel from "./CoursesCarousel";
-import { CourseCardProps } from "@/types";
+import { useCourseFilter } from "@/contexts/CourseFilterProvider";
+import { Loader2 } from "lucide-react";
 
 const TopCoursesSection = () => {
-  const topCourses: CourseCardProps[] = [
-    {
-      id: "1",
-      title: "Data Science: Zero to Hundred",
-      image: "/CourseCardDemo.jpg",
-      bestSeller: true,
-      enrollStudents: "100",
-      rating: 4.5,
-      totalRating: 100,
-      mentors: [
-        {
-          name: "Mentor 1",
-          image: "/CourseCardDemo.jpg",
-        },
-        {
-          name: "Mentor 2",
-          image: "/CourseCardDemo.jpg",
-        },
-        {
-          name: "Mentor 3",
-          image: "/CourseCardDemo.jpg",
-        },
-        {
-          name: "Mentor 4",
-          image: "/CourseCardDemo.jpg",
-        },
-      ],
-      startingPrice: 100,
-      category: "Data Science",
-      discount: 50,
-    },
-    {
-      id: "2",
-      title: "Data Science: Zero to Hundred",
-      image: "/CourseCardDemo.jpg",
-      bestSeller: true,
-      enrollStudents: "100",
-      rating: 4.5,
-      totalRating: 100,
-      mentors: [
-        {
-          name: "Mentor 1",
-          image: "/CourseCardDemo.jpg",
-        },
-      ],
-      startingPrice: 100,
-      category: "Data Science",
-    },
-    {
-      id: "3",
-      title: "Data Science: Zero to Hundred",
-      image: "/CourseCardDemo.jpg",
-      bestSeller: true,
-      enrollStudents: "100",
-      rating: 4.5,
-      totalRating: 100,
-      mentors: [
-        {
-          name: "Mentor 1",
-          image: "/CourseCardDemo.jpg",
-        },
-      ],
-      startingPrice: 100,
-      category: "Data Science",
-    },
-    {
-      id: "4",
-      title: "Data Science: Zero to Hundred",
-      image: "/CourseCardDemo.jpg",
-      bestSeller: true,
-      enrollStudents: "100",
-      rating: 4.5,
-      totalRating: 100,
-      mentors: [
-        {
-          name: "Mentor 1",
-          image: "/CourseCardDemo.jpg",
-        },
-      ],
-      startingPrice: 100,
-      category: "Data Science",
-    },
-  ];
+  const { courses, isFetching } = useCourseFilter();
 
   return (
     <section className="top-courses-section w-full bg-white rounded-2xl py-10 flex flex-col items-center">
@@ -95,7 +15,13 @@ const TopCoursesSection = () => {
         you can Enroll now!
       </h2>
       <div className="top-courses-carousel w-full mt-10">
-        <CoursesCarousel courses={topCourses} />
+        {isFetching ? (
+          <div className="flex justify-center items-center h-full">
+            <Loader2 className="w-4 h-4 animate-spin" />
+          </div>
+        ) : (
+          <CoursesCarousel courses={courses} />
+        )}
       </div>
     </section>
   );

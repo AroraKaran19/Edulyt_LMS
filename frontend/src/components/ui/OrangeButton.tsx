@@ -7,12 +7,18 @@ import { Circle } from "lucide-react";
 interface OrangeButtonProps {
   children: React.ReactNode;
   className?: string;
-  onClick?: () => void;
+  onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
   blinkIcon?: boolean;
   glow?: boolean;
 }
 
-const OrangeButton = ({ children, className, onClick, blinkIcon, glow=true }: OrangeButtonProps) => {
+const OrangeButton = ({
+  children,
+  className,
+  onClick,
+  blinkIcon,
+  glow = true,
+}: OrangeButtonProps) => {
   return (
     <button
       className={cn(

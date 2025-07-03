@@ -15,7 +15,7 @@ const FilterContainer = ({
 }) => {
   return (
     <div
-      className={`filter-options w-full mt-6 bg-[#FFF6F2] rounded-full flex gap-2 items-stretch animate-fade-from-top ${
+      className={`filter-options w-full mt-6 bg-[#FFF6F2] rounded-full flex gap-2 items-stretch animate-fade-from-top p-2 border-2 border-[#F5691D] ${
         isMobile ? "overflow-scroll" : "overflow-x-auto"
       }`}
     >
@@ -23,7 +23,7 @@ const FilterContainer = ({
         <div
           key={index}
           className={cn(
-            `filter-option text-[16px] py-4 px-8 font-bold text-[#2B1508] rounded-full select-none cursor-pointer text-center flex gap-2 items-center justify-center`,
+            `filter-option text-[16px] py-2 px-4 font-bold text-[#2B1508] rounded-full select-none cursor-pointer text-center flex gap-2 items-center justify-center`,
             selectedFilter?.some((f) => f.value === filter.value)
               ? "bg-[linear-gradient(rgba(245,105,29,0.9)_0%,rgba(245,105,29,0.9)_100%)] text-white"
               : "hover:bg-[rgba(247,113,36,0.1)] hover:text-[rgba(247,113,36,0.8)]"

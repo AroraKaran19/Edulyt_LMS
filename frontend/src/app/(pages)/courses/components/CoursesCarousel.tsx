@@ -3,12 +3,12 @@ import React, { useRef, useState, useEffect } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay } from "swiper/modules";
 import "swiper/css";
-import { CourseCardProps } from "@/types";
+import { Course } from "@/types";
 import TopCourseCard from "./TopCourseCard";
 import { cn } from "@/lib/utils";
 import type { Swiper as SwiperType } from "swiper";
 
-const CoursesCarousel = ({ courses }: { courses: CourseCardProps[] }) => {
+const CoursesCarousel = ({ courses }: { courses: Course[] }) => {
   const swiperRef = useRef<SwiperType | null>(null);
   const scrollbarRef = useRef<HTMLDivElement>(null);
   const [scrollProgress, setScrollProgress] = useState(0);
@@ -41,7 +41,7 @@ const CoursesCarousel = ({ courses }: { courses: CourseCardProps[] }) => {
   
   const scrollbarWidth = getScrollbarWidth();
 
-  const originalSlidesCount = courses.length * 4;
+  const originalSlidesCount = courses.length;
 
   const getThumbWidth = () => {
     const visibleRatio = slidesPerView / originalSlidesCount;
@@ -176,7 +176,7 @@ const CoursesCarousel = ({ courses }: { courses: CourseCardProps[] }) => {
           },
         }}
       >
-        {[...courses, ...courses, ...courses, ...courses].map(
+        {courses.map(
           (course, index) => (
             <SwiperSlide key={`${course.title}-${index}`}>
               {({ isActive }) => (
