@@ -1,2 +1,2 @@
 // Controllers - Request handlers for Edulyt platform
-export {}; 
+export { CourseController } from './course.controller'; 

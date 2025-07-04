@@ -1,2 +1,2 @@
 // Services - Business logic layer for Edulyt platform
-export {}; 
+export { CourseService } from './course.service'; 
