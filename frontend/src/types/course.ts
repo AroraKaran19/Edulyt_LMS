@@ -110,4 +110,9 @@ export interface Course {
     metaTitle?: string;
     metaDescription?: string;
     keywords?: string[];
+
+    // Scholarship
+    scholarship?: boolean;
+    scholarshipDescription?: string;
+    scholarshipLink?: string;
 } 

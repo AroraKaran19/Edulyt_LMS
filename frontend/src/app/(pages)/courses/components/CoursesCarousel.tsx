@@ -152,7 +152,7 @@ const CoursesCarousel = ({ courses }: { courses: Course[] }) => {
           depth: 100,
           modifier: 2.5,
         }}
-        className={cn("w-full h-full px-4 !py-4 sm:px-0")}
+        className={cn("w-full h-full px-4 !py-4 sm:px-0 ")}
         breakpoints={{
           0: {
             slidesPerView: 1.2,

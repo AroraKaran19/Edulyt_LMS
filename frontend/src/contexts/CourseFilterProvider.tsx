@@ -179,7 +179,9 @@ const CourseFilterProvider = ({ children }: { children: React.ReactNode }) => {
           tags: ["python", "data-science", "machine-learning"],
           discount: 20,
           discountEndDate: new Date("2024-02-28"),
-          slug: "complete-python-data-science-bootcamp"
+          slug: "complete-python-data-science-bootcamp",
+          scholarship: true,
+          scholarshipDescription: "Get 50% off your course with our scholarship program.",
         },
         {
           id: "2",
@@ -274,7 +276,9 @@ const CourseFilterProvider = ({ children }: { children: React.ReactNode }) => {
           tags: ["tensorflow", "deep-learning", "ai"],
           discount: 15,
           discountEndDate: new Date("2024-02-15"),
-          slug: "advanced-machine-learning-tensorflow"
+          slug: "advanced-machine-learning-tensorflow",
+          scholarship: true,
+          scholarshipDescription: "Get 50% off your course with our scholarship program.",
         },
         {
           id: "3",
@@ -369,7 +373,9 @@ const CourseFilterProvider = ({ children }: { children: React.ReactNode }) => {
           tags: ["react", "nodejs", "fullstack", "mongodb"],
           discount: 25,
           discountEndDate: new Date("2024-03-01"),
-          slug: "full-stack-web-development-react-nodejs"
+          slug: "full-stack-web-development-react-nodejs",
+          scholarship: true,
+          scholarshipDescription: "Get 50% off your course with our scholarship program.",
         },
         {
           id: "4",
@@ -464,7 +470,9 @@ const CourseFilterProvider = ({ children }: { children: React.ReactNode }) => {
           tags: ["ai", "business-strategy", "leadership"],
           discount: 10,
           discountEndDate: new Date("2024-02-20"),
-          slug: "ai-for-business-leaders"
+          slug: "ai-for-business-leaders",
+          scholarship: true,
+          scholarshipDescription: "Get 50% off your course with our scholarship program.",
         },
         {
           id: "5",
@@ -557,7 +565,9 @@ const CourseFilterProvider = ({ children }: { children: React.ReactNode }) => {
           updatedAt: new Date("2024-01-08"),
           createdBy: "admin",
           tags: ["d3js", "visualization", "javascript"],
-          slug: "advanced-data-visualization-d3js"
+          slug: "advanced-data-visualization-d3js",
+          scholarship: true,
+          scholarshipDescription: "Get 50% off your course with our scholarship program.",
         },
         {
           id: "6",
@@ -652,7 +662,9 @@ const CourseFilterProvider = ({ children }: { children: React.ReactNode }) => {
           tags: ["cybersecurity", "security", "development"],
           discount: 18,
           discountEndDate: new Date("2024-02-25"),
-          slug: "cybersecurity-fundamentals-developers"
+          slug: "cybersecurity-fundamentals-developers",
+          scholarship: true,
+          scholarshipDescription: "Get 50% off your course with our scholarship program.",
         },
         {
           id: "7",
@@ -747,7 +759,9 @@ const CourseFilterProvider = ({ children }: { children: React.ReactNode }) => {
           tags: ["aws", "cloud-computing", "devops"],
           discount: 22,
           discountEndDate: new Date("2024-03-05"),
-          slug: "cloud-computing-aws"
+          slug: "cloud-computing-aws",
+          scholarship: true,
+          scholarshipDescription: "Get 50% off your course with our scholarship program.",
         },
         {
           id: "8",
@@ -842,7 +856,9 @@ const CourseFilterProvider = ({ children }: { children: React.ReactNode }) => {
           tags: ["react-native", "mobile-development", "cross-platform"],
           discount: 20,
           discountEndDate: new Date("2024-02-29"),
-          slug: "mobile-app-development-react-native"
+          slug: "mobile-app-development-react-native",
+          scholarship: true,
+          scholarshipDescription: "Get 50% off your course with our scholarship program.",
         }
       ]);
       setIsFetching(false);

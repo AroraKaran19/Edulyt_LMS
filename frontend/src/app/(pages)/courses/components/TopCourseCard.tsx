@@ -18,14 +18,11 @@ const TopCourseCard = ({
   featuredReviews,
   plan,
   discount,
+  slug,
   ...props
 }: Course & { className?: string; style?: React.CSSProperties }) => {
   
   const router = useRouter();
-  const courseId = title
-    .toLowerCase()
-    .replace(/\s+/g, "-")
-    .replace(/[^a-z0-9-&]/g, "");
 
   return (
     <div
@@ -60,7 +57,7 @@ const TopCourseCard = ({
         rating={totalRatings}
         ratingCount={featuredReviews.length}
         className="mt-2"
-        courseId={courseId}
+        courseId={slug}
       />
       <div className={cn("mentors mt-2 flex gap-2 items-center select-none")}>
         {instructor.map((mentor, index) => {
@@ -103,7 +100,7 @@ const TopCourseCard = ({
           className="sm:ml-auto font-bold text-sm px-8 py-4"
           onClick={(e) => {
             e.stopPropagation();
-            router.push(`/courses/${courseId}`);
+            router.push(`/courses/${slug}`);
           }}
         >
           Enroll Now

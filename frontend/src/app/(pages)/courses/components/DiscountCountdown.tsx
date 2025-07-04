@@ -40,7 +40,7 @@ const DiscountCountdown = ({
 
   return (
     <div className={cn("discount-countdown flex flex-col gap-2", className)}>
-      <p className="text-[16px] font-medium text-[#2B1508] flex flex-wrap gap-2">
+      <p className="text-[16px] font-medium text-[#2B1508] flex flex-wrap gap-2 justify-center md:justify-start">
         <span className="underline">Limited Offer</span>
         <span className="underline">
           {countdown.hours} Hr : {countdown.minutes} Min : {countdown.seconds} Sec
