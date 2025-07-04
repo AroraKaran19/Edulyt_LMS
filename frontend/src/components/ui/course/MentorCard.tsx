@@ -12,19 +12,25 @@ const MentorCard = ({
   name: string;
   className?: string;
 }) => {
-
   const router = useRouter();
 
   return (
     <div
-      className={cn("mentor flex gap-1 items-center bg-[#EEEEEE] rounded-full p-1 text-xs font-bold text-[#2B1508] select-none cursor-pointer", className)}
-      onClick={() => router.push(`/mentors/${name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')}`)}
+      className={cn(
+        "mentor flex gap-1 items-center bg-[#EEEEEE] rounded-full p-1 text-xs font-bold text-[#2B1508] select-none cursor-pointer",
+        className
+      )}
+      onClick={(e) => {
+        e.stopPropagation();
+        router.push(
+          `/mentors/${name
+            .toLowerCase()
+            .replace(/\s+/g, "-")
+            .replace(/[^a-z0-9-]/g, "")}`
+        );
+      }}
     >
-      <img
-        src={image}
-        alt={name}
-        className="size-6 rounded-full"
-      />
+      <img src={image} alt={name} className="size-6 rounded-full" />
       <span>{name}</span>
     </div>
   );

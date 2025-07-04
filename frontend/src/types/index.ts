@@ -12,21 +12,6 @@ export interface Filter {
   };
 }
 
-export interface CourseCardProps {
-  id: string;
-  image: string;
-  title: string;
-  bestSeller?: boolean;
-  enrollStudents: string;
-  rating: number;
-  totalRating: number;
-  mentors: {
-    name: string;
-    image: string;
-  }[];
-  startingPrice: number;
-  className?: string;
-  discount?: number;
-  category: string;
-  style?: React.CSSProperties;
-}
+// Re-export all types
+export * from "./course";
+export * from "./instructor";

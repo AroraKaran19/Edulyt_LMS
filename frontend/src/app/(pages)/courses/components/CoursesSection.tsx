@@ -5,37 +5,25 @@ import CourseSearchBar from "./CourseSearchBar";
 import { useCourseFilter } from "@/contexts/CourseFilterProvider";
 import { cn } from "@/lib/utils";
 import FilterContainer from "./FilterContainer";
-import { CourseCardProps } from "@/types";
 import CourseCard from "./CourseCard";
-import { demoCourses } from "@/lib/data";
 
 const CoursesSection = () => {
-  const { search, filters, selectedFilter, handleFilterClick } =
+  const { search, filters, selectedFilter, handleFilterClick, courses, isFetching } =
     useCourseFilter();
   const [filterShown, setFilterShown] = useState(false);
   const [windowWidth, setWindowWidth] = useState(0);
-  const [isFetching, setIsFetching] = useState(false);
-  const [courses, setCourses] = useState<CourseCardProps[]>([]);
 
   useEffect(() => {
     const handleResize = () => {
       setWindowWidth(window.innerWidth);
     };
-    
+
     handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   const isMobile = windowWidth === 0 ? true : windowWidth <= 1046; // Default to true during SSR
-
-  useEffect(() => {
-    setIsFetching(true);
-    setTimeout(() => {
-      setCourses(demoCourses);
-      setIsFetching(false);
-    }, 3000);
-  }, []);
 
   const filteredCourses = useMemo(() => {
     let filtered = courses;
@@ -71,8 +59,8 @@ const CoursesSection = () => {
         (course) =>
           course.title.toLowerCase().includes(searchTerm) ||
           course.category.toLowerCase().includes(searchTerm) ||
-          course.mentors.some((mentor) =>
-            mentor.name.toLowerCase().includes(searchTerm)
+          course.instructor.some((instructor) =>
+            instructor.name.toLowerCase().includes(searchTerm)
           )
       );
     }
@@ -90,10 +78,10 @@ const CoursesSection = () => {
       >
         Explore more <span className="text-[#f77124]">Courses</span>
       </p>
-      <div className="search-container w-full mt-6 flex gap-6 items-stretch">
+      <div className="search-container w-full mt-6 flex gap-6 items-stretch flex-col md:flex-row">
         <CourseSearchBar />
         <div
-          className="courses-filter max-w-[190px] shrink-0 flex gap-2 items-center border border-black/10 rounded-xl p-2 shadow-[inset_0_-1px_2px_rgba(0,0,0,0.2)] px-8 relative cursor-pointer"
+          className="courses-filter md:max-w-[190px] shrink-0 flex gap-2 items-center justify-center border border-black/10 rounded-xl p-2 shadow-[inset_0_-1px_2px_rgba(0,0,0,0.2)] px-8 relative cursor-pointer"
           onClick={() => setFilterShown(!filterShown)}
         >
           <span className="text-[16px] font-bold text-[#2B1508] select-none">
@@ -120,11 +108,16 @@ const CoursesSection = () => {
           handleFilterClick={handleFilterClick}
         />
       )}
-      <div className="courses-container w-full mt-13 grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="courses-container w-full mt-6 md:mt-13 grid grid-cols-1 lg:grid-cols-2 gap-6">
         {!isFetching ? (
           filteredCourses.length > 0 ? (
             filteredCourses.map((course, index) => (
-              <CourseCard key={index} {...course} className="opacity-0 animate-course-card-fade-in" style={{ animationDelay: `${index * 100}ms` }} />
+              <CourseCard
+                key={index}
+                {...course}
+                className="opacity-0 animate-course-card-fade-in"
+                style={{ animationDelay: `${index * 100}ms` }}
+              />
             ))
           ) : (
             <div className="col-span-full flex flex-col items-center justify-center py-12">

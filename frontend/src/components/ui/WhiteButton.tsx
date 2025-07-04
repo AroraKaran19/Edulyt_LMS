@@ -15,7 +15,7 @@ const WhiteButton = ({ children, className, onClick }: WhiteButtonProps) => {
       className={cn(
         "bg-white text-black px-6 py-3 rounded-2xl border border-gray-200 cursor-pointer shadow-sm",
         className,
-        "lg:px-4 lg:py-2.5",
+        "lg:px-4 lg:py-2.5"
       )}
       onClick={onClick}
     >
