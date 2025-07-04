@@ -84,6 +84,30 @@ export class CourseService {
   }
 
   /**
+   * Get all featured courses
+   * @returns Promise<Course[]> - Array of featured courses
+   */
+  async getFeaturedCourses(): Promise<Course[]> {
+    try {
+      const featuredCourses = await CourseModel.find({ 
+        isFeatured: true, 
+        isActive: true 
+      })
+      .select('-__v') // Exclude version field
+      .sort({ createdAt: -1 }) // Sort by newest first
+      .lean(); // Return plain JavaScript objects instead of Mongoose documents
+
+      return featuredCourses;
+    } catch (error) {
+      console.error('Error fetching featured courses:', error);
+      if (error instanceof Error) {
+        throw new Error(`Failed to fetch featured courses: ${error.message}`);
+      }
+      throw new Error('Failed to fetch featured courses');
+    }
+  }
+
+  /**
    * Validate course data
    * @param courseData - Course data to validate
    * @returns boolean - Whether course data is valid

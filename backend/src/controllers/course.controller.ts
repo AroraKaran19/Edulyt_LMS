@@ -74,5 +74,36 @@ export class CourseController {
     }
   };
 
+  /**
+   * Get all featured courses
+   * @param req - Express request object
+   * @param res - Express response object
+   */
+  getFeaturedCourses = async (req: Request, res: Response): Promise<void> => {
+    try {
+      // Get featured courses
+      const featuredCourses = await this.courseService.getFeaturedCourses();
+
+      // Return success response
+      res.status(200).json({
+        success: true,
+        message: 'Featured courses retrieved successfully',
+        data: {
+          courses: featuredCourses,
+          total: featuredCourses.length
+        }
+      });
+
+    } catch (error) {
+      console.error('Error in getFeaturedCourses controller:', error);
+      
+      // Generic error response
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error while fetching featured courses',
+        error: process.env.NODE_ENV === 'development' ? error : 'Something went wrong'
+      });
+    }
+  };
 
 } 
