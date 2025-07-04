@@ -108,6 +108,89 @@ export class CourseService {
   }
 
   /**
+   * Get all courses with pagination
+   * @param page - Page number (default: 1)
+   * @param limit - Items per page (default: 10)
+   * @param category - Filter by categories (comma-separated string like "1,2,3" or single category)
+   * @param search - Search term for title or description (optional)
+   * @returns Promise<{courses: Course[], total: number, page: number, totalPages: number}>
+   */
+  async getAllCourses(
+    page: number = 1, 
+    limit: number = 10, 
+    category?: string, 
+    search?: string
+  ): Promise<{
+    courses: Course[];
+    total: number;
+    page: number;
+    totalPages: number;
+  }> {
+    try {
+      // Build query object
+      const query: any = { isActive: true };
+
+      // Add category filter if provided
+      if (category && category.trim()) {
+        // Split comma-separated categories and trim whitespace
+        const categories = category.split(',').map(cat => cat.trim()).filter(cat => cat);
+        
+        if (categories.length > 0) {
+          if (categories.length === 1) {
+            // Single category - use regex for case-insensitive matching
+            query.category = { $regex: categories[0], $options: 'i' };
+          } else {
+            // Multiple categories - use $in with regex for each category
+            query.category = { 
+              $in: categories.map(cat => new RegExp(cat, 'i')) 
+            };
+          }
+        }
+      }
+
+      // Add search filter if provided
+      if (search && search.trim()) {
+        const searchTerm = search.trim();
+        query.$or = [
+          { title: { $regex: searchTerm, $options: 'i' } },
+          { description: { $regex: searchTerm, $options: 'i' } },
+          { shortDescription: { $regex: searchTerm, $options: 'i' } }
+        ];
+      }
+
+      // Calculate skip value for pagination
+      const skip = (page - 1) * limit;
+
+      // Get total count for pagination
+      const total = await CourseModel.countDocuments(query);
+
+      // Get courses with pagination
+      const courses = await CourseModel.find(query)
+        .select('-__v') // Exclude version field
+        .sort({ createdAt: -1 }) // Sort by newest first
+        .skip(skip)
+        .limit(limit)
+        .lean(); // Return plain JavaScript objects instead of Mongoose documents
+
+      // Calculate total pages
+      const totalPages = Math.ceil(total / limit);
+
+      return {
+        courses,
+        total,
+        page,
+        totalPages
+      };
+    } catch (error) {
+      console.error('Error fetching all courses:', error);
+      if (error instanceof Error) {
+        throw new Error(`Failed to fetch courses: ${error.message}`);
+      }
+      throw new Error('Failed to fetch courses');
+    }
+  }
+
+  /**
    * Validate course data
    * @param courseData - Course data to validate
    * @returns boolean - Whether course data is valid

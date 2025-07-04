@@ -342,8 +342,7 @@ const courseSchema = new Schema<Course>({
 });
 
 // Create indexes for better query performance
-courseSchema.index({ id: 1 });
-courseSchema.index({ slug: 1 });
+// Note: id and slug indexes are automatically created because they have unique: true
 courseSchema.index({ category: 1 });
 courseSchema.index({ skillLevel: 1 });
 courseSchema.index({ isBestseller: 1 });

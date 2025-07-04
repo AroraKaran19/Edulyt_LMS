@@ -106,4 +106,83 @@ export class CourseController {
     }
   };
 
+  /**
+   * Get all courses with pagination and filtering
+   * @param req - Express request object
+   * @param res - Express response object
+   * @query page - Page number (default: 1)
+   * @query limit - Items per page (default: 10, max: 100)
+   * @query category - Filter by categories (comma-separated: "programming,design,business")
+   * @query search - Search term for title/description
+   */
+  getAllCourses = async (req: Request, res: Response): Promise<void> => {
+    try {
+      // Extract query parameters
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+      const category = req.query.category as string;
+      const search = req.query.search as string;
+
+      // Validate pagination parameters
+      if (page < 1) {
+        res.status(400).json({
+          success: false,
+          message: 'Page number must be greater than 0'
+        });
+        return;
+      }
+
+      if (limit < 1 || limit > 100) {
+        res.status(400).json({
+          success: false,
+          message: 'Limit must be between 1 and 100'
+        });
+        return;
+      }
+
+      // Get courses with pagination
+      const result = await this.courseService.getAllCourses(page, limit, category, search);
+
+      // Handle empty results case
+      if (result.total === 0) {
+        res.status(200).json({
+          success: true,
+          message: 'No courses found',
+          data: {
+            courses: [],
+            total: 0
+          }
+        });
+        return;
+      }
+
+      // Return success response with results
+      res.status(200).json({
+        success: true,
+        message: 'Courses retrieved successfully',
+        data: {
+          courses: result.courses,
+          pagination: {
+            total: result.total,
+            page: result.page,
+            totalPages: result.totalPages,
+            limit: limit,
+            hasNext: result.page < result.totalPages,
+            hasPrev: result.page > 1
+          }
+        }
+      });
+
+    } catch (error) {
+      console.error('Error in getAllCourses controller:', error);
+      
+      // Generic error response
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error while fetching courses',
+        error: process.env.NODE_ENV === 'development' ? error : 'Something went wrong'
+      });
+    }
+  };
+
 } 

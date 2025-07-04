@@ -67,7 +67,7 @@ const instructorSchema = new Schema<Instructor>({
 });
 
 // Create indexes
-instructorSchema.index({ id: 1 });
+// Note: id index is automatically created because it has unique: true
 instructorSchema.index({ name: 1 });
 instructorSchema.index({ rating: -1 });
 
