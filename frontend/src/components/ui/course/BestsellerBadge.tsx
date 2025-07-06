@@ -22,7 +22,7 @@ const BestsellerBadge = ({
   return (
     <div
       className={cn(
-        "best-seller-badge px-2 py-1 bg-[linear-gradient(-270deg,rgba(247,191,36,0.4)_0%,rgba(255,217,195,0.23)_100%)] flex flex-col sm:flex-row sm:flex-wrap gap-1 sm:gap-2 items-start sm:items-center select-none",
+        "best-seller-badge px-2 py-1 bg-[linear-gradient(-270deg,rgba(247,191,36,0.4)_0%,rgba(255,217,195,0.23)_100%)] flex flex-col md:flex-row md:flex-wrap gap-1 md:gap-2 items-start md:items-center select-none",
         className
       )}
     >

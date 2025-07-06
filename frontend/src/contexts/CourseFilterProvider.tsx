@@ -133,7 +133,7 @@ const CourseFilterProvider = ({ children }: { children: React.ReactNode }) => {
             {
               id: "i1",
               name: "Dr. Sarah Johnson",
-              profileImage: "/logo.png",
+              profileImage: "/courseDefaultTestimonial.png",
               experience: "8 years of Experience",
               rating: 4.9,
               totalStudents: 25000,
@@ -230,7 +230,7 @@ const CourseFilterProvider = ({ children }: { children: React.ReactNode }) => {
             {
               id: "i2",
               name: "Prof. Michael Chen",
-              profileImage: "/logo.png",
+              profileImage: "/courseDefaultTestimonial.png",
               experience: "12 years of Experience",
               rating: 4.8,
               totalStudents: 18000,
@@ -327,7 +327,7 @@ const CourseFilterProvider = ({ children }: { children: React.ReactNode }) => {
             {
               id: "i3",
               name: "David Rodriguez",
-              profileImage: "/logo.png",
+              profileImage: "/courseDefaultTestimonial.png",
               experience: "10 years of Experience",
               rating: 4.9,
               totalStudents: 35000,
@@ -424,7 +424,7 @@ const CourseFilterProvider = ({ children }: { children: React.ReactNode }) => {
             {
               id: "i4",
               name: "Dr. Jennifer Park",
-              profileImage: "/logo.png",
+              profileImage: "/courseDefaultTestimonial.png",
               experience: "15 years of Experience",
               rating: 4.7,
               totalStudents: 12000,
@@ -521,7 +521,7 @@ const CourseFilterProvider = ({ children }: { children: React.ReactNode }) => {
             {
               id: "i5",
               name: "Lisa Thompson",
-              profileImage: "/logo.png",
+              profileImage: "/courseDefaultTestimonial.png",
               experience: "9 years of Experience",
               rating: 4.6,
               totalStudents: 14000,
@@ -616,7 +616,7 @@ const CourseFilterProvider = ({ children }: { children: React.ReactNode }) => {
             {
               id: "i6",
               name: "Alex Kumar",
-              profileImage: "/logo.png",
+              profileImage: "/courseDefaultTestimonial.png",
               experience: "11 years of Experience",
               rating: 4.8,
               totalStudents: 16000,
@@ -713,7 +713,7 @@ const CourseFilterProvider = ({ children }: { children: React.ReactNode }) => {
             {
               id: "i7",
               name: "Ryan Mitchell",
-              profileImage: "/logo.png",
+              profileImage: "/courseDefaultTestimonial.png",
               experience: "13 years of Experience",
               rating: 4.9,
               totalStudents: 28000,
@@ -810,7 +810,7 @@ const CourseFilterProvider = ({ children }: { children: React.ReactNode }) => {
             {
               id: "i8",
               name: "Maria Garcia",
-              profileImage: "/logo.png",
+              profileImage: "/courseDefaultTestimonial.png",
               experience: "7 years of Experience",
               rating: 4.7,
               totalStudents: 19000,

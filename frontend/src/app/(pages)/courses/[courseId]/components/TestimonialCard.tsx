@@ -2,7 +2,7 @@ import React from "react";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import { Plus_Jakarta_Sans } from "next/font/google";
-import { Linkedin, MoveDown } from "lucide-react";
+import { Linkedin } from "lucide-react";
 import Link from "next/link";
 import { Testimonial } from "./TestimonialCarousel";
 
@@ -21,11 +21,11 @@ const TestimonialCard = ({
   return (
     <div
       className={cn(
-        `${testimonial.name} h-full bg-white rounded-2xl flex flex-col items-center py-3`,
+        `${testimonial.name}-card h-full bg-white rounded-2xl flex flex-col items-center py-3 px-2`,
         className
       )}
     >
-      <div className="testimonial-image size-20 rounded-full mb-3 md:mb-4">
+      <div className="testimonial-image size-16 md:size-20 rounded-full mb-3 md:mb-4">
         <Image
           src={testimonial.image}
           alt={testimonial.name}
@@ -36,7 +36,7 @@ const TestimonialCard = ({
       </div>
       <div className="testimonial-information flex flex-col items-center justify-center gap-1 mb-4 flex-shrink-0">
         <div className="testimonial-name-container w-full flex items-center justify-center gap-3">
-          <div className="testimonial-name text-xl font-coolvetica font-normal">
+          <div className="testimonial-name text-sm md:text-xl font-coolvetica font-normal">
             {testimonial.name}
           </div>
           {testimonial.linkedin && (
@@ -47,7 +47,7 @@ const TestimonialCard = ({
         </div>
         <div
           className={cn(
-            "testimonial-role text-base font-normal",
+            "testimonial-role text-xs md:text-base font-normal",
             plusJakartaSans.className
           )}
         >
@@ -58,27 +58,27 @@ const TestimonialCard = ({
         <div className="testimonial-past-information flex flex-col items-center justify-center gap-1">
           <div
             className={cn(
-              "testimonial-past-role text-base font-normal",
+              "testimonial-past-role text-xs md:text-base font-normal",
               plusJakartaSans.className
             )}
           >
             {testimonial.pastRole}
           </div>
-          <div className="testimonial-past-company text-xl font-bold font-coolvetica">
+          <div className="testimonial-past-company text-sm md:text-xl font-bold font-coolvetica">
             {testimonial.pastCompany}
           </div>
         </div>
-        <MoveDown className="h-full stroke-1 w-full max-w-1/2 text-[linear-gradient(90deg,rgba(102,102,102,0)_0%,rgba(247,173,36,0)_100%)]" />
+        <img src="/Arrow.svg" alt="Arrow" className="w-10 h-10" />
         <div className="testimonial-current-information flex flex-col items-center justify-center gap-1 py-2.5 px-4 md:px-8 bg-[#F77124]/10 border border-black/10 rounded-full">
           <div
             className={cn(
-              "testimonial-current-role text-base font-normal flex-wrap text-center",
+              "testimonial-current-role text-xs md:text-base font-normal flex-wrap text-center",
               plusJakartaSans.className
             )}
           >
             {testimonial.currentRole}
           </div>
-          <div className="testimonial-current-company text-xl font-bold font-coolvetica flex-wrap text-center">
+          <div className="testimonial-current-company text-sm md:text-xl font-bold font-coolvetica flex-wrap text-center">
             {testimonial.currentCompany}
           </div>
         </div>

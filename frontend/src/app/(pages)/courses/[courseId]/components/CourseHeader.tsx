@@ -20,6 +20,9 @@ const CourseHeader = ({ course }: { course: Course }) => {
     ? `${(course?.featuredReviews.length / 1000).toFixed(1).replace(/\.0$/, '')}K`
     : course?.featuredReviews.length.toString();
 
+
+  if (!course) return null;
+
   return (
     <div className="course-header-content w-full my-6 flex flex-col gap-6">
       <div className="course-details w-full flex flex-col lg:flex-row">
@@ -27,19 +30,20 @@ const CourseHeader = ({ course }: { course: Course }) => {
           {course?.isFeatured && (
             <BestsellerBadge
               enrollStudents={course.enrolledCount}
-              text1ClassName="sm:text-lg"
-              text2ClassName="sm:text-lg"
+              className="items-center md:items-start"
+              text1ClassName="text-sm md:text-lg"
+              text2ClassName="text-sm md:text-lg"
             />
           )}
           <div className="course-info flex flex-col gap-2 font-coolvetica text-[#2B1508] mt-5">
             <h1
-              className={cn("font-bold text-balance", "text-3xl md:text-5xl")}
+              className={cn("font-bold text-balance", "text-2xl md:text-3xl text-center md:text-left")}
             >
               {course?.title}
             </h1>
             <p
               className={cn(
-                "text-[16px] font-normal",
+                "text-[16px] font-normal text-center md:text-left",
                 plusJakartaSans.className
               )}
             >
@@ -54,12 +58,12 @@ const CourseHeader = ({ course }: { course: Course }) => {
                 hours={0}
                 minutes={0}
                 seconds={10}
-                className={`${plusJakartaSans.className}`}
+                className={`${plusJakartaSans.className} text-sm md:text-base`}
               />
             </div>
           )}
           {course && (
-            <OrangeButton className="font-bold">Enroll Now</OrangeButton>
+            <OrangeButton className="font-bold text-sm md:text-base">Enroll Now</OrangeButton>
           )}
         </div>
       </div>
@@ -69,10 +73,10 @@ const CourseHeader = ({ course }: { course: Course }) => {
           <p className="text-base font-normal text-[#2B1508]">Rating</p>
           <div className="course-rating w-full flex gap-2 items-center justify-center md:justify-start">
             <Star className="size-5 text-[#F7AD24]" fill="#F7AD24" />
-            <span className="text-2xl font-normal text-[#2B1508] font-coolvetica tracking-wide">
+            <span className="text-base md:text-2xl font-normal text-[#2B1508] font-coolvetica tracking-wide">
               {course?.totalRatings.toFixed(1)}
             </span>
-            <span className="text-base font-normal text-[#2B1508]">
+            <span className="text-sm md:text-base font-normal text-[#2B1508]">
               ({course?.featuredReviews.length > 100
                 ? `(more than ${formattedReviews} reviews)`
                 : formattedReviews === "1"
@@ -82,14 +86,14 @@ const CourseHeader = ({ course }: { course: Course }) => {
           </div>
         </div>
         <div className="course-proficency w-full md:w-max flex flex-col items-center md:items-start">
-          <p className="text-base font-normal text-[#2B1508]">Proficency</p>
-          <p className="text-2xl font-normal text-[#2B1508] font-coolvetica tracking-wide">
+          <p className="text-sm md:text-base font-normal text-[#2B1508]">Proficency</p>
+          <p className="text-base md:text-2xl font-normal text-[#2B1508] font-coolvetica tracking-wide">
             {course?.skillLevel}
           </p>
         </div>
         <div className="course-total-time w-full md:w-max flex flex-col items-center md:items-start">
-          <p className="text-base font-normal text-[#2B1508]">Total Time</p>
-          <p className="text-2xl font-normal text-[#2B1508] font-coolvetica tracking-wide">
+          <p className="text-sm md:text-base font-normal text-[#2B1508]">Total Time</p>
+          <p className="text-base md:text-2xl font-normal text-[#2B1508] font-coolvetica tracking-wide">
             {course?.duration}
           </p>
         </div>

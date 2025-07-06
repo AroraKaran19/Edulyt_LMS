@@ -32,7 +32,7 @@ const TestimonialSection = () => {
   return (
     <section
       id="testimonials"
-      className="testimonial-section w-full bg-white rounded-2xl py-4 px-8 lg:px-[13%] md:py-10 flex flex-col items-center justify-center gap-8"
+      className="testimonial-section w-full bg-white rounded-2xl py-4 px-4 lg:px-[13%] md:py-10 flex flex-col items-center justify-center gap-8"
     >
       <div className="w-full h-0.75 bg-[linear-gradient(90deg,rgba(246,110,33,0)_0%,#F66E21_53%,rgba(246,110,33,0)_100%)]" />
       <h2 className="testimonial-header w-full text-2xl md:text-4xl font-bold font-coolvetica tracking-wide text-center">
