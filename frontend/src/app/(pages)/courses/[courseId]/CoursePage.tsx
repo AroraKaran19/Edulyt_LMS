@@ -1,7 +1,6 @@
 "use client";
 import React from "react";
 import CoursePageSkeleton from "./components/CoursePageSkeleton";
-import { Head } from "next/document";
 import { useCourseFilter } from "@/contexts/CourseFilterProvider";
 import { Course } from "@/types";
 import { cn } from "@/lib/utils";

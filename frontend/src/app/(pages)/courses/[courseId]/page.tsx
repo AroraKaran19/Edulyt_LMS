@@ -1,5 +1,4 @@
 import React from "react";
-import Head from "next/head";
 import CoursePage from "./CoursePage";
 
 const IndividualCoursePage = async ({ params }: { params: Promise<{ courseId: string }> }) => {
