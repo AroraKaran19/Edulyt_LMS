@@ -1,8 +1,8 @@
+// app/layout.tsx
 import type { Metadata } from "next";
 import "@/app/globals.css";
-import Navbar from "@/components/shared/Navbar/Navbar";
-import Footer from "@/components/shared/Footer/Footer";
 import { ReduxProvider } from "@/store/Provider";
+import LayoutWrapper from "@/components/shared/LayoutWrapper";
 
 export const metadata: Metadata = {
   title: "Edulyt India",
@@ -11,18 +11,14 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
     <html lang="en">
       <body className="antialiased">
         <ReduxProvider>
-          <Navbar />
-          <main className="flex min-h-screen flex-col pt-[78px] relative overflow-hidden">
-            {children}
-          </main>
-          <Footer />
+          <LayoutWrapper>{children}</LayoutWrapper>
         </ReduxProvider>
       </body>
     </html>
