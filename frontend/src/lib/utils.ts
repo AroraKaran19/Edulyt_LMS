@@ -3,6 +3,8 @@ import { twMerge } from "tailwind-merge";
 import apiClient from '@/configs/apiConfig';
 import { AXIOS_ERROR_CODES, ERROR_TYPES } from '@/constants/error/statusCodes';
 import { ERROR_MESSAGES } from '@/constants/error/errorMessages';
+import qs from "qs";
+import { Filter } from "@/types";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -99,4 +101,27 @@ export const isServerDown = async (error: any): Promise<boolean> => {
 export const fetcher = async (url: string) => {
   const response = await apiClient.get(url);
   return response.data;
+};
+
+// Build query string for API requests
+export const buildQueryString = (
+  search: string,
+  selectedFilter: Filter[],
+  page: number
+): string => {
+  const params: any = {};
+  
+  if (search.trim()) {
+    params.search = search.trim();
+  }
+  
+  if (selectedFilter.length > 0 && !selectedFilter.some(f => f.value === "all")) {
+    params.filter = selectedFilter.map(f => f.value);
+  }
+  
+  if (page > 1) {
+    params.page = page;
+  }
+  
+  return qs.stringify(params, { arrayFormat: 'repeat' });
 };
