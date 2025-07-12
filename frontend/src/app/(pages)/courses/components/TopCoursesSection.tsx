@@ -7,15 +7,12 @@ import useSWR from "swr";
 import { fetcher } from '@/lib/utils';
 import { getErrorUIConfig } from '@/configs/errorUIConfig';
 import Error from "@/components/ui/Error";
+import { ENDPOINTS } from "@/constants/endpoints";
 
 const TopCoursesSection = () => {
   // const { courses, isFetching } = useCourseFilter();
-  const { data, error, isLoading, mutate } = useSWR('/courses/featured', fetcher, {
-    revalidateOnFocus: false,
-    revalidateOnReconnect: true,
-    errorRetryCount: 3,
-    errorRetryInterval: 5000,
-  });
+  const { featured } = ENDPOINTS.courses;
+  const { data, error, isLoading } = useSWR(featured, fetcher);
   const courses = data?.data?.courses;
 
   const renderContent = () => {
