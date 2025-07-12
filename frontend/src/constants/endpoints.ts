@@ -4,5 +4,6 @@ export const ENDPOINTS = {
     courses: {
         featured: '/courses/featured',
         all: '/courses',
+        slug: '/courses',
     },
 };

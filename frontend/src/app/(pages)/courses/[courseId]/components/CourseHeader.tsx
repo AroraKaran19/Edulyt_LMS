@@ -14,6 +14,8 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 
 const CourseHeader = ({ course }: { course: Course }) => {
 
+  console.log(course);
+
   const formattedReviews = course?.featuredReviews.length >= 1000000 
     ? `${(course?.featuredReviews.length / 1000000).toFixed(1).replace(/\.0$/, '')}M`
     : course?.featuredReviews.length >= 1000 
@@ -74,7 +76,7 @@ const CourseHeader = ({ course }: { course: Course }) => {
           <div className="course-rating w-full flex gap-2 items-center justify-center md:justify-start">
             <Star className="size-5 text-[#F7AD24]" fill="#F7AD24" />
             <span className="text-base md:text-2xl font-normal text-[#2B1508] font-coolvetica tracking-wide">
-              {course?.totalRatings.toFixed(1)}
+              {course?.totalRatings?.toFixed(1)}
             </span>
             <span className="text-sm md:text-base font-normal text-[#2B1508]">
               ({course?.featuredReviews.length > 100
