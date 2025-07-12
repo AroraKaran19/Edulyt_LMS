@@ -111,14 +111,14 @@ export class CourseService {
    * Get all courses with pagination
    * @param page - Page number (default: 1)
    * @param limit - Items per page (default: 10)
-   * @param category - Filter by categories (comma-separated string like "1,2,3" or single category)
+   * @param filters - Array of filters to apply (optional)
    * @param search - Search term for title or description (optional)
    * @returns Promise<{courses: Course[], total: number, page: number, totalPages: number}>
    */
   async getAllCourses(
     page: number = 1, 
     limit: number = 10, 
-    category?: string, 
+    filters?: string[], 
     search?: string
   ): Promise<{
     courses: Course[];
@@ -130,31 +130,18 @@ export class CourseService {
       // Build query object
       const query: any = { isActive: true };
 
-      // Add category filter if provided
-      if (category && category.trim()) {
-        // Split comma-separated categories and trim whitespace
-        const categories = category.split(',').map(cat => cat.trim()).filter(cat => cat);
-        
-        if (categories.length > 0) {
-          if (categories.length === 1) {
-            // Single category - use regex for case-insensitive matching
-            query.category = { $regex: categories[0], $options: 'i' };
-          } else {
-            // Multiple categories - use $in with regex for each category
-            query.category = { 
-              $in: categories.map(cat => new RegExp(cat, 'i')) 
-            };
-          }
-        }
+      // Add filters if provided
+      if (filters && filters.length > 0) {
+        query.category = { 
+          $in: filters.map(filter => new RegExp(filter, 'i'))
+        };
       }
 
       // Add search filter if provided
-      if (search && search.trim()) {
-        const searchTerm = search.trim();
+      if (search) {
         query.$or = [
-          { title: { $regex: searchTerm, $options: 'i' } },
-          { description: { $regex: searchTerm, $options: 'i' } },
-          { shortDescription: { $regex: searchTerm, $options: 'i' } }
+          { title: { $regex: search, $options: 'i' } },
+          { description: { $regex: search, $options: 'i' } }
         ];
       }
 
@@ -187,6 +174,34 @@ export class CourseService {
         throw new Error(`Failed to fetch courses: ${error.message}`);
       }
       throw new Error('Failed to fetch courses');
+    }
+  }
+
+  /**
+   * Get a course by slug
+   * @param slug - Course slug
+   * @returns Promise<Course | null> - Course data or null if not found
+   */
+  async getCourseBySlug(slug: string): Promise<Course | null> {
+    try {
+      if (!slug?.trim()) {
+        throw new Error('Course slug is required');
+      }
+
+      const course = await CourseModel.findOne({ 
+        slug: slug.trim(),
+        isActive: true 
+      })
+      .select('-__v') // Exclude version field
+      .lean(); // Return plain JavaScript object instead of Mongoose document
+
+      return course;
+    } catch (error) {
+      console.error('Error fetching course by slug:', error);
+      if (error instanceof Error) {
+        throw new Error(`Failed to fetch course: ${error.message}`);
+      }
+      throw new Error('Failed to fetch course');
     }
   }
 

@@ -8,6 +8,7 @@ import TopCourseCard from "./TopCourseCard";
 import { cn } from "@/lib/utils";
 import type { Swiper as SwiperType } from "swiper";
 
+
 const CoursesCarousel = ({ courses }: { courses: Course[] }) => {
   const swiperRef = useRef<SwiperType | null>(null);
   const scrollbarRef = useRef<HTMLDivElement>(null);

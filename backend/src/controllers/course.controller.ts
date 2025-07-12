@@ -112,7 +112,7 @@ export class CourseController {
    * @param res - Express response object
    * @query page - Page number (default: 1)
    * @query limit - Items per page (default: 10, max: 100)
-   * @query category - Filter by categories (comma-separated: "programming,design,business")
+   * @query filter - Filter by categories (can be used multiple times: "?filter=web&filter=app&filter=ml")
    * @query search - Search term for title/description
    */
   getAllCourses = async (req: Request, res: Response): Promise<void> => {
@@ -120,8 +120,17 @@ export class CourseController {
       // Extract query parameters
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 10;
-      const category = req.query.category as string;
       const search = req.query.search as string;
+      
+      // Handle multiple filter parameters
+      let filters: string[] = [];
+      if (req.query.filter) {
+        if (Array.isArray(req.query.filter)) {
+          filters = req.query.filter as string[];
+        } else {
+          filters = [req.query.filter as string];
+        }
+      }
 
       // Validate pagination parameters
       if (page < 1) {
@@ -141,7 +150,7 @@ export class CourseController {
       }
 
       // Get courses with pagination
-      const result = await this.courseService.getAllCourses(page, limit, category, search);
+      const result = await this.courseService.getAllCourses(page, limit, filters, search);
 
       // Handle empty results case
       if (result.total === 0) {
@@ -180,6 +189,70 @@ export class CourseController {
       res.status(500).json({
         success: false,
         message: 'Internal server error while fetching courses',
+        error: process.env.NODE_ENV === 'development' ? error : 'Something went wrong'
+      });
+    }
+  };
+
+  /**
+   * Get a course by slug
+   * @param req - Express request object
+   * @param res - Express response object
+   * @param slug - Course slug from URL parameters
+   */
+  getCourseBySlug = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { slug } = req.params;
+
+      // Validate slug parameter
+      if (!slug?.trim()) {
+        res.status(400).json({
+          success: false,
+          message: 'Course slug is required'
+        });
+        return;
+      }
+
+      // Get course by slug
+      const course = await this.courseService.getCourseBySlug(slug);
+
+      // Handle course not found
+      if (!course) {
+        res.status(404).json({
+          success: false,
+          message: 'Course not found'
+        });
+        return;
+      }
+
+      // Return success response
+      res.status(200).json({
+        success: true,
+        message: 'Course retrieved successfully',
+        data: {
+          course
+        }
+      });
+
+    } catch (error) {
+      console.error('Error in getCourseBySlug controller:', error);
+      
+      // Handle specific error types
+      if (error instanceof Error) {
+        if (error.message.includes('Course slug is required')) {
+          res.status(400).json({
+            success: false,
+            message: 'Invalid course slug',
+            error: error.message
+          });
+          return;
+        }
+      }
+
+      // Generic error response
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error while fetching course',
         error: process.env.NODE_ENV === 'development' ? error : 'Something went wrong'
       });
     }

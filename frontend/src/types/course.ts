@@ -2,6 +2,7 @@
 
 import { Instructor } from './instructor';
 
+
 export interface CourseLesson {
     id: string;
     title: string;

@@ -21,6 +21,15 @@ const TopCourseCard = ({
   slug,
   ...props
 }: Course & { className?: string; style?: React.CSSProperties }) => {
+  console.log("COURSE", thumbnail,
+    title,
+    enrolledCount,
+    instructor,
+    totalRatings,
+    featuredReviews,
+    plan,
+    discount,
+    slug,);
   
   const router = useRouter();
 

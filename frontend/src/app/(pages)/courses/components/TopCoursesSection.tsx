@@ -3,9 +3,56 @@ import React from "react";
 import CoursesCarousel from "./CoursesCarousel";
 import { useCourseFilter } from "@/contexts/CourseFilterProvider";
 import { Loader2 } from "lucide-react";
+import useSWR from "swr";
+import { fetcher } from '@/lib/utils';
+import { getErrorUIConfig } from '@/configs/errorUIConfig';
+import Error from "@/components/ui/Error";
+import { ENDPOINTS } from "@/constants/endpoints";
 
 const TopCoursesSection = () => {
-  const { courses, isFetching } = useCourseFilter();
+  // const { courses, isFetching } = useCourseFilter();
+  const { featured } = ENDPOINTS.courses;
+  const { data, error, isLoading } = useSWR(featured, fetcher);
+  const courses = data?.data?.courses;
+
+  const renderContent = () => {
+    if (isLoading) {
+      return (
+        <div className="flex justify-center items-center h-64">
+          <div className="flex flex-col items-center gap-2">
+            <Loader2 className="w-8 h-8 animate-spin text-[#f77124]" />
+            <p className="text-gray-600">Loading courses...</p>
+          </div>
+        </div>
+      );
+    }
+
+    if (error) {
+      const errorConfig = getErrorUIConfig(error);
+      return (
+        <Error
+          icon={errorConfig.icon}
+          iconSize="lg"
+          iconColor={errorConfig.iconColor}
+          title={errorConfig.title}
+          description={errorConfig.description}
+          containerHeight="h-64"
+        />
+      );
+    }
+
+    if (!courses || courses.length === 0) {
+      return (
+        <div className="flex justify-center items-center h-64">
+          <div className="text-center">
+            <p className="text-gray-600">No courses available at the moment.</p>
+          </div>
+        </div>
+      );
+    }
+
+    return <CoursesCarousel courses={courses} />;
+  };
 
   return (
     <section className="top-courses-section w-full bg-white rounded-2xl py-10 flex flex-col items-center">
@@ -15,13 +62,7 @@ const TopCoursesSection = () => {
         you can Enroll now!
       </h2>
       <div className="top-courses-carousel w-full mt-10">
-        {isFetching ? (
-          <div className="flex justify-center items-center h-full">
-            <Loader2 className="w-4 h-4 animate-spin" />
-          </div>
-        ) : (
-          <CoursesCarousel courses={courses} />
-        )}
+        {renderContent()}
       </div>
     </section>
   );

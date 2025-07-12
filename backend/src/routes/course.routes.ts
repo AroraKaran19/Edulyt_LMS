@@ -27,6 +27,18 @@ router.get('/', courseController.getAllCourses);
 router.get('/featured', courseController.getFeaturedCourses);
 
 /**
+ * @route   GET /api/courses/:slug
+ * @desc    Get a course by slug
+ * @access  Public
+ * @params  
+ *   - slug: Course slug (URL parameter)
+ * @example 
+ *   GET /api/courses/javascript-fundamentals
+ *   GET /api/courses/react-advanced-concepts
+ */
+router.get('/:slug', courseController.getCourseBySlug);
+
+/**
  * @route   POST /api/courses
  * @desc    Create a new course
  * @access  Private (should be protected with auth middleware)

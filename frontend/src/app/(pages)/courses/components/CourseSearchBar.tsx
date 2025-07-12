@@ -1,20 +1,21 @@
 "use client";
-import { useCourseFilter } from "@/contexts/CourseFilterProvider";
 import { cn } from "@/lib/utils";
 import { Search } from "lucide-react";
 import React, { useEffect } from "react";
 
-const CourseSearchBar = () => {
+interface CourseSearchBarProps {
+  search: string;
+  onSearchChange: (search: string) => void;
+}
 
-	const { search, setSearch } = useCourseFilter();
+const CourseSearchBar: React.FC<CourseSearchBarProps> = ({ search, onSearchChange }) => {
+  useEffect(() => {
+    const debouncedSearch = setTimeout(() => {
+      console.log(search);
+    }, 500);
 
-	useEffect(() => {
-		const debouncedSearch = setTimeout(() => {
-			console.log(search);
-		}, 500);
-
-		return () => clearTimeout(debouncedSearch);
-	}, [search]);
+    return () => clearTimeout(debouncedSearch);
+  }, [search]);
 
   return (
     <div className={cn(
@@ -25,8 +26,8 @@ const CourseSearchBar = () => {
         type="text"
         placeholder="Search course name by title or type"
         className="w-full h-full placeholder:text-black/30 bg-transparent outline-none"
-				value={search}
-				onChange={(e) => setSearch(e.target.value)}
+        value={search}
+        onChange={(e) => onSearchChange(e.target.value)}
       />
     </div>
   );
