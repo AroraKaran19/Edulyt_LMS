@@ -178,6 +178,34 @@ export class CourseService {
   }
 
   /**
+   * Get a course by slug
+   * @param slug - Course slug
+   * @returns Promise<Course | null> - Course data or null if not found
+   */
+  async getCourseBySlug(slug: string): Promise<Course | null> {
+    try {
+      if (!slug?.trim()) {
+        throw new Error('Course slug is required');
+      }
+
+      const course = await CourseModel.findOne({ 
+        slug: slug.trim(),
+        isActive: true 
+      })
+      .select('-__v') // Exclude version field
+      .lean(); // Return plain JavaScript object instead of Mongoose document
+
+      return course;
+    } catch (error) {
+      console.error('Error fetching course by slug:', error);
+      if (error instanceof Error) {
+        throw new Error(`Failed to fetch course: ${error.message}`);
+      }
+      throw new Error('Failed to fetch course');
+    }
+  }
+
+  /**
    * Validate course data
    * @param courseData - Course data to validate
    * @returns boolean - Whether course data is valid

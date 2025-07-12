@@ -194,4 +194,68 @@ export class CourseController {
     }
   };
 
+  /**
+   * Get a course by slug
+   * @param req - Express request object
+   * @param res - Express response object
+   * @param slug - Course slug from URL parameters
+   */
+  getCourseBySlug = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { slug } = req.params;
+
+      // Validate slug parameter
+      if (!slug?.trim()) {
+        res.status(400).json({
+          success: false,
+          message: 'Course slug is required'
+        });
+        return;
+      }
+
+      // Get course by slug
+      const course = await this.courseService.getCourseBySlug(slug);
+
+      // Handle course not found
+      if (!course) {
+        res.status(404).json({
+          success: false,
+          message: 'Course not found'
+        });
+        return;
+      }
+
+      // Return success response
+      res.status(200).json({
+        success: true,
+        message: 'Course retrieved successfully',
+        data: {
+          course
+        }
+      });
+
+    } catch (error) {
+      console.error('Error in getCourseBySlug controller:', error);
+      
+      // Handle specific error types
+      if (error instanceof Error) {
+        if (error.message.includes('Course slug is required')) {
+          res.status(400).json({
+            success: false,
+            message: 'Invalid course slug',
+            error: error.message
+          });
+          return;
+        }
+      }
+
+      // Generic error response
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error while fetching course',
+        error: process.env.NODE_ENV === 'development' ? error : 'Something went wrong'
+      });
+    }
+  };
+
 } 
