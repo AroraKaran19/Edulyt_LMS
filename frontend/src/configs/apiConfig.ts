@@ -1,0 +1,76 @@
+import { API_BASE_URL } from '@/constants/endpoints';
+import { STATUS_CODES, AXIOS_ERROR_CODES, ERROR_TYPES } from '@/constants/error/statusCodes';
+import { ERROR_MESSAGES } from '@/constants/error/errorMessages';
+import { checkInternetConnection, isServerDown } from '@/lib/utils';
+import axios from 'axios';
+
+// Create axios instance
+const apiClient = axios.create({
+    baseURL: API_BASE_URL,
+    timeout: 10000, // 10 seconds timeout
+    headers: {
+        'Content-Type': 'application/json',
+    },
+});
+
+// Response interceptor for comprehensive error handling
+apiClient.interceptors.response.use(
+    (response) => {
+        return response;
+    },
+    async (error) => {
+        // Check if error has a response (server responded with error status)
+        if (error.response) {
+            // Backend responded with a status code out of the 2xx range
+            const status = error.response.status;
+            const data = error.response.data;
+            
+            console.log('Backend Error:', status, data);
+            
+            // Attach error type for UI handling
+            error.errorType = ERROR_TYPES.BACKEND_ERROR;
+            error.statusCode = status;
+            error.serverMessage = data?.message || 'Server error occurred';
+            
+        } else if (error.request) {
+            // Request was made but no response received
+            console.log('Request Error Details:', {
+                readyState: error.request.readyState,
+                status: error.request.status,
+                responseURL: error.request.responseURL,
+                timeout: error.request.timeout
+            });
+            
+            // Use helper function to detect server down (with internet check)
+            const serverDown = await isServerDown(error);
+            
+            if (serverDown) {
+                console.log('🔴 Backend server is not running (internet available but server unreachable).');
+                error.errorType = ERROR_TYPES.SERVER_DOWN;
+                error.message = ERROR_MESSAGES.SERVER_DOWN;
+            } else if (error.code === AXIOS_ERROR_CODES.NOT_FOUND) {
+                console.log('DNS resolution failed - invalid domain/URL');
+                error.errorType = ERROR_TYPES.DNS_ERROR;
+                error.message = ERROR_MESSAGES.DNS_ERROR;
+            } else if (error.code === AXIOS_ERROR_CODES.TIMEOUT) {
+                console.log('Request timeout');
+                error.errorType = ERROR_TYPES.TIMEOUT_ERROR;
+                error.message = ERROR_MESSAGES.TIMEOUT_ERROR;
+            } else {
+                console.log('🌐 Network error - check internet connection');
+                error.errorType = ERROR_TYPES.NETWORK_ERROR;
+                error.message = ERROR_MESSAGES.NETWORK_ERROR;
+            }
+            
+        } else {
+            // Something else happened in setting up the request
+            console.log('Unknown Error:', error.message);
+            error.errorType = ERROR_TYPES.UNKNOWN_ERROR;
+            error.message = error.message || ERROR_MESSAGES.UNKNOWN_ERROR;
+        }
+
+        return Promise.reject(error);
+    }
+);
+
+export default apiClient;
