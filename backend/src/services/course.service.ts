@@ -111,7 +111,7 @@ export class CourseService {
    * Get all courses with pagination
    * @param page - Page number (default: 1)
    * @param limit - Items per page (default: 10)
-   * @param category - Filter by categories (comma-separated string like "1,2,3" or single category)
+   * @param category - Filter by category (optional)
    * @param search - Search term for title or description (optional)
    * @returns Promise<{courses: Course[], total: number, page: number, totalPages: number}>
    */
@@ -131,30 +131,15 @@ export class CourseService {
       const query: any = { isActive: true };
 
       // Add category filter if provided
-      if (category && category.trim()) {
-        // Split comma-separated categories and trim whitespace
-        const categories = category.split(',').map(cat => cat.trim()).filter(cat => cat);
-        
-        if (categories.length > 0) {
-          if (categories.length === 1) {
-            // Single category - use regex for case-insensitive matching
-            query.category = { $regex: categories[0], $options: 'i' };
-          } else {
-            // Multiple categories - use $in with regex for each category
-            query.category = { 
-              $in: categories.map(cat => new RegExp(cat, 'i')) 
-            };
-          }
-        }
+      if (category) {
+        query.category = { $regex: category, $options: 'i' };
       }
 
       // Add search filter if provided
-      if (search && search.trim()) {
-        const searchTerm = search.trim();
+      if (search) {
         query.$or = [
-          { title: { $regex: searchTerm, $options: 'i' } },
-          { description: { $regex: searchTerm, $options: 'i' } },
-          { shortDescription: { $regex: searchTerm, $options: 'i' } }
+          { title: { $regex: search, $options: 'i' } },
+          { description: { $regex: search, $options: 'i' } }
         ];
       }
 

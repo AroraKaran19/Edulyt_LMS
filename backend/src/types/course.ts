@@ -84,6 +84,7 @@ export interface Course {
 
     // Pricing Plans
     plan: CoursePlan;
+    discount: number;
 
     // Reviews
     featuredReviews: FeaturedReview[];
