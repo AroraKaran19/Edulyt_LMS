@@ -112,7 +112,7 @@ export class CourseController {
    * @param res - Express response object
    * @query page - Page number (default: 1)
    * @query limit - Items per page (default: 10, max: 100)
-   * @query category - Filter by categories (comma-separated: "programming,design,business")
+   * @query filter - Filter by categories (can be used multiple times: "?filter=web&filter=app&filter=ml")
    * @query search - Search term for title/description
    */
   getAllCourses = async (req: Request, res: Response): Promise<void> => {
@@ -120,8 +120,17 @@ export class CourseController {
       // Extract query parameters
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 10;
-      const category = req.query.category as string;
       const search = req.query.search as string;
+      
+      // Handle multiple filter parameters
+      let filters: string[] = [];
+      if (req.query.filter) {
+        if (Array.isArray(req.query.filter)) {
+          filters = req.query.filter as string[];
+        } else {
+          filters = [req.query.filter as string];
+        }
+      }
 
       // Validate pagination parameters
       if (page < 1) {
@@ -141,7 +150,7 @@ export class CourseController {
       }
 
       // Get courses with pagination
-      const result = await this.courseService.getAllCourses(page, limit, category, search);
+      const result = await this.courseService.getAllCourses(page, limit, filters, search);
 
       // Handle empty results case
       if (result.total === 0) {

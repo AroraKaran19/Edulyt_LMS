@@ -111,14 +111,14 @@ export class CourseService {
    * Get all courses with pagination
    * @param page - Page number (default: 1)
    * @param limit - Items per page (default: 10)
-   * @param category - Filter by category (optional)
+   * @param filters - Array of filters to apply (optional)
    * @param search - Search term for title or description (optional)
    * @returns Promise<{courses: Course[], total: number, page: number, totalPages: number}>
    */
   async getAllCourses(
     page: number = 1, 
     limit: number = 10, 
-    category?: string, 
+    filters?: string[], 
     search?: string
   ): Promise<{
     courses: Course[];
@@ -130,9 +130,11 @@ export class CourseService {
       // Build query object
       const query: any = { isActive: true };
 
-      // Add category filter if provided
-      if (category) {
-        query.category = { $regex: category, $options: 'i' };
+      // Add filters if provided
+      if (filters && filters.length > 0) {
+        query.category = { 
+          $in: filters.map(filter => new RegExp(filter, 'i'))
+        };
       }
 
       // Add search filter if provided
