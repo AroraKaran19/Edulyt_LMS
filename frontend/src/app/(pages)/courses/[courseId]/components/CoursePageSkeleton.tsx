@@ -79,9 +79,9 @@ const CoursePageSkeleton = () => {
         {/* Stats Grid Skeleton */}
         <div className="how-it-helped w-full grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           {[...Array(4)].map((_, index) => (
-            <div key={index} className="how-it-helped-item w-full py-4 flex flex-col gap-1.5 items-center justify-center border-2 border-gray-200 rounded-2xl">
-              <div className="h-8 w-16 bg-gray-300 rounded"></div>
-              <div className="h-4 w-24 bg-gray-300 rounded"></div>
+            <div key={index} className="how-it-helped-item w-full py-2 md:py-4 flex flex-col gap-1.5 items-center justify-center border-2 border-gray-200 rounded-2xl">
+              <div className="h-6 md:h-8 w-16 bg-gray-300 rounded"></div>
+              <div className="h-4 md:h-6 w-24 bg-gray-300 rounded"></div>
             </div>
           ))}
         </div>

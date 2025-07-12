@@ -17,12 +17,12 @@ const ScholarshipBanner = () => {
       )}
     >
       <div className="banner-content w-full lg:w-1/2 flex flex-col gap-4">
-        <h2 className="text-white text-2xl md:text-4xl font-bold font-coolvetica tracking-wide text-center lg:text-left">
+        <h2 className="text-white text-xl md:text-4xl font-bold font-coolvetica tracking-wide text-center lg:text-left">
           Enroll now for a scholarship and get 50% off
         </h2>
         <p
           className={cn(
-            "text-white text-base md:text-lg font-extrabold !italic text-center lg:text-left",
+            "text-white text-sm md:text-base font-extrabold !italic text-center lg:text-left",
             plusJakartaSans.className
           )}
         >
@@ -33,7 +33,7 @@ const ScholarshipBanner = () => {
       <div className="banner-cta w-full lg:w-1/5 flex flex-col gap-4 items-center">
         <OrangeButton
           className={cn(
-            "font-bold px-16 w-max text-center",
+            "font-bold text-sm md:text-base px-8 md:px-16 w-max text-center",
             plusJakartaSans.className
           )}
         >

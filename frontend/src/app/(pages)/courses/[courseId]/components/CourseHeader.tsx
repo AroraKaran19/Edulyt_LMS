@@ -30,9 +30,9 @@ const CourseHeader = ({ course }: { course: Course }) => {
           {course?.isFeatured && (
             <BestsellerBadge
               enrollStudents={course.enrolledCount}
-              className="items-center md:items-start"
-              text1ClassName="text-sm md:text-lg"
-              text2ClassName="text-sm md:text-lg"
+              className="flex-row justify-center items-center md:justify-start"
+              text1ClassName="text-sm"
+              text2ClassName="text-sm"
             />
           )}
           <div className="course-info flex flex-col gap-2 font-coolvetica text-[#2B1508] mt-5">
@@ -68,11 +68,11 @@ const CourseHeader = ({ course }: { course: Course }) => {
         </div>
       </div>
       <hr className="w-full border-t-3 border-gray-200" />
-      <div className="course-information w-full flex flex-row flex-wrap sm:flex-nowrap md:justify-between lg:justify-start gap-4 md:gap-20">
-        <div className="rating-container w-full md:w-max flex flex-col items-center md:items-start">
+      <div className="course-information w-full flex flex-row flex-wrap sm:flex-nowrap justify-center lg:justify-start gap-4 md:gap-20">
+        <div className="rating-container w-max flex flex-col items-center md:items-start">
           <p className="text-base font-normal text-[#2B1508]">Rating</p>
-          <div className="course-rating w-full flex gap-2 items-center justify-center md:justify-start">
-            <Star className="size-5 text-[#F7AD24]" fill="#F7AD24" />
+          <div className="course-rating w-full flex flex-wrap gap-1 md:gap-2 items-center justify-center md:justify-start">
+            <Star className="size-4 md:size-5 text-[#F7AD24]" fill="#F7AD24" />
             <span className="text-base md:text-2xl font-normal text-[#2B1508] font-coolvetica tracking-wide">
               {course?.totalRatings.toFixed(1)}
             </span>
@@ -85,13 +85,13 @@ const CourseHeader = ({ course }: { course: Course }) => {
             </span>
           </div>
         </div>
-        <div className="course-proficency w-full md:w-max flex flex-col items-center md:items-start">
+        <div className="course-proficency w-max flex flex-col items-center md:items-start">
           <p className="text-sm md:text-base font-normal text-[#2B1508]">Proficency</p>
           <p className="text-base md:text-2xl font-normal text-[#2B1508] font-coolvetica tracking-wide">
             {course?.skillLevel}
           </p>
         </div>
-        <div className="course-total-time w-full md:w-max flex flex-col items-center md:items-start">
+        <div className="course-total-time w-max flex flex-col items-center md:items-start">
           <p className="text-sm md:text-base font-normal text-[#2B1508]">Total Time</p>
           <p className="text-base md:text-2xl font-normal text-[#2B1508] font-coolvetica tracking-wide">
             {course?.duration}

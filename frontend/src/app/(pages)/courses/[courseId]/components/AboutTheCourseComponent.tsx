@@ -57,7 +57,7 @@ const AboutTheCourseComponent = () => {
         id="why-should-you-join"
         className="why-should-you-join mt-9.5 w-full flex flex-col gap-6"
       >
-        <h2>
+        <h2 className="flex flex-col gap-2">
           <p className="text-base font-normal">Key program highlights</p>
           <span className="text-3xl font-normal font-coolvetica">
             Why should you join?
@@ -68,13 +68,13 @@ const AboutTheCourseComponent = () => {
             (item, index) => (
               <div
                 key={index}
-                className="w-full bg-white px-6 py-4 rounded-xl border-2 border-[rgb(233,117,0)] shadow-[0_0_2px_3px_rgba(233,117,0,0.3)] flex flex-col items-center justify-center gap-2.5"
+                className="w-full bg-white px-3 md:px-6 py-3 md:py-4 rounded-xl border-2 border-[rgb(233,117,0)] shadow-[0_0_2px_3px_rgba(233,117,0,0.3)] flex flex-col items-center justify-center gap-1.5 md:gap-2.5"
               >
-                <div className="icon size-14">
+                <div className="icon size-8 md:size-14">
                   <img src="/Hat.svg" alt="Hat" className="w-full h-full" />
                 </div>
-                <p className="text-2xl font-normal text-center font-coolvetica text-[#F77124]">{item}</p>
-                <p className="text-sm font-normal text-center mt-1.5">
+                <p className="text-xl md:text-2xl font-normal text-center font-coolvetica text-[#F77124]">{item}</p>
+                <p className="text-xs md:text-sm font-normal text-center mt-1.5">
                   Receive guidance and mentorship from seasoned professionals
                   (having 10+ years of experience) in the field, providing
                   invaluable insights and advice.

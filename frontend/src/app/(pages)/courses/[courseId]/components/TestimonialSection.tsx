@@ -41,9 +41,11 @@ const TestimonialSection = () => {
       </h2>
       <div className="how-it-helped w-full grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         {howItHelped.map((item, index) => (
-          <div key={index} className="how-it-helped-item w-full py-4 flex flex-col gap-1.5 items-center justify-center border-2 border-gray-200 rounded-2xl">
-            <h3 className={cn("text-2xl md:text-4xl font-extrabold font-coolvetica tracking-wide", plusJakartaSans.className)}>{item.title}</h3>
-            <p className={cn("text-base font-normal text-center", plusJakartaSans.className)}>{item.subtitle}</p>
+          <div key={index} className="how-it-helped-item w-full py-2 md:py-4 flex flex-col gap-1.5 items-center justify-center border-2 border-gray-200 rounded-2xl">
+            <h3 className={cn("text-xl lg:text-4xl font-extrabold font-coolvetica tracking-wide", plusJakartaSans.className)}>
+              {item.title}
+            </h3>
+            <p className={cn("text-sm lg:text-base font-normal text-center", plusJakartaSans.className)}>{item.subtitle}</p>
           </div>
         ))}
       </div>
