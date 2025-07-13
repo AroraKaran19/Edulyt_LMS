@@ -1,26 +1,11 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { cn } from "@/lib/utils";
-import { 
-  ChevronLeft, 
-  ChevronRight, 
-  BookOpen, 
-  List, 
-  Plus,
-  GraduationCap,
-  Search,
-  ChevronDown
-} from "lucide-react";
-import OrangeButton from "@/components/ui/OrangeButton";
-import WhiteButton from "@/components/ui/WhiteButton";
 import { Filter } from "@/types";
 import Sidebar from "./components/Sidebar";
 import AddedCoursesContent from "./components/AddedCoursesContent";
 import AddNewCourseContent from "./components/AddNewCourseContent";
 import WelcomeContent from "./components/WelcomeContent";
-
-
 
 const AdminDashboard = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -98,7 +83,6 @@ const AdminDashboard = () => {
       // Find the scrollable container (the form content area)
       const scrollContainer = document.querySelector('.overflow-y-auto');
       if (scrollContainer) {
-        const headerHeight = 84; // Height of the fixed header
         const containerRect = scrollContainer.getBoundingClientRect();
         const elementRect = element.getBoundingClientRect();
         const relativeTop = elementRect.top - containerRect.top;

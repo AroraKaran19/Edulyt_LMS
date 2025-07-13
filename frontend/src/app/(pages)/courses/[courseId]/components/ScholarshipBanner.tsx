@@ -2,6 +2,7 @@ import { cn } from "@/lib/utils";
 import React from "react";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import OrangeButton from "@/components/ui/OrangeButton";
+import SectionContainer from "@/components/ui/course/SectionContainer";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -10,7 +11,7 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 
 const ScholarshipBanner = () => {
   return (
-    <section
+    <SectionContainer
       id="scholarship"
       className={cn(
         "scholarship-banner w-full bg-[#2B1508] rounded-2xl py-4 px-8 lg:px-[10%] md:py-15 flex flex-col lg:flex-row items-center justify-between gap-4 lg:gap-0"
@@ -40,7 +41,7 @@ const ScholarshipBanner = () => {
           Apply Now!
         </OrangeButton>
       </div>
-    </section>
+    </SectionContainer>
   );
 };
 

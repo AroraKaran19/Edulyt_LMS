@@ -6,6 +6,7 @@ type Tab = {
   label: string;
   component: React.ReactNode;
   showCount?: number;
+  activeTabIcon?: React.ReactNode;
 };
 
 interface TabSwitcherProps {
@@ -57,22 +58,23 @@ const TabSwitcher = ({ tabs, className }: TabSwitcherProps) => {
               {
                 "bg-gradient-to-r from-[#F5691D] to-[#F9792A]": activeTab === tab,
               },
-              "transition-colors duration-200 ease-in-out gap-1"
+              "transition-colors duration-200 ease-in-out gap-2"
             )}
             onClick={() => handleTabClick(tab, index)}
           >
             <span
               className={cn(
-                "text-sm font-bold md:text-base",
+                "flex items-center gap-1 text-sm font-bold md:text-base",
                 activeTab === tab ? "text-white" : "text-gray-800",
               )}
             >
+              {tab.activeTabIcon && activeTab === tab && tab.activeTabIcon}
               {tab.label}
             </span>
             {tab.showCount && (
               <span
                 className={cn(
-                  "text-[10px] leading-none font-semibold px-1.5 py-0.75 rounded-full flex items-center justify-center",
+                  "text-[10px] leading-none font-semibold px-1.5 py-1 rounded-full flex items-center justify-center",
                   activeTab === tab
                     ? "bg-white text-black"
                     : "bg-black text-white",

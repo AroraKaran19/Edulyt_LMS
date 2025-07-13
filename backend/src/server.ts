@@ -1,7 +1,11 @@
 import app from './app';
 import { connectDB, disconnectDB } from './config/database';
 
-const PORT = process.env.PORT || 5000;
+if (!process.env.PORT) {
+  throw new Error('PORT is not defined in environment variables');
+}
+
+const PORT = process.env.PORT;
 
 // Connect to database and start server
 const startServer = async () => {
@@ -13,6 +17,15 @@ const startServer = async () => {
     const server = app.listen(PORT, () => {
       console.log(`🚀 Edulyt Backend Server is running on port ${PORT}`);
       console.log(`🌐 Health check available at: http://localhost:${PORT}/health`);
+    });
+
+    // Gracefully shutdown the server
+    process.on('SIGTERM', () => {
+      console.log('🔄 Shutting down server...');
+      server.close(() => {
+        console.log('🔒 Server closed');
+        disconnectDB();
+      });
     });
 
   } catch (error) {

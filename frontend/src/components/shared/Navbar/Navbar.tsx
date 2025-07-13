@@ -1,12 +1,13 @@
 import Image from "next/image";
 import Link from "next/link";
-import React from "react";
+import React, { useState } from "react";
 import OrangeButton from "../../ui/OrangeButton";
 import Navlink from "./Navlink";
 import { Manrope, Plus_Jakarta_Sans } from "next/font/google";
 import { cn } from "@/lib/utils";
 import { NavItem } from "@/types";
 import WhiteButton from "@/components/ui/WhiteButton";
+import { Menu, X } from "lucide-react";
 
 const manrope = Manrope({
   subsets: ["latin"],
@@ -19,6 +20,8 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 });
 
 const Navbar = () => {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
   const navItems: NavItem[] = [
     {
       label: "Courses",
@@ -32,64 +35,125 @@ const Navbar = () => {
     },
   ];
 
+  const toggleMenu = () => {
+    setIsMenuOpen(!isMenuOpen);
+  };
+
   return (
-    <header className="navbar w-full fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md h-[78px] flex items-center px-8 justify-between shadow-[0_0_1px_2px_rgba(0,0,0,0.1)]">
-      <div className="logo h-[52px] min-h-[24px] flex-none w-1/3 flex items-center lg:w-1/4">
-        <Link
-          href="/"
-          className="h-full cursor-pointer select-none"
-          draggable={false}
-        >
-          <Image
-            src="/logo.svg"
-            alt="Edulyt Logo"
-            width={100}
-            height={100}
-            quality={100}
-            className="h-full w-full select-none"
-            priority
-            loading="eager"
+    <>
+      <header className="navbar w-full fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md h-[78px] flex items-center px-8 justify-between shadow-[0_0_1px_2px_rgba(0,0,0,0.1)]">
+        <div className="logo h-[52px] min-h-[24px] flex-none w-1/3 flex items-center lg:w-1/4">
+          <Link
+            href="/"
+            className="h-full cursor-pointer select-none"
             draggable={false}
-          />
-        </Link>
-      </div>
-      <nav
-        className={cn(
-          "items-center gap-4 shrink w-2/4 justify-center hidden lg:flex",
-          manrope.className,
-          "lg:gap-5",
-          "xl:gap-9",
-        )}
-      >
-        {navItems.map((item) => (
-          <Navlink
-            href={item.href}
-            key={item.label}
-            label={item.label}
-            featureBox={item.featureBox}
-          />
-        ))}
-      </nav>
-      <div
-        className={cn(
-          "auth-options flex items-center justify-end gap-2 flex-none w-1/3 lg:w-1/4",
-          plusJakartaSans.className,
-          "lg:gap-3",
-          "xl:gap-4"
-        )}
-      >
-        <Link href="/login">
-          <WhiteButton className="text-xs font-semibold">
-            Log In
-          </WhiteButton>
-        </Link>
-        <Link href="/signup" className="hidden lg:block">
-          <OrangeButton className="text-xs font-semibold lg:px-4 lg:py-2.5" blinkIcon glow>
-            Register Now
-          </OrangeButton>
-        </Link>
-      </div>
-    </header>
+          >
+            <Image
+              src="/logo.svg"
+              alt="Edulyt Logo"
+              width={100}
+              height={100}
+              quality={100}
+              className="h-full w-full select-none"
+              priority
+              loading="eager"
+              draggable={false}
+            />
+          </Link>
+        </div>
+        
+        {/* Desktop Navigation */}
+        <nav
+          className={cn(
+            "items-center gap-4 shrink w-2/4 justify-center hidden lg:flex",
+            manrope.className,
+            "lg:gap-5",
+            "xl:gap-9",
+          )}
+        >
+          {navItems.map((item) => (
+            <Navlink
+              href={item.href}
+              key={item.label}
+              label={item.label}
+              featureBox={item.featureBox}
+            />
+          ))}
+        </nav>
+
+        {/* Desktop Auth Options */}
+        <div
+          className={cn(
+            "auth-options flex items-center justify-end gap-2 flex-none w-1/3 lg:w-1/4",
+            plusJakartaSans.className,
+            "lg:gap-3",
+            "xl:gap-4"
+          )}
+        >
+          <Link href="/login" className="hidden sm:block">
+            <WhiteButton className="text-xs font-semibold">
+              Log In
+            </WhiteButton>
+          </Link>
+          <Link href="/signup" className="hidden lg:block">
+            <OrangeButton className="text-xs font-semibold lg:px-4 lg:py-2.5" blinkIcon glow>
+              Register Now
+            </OrangeButton>
+          </Link>
+          
+          {/* Hamburger Menu Button */}
+          <button
+            onClick={toggleMenu}
+            className="lg:hidden p-2 rounded-md hover:bg-gray-100 transition-colors"
+            aria-label="Toggle menu"
+          >
+            {isMenuOpen ? (
+              <X className="h-6 w-6 text-gray-700" />
+            ) : (
+              <Menu className="h-6 w-6 text-gray-700" />
+            )}
+          </button>
+        </div>
+      </header>
+
+      {/* Mobile Menu Overlay */}
+      {isMenuOpen && (
+        <div className="fixed inset-0 z-40 lg:hidden">
+          <div className="fixed inset-0 bg-black/50" onClick={toggleMenu} />
+          <div className="fixed top-[78px] left-0 right-0 bg-white/95 backdrop-blur-md shadow-lg">
+            <nav className={cn("flex flex-col p-6 space-y-4", manrope.className)}>
+              {navItems.map((item) => (
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  onClick={toggleMenu}
+                  className="flex items-center justify-between py-3 px-4 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  <span className="text-lg font-medium text-gray-900">{item.label}</span>
+                  <span className="bg-primary text-white text-xs px-2 py-1 rounded-full">
+                    {item.featureBox}
+                  </span>
+                </Link>
+              ))}
+              
+              {/* Mobile Auth Options */}
+              <div className={cn("flex flex-col gap-3 pt-4 border-t border-gray-200", plusJakartaSans.className)}>
+                <Link href="/login" onClick={toggleMenu}>
+                  <WhiteButton className="w-full text-sm font-semibold justify-center">
+                    Log In
+                  </WhiteButton>
+                </Link>
+                <Link href="/signup" onClick={toggleMenu}>
+                  <OrangeButton className="w-full text-sm font-semibold justify-center" blinkIcon glow>
+                    Register Now
+                  </OrangeButton>
+                </Link>
+              </div>
+            </nav>
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 

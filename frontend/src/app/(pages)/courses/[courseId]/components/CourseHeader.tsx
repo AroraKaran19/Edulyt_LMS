@@ -14,8 +14,6 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 
 const CourseHeader = ({ course }: { course: Course }) => {
 
-  console.log(course);
-
   const formattedReviews = course?.featuredReviews.length >= 1000000 
     ? `${(course?.featuredReviews.length / 1000000).toFixed(1).replace(/\.0$/, '')}M`
     : course?.featuredReviews.length >= 1000 

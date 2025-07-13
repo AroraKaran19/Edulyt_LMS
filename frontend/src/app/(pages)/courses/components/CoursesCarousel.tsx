@@ -8,7 +8,6 @@ import TopCourseCard from "./TopCourseCard";
 import { cn } from "@/lib/utils";
 import type { Swiper as SwiperType } from "swiper";
 
-
 const CoursesCarousel = ({ courses }: { courses: Course[] }) => {
   const swiperRef = useRef<SwiperType | null>(null);
   const scrollbarRef = useRef<HTMLDivElement>(null);
@@ -16,30 +15,30 @@ const CoursesCarousel = ({ courses }: { courses: Course[] }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [slidesPerView, setSlidesPerView] = useState(1);
   const [windowWidth, setWindowWidth] = useState(0);
-  
+
   // Custom media query hook that's hydration-safe
   useEffect(() => {
     const handleResize = () => {
       setWindowWidth(window.innerWidth);
     };
-    
+
     // Set initial width after hydration
     handleResize();
-    
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
-  
+
   const getScrollbarWidth = () => {
     // Use default width during SSR to prevent hydration mismatch
     if (windowWidth === 0) return 500;
-    
+
     if (windowWidth <= 767) return 300;
     if (windowWidth >= 768 && windowWidth <= 1023) return 400;
     if (windowWidth >= 1024 && windowWidth <= 1439) return 500;
     return 600;
   };
-  
+
   const scrollbarWidth = getScrollbarWidth();
 
   const originalSlidesCount = courses.length;
@@ -177,27 +176,25 @@ const CoursesCarousel = ({ courses }: { courses: Course[] }) => {
           },
         }}
       >
-        {courses.map(
-          (course, index) => (
-            <SwiperSlide key={`${course.title}-${index}`}>
-              {({ isActive }) => (
-                <TopCourseCard
-                  {...course}
-                  className={cn(
-                    {
-                      "border-2 border-[#f77124] shadow-[0_0_2px_3px_rgba(233,117,0,0.5)] opacity-100 scale-100":
-                        isActive,
-                      "opacity-90 scale-90": !isActive,
-                    },
-                    "transition-all duration-300 ease-out"
-                  )}
-                />
-              )}
-            </SwiperSlide>
-          )
-        )}
+        {courses.map((course, index) => (
+          <SwiperSlide key={`${course.title}-${index}`}>
+            {({ isActive }) => (
+              <TopCourseCard
+                {...course}
+                className={cn(
+                  {
+                    "border-2 border-[#f77124] shadow-[0_0_2px_3px_rgba(233,117,0,0.5)] opacity-100 scale-100":
+                      isActive,
+                    "opacity-90 scale-90": !isActive,
+                  },
+                  "transition-all duration-300 ease-out"
+                )}
+              />
+            )}
+          </SwiperSlide>
+        ))}
       </Swiper>
-      <div
+      {courses.length > 3 && <div
         ref={scrollbarRef}
         className="scrollbar-container mt-4 h-6 p-1 bg-[#EDEDED] rounded-full overflow-hidden cursor-pointer"
         style={{
@@ -217,7 +214,7 @@ const CoursesCarousel = ({ courses }: { courses: Course[] }) => {
             }px)`,
           }}
         ></div>
-      </div>
+      </div>}
     </div>
   );
 };

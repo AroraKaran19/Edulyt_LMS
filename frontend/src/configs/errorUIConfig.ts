@@ -57,7 +57,7 @@ export const DEFAULT_ERROR_CONFIG: ErrorUIConfig = {
 };
 
 // Helper function to get error UI configuration
-export const getErrorUIConfig = (error: any): ErrorUIConfig => {
+export const getErrorUIConfig = (error: { errorType: string, statusCode: number }): ErrorUIConfig => {
   if (!error) return DEFAULT_ERROR_CONFIG;
 
   // Handle backend errors with specific status codes
@@ -69,6 +69,13 @@ export const getErrorUIConfig = (error: any): ErrorUIConfig => {
         iconColor: "text-red-600",
         title: "Server Error",
         description: ERROR_MESSAGES.SERVER_ERROR,
+      };
+    } else if (status === 404) {
+      return {
+        icon: AlertCircle,
+        iconColor: "text-orange-500",
+        title: "Not Found",
+        description: ERROR_MESSAGES.NOT_FOUND,
       };
     } else if (status >= 400) {
       return {

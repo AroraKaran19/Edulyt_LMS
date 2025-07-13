@@ -9,7 +9,7 @@ import { ENDPOINTS } from "@/constants/endpoints";
 import { getErrorUIConfig } from "@/configs/errorUIConfig";
 import Error from "@/components/ui/Error";
 import useSWR from "swr";
-import { Filter } from "@/types";
+import { Course, Filter } from "@/types";
 
 const CoursesSection = () => {
   // Local state management instead of context
@@ -165,10 +165,10 @@ const CoursesSection = () => {
       );
     }
 
-    return courses.map((course: any, index: number) => (
+    return courses.map((course: Course, index: number) => (
       <CourseCard
         key={index}
-        {...course}
+        course={course}
         className="opacity-0 animate-course-card-fade-in"
         style={{ animationDelay: `${index * 100}ms` }}
       />

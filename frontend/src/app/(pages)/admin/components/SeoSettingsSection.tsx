@@ -22,7 +22,7 @@ const SeoSettingsSection = () => {
           </label>
           <div className="flex items-center">
             <span className="inline-flex items-center px-3 py-3 rounded-l-lg border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
-              yoursite.com/courses/
+              https://edulyt.com/courses/
             </span>
             <input
               type="text"
@@ -98,7 +98,7 @@ const SeoSettingsSection = () => {
               Complete Data Science Bootcamp - Learn Python, ML & AI | YourSite
             </div>
             <div className="text-green-600 text-sm mt-1">
-              yoursite.com/courses/complete-data-science-bootcamp
+              https://edulyt.com/courses/complete-data-science-bootcamp
             </div>
             <div className="text-gray-600 text-sm mt-2 leading-relaxed">
               Master data science with our comprehensive bootcamp. Learn Python, machine learning, and AI through hands-on projects. Perfect for beginners and professionals.

@@ -1,7 +1,7 @@
 import { API_BASE_URL } from '@/constants/endpoints';
-import { STATUS_CODES, AXIOS_ERROR_CODES, ERROR_TYPES } from '@/constants/error/statusCodes';
+import { AXIOS_ERROR_CODES, ERROR_TYPES } from '@/constants/error/statusCodes';
 import { ERROR_MESSAGES } from '@/constants/error/errorMessages';
-import { checkInternetConnection, isServerDown } from '@/lib/utils';
+import { isServerDown } from '@/lib/utils';
 import axios from 'axios';
 
 // Create axios instance

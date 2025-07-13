@@ -2,7 +2,6 @@
 
 import { Instructor } from './instructor';
 
-
 export interface CourseLesson {
     id: string;
     title: string;
@@ -15,14 +14,20 @@ export interface CourseLesson {
 
 export interface CourseModule {
     id: string;
+    chapterNumber: number;
     title: string;
     duration: string; // e.g., "1hr 30min"
     lessons: CourseLesson[];
     description?: string;
+    thumbnail?: string;
 }
 
 export interface PlanDetails {
+    name: string;
     price: number;
+    discount?: boolean;
+    discountLabel?: string;
+    discountPrice?: number;
     features: string[];
 }
 
@@ -116,4 +121,7 @@ export interface Course {
     scholarship?: boolean;
     scholarshipDescription?: string;
     scholarshipLink?: string;
+
+    // Curriculum
+    curriculumDescription: string;
 } 

@@ -31,7 +31,7 @@ const TestimonialCard = ({
           alt={testimonial.name}
           width={100}
           height={100}
-          objectFit="cover"
+          className="object-cover"
         />
       </div>
       <div className="testimonial-information flex flex-col items-center justify-center gap-1 mb-4 flex-shrink-0">

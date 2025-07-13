@@ -84,8 +84,19 @@ html {
 		}
 	}
 
+	@keyframes marqueeVertical {
+		from {
+			transform: translateY(0);
+		}
+		to {
+			transform: translateY(-50%);
+		}
+	}
+
 	--animate-fade-from-top: fadeFromTop 0.3s ease-in-out;
 	--animate-fade-in: fadeIn 0.8s ease-out;
 	--animate-reverse: reverseSpinSlow 1.5s linear infinite;
 	--animate-course-card-fade-in: courseCardFadeIn 0.8s ease-out forwards;
+	--animate-marquee-vertical: marqueeVertical 20s linear infinite;
+	--animate-marquee-vertical-paused: marqueeVertical 20s linear infinite paused;
 }

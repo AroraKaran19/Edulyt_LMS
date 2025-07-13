@@ -1,7 +1,6 @@
 "use client";
 import React from "react";
 import CoursesCarousel from "./CoursesCarousel";
-import { useCourseFilter } from "@/contexts/CourseFilterProvider";
 import { Loader2 } from "lucide-react";
 import useSWR from "swr";
 import { fetcher } from '@/lib/utils';
@@ -10,7 +9,6 @@ import Error from "@/components/ui/Error";
 import { ENDPOINTS } from "@/constants/endpoints";
 
 const TopCoursesSection = () => {
-  // const { courses, isFetching } = useCourseFilter();
   const { featured } = ENDPOINTS.courses;
   const { data, error, isLoading } = useSWR(featured, fetcher);
   const courses = data?.data?.courses;
