@@ -2,44 +2,41 @@ import CourseTitle from "@/components/ui/course/CourseTitle";
 import SectionContainer from "@/components/ui/course/SectionContainer";
 import OrangeButton from "@/components/ui/OrangeButton";
 import WhiteButton from "@/components/ui/WhiteButton";
+import { Course } from "@/types";
 import { Check, Crown } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import React from "react";
 
-const CertificateSection = () => {
+const CertificateSection = ({ course }: { course: Course }) => {
   const plans = [
     {
       icon: <Crown className="size-5" />,
       name: "Essential",
       theme: "bg-[#F68A5C]",
-      price: 5999,
-      features: [
-        "Industry-recognized certification",
-        "Access to premium course materials",
-        "Live doubt-clearing sessions",
-        "Career guidance and placement support",
-        "Lifetime access to course updates",
-        "Project-based learning with real datasets",
-      ],
+      price: course.plan.collegeStudents.price,
+      features: course.plan.collegeStudents.features,
+      discount: course.discount,
+      discountLabel: `${course.discount}% off`,
+      discountPrice:
+        Math.round(
+          course.plan.collegeStudents.price -
+            (course.plan.collegeStudents.price * (course.discount || 0)) / 100
+        ),
     },
     {
       icon: <Crown className="size-5" />,
       name: "Elite",
       theme: "bg-[#8B5CF6]",
-      price: 7999,
-      features: [
-        "All Essential plan features",
-        "1-on-1 mentorship sessions",
-        "Internship opportunities",
-        "Advanced capstone projects",
-        "Alumni network access",
-        "Priority job placement assistance",
-        "Exclusive workshops and masterclasses",
-      ],
-      discount: true,
-      discountLabel: "20% off",
-      discountPrice: 6399,
+      price: course.plan.professionals.price,
+      features: course.plan.professionals.features,
+      discount: course.discount,
+      discountLabel: `${course.discount}% off`,
+      discountPrice:
+        Math.round(
+          course.plan.professionals.price -
+            (course.plan.professionals.price * (course.discount || 0)) / 100
+        ),
     },
   ];
 

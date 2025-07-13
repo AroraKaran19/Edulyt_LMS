@@ -38,7 +38,7 @@ const CoursePage = ({ course }: { course: Course }) => {
       <TestimonialSection />
       <CourseOverviewSection />
       <CourseInstructorSection course={course as Course} />
-      <CertificateSection />
+      <CertificateSection course={course as Course} />
       <VerticalCarouselSection course={course} />
       <CurriculumSection course={course} />
       <FAQSection course={course} />
