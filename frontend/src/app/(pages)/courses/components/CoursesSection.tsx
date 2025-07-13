@@ -15,7 +15,7 @@ const CoursesSection = () => {
   // Local state management instead of context
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [selectedFilter, setSelectedFilter] = useState<Filter[]>([]);
+  const [selectedFilter, setSelectedFilter] = useState<Filter[]>([{ label: "All", value: "all" }]);
   const [filterShown, setFilterShown] = useState(false);
   const [windowWidth, setWindowWidth] = useState(0);
   const [page, setPage] = useState(1);

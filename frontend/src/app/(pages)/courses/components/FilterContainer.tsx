@@ -15,7 +15,7 @@ const FilterContainer = ({
 }) => {
   return (
     <div
-      className={`filter-options w-full mt-6 bg-[#FFF6F2] rounded-full flex gap-2 items-stretch animate-fade-from-top p-2 border-2 border-[#F5691D] ${
+      className={`filter-options w-full mt-6 bg-[#FFF6F2] rounded-full flex gap-2 items-stretch animate-fade-from-top p-2 ${
         isMobile ? "overflow-scroll" : "overflow-x-auto"
       }`}
     >
