@@ -2,6 +2,7 @@ export interface NavItem {
   label: string;
   href: string;
 	featureBox?: string;
+  onMouseEnter?: (navItem: NavItem) => void;
 }
 
 export interface Filter {

@@ -43,7 +43,7 @@ const DiscountCountdown = ({
       <p className="font-medium text-[#2B1508] flex flex-wrap gap-2 justify-center md:justify-start">
         <span className="underline">Limited Offer</span>
         <span className="underline">
-          {countdown.hours} Hr : {countdown.minutes} Min : {countdown.seconds} Sec
+          {countdown.hours} Hr : {countdown.minutes < 10 ? `0${countdown.minutes} Min` : `${countdown.minutes} Min`} : {countdown.seconds < 10 ? `0${countdown.seconds} Sec` : `${countdown.seconds} Sec`}
         </span>
       </p>
     </div>

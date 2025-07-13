@@ -2,7 +2,14 @@
 import type { Metadata } from "next";
 import "@/app/globals.css";
 // import { ReduxProvider } from "@/store/Provider";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import LayoutWrapper from "@/components/shared/LayoutWrapper";
+import { cn } from "@/lib/utils";
+
+const plusJakartaSans = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+});
 
 export const metadata: Metadata = {
   title: "Edulyt India",
@@ -16,7 +23,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="antialiased">
+      <body className={cn(plusJakartaSans.className, "antialiased")}>
         {/* <ReduxProvider> */}
           <LayoutWrapper>{children}</LayoutWrapper>
         {/* </ReduxProvider> */}

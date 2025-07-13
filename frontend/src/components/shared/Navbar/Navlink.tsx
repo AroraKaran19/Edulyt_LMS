@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { NavItem } from "@/types";
 
-const Navlink = ({ href, label, featureBox }: NavItem) => {
+const Navlink = ({ href, label, featureBox, onMouseEnter }: NavItem) => {
   const pathname = usePathname();
   const [windowWidth, setWindowWidth] = useState(0);
   
@@ -31,11 +31,12 @@ const Navlink = ({ href, label, featureBox }: NavItem) => {
         "text-sm font-semibold px-5 py-2.5 transition-colors duration-400 ease-in-out rounded-full select-none",
         {
           "text-[#F77124] bg-[#FFE9DB]": isActive,
-          "text-[#2B1508] hover:text-[#F77124]": !isActive && !isMobile,
+          "text-[#2B1508] hover:text-[#F77124] group": !isActive && !isMobile,
           "flex items-center gap-1": !!featureBox,
         }
       )}
       draggable={false}
+      onMouseEnter={() => onMouseEnter?.({ href, label, featureBox })}
     >
       {label}
       {!!featureBox && (
@@ -44,7 +45,8 @@ const Navlink = ({ href, label, featureBox }: NavItem) => {
             "text-[10px] font-medium bg-black text-white py-0.25 px-2 rounded-full transition-colors duration-400 ease-in-out select-none",
             {
               "bg-[#F77124] text-white": isActive,
-            }
+            },
+            "group-hover:bg-[#F77124]/80 group-hover:text-white"
           )}
         >
           {featureBox}

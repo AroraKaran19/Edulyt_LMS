@@ -2,19 +2,22 @@ import { Star } from "lucide-react";
 import React from "react";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
+import { Course } from "@/types";
 
 const RatingContainer = ({
-  rating,
-  ratingCount,
+  ratings,
   className,
   courseId,
 }: {
-  rating: number;
-  ratingCount: number;
+  ratings: Course["featuredReviews"];
   className?: string;
   courseId: string;
 }) => {
   const router = useRouter();
+  const rating =
+    ratings?.reduce((acc, review) => acc + review.rating, 0) /
+    ratings?.length || 0;
+  const ratingCount = ratings?.length;
 
   return (
     <div

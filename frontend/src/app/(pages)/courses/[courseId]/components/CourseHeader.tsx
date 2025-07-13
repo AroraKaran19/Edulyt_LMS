@@ -14,11 +14,11 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 
 const CourseHeader = ({ course }: { course: Course }) => {
 
-  const formattedReviews = course?.featuredReviews.length >= 1000000 
-    ? `${(course?.featuredReviews.length / 1000000).toFixed(1).replace(/\.0$/, '')}M`
-    : course?.featuredReviews.length >= 1000 
-    ? `${(course?.featuredReviews.length / 1000).toFixed(1).replace(/\.0$/, '')}K`
-    : course?.featuredReviews.length.toString();
+  const formattedReviewsCount = course?.featuredReviews?.length >= 1000000 
+    ? `${(course?.featuredReviews?.length / 1000000).toFixed(1).replace(/\.0$/, '')}M`
+    : course?.featuredReviews?.length >= 1000 
+    ? `${(course?.featuredReviews?.length / 1000).toFixed(1).replace(/\.0$/, '')}K`
+    : course?.featuredReviews?.length?.toString();
 
 
   if (!course) return null;
@@ -56,8 +56,8 @@ const CourseHeader = ({ course }: { course: Course }) => {
             <div className="course-discount flex flex-col gap-2">
               <DiscountCountdown
                 hours={0}
-                minutes={0}
-                seconds={10}
+                minutes={5}
+                seconds={50}
                 className={`${plusJakartaSans.className} text-sm md:text-base`}
               />
             </div>
@@ -74,14 +74,14 @@ const CourseHeader = ({ course }: { course: Course }) => {
           <div className="course-rating w-full flex flex-wrap gap-1 md:gap-2 items-center justify-center md:justify-start">
             <Star className="size-4 md:size-5 text-[#F7AD24]" fill="#F7AD24" />
             <span className="text-base md:text-2xl font-normal text-[#2B1508] font-coolvetica tracking-wide">
-              {course?.totalRatings?.toFixed(1)}
+              {course?.featuredReviews?.reduce((acc, review) => acc + review.rating, 0) / course?.featuredReviews?.length || 0}
             </span>
             <span className="text-sm md:text-base font-normal text-[#2B1508]">
-              ({course?.featuredReviews.length > 100
-                ? `(more than ${formattedReviews} reviews)`
-                : formattedReviews === "1"
-                ? `${formattedReviews} review`
-                : `${formattedReviews} reviews`})
+              ({course?.featuredReviews?.length && course?.featuredReviews?.length > 100
+                ? `(more than ${formattedReviewsCount} reviews)`
+                : formattedReviewsCount === "1"
+                ? `${formattedReviewsCount} review`
+                : `${formattedReviewsCount} reviews`})
             </span>
           </div>
         </div>

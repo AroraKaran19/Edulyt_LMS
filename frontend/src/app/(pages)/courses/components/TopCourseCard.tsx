@@ -14,22 +14,12 @@ const TopCourseCard = ({
   title,
   enrolledCount,
   instructor,
-  totalRatings,
   featuredReviews,
   plan,
   discount,
   slug,
   ...props
 }: Course & { className?: string; style?: React.CSSProperties }) => {
-  console.log("COURSE", thumbnail,
-    title,
-    enrolledCount,
-    instructor,
-    totalRatings,
-    featuredReviews,
-    plan,
-    discount,
-    slug,);
   
   const router = useRouter();
 
@@ -63,8 +53,7 @@ const TopCourseCard = ({
         {title}
       </p>
       <RatingContainer
-        rating={totalRatings}
-        ratingCount={featuredReviews.length}
+        ratings={featuredReviews}
         className="mt-2"
         courseId={slug}
       />
