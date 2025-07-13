@@ -109,7 +109,7 @@ const GenerateNavbarContent = ({
             </div>
           </div>
           <div
-            className="courses w-4/5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12 overflow-y-auto scroll-smooth"
+            className="courses w-4/5 grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-12 overflow-y-auto scroll-smooth"
             style={{ scrollbarWidth: "thin" }}
           >
             {isLoading ? (
@@ -124,14 +124,14 @@ const GenerateNavbarContent = ({
                   onClick={() => {
                     closeHoverContainer();
                   }}
-                  className="w-full flex flex-col 2xl:flex-row items-center gap-3 hover:bg-gray-100 transition-all duration-300 cursor-pointer rounded-xl"
+                  className="w-full flex flex-row items-center hover:bg-gradient-to-tr from-orange-500/10 to-white gap-3 hover:bg-gray-100 transition-all duration-300 cursor-pointer rounded-xl"
                 >
                   <Image
                     src={course.thumbnail}
                     alt={course.title}
                     width={100}
                     height={100}
-                    className="w-full 2xl:w-1/3 max-h-[70px] 2xl:max-h-full shrink-0 h-full rounded-xl"
+                    className="w-1/3 shrink-0 h-full rounded-xl"
                   />
                   <div className="flex flex-col gap-1">
                     {course.isFeatured && (
