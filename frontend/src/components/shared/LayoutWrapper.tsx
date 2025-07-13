@@ -13,14 +13,20 @@ export default function LayoutWrapper({
 }) {
   const pathname = usePathname();
   const isAdmin = pathname.startsWith("/admin");
+  const isAuth = pathname.startsWith("/auth");
 
   return (
     <>
-      {!isAdmin && <Navbar />}
-      <main className={cn("flex min-h-screen flex-col pt-[78px] relative overflow-hidden", isAdmin && "pt-0")}>
+      {!isAdmin && !isAuth && <Navbar />}
+      <main
+        className={cn(
+          "flex min-h-screen flex-col pt-[78px] relative overflow-hidden",
+          (isAdmin || isAuth) && "pt-0"
+        )}
+      >
         {children}
       </main>
-      {!isAdmin && <Footer />}
+      {!isAdmin && !isAuth && <Footer />}
     </>
   );
 }

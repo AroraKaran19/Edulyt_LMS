@@ -10,14 +10,20 @@ interface WhiteButtonProps {
   glow?: boolean;
 }
 
-const WhiteButton = ({ children, className, onClick, glow }: WhiteButtonProps) => {
+const WhiteButton = ({
+  children,
+  className,
+  onClick,
+  glow,
+}: WhiteButtonProps) => {
   return (
     <button
       className={cn(
-        "bg-white text-black px-6 py-3 rounded-2xl border border-gray-200 cursor-pointer shadow-sm",
+        "bg-white text-black px-6 py-3 rounded-2xl border border-gray-200 cursor-pointer shadow-[inset_0_1px_3px_0_rgba(171,185,206,0.15)]",
         className,
         "lg:px-4 lg:py-2.5",
-        glow && "hover:shadow-[0_0_2px_3px_rgba(233,117,0,0.5)] hover:bg-gradient-to-br from-[#fff] to-[#f77124]/5 transition-all duration-300 ease-in-out"
+        glow &&
+          "hover:shadow-[0_0_2px_3px_rgba(233,117,0,0.5)] hover:bg-gradient-to-br from-[#fff] to-[#f77124]/5 transition-all duration-300 ease-in-out"
       )}
       onClick={onClick}
     >

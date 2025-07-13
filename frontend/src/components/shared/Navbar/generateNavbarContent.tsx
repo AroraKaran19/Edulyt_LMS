@@ -29,7 +29,7 @@ const GenerateNavbarContent = ({
   const [selectedCategory, setSelectedCategory] = useState<string>(
     categories[0].value
   );
-  
+
   // TODO: Add Endpoint to get courses by category
   // const { data, isLoading, error } = useSWR(
   // 	`${ENDPOINTS.courses.all}?category=${selectedCategory}`,
@@ -37,44 +37,47 @@ const GenerateNavbarContent = ({
   // );
   const error = null;
   const isLoading = false;
-  
-  const courses: Course[] = useMemo(() => [
-    ...demoCourses.map((course) => ({
-      ...course,
-      category: "college-students",
-    })),
-    ...demoCourses.map((course) => ({
-      ...course,
-      category: "college-students",
-    })),
-    ...demoCourses.map((course) => ({
-      ...course,
-      category: "college-students",
-    })),
-    ...demoCourses.map((course) => ({
-      ...course,
-      category: "college-students",
-    })),
-    ...demoCourses.map((course) => ({
-      ...course,
-      category: "college-students",
-    })),
-    ...demoCourses.map((course) => ({
-      ...course,
-      category: "college-students",
-    })),
-    ...demoCourses,
-    ...demoCourses,
-    ...demoCourses,
-    ...demoCourses,
-    ...demoCourses,
-    ...demoCourses,
-    ...demoCourses,
-    ...demoCourses,
-    ...demoCourses,
-    ...demoCourses,
-  ], []);
-  
+
+  const courses: Course[] = useMemo(
+    () => [
+      ...demoCourses.map((course) => ({
+        ...course,
+        category: "college-students",
+      })),
+      ...demoCourses.map((course) => ({
+        ...course,
+        category: "college-students",
+      })),
+      ...demoCourses.map((course) => ({
+        ...course,
+        category: "college-students",
+      })),
+      ...demoCourses.map((course) => ({
+        ...course,
+        category: "college-students",
+      })),
+      ...demoCourses.map((course) => ({
+        ...course,
+        category: "college-students",
+      })),
+      ...demoCourses.map((course) => ({
+        ...course,
+        category: "college-students",
+      })),
+      ...demoCourses,
+      ...demoCourses,
+      ...demoCourses,
+      ...demoCourses,
+      ...demoCourses,
+      ...demoCourses,
+      ...demoCourses,
+      ...demoCourses,
+      ...demoCourses,
+      ...demoCourses,
+    ],
+    []
+  );
+
   const filteredCourses = useMemo(
     () => courses.filter((course) => course.category === selectedCategory),
     [courses, selectedCategory]
@@ -82,7 +85,6 @@ const GenerateNavbarContent = ({
 
   switch (navLink.label) {
     case "Courses":
-
       return (
         <div className="h-full w-full p-5 flex gap-10">
           <div className="categories w-1/5 flex flex-col items-end gap-6 my-2">
@@ -109,7 +111,7 @@ const GenerateNavbarContent = ({
             </div>
           </div>
           <div
-            className="courses w-4/5 grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-12 overflow-y-auto scroll-smooth"
+            className="courses w-4/5 grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-x-12 gap-y-6 overflow-y-auto scroll-smooth"
             style={{ scrollbarWidth: "thin" }}
           >
             {isLoading ? (
@@ -125,6 +127,7 @@ const GenerateNavbarContent = ({
                     closeHoverContainer();
                   }}
                   className="w-full flex flex-row items-center hover:bg-gradient-to-tr from-orange-500/10 to-white gap-3 hover:bg-gray-100 transition-all duration-300 cursor-pointer rounded-xl"
+                  draggable={false}
                 >
                   <Image
                     src={course.thumbnail}
@@ -132,8 +135,9 @@ const GenerateNavbarContent = ({
                     width={100}
                     height={100}
                     className="w-1/3 shrink-0 h-full rounded-xl"
+                    draggable={false}
                   />
-                  <div className="flex flex-col gap-1">
+                  <div className="w-2/3 h-full flex flex-col gap-1 py-2">
                     {course.isFeatured && (
                       <BestsellerBadge
                         enrollStudents={course.enrolledCount}
@@ -142,10 +146,12 @@ const GenerateNavbarContent = ({
                         text2ClassName="!text-xs !leading-none"
                       />
                     )}
-                    <h3 className="text-sm font-bold">{course.title}</h3>
-                    <p className="text-xs text-gray-500 line-clamp-2">
-                      {course.description}
-                    </p>
+                    <div className="w-full h-full flex flex-col gap-1 justify-between">
+                      <h3 className="text-sm font-bold">{course.title}</h3>
+                      <p className="text-xs text-gray-500 line-clamp-2">
+                        {course.description}
+                      </p>
+                    </div>
                   </div>
                 </Link>
               ))
@@ -157,7 +163,9 @@ const GenerateNavbarContent = ({
       return (
         <div className="h-full w-full p-5 flex gap-10">
           <div className="w-full flex flex-col gap-3">
-            <h1 className="text-2xl font-bold text-black/60">{navLink.label}</h1>
+            <h1 className="text-2xl font-bold text-black/60">
+              {navLink.label}
+            </h1>
           </div>
         </div>
       );

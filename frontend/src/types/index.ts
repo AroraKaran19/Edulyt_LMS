@@ -3,6 +3,7 @@ export interface NavItem {
   href: string;
 	featureBox?: string;
   onMouseEnter?: (navItem: NavItem) => void;
+  active?: boolean;
 }
 
 export interface Filter {

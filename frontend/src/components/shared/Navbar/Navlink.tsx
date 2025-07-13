@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { NavItem } from "@/types";
 
-const Navlink = ({ href, label, featureBox, onMouseEnter }: NavItem) => {
+const Navlink = ({ href, label, featureBox, onMouseEnter, active }: NavItem) => {
   const pathname = usePathname();
   const [windowWidth, setWindowWidth] = useState(0);
   
@@ -33,7 +33,8 @@ const Navlink = ({ href, label, featureBox, onMouseEnter }: NavItem) => {
           "text-[#F77124] bg-[#FFE9DB]": isActive,
           "text-[#2B1508] hover:text-[#F77124] group": !isActive && !isMobile,
           "flex items-center gap-1": !!featureBox,
-        }
+        },
+        active && "text-[#F77124] bg-[#FFE9DB]"
       )}
       draggable={false}
       onMouseEnter={() => onMouseEnter?.({ href, label, featureBox })}
@@ -46,7 +47,8 @@ const Navlink = ({ href, label, featureBox, onMouseEnter }: NavItem) => {
             {
               "bg-[#F77124] text-white": isActive,
             },
-            "group-hover:bg-[#F77124]/80 group-hover:text-white"
+            "group-hover:bg-[#F77124]/80 group-hover:text-white",
+            active && "bg-[#F77124] text-white"
           )}
         >
           {featureBox}

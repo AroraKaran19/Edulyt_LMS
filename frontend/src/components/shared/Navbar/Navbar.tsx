@@ -21,7 +21,6 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 });
 
 const Navbar = () => {
-
   const navItems: NavItem[] = [
     {
       label: "Courses",
@@ -38,12 +37,11 @@ const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isHoverContainerVisible, setIsHoverContainerVisible] = useState(false);
   const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null);
-  const [activeNavLink, setActiveNavLink] = useState<NavItem | null>(
-    navItems[0]
-  );
+  const [activeNavLink, setActiveNavLink] = useState<NavItem | null>(null);
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
+    setActiveNavLink(null);
   };
 
   const showHoverContainer = (navLink?: NavItem) => {
@@ -61,7 +59,11 @@ const Navbar = () => {
     const timeout = setTimeout(() => {
       setIsHoverContainerVisible(false);
     }, 150); // Small delay to allow mouse to move to container
+    const timeout2 = setTimeout(() => {
+      setActiveNavLink(null);
+    }, 300);
     setHoverTimeout(timeout);
+    setHoverTimeout(timeout2);
   };
 
   return (
@@ -108,6 +110,7 @@ const Navbar = () => {
               label={item.label}
               featureBox={item.featureBox}
               onMouseEnter={() => showHoverContainer(item)}
+              active={activeNavLink?.label === item.label}
             />
           ))}
         </nav>
@@ -121,10 +124,10 @@ const Navbar = () => {
             "xl:gap-4"
           )}
         >
-          <Link href="/login" className="hidden sm:block">
+          <Link href="/auth/login" className="hidden sm:block">
             <WhiteButton className="text-xs font-semibold">Log In</WhiteButton>
           </Link>
-          <Link href="/signup" className="hidden lg:block">
+          <Link href="/auth/register" className="hidden lg:block">
             <OrangeButton
               className="text-xs font-semibold lg:px-4 lg:py-2.5"
               blinkIcon
@@ -194,12 +197,12 @@ const Navbar = () => {
                   plusJakartaSans.className
                 )}
               >
-                <Link href="/login" onClick={toggleMenu}>
+                <Link href="/auth/login" onClick={toggleMenu}>
                   <WhiteButton className="w-full text-sm font-semibold justify-center">
                     Log In
                   </WhiteButton>
                 </Link>
-                <Link href="/signup" onClick={toggleMenu}>
+                <Link href="/auth/register" onClick={toggleMenu}>
                   <OrangeButton
                     className="w-full text-sm font-semibold justify-center"
                     blinkIcon
