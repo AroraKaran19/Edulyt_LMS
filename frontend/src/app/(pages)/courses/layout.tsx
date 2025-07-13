@@ -8,7 +8,7 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Edulyt India | Courses",
+  title: "Courses | Edulyt India",
   description:
     "Explore our wide range of courses and find the perfect one for you.",
   keywords: ["course", "edulyt", "learn", "education"],

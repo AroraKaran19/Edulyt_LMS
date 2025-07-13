@@ -92,7 +92,7 @@ const TopCourseCard = ({
       <div className="price mt-auto flex flex-col sm:flex-row gap-2 sm:items-center select-none">
         <div className="pricing flex flex-row lg:flex-col xl:flex-row gap-2 sm:items-center flex-wrap">
           <p className="text-xl font-bold text-black">
-            $
+            ₹
             {plan.collegeStudents.price -
               (discount
                 ? Math.round(plan.collegeStudents.price * (discount / 100))
@@ -100,7 +100,7 @@ const TopCourseCard = ({
           </p>
           {discount && (
             <span className="text-sm font-normal text-black line-through opacity-50">
-              ${plan.collegeStudents.price}
+              ₹{plan.collegeStudents.price}
             </span>
           )}
           <p className="text-sm font-normal text-black">onwards/-</p>

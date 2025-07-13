@@ -12,7 +12,10 @@ import React from "react";
 const CourseCard = ({
   course,
   ...props
-}: { course: Course } & { className?: string; style?: React.CSSProperties }) => {
+}: { course: Course } & {
+  className?: string;
+  style?: React.CSSProperties;
+}) => {
   const router = useRouter();
 
   return (
@@ -39,7 +42,9 @@ const CourseCard = ({
         )}
       </div>
       <div className="course-content w-full md:w-3/5 flex flex-col justify-between">
-        {course?.isFeatured && <BestsellerBadge enrollStudents={course?.enrolledCount} />}
+        {course?.isFeatured && (
+          <BestsellerBadge enrollStudents={course?.enrolledCount} />
+        )}
         <p className="text-2xl font-bold mt-2 font-coolvetica select-none text-balance break-words line-clamp-2">
           {course?.title}
         </p>
@@ -55,7 +60,9 @@ const CourseCard = ({
               return (
                 <MentorCard
                   key={index}
-                  image={mentor?.profileImage || "/courseDefaultTestimonial.png"}
+                  image={
+                    mentor?.profileImage || "/courseDefaultTestimonial.png"
+                  }
                   name={mentor.name}
                 />
               );
@@ -73,15 +80,18 @@ const CourseCard = ({
         <div className="mt-auto flex flex-col sm:flex-row gap-2 sm:items-center select-none">
           <div className="pricing flex flex-row lg:flex-col xl:flex-row gap-2 sm:items-center flex-wrap">
             <p className="text-xl font-bold text-black">
-              $
+              ₹
               {course?.plan.collegeStudents.price -
                 (course?.discount
-                  ? Math.round(course?.plan.collegeStudents.price * (course?.discount / 100))
+                  ? Math.round(
+                      course?.plan.collegeStudents.price *
+                        (course?.discount / 100)
+                    )
                   : 0)}
             </p>
             {course?.discount && (
               <span className="text-sm font-normal text-black line-through opacity-50">
-                ${course?.plan.collegeStudents.price}
+                ₹{course?.plan.collegeStudents.price}
               </span>
             )}
             <p className="text-sm font-normal text-black">onwards/-</p>

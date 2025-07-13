@@ -54,7 +54,7 @@ const TabSwitcher = ({ tabs, className }: TabSwitcherProps) => {
               tabRefs.current[index] = el;
             }}
             className={cn(
-              "tab-switcher-tab w-7/10 md:w-full shrink-0 md:shrink cursor-pointer rounded-full flex items-center justify-center py-2 md:py-4",
+              "tab-switcher-tab w-6/10 md:w-full shrink-0 md:shrink cursor-pointer rounded-full flex items-center justify-center py-2 md:py-4",
               {
                 "bg-gradient-to-r from-[#F5691D] to-[#F9792A]": activeTab === tab,
               },

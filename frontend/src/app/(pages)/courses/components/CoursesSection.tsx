@@ -15,7 +15,9 @@ const CoursesSection = () => {
   // Local state management instead of context
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [selectedFilter, setSelectedFilter] = useState<Filter[]>([{ label: "All", value: "all" }]);
+  const [selectedFilter, setSelectedFilter] = useState<Filter[]>([
+    { label: "All", value: "all" },
+  ]);
   const [filterShown, setFilterShown] = useState(false);
   const [windowWidth, setWindowWidth] = useState(0);
   const [page, setPage] = useState(1);
@@ -33,7 +35,7 @@ const CoursesSection = () => {
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(search);
-    }, 500); // 500ms delay
+  }, 500); // 500ms delay
 
     return () => clearTimeout(timer);
   }, [search]);
@@ -46,7 +48,9 @@ const CoursesSection = () => {
   // Build complete URL with query string
   const apiUrl = useMemo(() => {
     const queryString = buildQueryString(debouncedSearch, selectedFilter, page);
-    return queryString ? `${ENDPOINTS.courses.all}?${queryString}` : ENDPOINTS.courses.all;
+    return queryString
+      ? `${ENDPOINTS.courses.all}?${queryString}`
+      : ENDPOINTS.courses.all;
   }, [debouncedSearch, selectedFilter, page]);
 
   // SWR hook with dynamic URL
@@ -61,27 +65,29 @@ const CoursesSection = () => {
 
   // Handle filter selection
   const handleFilterClick = useCallback((filter: Filter) => {
-    setSelectedFilter(prev => {
+    setSelectedFilter((prev) => {
       if (filter.value === "all") {
         return [filter];
       }
-      
+
       // Remove "all" if it exists and we're selecting a specific filter
-      const withoutAll = prev.filter(f => f.value !== "all");
-      
+      const withoutAll = prev.filter((f) => f.value !== "all");
+
       // Check if filter is already selected
-      const isSelected = withoutAll.some(f => f.value === filter.value);
-      
+      const isSelected = withoutAll.some((f) => f.value === filter.value);
+
       if (isSelected) {
         // Remove the filter
-        const newFilters = withoutAll.filter(f => f.value !== filter.value);
-        return newFilters.length === 0 ? [{ label: "All", value: "all" }] : newFilters;
+        const newFilters = withoutAll.filter((f) => f.value !== filter.value);
+        return newFilters.length === 0
+          ? [{ label: "All", value: "all" }]
+          : newFilters;
       } else {
         // Add the filter
         return [...withoutAll, filter];
       }
     });
-    
+
     // Reset page when filters change
     setPage(1);
   }, []);
@@ -94,7 +100,7 @@ const CoursesSection = () => {
 
   // Handle load more
   const handleLoadMore = useCallback(() => {
-    setPage(prev => prev + 1);
+    setPage((prev) => prev + 1);
   }, []);
 
   useEffect(() => {
@@ -115,7 +121,9 @@ const CoursesSection = () => {
         <div className="col-span-full flex flex-col items-center justify-center py-16">
           <Loader2 className="w-10 h-10 text-[#2B1508] animate-spin" />
           <p className="text-sm text-[#2B1508]/50 text-center mt-4 animate-fade-in">
-            {search !== debouncedSearch ? "Searching..." : "Fetching the best courses for you..."}
+            {search !== debouncedSearch
+              ? "Searching..."
+              : "Fetching the best courses for you..."}
           </p>
         </div>
       );
@@ -186,10 +194,7 @@ const CoursesSection = () => {
         Explore more <span className="text-[#f77124]">Courses</span>
       </p>
       <div className="search-container w-full mt-6 flex gap-6 items-stretch flex-col md:flex-row">
-        <CourseSearchBar 
-          search={search}
-          onSearchChange={handleSearchChange}
-        />
+        <CourseSearchBar search={search} onSearchChange={handleSearchChange} />
         <div
           className="courses-filter md:max-w-[190px] shrink-0 flex gap-2 items-center justify-center border border-black/10 rounded-xl p-2 shadow-[inset_0_-1px_2px_rgba(0,0,0,0.2)] px-8 relative cursor-pointer"
           onClick={() => setFilterShown(!filterShown)}
@@ -223,7 +228,7 @@ const CoursesSection = () => {
       </div>
       {!isLoading && courses.length > 8 && (
         <div className="load-more-button w-full flex justify-center mt-5">
-          <button 
+          <button
             className="w-full sm:w-1/3 font-bold text-sm px-8 py-4 bg-black text-white rounded-xl cursor-pointer"
             onClick={handleLoadMore}
           >

@@ -10,6 +10,7 @@ import CourseInstructorSection from "./components/CourseInstructorSection";
 import CertificateSection from "./components/CertificateSection";
 import VerticalCarouselSection from "./components/VerticalCarouselSection";
 import CurriculumSection from "./components/CurriculumSection";
+import FAQSection from "./components/FAQSection";
 
 const CoursePage = ({ course }: { course: Course }) => {
 
@@ -40,6 +41,7 @@ const CoursePage = ({ course }: { course: Course }) => {
       <CertificateSection />
       <VerticalCarouselSection course={course} />
       <CurriculumSection course={course} />
+      <FAQSection course={course} />
     </div>
   );
 };
