@@ -12,7 +12,7 @@ const app = express();
 
 // Middleware
 app.use(cors()); // Enable CORS
-app.use(express.json()); // Parse JSON bodies
+app.use(express.json({ limit: '10mb' })); // Parse JSON bodies
 app.use(express.urlencoded({ extended: true })); // Parse URL-encoded bodies
 
 // Routes
