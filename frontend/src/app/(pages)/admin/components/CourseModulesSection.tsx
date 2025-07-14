@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Plus,
   X,
@@ -25,6 +25,7 @@ interface Lesson {
   title: string;
   duration: string;
   videoUrl: string;
+  thumbnailUrl: string;
   videoFile?: File;
   materials: Material[];
   isForCollegeStudent: boolean;
@@ -35,10 +36,15 @@ interface Module {
   title: string;
   duration: string;
   description: string;
+  thumbnailUrl: string;
   lessons: Lesson[];
 }
 
-const CourseModulesSection = () => {
+interface CourseModulesSectionProps {
+  onModulesChange?: (modules: Module[]) => void;
+}
+
+const CourseModulesSection: React.FC<CourseModulesSectionProps> = ({ onModulesChange }) => {
   const [modules, setModules] = useState<Module[]>([]);
   const [collapsedModules, setCollapsedModules] = useState<Set<string>>(
     new Set()
@@ -47,18 +53,27 @@ const CourseModulesSection = () => {
     new Set()
   );
 
+  // Call the callback whenever modules change
+  useEffect(() => {
+    if (onModulesChange) {
+      onModulesChange(modules);
+    }
+  }, [modules, onModulesChange]);
+
   const addModule = () => {
     const newModule: Module = {
       id: `module_${Date.now()}`,
       title: "",
       duration: "",
       description: "",
+      thumbnailUrl: "",
       lessons: [
         {
           id: `lesson_${Date.now()}_1`,
           title: "",
           duration: "",
           videoUrl: "",
+          thumbnailUrl: "",
           materials: [{ id: `material_${Date.now()}`, name: "" }],
           isForCollegeStudent: false,
         },
@@ -89,6 +104,7 @@ const CourseModulesSection = () => {
       title: "",
       duration: "",
       videoUrl: "",
+      thumbnailUrl: "",
       materials: [{ id: `material_${Date.now()}`, name: "" }],
       isForCollegeStudent: false,
     };
@@ -411,19 +427,35 @@ const CourseModulesSection = () => {
                       </div>
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Module Description
-                      </label>
-                      <textarea
-                        rows={3}
-                        value={module.description}
-                        onChange={(e) =>
-                          updateModule(module.id, "description", e.target.value)
-                        }
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F77124] focus:border-transparent transition-all duration-200 resize-none"
-                        placeholder="Brief description of what this module covers..."
-                      />
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Module Description
+                        </label>
+                        <textarea
+                          rows={3}
+                          value={module.description}
+                          onChange={(e) =>
+                            updateModule(module.id, "description", e.target.value)
+                          }
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F77124] focus:border-transparent transition-all duration-200 resize-none"
+                          placeholder="Brief description of what this module covers..."
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Module Thumbnail URL
+                        </label>
+                        <input
+                          type="url"
+                          value={module.thumbnailUrl}
+                          onChange={(e) =>
+                            updateModule(module.id, "thumbnailUrl", e.target.value)
+                          }
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F77124] focus:border-transparent transition-all duration-200"
+                          placeholder="https://example.com/module-thumbnail.jpg"
+                        />
+                      </div>
                     </div>
 
                     {/* Lessons Section */}
@@ -576,6 +608,26 @@ const CourseModulesSection = () => {
                                       Upload Video
                                     </label>
                                   </div>
+                                </div>
+
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-700 mb-2">
+                                    Lesson Thumbnail URL
+                                  </label>
+                                  <input
+                                    type="url"
+                                    value={lesson.thumbnailUrl}
+                                    onChange={(e) =>
+                                      updateLesson(
+                                        module.id,
+                                        lesson.id,
+                                        "thumbnailUrl",
+                                        e.target.value
+                                      )
+                                    }
+                                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F77124] focus:border-transparent transition-all duration-200"
+                                    placeholder="https://example.com/lesson-thumbnail.jpg"
+                                  />
                                 </div>
 
                                 <div>

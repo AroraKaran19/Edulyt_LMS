@@ -6,4 +6,8 @@ export const ENDPOINTS = {
         all: '/courses',
         slug: '/courses',
     },
+    admin: {
+        media: '/admin/add/courses',
+        saveDraft: '/admin/add/courses/',
+    },
 };

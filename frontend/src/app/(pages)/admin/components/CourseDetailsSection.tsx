@@ -22,7 +22,10 @@ const CourseDetailsSection = () => {
             <label className="block text-sm font-semibold text-gray-700 mb-3">
               Category *
             </label>
-            <select className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F77124] focus:border-transparent transition-all duration-200 text-gray-900 bg-white">
+            <select 
+              id="course-category"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F77124] focus:border-transparent transition-all duration-200 text-gray-900 bg-white"
+            >
               <option value="">Select Category</option>
               <option value="Data Science">Data Science</option>
               <option value="Machine Learning">Machine Learning</option>
@@ -37,6 +40,7 @@ const CourseDetailsSection = () => {
             </label>
             <input
               type="text"
+              id="course-subcategory"
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F77124] focus:border-transparent transition-all duration-200 text-gray-900 placeholder-gray-500"
               placeholder="e.g., Python, React, TensorFlow"
             />
@@ -49,7 +53,10 @@ const CourseDetailsSection = () => {
             <label className="block text-sm font-semibold text-gray-700 mb-3">
               Skill Level *
             </label>
-            <select className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F77124] focus:border-transparent transition-all duration-200 text-gray-900 bg-white">
+            <select 
+              id="course-skill-level"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F77124] focus:border-transparent transition-all duration-200 text-gray-900 bg-white"
+            >
               <option value="">Select Level</option>
               <option value="Beginner">Beginner</option>
               <option value="Intermediate">Intermediate</option>
@@ -62,7 +69,10 @@ const CourseDetailsSection = () => {
             <label className="block text-sm font-semibold text-gray-700 mb-3">
               Language *
             </label>
-            <select className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F77124] focus:border-transparent transition-all duration-200 text-gray-900 bg-white">
+            <select 
+              id="course-language"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F77124] focus:border-transparent transition-all duration-200 text-gray-900 bg-white"
+            >
               <option value="English">English</option>
               <option value="Hindi">Hindi</option>
               <option value="Spanish">Spanish</option>
@@ -78,6 +88,7 @@ const CourseDetailsSection = () => {
             </label>
             <input
               type="text"
+              id="course-duration"
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F77124] focus:border-transparent transition-all duration-200 text-gray-900 placeholder-gray-500"
               placeholder="e.g., 45 hours, 6 weeks, 3 months"
             />
@@ -89,6 +100,7 @@ const CourseDetailsSection = () => {
             </label>
             <input
               type="number"
+              id="course-total-lectures"
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F77124] focus:border-transparent transition-all duration-200 text-gray-900 placeholder-gray-500"
               placeholder="120"
               min="1"

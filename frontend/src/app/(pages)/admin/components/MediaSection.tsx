@@ -18,73 +18,49 @@ const MediaSection = () => {
       </div>
       
       <div className="space-y-6">
+        {/* Course Thumbnail */}
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-3">
-            Course Thumbnail *
+            Course Thumbnail URL *
           </label>
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-[#F77124] transition-colors duration-200">
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              id="thumbnail-upload"
-            />
-            <label
-              htmlFor="thumbnail-upload"
-              className="cursor-pointer block"
-            >
-              <div className="flex flex-col items-center">
-                <svg className="w-12 h-12 text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                <span className="text-sm font-medium text-gray-700 mb-1">Click to upload thumbnail</span>
-                <span className="text-xs text-gray-500">or drag and drop</span>
-              </div>
-            </label>
-          </div>
-          <p className="text-xs text-gray-500 mt-2">PNG, JPG, GIF up to 2MB (recommended: 1280x720px)</p>
+          <input
+            type="url"
+            id="thumbnail-url"
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F77124] focus:border-transparent transition-all duration-200 text-gray-900 placeholder-gray-500"
+            placeholder="https://example.com/course-thumbnail.jpg"
+          />
+          <p className="text-xs text-gray-500 mt-2">PNG, JPG, GIF - publicly accessible URL (recommended: 1280x720px)</p>
         </div>
-        
+
+        {/* Promotional Video */}
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-3">
-            Preview Image *
+            Promotional Video URL
           </label>
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-[#F77124] transition-colors duration-200">
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              id="preview-image-upload"
-            />
-            <label
-              htmlFor="preview-image-upload"
-              className="cursor-pointer block"
-            >
-              <div className="flex flex-col items-center">
-                <svg className="w-12 h-12 text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                </svg>
-                <span className="text-sm font-medium text-gray-700 mb-1">Click to upload preview image</span>
-                <span className="text-xs text-gray-500">or drag and drop</span>
-              </div>
-            </label>
-          </div>
-          <p className="text-xs text-gray-500 mt-2">PNG, JPG, GIF up to 2MB - showcases course content preview</p>
+          <input
+            type="url"
+            id="promotional-video-url"
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F77124] focus:border-transparent transition-all duration-200 text-gray-900 placeholder-gray-500"
+            placeholder="https://youtube.com/watch?v=... or https://vimeo.com/..."
+          />
+          <p className="text-xs text-gray-500 mt-2">YouTube, Vimeo, or direct video URL - keep under 2-3 minutes for best engagement</p>
         </div>
         
+        {/* Guidelines */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <div className="flex items-start gap-3">
             <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <div>
-              <h4 className="text-sm font-semibold text-blue-900 mb-1">Image Guidelines</h4>
+              <h4 className="text-sm font-semibold text-blue-900 mb-1">Media Guidelines</h4>
               <ul className="text-sm text-blue-800 space-y-1">
-                <li>• Use high-quality, professional images (PNG, JPG, GIF)</li>
-                <li>• Thumbnail should be eye-catching and relevant to course content</li>
-                <li>• Preview image should showcase key course materials or outcomes</li>
-                <li>• Ensure images are properly licensed for commercial use</li>
-                <li>• Recommended dimensions: 1280x720px for best display quality</li>
+                <li>• <strong>Thumbnail:</strong> Should be eye-catching and relevant to course content</li>
+                <li>• <strong>Videos:</strong> Keep promotional videos under 2-3 minutes for best engagement</li>
+                <li>• <strong>URLs:</strong> Ensure all URLs are publicly accessible and properly formatted</li>
+                <li>• <strong>Recommended:</strong> Images 1280x720px, Videos 1920x1080px for best quality</li>
+                <li>• <strong>Copyright:</strong> Ensure all media is properly licensed for commercial use</li>
+                <li>• <strong>Testing:</strong> Always test URLs in a new browser tab to verify accessibility</li>
               </ul>
             </div>
           </div>
