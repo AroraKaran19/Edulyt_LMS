@@ -26,10 +26,11 @@ const AddedCoursesContent: React.FC<AddedCoursesContentProps> = ({
   onFilterClick
 }) => {
   return (
-    <div className="flex flex-col h-full p-8 bg-white">
-      <div className="flex items-center justify-between mb-6">
+    <div className="flex flex-col h-full bg-white">
+      {/* Header */}
+      <div className="flex items-center justify-between px-8 border-b border-gray-200 bg-white" style={{ height: '84px' }}>
         <div>
-          <h2 className="text-2xl font-semibold text-gray-800 mb-2">
+          <h2 className="text-2xl font-semibold text-gray-900 mb-1">
             Added Courses
           </h2>
           <p className="text-gray-600">
@@ -41,7 +42,9 @@ const AddedCoursesContent: React.FC<AddedCoursesContentProps> = ({
         </OrangeButton>
       </div>
 
-      {/* Search and Filter Section */}
+      {/* Main Content */}
+      <div className="flex-1 overflow-y-auto p-8">
+        {/* Search and Filter Section */}
       <div className="search-container w-full mb-6 flex gap-6 items-stretch flex-col md:flex-row">
         {/* Search Bar */}
         <div className="courses-search-bar w-full bg-[#F5F5F5] p-4 shrink rounded-xl flex gap-2 items-center border border-black/10 shadow-[inset_0_-1px_2px_rgba(0,0,0,0.2)]">
@@ -123,6 +126,7 @@ const AddedCoursesContent: React.FC<AddedCoursesContentProps> = ({
         <OrangeButton className="text-sm font-semibold" blinkIcon>
           Add Your First Course
         </OrangeButton>
+      </div>
       </div>
     </div>
   );
