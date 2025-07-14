@@ -7,6 +7,8 @@ export interface CourseLesson {
     title: string;
     duration?: string; // e.g., "abc", "15min"
     videoUrl?: string;
+    thumbnailUrl: string,
+    description?: string;
     materials?: string[];
     completed?: boolean; // whether on going or completed by the instructor
     isForCollegeStudent?: boolean; // whether this lesson is accessible to college students
@@ -15,20 +17,28 @@ export interface CourseLesson {
 export interface CourseModule {
     id: string;
     title: string;
+    thumbnailUrl: string;
     duration: string; // e.g., "1hr 30min"
     lessons: CourseLesson[];
     description?: string;
 }
 
 export interface PlanDetails {
-    price: number;
-    features: string[];
+    elite: {
+        price: number;
+        features: string[];
+    };
+    essential: {
+        price: number;
+        features: string[];
+    };
 }
 
 export interface CoursePlan {
     professionals: PlanDetails;
     collegeStudents: PlanDetails;
 }
+
 
 export interface FeaturedReview {
     id: string;
@@ -85,6 +95,7 @@ export interface Course {
     // Pricing Plans
     plan: CoursePlan;
     discount: number;
+    discountEndDate?: Date;
 
     // Reviews
     featuredReviews: FeaturedReview[];
@@ -107,4 +118,9 @@ export interface Course {
     metaTitle?: string;
     metaDescription?: string;
     keywords?: string[];
+
+    // Scholarship
+    scholarship?: boolean;
+    scholarshipDescription?: string;
+    scholarshipLink?: string;
 } 

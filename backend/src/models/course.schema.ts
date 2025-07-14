@@ -1,10 +1,10 @@
 import { Schema, model } from 'mongoose';
-import { 
-  Course, 
-  CourseLesson, 
-  CourseModule, 
-  CoursePlan, 
-  FeaturedReview, 
+import {
+  Course,
+  CourseLesson,
+  CourseModule,
+  CoursePlan,
+  FeaturedReview,
   FAQ,
   PlanDetails
 } from '../types';
@@ -25,6 +25,15 @@ const courseLessonSchema = new Schema<CourseLesson>({
     trim: true
   },
   videoUrl: {
+    type: String,
+    trim: true
+  },
+  thumbnailUrl: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  description: {
     type: String,
     trim: true
   },
@@ -53,6 +62,11 @@ const courseModuleSchema = new Schema<CourseModule>({
     required: true,
     trim: true
   },
+  thumbnailUrl: {
+    type: String,
+    required: true,
+    trim: true
+  },
   duration: {
     type: String,
     required: true,
@@ -66,7 +80,7 @@ const courseModuleSchema = new Schema<CourseModule>({
 }, { _id: false });
 
 // Plan Details Schema
-const planDetailsSchema = new Schema<PlanDetails>({
+const singlePlanSchema = new Schema({
   price: {
     type: Number,
     required: true,
@@ -77,6 +91,17 @@ const planDetailsSchema = new Schema<PlanDetails>({
     required: true,
     trim: true
   }]
+}, { _id: false });
+
+const planDetailsSchema = new Schema<PlanDetails>({
+  elite: {
+    type: singlePlanSchema,
+    required: true
+  },
+  essential: {
+    type: singlePlanSchema,
+    required: true
+  }
 }, { _id: false });
 
 // Course Plan Schema
@@ -196,7 +221,7 @@ const courseSchema = new Schema<Course>({
     required: true,
     trim: true
   },
-  
+
   // Flags
   isFeatured: {
     type: Boolean,
@@ -207,7 +232,7 @@ const courseSchema = new Schema<Course>({
     required: true,
     default: false
   },
-  
+
   // Metrics
   totalRatings: {
     type: Number,
@@ -226,7 +251,7 @@ const courseSchema = new Schema<Course>({
     required: true,
     min: 0
   },
-  
+
   // Course Details
   language: {
     type: String,
@@ -249,7 +274,7 @@ const courseSchema = new Schema<Course>({
     required: true,
     default: Date.now
   },
-  
+
   // Content
   modules: [courseModuleSchema],
   whatYouWillLearn: [{
@@ -266,30 +291,40 @@ const courseSchema = new Schema<Course>({
     type: String,
     trim: true
   }],
-  
+
   // Instructor (reference to instructor IDs)
   instructor: [{
     type: String,
     required: true,
     ref: 'Instructor'
   }],
-  
+
   // Pricing Plans
   plan: coursePlanSchema,
-  
+  discount: {
+    type: Number,
+    required: true,
+    min: 0,
+    max: 100,
+    default: 0
+  },
+  discountEndDate: {
+    type: Date
+  },
+
   // Reviews
   featuredReviews: [featuredReviewSchema],
-  
+
   // USP & Features
   features: [{
     type: String,
     required: true,
     trim: true
   }],
-  
+
   // FAQs
   faqs: [faqSchema],
-  
+
   // Administrative
   isActive: {
     type: Boolean,
@@ -315,7 +350,7 @@ const courseSchema = new Schema<Course>({
     type: String,
     trim: true
   }],
-  
+
   // SEO
   slug: {
     type: String,
@@ -335,7 +370,21 @@ const courseSchema = new Schema<Course>({
   keywords: [{
     type: String,
     trim: true
-  }]
+  }],
+
+  // Scholarship
+  scholarship: {
+    type: Boolean,
+    default: false
+  },
+  scholarshipDescription: {
+    type: String,
+    trim: true
+  },
+  scholarshipLink: {
+    type: String,
+    trim: true
+  }
 }, {
   timestamps: true,
   collection: 'courses'
@@ -354,14 +403,14 @@ courseSchema.index({ createdAt: -1 });
 courseSchema.index({ updatedAt: -1 });
 
 // Text search index for title and description
-courseSchema.index({ 
-  title: 'text', 
-  description: 'text', 
-  shortDescription: 'text' 
+courseSchema.index({
+  title: 'text',
+  description: 'text',
+  shortDescription: 'text'
 });
 
 // Pre-save middleware to update the updatedAt field
-courseSchema.pre('save', function(next) {
+courseSchema.pre('save', function (next) {
   this.set('updatedAt', new Date());
   next();
 });
