@@ -14,6 +14,8 @@ import CourseModulesSection from "./CourseModulesSection";
 import SettingsSection from "./SettingsSection";
 import apiClient from "@/configs/apiConfig";
 import { ENDPOINTS } from "@/constants/endpoints";
+import { CourseModule } from '@/types';
+import { AxiosError } from 'axios';
 
 // Interface for the complete course form data
 interface CourseFormData {
@@ -45,12 +47,24 @@ interface CourseFormData {
   // Pricing Plans
   pricing: {
     professionals: {
-      price: string;
-      features: string;
+      elite: {
+        price: number;
+        features: string[];
+      };
+      essential: {
+        price: number;
+        features: string[];
+      };
     };
     collegeStudents: {
-      price: string;
-      features: string;
+      elite: {
+        price: number;
+        features: string[];
+      };
+      essential: {
+        price: number;
+        features: string[];
+      };
     };
   };
   
@@ -89,7 +103,7 @@ interface CourseFormData {
   };
   
   // Course Modules (this will be handled by the CourseModulesSection)
-  courseModules: any[];
+  courseModules: CourseModule[];
   
   // Settings
   settings: {
@@ -115,12 +129,12 @@ interface CourseFormData {
 
 const AddNewCourseContent: React.FC = () => {
   // State to store course modules data
-  const [courseModulesData, setCourseModulesData] = useState<any[]>([]);
+  const [courseModulesData, setCourseModulesData] = useState<CourseModule[]>([]);
   // Loading state for save as draft button
   const [isSavingDraft, setIsSavingDraft] = useState<boolean>(false);
 
   // Callback to receive modules data from CourseModulesSection
-  const handleModulesChange = (modules: any[]) => {
+  const handleModulesChange = (modules: CourseModule[]) => {
     setCourseModulesData(modules);
   };
 
@@ -137,7 +151,97 @@ const AddNewCourseContent: React.FC = () => {
       }
 
       // Collect form data using the same logic as before
-      const collectedData: any = {};
+      const collectedData: CourseFormData = {
+        basicInfo: {
+          courseTitle: '',
+          subtitle: '',
+          courseDescription: '',
+          shortDescription: '',
+        },
+        courseDetails: {
+          category: '',
+          subcategory: '',
+          skillLevel: '',
+          language: '',
+          courseDuration: '',
+          totalLectures: '',
+        },
+        media: {
+          courseThumbnail: null,
+          previewImage: null,
+          promotionalVideo: null,
+        },
+        pricing: {
+          professionals: {
+            elite: {
+              price: 0,
+              features: [],
+            },
+            essential: {
+              price: 0,
+              features: [],
+            },
+          },
+          collegeStudents: {
+            elite: {
+              price: 0,
+              features: [],
+            },
+            essential: {
+              price: 0,
+              features: [],
+            },
+          },
+        },
+        learningOutcomes: {
+          targetAudience: '',
+          prerequisites: '',
+          whatYoullLearn: '',
+        },
+        courseFeatures: {
+          keyFeatures: '',
+          courseTags: '',
+          courseDifficulty: '',
+          courseFormat: {
+            videoLectures: false,
+            handsOnProjects: false,
+            quizzes: false,
+            assignments: false,
+          },
+          additionalFeatures: {
+            certificate: false,
+            lifetimeAccess: false,
+            mobileAccess: false,
+          },
+        },
+        seoSettings: {
+          courseUrlSlug: '',
+          metaTitle: '',
+          metaDescription: '',
+          focusKeywords: '',
+          secondaryKeywords: '',
+        },
+        courseModules: [],
+        settings: {
+          courseStatus: {
+            activeCourse: false,  
+            featuredCourse: false,
+            certifiedCourse: false,
+          },
+          enrollmentSettings: {
+            maximumStudents: '',
+            enrollmentDeadline: '',
+          },
+          accessControl: {
+            requireApproval: false,
+            allowPreview: false,
+          },
+          administrativeDetails: {
+            courseCreator: '',
+            courseVersion: '',
+          },
+        },
+      };
 
       console.log('=== COURSE FORM DATA - SAVED AS DRAFT ===');
       console.log('Timestamp:', new Date().toISOString());
@@ -169,13 +273,10 @@ const AddNewCourseContent: React.FC = () => {
       console.log(courseDetails);
       console.log('');
 
-      // Media Section - URL only
-      const thumbnailUrlInput = document.querySelector('#thumbnail-url') as HTMLInputElement;
-      const promotionalVideoUrlInput = document.querySelector('#promotional-video-url') as HTMLInputElement;
-      
       const media = {
-        courseThumbnailUrl: thumbnailUrlInput?.value || '',
-        promotionalVideoUrl: promotionalVideoUrlInput?.value || '',
+        courseThumbnail: null,
+        previewImage: null,
+        promotionalVideo: null,
       };
       collectedData.media = media;
       console.log('🖼️ MEDIA FILES:');
@@ -328,21 +429,21 @@ const AddNewCourseContent: React.FC = () => {
       // Success feedback
       alert(`✅ Course saved as draft successfully!\n\nDraft ID: ${response.data?.draftId || 'Generated'}\nTimestamp: ${new Date().toLocaleString()}\n\nCheck console for detailed data.`);
 
-    } catch (error: any) {
+    } catch (error) {
       console.error('❌ Error saving draft:', error);
       
       // Provide detailed error feedback based on error type
-      if (error.response) {
+      if (error instanceof AxiosError) {
         // Backend responded with error status
-        const status = error.response.status;
-        const message = error.response.data?.message || 'Unknown server error';
+        const status = error.response?.status;
+        const message = error.response?.data?.message || 'Unknown server error';
         alert(`❌ Failed to save draft!\n\nServer Error (${status}): ${message}\n\nData has been saved locally as backup.`);
-      } else if (error.request) {
+      } else if (error instanceof Error) {
         // Request was made but no response received
         alert(`❌ Failed to save draft!\n\nNetwork Error: Could not reach the server.\nPlease check your connection.\n\nData has been saved locally as backup.`);
       } else {
         // Something else happened
-        alert(`❌ Failed to save draft!\n\nError: ${error.message}\n\nData has been saved locally as backup.`);
+        alert(`❌ Failed to save draft!\n\nError: ${error instanceof Error ? error.message : 'Unknown error'}\n\nData has been saved locally as backup.`);
       }
     } finally {
       setIsSavingDraft(false);

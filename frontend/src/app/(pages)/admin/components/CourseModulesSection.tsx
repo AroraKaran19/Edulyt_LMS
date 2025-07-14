@@ -13,39 +13,16 @@ import {
   Clock,
   CheckCircle2,
 } from "lucide-react";
+import { CourseLesson, CourseModule } from "@/types";
 
-interface Material {
-  id: string;
-  name: string;
-  file?: File;
-}
-
-interface Lesson {
-  id: string;
-  title: string;
-  duration: string;
-  videoUrl: string;
-  thumbnailUrl: string;
-  videoFile?: File;
-  materials: Material[];
-  isForCollegeStudent: boolean;
-}
-
-interface Module {
-  id: string;
-  title: string;
-  duration: string;
-  description: string;
-  thumbnailUrl: string;
-  lessons: Lesson[];
-}
+// Remove local interfaces and use the ones from course.ts
 
 interface CourseModulesSectionProps {
-  onModulesChange?: (modules: Module[]) => void;
+  onModulesChange?: (modules: CourseModule[]) => void;
 }
 
 const CourseModulesSection: React.FC<CourseModulesSectionProps> = ({ onModulesChange }) => {
-  const [modules, setModules] = useState<Module[]>([]);
+  const [modules, setModules] = useState<CourseModule[]>([]);
   const [collapsedModules, setCollapsedModules] = useState<Set<string>>(
     new Set()
   );
@@ -61,20 +38,18 @@ const CourseModulesSection: React.FC<CourseModulesSectionProps> = ({ onModulesCh
   }, [modules, onModulesChange]);
 
   const addModule = () => {
-    const newModule: Module = {
+    const newModule: CourseModule = {
       id: `module_${Date.now()}`,
       title: "",
-      duration: "",
       description: "",
       thumbnailUrl: "",
       lessons: [
         {
           id: `lesson_${Date.now()}_1`,
           title: "",
-          duration: "",
           videoUrl: "",
           thumbnailUrl: "",
-          materials: [{ id: `material_${Date.now()}`, name: "" }],
+          materials: [],
           isForCollegeStudent: false,
         },
       ],
@@ -88,7 +63,7 @@ const CourseModulesSection: React.FC<CourseModulesSectionProps> = ({ onModulesCh
 
   const updateModule = (
     moduleId: string,
-    field: keyof Module,
+    field: keyof CourseModule,
     value: string
   ) => {
     setModules(
@@ -99,13 +74,13 @@ const CourseModulesSection: React.FC<CourseModulesSectionProps> = ({ onModulesCh
   };
 
   const addLesson = (moduleId: string) => {
-    const newLesson: Lesson = {
+    const newLesson: CourseLesson = {
       id: `lesson_${Date.now()}`,
       title: "",
-      duration: "",
+      duration: 0,
       videoUrl: "",
       thumbnailUrl: "",
-      materials: [{ id: `material_${Date.now()}`, name: "" }],
+      materials: [],
       isForCollegeStudent: false,
     };
 
@@ -136,8 +111,8 @@ const CourseModulesSection: React.FC<CourseModulesSectionProps> = ({ onModulesCh
   const updateLesson = (
     moduleId: string,
     lessonId: string,
-    field: keyof Lesson,
-    value: string | boolean
+    field: keyof CourseLesson,
+    value: string | boolean | number
   ) => {
     setModules(
       modules.map((module) =>
@@ -154,10 +129,7 @@ const CourseModulesSection: React.FC<CourseModulesSectionProps> = ({ onModulesCh
   };
 
   const addMaterial = (moduleId: string, lessonId: string) => {
-    const newMaterial: Material = {
-      id: `material_${Date.now()}`,
-      name: "",
-    };
+    const materialName = `material_${Date.now()}`;
 
     setModules(
       modules.map((module) =>
@@ -166,7 +138,7 @@ const CourseModulesSection: React.FC<CourseModulesSectionProps> = ({ onModulesCh
               ...module,
               lessons: module.lessons.map((lesson) =>
                 lesson.id === lessonId
-                  ? { ...lesson, materials: [...lesson.materials, newMaterial] }
+                  ? { ...lesson, materials: [...(lesson.materials || []), materialName] }
                   : lesson
               ),
             }
@@ -178,7 +150,7 @@ const CourseModulesSection: React.FC<CourseModulesSectionProps> = ({ onModulesCh
   const removeMaterial = (
     moduleId: string,
     lessonId: string,
-    materialId: string
+    materialIndex: number
   ) => {
     setModules(
       modules.map((module) =>
@@ -189,9 +161,7 @@ const CourseModulesSection: React.FC<CourseModulesSectionProps> = ({ onModulesCh
                 lesson.id === lessonId
                   ? {
                       ...lesson,
-                      materials: lesson.materials.filter(
-                        (material) => material.id !== materialId
-                      ),
+                      materials: lesson.materials?.filter((_, index) => index !== materialIndex),
                     }
                   : lesson
               ),
@@ -204,7 +174,7 @@ const CourseModulesSection: React.FC<CourseModulesSectionProps> = ({ onModulesCh
   const updateMaterial = (
     moduleId: string,
     lessonId: string,
-    materialId: string,
+    materialIndex: number,
     name: string
   ) => {
     setModules(
@@ -216,10 +186,8 @@ const CourseModulesSection: React.FC<CourseModulesSectionProps> = ({ onModulesCh
                 lesson.id === lessonId
                   ? {
                       ...lesson,
-                      materials: lesson.materials.map((material) =>
-                        material.id === materialId
-                          ? { ...material, name }
-                          : material
+                      materials: lesson.materials?.map((material, index) =>
+                        index === materialIndex ? name : material
                       ),
                     }
                   : lesson
@@ -365,12 +333,6 @@ const CourseModulesSection: React.FC<CourseModulesSectionProps> = ({ onModulesCh
                             {module.title || `Module ${moduleIndex + 1}`}
                           </h4>
                           <div className="flex items-center gap-4 text-sm text-gray-500 mt-1">
-                            {module.duration && (
-                              <div className="flex items-center gap-1">
-                                <Clock className="w-3 h-3" />
-                                <span>{module.duration}</span>
-                              </div>
-                            )}
                             <div className="flex items-center gap-1">
                               <Play className="w-3 h-3" />
                               <span>
@@ -396,7 +358,7 @@ const CourseModulesSection: React.FC<CourseModulesSectionProps> = ({ onModulesCh
                 {!collapsedModules.has(module.id) && (
                   <div className="p-6 space-y-6">
                     {/* Module Details */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 gap-6">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Module Title *
@@ -409,20 +371,6 @@ const CourseModulesSection: React.FC<CourseModulesSectionProps> = ({ onModulesCh
                           }
                           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F77124] focus:border-transparent transition-all duration-200"
                           placeholder="e.g., Python Fundamentals"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Duration
-                        </label>
-                        <input
-                          type="text"
-                          value={module.duration}
-                          onChange={(e) =>
-                            updateModule(module.id, "duration", e.target.value)
-                          }
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F77124] focus:border-transparent transition-all duration-200"
-                          placeholder="e.g., 8 hours"
                         />
                       </div>
                     </div>
@@ -548,21 +496,21 @@ const CourseModulesSection: React.FC<CourseModulesSectionProps> = ({ onModulesCh
                                   </div>
                                   <div>
                                     <label className="block text-xs font-medium text-gray-700 mb-2">
-                                      Duration
+                                      Duration (minutes)
                                     </label>
                                     <input
-                                      type="text"
-                                      value={lesson.duration}
+                                      type="number"
+                                      value={lesson.duration || 0}
                                       onChange={(e) =>
                                         updateLesson(
                                           module.id,
                                           lesson.id,
                                           "duration",
-                                          e.target.value
+                                          parseInt(e.target.value) || 0
                                         )
                                       }
                                       className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F77124] focus:border-transparent transition-all duration-200"
-                                      placeholder="e.g., 45 min"
+                                      placeholder="e.g., 45"
                                     />
                                   </div>
                                 </div>
@@ -635,20 +583,20 @@ const CourseModulesSection: React.FC<CourseModulesSectionProps> = ({ onModulesCh
                                     Learning Materials
                                   </label>
                                   <div className="space-y-2">
-                                    {lesson.materials.map((material) => (
+                                    {(lesson.materials || []).map((material, index) => (
                                       <div
-                                        key={material.id}
+                                        key={index}
                                         className="flex gap-2 items-center"
                                       >
                                         <FileText className="w-4 h-4 text-gray-400 flex-shrink-0" />
                                         <input
                                           type="text"
-                                          value={material.name}
+                                          value={material}
                                           onChange={(e) =>
                                             updateMaterial(
                                               module.id,
                                               lesson.id,
-                                              material.id,
+                                              index,
                                               e.target.value
                                             )
                                           }
@@ -663,27 +611,27 @@ const CourseModulesSection: React.FC<CourseModulesSectionProps> = ({ onModulesCh
                                               handleMaterialUpload(
                                                 module.id,
                                                 lesson.id,
-                                                material.id,
+                                                index.toString(),
                                                 file
                                               );
                                           }}
                                           className="hidden"
-                                          id={`material-${material.id}`}
+                                          id={`material-${lesson.id}-${index}`}
                                         />
                                         <label
-                                          htmlFor={`material-${material.id}`}
+                                          htmlFor={`material-${lesson.id}-${index}`}
                                           className="bg-gray-100 text-gray-700 px-3 py-2 rounded-lg text-sm hover:bg-gray-200 transition-colors duration-200 cursor-pointer font-medium whitespace-nowrap"
                                         >
                                           Upload File
                                         </label>
-                                        {lesson.materials.length > 1 && (
+                                        {(lesson.materials || []).length > 1 && (
                                           <button
                                             type="button"
                                             onClick={() =>
                                               removeMaterial(
                                                 module.id,
                                                 lesson.id,
-                                                material.id
+                                                index
                                               )
                                             }
                                             className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1.5 rounded transition-colors duration-200"
