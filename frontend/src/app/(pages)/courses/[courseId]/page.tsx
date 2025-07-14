@@ -102,7 +102,7 @@ const IndividualCoursePage = async ({
         iconColor={errorConfig.iconColor}
         title={errorConfig.title}
         description={errorConfig.description}
-        className="min-h-[calc(100vh-100px)] w-full"
+        className="min-h-[calc(100dvh-100px)] w-full"
       />
     );
   }

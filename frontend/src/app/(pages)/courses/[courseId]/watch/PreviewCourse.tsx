@@ -6,7 +6,7 @@ import WhiteButton from "@/components/ui/WhiteButton";
 import { Clock3 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useLessonNavigation } from "./hooks/useLessonNavigation";
-import { formatDuration, parseDurationToMinutes } from "@/lib/formatDuration";
+import { formatDuration } from "@/lib/formatDuration";
 import {
   VideoTimeProvider,
   useVideoTimeContext,
@@ -88,18 +88,13 @@ const CourseContentSection = ({
         onClick={() => toggleModule(module)}
       >
         <span className="text-xs font-normal text-gray-500">
-          Module {module.chapterNumber}
+          Module {index + 1}
         </span>
         <span className="text-base font-bold">{module.title}</span>
         <div className="absolute top-0 right-0 flex items-center gap-1 bg-black/8 rounded-md px-2 py-1">
           <Clock3 className="size-4 fill-black text-white" />
           <span className="text-xs font-normal text-gray-500">
-            {formatDuration(
-              module.lessons.reduce(
-                (acc, lesson) => acc + parseDurationToMinutes(lesson.duration),
-                0
-              )
-            )}
+            {formatDuration(module.lessons.reduce((acc, lesson) => acc + (lesson.duration || 0), 0))}
           </span>
         </div>
       </div>
@@ -140,7 +135,7 @@ const CourseContentSection = ({
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <Clock3 className="size-3 text-gray-400" />
                   <span className="text-xs font-normal text-gray-500">
-                    {lesson.duration}
+                    {formatDuration(lesson.duration || 0)}
                   </span>
                 </div>
               </div>

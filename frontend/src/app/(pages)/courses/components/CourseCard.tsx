@@ -6,6 +6,7 @@ import OrangeButton from "@/components/ui/OrangeButton";
 import { cn } from "@/lib/utils";
 import { Course } from "@/types";
 import { Plus } from "lucide-react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import React from "react";
 
@@ -21,18 +22,22 @@ const CourseCard = ({
   return (
     <div
       className={cn(
-        "course-card w-full bg-white rounded-2xl p-3 flex flex-col border-2 border-[rgb(233,117,0)] shadow-[0_0_2px_4px_rgba(233,117,0,0.3)] gap-4 cursor-default",
+        "course-card w-full h-full bg-white rounded-2xl p-3 flex flex-col border-2 border-[rgb(233,117,0)] shadow-[0_0_2px_4px_rgba(233,117,0,0.3)] gap-4 cursor-default",
         "md:flex-row md:items-stretch",
         props.className
       )}
       style={props.style}
     >
       <div className="course-image w-full md:w-2/5 rounded-2xl overflow-hidden relative flex-shrink-0">
-        <img
+        <Image
           src={course?.thumbnail || "/CourseCardDemo.jpg"}
           alt={course?.title}
           className="rounded-2xl w-full h-full object-cover max-h-[150px] md:max-h-full opacity-90"
           draggable={false}
+          width={100}
+          height={100}
+          priority
+          loading="eager"
         />
         {course?.discount && (
           <DiscountBadge
@@ -42,8 +47,10 @@ const CourseCard = ({
         )}
       </div>
       <div className="course-content w-full md:w-3/5 flex flex-col justify-between">
-        {course?.isFeatured && (
+        {course?.isFeatured ? (
           <BestsellerBadge enrollStudents={course?.enrolledCount} />
+        ) : (
+          <div className="w-full h-4" />
         )}
         <p className="text-2xl font-bold mt-2 font-coolvetica select-none text-balance break-words line-clamp-2">
           {course?.title}
@@ -80,17 +87,18 @@ const CourseCard = ({
           <div className="pricing flex flex-row lg:flex-col xl:flex-row gap-2 sm:items-center flex-wrap">
             <p className="text-xl font-bold text-black">
               ₹
-              {course?.plan.collegeStudents.price -
-                (course?.discount
-                  ? Math.round(
-                      course?.plan.collegeStudents.price *
-                        (course?.discount / 100)
-                    )
-                  : 0)}
+              {course?.discount
+                ? Math.round(
+                    (course.plan.collegeStudents.essential.price -
+                      course.plan.collegeStudents.essential.price *
+                        (course.discount / 100)) *
+                      100
+                  ) / 100
+                : course.plan.collegeStudents.essential.price}
             </p>
             {course?.discount && (
               <span className="text-sm font-normal text-black line-through opacity-50">
-                ₹{course?.plan.collegeStudents.price}
+                ₹{course.plan.collegeStudents.essential.price}
               </span>
             )}
             <p className="text-sm font-normal text-black">onwards/-</p>
@@ -102,7 +110,7 @@ const CourseCard = ({
               router.push(`/courses/${course?.slug}`);
             }}
           >
-            Enroll Now
+            View Details
           </OrangeButton>
         </div>
       </div>

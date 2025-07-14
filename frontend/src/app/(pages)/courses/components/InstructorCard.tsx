@@ -17,8 +17,8 @@ const InstructorCard = ({ instructor }: { instructor: Instructor }) => {
       <div className="card-top w-full flex items-center gap-2 lg:gap-4 justify-center">
         <div className="instructor-image min-w-[30px] max-h-[50px] lg:max-h-[100px] aspect-square rounded-full flex items-center justify-center shrink-0">
           <Image
-            src={instructor.profileImage || ""}
-            alt={instructor.name}
+            src={instructor.profileImage || "/courseDefaultTestimonial.png"}
+            alt={instructor.name || "Instructor Image"}
             width={100}
             height={100}
             draggable={false}

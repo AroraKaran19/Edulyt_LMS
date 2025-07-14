@@ -134,7 +134,7 @@ const CoursesCarousel = ({ courses }: { courses: Course[] }) => {
         effect="coverflow"
         grabCursor={true}
         centeredSlides={true}
-        loop={true}
+        loop={courses.length > 3}
         onSlideChange={onSlideChange}
         onProgress={(swiper) => {
           const realIndex = swiper.realIndex;
@@ -152,7 +152,8 @@ const CoursesCarousel = ({ courses }: { courses: Course[] }) => {
           depth: 100,
           modifier: 2.5,
         }}
-        className={cn("w-full h-full px-4 !py-4 sm:px-0 ")}
+        initialSlide={courses.length > 3 ? 0 : 1}
+        className={cn("w-full h-full px-4 !py-4 sm:px-0 [&_.swiper-slide]:!h-auto [&_.swiper-slide]:!flex [&_.swiper-slide]:!items-stretch")}
         breakpoints={{
           0: {
             slidesPerView: 1.2,

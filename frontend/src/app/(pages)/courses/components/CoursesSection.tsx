@@ -184,7 +184,7 @@ const CoursesSection = () => {
   };
 
   return (
-    <section className="courses-section w-full bg-white rounded-2xl py-10 px-4 flex flex-col items-center sm:px-[15%]">
+    <section className="courses-section w-full bg-white rounded-2xl py-10 px-4 flex flex-col items-center sm:px-[15%] md:px-[10%] xl:px-[15%]">
       <p
         className={cn(
           "courses-section-header w-full text-[44px] font-normal text-[#2B1508] font-coolvetica",
@@ -223,7 +223,7 @@ const CoursesSection = () => {
           handleFilterClick={handleFilterClick}
         />
       )}
-      <div className="courses-container w-full mt-6 md:mt-13 grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="courses-container w-full mt-6 md:mt-13 grid grid-cols-1 lg:grid-cols-2 gap-6 auto-rows-fr">
         {renderContent()}
       </div>
       {!isLoading && courses.length > 8 && (

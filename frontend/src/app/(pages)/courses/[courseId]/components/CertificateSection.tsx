@@ -14,29 +14,29 @@ const CertificateSection = ({ course }: { course: Course }) => {
       icon: <Crown className="size-5" />,
       name: "Essential",
       theme: "bg-[#F68A5C]",
-      price: course.plan.collegeStudents.price,
-      features: course.plan.collegeStudents.features,
+      price: course.plan.collegeStudents.essential.price,
+      features: course.plan.collegeStudents.essential.features,
       discount: course.discount,
       discountLabel: `${course.discount}% off`,
       discountPrice:
-        Math.round(
-          course.plan.collegeStudents.price -
-            (course.plan.collegeStudents.price * (course.discount || 0)) / 100
-        ),
+        Math.round((
+          course.plan.collegeStudents.essential.price -
+            (course.plan.collegeStudents.essential.price * (course.discount || 0)) / 100
+        ) * 100) / 100,
     },
     {
       icon: <Crown className="size-5" />,
       name: "Elite",
       theme: "bg-[#8B5CF6]",
-      price: course.plan.professionals.price,
-      features: course.plan.professionals.features,
+      price: course.plan.professionals.elite.price,
+      features: course.plan.professionals.elite.features,
       discount: course.discount,
       discountLabel: `${course.discount}% off`,
       discountPrice:
-        Math.round(
-          course.plan.professionals.price -
-            (course.plan.professionals.price * (course.discount || 0)) / 100
-        ),
+        Math.round((
+          course.plan.professionals.elite.price -
+            (course.plan.professionals.elite.price * (course.discount || 0)) / 100
+        ) * 100) / 100,
     },
   ];
 
@@ -45,7 +45,7 @@ const CertificateSection = ({ course }: { course: Course }) => {
       <div className="plans-header w-full flex flex-col md:flex-row items-center gap-4">
         <div className="header-left w-full md:w-1/2 flex flex-col gap-2">
           <CourseTitle
-            title="This Course is ideal for"
+            title={`This Course is ideal for ${course.skillLevel}`}
             className="text-white text-2xl md:text-4xl text-center md:text-left"
           />
           <p className="text-white text-sm md:text-base font-extrabold italic text-center md:text-left">
@@ -57,10 +57,10 @@ const CertificateSection = ({ course }: { course: Course }) => {
         <div className="header-right w-full md:w-1/2 flex items-center justify-center md:justify-end">
           <OrangeButton glow>
             <Link
-              href="/courses/pg-program-in-ai-ml"
+              href={`/courses/${course.slug}`}
               className="text-white font-bold text-sm md:text-base"
             >
-              Explore the program
+              Get Curriculum
             </Link>
           </OrangeButton>
         </div>

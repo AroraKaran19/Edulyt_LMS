@@ -37,7 +37,7 @@ const CurriculumSection = ({ course }: { course: Course }) => {
         ))}
       </div>
       <p className="text-sm md:text-base text-center">
-        {course.curriculumDescription}
+        {course.description}
       </p>
       <OrangeButton
         glow={false}

@@ -4,12 +4,12 @@ import { CourseModule } from "@/types";
 import Image from "next/image";
 import React from "react";
 
-const VideoCard = ({ module }: { module: CourseModule }) => {
+const VideoCard = ({ module, index }: { module: CourseModule, index: number }) => {
   return (
     <div className="video-card w-full min-h-[150px] flex flex-col md:flex-row items-stretch gap-4 p-3 rounded-2xl border border-gray-200">
       <div className="video-thumbnail w-full max-h-[200px] md:max-h-auto md:w-1/3 rounded-2xl overflow-hidden relative aspect-video">
         <Image
-          src={module.thumbnail || "/CourseCardDemo.jpg"}
+          src={module.thumbnailUrl || "/CourseCardDemo.jpg"}
           alt={module.title}
           fill
           quality={100}
@@ -25,7 +25,7 @@ const VideoCard = ({ module }: { module: CourseModule }) => {
       <div className="video-content w-full md:w-2/3 flex flex-col md:flex-row gap-2 shrink-0">
         <div className="text-content w-full md:w-2/3 flex flex-col gap-2">
           <p className="chapter-number text-base text-gray-500">
-            Chapter {module.chapterNumber}
+            Module {index + 1}
           </p>
           <p className="video-title text-lg font-bold break-words line-clamp-2">
             {module.title}

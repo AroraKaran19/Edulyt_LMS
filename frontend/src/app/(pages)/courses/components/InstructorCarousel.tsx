@@ -17,42 +17,7 @@ export interface Testimonial {
   linkedin?: string;
 }
 
-const InstructorCarousel = () => {
-  const demoInstructors: Instructor[] = [
-    {
-      id: "instructor-001",
-      name: "Dr. Sarah Chen",
-      profileImage: "/courseDefaultTestimonial.png",
-      bio: "Former Google Senior Software Engineer with 12+ years of experience in full-stack development and machine learning. Passionate about teaching practical coding skills that land jobs.",
-      experience: "12+ years",
-      rating: 4.9,
-      linkedinUrl: "https://linkedin.com/in/sarahchen",
-      totalStudents: 15420,
-      totalCourses: 8,
-    },
-		{
-      id: "instructor-001",
-      name: "Dr. Sarah Chen",
-      profileImage: "/courseDefaultTestimonial.png",
-      bio: "Former Google Senior Software Engineer with 12+ years of experience in full-stack development and machine learning. Passionate about teaching practical coding skills that land jobs.",
-      experience: "12+ years",
-      rating: 4.9,
-      linkedinUrl: "https://linkedin.com/in/sarahchen",
-      totalStudents: 15420,
-      totalCourses: 8,
-    },
-		{
-      id: "instructor-001",
-      name: "Dr. Sarah Chen",
-      profileImage: "/courseDefaultTestimonial.png",
-      bio: "Former Google Senior Software Engineer with 12+ years of experience in full-stack development and machine learning. Passionate about teaching practical coding skills that land jobs.",
-      experience: "12+ years",
-      rating: 4.9,
-      linkedinUrl: "https://linkedin.com/in/sarahchen",
-      totalStudents: 15420,
-      totalCourses: 8,
-    },
-  ];
+const InstructorCarousel = ({ instructors }: { instructors: Instructor[] }) => {
 
   return (
     <Swiper
@@ -83,7 +48,7 @@ const InstructorCarousel = () => {
       }}
       className="w-full h-full"
     >
-      {demoInstructors.map((instructor, index) => (
+      {instructors.length > 0 && instructors.map((instructor, index) => (
         <SwiperSlide key={index}>
           <InstructorCard instructor={instructor} />
         </SwiperSlide>

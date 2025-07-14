@@ -8,6 +8,7 @@ import DiscountBadge from "@/components/ui/course/DiscountBadge";
 import MentorCard from "@/components/ui/course/MentorCard";
 import OrangeButton from "@/components/ui/OrangeButton";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 const TopCourseCard = ({
   thumbnail,
@@ -26,16 +27,20 @@ const TopCourseCard = ({
   return (
     <div
       className={cn(
-        "top-course-card min-h-[420px] bg-white rounded-2xl shadow-[0_0_2px_5px_rgba(247,113,36,0.3)] p-3 cursor-default",
+        "top-course-card h-full bg-white rounded-2xl shadow-[0_0_2px_5px_rgba(247,113,36,0.3)] p-3 cursor-default flex flex-col",
         props.className
       )}
     >
       <div className="course-card-image rounded-2xl h-1/2 w-full relative">
-        <img
-          src={thumbnail}
+        <Image
+          src={thumbnail || "/CourseCardDemo.jpg"}
           alt={title}
-          className="rounded-2xl max-h-[200px] select-none w-full h-full object-cover"
+          className="rounded-2xl max-h-[200px] select-none w-full h-full"
           draggable={false}
+          width={100}
+          height={100}
+          priority
+          loading="eager"
         />
         {discount && (
           <DiscountBadge
@@ -63,7 +68,7 @@ const TopCourseCard = ({
             return (
               <MentorCard
                 key={index}
-                image={mentor?.profileImage || ""}
+                image={mentor?.profileImage || "/courseDefaultTestimonial.png"}
                 name={mentor.name}
               />
             );
@@ -82,14 +87,14 @@ const TopCourseCard = ({
         <div className="pricing flex flex-row lg:flex-col xl:flex-row gap-2 sm:items-center flex-wrap">
           <p className="text-xl font-bold text-black">
             ₹
-            {plan.collegeStudents.price -
-              (discount
-                ? Math.round(plan.collegeStudents.price * (discount / 100))
-                : 0)}
+            {discount
+              ? Math.round((plan.collegeStudents.essential.price - 
+                (plan.collegeStudents.essential.price * (discount / 100))) * 100) / 100
+              : plan.collegeStudents.essential.price}
           </p>
           {discount && (
             <span className="text-sm font-normal text-black line-through opacity-50">
-              ₹{plan.collegeStudents.price}
+              ₹{plan.collegeStudents.essential.price}
             </span>
           )}
           <p className="text-sm font-normal text-black">onwards/-</p>
@@ -101,7 +106,7 @@ const TopCourseCard = ({
             router.push(`/courses/${slug}`);
           }}
         >
-          Enroll Now
+          View Details
         </OrangeButton>
       </div>
     </div>

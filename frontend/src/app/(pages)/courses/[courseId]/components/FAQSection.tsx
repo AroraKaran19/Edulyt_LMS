@@ -24,7 +24,7 @@ const FAQSection = ({ course }: { course: Course }) => {
           <div key={index} className="border border-gray-200 rounded-lg flex-shrink-0 p-2">
             <button
               onClick={() => toggleFAQ(index)}
-              className="w-full text-left p-3 sm:p-4 flex justify-between items-start sm:items-center hover:bg-gray-50 transition-colors"
+              className="w-full text-left p-3 sm:p-4 flex justify-between items-start sm:items-center hover:bg-gray-50 transition-colors cursor-pointer"
             >
               <p className="text-base sm:text-lg font-bold text-[#2B1508] pr-2 leading-tight">{faq.question}</p>
               <span className="text-xl font-bold text-[#2B1508] transform transition-transform duration-300 flex-shrink-0 mt-1 sm:mt-0">

@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 const CoursesLayout = ({ children }: { children: React.ReactNode }) => {
   return (
     <div
-      className={`min-h-[calc(100vh-78px)] w-full flex flex-col gap-10 p-4 bg-[rgba(226,226,226,0.4)] ${plusJakartaSans.className}`}
+      className={`min-h-[calc(100dvh-78px)] w-full flex flex-col gap-10 p-4 bg-[rgba(226,226,226,0.4)] ${plusJakartaSans.className}`}
     >
       {children}
     </div>

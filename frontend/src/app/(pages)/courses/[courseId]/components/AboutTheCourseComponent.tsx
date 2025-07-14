@@ -1,37 +1,9 @@
 import React from "react";
-import { CodeXml } from "lucide-react";
 import CourseTitle from "@/components/ui/course/CourseTitle";
 import Image from "next/image";
+import { Course } from "@/types";
 
-const AboutTheCourseComponent = () => {
-  const skills: {
-    icon: React.ReactNode;
-    text: string;
-  }[] = [
-    {
-      icon: <CodeXml />,
-      text: "Data Science",
-    },
-    {
-      icon: <CodeXml />,
-      text: "Data Science",
-    },
-    {
-      icon: <CodeXml />,
-      text: "Data Science",
-    },
-    {
-      icon: <CodeXml />,
-      text: "Data Science",
-    },
-  ];
-
-  const careers = [
-    "Data Scientist",
-    "Data Analyst",
-    "Data Engineer",
-    "Data Analyst",
-  ];
+const AboutTheCourseComponent = ({ course }: { course: Course }) => {
 
   const careerHighlights = [
     {
@@ -81,25 +53,27 @@ const AboutTheCourseComponent = () => {
           tristique scelerisque sed eget in.
         </p>
       </section>
-      <section
-        id="skills-you-will-learn"
-        className="skills-you-will-learn w-full flex flex-col gap-6"
-      >
-        <CourseTitle title="Skills you wil learn" />
-        <div className="skills-card-container w-full flex gap-4 flex-wrap">
-          {skills.map((skill, index) => (
-            <div
-              key={index}
-              className="skills-card w-max bg-black/8 rounded-lg py-2 px-4 flex items-center gap-2"
-            >
-              {skill?.icon && skill?.icon}
-              <div className="skills-card-text text-base font-normal">
-                {skill?.text}
+      {course?.skills.length > 0 && (
+        <section
+          id="skills-you-will-learn"
+          className="skills-you-will-learn w-full flex flex-col gap-6"
+        >
+          <CourseTitle title="Skills you wil learn" />
+          <div className="skills-card-container w-full flex gap-4 flex-wrap">
+            {course?.skills.map((skill, index) => (
+              <div
+                key={index}
+                className="skills-card w-max bg-black/8 rounded-lg py-2 px-4 flex items-center gap-2"
+              >
+                {skill?.icon && skill?.icon}
+                <div className="skills-card-text text-base font-normal">
+                  {skill?.text}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-      </section>
+            ))}
+          </div>
+        </section>
+      )}
       <section
         id="why-should-you-join"
         className="why-should-you-join lg:mt-5 w-full flex flex-col gap-6"
@@ -145,19 +119,21 @@ const AboutTheCourseComponent = () => {
         id="career-growth"
         className="career-growth w-full flex flex-col lg:mt-5 gap-6"
       >
-        <CourseTitle title="Careers in Data Science" />
-        <div className="career-list flex gap-4 flex-wrap">
-          {careers.map((career, index) => (
-            <div
-              key={index}
-              className="career-card w-max bg-black/8 rounded-lg py-2 px-4 flex items-center gap-2"
-            >
-              <div className="career-card-text text-base font-normal">
-                {career}
+        <CourseTitle title={`Careers in ${course?.category}`} />
+        {course?.careerPaths.length > 0 && (
+          <div className="career-list flex gap-4 flex-wrap">
+            {course?.careerPaths.map((career, index) => (
+              <div
+                key={index}
+                className="career-card w-max bg-black/8 rounded-lg py-2 px-4 flex items-center gap-2"
+              >
+                <div className="career-card-text text-base font-normal">
+                  {career}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
         <div className="career-highlights-container w-full grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 md:gap-10">
           {careerHighlights.map((highlight, index) => (
             <div

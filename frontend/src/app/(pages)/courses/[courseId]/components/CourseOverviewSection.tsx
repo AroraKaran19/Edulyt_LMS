@@ -4,13 +4,17 @@ import AboutTheCourseComponent from "./AboutTheCourseComponent";
 import SectionContainer from "@/components/ui/course/SectionContainer";
 import Image from "next/image";
 import VideoShowcase from "./VideoShowcase";
+import { Course } from "@/types";
 
-const CourseOverviewSection = () => {
+const CourseOverviewSection = ({ course }: { course: Course }) => {
   return (
     <SectionContainer id="course-overview">
       <TabSwitcher
         tabs={[
-          { label: "About the course", component: <AboutTheCourseComponent /> },
+          {
+            label: "About the course",
+            component: <AboutTheCourseComponent course={course} />,
+          },
           {
             label: "Modules",
             activeTabIcon: (
@@ -22,8 +26,8 @@ const CourseOverviewSection = () => {
                 className="size-4 lg:size-5"
               />
             ),
-            component: <VideoShowcase />,
-            showCount: 5,
+            component: <VideoShowcase course={course} />,
+            showCount: course?.modules.length || 0,
           },
         ]}
       />

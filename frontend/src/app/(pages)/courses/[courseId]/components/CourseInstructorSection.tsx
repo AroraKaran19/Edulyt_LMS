@@ -17,7 +17,7 @@ const CourseInstructorSection = ({ course }: { course: Course }) => {
         </h3>
       </div>
       <div className="instructor-carousel w-full">
-        <InstructorCarousel />
+        <InstructorCarousel instructors={course?.instructor || []} />
       </div>
     </SectionContainer>
   );

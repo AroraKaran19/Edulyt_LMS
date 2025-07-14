@@ -8,6 +8,7 @@ import {
   Settings,
   AlertCircle,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface VideoSource {
   quality: string;
@@ -18,6 +19,7 @@ interface VideoPlayerProps {
   sources: VideoSource[];
   posterUrl?: string;
   onVideoReady?: (video: HTMLVideoElement) => void;
+  className?: string;
 }
 
 /**
@@ -30,6 +32,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   sources,
   posterUrl,
   onVideoReady,
+  className,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -534,12 +537,12 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-full rounded-2xl overflow-hidden bg-black group border-2 border-gray-800 hover:border-[#F77124]/30 transition-all duration-300 cursor-pointer"
+      className={cn("relative w-full h-full rounded-2xl overflow-hidden bg-gradient-to-br from-gray-900 to-black group border-2 border-gray-800 hover:border-[#F77124]/30 transition-all duration-300 cursor-pointer", className)}
       onClick={togglePlay}
     >
       <video
         ref={videoRef}
-        className="w-full h-full object-contain rounded-2xl"
+        className="w-full h-full object-cover rounded-2xl"
         poster={posterUrl}
       />
 

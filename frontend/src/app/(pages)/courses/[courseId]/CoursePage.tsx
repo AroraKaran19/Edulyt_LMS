@@ -11,34 +11,37 @@ import CertificateSection from "./components/CertificateSection";
 import VerticalCarouselSection from "./components/VerticalCarouselSection";
 import CurriculumSection from "./components/CurriculumSection";
 import FAQSection from "./components/FAQSection";
+import VideoPlayer from "./watch/components/VideoPlayer";
 
 const CoursePage = ({ course }: { course: Course }) => {
 
   return (
     <div
       className={cn(
-        `${course?.slug}-course-page w-full min-h-[calc(100vh-78px)]`,
+        `${course?.slug}-course-page w-full min-h-[calc(100dvh-78px)]`,
         "flex flex-col items-center gap-6"
       )}
     >
       <div className="course-header w-full h-auto bg-white rounded-2xl py-4 px-4 lg:px-[13%] md:py-8 flex flex-col items-center">
         <div className="course-preview-video w-full mt-2 flex flex-col items-center">
-          <video
+          <VideoPlayer
+            sources={[
+              {
+                quality: "1080p",
+                src: course?.previewVideoUrl || "/demoVideo.mp4",
+              },
+            ]}
+            posterUrl={course?.previewVideoUrl || "/courseVideoDemoPoster.png"}
             className="w-full min-h-[200px] max-h-[270px] rounded-xl object-cover"
-            controls
-            poster={`/courseVideoDemoPoster.png`}
-            preload="metadata"
-          >
-            <source src={`${course?.previewVideoUrl}`} type="video/mp4" />
-          </video>
+          />
         </div>
-        <CourseHeader course={course as Course} />
+        <CourseHeader course={course} />
       </div>
       {course?.scholarship && <ScholarshipBanner />}
-      <TestimonialSection />
-      <CourseOverviewSection />
-      <CourseInstructorSection course={course as Course} />
-      <CertificateSection course={course as Course} />
+      <TestimonialSection /> {/* TODO: Add dynamic testimonials */}
+      <CourseOverviewSection course={course} />
+      <CourseInstructorSection course={course} />
+      <CertificateSection course={course} />
       <VerticalCarouselSection course={course} />
       <CurriculumSection course={course} />
       <FAQSection course={course} />

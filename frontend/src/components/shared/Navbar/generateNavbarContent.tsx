@@ -1,12 +1,12 @@
 "use client";
-import { cn } from "@/lib/utils";
+import { cn, fetcher } from "@/lib/utils";
 import { Course, NavItem } from "@/types";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Crown } from "lucide-react";
 import Image from "next/image";
 import React, { useMemo, useState } from "react";
-import { demoCourses } from "./fakedata";
-import BestsellerBadge from "@/components/ui/course/BestsellerBadge";
 import Link from "next/link";
+import useSWR from "swr";
+import { ENDPOINTS } from "@/constants/endpoints";
 
 const GenerateNavbarContent = ({
   navLink,
@@ -30,57 +30,17 @@ const GenerateNavbarContent = ({
     categories[0].value
   );
 
-  // TODO: Add Endpoint to get courses by category
-  // const { data, isLoading, error } = useSWR(
-  // 	`${ENDPOINTS.courses.all}?category=${selectedCategory}`,
-  // 	fetcher
-  // );
-  const error = null;
-  const isLoading = false;
-
-  const courses: Course[] = useMemo(
-    () => [
-      ...demoCourses.map((course) => ({
-        ...course,
-        category: "college-students",
-      })),
-      ...demoCourses.map((course) => ({
-        ...course,
-        category: "college-students",
-      })),
-      ...demoCourses.map((course) => ({
-        ...course,
-        category: "college-students",
-      })),
-      ...demoCourses.map((course) => ({
-        ...course,
-        category: "college-students",
-      })),
-      ...demoCourses.map((course) => ({
-        ...course,
-        category: "college-students",
-      })),
-      ...demoCourses.map((course) => ({
-        ...course,
-        category: "college-students",
-      })),
-      ...demoCourses,
-      ...demoCourses,
-      ...demoCourses,
-      ...demoCourses,
-      ...demoCourses,
-      ...demoCourses,
-      ...demoCourses,
-      ...demoCourses,
-      ...demoCourses,
-      ...demoCourses,
-    ],
-    []
+  const { data, isLoading, error } = useSWR(
+    `${ENDPOINTS.courses.all}?category=${selectedCategory}`,
+    fetcher
   );
 
   const filteredCourses = useMemo(
-    () => courses.filter((course) => course.category === selectedCategory),
-    [courses, selectedCategory]
+    () =>
+      data?.data?.courses.filter(
+        (course: Course) => course.audience === selectedCategory
+      ),
+    [data, selectedCategory]
   );
 
   switch (navLink.label) {
@@ -119,33 +79,35 @@ const GenerateNavbarContent = ({
             ) : error ? (
               <div>Error loading courses</div>
             ) : (
-              filteredCourses.map((course: Course, index) => (
+              filteredCourses?.map((course: Course, index: number) => (
                 <Link
                   key={index}
                   href={`/courses/${course.slug}`}
                   onClick={() => {
                     closeHoverContainer();
                   }}
-                  className="w-full flex flex-row items-center hover:bg-gradient-to-tr from-orange-500/10 to-white gap-3 hover:bg-gray-100 transition-all duration-300 cursor-pointer rounded-xl"
+                  className="w-full flex flex-row max-h-[100px] xl:max-h-[80px] items-center hover:bg-gradient-to-tr from-orange-500/10 to-white gap-3 hover:bg-gray-100 transition-all duration-300 cursor-pointer rounded-xl"
                   draggable={false}
                 >
-                  <Image
-                    src={course.thumbnail}
-                    alt={course.title}
-                    width={100}
-                    height={100}
-                    className="w-1/3 shrink-0 h-full rounded-xl"
-                    draggable={false}
-                  />
-                  <div className="w-2/3 h-full flex flex-col gap-1 py-2">
+                  <div className="w-1/3 h-full shrink-0 relative">
                     {course.isFeatured && (
-                      <BestsellerBadge
-                        enrollStudents={course.enrolledCount}
-                        className="!gap-2"
-                        text1ClassName="!text-xs !leading-none"
-                        text2ClassName="!text-xs !leading-none"
-                      />
+                      <div className="absolute top-1 left-1 flex flex-row items-center gap-1 bg-gradient-to-tr from-black to-white/50 rounded-lg px-2 py-1">
+                        <Crown className="size-3 text-yellow-500" />
+                        <span className="text-xs text-white font-bold text-nowrap">
+                          Featured
+                        </span>
+                      </div>
                     )}
+                    <Image
+                      src={course.thumbnail || "/CourseCardDemo.jpg"}
+                      alt={course.title || "Course Thumbnail"}
+                      width={100}
+                      height={100}
+                      className="w-full h-full rounded-xl"
+                      draggable={false}
+                    />
+                  </div>
+                  <div className="w-2/3 h-full flex flex-col gap-1 py-2">
                     <div className="w-full h-full flex flex-col gap-1 justify-between">
                       <h3 className="text-sm font-bold">{course.title}</h3>
                       <p className="text-xs text-gray-500 line-clamp-2">

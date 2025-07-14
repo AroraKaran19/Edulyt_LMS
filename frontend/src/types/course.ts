@@ -7,6 +7,8 @@ export interface CourseLesson {
     title: string;
     duration?: number; // e.g., "abc", "15min"
     videoUrl?: string;
+    thumbnailUrl: string,
+    description?: string;
     materials?: string[];
     completed?: boolean; // whether on going or completed by the instructor
     isForCollegeStudent?: boolean; // whether this lesson is accessible to college students
@@ -14,26 +16,28 @@ export interface CourseLesson {
 
 export interface CourseModule {
     id: string;
-    chapterNumber: number;
     title: string;
+    thumbnailUrl: string;
     lessons: CourseLesson[];
     description?: string;
-    thumbnail?: string;
 }
 
 export interface PlanDetails {
-    name: string;
-    price: number;
-    discount?: boolean;
-    discountLabel?: string;
-    discountPrice?: number;
-    features: string[];
+    elite: {
+        price: number;
+        features: string[];
+    };
+    essential: {
+        price: number;
+        features: string[];
+    };
 }
 
 export interface CoursePlan {
     professionals: PlanDetails;
     collegeStudents: PlanDetails;
 }
+
 
 export interface FeaturedReview {
     id: string;
@@ -70,10 +74,14 @@ export interface Course {
     // Metrics
     totalRatings: number;
     enrolledCount: number;
-    totalLectures: number;
 
     // Course Details
     language: string;
+    skills: {
+        icon?: React.ReactNode;
+        text: string;
+    }[]; // e.g., "Data Science", "Machine Learning", "Python"
+    careerPaths: string[];
     skillLevel: string; // e.g., "College Students", "Beginner", "Intermediate"
     lastUpdated: Date;
 
@@ -88,6 +96,8 @@ export interface Course {
 
     // Pricing Plans
     plan: CoursePlan;
+    discount?: number;
+    discountEndDate?: Date;
 
     // Reviews
     featuredReviews: FeaturedReview[];
@@ -99,15 +109,12 @@ export interface Course {
     faqs: FAQ[];
 
     // Administrative
+    audience: "collegeStudents" | "professionals";
     isActive: boolean;
     createdAt: Date;
     updatedAt: Date;
     createdBy: string;
     tags?: string[];
-
-    // Discount
-    discount?: number;
-    discountEndDate?: Date;
 
     // SEO
     slug: string;
@@ -119,7 +126,4 @@ export interface Course {
     scholarship?: boolean;
     scholarshipDescription?: string;
     scholarshipLink?: string;
-
-    // Curriculum
-    curriculumDescription: string;
-} 
+}

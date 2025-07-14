@@ -32,6 +32,10 @@ const TestimonialCard = ({
           width={100}
           height={100}
           className="object-cover"
+          draggable={false}
+          loading="lazy"
+          unoptimized
+          priority
         />
       </div>
       <div className="testimonial-information flex flex-col items-center justify-center gap-1 mb-4 flex-shrink-0">
