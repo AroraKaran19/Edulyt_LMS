@@ -91,7 +91,7 @@ const IndividualCoursePage = async ({
         iconColor={errorConfig.iconColor}
         title="Course Not Found"
         description="The course you're looking for doesn't exist or has been removed."
-        className="min-h-[calc(100vh-100px)] w-full"
+        className="h-[calc(100dvh-100px)] w-full"
       />
     );
   }

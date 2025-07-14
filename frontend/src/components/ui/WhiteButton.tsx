@@ -19,7 +19,7 @@ const WhiteButton = ({
   return (
     <button
       className={cn(
-        "bg-white text-black px-6 py-3 rounded-2xl border border-gray-200 cursor-pointer shadow-[inset_0_1px_3px_0_rgba(171,185,206,0.15)]",
+        "bg-white text-black px-6 py-3 rounded-2xl border border-gray-200 cursor-pointer shadow-[inset_0_-2px_2px_0_rgba(0,0,0,0.1)]",
         className,
         "lg:px-4 lg:py-2.5",
         glow &&

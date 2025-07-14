@@ -1,4 +1,5 @@
 import OrangeButton from "@/components/ui/OrangeButton";
+import { formatDuration } from "@/lib/formatDuration";
 import { CourseModule } from "@/types";
 import Image from "next/image";
 import React from "react";
@@ -33,7 +34,7 @@ const VideoCard = ({ module }: { module: CourseModule }) => {
             {module.description}
           </p>
           <p className="video-duration text-sm text-gray-500 mt-auto">
-            {module.duration}
+            {formatDuration(module.lessons.reduce((acc, lesson) => acc + (lesson.duration || 0), 0))}
           </p>
         </div>
         <div className="video-purchase-button w-full md:w-1/3 flex flex-col gap-2 mt-auto">

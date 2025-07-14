@@ -43,7 +43,7 @@ const TabSwitcher = ({ tabs, className }: TabSwitcherProps) => {
     <div className="w-full flex flex-col gap-8">
       <div
         className={cn(
-          "tab-switcher w-full p-1.5 flex items-center bg-[#FFF6F2] rounded-full overflow-x-auto md:overflow-hidden",
+          "tab-switcher w-full p-1.5 flex items-stretch bg-[#FFF6F2] rounded-full overflow-x-auto md:overflow-hidden",
           className
         )}
       >
@@ -54,7 +54,7 @@ const TabSwitcher = ({ tabs, className }: TabSwitcherProps) => {
               tabRefs.current[index] = el;
             }}
             className={cn(
-              "tab-switcher-tab w-6/10 md:w-full shrink-0 md:shrink cursor-pointer rounded-full flex items-center justify-center py-2 md:py-4",
+              "tab-switcher-tab w-7/10 md:w-full shrink-0 md:shrink cursor-pointer rounded-full flex flex-wrap items-center justify-center py-2 md:py-4 px-2",
               {
                 "bg-gradient-to-r from-[#F5691D] to-[#F9792A]": activeTab === tab,
               },
@@ -64,7 +64,7 @@ const TabSwitcher = ({ tabs, className }: TabSwitcherProps) => {
           >
             <span
               className={cn(
-                "flex items-center gap-1 text-sm font-bold md:text-base",
+                "flex items-center gap-1 text-sm font-bold md:text-base text-nowrap text-center",
                 activeTab === tab ? "text-white" : "text-gray-800",
               )}
             >

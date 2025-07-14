@@ -13,7 +13,6 @@ export const demoCourses: Course[] = [
     totalRatings: 2847,
     enrolledCount: 15420,
     totalLectures: 120,
-    duration: "42 hours",
     skillLevel: "Beginner",
     category: "professionals",
     instructor: [

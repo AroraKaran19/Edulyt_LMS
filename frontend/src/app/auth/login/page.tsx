@@ -58,7 +58,7 @@ const LoginPage = () => {
         <div className="w-1/4 h-[4px] bg-gray-200"></div>
       </div>
       <div className="oauth-buttons w-full max-w-lg lg:max-w-full flex flex-col items-center justify-center gap-6">
-        <WhiteButton className="w-full flex items-center justify-center gap-2 rounded-xl font-bold shadow-[inset_0_-2px_7px_0_rgb(183,159,255,0.22)]">
+        <WhiteButton className="w-full flex items-center justify-center gap-2 rounded-xl font-bold shadow-[inset_0_-2px_7px_0_rgba(183,159,255,0.22)]">
           <Image
             src="/google-icon.svg"
             alt="Google"
@@ -68,7 +68,7 @@ const LoginPage = () => {
           />
           <span>Sign In using Google</span>
         </WhiteButton>
-        <WhiteButton className="w-full flex items-center justify-center gap-2 rounded-xl font-bold shadow-[inset_0_-2px_7px_0_rgb(183,159,255,0.22)]">
+        <WhiteButton className="w-full flex items-center justify-center gap-2 rounded-xl font-bold shadow-[inset_0_-2px_7px_0_rgba(183,159,255,0.22)]">
           <Image
             src="/linkedin-icon.svg"
             alt="LinkedIn"

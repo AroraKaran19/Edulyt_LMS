@@ -5,7 +5,7 @@ import { Instructor } from './instructor';
 export interface CourseLesson {
     id: string;
     title: string;
-    duration?: string; // e.g., "abc", "15min"
+    duration?: number; // e.g., "abc", "15min"
     videoUrl?: string;
     materials?: string[];
     completed?: boolean; // whether on going or completed by the instructor
@@ -16,7 +16,6 @@ export interface CourseModule {
     id: string;
     chapterNumber: number;
     title: string;
-    duration: string; // e.g., "1hr 30min"
     lessons: CourseLesson[];
     description?: string;
     thumbnail?: string;
@@ -76,7 +75,6 @@ export interface Course {
     // Course Details
     language: string;
     skillLevel: string; // e.g., "College Students", "Beginner", "Intermediate"
-    duration?: string;
     lastUpdated: Date;
 
     // Content

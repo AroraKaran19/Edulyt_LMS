@@ -1,11 +1,12 @@
 import BestsellerBadge from "@/components/ui/course/BestsellerBadge";
 import { Course } from "@/types";
-import React from "react";
+import React, { useMemo } from "react";
 import DiscountCountdown from "../../components/DiscountCountdown";
 import OrangeButton from "@/components/ui/OrangeButton";
 import { cn } from "@/lib/utils";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { Star } from "lucide-react";
+import { formatDuration, parseDurationToMinutes } from "@/lib/formatDuration";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -13,6 +14,18 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 });
 
 const CourseHeader = ({ course }: { course: Course }) => {
+
+  const totalDuration = useMemo(() => {
+    return formatDuration(
+      course?.modules.reduce(
+        (acc, module) => acc + module.lessons.reduce(
+          (lessonAcc, lesson) => lessonAcc + parseDurationToMinutes(lesson.duration), 
+          0
+        ), 
+        0
+      ) || 0
+    )
+  }, [course])
 
   const formattedReviewsCount = course?.featuredReviews?.length >= 1000000 
     ? `${(course?.featuredReviews?.length / 1000000).toFixed(1).replace(/\.0$/, '')}M`
@@ -94,7 +107,7 @@ const CourseHeader = ({ course }: { course: Course }) => {
         <div className="course-total-time w-max flex flex-col items-center md:items-start">
           <p className="text-sm md:text-base font-normal text-[#2B1508]">Total Time</p>
           <p className="text-base md:text-2xl font-normal text-[#2B1508] font-coolvetica tracking-wide">
-            {course?.duration}
+            {totalDuration}
           </p>
         </div>
       </div>
