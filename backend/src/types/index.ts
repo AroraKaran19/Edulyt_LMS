@@ -2,4 +2,5 @@
  
 // Re-export all types
 export * from './course';
-export * from './instructor'; 
+export * from './instructor';
+export * from './user'; 

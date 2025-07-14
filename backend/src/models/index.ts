@@ -2,4 +2,5 @@
 // Mongoose schemas and models
 
 export * from './instructor.schema';
-export * from './course.schema'; 
+export * from './course.schema';
+export * from './user.schema'; 
