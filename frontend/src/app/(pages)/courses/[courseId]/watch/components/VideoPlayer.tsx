@@ -10,6 +10,22 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+// Extend HTMLVideoElement to include webkit methods for iOS
+interface WebkitHTMLVideoElement extends HTMLVideoElement {
+  webkitEnterFullscreen?: () => void;
+  webkitExitFullscreen?: () => void;
+}
+
+// Extend HTMLElement for webkit fullscreen methods
+interface WebkitHTMLElement extends HTMLElement {
+  webkitRequestFullscreen?: () => Promise<void>;
+}
+
+// Extend Document for webkit fullscreen methods
+interface WebkitDocument extends Document {
+  webkitExitFullscreen?: () => Promise<void>;
+}
+
 interface VideoSource {
   quality: string;
   src: string;
@@ -481,25 +497,29 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     if (!container || !video) return;
 
     // iOS Safari uses webkitEnterFullscreen on video element
-    if (isMobile && (video as any).webkitEnterFullscreen) {
+    const webkitVideo = video as WebkitHTMLVideoElement;
+    if (isMobile && webkitVideo.webkitEnterFullscreen) {
       if (!isFullscreen) {
-        (video as any).webkitEnterFullscreen();
-      } else {
-        (video as any).webkitExitFullscreen();
+        webkitVideo.webkitEnterFullscreen();
+      } else if (webkitVideo.webkitExitFullscreen) {
+        webkitVideo.webkitExitFullscreen();
       }
     } else {
       // Desktop browsers
+      const webkitContainer = container as WebkitHTMLElement;
+      const webkitDocument = document as WebkitDocument;
+      
       if (!isFullscreen) {
         if (container.requestFullscreen) {
           container.requestFullscreen();
-        } else if ((container as any).webkitRequestFullscreen) {
-          (container as any).webkitRequestFullscreen();
+        } else if (webkitContainer.webkitRequestFullscreen) {
+          webkitContainer.webkitRequestFullscreen();
         }
       } else {
         if (document.exitFullscreen) {
           document.exitFullscreen();
-        } else if ((document as any).webkitExitFullscreen) {
-          (document as any).webkitExitFullscreen();
+        } else if (webkitDocument.webkitExitFullscreen) {
+          webkitDocument.webkitExitFullscreen();
         }
       }
     }
