@@ -54,6 +54,19 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [loadingTimeout, setLoadingTimeout] = useState<NodeJS.Timeout | null>(
     null
   );
+  const [isMobile, setIsMobile] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+
+  // Detect mobile/iOS devices
+  useEffect(() => {
+    const checkMobile = () => {
+      const userAgent = navigator.userAgent || navigator.vendor;
+      const mobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
+      setIsMobile(mobile);
+    };
+    
+    checkMobile();
+  }, []);
 
   // Check if sources are provided and valid
   const hasValidSources = useMemo(
@@ -128,8 +141,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       const handleCanPlay = () => {
         console.log("New source can play, restoring state");
 
-        // Restore volume
-        video.volume = savedVolume;
+        // Restore volume (except on iOS where it's controlled by system)
+        if (!isMobile) {
+          video.volume = savedVolume;
+        }
 
         // Restore time
         if (savedTime > 0) {
@@ -165,7 +180,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         video.removeEventListener("error", handleError);
       }, 10000);
     }
-  }, [currentSrc]);
+  }, [currentSrc, isMobile]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -341,7 +356,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     };
   }, [loadingTimeout]);
 
-  // Auto-hide controls
+  // Auto-hide controls with better mobile handling
   useEffect(() => {
     let timeout: NodeJS.Timeout;
 
@@ -349,30 +364,35 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       setShowControls(true);
       clearTimeout(timeout);
       timeout = setTimeout(() => {
-        if (isPlaying) setShowControls(false);
-      }, 3000);
+        if (isPlaying && !isMobile) setShowControls(false);
+      }, isMobile ? 5000 : 3000); // Longer timeout on mobile
     };
 
-    const handleMouseMove = () => resetTimeout();
+    const handleInteraction = () => resetTimeout();
     const handleMouseLeave = () => {
       clearTimeout(timeout);
-      if (isPlaying) setShowControls(false);
+      if (isPlaying && !isMobile) setShowControls(false);
     };
 
     const container = containerRef.current;
     if (container) {
-      container.addEventListener("mousemove", handleMouseMove);
+      // Use both mouse and touch events for better mobile support
+      container.addEventListener("mousemove", handleInteraction);
+      container.addEventListener("touchstart", handleInteraction);
+      container.addEventListener("touchmove", handleInteraction);
       container.addEventListener("mouseleave", handleMouseLeave);
     }
 
     return () => {
       clearTimeout(timeout);
       if (container) {
-        container.removeEventListener("mousemove", handleMouseMove);
+        container.removeEventListener("mousemove", handleInteraction);
+        container.removeEventListener("touchstart", handleInteraction);
+        container.removeEventListener("touchmove", handleInteraction);
         container.removeEventListener("mouseleave", handleMouseLeave);
       }
     };
-  }, [isPlaying]);
+  }, [isPlaying, isMobile]);
 
   const togglePlay = () => {
     const video = videoRef.current;
@@ -381,26 +401,60 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     if (isPlaying) {
       video.pause();
     } else {
-      video.play();
+      // iOS requires user interaction to play
+      const playPromise = video.play();
+      if (playPromise) {
+        playPromise.catch((error) => {
+          console.error("Error playing video:", error);
+          // Handle autoplay policy errors on iOS
+        });
+      }
     }
   };
 
-  const handleProgressClick = (e: React.MouseEvent) => {
+  // Enhanced progress bar handling for mobile
+  const handleProgressInteraction = (clientX: number) => {
     const video = videoRef.current;
     const progressBar = progressRef.current;
-    if (!video || !progressBar) return;
+    if (!video || !progressBar || !duration) return;
 
     const rect = progressBar.getBoundingClientRect();
-    const clickX = e.clientX - rect.left;
+    const clickX = clientX - rect.left;
     const width = rect.width;
-    const clickTime = (clickX / width) * duration;
+    const clickTime = Math.max(0, Math.min(duration, (clickX / width) * duration));
 
     video.currentTime = clickTime;
   };
 
+  const handleProgressClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    handleProgressInteraction(e.clientX);
+  };
+
+  const handleProgressTouchStart = (e: React.TouchEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+    const touch = e.touches[0];
+    handleProgressInteraction(touch.clientX);
+  };
+
+  const handleProgressTouchMove = (e: React.TouchEvent) => {
+    e.preventDefault();
+    if (!isDragging) return;
+    const touch = e.touches[0];
+    handleProgressInteraction(touch.clientX);
+  };
+
+  const handleProgressTouchEnd = (e: React.TouchEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const video = videoRef.current;
-    if (!video) return;
+    if (!video || isMobile) return; // iOS doesn't allow volume control via JS
 
     const newVolume = parseFloat(e.target.value);
     setVolume(newVolume);
@@ -410,7 +464,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   const toggleMute = () => {
     const video = videoRef.current;
-    if (!video) return;
+    if (!video || isMobile) return; // iOS doesn't allow volume control via JS
 
     if (isMuted) {
       video.volume = volume;
@@ -423,15 +477,30 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   const toggleFullscreen = () => {
     const container = containerRef.current;
-    if (!container) return;
+    const video = videoRef.current;
+    if (!container || !video) return;
 
-    if (!isFullscreen) {
-      if (container.requestFullscreen) {
-        container.requestFullscreen();
+    // iOS Safari uses webkitEnterFullscreen on video element
+    if (isMobile && (video as any).webkitEnterFullscreen) {
+      if (!isFullscreen) {
+        (video as any).webkitEnterFullscreen();
+      } else {
+        (video as any).webkitExitFullscreen();
       }
     } else {
-      if (document.exitFullscreen) {
-        document.exitFullscreen();
+      // Desktop browsers
+      if (!isFullscreen) {
+        if (container.requestFullscreen) {
+          container.requestFullscreen();
+        } else if ((container as any).webkitRequestFullscreen) {
+          (container as any).webkitRequestFullscreen();
+        }
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        } else if ((document as any).webkitExitFullscreen) {
+          (document as any).webkitExitFullscreen();
+        }
       }
     }
     setIsFullscreen(!isFullscreen);
@@ -469,6 +538,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       // The useEffect will handle the smooth transition
       setCurrentSrc(newSrc);
     }
+
+    setShowQualityMenu(false);
   };
 
   const formatTime = (time: number) => {
@@ -537,13 +608,23 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   return (
     <div
       ref={containerRef}
-      className={cn("relative w-full h-full rounded-2xl overflow-hidden bg-gradient-to-br from-gray-900 to-black group border-2 border-gray-800 hover:border-[#F77124]/30 transition-all duration-300 cursor-pointer", className)}
-      onClick={togglePlay}
+      className={cn("relative w-full h-full rounded-2xl overflow-hidden bg-gradient-to-br from-gray-900 to-black group border-2 border-gray-800 hover:border-[#F77124]/30 transition-all duration-300", className)}
     >
       <video
         ref={videoRef}
         className="w-full h-full object-cover rounded-2xl"
         poster={posterUrl}
+        playsInline // Important for iOS
+        webkit-playsinline="true" // Legacy iOS support
+        preload="metadata"
+        onClick={(e) => {
+          e.stopPropagation();
+          togglePlay();
+        }}
+        onTouchEnd={(e) => {
+          e.stopPropagation();
+          togglePlay();
+        }}
       />
 
       {/* Loading/Buffering Overlay */}
@@ -589,13 +670,16 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       {/* Play/Pause Overlay */}
       <div
         className={`absolute inset-0 flex items-center justify-center transition-opacity duration-300 ${
-          showControls && !isLoading && !isBuffering && !error
+          showControls && !isLoading && !isBuffering && !error && !isMobile
             ? "opacity-100"
-            : "opacity-0"
+            : "opacity-0 pointer-events-none"
         }`}
       >
         <button
-          onClick={togglePlay}
+          onClick={(e) => {
+            e.stopPropagation();
+            togglePlay();
+          }}
           className="bg-black/50 hover:bg-[#F77124]/90 text-white p-4 rounded-full transition-all duration-300 hover:scale-110 hover:shadow-[0_0_20px_rgba(247,113,36,0.5)]"
           disabled={isLoading || !!error}
         >
@@ -606,17 +690,24 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       {/* Controls */}
       <div
         className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2 sm:p-4 transition-all duration-300 ${
-          showControls
+          showControls || isMobile
             ? "opacity-100 translate-y-0"
             : "opacity-0 translate-y-full"
         }`}
         onClick={(e) => e.stopPropagation()}
+        onTouchStart={(e) => e.stopPropagation()}
       >
         {/* Progress Bar */}
         <div
           ref={progressRef}
-          className="w-full h-1 sm:h-2 bg-white/20 rounded-full mb-2 sm:mb-4 cursor-pointer hover:bg-white/30 transition-all duration-200"
+          className={cn(
+            "w-full bg-white/20 rounded-full mb-2 sm:mb-4 cursor-pointer hover:bg-white/30 transition-all duration-200",
+            isMobile ? "h-3 sm:h-4" : "h-1 sm:h-2"
+          )}
           onClick={handleProgressClick}
+          onTouchStart={handleProgressTouchStart}
+          onTouchMove={handleProgressTouchMove}
+          onTouchEnd={handleProgressTouchEnd}
         >
           <div
             className="h-full bg-gradient-to-r from-[#F77124] to-[#e6651f] rounded-full transition-all duration-150 shadow-[0_0_8px_rgba(247,113,36,0.5)]"
@@ -628,36 +719,42 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center space-x-2 sm:space-x-4">
             <button
-              onClick={togglePlay}
-              className="text-white hover:text-[#F77124] transition-colors duration-200 p-1"
+              onClick={(e) => {
+                e.stopPropagation();
+                togglePlay();
+              }}
+              className="text-white hover:text-[#F77124] transition-colors duration-200 p-1 touch-manipulation"
             >
-              {isPlaying ? <Pause size={18} className="sm:w-5 sm:h-5" /> : <Play size={18} className="sm:w-5 sm:h-5" />}
+              {isPlaying ? <Pause size={20} className="sm:w-5 sm:h-5" /> : <Play size={20} className="sm:w-5 sm:h-5" />}
             </button>
 
-            <div className="hidden sm:flex items-center space-x-2">
-              <button
-                onClick={toggleMute}
-                className="text-white hover:text-[#F77124] transition-colors duration-200"
-              >
-                {isMuted ? <VolumeX size={18} className="sm:w-5 sm:h-5" /> : <Volume2 size={18} className="sm:w-5 sm:h-5" />}
-              </button>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.1"
-                value={isMuted ? 0 : volume}
-                onChange={handleVolumeChange}
-                className="w-12 sm:w-20 h-1 bg-white/20 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#F77124] [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-[0_0_8px_rgba(247,113,36,0.5)]"
-                style={{
-                  background: `linear-gradient(to right, #F77124 0%, #F77124 ${
-                    (isMuted ? 0 : volume) * 100
-                  }%, rgba(255,255,255,0.2) ${
-                    (isMuted ? 0 : volume) * 100
-                  }%, rgba(255,255,255,0.2) 100%)`,
-                }}
-              />
-            </div>
+            {/* Volume controls - hidden on mobile */}
+            {!isMobile && (
+              <div className="hidden sm:flex items-center space-x-2">
+                <button
+                  onClick={toggleMute}
+                  className="text-white hover:text-[#F77124] transition-colors duration-200"
+                >
+                  {isMuted ? <VolumeX size={18} className="sm:w-5 sm:h-5" /> : <Volume2 size={18} className="sm:w-5 sm:h-5" />}
+                </button>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.1"
+                  value={isMuted ? 0 : volume}
+                  onChange={handleVolumeChange}
+                  className="w-12 sm:w-20 h-1 bg-white/20 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#F77124] [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-[0_0_8px_rgba(247,113,36,0.5)]"
+                  style={{
+                    background: `linear-gradient(to right, #F77124 0%, #F77124 ${
+                      (isMuted ? 0 : volume) * 100
+                    }%, rgba(255,255,255,0.2) ${
+                      (isMuted ? 0 : volume) * 100
+                    }%, rgba(255,255,255,0.2) 100%)`,
+                  }}
+                />
+              </div>
+            )}
 
             <span className="text-white text-xs sm:text-sm whitespace-nowrap">
               {formatTime(currentTime)} / {formatTime(duration)}
@@ -665,21 +762,16 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           </div>
 
           <div className="flex items-center space-x-2 sm:space-x-4">
-            {/* Mobile Volume Control */}
-            <button
-              onClick={toggleMute}
-              className="sm:hidden text-white hover:text-[#F77124] transition-colors duration-200 p-1"
-            >
-              {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
-            </button>
-
             {/* Quality Selector */}
             <div className="relative">
               <button
-                onClick={() => setShowQualityMenu(!showQualityMenu)}
-                className="text-white hover:text-[#F77124] transition-colors duration-200 flex items-center space-x-1 p-1"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowQualityMenu(!showQualityMenu);
+                }}
+                className="text-white hover:text-[#F77124] transition-colors duration-200 flex items-center space-x-1 p-1 touch-manipulation"
               >
-                <Settings size={18} className="sm:w-5 sm:h-5" />
+                <Settings size={20} className="sm:w-5 sm:h-5" />
                 <span className="text-xs sm:text-sm hidden sm:inline">{currentQuality}</span>
               </button>
 
@@ -688,15 +780,16 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                   {qualityOptions.map((quality) => (
                     <button
                       key={quality}
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         handleQualityChange(quality);
-                        setShowQualityMenu(false);
                       }}
-                      className={`block w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-[#F77124]/20 transition-all duration-200 ${
+                      className={cn(
+                        "block w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-[#F77124]/20 transition-all duration-200 touch-manipulation",
                         currentQuality === quality
                           ? "text-[#F77124] bg-[#F77124]/10"
                           : "text-white"
-                      }`}
+                      )}
                     >
                       {quality}
                     </button>
@@ -706,10 +799,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             </div>
 
             <button
-              onClick={toggleFullscreen}
-              className="text-white hover:text-[#F77124] transition-colors duration-200 p-1"
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleFullscreen();
+              }}
+              className="text-white hover:text-[#F77124] transition-colors duration-200 p-1 touch-manipulation"
             >
-              <Maximize size={18} className="sm:w-5 sm:h-5" />
+              <Maximize size={20} className="sm:w-5 sm:h-5" />
             </button>
           </div>
         </div>
