@@ -14,8 +14,8 @@ const FAQSection = ({ course }: { course: Course }) => {
   return (
     <SectionContainer>
       <div className="section-header flex flex-col gap-2 text-center">
-        <CourseTitle title="FAQ" className="text-[#2B1508] text-[40px]" />
-        <p className="text-base text-center text-[#2B1508] font-normal">
+        <CourseTitle title="FAQ" className="text-text-primary text-[40px]" />
+        <p className="text-base text-center text-text-primary font-normal">
           Find answers to common questions about the course.
         </p>
       </div>
@@ -26,8 +26,8 @@ const FAQSection = ({ course }: { course: Course }) => {
               onClick={() => toggleFAQ(index)}
               className="w-full text-left p-3 sm:p-4 flex justify-between items-start sm:items-center hover:bg-gray-50 transition-colors cursor-pointer"
             >
-              <p className="text-base sm:text-lg font-bold text-[#2B1508] pr-2 leading-tight">{faq.question}</p>
-              <span className="text-xl font-bold text-[#2B1508] transform transition-transform duration-300 flex-shrink-0 mt-1 sm:mt-0">
+              <p className="text-base sm:text-lg font-bold text-text-primary pr-2 leading-tight">{faq.question}</p>
+              <span className="text-xl font-bold text-text-primary transform transition-transform duration-300 flex-shrink-0 mt-1 sm:mt-0">
                 {openIndex === index ? (
                   <Minus className="size-4 md:size-5 rotate-0" />
                 ) : (
@@ -41,7 +41,7 @@ const FAQSection = ({ course }: { course: Course }) => {
               }`}
             >
               <div className="px-3 sm:px-4 pb-3 sm:pb-4">
-                <p className="text-sm sm:text-base text-[#2B1508] leading-relaxed">{faq.answer}</p>
+                <p className="text-sm sm:text-base text-text-primary leading-relaxed">{faq.answer}</p>
               </div>
             </div>
           </div>

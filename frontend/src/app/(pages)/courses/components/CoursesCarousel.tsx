@@ -125,7 +125,8 @@ const CoursesCarousel = ({ courses }: { courses: Course[] }) => {
 
   return (
     <div className="courses-carousel flex flex-col gap-4 items-center">
-      <Swiper
+      <div className="w-full h-[500px] md:h-[520px] lg:h-[540px]">
+        <Swiper
         onSwiper={(swiper) => {
           swiperRef.current = swiper;
           onSwiperInit(swiper);
@@ -153,7 +154,7 @@ const CoursesCarousel = ({ courses }: { courses: Course[] }) => {
           modifier: 2.5,
         }}
         initialSlide={courses.length > 3 ? 0 : 1}
-        className={cn("w-full h-full px-4 !py-4 sm:px-0 [&_.swiper-slide]:!h-auto [&_.swiper-slide]:!flex [&_.swiper-slide]:!items-stretch")}
+        className={cn("w-full px-4 !py-4 sm:px-0 [&_.swiper-slide]:!flex [&_.swiper-slide]:!items-stretch [&_.swiper-slide]:!h-full")}
         breakpoints={{
           0: {
             slidesPerView: 1.2,
@@ -195,6 +196,7 @@ const CoursesCarousel = ({ courses }: { courses: Course[] }) => {
           </SwiperSlide>
         ))}
       </Swiper>
+      </div>
       {courses.length > 3 && <div
         ref={scrollbarRef}
         className="scrollbar-container mt-4 h-6 p-1 bg-[#EDEDED] rounded-full overflow-hidden cursor-pointer"

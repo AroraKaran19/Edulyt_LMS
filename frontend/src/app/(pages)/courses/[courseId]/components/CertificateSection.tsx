@@ -41,7 +41,7 @@ const CertificateSection = ({ course }: { course: Course }) => {
   ];
 
   return (
-    <SectionContainer id="plans" className="bg-[#2B1508]">
+    <SectionContainer id="plans" className="bg-text-primary">
       <div className="plans-header w-full flex flex-col md:flex-row items-center gap-4">
         <div className="header-left w-full md:w-1/2 flex flex-col gap-2">
           <CourseTitle
@@ -81,7 +81,7 @@ const CertificateSection = ({ course }: { course: Course }) => {
                     {plan.icon}
                   </div>
                 </div>
-                <div className="plan-name text-[#2B1508] text-xl font-bold">
+                <div className="plan-name text-text-primary text-xl font-bold">
                   {plan.name}
                 </div>
                 {plan.discount && (
@@ -94,7 +94,7 @@ const CertificateSection = ({ course }: { course: Course }) => {
               </div>
 
               <div className="plan-price-container mt-3 md:mt-7 flex gap-1 bg-black/5 p-3">
-                <div className="plan-price text-2xl text-[#2B1508] font-extrabold flex items-center gap-2">
+                <div className="plan-price text-2xl text-text-primary font-extrabold flex items-center gap-2">
                   ₹{plan.discount ? `${plan.discountPrice}` : `${plan.price}`}
                   {plan.discount && (
                     <span className="text-sm text-gray-500 line-through font-normal">
@@ -102,14 +102,14 @@ const CertificateSection = ({ course }: { course: Course }) => {
                     </span>
                   )}
                 </div>
-                <span className="text-sm text-[#2B1508] mt-auto">/ month</span>
+                <span className="text-sm text-text-primary mt-auto">/ month</span>
               </div>
 
               <div className="plan-features w-full flex flex-col gap-2 p-3">
                 {plan.features.map((feature, index) => (
                   <div
                     key={index}
-                    className="plan-feature text-sm font-medium text-[#2B1508] flex items-center gap-2"
+                    className="plan-feature text-sm font-medium text-text-primary flex items-center gap-2"
                   >
                     <Check className="size-4" />
                     {feature}
@@ -120,7 +120,7 @@ const CertificateSection = ({ course }: { course: Course }) => {
               <div className="plan-button-container mt-auto w-full flex justify-center p-3">
                 <WhiteButton className="w-full">
                   <span
-                    className="w-full text-center text-[#2B1508] font-extrabold text-sm md:text-base"
+                    className="w-full text-center text-text-primary font-extrabold text-sm md:text-base"
                   >
                     Select
                   </span>

@@ -12,21 +12,20 @@ export default function LayoutWrapper({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const isAdmin = pathname.startsWith("/admin");
-  const isAuth = pathname.startsWith("/auth");
+  const CustomLayout = pathname.startsWith("/dashboard") || pathname.startsWith("/admin") || pathname.startsWith("/auth");
 
   return (
     <>
-      {!isAdmin && !isAuth && <Navbar />}
+      {!CustomLayout && <Navbar />}
       <main
         className={cn(
           "flex min-h-screen flex-col pt-[78px] relative overflow-hidden",
-          (isAdmin || isAuth) && "pt-0"
+          CustomLayout && "pt-0"
         )}
       >
         {children}
       </main>
-      {!isAdmin && !isAuth && <Footer />}
+      {!CustomLayout && <Footer />}
     </>
   );
 }

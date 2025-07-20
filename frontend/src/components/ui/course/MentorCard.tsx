@@ -1,6 +1,7 @@
 "use client";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React from "react";
 
@@ -16,19 +17,17 @@ const MentorCard = ({
   const router = useRouter();
 
   return (
-    <div
+    <Link
+      href={`/mentors/${name
+        .toLowerCase()
+        .replace(/\s+/g, "-")
+        .replace(/[^a-z0-9-]/g, "")}`}
       className={cn(
-        "mentor flex gap-1 items-center bg-[#EEEEEE] rounded-full p-1 text-xs font-bold text-[#2B1508] select-none cursor-pointer max-w-[150px]",
+        "mentor flex gap-1 items-center bg-[#EEEEEE] rounded-full p-1 text-xs font-bold text-text-primary select-none cursor-pointer max-w-[150px]",
         className
       )}
       onClick={(e) => {
         e.stopPropagation();
-        router.push(
-          `/mentors/${name
-            .toLowerCase()
-            .replace(/\s+/g, "-")
-            .replace(/[^a-z0-9-]/g, "")}`
-        );
       }}
     >
       <Image
@@ -38,14 +37,14 @@ const MentorCard = ({
         width={20}
         height={20}
         draggable={false}
-        loading="lazy"
+        loading="eager"
         unoptimized
         priority
       />
       <span className="flex-1 text-ellipsis overflow-hidden whitespace-nowrap min-w-0">
         {name}
       </span>
-    </div>
+    </Link>
   );
 };
 

@@ -124,9 +124,9 @@ const TestimonialCarousel = () => {
             <TestimonialCard
               testimonial={testimonial}
               className={cn({
-                "opacity-100 border-2 border-[#f77124] shadow-[0_0_2px_3px_rgba(233,117,0,0.5)]":
+                "opacity-100 border-2 border-[#f77124] shadow-[0_0_2px_3px_rgba(233,117,0,0.5)] z-20 relative":
                   isActive,
-                "opacity-90 shadow-[0_0_2px_3px_rgba(0,0,0,0.1)]": !isActive,
+                "opacity-90 shadow-[0_0_2px_3px_rgba(0,0,0,0.1)] z-0 relative": !isActive,
               })}
             />
           )}

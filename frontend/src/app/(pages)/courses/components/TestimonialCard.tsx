@@ -2,7 +2,6 @@ import React from "react";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import { Plus_Jakarta_Sans } from "next/font/google";
-import { Linkedin } from "lucide-react";
 import Link from "next/link";
 import { Testimonial } from "./TestimonialCarousel";
 
@@ -33,7 +32,7 @@ const TestimonialCard = ({
           height={100}
           className="object-cover"
           draggable={false}
-          loading="lazy"
+          loading="eager"
           unoptimized
           priority
         />
@@ -45,7 +44,7 @@ const TestimonialCard = ({
           </div>
           {testimonial.linkedin && (
             <Link href={testimonial.linkedin} target="_blank">
-              <Linkedin className="size-5 text-[#F77124] hover:text-[#F77124]/80 transition-all duration-300" />
+              <Image src="/linkedin-icon.svg" alt="Linkedin Icon" width={20} height={20} className="size-5" />
             </Link>
           )}
         </div>

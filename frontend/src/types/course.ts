@@ -1,65 +1,203 @@
-// Course-related types for Edulyt platform
+// ===================
+// Utility Types
+// ===================
 
-import { Instructor } from './instructor';
+export type Discount = {
+    discount: "percentage" | "fixed";
+    value: number;
+    startDate?: Date;
+    endDate?: Date;
+    isActive?: boolean;
+};
+
+// ===================
+// Video & Note Types
+// ===================
+
+export interface VideoQuality {
+    _id: string;
+    quality: "1080p" | "720p" | "480p" | "360p";
+    videoUrl: string;
+}
+
+export interface UserVideoNote {
+    _id: string;
+    note: string;
+    timestamp: number; // in seconds
+    createdAt?: Date;
+    updatedAt?: Date;
+}
+
+export interface Video {
+    _id: string;
+    sources: VideoQuality[];
+    thumbnailUrl?: string;
+    duration?: number; // in seconds
+    order: number;
+    notes?: UserVideoNote[];
+}
+
+// ===================
+// Quiz Types
+// ===================
+
+export interface QuizOption {
+    _id: string;
+    option: string;
+}
+
+export interface QuizQuestion {
+    _id: string;
+    question: string;
+    options: QuizOption[];
+    correctAnswer: QuizOption[];
+    timeLimit?: number;
+}
+
+export interface Quiz {
+    _id: string;
+    title: string;
+    description?: string;
+    questions: QuizQuestion[];
+    passingScore?: number;
+    maxAttempts?: number;
+    order: number;
+    createdAt?: Date;
+    updatedAt?: Date;
+}
+
+// ===================
+// Content Types
+// ===================
+
+export interface ReadingMaterial {
+    _id: string;
+    content: "pdf" | "docx";
+    estimatedReadTime: number;
+    downloadUrl?: string;
+}
+
+export interface LessonContent {
+    _id: string;
+    title: string;
+    description?: string;
+    content: Video[] | Quiz[];
+    type: "video" | "quiz";
+    readingMaterials?: ReadingMaterial[];
+    order: number;
+    isCompleted?: boolean;
+    completedAt?: Date;
+    isLocked?: boolean;
+    createdAt?: Date;
+    updatedAt?: Date;
+}
 
 export interface CourseLesson {
-    id: string;
+    _id: string;
     title: string;
-    duration?: number; // e.g., "abc", "15min"
-    videoUrl?: string;
-    thumbnailUrl: string,
     description?: string;
-    materials?: string[];
-    completed?: boolean; // whether on going or completed by the instructor
-    isForCollegeStudent?: boolean; // whether this lesson is accessible to college students
+    content: LessonContent[];
+    order: number;
+    isCompleted?: boolean;
+    completedAt?: Date;
+    isLocked?: boolean;
+    createdAt?: Date;
+    updatedAt?: Date;
 }
 
 export interface CourseModule {
-    id: string;
+    _id: string;
     title: string;
-    thumbnailUrl: string;
+    thumbnailUrl?: string;
     lessons: CourseLesson[];
     description?: string;
+    order: number;
+    isCompleted?: boolean;
+    isLocked?: boolean;
+    createdAt?: Date;
+    updatedAt?: Date;
 }
 
-export interface PlanDetails {
-    elite: {
-        price: number;
-        features: string[];
-    };
-    essential: {
-        price: number;
-        features: string[];
-    };
+// ===================
+// Plan & Pricing Types
+// ===================
+
+export interface PlanFeatures {
+    title: string;
+    provided: boolean;
+    description?: string;
+    order: number;
 }
 
-export interface CoursePlan {
-    professionals: PlanDetails;
-    collegeStudents: PlanDetails;
+export interface Plan {
+    _id?: string;
+    title: string;
+    type: "elite" | "essential";
+    price: number;
+    features: PlanFeatures[];
+    discount?: Discount;
+    isPopular?: boolean;
+    billingPeriod?: "monthly" | "annually" | "lifetime";
+    trialDays?: number;
+    isActive?: boolean;
+    createdAt?: Date;
+    updatedAt?: Date;
 }
 
+// ===================
+// Instructor Type
+// ===================
 
-export interface FeaturedReview {
-    id: string;
-    studentName: string;
+export interface Instructor {
+    _id: string;
+    name: string;
+    profileImage?: string;
+    experience: string;
     rating: number;
-    comment: string;
-    date: Date;
-    verified?: boolean;
+    totalStudents: number;
+    totalCourses: number;
+    bio: string;
+    currentPosition?: string;
+    previousExperience?: string[];
+    education?: string[];
+    linkedinUrl: string;
 }
+
+// ===================
+// FAQ & Review Types
+// ===================
 
 export interface FAQ {
-    id: string;
+    _id: string;
     question: string;
     answer: string;
     order: number;
 }
 
+export interface Review {
+    _id: string;
+    name: string;
+    rating: number;
+    comment: string;
+    date: Date;
+    isActive?: boolean;
+    createdAt?: Date;
+    updatedAt?: Date;
+}
+
+export interface FeaturedReview extends Review {
+    verified?: boolean;
+}
+
+// ===================
+// Final Course Type
+// ===================
+
 export interface Course {
     // Basic Information
-    id: string;
+    _id: string;
     title: string;
-    subtitle?: string; // e.g., "Unlock the Power of Data with Python"
+    subtitle?: string;
     description: string;
     shortDescription?: string;
     category: string;
@@ -69,52 +207,53 @@ export interface Course {
     previewVideoUrl: string;
 
     isFeatured?: boolean;
-    isCertified: boolean;
+    isCertified?: boolean;
 
     // Metrics
-    totalRatings: number;
     enrolledCount: number;
+    totalRatings: number;
+    totalLectures: number;
+    duration?: string;
 
-    // Course Details
-    language: string;
-    skills: {
-        icon?: React.ReactNode;
-        text: string;
-    }[]; // e.g., "Data Science", "Machine Learning", "Python"
+    // UI & Learning Info
+    whatYouWillLearn: string;
+    skills: string[];
+    keyFeatures: {
+        title: string;
+        description: string;
+    }[];
+    features?: string[];
     careerPaths: string[];
-    skillLevel: string; // e.g., "College Students", "Beginner", "Intermediate"
-    lastUpdated: Date;
+    skillLevel: string;
+    whoShouldJoin: string;
+    prerequisites?: string[];
 
     // Content
     modules: CourseModule[];
-    whatYouWillLearn: string[];
-    whoShouldJoin: string;
-    prerequisites?: string[];
 
     // Instructor
     instructor: Instructor[];
 
     // Pricing Plans
-    plan: CoursePlan;
-    discount?: number;
-    discountEndDate?: Date;
+    plans: {
+        elite?: Plan[];
+        essential?: Plan[];
+    };
 
     // Reviews
-    featuredReviews: FeaturedReview[];
-
-    // USP & Features
-    features: string[];
+    reviews: Review[];
+    featuredReviews?: FeaturedReview[];
 
     // FAQs
     faqs: FAQ[];
 
     // Administrative
-    audience: "collegeStudents" | "professionals";
     isActive: boolean;
     createdAt: Date;
     updatedAt: Date;
     createdBy: string;
     tags?: string[];
+    audience: "college-students" | "professionals";
 
     // SEO
     slug: string;
@@ -125,5 +264,8 @@ export interface Course {
     // Scholarship
     scholarship?: boolean;
     scholarshipDescription?: string;
-    scholarshipLink?: string;
+    scholarshipQuiz?: Quiz[];
+
+    // Discount
+    discount?: Discount;
 }

@@ -4,6 +4,7 @@ export interface NavItem {
 	featureBox?: string;
   onMouseEnter?: (navItem: NavItem) => void;
   active?: boolean;
+  isDashboard?: boolean;
 }
 
 export interface Filter {

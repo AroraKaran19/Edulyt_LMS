@@ -36,7 +36,7 @@ const CourseHeader = ({ course }: { course: Course }) => {
               text2ClassName="text-sm"
             />
           )}
-          <div className="course-info flex flex-col gap-2 font-coolvetica text-[#2B1508] mt-5">
+          <div className="course-info flex flex-col gap-2 font-coolvetica text-text-primary mt-5">
             <h1
               className={cn("font-bold text-balance", "text-2xl md:text-3xl text-center md:text-left")}
             >
@@ -71,13 +71,13 @@ const CourseHeader = ({ course }: { course: Course }) => {
       <hr className="w-full border-t-3 border-gray-200" />
       <div className="course-information w-full flex flex-row flex-wrap sm:flex-nowrap justify-center lg:justify-start gap-4 md:gap-20">
         <div className="rating-container w-max flex flex-col items-center md:items-start">
-          <p className="text-base font-normal text-[#2B1508]">Rating</p>
+          <p className="text-base font-normal text-text-primary">Rating</p>
           <div className="course-rating w-full flex flex-wrap gap-1 md:gap-2 items-center justify-center md:justify-start">
             <Star className="size-4 md:size-5 text-[#F7AD24]" fill="#F7AD24" />
-            <span className="text-base md:text-2xl font-normal text-[#2B1508] font-coolvetica tracking-wide">
+            <span className="text-base md:text-2xl font-normal text-text-primary font-coolvetica tracking-wide">
               {course?.featuredReviews?.reduce((acc, review) => acc + review.rating, 0) / course?.featuredReviews?.length || 0}
             </span>
-            <span className="text-sm md:text-base font-normal text-[#2B1508]">
+            <span className="text-sm md:text-base font-normal text-text-primary">
               ({course?.featuredReviews?.length && course?.featuredReviews?.length > 100
                 ? `(more than ${formattedReviewsCount} reviews)`
                 : formattedReviewsCount === "1"
@@ -87,14 +87,14 @@ const CourseHeader = ({ course }: { course: Course }) => {
           </div>
         </div>
         <div className="course-proficency w-max flex flex-col items-center md:items-start">
-          <p className="text-sm md:text-base font-normal text-[#2B1508]">Proficency</p>
-          <p className="text-base md:text-2xl font-normal text-[#2B1508] font-coolvetica tracking-wide">
+          <p className="text-sm md:text-base font-normal text-text-primary">Proficency</p>
+          <p className="text-base md:text-2xl font-normal text-text-primary font-coolvetica tracking-wide">
             {course?.skillLevel}
           </p>
         </div>
         <div className="course-total-time w-max flex flex-col items-center md:items-start">
-          <p className="text-sm md:text-base font-normal text-[#2B1508]">Total Time</p>
-          <p className="text-base md:text-2xl font-normal text-[#2B1508] font-coolvetica tracking-wide">
+          <p className="text-sm md:text-base font-normal text-text-primary">Total Time</p>
+          <p className="text-base md:text-2xl font-normal text-text-primary font-coolvetica tracking-wide">
             {formatDuration(course?.modules.reduce((acc, module) => acc + module.lessons.reduce((lessonAcc, lesson) => lessonAcc + (lesson.duration || 0), 0), 0))}
           </p>
         </div>

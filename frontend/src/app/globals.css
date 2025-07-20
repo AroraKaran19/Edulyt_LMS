@@ -39,6 +39,7 @@ html {
 }
 
 @theme {
+	--color-text-primary: #2B1508;
 	--font-coolvetica: "Coolvetica Regular", sans-serif;
 
 	/* Animations */

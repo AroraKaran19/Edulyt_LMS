@@ -119,8 +119,8 @@ const CoursesSection = () => {
     if (isLoading) {
       return (
         <div className="col-span-full flex flex-col items-center justify-center py-16">
-          <Loader2 className="w-10 h-10 text-[#2B1508] animate-spin" />
-          <p className="text-sm text-[#2B1508]/50 text-center mt-4 animate-fade-in">
+          <Loader2 className="w-10 h-10 text-text-primary animate-spin" />
+          <p className="text-sm text-text-primary/50 text-center mt-4 animate-fade-in">
             {search !== debouncedSearch
               ? "Searching..."
               : "Fetching the best courses for you..."}
@@ -148,10 +148,10 @@ const CoursesSection = () => {
     if (!courses || courses.length === 0) {
       return (
         <div className="col-span-full flex flex-col items-center justify-center py-12">
-          <p className="text-2xl font-bold text-[#2B1508] font-coolvetica mb-2">
+          <p className="text-2xl font-bold text-text-primary font-coolvetica mb-2">
             No courses found
           </p>
-          <p className="text-lg text-[#2B1508]/70 text-center break-words overflow-wrap-anywhere max-w-full">
+          <p className="text-lg text-text-primary/70 text-center break-words overflow-wrap-anywhere max-w-full">
             {debouncedSearch ? (
               <>
                 No results found for &quot;
@@ -166,7 +166,7 @@ const CoursesSection = () => {
               "No courses match the selected filters"
             )}
           </p>
-          <p className="text-sm text-[#2B1508]/50 text-center mt-2">
+          <p className="text-sm text-text-primary/50 text-center mt-2">
             Try adjusting your search terms or filters
           </p>
         </div>
@@ -187,7 +187,7 @@ const CoursesSection = () => {
     <section className="courses-section w-full bg-white rounded-2xl py-10 px-4 flex flex-col items-center sm:px-[15%] md:px-[10%] xl:px-[15%]">
       <p
         className={cn(
-          "courses-section-header w-full text-[44px] font-normal text-[#2B1508] font-coolvetica",
+          "courses-section-header w-full text-[44px] font-normal text-text-primary font-coolvetica",
           isMobile ? "text-center" : "text-left"
         )}
       >
@@ -199,7 +199,7 @@ const CoursesSection = () => {
           className="courses-filter md:max-w-[190px] shrink-0 flex gap-2 items-center justify-center border border-black/10 rounded-xl p-2 shadow-[inset_0_-1px_2px_rgba(0,0,0,0.2)] px-8 relative cursor-pointer"
           onClick={() => setFilterShown(!filterShown)}
         >
-          <span className="text-[16px] font-bold text-[#2B1508] select-none">
+          <span className="text-[16px] font-bold text-text-primary select-none">
             Filter{" "}
             {selectedFilter?.some((f) => f.value === "all")
               ? ""
@@ -209,7 +209,7 @@ const CoursesSection = () => {
           </span>
           <ChevronDown
             className={cn(
-              "size-4 text-[#2B1508] transition-transform duration-300 ease-in-out",
+              "size-4 text-text-primary transition-transform duration-300 ease-in-out",
               filterShown ? "rotate-180" : ""
             )}
           />

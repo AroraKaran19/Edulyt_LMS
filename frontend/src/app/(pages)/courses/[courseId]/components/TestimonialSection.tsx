@@ -61,8 +61,9 @@ const TestimonialSection = () => {
           </div>
         ))}
       </div>
-      <div className="testimonial-cards w-full flex flex-col items-center justify-center">
+      <div className="testimonial-cards w-full flex flex-col items-center justify-center relative">
         <TestimonialCarousel />
+        <div className="absolute w-full h-full bg-gradient-to-r from-white/50 via-transparent to-white/50 z-10 pointer-events-none" />
       </div>
     </SectionContainer>
   );

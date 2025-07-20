@@ -17,10 +17,10 @@ const RegisterPage = () => {
   return (
     <div className="login-page h-full lg:h-auto w-full lg:max-w-3xl flex flex-col gap-4 px-8 my-auto justify-center items-center lg:items-start lg:justify-start">
       <div className="header flex flex-col gap-2 mb-2">
-        <h1 className="text-3xl lg:text-4xl font-regular font-coolvetica text-center lg:text-start text-[#2B1508]">
+        <h1 className="text-3xl lg:text-4xl font-regular font-coolvetica text-center lg:text-start text-text-primary">
           Sign up for Free at Edulyt!
         </h1>
-        <p className="text-base font-regular text-center lg:text-start text-[#2B1508]">
+        <p className="text-base font-regular text-center lg:text-start text-text-primary">
           Welcome! Enter your details to continue using Edulyt
         </p>
       </div>

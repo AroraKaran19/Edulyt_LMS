@@ -3,32 +3,101 @@ import {
   Course,
   CourseLesson,
   CourseModule,
-  CoursePlan,
-  FeaturedReview,
+  LessonContent,
+  Video,
+  VideoQuality,
+  Quiz,
+  QuizQuestion,
+  QuizOption,
+  ReadingMaterial,
+  Plan,
+  PlanFeatures,
+  Instructor,
   FAQ,
-  PlanDetails
-} from '../types';
+  Review,
+  FeaturedReview,
+  Discount
+} from '../types/course';
 
-// Course Lesson Schema
-const courseLessonSchema = new Schema<CourseLesson>({
-  id: {
+// Video Quality Schema
+const videoQualitySchema = new Schema<VideoQuality>({
+  _id: {
     type: String,
     required: true
   },
-  title: {
+  quality: {
+    type: String,
+    required: true,
+    enum: ['1080p', '720p', '480p', '360p']
+  },
+  videoUrl: {
+    type: String,
+    required: true,
+    trim: true
+  }
+}, { _id: false });
+
+// Video Schema
+const videoSchema = new Schema<Video>({
+  _id: {
+    type: String,
+    required: true
+  },
+  sources: [videoQualitySchema],
+  thumbnailUrl: {
+    type: String,
+    trim: true
+  },
+  duration: {
+    type: Number,
+    min: 0
+  },
+  order: {
+    type: Number,
+    required: true,
+    min: 0
+  }
+}, { _id: false });
+
+// Quiz Option Schema
+const quizOptionSchema = new Schema<QuizOption>({
+  _id: {
+    type: String,
+    required: true
+  },
+  option: {
+    type: String,
+    required: true,
+    trim: true
+  }
+}, { _id: false });
+
+// Quiz Question Schema
+const quizQuestionSchema = new Schema<QuizQuestion>({
+  _id: {
+    type: String,
+    required: true
+  },
+  question: {
     type: String,
     required: true,
     trim: true
   },
-  duration: {
+  options: [quizOptionSchema],
+  correctAnswer: [quizOptionSchema],
+  timeLimit: {
+    type: Number,
+    min: 0
+  }
+}, { _id: false });
+
+// Quiz Schema
+const quizSchema = new Schema<Quiz>({
+  _id: {
     type: String,
-    trim: true
+    required: true
   },
-  videoUrl: {
-    type: String,
-    trim: true
-  },
-  thumbnailUrl: {
+  title: {
     type: String,
     required: true,
     trim: true
@@ -37,23 +106,149 @@ const courseLessonSchema = new Schema<CourseLesson>({
     type: String,
     trim: true
   },
-  materials: [{
+  questions: [quizQuestionSchema],
+  passingScore: {
+    type: Number,
+    min: 0,
+    max: 100
+  },
+  maxAttempts: {
+    type: Number,
+    min: 1
+  },
+  order: {
+    type: Number,
+    required: true,
+    min: 0
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now
+  }
+}, { _id: false });
+
+// Reading Material Schema
+const readingMaterialSchema = new Schema<ReadingMaterial>({
+  _id: {
+    type: String,
+    required: true
+  },
+  content: {
+    type: String,
+    required: true,
+    enum: ['pdf', 'docx']
+  },
+  estimatedReadTime: {
+    type: Number,
+    required: true,
+    min: 0
+  },
+  downloadUrl: {
     type: String,
     trim: true
-  }],
-  completed: {
+  }
+}, { _id: false });
+
+// Lesson Content Schema
+const lessonContentSchema = new Schema<LessonContent>({
+  _id: {
+    type: String,
+    required: true
+  },
+  title: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  description: {
+    type: String,
+    trim: true
+  },
+  content: {
+    type: Schema.Types.Mixed, // Will store Video[] or Quiz[]
+    required: true
+  },
+  type: {
+    type: String,
+    required: true,
+    enum: ['video', 'quiz']
+  },
+  readingMaterials: [readingMaterialSchema],
+  order: {
+    type: Number,
+    required: true,
+    min: 0
+  },
+  isCompleted: {
     type: Boolean,
     default: false
   },
-  isForCollegeStudent: {
+  completedAt: {
+    type: Date
+  },
+  isLocked: {
     type: Boolean,
     default: false
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now
+  }
+}, { _id: false });
+
+// Course Lesson Schema
+const courseLessonSchema = new Schema<CourseLesson>({
+  _id: {
+    type: String,
+    required: true
+  },
+  title: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  description: {
+    type: String,
+    trim: true
+  },
+  content: [lessonContentSchema],
+  order: {
+    type: Number,
+    required: true,
+    min: 0
+  },
+  isCompleted: {
+    type: Boolean,
+    default: false
+  },
+  completedAt: {
+    type: Date
+  },
+  isLocked: {
+    type: Boolean,
+    default: false
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now
   }
 }, { _id: false });
 
 // Course Module Schema
 const courseModuleSchema = new Schema<CourseModule>({
-  id: {
+  _id: {
     type: String,
     required: true
   },
@@ -64,65 +259,241 @@ const courseModuleSchema = new Schema<CourseModule>({
   },
   thumbnailUrl: {
     type: String,
-    required: true,
-    trim: true
-  },
-  duration: {
-    type: String,
-    required: true,
     trim: true
   },
   lessons: [courseLessonSchema],
   description: {
     type: String,
     trim: true
+  },
+  order: {
+    type: Number,
+    required: true,
+    min: 0
+  },
+  isCompleted: {
+    type: Boolean,
+    default: false
+  },
+  isLocked: {
+    type: Boolean,
+    default: false
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now
   }
 }, { _id: false });
 
-// Plan Details Schema
-const singlePlanSchema = new Schema({
+// Plan Features Schema
+const planFeaturesSchema = new Schema<PlanFeatures>({
+  title: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  provided: {
+    type: Boolean,
+    required: true
+  },
+  description: {
+    type: String,
+    trim: true
+  },
+  order: {
+    type: Number,
+    required: true,
+    min: 0
+  }
+}, { _id: false });
+
+// Discount Schema
+const discountSchema = new Schema<Discount>({
+  discount: {
+    type: String,
+    required: true,
+    enum: ['percentage', 'fixed']
+  },
+  value: {
+    type: Number,
+    required: true,
+    min: 0
+  },
+  startDate: {
+    type: Date
+  },
+  endDate: {
+    type: Date
+  },
+  isActive: {
+    type: Boolean,
+    default: true
+  }
+}, { _id: false });
+
+// Plan Schema
+const planSchema = new Schema<Plan>({
+  _id: {
+    type: String
+  },
+  title: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  type: {
+    type: String,
+    required: true,
+    enum: ['elite', 'essential']
+  },
   price: {
     type: Number,
     required: true,
     min: 0
   },
-  features: [{
-    type: String,
-    required: true,
-    trim: true
-  }]
-}, { _id: false });
-
-const planDetailsSchema = new Schema<PlanDetails>({
-  elite: {
-    type: singlePlanSchema,
-    required: true
+  features: [planFeaturesSchema],
+  discount: discountSchema,
+  isPopular: {
+    type: Boolean,
+    default: false
   },
-  essential: {
-    type: singlePlanSchema,
-    required: true
+  billingPeriod: {
+    type: String,
+    enum: ['monthly', 'annually', 'lifetime'],
+    default: 'lifetime'
+  },
+  trialDays: {
+    type: Number,
+    min: 0
+  },
+  isActive: {
+    type: Boolean,
+    default: true
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now
   }
 }, { _id: false });
 
-// Course Plan Schema
-const coursePlanSchema = new Schema<CoursePlan>({
-  professionals: {
-    type: planDetailsSchema,
+// Instructor Schema (embedded)
+const instructorSchema = new Schema<Instructor>({
+  _id: {
+    type: String,
     required: true
   },
-  collegeStudents: {
-    type: planDetailsSchema,
+  name: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  profileImage: {
+    type: String,
+    trim: true
+  },
+  experience: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  rating: {
+    type: Number,
+    required: true,
+    min: 0,
+    max: 5
+  },
+  totalStudents: {
+    type: Number,
+    required: true,
+    min: 0,
+    default: 0
+  },
+  totalCourses: {
+    type: Number,
+    required: true,
+    min: 0,
+    default: 0
+  },
+  bio: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  currentPosition: {
+    type: String,
+    trim: true
+  },
+  previousExperience: [{
+    type: String,
+    trim: true
+  }],
+  education: [{
+    type: String,
+    trim: true
+  }],
+  linkedinUrl: {
+    type: String,
+    required: true,
+    trim: true
+  }
+}, { _id: false });
+
+// Review Schema
+const reviewSchema = new Schema<Review>({
+  _id: {
+    type: String,
     required: true
+  },
+  name: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  rating: {
+    type: Number,
+    required: true,
+    min: 1,
+    max: 5
+  },
+  comment: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  date: {
+    type: Date,
+    required: true,
+    default: Date.now
+  },
+  isActive: {
+    type: Boolean,
+    default: true
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now
   }
 }, { _id: false });
 
 // Featured Review Schema
 const featuredReviewSchema = new Schema<FeaturedReview>({
-  id: {
+  _id: {
     type: String,
     required: true
   },
-  studentName: {
+  name: {
     type: String,
     required: true,
     trim: true
@@ -146,12 +517,24 @@ const featuredReviewSchema = new Schema<FeaturedReview>({
   verified: {
     type: Boolean,
     default: false
+  },
+  isActive: {
+    type: Boolean,
+    default: true
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now
   }
 }, { _id: false });
 
 // FAQ Schema
 const faqSchema = new Schema<FAQ>({
-  id: {
+  _id: {
     type: String,
     required: true
   },
@@ -175,7 +558,7 @@ const faqSchema = new Schema<FAQ>({
 // Main Course Schema
 const courseSchema = new Schema<Course>({
   // Basic Information
-  id: {
+  _id: {
     type: String,
     required: true,
     unique: true
@@ -229,18 +612,17 @@ const courseSchema = new Schema<Course>({
   },
   isCertified: {
     type: Boolean,
-    required: true,
     default: false
   },
 
   // Metrics
-  totalRatings: {
+  enrolledCount: {
     type: Number,
     required: true,
     min: 0,
     default: 0
   },
-  enrolledCount: {
+  totalRatings: {
     type: Number,
     required: true,
     min: 0,
@@ -249,39 +631,51 @@ const courseSchema = new Schema<Course>({
   totalLectures: {
     type: Number,
     required: true,
-    min: 0
-  },
-
-  // Course Details
-  language: {
-    type: String,
-    required: true,
-    trim: true,
-    default: 'English'
-  },
-  skillLevel: {
-    type: String,
-    required: true,
-    trim: true,
-    enum: ['Beginner', 'Intermediate', 'Advanced', 'College Students']
+    min: 0,
+    default: 0
   },
   duration: {
     type: String,
     trim: true
   },
-  lastUpdated: {
-    type: Date,
-    required: true,
-    default: Date.now
-  },
 
-  // Content
-  modules: [courseModuleSchema],
-  whatYouWillLearn: [{
+  // UI & Learning Info
+  whatYouWillLearn: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  skills: [{
     type: String,
     required: true,
     trim: true
   }],
+  keyFeatures: [{
+    title: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    description: {
+      type: String,
+      required: true,
+      trim: true
+    }
+  }],
+  features: [{
+    type: String,
+    trim: true
+  }],
+  careerPaths: [{
+    type: String,
+    required: true,
+    trim: true
+  }],
+  skillLevel: {
+    type: String,
+    required: true,
+    trim: true
+  },
   whoShouldJoin: {
     type: String,
     required: true,
@@ -292,35 +686,21 @@ const courseSchema = new Schema<Course>({
     trim: true
   }],
 
-  // Instructor (reference to instructor IDs)
-  instructor: [{
-    type: String,
-    required: true,
-    ref: 'Instructor'
-  }],
+  // Content
+  modules: [courseModuleSchema],
+
+  // Instructor
+  instructor: [instructorSchema],
 
   // Pricing Plans
-  plan: coursePlanSchema,
-  discount: {
-    type: Number,
-    required: true,
-    min: 0,
-    max: 100,
-    default: 0
-  },
-  discountEndDate: {
-    type: Date
+  plans: {
+    elite: [planSchema],
+    essential: [planSchema]
   },
 
   // Reviews
+  reviews: [reviewSchema],
   featuredReviews: [featuredReviewSchema],
-
-  // USP & Features
-  features: [{
-    type: String,
-    required: true,
-    trim: true
-  }],
 
   // FAQs
   faqs: [faqSchema],
@@ -350,6 +730,11 @@ const courseSchema = new Schema<Course>({
     type: String,
     trim: true
   }],
+  audience: {
+    type: String,
+    required: true,
+    enum: ['college-students', 'professionals']
+  },
 
   // SEO
   slug: {
@@ -381,22 +766,21 @@ const courseSchema = new Schema<Course>({
     type: String,
     trim: true
   },
-  scholarshipLink: {
-    type: String,
-    trim: true
-  }
+  scholarshipQuiz: [quizSchema],
+
+  // Discount
+  discount: discountSchema
 }, {
   timestamps: true,
   collection: 'courses'
 });
 
 // Create indexes for better query performance
-// Note: id and slug indexes are automatically created because they have unique: true
 courseSchema.index({ category: 1 });
 courseSchema.index({ skillLevel: 1 });
-courseSchema.index({ isBestseller: 1 });
 courseSchema.index({ isFeatured: 1 });
 courseSchema.index({ isActive: 1 });
+courseSchema.index({ audience: 1 });
 
 courseSchema.index({ enrolledCount: -1 });
 courseSchema.index({ createdAt: -1 });
@@ -408,6 +792,12 @@ courseSchema.index({
   description: 'text',
   shortDescription: 'text'
 });
+
+// Compound indexes for common queries
+courseSchema.index({ category: 1, isActive: 1 });
+courseSchema.index({ isFeatured: 1, isActive: 1 });
+courseSchema.index({ skillLevel: 1, category: 1 });
+courseSchema.index({ audience: 1, isActive: 1 });
 
 // Pre-save middleware to update the updatedAt field
 courseSchema.pre('save', function (next) {

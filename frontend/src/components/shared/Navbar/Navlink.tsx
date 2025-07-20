@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { NavItem } from "@/types";
 
-const Navlink = ({ href, label, featureBox, onMouseEnter, active }: NavItem) => {
+const Navlink = ({ href, label, featureBox, onMouseEnter, active, isDashboard }: NavItem) => {
   const pathname = usePathname();
   const [windowWidth, setWindowWidth] = useState(0);
   
@@ -21,8 +21,9 @@ const Navlink = ({ href, label, featureBox, onMouseEnter, active }: NavItem) => 
   }, []);
   
   const isMobile = windowWidth > 0 && windowWidth <= 768;
-  const isActive =
-    pathname === href || (href !== "/" && pathname.startsWith(href));
+  const isActive = isDashboard
+    ? pathname === href
+    : pathname === href || (href !== "/" && pathname.startsWith(href));
 
   return (
     <Link
@@ -31,7 +32,7 @@ const Navlink = ({ href, label, featureBox, onMouseEnter, active }: NavItem) => 
         "text-sm font-semibold px-5 py-2.5 transition-colors duration-400 ease-in-out rounded-full select-none",
         {
           "text-[#F77124] bg-[#FFE9DB]": isActive,
-          "text-[#2B1508] hover:text-[#F77124] group": !isActive && !isMobile,
+          "text-text-primary hover:text-[#F77124] group": !isActive && !isMobile,
           "flex items-center gap-1": !!featureBox,
         },
         active && "text-[#F77124] bg-[#FFE9DB]"

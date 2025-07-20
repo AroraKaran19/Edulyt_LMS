@@ -76,8 +76,8 @@ const CourseCard = ({
           })}
           {course?.instructor.length > 2 && (
             <div className="mentor-count flex gap-0.25 items-center bg-[#EEEEEE] rounded-full p-1">
-              <Plus className="w-3 h-3 text-[#2B1508]" fill="#2B1508" />
-              <p className="text-xs font-bold text-[#2B1508]">
+              <Plus className="w-3 h-3 text-text-primary" fill="#2B1508" />
+              <p className="text-xs font-bold text-text-primary">
                 {course?.instructor.length - 2}
               </p>
             </div>

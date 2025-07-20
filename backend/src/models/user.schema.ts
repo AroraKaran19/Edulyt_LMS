@@ -74,6 +74,10 @@ const userEnrollmentSchema = new Schema<UserEnrollment>({
     type: String,
     trim: true
   },
+  currentLessonContent: {
+    type: String,
+    trim: true
+  },
   certificateId: {
     type: String,
     trim: true
@@ -266,11 +270,13 @@ userSchema.methods.enrollInCourse = function(this: any, courseId: string, plan: 
   return this.save();
 };
 
-userSchema.methods.updateProgress = function(this: any, courseId: string, progress: number) {
+userSchema.methods.updateProgress = function(this: any, courseId: string, progress: number, currentLesson?: string, currentLessonContent?: string) {
   const enrollment = this.enrollments.find((e: any) => e.courseId === courseId);
   if (enrollment) {
     enrollment.progress = progress;
     enrollment.lastAccessDate = new Date();
+    if (currentLesson) enrollment.currentLesson = currentLesson;
+    if (currentLessonContent) enrollment.currentLessonContent = currentLessonContent;
     if (progress >= 100) {
       enrollment.status = 'completed';
       enrollment.completedDate = new Date();

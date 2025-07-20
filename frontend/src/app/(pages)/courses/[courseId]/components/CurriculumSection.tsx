@@ -22,7 +22,7 @@ const CurriculumSection = ({ course }: { course: Course }) => {
 
   return (
     <SectionContainer id="curriculum">
-      <CourseTitle title="Curriculum" className="text-4xl text-[#2B1508]" />
+      <CourseTitle title="Curriculum" className="text-4xl text-text-primary" />
       <div className="course-information-container w-full flex gap-4 flex-col md:flex-row">
         {courseInformation.map((info) => (
           <div
