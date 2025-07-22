@@ -16,7 +16,7 @@ const TopCourseCard = ({
   enrolledCount,
   instructor,
   featuredReviews,
-  plan,
+  plans,
   discount,
   slug,
   ...props
@@ -44,7 +44,7 @@ const TopCourseCard = ({
         />
         {discount && (
           <DiscountBadge
-            discount={discount}
+            discount={Number(discount)}
             className="absolute top-2 right-2"
           />
         )}
@@ -88,13 +88,13 @@ const TopCourseCard = ({
           <p className="text-xl font-bold text-black">
             ₹
             {discount
-              ? Math.round((plan.collegeStudents.essential.price - 
-                (plan.collegeStudents.essential.price * (discount / 100))) * 100) / 100
-              : plan.collegeStudents.essential.price}
+              ? Math.round((plans.essential?.[0].price || 0 - 
+                (plans.essential?.[0].price || 0) * (Number(discount) / 100)) * 100) / 100
+              : plans.essential?.[0].price || 0}
           </p>
           {discount && (
             <span className="text-sm font-normal text-black line-through opacity-50">
-              ₹{plan.collegeStudents.essential.price}
+              ₹{plans.essential?.[0].price || 0}
             </span>
           )}
           <p className="text-sm font-normal text-black">onwards/-</p>

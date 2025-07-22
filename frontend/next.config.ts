@@ -9,6 +9,8 @@ const nextConfig: NextConfig = {
       "www.newdev.io",
       "www.edulyt.vercel.app",
       "edulyt.vercel.app",
+      "images.unsplash.com",
+      "videos.pexels.com",
     ],
   },
 };

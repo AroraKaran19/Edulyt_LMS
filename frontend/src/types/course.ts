@@ -268,4 +268,7 @@ export interface Course {
 
     // Discount
     discount?: Discount;
+
+    // Languages
+    language: "English";
 }

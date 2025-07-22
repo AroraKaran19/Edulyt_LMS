@@ -11,21 +11,26 @@ const OverviewSection = ({ course }: { course: Course }) => {
         (acc, module) =>
           acc +
           module.lessons.reduce(
-            (lessonAcc, lesson) => lessonAcc + (lesson.duration || 0),
+            (lessonAcc, lesson) => lessonAcc + (lesson.content.reduce((contentAcc, content) => {
+              if (content.type === 'video' && Array.isArray(content.content)) {
+                return contentAcc + content.content.reduce((videoAcc, video) => videoAcc + ('duration' in video ? video.duration || 0 : 0), 0);
+              }
+              return contentAcc;
+            }, 0) || 0),
             0
           ),
         0
-      )
+      ) 
     );
   }, [course]);
 
   const formattedReviewsCount = useMemo(
     () =>
-      course?.featuredReviews?.length >= 1000000
+      course?.featuredReviews?.length && course?.featuredReviews?.length >= 1000000
         ? `${(course?.featuredReviews?.length / 1000000)
             .toFixed(1)
             .replace(/\.0$/, "")}M`
-        : course?.featuredReviews?.length >= 1000
+        : course?.featuredReviews?.length && course?.featuredReviews?.length >= 1000
         ? `${(course?.featuredReviews?.length / 1000)
             .toFixed(1)
             .replace(/\.0$/, "")}K`
@@ -50,10 +55,12 @@ const OverviewSection = ({ course }: { course: Course }) => {
           <div className="course-rating w-full flex flex-wrap gap-1 md:gap-2 items-center justify-center md:justify-start">
             <Star className="size-4 md:size-5 text-[#F7AD24]" fill="#F7AD24" />
             <span className="text-base md:text-2xl font-normal text-text-primary font-coolvetica tracking-wide">
-              {course?.featuredReviews?.reduce(
+              {(course?.featuredReviews?.length &&
+              course?.featuredReviews?.reduce(
                 (acc, review) => acc + review.rating,
                 0
-              ) / course?.featuredReviews?.length || 0}
+              ) / course?.featuredReviews?.length) ||
+                0}
             </span>
             <span className="text-sm md:text-base font-normal text-text-primary">
               (
@@ -106,9 +113,9 @@ const OverviewSection = ({ course }: { course: Course }) => {
                   key={index}
                   className="skills-card w-max bg-black/8 rounded-lg py-2 px-4 flex items-center gap-2"
                 >
-                  {skill?.icon && skill?.icon}
+                  {/* {skill?.icon && skill?.icon} */}
                   <div className="skills-card-text text-base font-normal">
-                    {skill?.text}
+                    {skill}
                   </div>
                 </div>
               ))}

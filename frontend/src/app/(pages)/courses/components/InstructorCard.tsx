@@ -8,7 +8,7 @@ import Link from "next/link";
 const InstructorCard = ({ instructor }: { instructor: Instructor }) => {
   return (
     <Link
-      href={`/instructor/${instructor.id}`}
+      href={`/instructor/${instructor._id}`}
       className="instructor-card h-full bg-white rounded-2xl flex flex-col p-3 border-2 border-gray-200 gap-2 hover:border-[#f77124] hover:shadow-[0_0_2px_3px_rgba(233,117,0,0.5)] hover:bg-gradient-to-br from-[#fff] to-[#f77124]/5 transition-all duration-300 ease-in-out"
       target="_blank"
       rel="noopener"

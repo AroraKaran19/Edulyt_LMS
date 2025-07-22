@@ -41,7 +41,7 @@ const CourseCard = ({
         />
         {course?.discount && (
           <DiscountBadge
-            discount={course.discount}
+            discount={Number(course.discount)}
             className="absolute top-2 right-2"
           />
         )}
@@ -89,16 +89,16 @@ const CourseCard = ({
               ₹
               {course?.discount
                 ? Math.round(
-                    (course.plan.collegeStudents.essential.price -
-                      course.plan.collegeStudents.essential.price *
-                        (course.discount / 100)) *
+                    (course.plans.essential?.[0].price || 0 -
+                      (course.plans.essential?.[0].price || 0) *
+                        (Number(course.discount) / 100)) *
                       100
                   ) / 100
-                : course.plan.collegeStudents.essential.price}
+                : course.plans.essential?.[0].price || 0}
             </p>
             {course?.discount && (
               <span className="text-sm font-normal text-black line-through opacity-50">
-                ₹{course.plan.collegeStudents.essential.price}
+                ₹{course.plans.essential?.[0].price || 0}
               </span>
             )}
             <p className="text-sm font-normal text-black">onwards/-</p>

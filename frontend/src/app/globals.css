@@ -43,6 +43,17 @@ html {
 	--font-coolvetica: "Coolvetica Regular", sans-serif;
 
 	/* Animations */
+	@keyframes fadeFromLeft {
+		from {
+			opacity: 0;
+			transform: translateX(-10px);
+		}
+		to {
+			opacity: 1;
+			transform: translateX(0);
+		}
+	}
+
 	@keyframes fadeFromTop {
 		from {
 			opacity: 0;
@@ -100,4 +111,5 @@ html {
 	--animate-course-card-fade-in: courseCardFadeIn 0.8s ease-out forwards;
 	--animate-marquee-vertical: marqueeVertical 20s linear infinite;
 	--animate-marquee-vertical-paused: marqueeVertical 20s linear infinite paused;
+	--animate-fade-from-left: fadeFromLeft 0.3s ease-in-out forwards;
 }

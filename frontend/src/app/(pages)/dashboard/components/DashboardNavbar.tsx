@@ -11,14 +11,56 @@ import FlexBox from "@/components/ui/FlexBox";
 import DashboardBanner from "./DashboardBanner";
 import Link from "next/link";
 
+interface Notification {
+  id: string;
+  title: string;
+  message: string;
+  time: string;
+  isRead: boolean;
+}
+
 const DashboardNavbar = () => {
-  const [user, setUser] = useState({
+  const user = {
     name: "John Doe",
     email: "john.doe@example.com",
     image: "",
     title: "Admin",
-  });
+  };
   const [search, setSearch] = useState("");
+  
+  // Dynamic notifications data - can be fetched from API
+  const notificationsList: Notification[] = [
+    {
+      id: "1",
+      title: "Course Enrollment",
+      message: "New student enrolled in React Fundamentals",
+      time: "2 minutes ago",
+      isRead: false
+    },
+    {
+      id: "2", 
+      title: "Assignment Submitted",
+      message: "John submitted JavaScript Advanced assignment",
+      time: "1 hour ago",
+      isRead: false
+    },
+    {
+      id: "3",
+      title: "Payment Received",
+      message: "Payment of $299 received for Premium Course",
+      time: "3 hours ago",
+      isRead: true
+    },
+    {
+      id: "4",
+      title: "Review Posted",
+      message: "Sarah left a 5-star review on your course",
+      time: "1 day ago",
+      isRead: true
+    }
+  ];
+  
+  const notifications = notificationsList.length; // Count for badge
   const navLinks: NavItem[] = [
     {
       label: "Home",
@@ -38,7 +80,6 @@ const DashboardNavbar = () => {
       href: "/dashboard/certificates",
     },
   ];
-  const [notifications, setNotifications] = useState(5);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [isUserOpen, setIsUserOpen] = useState(false);
 
@@ -119,10 +160,18 @@ const DashboardNavbar = () => {
                 onMarkerClick={() => {}}
                 onViewAll={() => {}}
                 onElementClick={() => {}}
-                elements={[
-                  <div>Notification 1</div>,
-                  <div>Notification 2</div>,
-                ]}
+                elements={notificationsList.map(notification => (
+                  <div key={notification.id} className="p-3 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors">
+                    <div className="flex items-start gap-3">
+                      <div className={`w-2 h-2 rounded-full mt-2 ${notification.isRead ? 'bg-gray-300' : 'bg-orange-500'}`} />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-gray-900">{notification.title}</p>
+                        <p className="text-xs text-gray-600 mt-1">{notification.message}</p>
+                        <p className="text-xs text-gray-400 mt-1">{notification.time}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
                 className="notification-floating-container"
               />
             )}
@@ -168,7 +217,7 @@ const DashboardNavbar = () => {
                 onViewAll={() => {}}
                 onElementClick={() => {}}
                 elements={[
-                  <div className="flex items-center gap-1 p-0.5 hover:bg-gray-50 rounded-md transition-colors">
+                  <div key={String(Math.random())} className="flex items-center gap-1 p-0.5 hover:bg-gray-50 rounded-md transition-colors">
                     <div className="p-0.5 bg-[#FFF1E9] rounded-full">
                       <User2 className="size-4 text-[#F77124]" />
                     </div>
@@ -176,7 +225,7 @@ const DashboardNavbar = () => {
                       Profile
                     </span>
                   </div>,
-                  <div className="flex items-center gap-1 p-0.5 hover:bg-gray-50 rounded-md transition-colors">
+                  <div key={String(Math.random())} className="flex items-center gap-1 p-0.5 hover:bg-gray-50 rounded-md transition-colors">
                     <div className="p-0.5 bg-[#FFF1E9] rounded-full">
                       <Settings className="size-4 text-[#F77124]" />
                     </div>
@@ -184,13 +233,13 @@ const DashboardNavbar = () => {
                       Settings
                     </span>
                   </div>,
-                  <div className="flex items-center gap-1 p-0.5 hover:bg-gray-50 rounded-md transition-colors">
+                  <div key={String(Math.random())} className="flex items-center gap-1 p-0.5 hover:bg-gray-50 rounded-md transition-colors">
                     <div className="p-0.5 bg-[#FFF1E9] rounded-full">
                       <HelpCircle className="size-4 text-[#F77124]" />
                     </div>
                     <span className="font-medium text-text-primary">Help</span>
                   </div>,
-                  <div className="flex items-center gap-1 p-0.5 hover:bg-[#FFF1E9] rounded-md transition-colors">
+                  <div key={String(Math.random())} className="flex items-center gap-1 p-0.5 hover:bg-[#FFF1E9] rounded-md transition-colors">
                     <div className="p-0.5 bg-[#FFF1E9] rounded-full">
                       <LogOut className="size-4 text-[#F77124]" />
                     </div>

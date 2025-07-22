@@ -14,28 +14,28 @@ const CertificateSection = ({ course }: { course: Course }) => {
       icon: <Crown className="size-5" />,
       name: "Essential",
       theme: "bg-[#F68A5C]",
-      price: course.plan.collegeStudents.essential.price,
-      features: course.plan.collegeStudents.essential.features,
+      price: course.plans.essential?.[0]?.price || 0,
+      features: course.plans.essential?.[0]?.features || [],
       discount: course.discount,
       discountLabel: `${course.discount}% off`,
       discountPrice:
         Math.round((
-          course.plan.collegeStudents.essential.price -
-            (course.plan.collegeStudents.essential.price * (course.discount || 0)) / 100
+          (course.plans.essential?.[0]?.price ?? 0) -
+            ((course.plans.essential?.[0]?.price ?? 0) * (Number(course.discount) || 0)) / 100
         ) * 100) / 100,
     },
     {
       icon: <Crown className="size-5" />,
       name: "Elite",
       theme: "bg-[#8B5CF6]",
-      price: course.plan.professionals.elite.price,
-      features: course.plan.professionals.elite.features,
+      price: course.plans.elite?.[0]?.price || 0,
+      features: course.plans.elite?.[0]?.features || [],
       discount: course.discount,
       discountLabel: `${course.discount}% off`,
       discountPrice:
         Math.round((
-          course.plan.professionals.elite.price -
-            (course.plan.professionals.elite.price * (course.discount || 0)) / 100
+          (course.plans.elite?.[0]?.price ?? 0) -
+            ((course.plans.elite?.[0]?.price ?? 0) * (Number(course.discount) || 0)) / 100
         ) * 100) / 100,
     },
   ];
@@ -112,7 +112,7 @@ const CertificateSection = ({ course }: { course: Course }) => {
                     className="plan-feature text-sm font-medium text-text-primary flex items-center gap-2"
                   >
                     <Check className="size-4" />
-                    {feature}
+                    {feature.title}
                   </div>
                 ))}
               </div>

@@ -65,9 +65,9 @@ const AboutTheCourseComponent = ({ course }: { course: Course }) => {
                 key={index}
                 className="skills-card w-max bg-black/8 rounded-lg py-2 px-4 flex items-center gap-2"
               >
-                {skill?.icon && skill?.icon}
+                {/* {skill?.icon && skill?.icon} */}
                 <div className="skills-card-text text-base font-normal">
-                  {skill?.text}
+                  {skill}
                 </div>
               </div>
             ))}

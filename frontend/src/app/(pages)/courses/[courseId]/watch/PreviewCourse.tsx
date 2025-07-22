@@ -27,18 +27,29 @@ const VideoSection = ({
 }) => {
   const { connectToVideo } = useVideoTimeContext();
 
-  const videoSources = useMemo(
-    () =>
-      selectedLesson?.videoUrl
-        ? [
-            {
-              quality: "1080p",
-              src: selectedLesson.videoUrl,
-            },
-          ]
-        : [],
-    [selectedLesson?.videoUrl]
-  );
+  const videoSources = useMemo(() => {
+    if (!selectedLesson?.content) return [];
+    
+    // Extract all video sources from lesson content
+    const allVideoSources: Array<{ quality: string; src: string }> = [];
+    
+    selectedLesson.content.forEach(content => {
+      if (content.type === 'video' && Array.isArray(content.content)) {
+        content.content.forEach(video => {
+          if ('sources' in video && Array.isArray(video.sources)) {
+            video.sources.forEach(source => {
+              allVideoSources.push({
+                quality: source.quality,
+                src: source.videoUrl
+              });
+            });
+          }
+        });
+      }
+    });
+    
+    return allVideoSources;
+  }, [selectedLesson?.content]);
 
   const handleVideoReady = (video: HTMLVideoElement) => {
     connectToVideo(video);
@@ -52,7 +63,7 @@ const VideoSection = ({
   return (
     <SectionContainer id="video-player" className="w-full aspect-video">
       <VideoPlayer
-        key={selectedLesson?.id || "no-lesson"}
+        key={selectedLesson?._id || "no-lesson"}
         sources={videoSources}
         posterUrl={course.thumbnail || ""}
         onVideoReady={handleVideoReady}
@@ -94,19 +105,24 @@ const CourseContentSection = ({
         <div className="absolute top-0 right-0 flex items-center gap-1 bg-black/8 rounded-md px-2 py-1">
           <Clock3 className="size-4 fill-black text-white" />
           <span className="text-xs font-normal text-gray-500">
-            {formatDuration(module.lessons.reduce((acc, lesson) => acc + (lesson.duration || 0), 0))}
+            {formatDuration(module.lessons.reduce((acc, lesson) => acc + (lesson.content.reduce((contentAcc, content) => {
+              if (content.type === 'video' && Array.isArray(content.content)) {
+                return contentAcc + content.content.reduce((videoAcc, video) => videoAcc + ('duration' in video ? video.duration || 0 : 0), 0);
+              }
+              return contentAcc;
+            }, 0) || 0), 0))}
           </span>
         </div>
       </div>
       {/* Lessons: only shown if module is selected */}
-      {selectedModule?.id === module.id && (
+      {selectedModule?._id === module._id && (
         <div className="w-full mt-2 space-y-1">
           {module.lessons.map((lesson, lessonIndex) => (
             <div
-              key={lesson.id}
-              onClick={() => navigateToLesson(lesson.id)} // Lesson click triggers navigation
+              key={lesson._id}
+              onClick={() => navigateToLesson(lesson._id)} // Lesson click triggers navigation
               className={`w-full p-3 rounded-lg cursor-pointer transition-all duration-200 hover:bg-gray-100 border border-transparent hover:border-gray-200 ${
-                selectedLesson?.id === lesson.id
+                selectedLesson?._id === lesson._id
                   ? "bg-orange-50 border-orange-200 shadow-sm"
                   : "bg-gray-50/50"
               }`}
@@ -115,7 +131,7 @@ const CourseContentSection = ({
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                   <div
                     className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
-                      selectedLesson?.id === lesson.id
+                      selectedLesson?._id === lesson._id
                         ? "bg-orange-500 text-white"
                         : "bg-gray-300 text-gray-600"
                     }`}
@@ -124,7 +140,7 @@ const CourseContentSection = ({
                   </div>
                   <span
                     className={`text-sm font-medium truncate ${
-                      selectedLesson?.id === lesson.id
+                      selectedLesson?._id === lesson._id
                         ? "text-orange-700"
                         : "text-gray-700"
                     }`}
@@ -135,7 +151,12 @@ const CourseContentSection = ({
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <Clock3 className="size-3 text-gray-400" />
                   <span className="text-xs font-normal text-gray-500">
-                    {formatDuration(lesson.duration || 0)}
+                    {formatDuration(lesson.content.reduce((contentAcc, content) => {
+                      if (content.type === 'video' && Array.isArray(content.content)) {
+                        return contentAcc + content.content.reduce((videoAcc, video) => videoAcc + ('duration' in video ? video.duration || 0 : 0), 0);
+                      }
+                      return contentAcc;
+                    }, 0) || 0)}
                   </span>
                 </div>
               </div>

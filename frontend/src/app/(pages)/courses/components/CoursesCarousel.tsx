@@ -185,9 +185,9 @@ const CoursesCarousel = ({ courses }: { courses: Course[] }) => {
                 {...course}
                 className={cn(
                   {
-                    "border-2 border-[#f77124] shadow-[0_0_2px_3px_rgba(233,117,0,0.5)] opacity-100 scale-100":
+                    "border-2 border-[#f77124] shadow-[0_0_2px_3px_rgba(233,117,0,0.5)] opacity-100":
                       isActive,
-                    "opacity-90 scale-90": !isActive,
+                    "opacity-90": !isActive,
                   },
                   "transition-all duration-300 ease-out"
                 )}
