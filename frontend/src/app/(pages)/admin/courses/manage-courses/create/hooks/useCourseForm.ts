@@ -67,6 +67,7 @@ export type CourseFormState = {
   // Additional form-specific fields
   duration: string;
   uploadedThumbnail: string | null;
+  totalLectures: number;
 };
 
 // Action types
@@ -179,6 +180,7 @@ const initialState: CourseFormState = {
   // Additional form-specific fields
   duration: '',
   uploadedThumbnail: null,
+  totalLectures: 0,
 };
 
 // Reducer function

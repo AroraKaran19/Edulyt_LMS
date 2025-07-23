@@ -1,5 +1,10 @@
 import app from './app';
 import { connectDB, disconnectDB } from './config/database';
+import dotenv from 'dotenv';
+import cors from 'cors';
+
+dotenv.config();
+
 
 if (!process.env.PORT) {
   throw new Error('PORT is not defined in environment variables');

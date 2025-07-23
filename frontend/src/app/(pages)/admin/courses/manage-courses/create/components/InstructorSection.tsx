@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import Image from "next/image";
 import { useCourseFormContext } from "../context/CourseFormContext";
 import { Instructor } from "@/types/course";
+import UploadComponent from "@/components/ui/UploadComponent";
 
 const InstructorSection = () => {
   const {
@@ -49,23 +50,14 @@ const InstructorSection = () => {
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(false);
-    const files = e.dataTransfer.files;
-    if (files.length > 0) {
-      handleFileUpload(files[0]);
-    }
+    // This is now handled by the UploadComponent
   };
 
-  const handleFileUpload = (file: File) => {
-    if (file && file.type.startsWith('image/')) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setNewInstructor(prev => ({
-          ...prev,
-          profileImage: e.target?.result as string
-        }));
-      };
-      reader.readAsDataURL(file);
-    }
+    const handleInstructorImageUpload = (url: string, fileName: string) => {
+    setNewInstructor(prev => ({ 
+      ...prev, 
+      profileImage: url 
+    }));
   };
 
   const addPreviousExperience = () => {
@@ -200,81 +192,14 @@ const InstructorSection = () => {
             <label className="block text-sm font-medium text-gray-700">
               Profile Image
             </label>
-            <FlexBox className="w-full justify-center">
-              <FlexBox 
-                className={cn(
-                  "border-2 rounded-lg transition-colors cursor-pointer relative items-center justify-center",
-                  newInstructor.profileImage 
-                    ? "border-solid border-gray-300 p-2" 
-                    : isDragOver 
-                      ? "border-dashed border-orange-500 bg-orange-50 p-8 w-40 h-40" 
-                      : "border-dashed border-gray-300 hover:border-orange-400 p-8 w-40 h-40"
-                )}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-              >
-                <input
-                  type="file"
-                  accept="image/png, image/jpeg, image/webp"
-                  onChange={(e) =>
-                    e.target.files?.[0] && handleFileUpload(e.target.files[0])
-                  }
-                  className="opacity-0 outline-none absolute top-0 left-0 w-full h-full cursor-pointer z-10"
-                />
-                
-                {newInstructor.profileImage ? (
-                  <FlexBox className="relative flex-col items-center">
-                    <FlexBox className="relative w-32 h-32">
-                      <Image
-                        src={newInstructor.profileImage}
-                        alt="Instructor profile"
-                        width={128}
-                        height={128}
-                        className="w-32 h-32 rounded-full object-cover"
-                        loading="lazy"
-                        quality={100}
-                        unoptimized
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setNewInstructor(prev => ({ ...prev, profileImage: '' }))}
-                        className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 transition-colors z-20"
-                      >
-                        <X className="size-3" />
-                      </button>
-                    </FlexBox>
-                    <p className="text-xs text-gray-500 mt-2 text-center">
-                      Click to change image
-                    </p>
-                  </FlexBox>
-                ) : (
-                  <FlexBox className="flex-col items-center gap-3 text-center pointer-events-none justify-center">
-                    <Upload
-                      className={cn(
-                        "size-8",
-                        isDragOver ? "text-orange-500" : "text-gray-400"
-                      )}
-                    />
-                    <FlexBox className="flex-col gap-1">
-                      <p
-                        className={cn(
-                          "text-sm font-medium",
-                          isDragOver ? "text-orange-700" : "text-gray-700"
-                        )}
-                      >
-                        {isDragOver
-                          ? "Drop image here"
-                          : "Upload profile image"}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        PNG, JPG, WEBP
-                      </p>
-                    </FlexBox>
-                  </FlexBox>
-                )}
-              </FlexBox>
-            </FlexBox>
+            <UploadComponent
+              onUploadComplete={handleInstructorImageUpload}
+              acceptedFileTypes={['image/jpeg', 'image/jpg', 'image/png', 'image/webp']}
+              uploadType="instructor-image"
+              maxFileSize={5 * 1024 * 1024} // 5MB
+              placeholder="Upload instructor profile image"
+              currentUrl={newInstructor.profileImage}
+            />
           </div>
 
           {/* Basic Info */}

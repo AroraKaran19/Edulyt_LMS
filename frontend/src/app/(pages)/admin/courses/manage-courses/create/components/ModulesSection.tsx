@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useCourseFormContext } from "../context/CourseFormContext";
 import { CourseModule, CourseLesson } from "@/types/course";
+import UploadComponent from "@/components/ui/UploadComponent";
 
 const ModulesSection = () => {
   const { state, addModule, removeModule, updateArrayItem } =
@@ -56,6 +57,7 @@ const ModulesSection = () => {
   const [lessonForm, setLessonForm] = useState({
     title: "",
     description: "",
+    videoUrl: "",
   });
 
   // Reset forms
@@ -71,7 +73,23 @@ const ModulesSection = () => {
     setLessonForm({
       title: "",
       description: "",
+      videoUrl: "",
     });
+  };
+
+  // Upload handlers
+  const handleModuleThumbnailUpload = (url: string, fileName: string) => {
+    setModuleForm(prev => ({
+      ...prev,
+      thumbnailUrl: url
+    }));
+  };
+
+  const handleLessonVideoUpload = (url: string, fileName: string) => {
+    setLessonForm(prev => ({
+      ...prev,
+      videoUrl: url
+    }));
   };
 
   // Module Operations
@@ -128,11 +146,36 @@ const ModulesSection = () => {
   const handleCreateLesson = () => {
     if (!lessonForm.title.trim() || selectedModuleIndex === null) return;
 
+    // Create lesson content based on video URL
+    const lessonContent = [];
+    if (lessonForm.videoUrl) {
+      lessonContent.push({
+        _id: Date.now().toString(),
+        title: `${lessonForm.title} Video`,
+        description: `Video content for ${lessonForm.title}`,
+        content: [{
+          _id: Date.now().toString() + '_video',
+          sources: [{
+            _id: Date.now().toString() + '_source',
+            quality: '720p' as const,
+            videoUrl: lessonForm.videoUrl,
+          }],
+          duration: 0, // Will be set later
+          order: 0,
+        }],
+        type: 'video' as const,
+        order: 0,
+        isCompleted: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+    }
+
     const newLesson: CourseLesson = {
       _id: Date.now().toString(),
       title: lessonForm.title,
       description: lessonForm.description || undefined,
-      content: [], // Content will be added separately
+      content: lessonContent,
       order: state.modules[selectedModuleIndex].lessons.length,
       isCompleted: false,
       isLocked: false,
@@ -459,19 +502,16 @@ const ModulesSection = () => {
 
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gray-700">
-              Thumbnail URL
+              Module Thumbnail
             </label>
-            <input
-              type="url"
-              placeholder="https://example.com/module-thumbnail.jpg"
-              value={moduleForm.thumbnailUrl}
-              onChange={(e) =>
-                setModuleForm((prev) => ({
-                  ...prev,
-                  thumbnailUrl: e.target.value,
-                }))
-              }
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors outline-none"
+            <UploadComponent
+              onUploadComplete={handleModuleThumbnailUpload}
+              acceptedFileTypes={['image/jpeg', 'image/jpg', 'image/png', 'image/webp']}
+              uploadType="module-thumbnail"
+              maxFileSize={5 * 1024 * 1024} // 5MB
+              placeholder="Upload module thumbnail image"
+              currentUrl={moduleForm.thumbnailUrl}
+              allowUrlInput={true}
             />
           </div>
 
@@ -560,19 +600,16 @@ const ModulesSection = () => {
 
         <div className="space-y-2">
           <label className="block text-sm font-medium text-gray-700">
-            Thumbnail URL
+            Module Thumbnail
           </label>
-          <input
-            type="url"
-            placeholder="https://example.com/module-thumbnail.jpg"
-            value={moduleForm.thumbnailUrl}
-            onChange={(e) =>
-              setModuleForm((prev) => ({
-                ...prev,
-                thumbnailUrl: e.target.value,
-              }))
-            }
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors outline-none"
+          <UploadComponent
+            onUploadComplete={handleModuleThumbnailUpload}
+            acceptedFileTypes={['image/jpeg', 'image/jpg', 'image/png', 'image/webp']}
+            uploadType="module-thumbnail"
+            maxFileSize={5 * 1024 * 1024} // 5MB
+            placeholder="Upload module thumbnail image"
+            currentUrl={moduleForm.thumbnailUrl}
+            allowUrlInput={true}
           />
         </div>
 
@@ -786,6 +823,22 @@ const ModulesSection = () => {
               }
               rows={4}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors resize-none outline-none"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700">
+              Lesson Video
+            </label>
+            <UploadComponent
+              onUploadComplete={handleLessonVideoUpload}
+              acceptedFileTypes={['video/mp4', 'video/avi', 'video/mov', 'video/wmv', 'video/webm']}
+              uploadType="lesson-video"
+              maxFileSize={200 * 1024 * 1024} // 200MB
+              placeholder="Upload lesson video"
+              currentUrl={lessonForm.videoUrl}
+              allowUrlInput={true}
+              showProgress={true}
             />
           </div>
 

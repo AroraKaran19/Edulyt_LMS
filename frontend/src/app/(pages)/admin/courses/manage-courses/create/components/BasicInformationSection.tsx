@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import Image from "next/image";
 import Container from "@/app/(pages)/admin/components/ui/Container";
 import { CourseFormState, useCourseFormContext } from "../context/CourseFormContext";
+import UploadComponent from "@/components/ui/UploadComponent";
 
 const BasicInformationSection = () => {
   const {
@@ -72,24 +73,16 @@ const BasicInformationSection = () => {
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(false);
-    const files = e.dataTransfer.files;
-    if (files.length > 0) {
-      handleFileUpload(files[0]);
-    }
+    // This is now handled by the UploadComponent
   };
 
-  const handleFileUpload = (file: File) => {
-    if (file && file.type.startsWith("image/")) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        updateField('uploadedThumbnail', e.target?.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
+  const handleThumbnailUpload = (url: string, fileName: string) => {
+    updateField('thumbnail', url);
+    updateField('uploadedThumbnail', url);
   };
 
-  const removeImage = () => {
-    updateField('uploadedThumbnail', null);
+  const handleVideoUpload = (url: string, fileName: string) => {
+    updateField('previewVideoUrl', url);
   };
 
   const skillLevels = ["Beginner", "Intermediate", "Advanced"];
@@ -105,86 +98,34 @@ const BasicInformationSection = () => {
     >
       <div className="w-full space-y-6">
         {/* Thumbnail Upload */}
-        <FlexBox className="w-full flex-col gap-2 items-center">
-          <label className="text-sm font-medium text-gray-700">
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-gray-700">
             Course Thumbnail <span className="text-red-500">*</span>
           </label>
-          <FlexBox className="w-full justify-center">
-            <FlexBox
-              className={cn(
-                "border-2 rounded-lg transition-colors cursor-pointer relative items-center justify-center",
-                                state.uploadedThumbnail 
-                  ? "border-solid border-gray-300 p-2" 
-                  : isDragOver 
-                    ? "border-dashed border-orange-500 bg-orange-50 p-8 w-80" 
-                    : "border-dashed border-gray-300 hover:border-orange-400 p-8 w-80"
-              )}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-            >
-              <input
-                type="file"
-                accept="image/png, image/jpeg, image/webp"
-                onChange={(e) =>
-                  e.target.files?.[0] && handleFileUpload(e.target.files[0])
-                }
-                className="opacity-0 outline-none absolute top-0 left-0 w-full h-full cursor-pointer z-10"
-              />
+          <UploadComponent
+            onUploadComplete={handleThumbnailUpload}
+            acceptedFileTypes={['image/jpeg', 'image/jpg', 'image/png', 'image/webp']}
+            uploadType="thumbnail"
+            maxFileSize={10 * 1024 * 1024} // 10MB
+            placeholder="Upload course thumbnail image"
+            currentUrl={state.thumbnail}
+          />
+        </div>
 
-              {state.uploadedThumbnail ? (
-                <FlexBox className="relative flex-col items-center">
-                  <FlexBox className="relative max-h-[200px] max-w-[320px]">
-                    <Image
-                      src={state.uploadedThumbnail}
-                      alt="Course thumbnail preview"
-                      width={320}
-                      height={200}
-                      className="max-h-[200px] max-w-[320px] w-auto h-auto rounded-lg"
-                      loading="lazy"
-                      quality={100}
-                      unoptimized
-                    />
-                    <button
-                      type="button"
-                      onClick={removeImage}
-                      className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 transition-colors z-20"
-                    >
-                      <X className="size-4" />
-                    </button>
-                  </FlexBox>
-                  <p className="text-xs text-gray-500 mt-2 text-center">
-                    Click to change image
-                  </p>
-                </FlexBox>
-              ) : (
-                <FlexBox className="flex-col items-center gap-3 text-center pointer-events-none justify-center">
-                  <Upload
-                    className={cn(
-                      "size-8",
-                      isDragOver ? "text-orange-500" : "text-gray-400"
-                    )}
-                  />
-                  <FlexBox className="flex-col gap-1">
-                    <p
-                      className={cn(
-                        "text-sm font-medium",
-                        isDragOver ? "text-orange-700" : "text-gray-700"
-                      )}
-                    >
-                      {isDragOver
-                        ? "Drop your image here"
-                        : "Click to upload or drag & drop"}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      PNG, JPG, WEBP up to 10MB
-                    </p>
-                  </FlexBox>
-                </FlexBox>
-              )}
-            </FlexBox>
-          </FlexBox>
-        </FlexBox>
+        {/* Promotional Video Upload */}
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-gray-700">
+            Promotional Video
+          </label>
+          <UploadComponent
+            onUploadComplete={handleVideoUpload}
+            acceptedFileTypes={['video/mp4', 'video/avi', 'video/mov', 'video/wmv', 'video/webm']}
+            uploadType="video"
+            maxFileSize={50 * 1024 * 1024} // 50MB
+            placeholder="Upload course promotional video"
+            currentUrl={state.previewVideoUrl}
+          />
+        </div>
 
         {/* Title and Subtitle */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

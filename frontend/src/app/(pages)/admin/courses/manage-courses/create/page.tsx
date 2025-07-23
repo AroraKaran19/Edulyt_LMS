@@ -1,5 +1,6 @@
+'use client';
 import FlexBox from "@/components/ui/FlexBox";
-import React from "react";
+import React, { useState } from "react";
 import BasicInformationSection from "./components/BasicInformationSection";
 import LearningOutcomesSection from "./components/LearningOutcomesSection";
 import InstructorSection from "./components/InstructorSection";
@@ -8,9 +9,13 @@ import PricingSection from "./components/PricingSection";
 import ModulesSection from "./components/ModulesSection";
 import FAQSection from "./components/FAQSection";
 import ReviewsSection from "./components/ReviewsSection";
+import SubmissionSection from "./components/SubmissionSection";
+import UploadQueue, { QueuedUpload } from "@/components/ui/UploadQueue";
 import { CourseFormProvider } from "./context/CourseFormContext";
 
 const CreateCoursePage = () => {
+  const [uploads, setUploads] = useState<QueuedUpload[]>([]);
+
   return (
     <CourseFormProvider>
       <FlexBox className="w-full flex-col gap-2 relative overflow-y-auto scroll-smooth">
@@ -19,6 +24,18 @@ const CreateCoursePage = () => {
           <p className="text-sm text-gray-500">
             Create a new course to add to your library.
           </p>
+          
+          {/* Upload Queue */}
+          {uploads.length > 0 && (
+            <div className="mt-4">
+              <UploadQueue 
+                uploads={uploads} 
+                onUpdate={setUploads}
+                maxConcurrent={3}
+                autoStart={true}
+              />
+            </div>
+          )}
         </FlexBox>
         <FlexBox className="w-full flex-col gap-6 p-8">
           <BasicInformationSection />
@@ -29,6 +46,7 @@ const CreateCoursePage = () => {
           <FAQSection />
           <ReviewsSection />
           <SEOSection />
+          <SubmissionSection />
         </FlexBox>
       </FlexBox>
     </CourseFormProvider>
