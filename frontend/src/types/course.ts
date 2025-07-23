@@ -213,7 +213,7 @@ export interface Course {
     enrolledCount: number;
     totalRatings: number;
     totalLectures: number;
-    duration?: string;
+    duration?: string; // like: 3 months, 1 year, 2 years, etc. (will not be accurate)
 
     // UI & Learning Info
     whatYouWillLearn: string;
@@ -268,4 +268,7 @@ export interface Course {
 
     // Discount
     discount?: Discount;
+
+    // Languages
+    language: "English";
 }

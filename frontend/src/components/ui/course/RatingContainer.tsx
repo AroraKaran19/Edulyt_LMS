@@ -15,9 +15,9 @@ const RatingContainer = ({
 }) => {
   const router = useRouter();
   const rating =
-    ratings?.reduce((acc, review) => acc + review.rating, 0) /
-    ratings?.length || 0;
-  const ratingCount = ratings?.length;
+    (ratings?.reduce((acc, review) => acc + review.rating, 0) || 0) /
+    (ratings?.length || 1);
+  const ratingCount = ratings?.length || 0;
 
   return (
     <div

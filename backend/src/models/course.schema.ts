@@ -170,6 +170,29 @@ const lessonContentSchema = new Schema<LessonContent>({
   },
   content: {
     type: Schema.Types.Mixed, // Will store Video[] or Quiz[]
+    validate: {
+      validator: function (value: any) {
+        if (!Array.isArray(value)) return false;
+        
+        return value.every((item: any) => {
+          // Check if it's a valid Video object
+          const isVideo = item && 
+            typeof item._id === 'string' &&
+            Array.isArray(item.sources) &&
+            typeof item.order === 'number';
+          
+          // Check if it's a valid Quiz object
+          const isQuiz = item &&
+            typeof item._id === 'string' &&
+            typeof item.title === 'string' &&
+            Array.isArray(item.questions) &&
+            typeof item.order === 'number';
+          
+          return isVideo || isQuiz;
+        });
+      },
+      message: 'Content must be an array of Video or Quiz objects'
+    },
     required: true
   },
   type: {
@@ -636,7 +659,9 @@ const courseSchema = new Schema<Course>({
   },
   duration: {
     type: String,
-    trim: true
+    trim: true,
+    required: true,
+    default: '1 month' // will not be accurate
   },
 
   // UI & Learning Info

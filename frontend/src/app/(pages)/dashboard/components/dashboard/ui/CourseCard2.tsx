@@ -10,11 +10,6 @@ import React from "react";
 const CourseCard2 = ({ course }: { course: Course }) => {
 
   const router = useRouter();
-  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    console.log(course._id);
-    router.push(`/courses/${course._id}/watch`);
-  };
 
   const totalLessons = course.modules.reduce(
     (acc, module) => acc + module.lessons.length,

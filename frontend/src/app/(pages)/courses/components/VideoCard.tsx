@@ -4,7 +4,13 @@ import { CourseModule } from "@/types";
 import Image from "next/image";
 import React from "react";
 
-const VideoCard = ({ module, index }: { module: CourseModule, index: number }) => {
+const VideoCard = ({
+  module,
+  index,
+}: {
+  module: CourseModule;
+  index: number;
+}) => {
   return (
     <div className="video-card w-full min-h-[150px] flex flex-col md:flex-row items-stretch gap-4 p-3 rounded-2xl border border-gray-200">
       <div className="video-thumbnail w-full max-h-[200px] md:max-h-auto md:w-1/3 rounded-2xl overflow-hidden relative aspect-video">
@@ -34,13 +40,41 @@ const VideoCard = ({ module, index }: { module: CourseModule, index: number }) =
             {module.description}
           </p>
           <p className="video-duration text-sm text-gray-500 mt-auto">
-            {formatDuration(module.lessons.reduce((acc, lesson) => acc + (lesson.duration || 0), 0))}
+            {formatDuration(
+              module.lessons.reduce(
+                (acc, lesson) =>
+                  acc +
+                  lesson.content.reduce(
+                    (contentAcc, content) =>
+                      contentAcc +
+                      (content.type === "video" && Array.isArray(content.content)
+                        ? content.content.reduce(
+                            (videoAcc, video) =>
+                              videoAcc +
+                              ('duration' in video ? video.duration || 0 : 0),
+                            0
+                          )
+                        : 0),
+                    0
+                  ),
+                0
+              )
+            )}
           </p>
         </div>
         <div className="video-purchase-button w-full md:w-1/3 flex flex-col gap-2 mt-auto">
-          <OrangeButton className="w-full bg-orange-500/30 cursor-not-allowed" glow={false}>
+          <OrangeButton
+            className="w-full bg-orange-500/30 cursor-not-allowed"
+            glow={false}
+          >
             <span className="flex items-center justify-center gap-2">
-              <Image src="/Lock.svg" alt="Lock Icon" width={20} height={20} className="size-5 lg:size-6" />
+              <Image
+                src="/Lock.svg"
+                alt="Lock Icon"
+                width={20}
+                height={20}
+                className="size-5 lg:size-6"
+              />
               <p>Play</p>
             </span>
           </OrangeButton>

@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { CourseService } from '../services/course.service';
-import { Course } from '../types/course';
+import { Course, CourseModule, CourseLesson, LessonContent, Discount } from '../types/course';
 
 export class AdminController {
   private courseService: CourseService;
@@ -9,7 +9,7 @@ export class AdminController {
     this.courseService = new CourseService();
   }
 
-    /**
+  /**
    * Add a new course to the database (Admin only)
    * @param req - Express request object
    * @param res - Express response object
@@ -18,8 +18,26 @@ export class AdminController {
     try {
       const frontendData = req.body;
 
+      // Validate required fields
+      if (!frontendData.basicInfo?.courseTitle || !frontendData.basicInfo?.courseDescription) {
+        res.status(400).json({
+          success: false,
+          message: 'Course title and description are required'
+        });
+        return;
+      }
+
       // Transform frontend data to course schema format
       const courseData: Partial<Course> = this.transformFrontendDataToCourse(frontendData);
+
+      // Validate transformed data
+      if (!courseData.title || !courseData.description || !courseData.category) {
+        res.status(400).json({
+          success: false,
+          message: 'Missing required course data after transformation'
+        });
+        return;
+      }
 
       // Create the course
       const createdCourse = await this.courseService.createCourse(courseData);
@@ -29,7 +47,9 @@ export class AdminController {
         success: true,
         message: 'Course added successfully',
         data: {
-          course: createdCourse
+          course: createdCourse,
+          courseId: createdCourse._id,
+          slug: createdCourse.slug
         }
       });
 
@@ -55,6 +75,15 @@ export class AdminController {
           });
           return;
         }
+
+        if (error.message.includes('E11000')) {
+          res.status(409).json({
+            success: false,
+            message: 'Course with this title or slug already exists',
+            error: 'Duplicate course detected'
+          });
+          return;
+        }
       }
 
       // Generic error response
@@ -72,6 +101,11 @@ export class AdminController {
    * @returns Partial<Course> - Transformed course data
    */
   private transformFrontendDataToCourse(frontendData: any): Partial<Course> {
+    // Generate unique IDs
+    const generateId = (): string => {
+      return Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
+    };
+
     // Generate slug from course title
     const generateSlug = (title: string): string => {
       return title
@@ -87,30 +121,35 @@ export class AdminController {
       return materials?.map(material => material.name || material) || [];
     };
 
-    // Transform lessons
-    const transformLessons = (lessons: any[]) => {
-      return lessons?.map(lesson => ({
-        id: lesson.id,
-        title: lesson.title,
-        duration: lesson.duration,
-        videoUrl: lesson.videoUrl,
-        thumbnailUrl: lesson.thumbnailUrl,
+    // Transform lessons with proper structure
+    const transformLessons = (lessons: any[]): CourseLesson[] => {
+      return lessons?.map((lesson, index) => ({
+        _id: lesson.id || generateId(),
+        title: lesson.title || '',
+        duration: lesson.duration || 0,
         description: lesson.description || '',
-        materials: transformMaterials(lesson.materials || []),
-        completed: lesson.completed || false,
-        isForCollegeStudent: lesson.isForCollegeStudent || false
+        content: [], // Will need to be populated with LessonContent
+        order: index,
+        isCompleted: lesson.completed || false,
+        isLocked: lesson.isForCollegeStudent || false,
+        createdAt: new Date(),
+        updatedAt: new Date()
       })) || [];
     };
 
-    // Transform modules
-    const transformModules = (modules: any[]) => {
-      return modules?.map(module => ({
-        id: module.id,
-        title: module.title,
+    // Transform modules with proper CourseModule structure
+    const transformModules = (modules: any[]): CourseModule[] => {
+      return modules?.map((module, index) => ({
+        _id: module.id || generateId(),
+        title: module.title || '',
         thumbnailUrl: module.thumbnailUrl,
-        duration: module.duration,
         description: module.description || '',
-        lessons: transformLessons(module.lessons || [])
+        lessons: transformLessons(module.lessons || []),
+        order: index,
+        isCompleted: false,
+        isLocked: false,
+        createdAt: new Date(),
+        updatedAt: new Date()
       })) || [];
     };
 
@@ -120,53 +159,105 @@ export class AdminController {
       return features.split(',').map(f => f.trim()).filter(f => f.length > 0);
     };
 
-    // Parse whatYoullLearn
-    const parseWhatYoullLearn = (learningText: string): string[] => {
-      if (!learningText) return [];
-      return learningText.split('\n').map(item => item.trim()).filter(item => item.length > 0);
+    // Parse whatYoullLearn as a single string (not array)
+    const parseWhatYoullLearn = (learningText: string): string => {
+      if (!learningText) return '';
+      return learningText.trim();
+    };
+
+    // Transform pricing to proper Plan structure
+    const transformPlans = (pricingData: any) => {
+      const plans: { elite?: any[], essential?: any[] } = {};
+      
+      if (pricingData?.professionals?.elite) {
+        plans.elite = [{
+          _id: generateId(),
+          title: 'Elite Plan',
+          type: 'elite' as const,
+          price: pricingData.professionals.elite.price || 0,
+          features: pricingData.professionals.elite.features?.map((feature: any, index: number) => ({
+            title: typeof feature === 'string' ? feature : feature.title || '',
+            provided: true,
+            description: typeof feature === 'object' ? feature.description : '',
+            order: index
+          })) || [],
+          billingPeriod: 'lifetime' as const,
+          isActive: true,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }];
+      }
+
+      if (pricingData?.professionals?.essential) {
+        plans.essential = [{
+          _id: generateId(),
+          title: 'Essential Plan',
+          type: 'essential' as const,
+          price: pricingData.professionals.essential.price || 0,
+          features: pricingData.professionals.essential.features?.map((feature: any, index: number) => ({
+            title: typeof feature === 'string' ? feature : feature.title || '',
+            provided: true,
+            description: typeof feature === 'object' ? feature.description : '',
+            order: index
+          })) || [],
+          billingPeriod: 'lifetime' as const,
+          isActive: true,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }];
+      }
+
+      return plans;
+    };
+
+    // Create proper discount structure
+    const createDiscount = (): Discount | undefined => {
+      return {
+        discount: 'percentage',
+        value: 0,
+        isActive: false
+      };
     };
 
     const courseTitle = frontendData.basicInfo?.courseTitle || '';
     const slug = generateSlug(courseTitle);
+    const courseId = generateId();
 
     return {
+      _id: courseId,
       title: courseTitle,
       subtitle: frontendData.basicInfo?.subtitle,
-      description: frontendData.basicInfo?.courseDescription,
+      description: frontendData.basicInfo?.courseDescription || '',
       shortDescription: frontendData.basicInfo?.shortDescription,
-      category: frontendData.courseDetails?.category,
+      category: frontendData.courseDetails?.category || '',
       subcategory: frontendData.courseDetails?.subcategory,
-      thumbnail: frontendData.media?.courseThumbnailUrl,
-      previewVideoUrl: frontendData.media?.promotionalVideoUrl,
+      thumbnail: frontendData.media?.courseThumbnailUrl || '',
+      previewVideoUrl: frontendData.media?.promotionalVideoUrl || '',
       slug: slug,
       
       // Course details
-      language: frontendData.courseDetails?.language || 'English',
+      duration: frontendData.courseDetails?.courseDuration || '1 month',
       skillLevel: frontendData.courseDetails?.skillLevel || 'Beginner',
-      duration: frontendData.courseDetails?.courseDuration,
       totalLectures: parseInt(frontendData.courseDetails?.totalLectures) || 0,
       
-      // Pricing
-      plan: frontendData.pricing || {
-        professionals: { 
-          elite: { price: 0, features: [] },
-          essential: { price: 0, features: [] }
-        },
-        collegeStudents: { 
-          elite: { price: 0, features: [] },
-          essential: { price: 0, features: [] }
-        }
-      },
-      
-      // Learning outcomes
+      // Learning info - whatYouWillLearn should be a string, not array
+      whatYouWillLearn: parseWhatYoullLearn(frontendData.learningOutcomes?.whatYoullLearn || ''),
       whoShouldJoin: frontendData.learningOutcomes?.targetAudience || '',
       prerequisites: frontendData.learningOutcomes?.prerequisites ? 
         frontendData.learningOutcomes.prerequisites.split(',').map((p: string) => p.trim()) : [],
-      whatYouWillLearn: parseWhatYoullLearn(frontendData.learningOutcomes?.whatYoullLearn || ''),
       
-      // Features and tags
+      // Required arrays with proper structure
+      skills: parseFeatures(frontendData.courseFeatures?.keyFeatures || ''),
+      keyFeatures: parseFeatures(frontendData.courseFeatures?.keyFeatures || '').map((feature, index) => ({
+        title: feature,
+        description: feature
+      })),
+      careerPaths: parseFeatures(frontendData.courseFeatures?.careerPaths || ''),
       features: parseFeatures(frontendData.courseFeatures?.keyFeatures || ''),
       tags: parseFeatures(frontendData.courseFeatures?.courseTags || ''),
+      
+      // Pricing with proper Plan structure
+      plans: transformPlans(frontendData.pricing),
       
       // Settings
       isActive: true,
@@ -187,18 +278,26 @@ export class AdminController {
       createdBy: frontendData.settings?.administrativeDetails?.courseCreator || 'admin',
       enrolledCount: 0,
       totalRatings: 0,
+      audience: 'professionals', // Default value, should be determined by logic
       
-      // Content
+      // Content with proper CourseModule structure
       modules: transformModules(frontendData.courseModules || []),
       
-      // Default empty arrays
+      // Required empty arrays
+      instructor: [], // This should be populated separately
+      reviews: [],
       featuredReviews: [],
       faqs: [],
-      instructor: [], // This should be populated separately
       
-      // Additional fields
-      discount: 0,
-      scholarship: false
+      // Proper discount structure
+      discount: createDiscount(),
+      
+      // Scholarship
+      scholarship: false,
+      
+      // Timestamps
+      createdAt: new Date(),
+      updatedAt: new Date()
     };
   }
 
@@ -349,7 +448,7 @@ export class AdminController {
         data: {
           totalCourses: allCourses.length,
           courses: allCourses.map((course: any) => ({
-            id: course.id,
+            id: course._id,
             title: course.title,
             slug: course.slug,
             isActive: course.isActive,

@@ -1,8 +1,9 @@
+import { cn } from "@/lib/utils";
 import React from "react";
 
-const UnderDevelopment = () => {
+const UnderDevelopment = ({ className }: { className?: string }) => {
   return (
-    <div className="max-w-md mx-auto space-y-6">
+    <div className={cn("max-w-md mx-auto space-y-6", className)}>
       <div className="w-24 h-24 mx-auto bg-[#FFE9DB] rounded-full flex items-center justify-center">
         <svg
           className="w-12 h-12 text-[#F77124]"
@@ -23,7 +24,7 @@ const UnderDevelopment = () => {
           Work in Progress
         </h2>
         <p className="text-text-primary/70 font-normal">
-          This page is not accessible right now. We're working hard to bring you
+          This page is not accessible right now. We&apos;re working hard to bring you
           something amazing!
         </p>
       </div>

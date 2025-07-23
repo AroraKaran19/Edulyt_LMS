@@ -11,7 +11,18 @@ const adminController = new AdminController();
  * @body    Course data object
  * @example 
  *   POST /api/admin/courses
- *   Body: { title: "Course Title", description: "...", category: "programming", ... }
+ *   Body: { basicInfo: { courseTitle: "...", courseDescription: "..." }, ... }
+ */
+router.post('/courses', adminController.addCourse);
+
+/**
+ * @route   POST /api/admin/add/courses
+ * @desc    Add a new course to the database (legacy endpoint)
+ * @access  Private (Admin only)
+ * @body    Course data object
+ * @example 
+ *   POST /api/admin/add/courses
+ *   Body: { basicInfo: { courseTitle: "...", courseDescription: "..." }, ... }
  */
 router.post('/add/courses', adminController.addCourse);
 

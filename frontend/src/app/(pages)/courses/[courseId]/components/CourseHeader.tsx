@@ -14,13 +14,18 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 });
 
 const CourseHeader = ({ course }: { course: Course }) => {
-
-  const formattedReviewsCount = course?.featuredReviews?.length >= 1000000 
-    ? `${(course?.featuredReviews?.length / 1000000).toFixed(1).replace(/\.0$/, '')}M`
-    : course?.featuredReviews?.length >= 1000 
-    ? `${(course?.featuredReviews?.length / 1000).toFixed(1).replace(/\.0$/, '')}K`
-    : course?.featuredReviews?.length?.toString();
-
+  const formattedReviewsCount =
+    course?.featuredReviews?.length &&
+    course?.featuredReviews?.length >= 1000000
+      ? `${(course?.featuredReviews?.length / 1000000)
+          .toFixed(1)
+          .replace(/\.0$/, "")}M`
+      : course?.featuredReviews?.length &&
+        course?.featuredReviews?.length >= 1000
+      ? `${(course?.featuredReviews?.length / 1000)
+          .toFixed(1)
+          .replace(/\.0$/, "")}K`
+      : course?.featuredReviews?.length?.toString();
 
   if (!course) return null;
 
@@ -38,7 +43,10 @@ const CourseHeader = ({ course }: { course: Course }) => {
           )}
           <div className="course-info flex flex-col gap-2 font-coolvetica text-text-primary mt-5">
             <h1
-              className={cn("font-bold text-balance", "text-2xl md:text-3xl text-center md:text-left")}
+              className={cn(
+                "font-bold text-balance",
+                "text-2xl md:text-3xl text-center md:text-left"
+              )}
             >
               {course?.title}
             </h1>
@@ -64,7 +72,9 @@ const CourseHeader = ({ course }: { course: Course }) => {
             </div>
           )}
           {course && (
-            <OrangeButton className="font-bold text-sm md:text-base">Enroll Now</OrangeButton>
+            <OrangeButton className="font-bold text-sm md:text-base">
+              Enroll Now
+            </OrangeButton>
           )}
         </div>
       </div>
@@ -75,27 +85,67 @@ const CourseHeader = ({ course }: { course: Course }) => {
           <div className="course-rating w-full flex flex-wrap gap-1 md:gap-2 items-center justify-center md:justify-start">
             <Star className="size-4 md:size-5 text-[#F7AD24]" fill="#F7AD24" />
             <span className="text-base md:text-2xl font-normal text-text-primary font-coolvetica tracking-wide">
-              {course?.featuredReviews?.reduce((acc, review) => acc + review.rating, 0) / course?.featuredReviews?.length || 0}
+              {(course?.featuredReviews?.length &&
+                course?.featuredReviews?.reduce(
+                  (acc, review) => acc + review.rating,
+                  0
+                ) / (course?.featuredReviews?.length || 0)) ||
+                0}
             </span>
             <span className="text-sm md:text-base font-normal text-text-primary">
-              ({course?.featuredReviews?.length && course?.featuredReviews?.length > 100
+              (
+              {course?.featuredReviews?.length &&
+              course?.featuredReviews?.length > 100
                 ? `(more than ${formattedReviewsCount} reviews)`
                 : formattedReviewsCount === "1"
                 ? `${formattedReviewsCount} review`
-                : `${formattedReviewsCount} reviews`})
+                : `${formattedReviewsCount} reviews`}
+              )
             </span>
           </div>
         </div>
         <div className="course-proficency w-max flex flex-col items-center md:items-start">
-          <p className="text-sm md:text-base font-normal text-text-primary">Proficency</p>
+          <p className="text-sm md:text-base font-normal text-text-primary">
+            Proficency
+          </p>
           <p className="text-base md:text-2xl font-normal text-text-primary font-coolvetica tracking-wide">
             {course?.skillLevel}
           </p>
         </div>
         <div className="course-total-time w-max flex flex-col items-center md:items-start">
-          <p className="text-sm md:text-base font-normal text-text-primary">Total Time</p>
+          <p className="text-sm md:text-base font-normal text-text-primary">
+            Total Time
+          </p>
           <p className="text-base md:text-2xl font-normal text-text-primary font-coolvetica tracking-wide">
-            {formatDuration(course?.modules.reduce((acc, module) => acc + module.lessons.reduce((lessonAcc, lesson) => lessonAcc + (lesson.duration || 0), 0), 0))}
+            {formatDuration(
+              course?.modules.reduce(
+                (acc, module) =>
+                  acc +
+                  module.lessons.reduce(
+                    (lessonAcc, lesson) =>
+                      lessonAcc +
+                      (lesson.content.reduce((contentAcc, content) => {
+                        if (
+                          content.type === "video" &&
+                          Array.isArray(content.content)
+                        ) {
+                          return (
+                            contentAcc +
+                            content.content.reduce(
+                              (videoAcc, video) =>
+                                videoAcc +
+                                ("duration" in video ? video.duration || 0 : 0),
+                              0
+                            )
+                          );
+                        }
+                        return contentAcc;
+                      }, 0) || 0),
+                    0
+                  ),
+                0
+              )
+            )}
           </p>
         </div>
       </div>

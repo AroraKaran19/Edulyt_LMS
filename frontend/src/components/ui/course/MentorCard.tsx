@@ -1,8 +1,6 @@
-"use client";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import React from "react";
 
 const MentorCard = ({
@@ -14,7 +12,6 @@ const MentorCard = ({
   name: string;
   className?: string;
 }) => {
-  const router = useRouter();
 
   return (
     <Link

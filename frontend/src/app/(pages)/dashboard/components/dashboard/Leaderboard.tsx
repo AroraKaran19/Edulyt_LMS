@@ -24,10 +24,6 @@ const Leaderboard = () => {
     },
   ];
 
-  const highestRank = demoUsers.sort(
-    (a, b) => b.coursesCompleted - a.coursesCompleted
-  )[0];
-
   return (
     <FlexBox className="w-full flex-col h-max gap-6 border border-gray-200 rounded-lg p-5">
       <FlexBox className="w-full justify-between items-center">
