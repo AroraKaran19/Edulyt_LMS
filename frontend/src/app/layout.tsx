@@ -1,3 +1,4 @@
+"use client";
 // app/layout.tsx
 import type { Metadata } from "next";
 import "@/app/globals.css";
@@ -5,16 +6,17 @@ import "@/app/globals.css";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import LayoutWrapper from "@/components/shared/LayoutWrapper";
 import { cn } from "@/lib/utils";
+import { SessionProvider } from "next-auth/react";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700", "800"],
 });
 
-export const metadata: Metadata = {
-  title: "Edulyt India",
-  description: "Educational platform for learning and growth",
-};
+// export const metadata: Metadata = {
+//   title: "Edulyt India",
+//   description: "Educational platform for learning and growth",
+// };
 
 export default function RootLayout({
   children,
@@ -25,7 +27,9 @@ export default function RootLayout({
     <html lang="en">
       <body className={cn(plusJakartaSans.className, "antialiased")}>
         {/* <ReduxProvider> */}
+        <SessionProvider>
           <LayoutWrapper>{children}</LayoutWrapper>
+        </SessionProvider>
         {/* </ReduxProvider> */}
       </body>
     </html>
