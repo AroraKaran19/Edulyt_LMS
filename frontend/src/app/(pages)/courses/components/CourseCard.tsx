@@ -6,7 +6,6 @@ import OrangeButton from "@/components/ui/OrangeButton";
 import { cn } from "@/lib/utils";
 import { Course } from "@/types";
 import { Plus } from "lucide-react";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import React from "react";
 
@@ -29,15 +28,12 @@ const CourseCard = ({
       style={props.style}
     >
       <div className="course-image w-full md:w-2/5 rounded-2xl overflow-hidden relative flex-shrink-0">
-        <Image
+        <img
           src={course?.thumbnail || "/CourseCardDemo.jpg"}
           alt={course?.title}
-          className="rounded-2xl w-full h-full object-cover max-h-[150px] md:max-h-full opacity-90"
+          className="rounded-2xl w-full h-full object-fill max-h-[150px] md:max-h-full opacity-90"
           draggable={false}
-          width={100}
-          height={100}
-          priority
-          loading="eager"
+          loading="lazy"
         />
         {course?.discount && course.discount.isActive && (
           <DiscountBadge

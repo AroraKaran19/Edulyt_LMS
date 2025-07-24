@@ -8,7 +8,6 @@ import DiscountBadge from "@/components/ui/course/DiscountBadge";
 import InstructorCard from "@/components/ui/course/InstructorCard";
 import OrangeButton from "@/components/ui/OrangeButton";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 
 const TopCourseCard = ({
   course,
@@ -22,20 +21,17 @@ const TopCourseCard = ({
   return (
     <div
       className={cn(
-        "top-course-card h-full bg-white rounded-2xl shadow-[0_0_2px_5px_rgba(247,113,36,0.3)] p-3 cursor-default flex flex-col",
+        "top-course-card h-full w-full bg-white rounded-2xl shadow-[0_0_2px_5px_rgba(247,113,36,0.3)] p-3 cursor-default flex flex-col",
         props.className
       )}
     >
       <div className="course-card-image rounded-2xl h-1/2 w-full relative">
-        <Image
+        <img
           src={course.thumbnail || "/CourseCardDemo.jpg"}
           alt={course.title}
-          className="rounded-2xl max-h-[200px] select-none w-full h-full"
+          className="rounded-2xl max-h-[200px] select-none w-full h-full object-fill"
           draggable={false}
-          width={100}
-          height={100}
-          priority
-          loading="eager"
+          loading="lazy"
         />
         {course.discount && course.discount.isActive && (
           <DiscountBadge
