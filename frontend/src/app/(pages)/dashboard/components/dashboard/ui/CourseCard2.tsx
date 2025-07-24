@@ -54,7 +54,7 @@ const CourseCard2 = ({ course }: { course: Course }) => {
               index < 2 && (
                 <InstructorCard
                   key={index}
-                  instructorId={instructor}
+                  instructor={instructor}
                 />
               )
           )}

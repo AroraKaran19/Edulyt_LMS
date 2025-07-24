@@ -28,7 +28,10 @@ class UploadService {
   private baseUrl: string;
 
   constructor() {
-    this.baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+    this.baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+    if (!this.baseUrl) {
+      throw new Error("NEXT_PUBLIC_API_BASE_URL is not set");
+    }
   }
 
   /**

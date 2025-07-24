@@ -4,16 +4,11 @@ export const demoCourses: Course[] = [
   {
     "_id": "course_001",
     "title": "Introduction to Machine Learning",
-    "subtitle": "Master the Fundamentals of AI",
     "description": "This comprehensive course covers the basics of machine learning, including supervised and unsupervised learning, neural networks, and practical applications using Python.",
     "shortDescription": "Learn the essentials of machine learning with hands-on projects.",
     "category": "Technology",
     "subcategory": "Artificial Intelligence",
     "thumbnail": "https://images.unsplash.com/photo-1501504905252-473c47e087f8?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-    "images": [
-      "https://images.unsplash.com/photo-1501504905252-473c47e087f8?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-      "https://images.unsplash.com/photo-1501504905252-473c47e087f8?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-    ],
     "previewVideoUrl": "https://videos.pexels.com/video-files/31755962/13529383_2560_1440_60fps.mp4",
     "isFeatured": true,
     "isCertified": true,
@@ -53,52 +48,30 @@ export const demoCourses: Course[] = [
                 "_id": "content_001",
                 "title": "Introduction Video",
                 "description": "Introduction to ML concepts.",
-                "content": [
-                  {
-                    "_id": "video_001",
-                    "sources": [
-                      {
-                        "_id": "vq_001",
-                        "quality": "1080p",
-                        "videoUrl": "https://videos.pexels.com/video-files/31755962/13529383_2560_1440_60fps.mp4"
-                      },
-                      {
-                        "_id": "vq_002",
-                        "quality": "720p",
-                        "videoUrl": "https://videos.pexels.com/video-files/31755962/13529383_2560_1440_60fps.mp4"
-                      }
-                    ],
-                    "thumbnailUrl": "https://images.unsplash.com/photo-1501504905252-473c47e087f8?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-                    "duration": 300,
-                    "order": 1,
-                    "notes": [
-                      {
-                        "_id": "note_001",
-                        "note": "Supervised learning explained clearly.",
-                        "timestamp": 120,
-                        "createdAt": new Date("2025-07-01T10:00:00Z"),
-                        "updatedAt": new Date("2025-07-01T10:00:00Z")
-                      }
-                    ]
-                  }
-                ],
+                "content": {
+                  "_id": "video_001",
+                  "sources": [
+                    {
+                      "_id": "vq_001",
+                      "quality": "1080p",
+                      "videoUrl": "https://videos.pexels.com/video-files/31755962/13529383_2560_1440_60fps.mp4"
+                    },
+                    {
+                      "_id": "vq_002",
+                      "quality": "720p",
+                      "videoUrl": "https://videos.pexels.com/video-files/31755962/13529383_2560_1440_60fps.mp4"
+                    }
+                  ],
+                  "thumbnailUrl": "https://images.unsplash.com/photo-1501504905252-473c47e087f8?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+                  "duration": 300
+                },
                 "type": "video",
-                "readingMaterials": [
-                  {
-                    "_id": "rm_001",
-                    "content": "pdf",
-                    "estimatedReadTime": 15,
-                    "downloadUrl": "https://example.com/docs/ml_intro.pdf"
-                  }
-                ],
-                "order": 1,
                 "isCompleted": false,
                 "isLocked": false,
                 "createdAt": new Date("2025-07-01T10:00:00Z"),
                 "updatedAt": new Date("2025-07-01T10:00:00Z")
               }
             ],
-            "order": 1,
             "isCompleted": false,
             "isLocked": false,
             "createdAt": new Date("2025-07-01T10:00:00Z"),
@@ -106,7 +79,6 @@ export const demoCourses: Course[] = [
           }
         ],
         "description": "Learn the basics of machine learning.",
-        "order": 1,
         "isCompleted": false,
         "isLocked": false,
         "createdAt": new Date("2025-07-01T10:00:00Z"),
@@ -130,61 +102,51 @@ export const demoCourses: Course[] = [
       }
     ],
     "plans": {
-      "elite": [
-        {
-          "_id": "plan_001",
-          "title": "Elite Plan",
-          "type": "elite",
-          "price": 199.99,
-          "features": [
-            {
-              "title": "Full Course Access",
-              "provided": true,
-              "description": "Access to all videos and materials.",
-              "order": 1
-            },
-            {
-              "title": "Certificate of Completion",
-              "provided": true,
-              "description": "Earn a certificate upon completion.",
-              "order": 2
-            }
-          ],
-          "discount": {
-            "discount": "percentage",
-            "value": 10,
-            "startDate": new Date("2025-07-01T00:00:00Z"),
-            "endDate": new Date("2025-12-31T23:59:59Z"),
-            "isActive": true
+      "elite": {
+        "_id": "plan_001",
+        "title": "Elite Plan",
+        "type": "elite",
+        "price": 199.99,
+        "features": [
+          {
+            "title": "Full Course Access",
+            "provided": true
           },
-          "isPopular": true,
-          "billingPeriod": "annually",
-          "trialDays": 7,
-          "isActive": true,
-          "createdAt": new Date("2025-07-01T10:00:00Z"),
-          "updatedAt": new Date("2025-07-01T10:00:00Z")
-        }
-      ],
-      "essential": [
-        {
-          "_id": "plan_002",
-          "title": "Essential Plan",
-          "type": "essential",
-          "price": 99.99,
-          "features": [
-            {
-              "title": "Basic Course Access",
-              "provided": true,
-              "description": "Access to core videos and materials.",
-              "order": 1
-            }
-          ],
-          "billingPeriod": "monthly",
-          "isActive": true,
-          "createdAt": new Date("2025-07-01T10:00:00Z"),
-          "updatedAt": new Date("2025-07-01T10:00:00Z")
-        }
-      ]
+          {
+            "title": "Certificate of Completion",
+            "provided": true
+          }
+        ],
+        "discount": {
+          "discount": "percentage",
+          "value": 10,
+          "startDate": new Date("2025-07-01T00:00:00Z"),
+          "endDate": new Date("2025-12-31T23:59:59Z"),
+          "isActive": true
+        },
+        "isPopular": true,
+        "billingPeriod": "annually",
+        "trialDays": 7,
+        "isActive": true,
+        "createdAt": new Date("2025-07-01T10:00:00Z"),
+        "updatedAt": new Date("2025-07-01T10:00:00Z")
+      },
+      "essential": {
+        "_id": "plan_002",
+        "title": "Essential Plan",
+        "type": "essential",
+        "price": 99.99,
+        "features": [
+          {
+            "title": "Basic Course Access",
+            "provided": true
+          }
+        ],
+        "billingPeriod": "monthly",
+        "isActive": true,
+        "createdAt": new Date("2025-07-01T10:00:00Z"),
+        "updatedAt": new Date("2025-07-01T10:00:00Z")
+      }
     },
     "reviews": [
       {
@@ -204,6 +166,12 @@ export const demoCourses: Course[] = [
         "name": "Alice Brown",
         "rating": 4.5,
         "comment": "Very practical and well-structured.",
+        "profileImage": "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150",
+        "currentRole": "Data Scientist",
+        "currentCompany": "TechCorp",
+        "pastRole": "Software Engineer",
+        "pastCompany": "StartupXYZ",
+        "linkedin": "https://linkedin.com/in/alicebrown",
         "date": new Date("2025-06-10T10:00:00Z"),
         "isActive": true,
         "verified": true,
@@ -215,8 +183,7 @@ export const demoCourses: Course[] = [
       {
         "_id": "faq_001",
         "question": "What is the prerequisite for this course?",
-        "answer": "Basic knowledge of Python and statistics is recommended.",
-        "order": 1
+        "answer": "Basic knowledge of Python and statistics is recommended."
       }
     ],
     "isActive": true,
@@ -261,7 +228,6 @@ export const demoCourses: Course[] = [
         ],
         "passingScore": 80,
         "maxAttempts": 2,
-        "order": 1,
         "createdAt": new Date("2025-07-01T10:00:00Z"),
         "updatedAt": new Date("2025-07-01T10:00:00Z")
       }

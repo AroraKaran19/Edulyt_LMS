@@ -203,14 +203,14 @@ export interface Course {
     skillLevel: string;
     whoShouldJoin: string;
     prerequisites?: string[];
-    discount?: number; // in percentage just for display purpose
+    discount?: Discount;
     duration: string; // like: 3 months, 1 year, 2 years, etc. (will not be accurate)
 
     // Content
     modules: CourseModule[];
 
     // Instructor
-    instructor: Instructor["_id"][];
+    instructor: Instructor[];
 
     // Pricing Plans
     plans: {

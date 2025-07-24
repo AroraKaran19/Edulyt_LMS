@@ -59,10 +59,7 @@ export class CourseService {
         tags: courseData.tags || [],
         
         // Pricing plans with proper structure
-        plans: courseData.plans || {
-          elite: [],
-          essential: []
-        },
+        plans: courseData.plans || {},
         
         // SEO fields
         metaTitle: courseData.metaTitle,
@@ -72,6 +69,9 @@ export class CourseService {
         // Audience
         audience: courseData.audience || 'professionals',
         
+        // Language
+        language: courseData.language || 'English',
+        
         // Duration
         duration: courseData.duration || '1 month',
         
@@ -79,12 +79,8 @@ export class CourseService {
         scholarship: courseData.scholarship || false,
         scholarshipDescription: courseData.scholarshipDescription,
         
-        // Discount with proper Discount type
-        discount: courseData.discount || {
-          discount: 'percentage',
-          value: 0,
-          isActive: false
-        }
+        // Discount - only set if provided and valid
+        ...(courseData.discount && typeof courseData.discount === 'object' ? { discount: courseData.discount } : {})
       };
 
       // Validate required fields
@@ -94,12 +90,33 @@ export class CourseService {
       }
 
       // Create the course
+      console.log('Creating course with data:', {
+        _id: courseToCreate._id,
+        title: courseToCreate.title,
+        language: courseToCreate.language,
+        plansStructure: typeof courseToCreate.plans,
+        hasElitePlan: !!courseToCreate.plans?.elite,
+        hasEssentialPlan: !!courseToCreate.plans?.essential
+      });
+      
       const course = new CourseModel(courseToCreate);
       const savedCourse = await course.save();
       
+      console.log('✅ Course saved successfully:', savedCourse._id);
       return savedCourse.toObject();
     } catch (error) {
       console.error('Error creating course:', error);
+      
+      // Log specific validation errors
+      if (error && typeof error === 'object' && 'name' in error) {
+        if ((error as any).name === 'ValidationError') {
+          console.error('Mongoose validation errors:', (error as any).errors);
+        }
+        if ((error as any).name === 'MongoServerError') {
+          console.error('MongoDB server error:', (error as any).message);
+        }
+      }
+      
       if (error instanceof Error) {
         throw new Error(`Failed to create course: ${error.message}`);
       }
@@ -589,31 +606,34 @@ export class CourseService {
       errors.push('Valid skill level is required (Beginner, Intermediate, or Advanced)');
     }
 
+    if (!courseData.language?.trim()) {
+      errors.push('Language is required');
+    }
+
     // Validate plans if provided
     if (courseData.plans) {
       if (courseData.plans.elite) {
-        courseData.plans.elite.forEach((plan, index) => {
-          if (plan.price < 0) {
-            errors.push(`Elite plan ${index + 1} price must be 0 or greater`);
-          }
-        });
+        if (typeof courseData.plans.elite.price !== 'number' || courseData.plans.elite.price < 0) {
+          errors.push('Elite plan price must be a valid number 0 or greater');
+        }
+        if (!courseData.plans.elite.title?.trim()) {
+          errors.push('Elite plan title is required');
+        }
       }
       if (courseData.plans.essential) {
-        courseData.plans.essential.forEach((plan, index) => {
-          if (plan.price < 0) {
-            errors.push(`Essential plan ${index + 1} price must be 0 or greater`);
-          }
-        });
+        if (typeof courseData.plans.essential.price !== 'number' || courseData.plans.essential.price < 0) {
+          errors.push('Essential plan price must be a valid number 0 or greater');
+        }
+        if (!courseData.plans.essential.title?.trim()) {
+          errors.push('Essential plan title is required');
+        }
       }
     }
 
     // Validate discount if provided
-    if (courseData.discount && typeof courseData.discount === 'object') {
-      if (courseData.discount.value < 0 || courseData.discount.value > 100) {
+    if (courseData.discount && typeof courseData.discount === 'number') {
+      if (courseData.discount < 0 || courseData.discount > 100) {
         errors.push('Discount value must be between 0 and 100');
-      }
-      if (!['percentage', 'fixed'].includes(courseData.discount.discount)) {
-        errors.push('Discount type must be either "percentage" or "fixed"');
       }
     }
 
@@ -625,9 +645,6 @@ export class CourseService {
         }
         if (!module.title?.trim()) {
           errors.push(`Module ${moduleIndex + 1} must have a title`);
-        }
-        if (typeof module.order !== 'number' || module.order < 0) {
-          errors.push(`Module ${moduleIndex + 1} must have a valid order number`);
         }
       });
     }

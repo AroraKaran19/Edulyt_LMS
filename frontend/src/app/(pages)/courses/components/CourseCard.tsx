@@ -39,9 +39,9 @@ const CourseCard = ({
           priority
           loading="eager"
         />
-        {course?.discount && (
+        {course?.discount && course.discount.isActive && (
           <DiscountBadge
-            discount={Number(course.discount)}
+            discount={course.discount.value}
             className="absolute top-2 right-2"
           />
         )}
@@ -63,12 +63,7 @@ const CourseCard = ({
         <div className="instructors mt-2 flex gap-2 select-none mb-2 flex-col sm:flex-row items-start sm:items-center">
           {course?.instructor.map((instructor, index) => {
             if (index < 2) {
-              return (
-                <InstructorCard
-                  key={index}
-                  instructorId={instructor}
-                />
-              );
+              return <InstructorCard key={index} instructor={instructor} />;
             }
           })}
           {course?.instructor.length > 2 && (
@@ -81,23 +76,31 @@ const CourseCard = ({
           )}
         </div>
         <div className="mt-auto flex flex-col sm:flex-row gap-2 sm:items-center select-none">
-          <div className="pricing flex flex-row lg:flex-col xl:flex-row gap-2 sm:items-center flex-wrap">
-            <p className="text-xl font-bold text-black">
-              ₹
-              {course?.discount
-                ? Math.round(
-                    (course.plans.essential?.price || course.plans.elite?.price || 0 -
-                      (course.plans.essential?.price || course.plans.elite?.price || 0) *
-                        (Number(course.discount) / 100)) *
-                      100
-                  ) / 100
-                : course.plans.essential?.price || course.plans.elite?.price || 0}
-            </p>
-            {course?.discount && (
-              <span className="text-sm font-normal text-black line-through opacity-50">
-                ₹{course.plans.essential?.price || course.plans.elite?.price || 0}
+          <div className="pricing flex flex-row lg:flex-col xl:flex-row gap-2 sm:items-center flex-wrap">  
+            {course?.discount && course.discount.isActive && (
+              <span className="text-xl font-bold text-black"> 
+                ₹
+                {course.plans.essential?.price ||
+                  course.plans.elite?.price ||
+                  0}
               </span>
             )}
+            <p className="text-sm font-normal text-black line-through opacity-50">
+              ₹
+              {course?.discount && course.discount.isActive
+                ? Math.round(
+                    (course.plans.essential?.price ||
+                      course.plans.elite?.price ||
+                      0) +
+                      (course.plans.essential?.price ||
+                        course.plans.elite?.price ||
+                        0) *
+                        (course.discount.value / 100)
+                  )
+                : course.plans.essential?.price ||
+                  course.plans.elite?.price ||
+                  0}
+            </p>
             <p className="text-sm font-normal text-black">onwards/-</p>
           </div>
           <OrangeButton

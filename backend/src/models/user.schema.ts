@@ -1,13 +1,9 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import bcrypt from 'bcryptjs';
 import { 
-  User, 
   UserProfile, 
   SocialProfile, 
-  UserVideoNote, 
-  UserLearningStreak, 
-  UserLearningStats, 
-  UserEnrollmentPlan, 
+  UserLearningStats,
   UserEnrollment, 
   UserGoal, 
   UserAchievement, 

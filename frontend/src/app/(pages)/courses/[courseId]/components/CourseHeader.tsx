@@ -55,7 +55,7 @@ const CourseHeader = ({ course }: { course: Course }) => {
                 plusJakartaSans.className
               )}
             >
-              {course?.language}
+              {course?.description}
             </p>
           </div>
         </div>

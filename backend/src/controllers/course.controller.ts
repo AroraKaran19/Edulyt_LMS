@@ -18,6 +18,17 @@ export class CourseController {
     try {
       const courseData: Partial<Course> = req.body;
 
+      console.log('📝 Received course creation request:', {
+        title: courseData.title,
+        category: courseData.category,
+        language: courseData.language,
+        audience: courseData.audience,
+        createdBy: courseData.createdBy,
+        hasPlans: !!courseData.plans,
+        planTypes: courseData.plans ? Object.keys(courseData.plans) : [],
+        dataKeys: Object.keys(courseData).slice(0, 10) // First 10 keys for debugging
+      });
+
       // Validate course data
       const validation = this.courseService.validateCourseData(courseData);
       if (!validation.isValid) {

@@ -1,586 +1,501 @@
-import { useReducer, useEffect } from 'react';
-import { Plan, Instructor, FAQ, Review, FeaturedReview, CourseModule } from '@/types/course';
+import { useState, useEffect, useCallback } from "react";
+import {
+  Plan,
+  FAQ,
+  Review,
+  FeaturedReview,
+  CourseModule,
+  Discount,
+} from "@/types/course";
+import { Instructor } from "@/types";
 
-// Form state type (subset of Course for creation)
+// Simplified form state type
 export type CourseFormState = {
-  // Basic Information
+  // Basic Information - required
   title: string;
-  subtitle: string;
   description: string;
-  shortDescription: string;
   category: string;
-  subcategory: string;
   thumbnail: string;
-  images: string[];
   previewVideoUrl: string;
+  
+  // Optional basic fields
+  shortDescription?: string;
+  subcategory?: string;
 
   // Flags
   isFeatured: boolean;
   isCertified: boolean;
 
-  // UI & Learning Info
+  // Metrics
+  enrolledCount: number;
+  totalRatings: number;
+  totalLectures: number;
+
+  // Learning Information - required
   whatYouWillLearn: string;
-  skills: string[];
-  keyFeatures: {
-    title: string;
-    description: string;
-  }[];
-  features: string[];
-  careerPaths: string[];
   skillLevel: string;
   whoShouldJoin: string;
+  duration: string;
+  
+  // Arrays
+  skills: string[];
+  keyFeatures: Array<{ title: string; description: string }>;
+  features: string[];
+  careerPaths: string[];
   prerequisites: string[];
 
   // Content
   modules: CourseModule[];
-
-  // Instructor
   instructor: Instructor[];
 
-  // Pricing Plans
+  // Pricing
   plans: {
-    elite: Plan[];
-    essential: Plan[];
+    elite?: Plan;
+    essential?: Plan;
   };
 
-  // Reviews
+  // Reviews and FAQs
   reviews: Review[];
   featuredReviews: FeaturedReview[];
-
-  // FAQs
   faqs: FAQ[];
 
   // Administrative
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  createdBy: string;
+  language: string;
+  audience: "college-students" | "professionals";
   tags: string[];
-  audience: "college-students" | "professionals" | "";
 
   // SEO
   slug: string;
-  metaTitle: string;
-  metaDescription: string;
+  metaTitle?: string;
+  metaDescription?: string;
   keywords: string[];
 
   // Scholarship
   scholarship: boolean;
-  scholarshipDescription: string;
+  scholarshipDescription?: string;
 
-  // Additional form-specific fields
-  duration: string;
+  // Additional
   uploadedThumbnail: string | null;
-  totalLectures: number;
+  discount?: Discount;
 };
 
-// Action types
-export type CourseFormAction = 
-  // Basic field updates
-  | { type: 'SET_FIELD'; field: keyof CourseFormState; value: CourseFormState[keyof CourseFormState] } 
-  | { type: 'SET_MULTIPLE_FIELDS'; fields: Partial<CourseFormState> }
-  
-  // Array operations
-  | { type: 'ADD_TO_ARRAY'; field: keyof CourseFormState; value: string | Instructor | Plan | FAQ | Review | FeaturedReview | CourseModule }
-  | { type: 'REMOVE_FROM_ARRAY'; field: keyof CourseFormState; index: number }
-  | { type: 'UPDATE_ARRAY_ITEM'; field: keyof CourseFormState; index: number; value: string | Instructor | Plan | FAQ | Review | FeaturedReview | CourseModule }
-  
-  // Complex object operations
-  | { type: 'ADD_KEY_FEATURE'; feature: { title: string; description: string } }
-  | { type: 'REMOVE_KEY_FEATURE'; index: number }
-  | { type: 'UPDATE_KEY_FEATURE'; index: number; feature: { title: string; description: string } }
-  
-  // Plan operations
-  | { type: 'ADD_PLAN'; planType: 'elite' | 'essential'; plan: Plan }
-  | { type: 'REMOVE_PLAN'; planType: 'elite' | 'essential'; index: number }
-  | { type: 'UPDATE_PLAN'; planType: 'elite' | 'essential'; index: number; plan: Plan }
-  
-  // Module operations
-  | { type: 'ADD_MODULE'; module: CourseModule }
-  | { type: 'REMOVE_MODULE'; index: number }
-  | { type: 'UPDATE_MODULE'; index: number; module: CourseModule }
-  
-  // Instructor operations
-  | { type: 'ADD_INSTRUCTOR'; instructor: Instructor }
-  | { type: 'REMOVE_INSTRUCTOR'; index: number }
-  | { type: 'UPDATE_INSTRUCTOR'; index: number; instructor: Instructor }
-  
-  // FAQ operations
-  | { type: 'ADD_FAQ'; faq: FAQ }
-  | { type: 'REMOVE_FAQ'; index: number }
-  | { type: 'UPDATE_FAQ'; index: number; faq: FAQ }
-  
-  // Review operations
-  | { type: 'ADD_REVIEW'; review: Review }
-  | { type: 'REMOVE_REVIEW'; index: number }
-  | { type: 'ADD_FEATURED_REVIEW'; review: FeaturedReview }
-  | { type: 'REMOVE_FEATURED_REVIEW'; index: number }
-  
-  // Form management
-  | { type: 'LOAD_FROM_STORAGE'; data: Partial<CourseFormState> }
-  | { type: 'RESET_FORM' }
-  | { type: 'RESET_SECTION'; section: keyof CourseFormState };
-
-// Initial state
+// Initial state with sensible defaults
 const initialState: CourseFormState = {
   // Basic Information
-  title: '',
-  subtitle: '',
-  description: '',
-  shortDescription: '',
-  category: '',
-  subcategory: '',
-  thumbnail: '',
-  images: [],
-  previewVideoUrl: '',
+  title: "",
+  description: "",
+  category: "",
+  thumbnail: "",
+  previewVideoUrl: "",
+  shortDescription: "",
+  subcategory: "",
 
   // Flags
   isFeatured: false,
   isCertified: false,
 
-  // UI & Learning Info
-  whatYouWillLearn: '',
+  // Metrics
+  enrolledCount: 0,
+  totalRatings: 0,
+  totalLectures: 0,
+
+  // Learning Information
+  whatYouWillLearn: "",
+  skillLevel: "",
+  whoShouldJoin: "",
+  duration: "",
+
+  // Arrays
   skills: [],
   keyFeatures: [],
   features: [],
   careerPaths: [],
-  skillLevel: '',
-  whoShouldJoin: '',
   prerequisites: [],
 
   // Content
   modules: [],
-
-  // Instructor
   instructor: [],
 
-  // Pricing Plans
-  plans: {
-    elite: [],
-    essential: [],
-  },
+  // Pricing
+  plans: {},
 
-  // Reviews
+  // Reviews and FAQs
   reviews: [],
   featuredReviews: [],
-
-  // FAQs
   faqs: [],
 
   // Administrative
+  isActive: true,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  createdBy: "",
+  language: "English",
+  audience: "college-students",
   tags: [],
-  audience: '',
 
   // SEO
-  slug: '',
-  metaTitle: '',
-  metaDescription: '',
+  slug: "",
+  metaTitle: "",
+  metaDescription: "",
   keywords: [],
 
   // Scholarship
   scholarship: false,
-  scholarshipDescription: '',
+  scholarshipDescription: "",
 
-  // Additional form-specific fields
-  duration: '',
+  // Additional
   uploadedThumbnail: null,
-  totalLectures: 0,
+  discount: undefined,
 };
 
-// Reducer function
-const courseFormReducer = (state: CourseFormState, action: CourseFormAction): CourseFormState => {
-  switch (action.type) {
-    case 'SET_FIELD':
-      return { ...state, [action.field]: action.value };
+// Simplified hook using useState instead of useReducer
+export const useCourseForm = (storageKey: string = "course-form-draft") => {
+  const [state, setState] = useState<CourseFormState>(initialState);
 
-    case 'SET_MULTIPLE_FIELDS':
-      return { ...state, ...action.fields };
-
-    case 'ADD_TO_ARRAY': {
-      const currentArray = state[action.field] as unknown[];
-      return {
-        ...state,
-        [action.field]: [...currentArray, action.value]
-      };
-    }
-
-    case 'REMOVE_FROM_ARRAY': {
-      const currentArray = state[action.field] as unknown[];
-      return {
-        ...state,
-        [action.field]: currentArray.filter((_, index) => index !== action.index)
-      };
-    }
-
-    case 'UPDATE_ARRAY_ITEM': {
-      const currentArray = state[action.field] as unknown[];
-      return {
-        ...state,
-        [action.field]: currentArray.map((item, index) => 
-          index === action.index ? action.value : item
-        )
-      };
-    }
-
-    case 'ADD_KEY_FEATURE':
-      return {
-        ...state,
-        keyFeatures: [...state.keyFeatures, action.feature]
-      };
-
-    case 'REMOVE_KEY_FEATURE':
-      return {
-        ...state,
-        keyFeatures: state.keyFeatures.filter((_, index) => index !== action.index)
-      };
-
-    case 'UPDATE_KEY_FEATURE':
-      return {
-        ...state,
-        keyFeatures: state.keyFeatures.map((feature, index) =>
-          index === action.index ? action.feature : feature
-        )
-      };
-
-    case 'ADD_PLAN':
-      return {
-        ...state,
-        plans: {
-          ...state.plans,
-          [action.planType]: [...state.plans[action.planType], action.plan]
-        }
-      };
-
-    case 'REMOVE_PLAN':
-      return {
-        ...state,
-        plans: {
-          ...state.plans,
-          [action.planType]: state.plans[action.planType].filter((_, index) => index !== action.index)
-        }
-      };
-
-    case 'UPDATE_PLAN':
-      return {
-        ...state,
-        plans: {
-          ...state.plans,
-          [action.planType]: state.plans[action.planType].map((plan, index) =>
-            index === action.index ? action.plan : plan
-          )
-        }
-      };
-
-    case 'ADD_MODULE':
-      return {
-        ...state,
-        modules: [...state.modules, action.module]
-      };
-
-    case 'REMOVE_MODULE':
-      return {
-        ...state,
-        modules: state.modules.filter((_, index) => index !== action.index)
-      };
-
-    case 'UPDATE_MODULE':
-      return {
-        ...state,
-        modules: state.modules.map((module, index) =>
-          index === action.index ? action.module : module
-        )
-      };
-
-    case 'ADD_INSTRUCTOR':
-      return {
-        ...state,
-        instructor: [...state.instructor, action.instructor]
-      };
-
-    case 'REMOVE_INSTRUCTOR':
-      return {
-        ...state,
-        instructor: state.instructor.filter((_, index) => index !== action.index)
-      };
-
-    case 'UPDATE_INSTRUCTOR':
-      return {
-        ...state,
-        instructor: state.instructor.map((inst, index) =>
-          index === action.index ? action.instructor : inst
-        )
-      };
-
-    case 'ADD_FAQ':
-      return {
-        ...state,
-        faqs: [...state.faqs, action.faq]
-      };
-
-    case 'REMOVE_FAQ':
-      return {
-        ...state,
-        faqs: state.faqs.filter((_, index) => index !== action.index)
-      };
-
-    case 'UPDATE_FAQ':
-      return {
-        ...state,
-        faqs: state.faqs.map((faq, index) =>
-          index === action.index ? action.faq : faq
-        )
-      };
-
-    case 'ADD_REVIEW':
-      return {
-        ...state,
-        reviews: [...state.reviews, action.review]
-      };
-
-    case 'REMOVE_REVIEW':
-      return {
-        ...state,
-        reviews: state.reviews.filter((_, index) => index !== action.index)
-      };
-
-    case 'ADD_FEATURED_REVIEW':
-      return {
-        ...state,
-        featuredReviews: [...state.featuredReviews, action.review]
-      };
-
-    case 'REMOVE_FEATURED_REVIEW':
-      return {
-        ...state,
-        featuredReviews: state.featuredReviews.filter((_, index) => index !== action.index)
-      };
-
-    case 'LOAD_FROM_STORAGE':
-      return { ...state, ...action.data };
-
-    case 'RESET_FORM':
-      return initialState;
-
-    case 'RESET_SECTION': {
-      const resetValue = initialState[action.section];
-      return { ...state, [action.section]: resetValue };
-    }
-
-    default:
-      return state;
-  }
-};
-
-// Custom hook with localStorage persistence
-export const useCourseForm = (storageKey: string = 'course-form-draft') => {
-  const [state, dispatch] = useReducer(courseFormReducer, initialState);
-
-  // Load from localStorage on mount
   useEffect(() => {
-    const saved = localStorage.getItem(storageKey);
-    if (saved) {
-      try {
-        const parsedData = JSON.parse(saved);
-        dispatch({ type: 'LOAD_FROM_STORAGE', data: parsedData });
-      } catch (error) {
-        console.warn('Failed to load saved form data:', error);
-      }
-    }
-  }, [storageKey]);
+    console.log("state", state);
+  }, [state]);
 
-  // Save to localStorage on state change (debounced)
+  // Auto-save to localStorage with debouncing
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      // Filter out null/undefined values and file objects before saving
-      const dataToSave = Object.entries(state).reduce((acc, [key, value]) => {
-        if (value !== null && value !== undefined) {
-          (acc as Record<string, unknown>)[key] = value;
-        }
-        return acc;
-      }, {} as Record<string, unknown>);
-      
-      localStorage.setItem(storageKey, JSON.stringify(dataToSave));
-    }, 1000); // 1 second debounce
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(state));
+      } catch (error) {
+        console.warn("Failed to save form data:", error);
+      }
+    }, 1000);
 
     return () => clearTimeout(timeoutId);
   }, [state, storageKey]);
 
-  // Helper functions for common operations
-  const updateField = <K extends keyof CourseFormState>(field: K, value: CourseFormState[K]) => {
-    dispatch({ type: 'SET_FIELD', field, value });
-  };
-
-  const updateMultipleFields = (fields: Partial<CourseFormState>) => {
-    dispatch({ type: 'SET_MULTIPLE_FIELDS', fields });
-  };
-
-  const addToArray = (field: keyof CourseFormState, value: string | Instructor | Plan | FAQ | Review | FeaturedReview | CourseModule) => {
-    dispatch({ type: 'ADD_TO_ARRAY', field, value });
-  };
-
-  const removeFromArray = (field: keyof CourseFormState, index: number) => {
-    dispatch({ type: 'REMOVE_FROM_ARRAY', field, index });
-  };
-
-  const updateArrayItem = (field: keyof CourseFormState, index: number, value: string | Instructor | Plan | FAQ | Review | FeaturedReview | CourseModule) => {
-    dispatch({ type: 'UPDATE_ARRAY_ITEM', field, index, value });
-  };
-
-  // Specific helper functions
-  const addTag = (tag: string) => {
-    if (tag && !state.tags.includes(tag)) {
-      addToArray('tags', tag);
+  // Load from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        const parsedData = JSON.parse(saved);
+        setState(prevState => ({ ...prevState, ...parsedData }));
+      }
+    } catch (error) {
+      console.warn("Failed to load saved form data:", error);
+      localStorage.removeItem(storageKey);
     }
-  };
+  }, [storageKey]);
 
-  const removeTag = (tag: string) => {
-    const index = state.tags.indexOf(tag);
-    if (index > -1) {
-      removeFromArray('tags', index);
+  // Generic field update function
+  const updateField = useCallback(<K extends keyof CourseFormState>(
+    field: K,
+    value: CourseFormState[K]
+  ) => {
+    setState(prev => ({ ...prev, [field]: value }));
+  }, []);
+
+  // Update multiple fields at once
+  const updateFields = useCallback((fields: Partial<CourseFormState>) => {
+    setState(prev => ({ ...prev, ...fields }));
+  }, []);
+
+  // Array helpers
+  const addToArray = useCallback(<K extends keyof CourseFormState>(
+    field: K,
+    item: CourseFormState[K] extends Array<infer T> ? T : never
+  ) => {
+    setState(prev => {
+      const currentArray = prev[field] as Array<typeof item>;
+      return { ...prev, [field]: [...currentArray, item] };
+    });
+  }, []);
+
+  const removeFromArray = useCallback(<K extends keyof CourseFormState>(
+    field: K,
+    index: number
+  ) => {
+    setState(prev => {
+      const currentArray = prev[field] as unknown[];
+      return { ...prev, [field]: currentArray.filter((_, i) => i !== index) };
+    });
+  }, []);
+
+  const updateArrayItem = useCallback(<K extends keyof CourseFormState>(
+    field: K,
+    index: number,
+    item: CourseFormState[K] extends Array<infer T> ? T : never
+  ) => {
+    setState(prev => {
+      const currentArray = prev[field] as Array<typeof item>;
+      return {
+        ...prev,
+        [field]: currentArray.map((existing, i) => i === index ? item : existing)
+      };
+    });
+  }, []);
+
+  // Specific helper functions for common operations
+  const addSkill = useCallback((skill: string) => {
+    if (skill.trim() && !state.skills.includes(skill.trim())) {
+      addToArray("skills", skill.trim());
     }
-  };
+  }, [state.skills, addToArray]);
 
-  const addSkill = (skill: string) => {
-    if (skill && !state.skills.includes(skill)) {
-      addToArray('skills', skill);
+  const removeSkill = useCallback((index: number) => {
+    removeFromArray("skills", index);
+  }, [removeFromArray]);
+
+  const addTag = useCallback((tag: string) => {
+    if (tag.trim() && !state.tags.includes(tag.trim())) {
+      addToArray("tags", tag.trim());
     }
-  };
+  }, [state.tags, addToArray]);
 
-  const removeSkill = (skill: string) => {
-    const index = state.skills.indexOf(skill);
-    if (index > -1) {
-      removeFromArray('skills', index);
+  const removeTag = useCallback((index: number) => {
+    removeFromArray("tags", index);
+  }, [removeFromArray]);
+
+  const addKeyFeature = useCallback((feature: { title: string; description: string }) => {
+    if (feature.title.trim() && feature.description.trim()) {
+      addToArray("keyFeatures", feature);
     }
-  };
+  }, [addToArray]);
 
-  const addKeyFeature = (feature: { title: string; description: string }) => {
-    dispatch({ type: 'ADD_KEY_FEATURE', feature });
-  };
+  const updateKeyFeature = useCallback((index: number, feature: { title: string; description: string }) => {
+    updateArrayItem("keyFeatures", index, feature);
+  }, [updateArrayItem]);
 
-  const removeKeyFeature = (index: number) => {
-    dispatch({ type: 'REMOVE_KEY_FEATURE', index });
-  };
+  const removeKeyFeature = useCallback((index: number) => {
+    removeFromArray("keyFeatures", index);
+  }, [removeFromArray]);
 
-  const updateKeyFeature = (index: number, feature: { title: string; description: string }) => {
-    dispatch({ type: 'UPDATE_KEY_FEATURE', index, feature });
-  };
+  const setPlan = useCallback((planType: "elite" | "essential", plan: Plan) => {
+    setState(prev => ({
+      ...prev,
+      plans: { ...prev.plans, [planType]: plan }
+    }));
+  }, []);
 
-  const addPlan = (planType: 'elite' | 'essential', plan: Plan) => {
-    dispatch({ type: 'ADD_PLAN', planType, plan });
-  };
+  const removePlan = useCallback((planType: "elite" | "essential") => {
+    setState(prev => {
+      const newPlans = { ...prev.plans };
+      delete newPlans[planType];
+      return { ...prev, plans: newPlans };
+    });
+  }, []);
 
-  const removePlan = (planType: 'elite' | 'essential', index: number) => {
-    dispatch({ type: 'REMOVE_PLAN', planType, index });
-  };
+  const addModule = useCallback((module: CourseModule) => {
+    addToArray("modules", module);
+  }, [addToArray]);
 
-  const addModule = (module: CourseModule) => {
-    dispatch({ type: 'ADD_MODULE', module });
-  };
+  const updateModule = useCallback((index: number, module: CourseModule) => {
+    updateArrayItem("modules", index, module);
+  }, [updateArrayItem]);
 
-  const removeModule = (index: number) => {
-    dispatch({ type: 'REMOVE_MODULE', index });
-  };
+  const removeModule = useCallback((index: number) => {
+    removeFromArray("modules", index);
+  }, [removeFromArray]);
 
-  const addInstructor = (instructor: Instructor) => {
-    dispatch({ type: 'ADD_INSTRUCTOR', instructor });
-  };
+  const addInstructor = useCallback((instructor: Instructor) => {
+    addToArray("instructor", instructor);
+  }, [addToArray]);
 
-  const removeInstructor = (index: number) => {
-    dispatch({ type: 'REMOVE_INSTRUCTOR', index });
-  };
+  const updateInstructor = useCallback((index: number, instructor: Instructor) => {
+    updateArrayItem("instructor", index, instructor);
+  }, [updateArrayItem]);
 
-  const addFAQ = (faq: FAQ) => {
-    dispatch({ type: 'ADD_FAQ', faq });
-  };
+  const removeInstructor = useCallback((index: number) => {
+    removeFromArray("instructor", index);
+  }, [removeFromArray]);
 
-  const removeFAQ = (index: number) => {
-    dispatch({ type: 'REMOVE_FAQ', index });
-  };
+  const addFAQ = useCallback((faq: FAQ) => {
+    if (faq.question.trim() && faq.answer.trim()) {
+      addToArray("faqs", faq);
+    }
+  }, [addToArray]);
 
-  const addReview = (review: Review) => {
-    dispatch({ type: 'ADD_REVIEW', review });
-  };
+  const updateFAQ = useCallback((index: number, faq: FAQ) => {
+    updateArrayItem("faqs", index, faq);
+  }, [updateArrayItem]);
 
-  const removeReview = (index: number) => {
-    dispatch({ type: 'REMOVE_REVIEW', index });
-  };
+  const removeFAQ = useCallback((index: number) => {
+    removeFromArray("faqs", index);
+  }, [removeFromArray]);
 
-  const addFeaturedReview = (review: FeaturedReview) => {
-    dispatch({ type: 'ADD_FEATURED_REVIEW', review });
-  };
+  const addReview = useCallback((review: Review) => {
+    addToArray("reviews", review);
+  }, [addToArray]);
 
-  const removeFeaturedReview = (index: number) => {
-    dispatch({ type: 'REMOVE_FEATURED_REVIEW', index });
-  };
+  const removeReview = useCallback((index: number) => {
+    removeFromArray("reviews", index);
+  }, [removeFromArray]);
 
-  const resetForm = () => {
-    dispatch({ type: 'RESET_FORM' });
+  const addFeaturedReview = useCallback((review: FeaturedReview) => {
+    addToArray("featuredReviews", review);
+  }, [addToArray]);
+
+  const removeFeaturedReview = useCallback((index: number) => {
+    removeFromArray("featuredReviews", index);
+  }, [removeFromArray]);
+
+  // Auto-generate slug from title
+  const generateSlug = useCallback(() => {
+    if (state.title) {
+      const slug = state.title
+        .toLowerCase()
+        .replace(/[^a-z0-9 -]/g, "")
+        .replace(/\s+/g, "-")
+        .replace(/-+/g, "-")
+        .trim();
+      updateField("slug", slug);
+    }
+  }, [state.title, updateField]);
+
+  // Load existing course data
+  const loadCourseData = useCallback((courseData: Partial<CourseFormState>) => {
+    try {
+      const cleanData: Partial<CourseFormState> = {
+        title: courseData.title || "",
+        description: courseData.description || "",
+        shortDescription: courseData.shortDescription || "",
+        category: courseData.category || "",
+        subcategory: courseData.subcategory || "",
+        thumbnail: courseData.thumbnail || "",
+        previewVideoUrl: courseData.previewVideoUrl || "",
+        
+        isFeatured: courseData.isFeatured || false,
+        isCertified: courseData.isCertified || false,
+        
+        enrolledCount: courseData.enrolledCount || 0,
+        totalRatings: courseData.totalRatings || 0,
+        totalLectures: courseData.totalLectures || 0,
+        
+        whatYouWillLearn: courseData.whatYouWillLearn || "",
+        skillLevel: courseData.skillLevel || "",
+        whoShouldJoin: courseData.whoShouldJoin || "",
+        duration: courseData.duration || "",
+        
+        skills: Array.isArray(courseData.skills) ? courseData.skills : [],
+        keyFeatures: Array.isArray(courseData.keyFeatures) ? courseData.keyFeatures : [],
+        features: Array.isArray(courseData.features) ? courseData.features : [],
+        careerPaths: Array.isArray(courseData.careerPaths) ? courseData.careerPaths : [],
+        prerequisites: Array.isArray(courseData.prerequisites) ? courseData.prerequisites : [],
+        
+        modules: Array.isArray(courseData.modules) ? courseData.modules : [],
+        instructor: Array.isArray(courseData.instructor) ? courseData.instructor : [],
+        
+        plans: courseData.plans || {},
+        
+        reviews: Array.isArray(courseData.reviews) ? courseData.reviews : [],
+        featuredReviews: Array.isArray(courseData.featuredReviews) ? courseData.featuredReviews : [],
+        faqs: Array.isArray(courseData.faqs) ? courseData.faqs : [],
+        
+        isActive: courseData.isActive !== undefined ? courseData.isActive : true,
+        language: courseData.language || "en",
+        audience: courseData.audience || "college-students",
+        tags: Array.isArray(courseData.tags) ? courseData.tags : [],
+        
+        slug: courseData.slug || "",
+        metaTitle: courseData.metaTitle || "",
+        metaDescription: courseData.metaDescription || "",
+        keywords: Array.isArray(courseData.keywords) ? courseData.keywords : [],
+        
+        scholarship: courseData.scholarship || false,
+        scholarshipDescription: courseData.scholarshipDescription || "",
+        
+        uploadedThumbnail: courseData.thumbnail || null,
+        discount: courseData.discount || undefined,
+        
+        createdBy: courseData.createdBy || "",
+        createdAt: courseData.createdAt ? new Date(courseData.createdAt) : new Date(),
+        updatedAt: new Date(),
+      };
+      
+      setState(prev => ({ ...prev, ...cleanData }));
+    } catch (error) {
+      console.error("Failed to load course data:", error);
+    }
+  }, []);
+
+  // Reset form
+  const resetForm = useCallback(() => {
+    setState(initialState);
     localStorage.removeItem(storageKey);
-  };
+  }, [storageKey]);
 
-  const clearStorage = () => {
+  // Clear storage
+  const clearStorage = useCallback(() => {
     localStorage.removeItem(storageKey);
-  };
+  }, [storageKey]);
 
-  const resetSection = (section: keyof CourseFormState) => {
-    dispatch({ type: 'RESET_SECTION', section });
-  };
+  // Validation helpers
+  const isBasicInfoValid = useCallback(() => {
+    return !!(
+      state.title.trim() &&
+      state.description.trim() &&
+      state.category.trim() &&
+      state.thumbnail.trim() &&
+      state.previewVideoUrl.trim() &&
+      state.skillLevel.trim() &&
+      state.whatYouWillLearn.trim() &&
+      state.whoShouldJoin.trim() &&
+      state.duration.trim() &&
+      state.language.trim()
+    );
+  }, [state]);
 
-  // Generate slug from title
-  const generateSlug = (title: string) => {
-    const slug = title
-      .toLowerCase()
-      .replace(/[^a-z0-9 -]/g, '')
-      .replace(/\s+/g, '-')
-      .replace(/-+/g, '-')
-      .trim();
-    updateField('slug', slug);
-  };
+  const isDraft = useCallback(() => {
+    return !state.title.trim() && !state.description.trim();
+  }, [state.title, state.description]);
 
   return {
     // State
     state,
-    dispatch,
-
+    
     // Basic operations
     updateField,
-    updateMultipleFields,
+    updateFields,
+    
+    // Array operations
     addToArray,
     removeFromArray,
     updateArrayItem,
-
+    
     // Specific helpers
-    addTag,
-    removeTag,
     addSkill,
     removeSkill,
+    addTag,
+    removeTag,
     addKeyFeature,
-    removeKeyFeature,
     updateKeyFeature,
-    addPlan,
+    removeKeyFeature,
+    setPlan,
     removePlan,
     addModule,
+    updateModule,
     removeModule,
     addInstructor,
+    updateInstructor,
     removeInstructor,
     addFAQ,
+    updateFAQ,
     removeFAQ,
     addReview,
     removeReview,
     addFeaturedReview,
     removeFeaturedReview,
-
-    // Form management
+    
+    // Utilities
+    generateSlug,
+    loadCourseData,
     resetForm,
     clearStorage,
-    resetSection,
-    generateSlug,
-
-    // Validation helpers
-    isBasicInfoValid: () => {
-      return !!(state.title && state.description && state.category && state.skillLevel && state.audience);
-    },
-
-    isDraft: () => {
-      return !state.title && !state.description;
-    }
+    
+    // Validation
+    isBasicInfoValid,
+    isDraft,
   };
 };
 
-export default useCourseForm; 
+export default useCourseForm;

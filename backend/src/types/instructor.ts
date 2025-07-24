@@ -12,6 +12,7 @@ export interface Instructor {
   totalCourses: number;
   bio: string;
   currentPosition?: string;
+  currentCompany?: string;
   previousExperience?: string[];
   education?: string[];
   linkedinUrl: string;

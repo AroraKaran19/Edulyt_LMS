@@ -1,6 +1,6 @@
 "use client";
 // app/layout.tsx
-import type { Metadata } from "next";
+
 import "@/app/globals.css";
 // import { ReduxProvider } from "@/store/Provider";
 import { Plus_Jakarta_Sans } from "next/font/google";

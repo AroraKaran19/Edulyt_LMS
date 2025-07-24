@@ -1,9 +1,7 @@
 "use client";
 import React, { useState } from "react";
-import { BookOpenIcon, Upload, X } from "lucide-react";
+import { BookOpenIcon, X } from "lucide-react";
 import FlexBox from "@/components/ui/FlexBox";
-import { cn } from "@/lib/utils";
-import Image from "next/image";
 import Container from "@/app/(pages)/admin/components/ui/Container";
 import { CourseFormState, useCourseFormContext } from "../context/CourseFormContext";
 import UploadComponent from "@/components/ui/UploadComponent";
@@ -20,13 +18,75 @@ const BasicInformationSection = () => {
   const [newTag, setNewTag] = useState("");
   const [isCustomCategory, setIsCustomCategory] = useState(false);
   const [customCategory, setCustomCategory] = useState("");
-  const [isDragOver, setIsDragOver] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  const validateField = (field: string, value: string | undefined) => {
+    const errors: Record<string, string> = { ...fieldErrors };
+    
+    switch (field) {
+      case 'title':
+        if (!value?.trim()) {
+          errors.title = 'Course title is required';
+        } else if (value.trim().length < 5) {
+          errors.title = 'Title must be at least 5 characters long';
+        } else {
+          delete errors.title;
+        }
+        break;
+        
+      case 'description':
+        if (!value?.trim()) {
+          errors.description = 'Course description is required';
+        } else if (value.trim().length < 50) {
+          errors.description = 'Description must be at least 50 characters long';
+        } else {
+          delete errors.description;
+        }
+        break;
+        
+      case 'category':
+        if (!value?.trim()) {
+          errors.category = 'Category selection is required';
+        } else {
+          delete errors.category;
+        }
+        break;
+        
+      case 'skillLevel':
+        if (!value?.trim()) {
+          errors.skillLevel = 'Skill level selection is required';
+        } else {
+          delete errors.skillLevel;
+        }
+        break;
+        
+      case 'audience':
+        if (!value?.trim()) {
+          errors.audience = 'Target audience selection is required';
+        } else {
+          delete errors.audience;
+        }
+        break;
+        
+      case 'thumbnail':
+        if (!value?.trim()) {
+          errors.thumbnail = 'Course thumbnail is required';
+        } else {
+          delete errors.thumbnail;
+        }
+        break;
+    }
+    
+    setFieldErrors(errors);
+  };
 
   const handleInputChange = (field: keyof CourseFormState, value: string) => {
     updateField(field as keyof CourseFormState, value);
+    validateField(field, value);
+    
     // Auto-generate slug when title changes
     if (field === 'title') {
-      generateSlug(value);
+      generateSlug(); 
     }
   };
 
@@ -56,32 +116,35 @@ const BasicInformationSection = () => {
     }
   };
 
-  const removeTag = (tagToRemove: string) => {
-    removeFormTag(tagToRemove);
+  const removeTag = (index: number) => {
+    removeFormTag(index);
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
-    // This is now handled by the UploadComponent
-  };
-
-  const handleThumbnailUpload = (url: string, fileName: string) => {
+  // Validate on thumbnail change
+  const handleThumbnailUpload = (url: string) => {
     updateField('thumbnail', url);
     updateField('uploadedThumbnail', url);
+    validateField('thumbnail', url);
   };
 
-  const handleVideoUpload = (url: string, fileName: string) => {
+  // Helper component for field validation display
+  const FieldError = ({ field }: { field: string }) => {
+    if (!fieldErrors[field]) return null;
+    
+    return (
+      <div className="flex items-center gap-1 mt-1">
+        <span className="w-1 h-1 bg-red-500 rounded-full" />
+        <span className="text-xs text-red-600">{fieldErrors[field]}</span>
+      </div>
+    );
+  };
+
+  const getFieldClassName = (field: string, baseClassName: string) => {
+    const hasError = fieldErrors[field];
+    return `${baseClassName} ${hasError ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-orange-500 focus:ring-orange-500'}`;
+  };
+
+  const handleVideoUpload = (url: string) => {
     updateField('previewVideoUrl', url);
   };
 
@@ -106,10 +169,11 @@ const BasicInformationSection = () => {
             onUploadComplete={handleThumbnailUpload}
             acceptedFileTypes={['image/jpeg', 'image/jpg', 'image/png', 'image/webp']}
             uploadType="thumbnail"
-            maxFileSize={10 * 1024 * 1024} // 10MB
+            maxFileSize={50 * 1024 * 1024} // 50MB
             placeholder="Upload course thumbnail image"
             currentUrl={state.thumbnail}
           />
+          <FieldError field="thumbnail" />
         </div>
 
         {/* Promotional Video Upload */}
@@ -121,13 +185,13 @@ const BasicInformationSection = () => {
             onUploadComplete={handleVideoUpload}
             acceptedFileTypes={['video/mp4', 'video/avi', 'video/mov', 'video/wmv', 'video/webm']}
             uploadType="video"
-            maxFileSize={50 * 1024 * 1024} // 50MB
+            maxFileSize={50 * 1024 * 1024 * 1024} // 50GB
             placeholder="Upload course promotional video"
             currentUrl={state.previewVideoUrl}
           />
         </div>
 
-        {/* Title and Subtitle */}
+        {/* Title */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gray-700">
@@ -138,20 +202,9 @@ const BasicInformationSection = () => {
               placeholder="Enter course title"
               value={state.title} 
               onChange={(e) => handleInputChange("title", e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors outline-none"
+              className={getFieldClassName("title", "w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors outline-none")}
             />
-          </div>
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">
-              Subtitle
-            </label>
-            <input
-              type="text"
-              placeholder="Enter course subtitle"
-              value={state.subtitle}
-              onChange={(e) => handleInputChange("subtitle", e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors outline-none"
-            />
+            <FieldError field="title" />
           </div>
         </div>
 
@@ -165,8 +218,9 @@ const BasicInformationSection = () => {
             value={state.description}
             onChange={(e) => handleInputChange("description", e.target.value)}
             rows={4}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors resize-none outline-none"
+            className={getFieldClassName("description", "w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors resize-none outline-none")}
           />
+          <FieldError field="description" />
         </div>
 
         {/* Short Description */}
@@ -176,7 +230,7 @@ const BasicInformationSection = () => {
           </label>
           <textarea
             placeholder="Brief summary for course cards and previews..."
-            value={state.shortDescription}
+            value={state.shortDescription || ""}
             onChange={(e) =>
               handleInputChange("shortDescription", e.target.value)
             }
@@ -256,6 +310,7 @@ const BasicInformationSection = () => {
                   </button>
                 </FlexBox>
               )}
+            <FieldError field="category" />
           </div>
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gray-700">
@@ -264,7 +319,7 @@ const BasicInformationSection = () => {
             <input
               type="text"
               placeholder="Enter subcategory (optional)"
-              value={state.subcategory}
+              value={state.subcategory || ""}
               onChange={(e) => handleInputChange("subcategory", e.target.value)}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors outline-none"
             />
@@ -289,6 +344,7 @@ const BasicInformationSection = () => {
                 </option>
               ))}
             </select>
+            <FieldError field="skillLevel" />
           </FlexBox>
           <FlexBox className="w-full flex-col gap-2">
             <label className="text-sm font-medium text-gray-700">
@@ -299,7 +355,7 @@ const BasicInformationSection = () => {
               onChange={(e) => handleInputChange("audience", e.target.value)}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors bg-white"
             >
-              <option value="">Select audience</option>
+              <option value="" disabled>Select audience</option>
               {audiences.map((audience) => (
                 <option key={audience} value={audience}>
                   {audience === "college-students"
@@ -308,25 +364,110 @@ const BasicInformationSection = () => {
                 </option>
               ))}
             </select>
+            <FieldError field="audience" />
           </FlexBox>
         </FlexBox>
 
-        {/* Duration */}
-        <FlexBox className="w-full flex-col gap-2">
-          <label className="text-sm font-medium text-gray-700">
-            Course Duration
-          </label>
-          <input
-            type="text"
-            placeholder="e.g., 3 months, 6 weeks, 1 year"
-            value={state.duration}
-            onChange={(e) => handleInputChange("duration", e.target.value)}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors outline-none"
-          />
-          <p className="text-xs text-gray-500">
-            This is an estimated duration for display purposes
-          </p>
-        </FlexBox>
+                 {/* Duration and Discount */}
+         <FlexBox className="w-full flex-col lg:flex-row gap-4">
+           <FlexBox className="w-full flex-col gap-2">
+             <label className="text-sm font-medium text-gray-700">
+               Course Duration
+             </label>
+             <input
+               type="text"
+               placeholder="e.g., 3 months, 6 weeks, 1 year"
+               value={state.duration}
+               onChange={(e) => handleInputChange("duration", e.target.value)}
+               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors outline-none"
+             />
+             <p className="text-xs text-gray-500">
+               This is an estimated duration for display purposes
+             </p>
+           </FlexBox>
+           
+           <FlexBox className="w-full flex-col gap-2">
+             <label className="text-sm font-medium text-gray-700">
+               Course Discount (%)
+             </label>
+             <div className="relative">
+               <input
+                 type="number"
+                 min="0"
+                 max="100"
+                 step="1"
+                 placeholder="0"
+                 value={state.discount?.value || ''}
+                 onChange={(e) => {
+                   const value = Number(e.target.value);
+                   // Only set discount object if value is greater than 0 and valid
+                   if (value > 0 && value <= 100) {
+                     updateField("discount", {
+                       discount: "percentage",
+                       value: value,
+                       isActive: true
+                     });
+                   } else {
+                     // Explicitly set to undefined for 0 or invalid values
+                     updateField("discount", undefined);
+                   }
+                 }}
+                 className="w-full px-4 py-3 pr-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors outline-none"
+               />
+               <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">%</span>
+             </div>
+             <p className="text-xs text-gray-500">
+               Enter 0 for no discount, or 1-100 for discount percentage
+             </p>
+             <p className="text-xs text-gray-500">
+               This is fake discount for display purpose
+             </p>
+           </FlexBox>
+         </FlexBox>
+
+         {/* Course Flags */}
+         <FlexBox className="w-full flex-col gap-4">
+           <label className="text-sm font-medium text-gray-700">Course Settings</label>
+           <FlexBox className="w-full flex-col lg:flex-row gap-4">
+             {/* Featured Course */}
+             <FlexBox className="w-full flex-col gap-3 p-4 border border-gray-200 rounded-lg">
+               <FlexBox className="items-center gap-3">
+                 <input
+                   type="checkbox"
+                   id="isFeatured"
+                   checked={state.isFeatured}
+                   onChange={(e) => updateField("isFeatured", e.target.checked)}
+                   className="w-4 h-4 text-orange-500 border-gray-300 rounded focus:ring-orange-500 focus:ring-2"
+                 />
+                 <label htmlFor="isFeatured" className="text-sm font-medium text-gray-700 cursor-pointer">
+                   Featured Course
+                 </label>
+               </FlexBox>
+               <p className="text-xs text-gray-500">
+                 Featured courses are highlighted on the homepage and get more visibility
+               </p>
+             </FlexBox>
+
+             {/* Certified Course */}
+             <FlexBox className="w-full flex-col gap-3 p-4 border border-gray-200 rounded-lg">
+               <FlexBox className="items-center gap-3">
+                 <input
+                   type="checkbox"
+                   id="isCertified"
+                   checked={state.isCertified}
+                   onChange={(e) => updateField("isCertified", e.target.checked)}
+                   className="w-4 h-4 text-orange-500 border-gray-300 rounded focus:ring-orange-500 focus:ring-2"
+                 />
+                 <label htmlFor="isCertified" className="text-sm font-medium text-gray-700 cursor-pointer">
+                   Certified Course
+                 </label>
+               </FlexBox>
+               <p className="text-xs text-gray-500">
+                 Certified courses provide certificates upon completion
+               </p>
+             </FlexBox>
+           </FlexBox>
+         </FlexBox>
 
         {/* Tags */}
         <FlexBox className="w-full flex-col gap-2">
@@ -350,7 +491,7 @@ const BasicInformationSection = () => {
               Add
             </button>
           </FlexBox>
-          {state.tags.length > 0 && (
+          {state.tags && state.tags.length > 0 && (
             <FlexBox className="w-full flex-wrap gap-2 mt-2">
               {state.tags.map((tag, index) => (
                 <FlexBox
@@ -360,7 +501,7 @@ const BasicInformationSection = () => {
                   <span>{tag}</span>
                   <button
                     type="button"
-                    onClick={() => removeTag(tag)}
+                    onClick={() => removeTag(index)}
                     className="hover:bg-orange-200 rounded-full p-0.5 transition-colors"
                   >
                     <X className="size-3 cursor-pointer" />

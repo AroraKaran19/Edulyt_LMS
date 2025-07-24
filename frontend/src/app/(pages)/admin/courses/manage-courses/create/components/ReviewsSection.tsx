@@ -11,7 +11,7 @@ const ReviewsSection = () => {
     state,
     addReview,
     removeReview,
-    updateArrayItem,
+    updateField,
     addFeaturedReview,
     removeFeaturedReview,
   } = useCourseFormContext();
@@ -37,13 +37,16 @@ const ReviewsSection = () => {
     date: new Date(),
     verified: true,
     isActive: true,
+    profileImage: '',
+    currentRole: '',
+    currentCompany: '',
+    pastRole: '',
+    pastCompany: '',
+    linkedin: '',
   });
 
   // Additional UI-only fields for display purposes
   const [reviewAvatar, setReviewAvatar] = useState('');
-  const [featuredReviewAvatar, setFeaturedReviewAvatar] = useState('');
-  const [featuredReviewPosition, setFeaturedReviewPosition] = useState('');
-  const [featuredReviewCompany, setFeaturedReviewCompany] = useState('');
 
   const [editingReview, setEditingReview] = useState<number | null>(null);
   const [editingFeaturedReview, setEditingFeaturedReview] = useState<number | null>(null);
@@ -63,7 +66,7 @@ const ReviewsSection = () => {
       };
 
       if (editingReview !== null) {
-        updateArrayItem('reviews', editingReview, reviewToAdd);
+        updateField('reviews', [...state.reviews, reviewToAdd]);
         setEditingReview(null);
       } else {
         addReview(reviewToAdd);
@@ -94,10 +97,16 @@ const ReviewsSection = () => {
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
+        profileImage: newFeaturedReview.profileImage || '',
+        currentRole: newFeaturedReview.currentRole || '',
+        currentCompany: newFeaturedReview.currentCompany || '',
+        pastRole: newFeaturedReview.pastRole || '',
+        pastCompany: newFeaturedReview.pastCompany || '',
+        linkedin: newFeaturedReview.linkedin || '',
       };
 
       if (editingFeaturedReview !== null) {
-        updateArrayItem('featuredReviews', editingFeaturedReview, featuredReviewToAdd);
+        updateField('featuredReviews', [...(state.featuredReviews || []), featuredReviewToAdd]);
         setEditingFeaturedReview(null);
       } else {
         addFeaturedReview(featuredReviewToAdd);
@@ -111,10 +120,13 @@ const ReviewsSection = () => {
         date: new Date(),
         verified: true,
         isActive: true,
+        profileImage: '',
+        currentRole: '',
+        currentCompany: '',
+        pastRole: '',
+        pastCompany: '',
+        linkedin: '',
       });
-      setFeaturedReviewAvatar('');
-      setFeaturedReviewPosition('');
-      setFeaturedReviewCompany('');
     }
   };
 
@@ -125,8 +137,8 @@ const ReviewsSection = () => {
   };
 
   const handleEditFeaturedReview = (index: number) => {
-    const review = state.featuredReviews[index];
-    setNewFeaturedReview(review);
+    const review = state.featuredReviews?.[index];
+    setNewFeaturedReview(review || {});
     setEditingFeaturedReview(index);
   };
 
@@ -152,10 +164,13 @@ const ReviewsSection = () => {
       date: new Date(),
       verified: true,
       isActive: true,
+      profileImage: '',
+      currentRole: '',
+      currentCompany: '',
+      pastRole: '',
+      pastCompany: '',
+      linkedin: '',
     });
-    setFeaturedReviewAvatar('');
-    setFeaturedReviewPosition('');
-    setFeaturedReviewCompany('');
     setEditingFeaturedReview(null);
   };
 
@@ -182,7 +197,16 @@ const ReviewsSection = () => {
   };
 
   const isReviewFormValid = newReview.name && newReview.comment && newReview.rating;
-  const isFeaturedReviewFormValid = newFeaturedReview.name && newFeaturedReview.comment && newFeaturedReview.rating;
+  const isFeaturedReviewFormValid = 
+    newFeaturedReview.name && 
+    newFeaturedReview.comment && 
+    newFeaturedReview.rating &&
+    newFeaturedReview.profileImage &&
+    newFeaturedReview.currentRole &&
+    newFeaturedReview.currentCompany &&
+    newFeaturedReview.pastRole &&
+    newFeaturedReview.pastCompany &&
+    newFeaturedReview.linkedin;
 
   return (
     <Container
@@ -216,7 +240,7 @@ const ReviewsSection = () => {
                 : "border-transparent text-gray-500 hover:text-gray-700"
             )}
           >
-            Featured Reviews ({state.featuredReviews.length})
+            Featured Reviews ({state.featuredReviews?.length || 0})
           </button>
         </div>
 
@@ -384,13 +408,13 @@ const ReviewsSection = () => {
                 </div>
                 <div className="space-y-2">
                   <label className="block text-sm font-medium text-gray-700">
-                    Position <span className="text-gray-400">(Optional - for display only)</span>
+                    Current Role <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
-                    placeholder="Job title or role"
-                    value={featuredReviewPosition}
-                    onChange={(e) => setFeaturedReviewPosition(e.target.value)}
+                    placeholder="Current job title or role"
+                    value={newFeaturedReview.currentRole || ''}
+                    onChange={(e) => setNewFeaturedReview(prev => ({ ...prev, currentRole: e.target.value }))}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors outline-none"
                   />
                 </div>
@@ -399,25 +423,67 @@ const ReviewsSection = () => {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="block text-sm font-medium text-gray-700">
-                    Company <span className="text-gray-400">(Optional - for display only)</span>
+                    Current Company <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
-                    placeholder="Company name"
-                    value={featuredReviewCompany}
-                    onChange={(e) => setFeaturedReviewCompany(e.target.value)}
+                    placeholder="Current company name"
+                    value={newFeaturedReview.currentCompany || ''}
+                    onChange={(e) => setNewFeaturedReview(prev => ({ ...prev, currentCompany: e.target.value }))}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Past Role <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Previous job title or role"
+                    value={newFeaturedReview.pastRole || ''}
+                    onChange={(e) => setNewFeaturedReview(prev => ({ ...prev, pastRole: e.target.value }))}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors outline-none"
                   />
                 </div>
                 <div className="space-y-2">
                   <label className="block text-sm font-medium text-gray-700">
-                    Avatar URL <span className="text-gray-400">(Optional - for display only)</span>
+                    Past Company <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Previous company name"
+                    value={newFeaturedReview.pastCompany || ''}
+                    onChange={(e) => setNewFeaturedReview(prev => ({ ...prev, pastCompany: e.target.value }))}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Profile Image URL <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="url"
-                    placeholder="https://example.com/avatar.jpg"
-                    value={featuredReviewAvatar}
-                    onChange={(e) => setFeaturedReviewAvatar(e.target.value)}
+                    placeholder="https://example.com/profile.jpg"
+                    value={newFeaturedReview.profileImage || ''}
+                    onChange={(e) => setNewFeaturedReview(prev => ({ ...prev, profileImage: e.target.value }))}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors outline-none"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    LinkedIn URL <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="url"
+                    placeholder="https://linkedin.com/in/username"
+                    value={newFeaturedReview.linkedin || ''}
+                    onChange={(e) => setNewFeaturedReview(prev => ({ ...prev, linkedin: e.target.value }))}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors outline-none"
                   />
                 </div>
@@ -456,11 +522,11 @@ const ReviewsSection = () => {
             </div>
 
             {/* Featured Reviews List */}
-            {state.featuredReviews.length > 0 && (
+            {state.featuredReviews?.length && state.featuredReviews.length > 0 && (
               <div className="space-y-4">
                 <h3 className="text-lg font-medium text-gray-800">Featured Reviews</h3>
                 <div className="space-y-4">
-                  {state.featuredReviews.map((review, index) => (
+                  {state.featuredReviews?.map((review, index) => (
                     <div key={review._id} className="bg-white border border-gray-200 rounded-lg p-6 relative">
                       <div className="absolute top-4 right-4">
                         <div className="bg-orange-100 text-orange-600 px-2 py-1 rounded-full text-xs font-medium">
@@ -507,33 +573,6 @@ const ReviewsSection = () => {
             )}
           </div>
         )}
-
-        {/* Reviews Tips */}
-        <div className="bg-blue-50 p-6 rounded-lg space-y-3">
-          <h3 className="text-lg font-medium text-blue-800">Review Management Tips</h3>
-          <ul className="space-y-2 text-sm text-blue-700">
-            <li className="flex items-start gap-2">
-              <span className="text-blue-500 mt-1">•</span>
-              <span>Featured reviews appear prominently on the course page</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-blue-500 mt-1">•</span>
-              <span>Include reviews from notable professionals or successful graduates</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-blue-500 mt-1">•</span>
-              <span>Maintain authenticity - only add genuine reviews from real students</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-blue-500 mt-1">•</span>
-              <span>Mix different rating levels to maintain credibility</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-blue-500 mt-1">•</span>
-              <span>Note: Avatar, position, and company fields are for display purposes only and won&apos;t be saved to the database</span>
-            </li>
-          </ul>
-        </div>
       </div>
     </Container>
   );

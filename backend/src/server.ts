@@ -1,7 +1,6 @@
 import app from './app';
 import { connectDB, disconnectDB } from './config/database';
 import dotenv from 'dotenv';
-import cors from 'cors';
 
 dotenv.config();
 

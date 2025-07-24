@@ -10,23 +10,21 @@ const SEOSection = () => {
   const {
     state,
     updateField,
-    addToArray,
-    removeFromArray,
   } = useCourseFormContext();
 
   const [newKeyword, setNewKeyword] = useState("");
 
   const handleAddKeyword = () => {
-    if (newKeyword.trim() && !state.keywords.includes(newKeyword.trim())) {
-      addToArray('keywords', newKeyword.trim());
+    if (newKeyword.trim() && !state.keywords?.includes(newKeyword.trim())) {
+      updateField('keywords', [...(state.keywords || []), newKeyword.trim()]);
       setNewKeyword("");
     }
   };
 
   const removeKeyword = (keyword: string) => {
-    const index = state.keywords.indexOf(keyword);
-    if (index > -1) {
-      removeFromArray('keywords', index);
+    const index = state.keywords?.indexOf(keyword);
+    if (index !== undefined && index > -1) {
+      updateField('keywords', state.keywords?.filter((_, i) => i !== index) || []);
     }
   };
 
@@ -46,7 +44,7 @@ const SEOSection = () => {
   const generateMetaTitleFromTitle = () => {
     // Generate meta title from title
     if (state.title) {
-      updateField('metaTitle', `${state.title} - Online Course | Edulyt India`);
+      updateField('metaTitle', `${state.title} | Edulyt India`);
     }
   };
 
@@ -112,7 +110,7 @@ const SEOSection = () => {
             <div className="flex gap-2">
               <input
                 type="text"
-                placeholder="Course Title - Online Course | Edulyt India"
+                placeholder="Course Title | Edulyt India"
                 value={state.metaTitle}
                 onChange={(e) => updateField('metaTitle', e.target.value)}
                 maxLength={60}
@@ -130,9 +128,9 @@ const SEOSection = () => {
             <div className="flex justify-between text-xs text-gray-500">
               <span>Appears in search results and browser tabs</span>
               <span className={cn(
-                state.metaTitle.length > 60 ? "text-red-500" : "text-gray-500"
+                state.metaTitle?.length && state.metaTitle.length > 60 ? "text-red-500" : "text-gray-500"
               )}>
-                {state.metaTitle.length}/60 characters
+                {state.metaTitle?.length || 0}/60 characters
               </span>
             </div>
           </div>
@@ -165,9 +163,9 @@ const SEOSection = () => {
             <div className="flex justify-between text-xs text-gray-500">
               <span>Appears in search results below the title</span>
               <span className={cn(
-                state.metaDescription.length > 160 ? "text-red-500" : "text-gray-500"
+                state.metaDescription?.length && state.metaDescription.length > 160 ? "text-red-500" : "text-gray-500"
               )}>
-                {state.metaDescription.length}/160 characters
+                {state.metaDescription?.length || 0}/160 characters
               </span>
             </div>
           </div>
@@ -197,9 +195,9 @@ const SEOSection = () => {
               <Plus className="size-4" />
             </button>
           </FlexBox>
-          {state.keywords.length > 0 && (
+          {state.keywords && state.keywords.length && state.keywords.length > 0 && (
             <FlexBox className="w-full flex-wrap gap-2 mt-2">
-              {state.keywords.map((keyword, index) => (
+              {state.keywords.map((keyword: string, index: number) => (
                 <FlexBox
                   key={index}
                   className="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-sm gap-2 items-center select-none"
@@ -227,7 +225,7 @@ const SEOSection = () => {
           <div className="bg-white p-4 rounded-lg border">
             <div className="space-y-2">
               <div className="text-blue-600 text-lg hover:underline cursor-pointer">
-                {state.metaTitle || state.title || 'Course Title - Online Course | Edulyt India'}
+                {state.metaTitle || state.title || 'Course Title | Edulyt India'}
               </div>
               <div className="text-green-700 text-sm">
                 www.edulyt.com/courses/{state.slug || 'course-slug'}

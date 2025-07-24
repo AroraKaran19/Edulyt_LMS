@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import Container from "@/app/(pages)/admin/components/ui/Container";
-import { HelpCircle, X, Edit, ChevronDown, ChevronUp } from "lucide-react";
+import { HelpCircle, X, Edit, ChevronDown, ChevronUp, GripVertical } from "lucide-react";
 import { useCourseFormContext } from "../context/CourseFormContext";
 import { FAQ } from "@/types/course";
 
@@ -10,18 +10,19 @@ const FAQSection = () => {
     state,
     addFAQ,
     removeFAQ,
-    updateArrayItem,
+    updateField,
   } = useCourseFormContext();
 
   const [newFAQ, setNewFAQ] = useState<Partial<FAQ>>({
     _id: '',
     question: '',
     answer: '',
-    order: 0,
   });
 
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [expandedFAQs, setExpandedFAQs] = useState<Record<string, boolean>>({});
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   const handleAddFAQ = () => {
     if (newFAQ.question && newFAQ.answer) {
@@ -29,11 +30,12 @@ const FAQSection = () => {
         _id: Date.now().toString(),
         question: newFAQ.question!,
         answer: newFAQ.answer!,
-        order: state.faqs.length,
       };
 
       if (editingIndex !== null) {
-        updateArrayItem('faqs', editingIndex, faqToAdd);
+        // Update existing FAQ by removing old one and adding new one
+        removeFAQ(editingIndex);
+        addFAQ(faqToAdd);
         setEditingIndex(null);
       } else {
         addFAQ(faqToAdd);
@@ -43,7 +45,6 @@ const FAQSection = () => {
         _id: '',
         question: '',
         answer: '',
-        order: 0,
       });
     }
   };
@@ -59,7 +60,6 @@ const FAQSection = () => {
       _id: '',
       question: '',
       answer: '',
-      order: 0,
     });
     setEditingIndex(null);
   };
@@ -69,6 +69,54 @@ const FAQSection = () => {
       ...prev,
       [faqId]: !prev[faqId]
     }));
+  };
+
+  // Drag and drop handlers
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/html', '');
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverIndex(index);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOverIndex(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    
+    if (draggedIndex === null || draggedIndex === dropIndex) {
+      setDraggedIndex(null);
+      setDragOverIndex(null);
+      return;
+    }
+
+    const newFAQs = [...state.faqs];
+    const draggedFAQ = newFAQs[draggedIndex];
+    
+    // Remove the dragged item
+    newFAQs.splice(draggedIndex, 1);
+    
+    // Insert at new position
+    newFAQs.splice(dropIndex, 0, draggedFAQ);
+    
+    // Update the state
+    updateField('faqs', newFAQs);
+    
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+    setDragOverIndex(null);
   };
 
   const isFormValid = newFAQ.question && newFAQ.answer;
@@ -139,33 +187,59 @@ const FAQSection = () => {
         {/* FAQs List */}
         {state.faqs.length > 0 && (
           <div className="space-y-4">
-            <h3 className="text-lg font-medium text-gray-800">Course FAQs</h3>
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-medium text-gray-800">Course FAQs</h3>
+              {state.faqs.length > 1 && (
+                <p className="text-sm text-gray-500">Drag to reorder</p>
+              )}
+            </div>
             <div className="space-y-3">
               {state.faqs.map((faq, index) => (
-                <div key={faq._id} className="bg-white border border-gray-200 rounded-lg">
+                <div 
+                  key={faq._id} 
+                  className={`bg-white border border-gray-200 rounded-lg transition-all duration-200 ${
+                    draggedIndex === index ? 'opacity-50 scale-95' : ''
+                  } ${
+                    dragOverIndex === index ? 'border-orange-400 shadow-md' : ''
+                  }`}
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, index)}
+                  onDragOver={(e) => handleDragOver(e, index)}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => handleDrop(e, index)}
+                  onDragEnd={handleDragEnd}
+                >
                   <div className="p-4">
                     <div className="flex justify-between items-start">
-                      <button
-                        type="button"
-                        onClick={() => toggleExpandFAQ(faq._id)}
-                        className="flex-1 text-left flex items-center gap-3 group"
-                      >
-                        {expandedFAQs[faq._id] ? (
-                          <ChevronUp className="size-5 text-gray-500 group-hover:text-gray-700 flex-shrink-0" />
-                        ) : (
-                          <ChevronDown className="size-5 text-gray-500 group-hover:text-gray-700 flex-shrink-0" />
-                        )}
-                        <div className="flex-1">
-                          <h4 className="text-lg font-medium text-gray-800 group-hover:text-gray-900">
-                            {faq.question}
-                          </h4>
-                          {!expandedFAQs[faq._id] && (
-                            <p className="text-sm text-gray-600 mt-1 line-clamp-2">
-                              {faq.answer}
-                            </p>
-                          )}
+                      <div className="flex items-start gap-3 flex-1">
+                        {/* Drag Handle */}
+                        <div className="flex-shrink-0 mt-1 cursor-grab active:cursor-grabbing">
+                          <GripVertical className="size-4 text-gray-400 hover:text-gray-600" />
                         </div>
-                      </button>
+                        
+                        <button
+                          type="button"
+                          onClick={() => toggleExpandFAQ(faq._id)}
+                          className="flex-1 text-left flex items-center gap-3 group"
+                        >
+                          {expandedFAQs[faq._id] ? (
+                            <ChevronUp className="size-5 text-gray-500 group-hover:text-gray-700 flex-shrink-0" />
+                          ) : (
+                            <ChevronDown className="size-5 text-gray-500 group-hover:text-gray-700 flex-shrink-0" />
+                          )}
+                          <div className="flex-1">
+                            <h4 className="text-lg font-medium text-gray-800 group-hover:text-gray-900">
+                              {faq.question}
+                            </h4>
+                            {!expandedFAQs[faq._id] && (
+                              <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+                                {faq.answer}
+                              </p>
+                            )}
+                          </div>
+                        </button>
+                      </div>
+                      
                       <div className="flex gap-2 ml-4">
                         <button
                           type="button"
@@ -185,7 +259,7 @@ const FAQSection = () => {
                     </div>
 
                     {expandedFAQs[faq._id] && (
-                      <div className="mt-4 pl-8">
+                      <div className="mt-4 pl-10">
                         <div className="bg-gray-50 p-4 rounded-lg">
                           <p className="text-gray-700 whitespace-pre-wrap">{faq.answer}</p>
                         </div>
@@ -197,33 +271,6 @@ const FAQSection = () => {
             </div>
           </div>
         )}
-
-        {/* FAQ Tips */}
-        <div className="bg-blue-50 p-6 rounded-lg space-y-3">
-          <h3 className="text-lg font-medium text-blue-800">FAQ Tips</h3>
-          <ul className="space-y-2 text-sm text-blue-700">
-            <li className="flex items-start gap-2">
-              <span className="text-blue-500 mt-1">•</span>
-              <span>Address common concerns about course difficulty, prerequisites, and time commitment</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-blue-500 mt-1">•</span>
-              <span>Include information about certification, refunds, and course access</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-blue-500 mt-1">•</span>
-              <span>Keep answers concise but comprehensive</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-blue-500 mt-1">•</span>
-              <span>Consider technical requirements and support information</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-blue-500 mt-1">•</span>
-              <span>Update FAQs based on actual student questions</span>
-            </li>
-          </ul>
-        </div>
       </div>
     </Container>
   );

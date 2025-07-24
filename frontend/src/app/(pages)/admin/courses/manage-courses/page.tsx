@@ -1,99 +1,79 @@
 "use client";
-import FlexBox from '@/components/ui/FlexBox';
-import React, { useState, useEffect } from 'react';
-import { 
-  Search, 
-  Plus, 
-  Filter, 
-  Eye, 
-  Edit, 
-  Trash2, 
+import FlexBox from "@/components/ui/FlexBox";
+import React, { useState, useEffect } from "react";
+import {
+  Search,
+  Plus,
+  Filter,
+  Eye,
+  Edit,
+  Trash2,
   MoreVertical,
-  Calendar,
-  Users,
   Star,
-  DollarSign,
   BookOpen,
-  Video,
   Image,
   ToggleLeft,
   ToggleRight,
   Loader2,
   AlertCircle,
   CheckCircle,
-  Clock
-} from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import courseService, { CourseListResponse } from '@/services/courseService';
-import { cn } from '@/lib/utils';
-
-interface Course {
-  _id: string;
-  title: string;
-  description: string;
-  thumbnail: string;
-  instructor: Array<{
-    name: string;
-    profileImage?: string;
-  }>;
-  category: string;
-  skillLevel: string;
-  enrolledCount: number;
-  totalRatings: number;
-  averageRating?: number;
-  isActive: boolean;
-  isFeatured: boolean;
-  isCertified: boolean;
-  plans: {
-    elite: Array<{ price: number }>;
-    essential: Array<{ price: number }>;
-  };
-  modules: Array<{ lessons: Array<any> }>;
-  createdAt: string;
-  updatedAt: string;
-  slug: string;
-}
+  Clock,
+} from "lucide-react";
+import { useRouter } from "next/navigation";
+import courseService from "@/services/courseService";
+import { cn } from "@/lib/utils";
+import { Course, Instructor } from "@/types";
+import InstructorDisplayCard from "@/components/ui/InstructorDisplayCard";
 
 const AdminCourseManageCoursesPage = () => {
   const router = useRouter();
-  
+
   // State management
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
-  const [selectedStatus, setSelectedStatus] = useState('all');
-  const [sortBy, setSortBy] = useState('newest');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedStatus, setSelectedStatus] = useState("all");
+  const [sortBy, setSortBy] = useState("newest");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCourses, setTotalCourses] = useState(0);
-  
+
   // Filter and action states
   const [showFilters, setShowFilters] = useState(false);
   const [selectedCourses, setSelectedCourses] = useState<string[]>([]);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
 
   const itemsPerPage = 12;
 
   // Categories for filtering
   const categories = [
-    'all', 'Technology', 'Business', 'Design', 'Marketing', 
-    'Development', 'Data Science', 'Photography', 'Music'
+    "all",
+    "Technology",
+    "Business",
+    "Design",
+    "Marketing",
+    "Development",
+    "Data Science",
+    "Photography",
+    "Music",
   ];
 
   // Fetch courses
   const fetchCourses = async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const filters = [];
-      if (selectedCategory !== 'all') filters.push(selectedCategory);
-      if (selectedStatus === 'active') filters.push('active');
-      if (selectedStatus === 'inactive') filters.push('inactive');
-      if (selectedStatus === 'featured') filters.push('featured');
-      
+      if (selectedCategory !== "all") filters.push(selectedCategory);
+      if (selectedStatus === "active") filters.push("active");
+      if (selectedStatus === "inactive") filters.push("inactive");
+      if (selectedStatus === "featured") filters.push("featured");
+
       const response = await courseService.getAllCoursesAdmin(
         currentPage,
         itemsPerPage,
@@ -106,11 +86,11 @@ const AdminCourseManageCoursesPage = () => {
         setTotalPages(response.data.pagination.totalPages);
         setTotalCourses(response.data.pagination.total);
       } else {
-        setError(response.message || 'Failed to fetch courses');
+        setError(response.message || "Failed to fetch courses");
       }
     } catch (err) {
-      setError('An error occurred while fetching courses');
-      console.error('Error fetching courses:', err);
+      setError("An error occurred while fetching courses");
+      console.error("Error fetching courses:", err);
     } finally {
       setLoading(false);
     }
@@ -131,56 +111,43 @@ const AdminCourseManageCoursesPage = () => {
   }, [currentPage]);
 
   // Utility functions
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-  };
 
-  const formatPrice = (plans: Course['plans']) => {
-    const elitePrice = plans.elite?.[0]?.price || 0;
-    const essentialPrice = plans.essential?.[0]?.price || 0;
-    const minPrice = Math.min(elitePrice, essentialPrice);
-    const maxPrice = Math.max(elitePrice, essentialPrice);
-    
-    if (minPrice === 0 && maxPrice === 0) return 'Free';
-    if (minPrice === maxPrice) return `$${minPrice}`;
-    return `$${minPrice} - $${maxPrice}`;
-  };
-
-  const getTotalLessons = (modules: Course['modules']) => {
-    return modules.reduce((total, module) => total + module.lessons.length, 0);
-  };
 
   // Actions
-  const handleCourseStatusToggle = async (courseId: string, currentStatus: boolean) => {
+  const handleCourseStatusToggle = async (
+    courseId: string,
+    currentStatus: boolean
+  ) => {
     setActionLoading(courseId);
-    
+
     try {
-      const response = await courseService.updateCourseStatus(courseId, !currentStatus);
-      
+      const response = await courseService.updateCourseStatus(
+        courseId,
+        !currentStatus
+      );
+
       if (response.success) {
-        setCourses(prev => prev.map(course => 
-          course._id === courseId 
-            ? { ...course, isActive: !currentStatus }
-            : course
-        ));
+        setCourses((prev) =>
+          prev.map((course) =>
+            course._id === courseId
+              ? { ...course, isActive: !currentStatus }
+              : course
+          )
+        );
       } else {
-        setError(response.message || 'Failed to update course status');
+        setError(response.message || "Failed to update course status");
       }
-    } catch (err) {
-      setError('An error occurred while updating course status');
+    } catch {
+      setError("An error occurred while updating course status");
     } finally {
       setActionLoading(null);
     }
   };
 
   const handleSelectCourse = (courseId: string) => {
-    setSelectedCourses(prev => 
+    setSelectedCourses((prev) =>
       prev.includes(courseId)
-        ? prev.filter(id => id !== courseId)
+        ? prev.filter((id) => id !== courseId)
         : [...prev, courseId]
     );
   };
@@ -189,178 +156,276 @@ const AdminCourseManageCoursesPage = () => {
     if (selectedCourses.length === courses.length) {
       setSelectedCourses([]);
     } else {
-      setSelectedCourses(courses.map(course => course._id));
+      setSelectedCourses(courses.map((course) => course._id));
+    }
+  };
+
+  // Handle delete course
+  const handleDeleteCourse = async (courseId: string) => {
+    setDeleteLoading(courseId);
+
+    try {
+      const response = await courseService.deleteCourse(courseId);
+
+      if (response.success) {
+        // Remove course from local state
+        setCourses((prev) => prev.filter((course) => course._id !== courseId));
+        setTotalCourses((prev) => prev - 1);
+        
+        // Remove from selected courses if it was selected
+        setSelectedCourses((prev) => prev.filter((id) => id !== courseId));
+        
+        // Close confirmation dialog
+        setShowDeleteConfirm(null);
+        
+        // Show success message (you could add a toast notification here)
+        console.log('Course deleted successfully');
+      } else {
+        setError(response.message || "Failed to delete course");
+      }
+    } catch (err) {
+      setError("An error occurred while deleting the course");
+      console.error("Error deleting course:", err);
+    } finally {
+      setDeleteLoading(null);
+    }
+  };
+
+  // Handle bulk delete
+  const handleBulkDelete = async () => {
+    if (selectedCourses.length === 0) return;
+
+    const confirmed = window.confirm(
+      `Are you sure you want to delete ${selectedCourses.length} course${selectedCourses.length !== 1 ? 's' : ''}? This action cannot be undone and will also remove all associated media files from AWS.`
+    );
+
+    if (!confirmed) return;
+
+    setActionLoading('bulk-delete');
+
+    try {
+      const deletePromises = selectedCourses.map(courseId => 
+        courseService.deleteCourse(courseId)
+      );
+
+      const results = await Promise.allSettled(deletePromises);
+      
+      // Count successful deletions
+      const successfulDeletions = results.filter(
+        (result) => result.status === 'fulfilled' && result.value.success
+      ).length;
+
+      const failedDeletions = selectedCourses.length - successfulDeletions;
+
+      // Update local state by removing successfully deleted courses
+      const successfulCourseIds = selectedCourses.filter((courseId, index) => {
+        const result = results[index];
+        return result.status === 'fulfilled' && result.value.success;
+      });
+
+      setCourses((prev) => 
+        prev.filter((course) => !successfulCourseIds.includes(course._id))
+      );
+      setTotalCourses((prev) => prev - successfulDeletions);
+      setSelectedCourses([]);
+
+      if (failedDeletions > 0) {
+        setError(`${successfulDeletions} course(s) deleted successfully, but ${failedDeletions} failed to delete.`);
+      } else {
+        console.log(`${successfulDeletions} course(s) deleted successfully`);
+      }
+
+    } catch (err) {
+      setError("An error occurred during bulk deletion");
+      console.error("Error in bulk delete:", err);
+    } finally {
+      setActionLoading(null);
     }
   };
 
   // Render functions
   const renderCourseCard = (course: Course) => (
-    <div key={course._id} className="bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200">
-      {/* Course Image */}
-      <div className="relative">
-        <div className="aspect-video w-full bg-gray-100 rounded-t-lg overflow-hidden">
-          {course.thumbnail ? (
-            <img 
-              src={course.thumbnail} 
-              alt={course.title}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
-              <Image className="w-12 h-12 text-gray-400" />
-            </div>
-          )}
-        </div>
-        
-        {/* Status Badges */}
-        <div className="absolute top-2 left-2 flex gap-1">
-          {course.isFeatured && (
-            <span className="px-2 py-1 bg-yellow-500 text-white text-xs font-medium rounded">
-              Featured
-            </span>
-          )}
-          {course.isCertified && (
-            <span className="px-2 py-1 bg-blue-500 text-white text-xs font-medium rounded">
-              Certified
-            </span>
-          )}
-        </div>
+    <div key={course._id} className="relative">
+      {/* Admin Controls Overlay */}
+      <div className="absolute top-2 left-2 z-10">
+        <input
+          type="checkbox"
+          checked={selectedCourses.includes(course._id)}
+          onChange={() => handleSelectCourse(course._id)}
+          className="w-4 h-4 text-orange-500 border-gray-300 rounded focus:ring-orange-500 bg-white shadow-sm"
+        />
+      </div>
 
-        {/* Action Menu */}
-        <div className="absolute top-2 right-2">
-          <div className="relative group">
-            <button className="p-1 bg-white bg-opacity-90 hover:bg-opacity-100 rounded transition-all">
-              <MoreVertical className="w-4 h-4 text-gray-600" />
+      <div className="absolute top-2 right-2 z-10">
+        <div className="relative group">
+          <button className="p-1 bg-white bg-opacity-90 hover:bg-opacity-100 rounded-full transition-all shadow-sm">
+            <MoreVertical className="w-4 h-4 text-gray-600" />
+          </button>
+
+          {/* Dropdown Menu */}
+          <div className="absolute right-0 top-8 bg-white border border-gray-200 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-20 min-w-48">
+            <button
+              onClick={() => router.push(`/courses/${course.slug}`)}
+              className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 rounded-t-lg"
+
+            >
+              <Eye className="w-4 h-4" />
+              View Course
             </button>
-            
-            {/* Dropdown Menu */}
-            <div className="absolute right-0 top-8 bg-white border border-gray-200 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10 min-w-48">
-              <button
-                onClick={() => router.push(`/courses/${course.slug}`)}
-                className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
-              >
-                <Eye className="w-4 h-4" />
-                View Course
-              </button>
-              <button
-                onClick={() => router.push(`/admin/courses/manage-courses/edit/${course._id}`)}
-                className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
-              >
-                <Edit className="w-4 h-4" />
-                Edit Course
-              </button>
-              <button
-                onClick={() => handleCourseStatusToggle(course._id, course.isActive)}
-                disabled={actionLoading === course._id}
-                className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 disabled:opacity-50"
-              >
-                {actionLoading === course._id ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : course.isActive ? (
-                  <ToggleLeft className="w-4 h-4" />
-                ) : (
-                  <ToggleRight className="w-4 h-4" />
-                )}
-                {course.isActive ? 'Deactivate' : 'Activate'}
-              </button>
-              <button
-                onClick={() => {/* Handle delete */}}
-                className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
-              >
+            <button
+              onClick={() =>
+                router.push(`/admin/courses/manage-courses/edit/${course._id}`)
+              }
+              className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+            >
+              <Edit className="w-4 h-4" />
+              Edit Course
+            </button>
+            <button
+              onClick={() =>
+                handleCourseStatusToggle(course._id, course.isActive)
+              }
+              disabled={actionLoading === course._id}
+              className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 disabled:opacity-50"
+            >
+              {actionLoading === course._id ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : course.isActive ? (
+                <ToggleLeft className="w-4 h-4" />
+              ) : (
+                <ToggleRight className="w-4 h-4" />
+              )}
+              {course.isActive ? "Deactivate" : "Activate"}
+            </button>
+            <button
+              onClick={() => setShowDeleteConfirm(course._id)}
+              disabled={deleteLoading === course._id}
+              className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 rounded-b-lg disabled:opacity-50"
+            >
+              {deleteLoading === course._id ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
                 <Trash2 className="w-4 h-4" />
-                Delete Course
-              </button>
-            </div>
+              )}
+              Delete Course
+            </button>
           </div>
-        </div>
-
-        {/* Selection Checkbox */}
-        <div className="absolute bottom-2 left-2">
-          <input
-            type="checkbox"
-            checked={selectedCourses.includes(course._id)}
-            onChange={() => handleSelectCourse(course._id)}
-            className="w-4 h-4 text-orange-500 border-gray-300 rounded focus:ring-orange-500"
-          />
         </div>
       </div>
 
-      {/* Course Content */}
-      <div className="p-4 space-y-3">
-        {/* Title and Status */}
-        <div className="flex items-start justify-between">
-          <h3 className="font-semibold text-gray-900 text-sm leading-tight line-clamp-2">
-            {course.title}
-          </h3>
-                     <div className="flex items-center gap-1 ml-2 flex-shrink-0">
-             {course.isActive ? (
-               <CheckCircle className="w-4 h-4 text-green-500" />
-             ) : (
-               <Clock className="w-4 h-4 text-gray-400" />
-             )}
-           </div>
-        </div>
-
-        {/* Instructor */}
-        {course.instructor?.[0] && (
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 bg-gray-200 rounded-full overflow-hidden flex-shrink-0">
-              {course.instructor[0].profileImage ? (
-                <img 
-                  src={course.instructor[0].profileImage} 
-                  alt={course.instructor[0].name}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full bg-gray-300 flex items-center justify-center">
-                  <span className="text-xs text-gray-600">
-                    {course.instructor[0].name.charAt(0)}
-                  </span>
-                </div>
-              )}
-            </div>
-            <span className="text-xs text-gray-600 truncate">
-              {course.instructor[0].name}
-            </span>
-          </div>
-        )}
-
-        {/* Category and Level */}
-        <div className="flex items-center gap-2 text-xs text-gray-500">
-          <span className="px-2 py-1 bg-gray-100 rounded">
-            {course.category}
-          </span>
-          <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded">
-            {course.skillLevel}
-          </span>
-        </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
-          <div className="flex items-center gap-1">
-            <Users className="w-3 h-3" />
-            <span>{course.enrolledCount} students</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <BookOpen className="w-3 h-3" />
-            <span>{getTotalLessons(course.modules)} lessons</span>
-          </div>
-          {course.averageRating && (
-            <div className="flex items-center gap-1">
-              <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-              <span>{course.averageRating.toFixed(1)}</span>
+      {/* Course Card - Using CourseCard.tsx design */}
+      <div className="course-card w-full h-full bg-white rounded-2xl p-3 flex flex-col border-2 border-[rgb(233,117,0)] shadow-[0_0_2px_4px_rgba(233,117,0,0.3)] gap-4 cursor-default">
+        <div className="course-image w-full rounded-2xl overflow-hidden relative flex-shrink-0">
+          {course.thumbnail ? (
+            <img
+              src={course.thumbnail}
+              alt={course.title}
+              className="rounded-2xl w-full h-full object-cover max-h-[150px] opacity-90"
+              draggable={false}
+            />
+          ) : (
+            <div className="rounded-2xl w-full h-full object-cover max-h-[150px] opacity-90 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+              <Image className="w-12 h-12 text-gray-400" />
             </div>
           )}
-          <div className="flex items-center gap-1">
-            <DollarSign className="w-3 h-3" />
-            <span>{formatPrice(course.plans)}</span>
+
+          {/* Status Badges */}
+          <div className="absolute top-2 right-2 flex flex-col gap-1">
+            {course.discount && course.discount.isActive && (
+              <span className="px-2 py-1 bg-orange-500 text-center text-white text-xs font-medium rounded-full">
+                {course.discount ? `-${course.discount.value}%` : "No Discount"}
+              </span>
+            )}
+            {course.isActive ? (
+              <div className="flex items-center gap-1 px-2 py-1 bg-orange-500 text-center text-white text-xs font-medium rounded-full">
+                <CheckCircle className="w-3 h-3" />
+                Active
+              </div>
+            ) : (
+              <div className="flex items-center gap-1 px-2 py-1 bg-orange-500 text-center text-white text-xs font-medium rounded-full">
+                <Clock className="w-3 h-3" />
+                Inactive
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Date */}
-        <div className="text-xs text-gray-500 flex items-center gap-1">
-          <Calendar className="w-3 h-3" />
-          <span>Created {formatDate(course.createdAt)}</span>
+        <div className="course-content w-full flex flex-col justify-between">
+          {course.isFeatured ? (
+            <div className="w-full h-4 flex items-center">
+              <span className="px-2 py-1 bg-orange-100 text-orange-800 text-xs font-bold rounded-full">
+                {course.enrolledCount} Students Enrolled
+              </span>
+            </div>
+          ) : (
+            <div className="w-full h-4" />
+          )}
+
+          <p className="text-2xl font-bold mt-2 font-coolvetica select-none text-balance break-words line-clamp-2">
+            {course.title}
+          </p>
+
+          {/* Rating */}
+          <div className="mt-2 flex items-center gap-2">
+            {course.totalRatings > 0 && (
+              <div className="flex items-center gap-1">
+                <div className="flex items-center">
+                  {[...Array(5)].map((_, i) => (
+                    <Star
+                      key={i}
+                      className={`w-3 h-3 ${
+                        i < Math.floor(course.totalRatings)
+                          ? "fill-yellow-400 text-yellow-400"
+                          : "text-gray-300"
+                      }`}
+                    />
+                  ))}
+                </div>
+                <span className="text-xs text-gray-600">
+                  ({course.totalRatings.toFixed(1)})
+                </span>
+              </div>
+            )}
+          </div>
+
+          <div className="instructors mt-2 flex gap-2 select-none mb-2 flex-col sm:flex-row items-start sm:items-center">
+            {course.instructor && course.instructor.length > 0 ? (
+              <>
+                {course.instructor.slice(0, 2).map((instructor: Instructor, index: number) => (
+                  <InstructorDisplayCard
+                    key={index}
+                    instructor={instructor}
+                  />
+                ))}
+                {course.instructor.length > 2 && (
+                  <div className="instructor-count flex gap-0.25 items-center bg-[#EEEEEE] rounded-full p-1">
+                    <Plus
+                      className="w-3 h-3 text-text-primary"
+                      fill="#2B1508"
+                    />
+                    <p className="text-xs font-bold text-text-primary">
+                      {course.instructor.length - 2}
+                    </p>
+                  </div>
+                )}
+              </>
+            ) : (
+              <span className="text-xs text-gray-400">
+                No instructor assigned
+              </span>
+            )}
+          </div>
+
+          <div className="mt-auto ml-auto flex flex-col sm:flex-row gap-2 sm:items-center select-none">
+            <div className="pricing flex flex-row lg:flex-col xl:flex-row gap-2 sm:items-center flex-wrap">
+              <span className="text-xl font-bold text-black">
+                ₹
+                {course.plans.essential?.price ||
+                  course.plans.elite?.price ||
+                  0}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -373,26 +438,26 @@ const AdminCourseManageCoursesPage = () => {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Manage Courses</h1>
           <p className="text-gray-600">
-            {totalCourses} course{totalCourses !== 1 ? 's' : ''} total
+            {totalCourses} course{totalCourses !== 1 ? "s" : ""} total
           </p>
         </div>
-        
+
         <div className="flex items-center gap-3">
           <button
             onClick={() => setShowFilters(!showFilters)}
             className={cn(
               "flex items-center gap-2 px-4 py-2 border rounded-lg transition-colors",
-              showFilters 
-                ? "border-orange-500 bg-orange-50 text-orange-700" 
+              showFilters
+                ? "border-orange-500 bg-orange-50 text-orange-700"
                 : "border-gray-300 hover:bg-gray-50"
             )}
           >
             <Filter className="w-4 h-4" />
             Filters
           </button>
-          
+
           <button
-            onClick={() => router.push('/admin/courses/manage-courses/create')}
+            onClick={() => router.push("/admin/courses/manage-courses/create")}
             className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
           >
             <Plus className="w-4 h-4" />
@@ -429,9 +494,9 @@ const AdminCourseManageCoursesPage = () => {
                   onChange={(e) => setSelectedCategory(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                 >
-                  {categories.map(category => (
+                  {categories.map((category) => (
                     <option key={category} value={category}>
-                      {category === 'all' ? 'All Categories' : category}
+                      {category === "all" ? "All Categories" : category}
                     </option>
                   ))}
                 </select>
@@ -486,10 +551,11 @@ const AdminCourseManageCoursesPage = () => {
                 className="w-4 h-4 text-orange-500 border-gray-300 rounded focus:ring-orange-500"
               />
               <span className="text-sm text-gray-700">
-                {selectedCourses.length} course{selectedCourses.length !== 1 ? 's' : ''} selected
+                {selectedCourses.length} course
+                {selectedCourses.length !== 1 ? "s" : ""} selected
               </span>
             </div>
-            
+
             <div className="flex items-center gap-2">
               <button className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800">
                 Activate All
@@ -497,8 +563,19 @@ const AdminCourseManageCoursesPage = () => {
               <button className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800">
                 Deactivate All
               </button>
-              <button className="px-3 py-1 text-sm text-red-600 hover:text-red-800">
-                Delete Selected
+              <button 
+                onClick={handleBulkDelete}
+                disabled={actionLoading === 'bulk-delete'}
+                className="px-3 py-1 text-sm text-red-600 hover:text-red-800 disabled:opacity-50 flex items-center gap-1"
+              >
+                {actionLoading === 'bulk-delete' ? (
+                  <>
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  'Delete Selected'
+                )}
               </button>
             </div>
           </div>
@@ -542,15 +619,20 @@ const AdminCourseManageCoursesPage = () => {
           ) : (
             <div className="text-center py-12">
               <BookOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No courses found</h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                No courses found
+              </h3>
               <p className="text-gray-600 mb-6">
-                {searchTerm || selectedCategory !== 'all' || selectedStatus !== 'all'
-                  ? 'Try adjusting your search or filters'
-                  : 'Get started by creating your first course'
-                }
+                {searchTerm ||
+                selectedCategory !== "all" ||
+                selectedStatus !== "all"
+                  ? "Try adjusting your search or filters"
+                  : "Get started by creating your first course"}
               </p>
               <button
-                onClick={() => router.push('/admin/courses/manage-courses/create')}
+                onClick={() =>
+                  router.push("/admin/courses/manage-courses/create")
+                }
                 className="inline-flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
               >
                 <Plus className="w-4 h-4" />
@@ -565,18 +647,20 @@ const AdminCourseManageCoursesPage = () => {
       {!loading && !error && totalPages > 1 && (
         <div className="flex items-center justify-between">
           <div className="text-sm text-gray-600">
-            Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalCourses)} of {totalCourses} courses
+            Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
+            {Math.min(currentPage * itemsPerPage, totalCourses)} of{" "}
+            {totalCourses} courses
           </div>
-          
+
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
               disabled={currentPage === 1}
               className="px-3 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
             >
               Previous
             </button>
-            
+
             <div className="flex items-center gap-1">
               {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                 const pageNum = i + 1;
@@ -596,9 +680,11 @@ const AdminCourseManageCoursesPage = () => {
                 );
               })}
             </div>
-            
+
             <button
-              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              onClick={() =>
+                setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+              }
               disabled={currentPage === totalPages}
               className="px-3 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
             >
@@ -607,8 +693,58 @@ const AdminCourseManageCoursesPage = () => {
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                <AlertCircle className="w-5 h-5 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Delete Course</h3>
+                <p className="text-sm text-gray-600">This action cannot be undone</p>
+              </div>
+            </div>
+            
+            <p className="text-gray-700 mb-6">
+              Are you sure you want to delete this course? This will permanently remove the course 
+              and all associated media files from AWS. Students will lose access immediately.
+            </p>
+            
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowDeleteConfirm(null)}
+                disabled={deleteLoading === showDeleteConfirm}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDeleteCourse(showDeleteConfirm)}
+                disabled={deleteLoading === showDeleteConfirm}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center gap-2"
+              >
+                {deleteLoading === showDeleteConfirm ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    Delete Course
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </FlexBox>
   );
 };
 
 export default AdminCourseManageCoursesPage;
+

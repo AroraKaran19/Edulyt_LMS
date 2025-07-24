@@ -194,7 +194,7 @@ const CourseContentSection = ({
                   {/* Content: only shown if lesson is selected */}
                   {selectedLesson?._id === lesson._id && (
                     <div className="bg-gray-50">
-                      {lesson.content.map((content, contentIndex) => (
+                      {lesson.content.map((content) => (
                         <div
                           key={content._id}
                           onClick={() => navigateToContent(content._id)}

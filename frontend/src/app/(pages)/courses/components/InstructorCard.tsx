@@ -1,62 +1,17 @@
-"use client";
 import { Instructor } from "@/types";
 import Image from "next/image";
 import React from "react";
-import { Loader2, Star } from "lucide-react";
+import { Star } from "lucide-react";
 import Link from "next/link";
-import { cn, fetcher } from "@/lib/utils";
-import useSWR from "swr";
-import { ENDPOINTS } from "@/constants/endpoints";
-import Error from "@/components/ui/Error";
-import { getErrorUIConfig } from "@/configs/errorUIConfig";
+import { cn } from "@/lib/utils";
 
 const InstructorCard = ({
-  instructorId,
+  instructor,
   ...props
-}: { instructorId: Instructor["_id"] } & {
+}: { instructor: Instructor } & {
   className?: string;
   style?: React.CSSProperties;
 }) => {
-  const { data, isLoading, error } = useSWR(
-    ENDPOINTS.instructors.slug + instructorId,
-    fetcher
-  );
-  const instructor: Instructor = data?.data.instructor || {};
-
-  if (isLoading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="flex flex-col items-center gap-2">
-          <Loader2 className="w-8 h-8 animate-spin text-[#f77124]" />
-          <p className="text-gray-600">Loading instructor...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    const errorConfig = getErrorUIConfig(error);
-    return (
-      <Error
-        icon={errorConfig.icon}
-        iconSize="lg"
-        iconColor={errorConfig.iconColor}
-        title={errorConfig.title}
-        description={errorConfig.description}
-        containerHeight="h-64"
-      />
-    );
-  }
-
-  if (!instructor) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="text-center">
-          <p className="text-gray-600">No instructor found.</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <Link

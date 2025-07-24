@@ -6,7 +6,7 @@ import "swiper/css";
 import "swiper/css/effect-coverflow";
 import { Autoplay } from "swiper/modules";
 
-const InstructorCarousel = ({ instructors }: { instructors: Instructor["_id"][] }) => {
+const InstructorCarousel = ({ instructors }: { instructors: Instructor[] }) => {
   return (
     <Swiper
       centeredSlides={true}
@@ -39,7 +39,7 @@ const InstructorCarousel = ({ instructors }: { instructors: Instructor["_id"][] 
       {instructors.length > 0 &&
         instructors.map((instructor, index) => (
           <SwiperSlide key={index}>
-            <InstructorCard instructorId={instructor} />
+            <InstructorCard instructor={instructor} />
           </SwiperSlide>
         ))}
     </Swiper>

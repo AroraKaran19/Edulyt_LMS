@@ -204,9 +204,7 @@ export const UploadQueue: React.FC<UploadQueueProps> = ({
     updateUpload(id, { status: 'pending' });
   };
 
-  const cancelUpload = (id: string) => {
-    updateUpload(id, { status: 'cancelled' });
-  };
+
 
   const retryUpload = (id: string) => {
     updateUpload(id, { 

@@ -38,7 +38,7 @@ const Navlink = ({ href, label, featureBox, onMouseEnter, active, isDashboard }:
         active && "text-[#F77124] bg-[#FFE9DB]"
       )}
       draggable={false}
-      onMouseEnter={() => onMouseEnter?.({ href, label, featureBox })}
+      onMouseEnter={() => onMouseEnter?.()}
     >
       {label}
       {!!featureBox && (

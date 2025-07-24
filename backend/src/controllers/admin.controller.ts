@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { CourseService } from '../services/course.service';
-import { Course, CourseModule, CourseLesson, LessonContent, Discount } from '../types/course';
+import { Course, CourseModule, CourseLesson, Content, Discount, Plan } from '../types/course';
 
 export class AdminController {
   private courseService: CourseService;
@@ -123,13 +123,11 @@ export class AdminController {
 
     // Transform lessons with proper structure
     const transformLessons = (lessons: any[]): CourseLesson[] => {
-      return lessons?.map((lesson, index) => ({
+      return lessons?.map((lesson) => ({
         _id: lesson.id || generateId(),
         title: lesson.title || '',
-        duration: lesson.duration || 0,
         description: lesson.description || '',
         content: [], // Will need to be populated with LessonContent
-        order: index,
         isCompleted: lesson.completed || false,
         isLocked: lesson.isForCollegeStudent || false,
         createdAt: new Date(),
@@ -139,13 +137,12 @@ export class AdminController {
 
     // Transform modules with proper CourseModule structure
     const transformModules = (modules: any[]): CourseModule[] => {
-      return modules?.map((module, index) => ({
+      return modules?.map((module) => ({
         _id: module.id || generateId(),
         title: module.title || '',
         thumbnailUrl: module.thumbnailUrl,
         description: module.description || '',
         lessons: transformLessons(module.lessons || []),
-        order: index,
         isCompleted: false,
         isLocked: false,
         createdAt: new Date(),
@@ -167,53 +164,63 @@ export class AdminController {
 
     // Transform pricing to proper Plan structure
     const transformPlans = (pricingData: any) => {
-      const plans: { elite?: any[], essential?: any[] } = {};
+      const plans: { elite?: Plan, essential?: Plan } = {};
       
       if (pricingData?.professionals?.elite) {
-        plans.elite = [{
+        plans.elite = {
           _id: generateId(),
           title: 'Elite Plan',
           type: 'elite' as const,
           price: pricingData.professionals.elite.price || 0,
           features: pricingData.professionals.elite.features?.map((feature: any, index: number) => ({
             title: typeof feature === 'string' ? feature : feature.title || '',
-            provided: true,
-            description: typeof feature === 'object' ? feature.description : '',
-            order: index
+            provided: true
           })) || [],
           billingPeriod: 'lifetime' as const,
           isActive: true,
           createdAt: new Date(),
           updatedAt: new Date()
-        }];
+        };
       }
 
       if (pricingData?.professionals?.essential) {
-        plans.essential = [{
+        plans.essential = {
           _id: generateId(),
           title: 'Essential Plan',
           type: 'essential' as const,
           price: pricingData.professionals.essential.price || 0,
           features: pricingData.professionals.essential.features?.map((feature: any, index: number) => ({
             title: typeof feature === 'string' ? feature : feature.title || '',
-            provided: true,
-            description: typeof feature === 'object' ? feature.description : '',
-            order: index
+            provided: true
           })) || [],
           billingPeriod: 'lifetime' as const,
           isActive: true,
           createdAt: new Date(),
           updatedAt: new Date()
-        }];
+        };
       }
 
       return plans;
     };
 
-    // Create proper discount structure
-    const createDiscount = (): Discount | undefined => {
+    // Create proper discount structure from frontend data
+    const createDiscount = (): Discount => {
+      const discountData = frontendData.discount;
+      
+      // If frontend sends discount as object, use it
+      if (discountData && typeof discountData === 'object') {
+        return {
+          discount: discountData.discount || "percentage",
+          value: Number(discountData.value) || 0,
+          startDate: discountData.startDate ? new Date(discountData.startDate) : undefined,
+          endDate: discountData.endDate ? new Date(discountData.endDate) : undefined,
+          isActive: Boolean(discountData.isActive) || false
+        };
+      }
+      
+      // Default discount structure
       return {
-        discount: 'percentage',
+        discount: "percentage",
         value: 0,
         isActive: false
       };
@@ -226,7 +233,6 @@ export class AdminController {
     return {
       _id: courseId,
       title: courseTitle,
-      subtitle: frontendData.basicInfo?.subtitle,
       description: frontendData.basicInfo?.courseDescription || '',
       shortDescription: frontendData.basicInfo?.shortDescription,
       category: frontendData.courseDetails?.category || '',
@@ -257,7 +263,7 @@ export class AdminController {
       tags: parseFeatures(frontendData.courseFeatures?.courseTags || ''),
       
       // Pricing with proper Plan structure
-      plans: transformPlans(frontendData.pricing),
+      plans: transformPlans(frontendData.pricing) as { elite?: Plan, essential?: Plan },
       
       // Settings
       isActive: true,
@@ -289,8 +295,10 @@ export class AdminController {
       featuredReviews: [],
       faqs: [],
       
-      // Proper discount structure
-      discount: createDiscount(),
+      // Proper discount structure - only set if there's actual discount data
+      ...(frontendData.discount && typeof frontendData.discount === 'object' && frontendData.discount.value > 0 
+          ? { discount: createDiscount() } 
+          : {}),
       
       // Scholarship
       scholarship: false,
@@ -371,6 +379,308 @@ export class AdminController {
       });
     }
   };
+
+  /**
+   * Get a specific course by ID for admin view (including inactive courses)
+   * @param req - Express request object
+   * @param res - Express response object
+   */
+  getCourseByIdAdmin = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { courseId } = req.params;
+
+      // Validate course ID
+      if (!courseId?.trim()) {
+        res.status(400).json({
+          success: false,
+          message: 'Course ID is required'
+        });
+        return;
+      }
+
+      // Get course by ID (admin version - includes inactive courses)
+      const course = await this.courseService.getCourseById(courseId);
+
+      if (!course) {
+        res.status(404).json({
+          success: false,
+          message: 'Course not found'
+        });
+        return;
+      }
+
+      // Return success response
+      res.status(200).json({
+        success: true,
+        message: 'Course retrieved successfully',
+        data: course // Return course directly instead of wrapping it
+      });
+
+    } catch (error) {
+      console.error('Error in getCourseByIdAdmin controller:', error);
+      
+      // Handle specific error types
+      if (error instanceof Error) {
+        if (error.message.includes('Invalid ObjectId')) {
+          res.status(400).json({
+            success: false,
+            message: 'Invalid course ID format'
+          });
+          return;
+        }
+      }
+      
+      // Generic error response
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error while fetching course',
+        error: process.env.NODE_ENV === 'development' ? error : 'Something went wrong'
+      });
+    }
+  };
+
+  /**
+   * Update a course by ID (Admin only)
+   * @param req - Express request object
+   * @param res - Express response object
+   */
+  updateCourse = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { courseId } = req.params;
+      const frontendData = req.body;
+
+      // Validate course ID
+      if (!courseId?.trim()) {
+        res.status(400).json({
+          success: false,
+          message: 'Course ID is required'
+        });
+        return;
+      }
+
+      // Validate request body
+      if (!frontendData || Object.keys(frontendData).length === 0) {
+        res.status(400).json({
+          success: false,
+          message: 'Course data is required'
+        });
+        return;
+      }
+
+      // Transform frontend data to course schema format (same as in addCourse)
+      const courseData: Partial<Course> = this.transformFrontendDataToCourse(frontendData);
+
+      // Update the course using the service
+      const updatedCourse = await this.courseService.updateCourse(courseId, courseData);
+
+      if (!updatedCourse) {
+        res.status(404).json({
+          success: false,
+          message: 'Course not found'
+        });
+        return;
+      }
+
+      // Return success response
+      res.status(200).json({
+        success: true,
+        message: 'Course updated successfully',
+        data: {
+          course: updatedCourse,
+          courseId: updatedCourse._id,
+          slug: updatedCourse.slug
+        }
+      });
+
+    } catch (error) {
+      console.error('Error in updateCourse admin controller:', error);
+
+      // Handle specific error types
+      if (error instanceof Error) {
+        if (error.message.includes('validation')) {
+          res.status(400).json({
+            success: false,
+            message: 'Invalid course data',
+            error: error.message
+          });
+          return;
+        }
+
+        if (error.message.includes('Invalid ObjectId')) {
+          res.status(400).json({
+            success: false,
+            message: 'Invalid course ID format'
+          });
+          return;
+        }
+      }
+
+      // Generic error response
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error while updating course',
+        error: process.env.NODE_ENV === 'development' ? error : 'Something went wrong'
+      });
+    }
+  };
+
+  /**
+   * Delete course by ID (Admin only)
+   * @param req - Express request object
+   * @param res - Express response object
+   */
+  deleteCourse = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { courseId } = req.params;
+
+      // Validate course ID
+      if (!courseId?.trim()) {
+        res.status(400).json({
+          success: false,
+          message: 'Course ID is required'
+        });
+        return;
+      }
+
+      // First, get the course to retrieve associated files for cleanup
+      const course = await this.courseService.getCourseById(courseId);
+      
+      if (!course) {
+        res.status(404).json({
+          success: false,
+          message: 'Course not found'
+        });
+        return;
+      }
+
+      // Delete the course from database
+      const deleteResult = await this.courseService.deleteCourse(courseId);
+
+      if (!deleteResult) {
+        res.status(500).json({
+          success: false,
+          message: 'Failed to delete course from database'
+        });
+        return;
+      }
+
+      // TODO: Implement AWS S3 file cleanup for course assets
+      // This should be done asynchronously to avoid blocking the response
+      this.cleanupCourseAssets(course).catch(error => {
+        console.error('Error cleaning up course assets:', error);
+        // Log error but don't fail the request since course is already deleted
+      });
+
+      // Return success response
+      res.status(200).json({
+        success: true,
+        message: 'Course deleted successfully',
+        data: { courseId }
+      });
+
+    } catch (error) {
+      console.error('Error in deleteCourse admin controller:', error);
+      
+      // Handle specific error types
+      if (error instanceof Error) {
+        if (error.message.includes('Invalid ObjectId')) {
+          res.status(400).json({
+            success: false,
+            message: 'Invalid course ID format'
+          });
+          return;
+        }
+      }
+      
+      // Generic error response
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error while deleting course',
+        error: process.env.NODE_ENV === 'development' ? error : 'Something went wrong'
+      });
+    }
+  };
+
+  /**
+   * Cleanup AWS S3 assets associated with a course
+   * @param course - Course object with asset URLs
+   */
+  private async cleanupCourseAssets(course: any): Promise<void> {
+    try {
+      const s3Service = new (await import('../services/s3.service')).S3Service();
+      const assetsToDelete: string[] = [];
+
+      // Extract S3 key from URL helper function
+      const extractS3Key = (url: string): string | null => {
+        if (!url) return null;
+        
+        // Handle different S3 URL formats
+        const s3UrlPattern = /https:\/\/.*\.s3\..*\.amazonaws\.com\/(.+)/;
+        const match = url.match(s3UrlPattern);
+        
+        if (match) {
+          return decodeURIComponent(match[1]);
+        }
+        
+        // If it's already a key (not a full URL), return as is
+        if (!url.startsWith('http')) {
+          return url;
+        }
+        
+        return null;
+      };
+
+      // Add course thumbnail
+      if (course.thumbnail) {
+        const thumbnailKey = extractS3Key(course.thumbnail);
+        if (thumbnailKey) assetsToDelete.push(thumbnailKey);
+      }
+
+      // Add preview video
+      if (course.previewVideoUrl) {
+        const videoKey = extractS3Key(course.previewVideoUrl);
+        if (videoKey) assetsToDelete.push(videoKey);
+      }
+
+      // Add module lesson videos
+      if (course.modules && Array.isArray(course.modules)) {
+        course.modules.forEach((module: any) => {
+          if (module.lessons && Array.isArray(module.lessons)) {
+            module.lessons.forEach((lesson: any) => {
+              if (lesson.videoUrl) {
+                const lessonVideoKey = extractS3Key(lesson.videoUrl);
+                if (lessonVideoKey) assetsToDelete.push(lessonVideoKey);
+              }
+            });
+          }
+        });
+      }
+
+      // Delete all assets in parallel
+      if (assetsToDelete.length > 0) {
+        console.log(`Cleaning up ${assetsToDelete.length} assets for course ${course._id}`);
+        
+        const deletePromises = assetsToDelete.map(async (key) => {
+          try {
+            await s3Service.deleteFile(key);
+            console.log(`✅ Deleted asset: ${key}`);
+          } catch (error) {
+            console.error(`❌ Failed to delete asset ${key}:`, error);
+            // Continue with other deletions even if one fails
+          }
+        });
+
+        await Promise.allSettled(deletePromises);
+        console.log(`✅ Completed cleanup for course ${course._id}`);
+      } else {
+        console.log(`No assets to clean up for course ${course._id}`);
+      }
+
+    } catch (error) {
+      console.error('Error in cleanupCourseAssets:', error);
+      throw error;
+    }
+  }
 
   /**
    * Update course status (activate/deactivate)

@@ -1,5 +1,5 @@
 import React from "react";
-import { Course } from "@/types";
+import { Course, Instructor } from "@/types";
 import { cn } from "@/lib/utils";
 import { Plus } from "lucide-react";
 import BestsellerBadge from "@/components/ui/course/BestsellerBadge";
@@ -13,8 +13,10 @@ import Image from "next/image";
 const TopCourseCard = ({
   course,
   ...props
-}: { course: Course } & { className?: string; style?: React.CSSProperties }) => {
-  
+}: { course: Course } & {
+  className?: string;
+  style?: React.CSSProperties;
+}) => {
   const router = useRouter();
 
   return (
@@ -35,9 +37,9 @@ const TopCourseCard = ({
           priority
           loading="eager"
         />
-        {course.discount && (
+        {course.discount && course.discount.isActive && (
           <DiscountBadge
-            discount={Number(course.discount)}
+            discount={course.discount.value}
             className="absolute top-2 right-2"
           />
         )}
@@ -55,15 +57,12 @@ const TopCourseCard = ({
         className="mt-2"
         courseId={course.slug}
       />
-      <div className={cn("instructors mt-2 flex gap-2 items-center select-none")}>
-        {course.instructor.map((instructor, index) => {
+      <div
+        className={cn("instructors mt-2 flex gap-2 items-center select-none")}
+      >
+        {course.instructor.map((instructor: Instructor, index: number) => {
           if (index < 2) {
-            return (
-              <InstructorCard
-                key={index}
-                instructorId={instructor}
-              />
-            );
+            return <InstructorCard key={index} instructor={instructor} />;
           }
         })}
         {course.instructor.length > 2 && (
@@ -79,12 +78,19 @@ const TopCourseCard = ({
         <div className="pricing flex flex-row lg:flex-col xl:flex-row gap-2 sm:items-center flex-wrap">
           <p className="text-xl font-bold text-black">
             ₹
-            {course.discount
-              ? Math.round((course.plans.essential?.price || course.plans.elite?.price || 0 - 
-                (course.plans.essential?.price || course.plans.elite?.price || 0) * (Number(course.discount) / 100)) * 100) / 100
+            {course.discount && course.discount.isActive
+              ? Math.round(
+                  (course.plans.essential?.price ||
+                    course.plans.elite?.price ||
+                    0 -
+                      (course.plans.essential?.price ||
+                        course.plans.elite?.price ||
+                        0) *
+                        (course.discount.value / 100)) * 100
+                ) / 100
               : course.plans.essential?.price || course.plans.elite?.price || 0}
           </p>
-          {course.discount && (
+          {course.discount && course.discount.isActive && (
             <span className="text-sm font-normal text-black line-through opacity-50">
               ₹{course.plans.essential?.price || course.plans.elite?.price || 0}
             </span>

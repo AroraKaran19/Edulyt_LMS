@@ -36,7 +36,7 @@ export const UploadComponent: React.FC<UploadComponentProps> = ({
   onUploadStart,
   acceptedFileTypes,
   uploadType,
-  maxFileSize = 100 * 1024 * 1024, // 100MB default
+  maxFileSize = 50 * 1024 * 1024 * 1024, // 50GB default
   className,
   placeholder,
   currentUrl,
@@ -297,14 +297,16 @@ export const UploadComponent: React.FC<UploadComponentProps> = ({
       onDrop={handleDrop}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}>
-        <input
-          type="file"
-          accept={acceptedFileTypes.join(',')}
-          onChange={handleFileInputChange}
-          disabled={disabled || state.isUploading}
-          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
-          multiple={false}
-        />
+        {!state.uploadedFile && (
+          <input
+            type="file"
+            accept={acceptedFileTypes.join(',')}
+            onChange={handleFileInputChange}
+            disabled={disabled || state.isUploading}
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+            multiple={false}
+          />
+        )}
 
         <div className="p-6 text-center">
           {state.isUploading ? (

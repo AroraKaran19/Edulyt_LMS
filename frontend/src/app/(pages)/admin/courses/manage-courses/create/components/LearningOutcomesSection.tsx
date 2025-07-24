@@ -11,8 +11,6 @@ const LearningOutcomesSection = () => {
     updateField,
     addSkill,
     removeSkill,
-    addToArray,
-    removeFromArray,
     addKeyFeature,
     removeKeyFeature,
   } = useCourseFormContext();
@@ -32,21 +30,21 @@ const LearningOutcomesSection = () => {
 
   const handleAddFeature = () => {
     if (newFeature.trim()) {
-      addToArray('features', newFeature.trim());
+      updateField('features', [...(state.features || []), newFeature.trim()]);
       setNewFeature("");
     }
   };
 
   const handleAddCareerPath = () => {
     if (newCareerPath.trim()) {
-      addToArray('careerPaths', newCareerPath.trim());
+      updateField('careerPaths', [...state.careerPaths, newCareerPath.trim()]);
       setNewCareerPath("");
     }
   };
 
   const handleAddPrerequisite = () => {
     if (newPrerequisite.trim()) {
-      addToArray('prerequisites', newPrerequisite.trim());
+      updateField('prerequisites', [...(state.prerequisites || []), newPrerequisite.trim()]);
       setNewPrerequisite("");
     }
   };
@@ -59,23 +57,23 @@ const LearningOutcomesSection = () => {
   };
 
   const removeFeature = (feature: string) => {
-    const index = state.features.indexOf(feature);
+    const index = (state.features || []).indexOf(feature);
     if (index > -1) {
-      removeFromArray('features', index);
+      updateField('features', (state.features || []).filter((_, i) => i !== index));
     }
   };
 
   const removeCareerPath = (path: string) => {
     const index = state.careerPaths.indexOf(path);
     if (index > -1) {
-      removeFromArray('careerPaths', index);
+      updateField('careerPaths', state.careerPaths.filter((_, i) => i !== index));
     }
   };
 
   const removePrerequisite = (prerequisite: string) => {
-    const index = state.prerequisites.indexOf(prerequisite);
+    const index = (state.prerequisites || []).indexOf(prerequisite);
     if (index > -1) {
-      removeFromArray('prerequisites', index);
+      updateField('prerequisites', (state.prerequisites || []).filter((_, i) => i !== index));
     }
   };
 
@@ -135,7 +133,7 @@ const LearningOutcomesSection = () => {
                   <span>{skill}</span>
                   <button
                     type="button"
-                    onClick={() => removeSkill(skill)}
+                    onClick={() => removeSkill(index)}
                     className="hover:bg-blue-200 rounded-full p-0.5 transition-colors"
                   >
                     <X className="size-3 cursor-pointer" />
@@ -228,9 +226,9 @@ const LearningOutcomesSection = () => {
               <Plus className="size-4" />
             </button>
           </FlexBox>
-          {state.features.length > 0 && (
+          {(state.features || []).length > 0 && (
             <FlexBox className="w-full flex-wrap gap-2 mt-2">
-              {state.features.map((feature, index) => (
+              {(state.features || []).map((feature, index) => (
                 <FlexBox
                   key={index}
                   className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm gap-2 items-center select-none"
@@ -332,9 +330,9 @@ const LearningOutcomesSection = () => {
               <Plus className="size-4" />
             </button>
           </FlexBox>
-          {state.prerequisites.length > 0 && (
+          {(state.prerequisites || []).length > 0 && (
             <FlexBox className="w-full flex-wrap gap-2 mt-2">
-              {state.prerequisites.map((prerequisite, index) => (
+              {(state.prerequisites || []).map((prerequisite, index) => (
                 <FlexBox
                   key={index}
                   className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-sm gap-2 items-center select-none"

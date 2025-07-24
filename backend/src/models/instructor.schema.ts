@@ -14,6 +14,7 @@ export interface IInstructor extends Document {
   totalCourses: number;
   bio: string;
   currentPosition?: string;
+  currentCompany?: string;
   previousExperience?: string[];
   education?: string[];
   linkedinUrl: string;
@@ -77,6 +78,11 @@ const InstructorSchema = new Schema<IInstructor>({
     type: String,
     trim: true,
     maxlength: [200, 'Current position cannot exceed 200 characters']
+  },
+  currentCompany: {
+    type: String,
+    trim: true,
+    maxlength: [200, 'Current company cannot exceed 200 characters']
   },
   previousExperience: [{
     type: String,
@@ -142,6 +148,7 @@ InstructorSchema.methods.toPublicJSON = function(this: IInstructor) {
     totalCourses: this.totalCourses,
     bio: this.bio,
     currentPosition: this.currentPosition,
+    currentCompany: this.currentCompany,
     linkedinUrl: this.linkedinUrl,
     createdAt: this.createdAt,
     updatedAt: this.updatedAt

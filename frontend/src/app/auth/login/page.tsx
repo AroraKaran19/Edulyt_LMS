@@ -5,7 +5,7 @@ import { Eye, Lock, Mail } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
-import { signIn, useSession } from "next-auth/react";
+import { signIn } from "next-auth/react";
 
 // export async function generateMetadata() {
 //   return {
@@ -17,7 +17,8 @@ import { signIn, useSession } from "next-auth/react";
 // }
 
 const LoginPage = () => {
-  const { data: session, status } = useSession();
+  // const { data: session, status } = useSession();
+  const session = true;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");

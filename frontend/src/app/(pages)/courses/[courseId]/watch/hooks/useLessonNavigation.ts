@@ -69,11 +69,11 @@ export const useLessonNavigation = (course: Course) => {
   // Navigate to a specific content
   const navigateToContent = useCallback(
     (contentId: string) => {
-      for (const module of course.modules) {
-        for (const lesson of module.lessons) {
+      for (const courseModule of course.modules) {
+        for (const lesson of courseModule.lessons) {
           const content = lesson.content.find((c) => c._id === contentId);
           if (content) {
-            setSelectedModule(module);
+            setSelectedModule(courseModule);
             setSelectedLesson(lesson);
             setSelectedContent(content);
             return;

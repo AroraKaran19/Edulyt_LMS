@@ -1,7 +1,7 @@
 "use client";
 import React, { createContext, useContext, ReactNode } from 'react';
 import { useCourseForm } from '../hooks/useCourseForm';
-import type { CourseFormState, CourseFormAction } from '../hooks/useCourseForm';
+import type { CourseFormState } from '../hooks/useCourseForm';
 
 // Context type
 type CourseFormContextType = ReturnType<typeof useCourseForm>;
@@ -38,4 +38,4 @@ export const useCourseFormContext = () => {
 };
 
 // Export types for convenience
-export type { CourseFormState, CourseFormAction }; 
+export type { CourseFormState }; 

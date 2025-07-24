@@ -41,6 +41,30 @@ router.post('/add/courses', adminController.addCourse);
 router.get('/courses', adminController.getAllCoursesAdmin);
 
 /**
+ * @route   GET /api/admin/courses/:courseId
+ * @desc    Get a specific course by ID for admin view (including inactive courses)
+ * @access  Private (Admin only)
+ * @params  
+ *   - courseId: Course ID (URL parameter)
+ * @example 
+ *   GET /api/admin/courses/course_67890
+ */
+router.get('/courses/:courseId', adminController.getCourseByIdAdmin);
+
+/**
+ * @route   PUT /api/admin/courses/:courseId
+ * @desc    Update a course by ID (Admin only)
+ * @access  Private (Admin only)
+ * @params  
+ *   - courseId: Course ID (URL parameter)
+ * @body    Course data object
+ * @example 
+ *   PUT /api/admin/courses/course_67890
+ *   Body: { basicInfo: { courseTitle: "...", courseDescription: "..." }, ... }
+ */
+router.put('/courses/:courseId', adminController.updateCourse);
+
+/**
  * @route   PATCH /api/admin/courses/:courseId/status
  * @desc    Update course status (activate/deactivate)
  * @access  Private (Admin only)
@@ -54,12 +78,14 @@ router.get('/courses', adminController.getAllCoursesAdmin);
 router.patch('/courses/:courseId/status', adminController.updateCourseStatus);
 
 /**
- * @route   GET /api/admin/debug/courses
- * @desc    Debug endpoint to get all courses in database (regardless of status)
+ * @route   DELETE /api/admin/courses/:courseId
+ * @desc    Delete course by ID (Admin only)
  * @access  Private (Admin only)
+ * @params  
+ *   - courseId: Course ID (URL parameter)
  * @example 
- *   GET /api/admin/debug/courses
+ *   DELETE /api/admin/courses/course-123
  */
-router.get('/debug/courses', adminController.debugAllCourses);
+router.delete('/courses/:courseId', adminController.deleteCourse);
 
 export { router as adminRoutes }; 

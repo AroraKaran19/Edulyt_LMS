@@ -190,7 +190,7 @@ export interface UserNotification {
   metadata?: {
     courseId?: string;
     enrollmentId?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }
 
@@ -211,7 +211,7 @@ export interface UserActivity {
   metadata?: {
     score?: number;
     timeSpent?: number;
-    [key: string]: any;
+    [key: string]: unknown;
   };
   createdAt: Date;
 }

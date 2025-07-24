@@ -68,7 +68,6 @@ const CoursesPage = () => {
           // Mock progress and certificate for demo
           const progress = [0, 12, 100][idx % 3];
           const showCertificate = progress === 100;
-          const instructors = course.instructor.slice(0, 2);
           const extraInstructors = course.instructor.length - 2;
           // For demo, mock episodes as 5
           const episodes = 5;
@@ -97,8 +96,8 @@ const CoursesPage = () => {
                   {course.title}
                 </div>
                 <div className="flex items-center gap-2 mb-4">
-                  {instructors.map((inst, i) => (
-                    <span key={inst._id} className="flex items-center gap-1">
+                  {/* {instructors.map((inst, i) => (
+                    <span key={inst} className="flex items-center gap-1">
                       <Image
                         src={inst.profileImage || "/user.png"}
                         alt={inst.name}
@@ -110,7 +109,7 @@ const CoursesPage = () => {
                         {inst.name}
                       </span>
                     </span>
-                  ))}
+                  ))} */}
                   {extraInstructors > 0 && (
                     <span className="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded-full font-semibold">
                       +{extraInstructors}

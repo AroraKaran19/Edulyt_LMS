@@ -2,7 +2,7 @@ import { Course } from "@/types";
 import { Star } from "lucide-react";
 import React, { useMemo } from "react";
 import { formatDuration } from "@/lib/formatDuration";
-import Image from "next/image";
+import InstructorCarousel from "../../../components/InstructorCarousel";
 
 const OverviewSection = ({ course }: { course: Course }) => {
   const totalDuration = useMemo(() => {
@@ -126,32 +126,10 @@ const OverviewSection = ({ course }: { course: Course }) => {
       )}
       <div className="instructor w-full flex flex-col gap-4">
         <h2 className="text-3xl font-bold font-coolvetica text-black">
-          Instructor
+          Instructors
         </h2>
         <div className="instructor-card-container w-full flex flex-col md:flex-row gap-4">
-          <Image
-            src={
-              course?.instructor[0]?.profileImage ||
-              "/courseDefaultTestimonial.png"
-            }
-            alt={course?.instructor[0]?.name || "Instructor Image"}
-            width={100}
-            height={100}
-            className="rounded-lg shrink-0 w-full md:w-1/3 max-h-[200px] aspect-square object-contain"
-            priority
-            loading="eager"
-            quality={100}
-            unoptimized
-            draggable={false}
-          />
-          <div className="instructor-card-content w-full md:w-2/3 flex flex-col gap-2">
-            <h3 className="text-2xl font-bold font-coolvetica text-black">
-              {course?.instructor[0]?.name || "Instructor Name"}
-            </h3>
-            <p className="text-base font-normal text-black line-clamp-5 text-balance">
-              {course?.instructor[0]?.bio || "Instructor Bio"}
-            </p>
-          </div>
+          <InstructorCarousel instructors={course?.instructor} />
         </div>
       </div>
     </div>
