@@ -12,6 +12,12 @@ const nextConfig: NextConfig = {
       "images.unsplash.com",
       "videos.pexels.com",
     ],
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "*",
+      },
+    ],
   },
 };
 

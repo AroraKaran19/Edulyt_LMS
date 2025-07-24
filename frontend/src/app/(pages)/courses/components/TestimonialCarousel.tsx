@@ -5,79 +5,87 @@ import { cn } from "@/lib/utils";
 import "swiper/css";
 import "swiper/css/effect-coverflow";
 import TestimonialCard from "./TestimonialCard";
+import { FeaturedReview } from "@/types";
 
-export interface Testimonial {
-  name: string;
-  image: string;
-  category: string;
-  pastRole: string;
-  pastCompany: string;
-  currentRole: string;
-  currentCompany: string;
-  linkedin?: string;
-}
-
-const TestimonialCarousel = () => {
-  const defaultTestimonials : Testimonial[] = [
+const TestimonialCarousel = ({
+  testimonials,
+  ...props
+}: { testimonials: FeaturedReview[] } & {
+  className?: string;
+  style?: React.CSSProperties;
+}) => {
+  const fallbackTestimonials: FeaturedReview[] = [
     {
       name: "Priya Sharma",
-      image: "/courseDefaultTestimonial.png",
-      category: "Full Stack Development",
+      profileImage: "/courseDefaultTestimonial.png",
+      currentRole: "Senior Full Stack Developer",
       pastRole: "Junior Developer",
       pastCompany: "StartupTech Solutions",
-      currentRole: "Senior Full Stack Developer",
       currentCompany: "Microsoft",
       linkedin: "https://www.linkedin.com/",
+      rating: 5,
+      comment: "I loved the course and learned a lot from it.",
+      date: new Date(),
     },
     {
       name: "Rahul Gupta",
-      image: "/courseDefaultTestimonial.png",
-      category: "Data Science & Analytics",
+      profileImage: "/courseDefaultTestimonial.png",
       pastRole: "Business Analyst",
       pastCompany: "Local Consulting Firm",
       currentRole: "Senior Data Scientist",
       currentCompany: "Amazon",
       linkedin: "https://www.linkedin.com/",
+      rating: 5,
+      comment: "I loved the course and learned a lot from it.",
+      date: new Date(),
     },
     {
       name: "Sneha Patel",
-      image: "/courseDefaultTestimonial.png",
-      category: "UI/UX Design",
+      profileImage: "/courseDefaultTestimonial.png",
       pastRole: "Graphic Designer",
       pastCompany: "Creative Agency",
       currentRole: "Lead UX Designer",
       currentCompany: "Adobe",
       linkedin: "https://www.linkedin.com/",
+      rating: 5,
+      comment: "I loved the course and learned a lot from it.",
+      date: new Date(),
     },
     {
       name: "Arjun Singh",
-      image: "/courseDefaultTestimonial.png",
-      category: "DevOps & Cloud Computing",
+      profileImage: "/courseDefaultTestimonial.png",
       pastRole: "System Administrator",
       pastCompany: "IT Services Company",
       currentRole: "Cloud Solutions Architect",
       currentCompany: "Google Cloud",
       linkedin: "https://www.linkedin.com/",
+      rating: 5,
+      comment: "I loved the course and learned a lot from it.",
+      date: new Date(),
     },
     {
       name: "Kavya Reddy",
-      image: "/courseDefaultTestimonial.png",
-      category: "Digital Marketing",
+      profileImage: "/courseDefaultTestimonial.png",
       pastRole: "Marketing Assistant",
       pastCompany: "Small Business",
       currentRole: "Digital Marketing Manager",
       currentCompany: "HubSpot",
       linkedin: "https://www.linkedin.com/",
+      rating: 5,
+      comment: "I loved the course and learned a lot from it.",
+      date: new Date(),
     },
     {
       name: "Vikram Joshi",
-      image: "/courseDefaultTestimonial.png",
-      category: "Cybersecurity",
+      profileImage: "/courseDefaultTestimonial.png",
       pastRole: "IT Support Specialist",
       pastCompany: "Regional Bank",
       currentRole: "Security Engineer",
       currentCompany: "Cisco",
       linkedin: "https://www.linkedin.com/",
+      rating: 5,
+      comment: "I loved the course and learned a lot from it.",
+      date: new Date(),
     },
   ];
 
@@ -116,9 +124,12 @@ const TestimonialCarousel = () => {
           spaceBetween: 100,
         },
       }}
-      className="w-full h-full px-4 !py-4 sm:px-0 [&_.swiper-slide]:!h-auto [&_.swiper-slide]:!flex [&_.swiper-slide]:!flex-col"
+      className={cn(
+        "w-full h-full px-4 !py-4 sm:px-0 [&_.swiper-slide]:!h-auto [&_.swiper-slide]:!flex [&_.swiper-slide]:!flex-col",
+        props.className
+      )}
     >
-      {defaultTestimonials.map((testimonial, index) => (
+      {(testimonials ?? fallbackTestimonials).map((testimonial, index) => (
         <SwiperSlide key={index}>
           {({ isActive }) => (
             <TestimonialCard
@@ -126,7 +137,8 @@ const TestimonialCarousel = () => {
               className={cn({
                 "opacity-100 border-2 border-[#f77124] shadow-[0_0_2px_3px_rgba(233,117,0,0.5)] z-20 relative":
                   isActive,
-                "opacity-90 shadow-[0_0_2px_3px_rgba(0,0,0,0.1)] z-0 relative": !isActive,
+                "opacity-90 shadow-[0_0_2px_3px_rgba(0,0,0,0.1)] z-0 relative":
+                  !isActive,
               })}
             />
           )}

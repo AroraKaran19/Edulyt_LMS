@@ -1,5 +1,5 @@
 "use client";
-import MentorCard from "@/components/ui/course/MentorCard";
+import InstructorCard from "@/components/ui/course/InstructorCard";
 import FlexBox from "@/components/ui/FlexBox";
 import { Course } from "@/types";
 import { Plus } from "lucide-react";
@@ -52,15 +52,14 @@ const CourseCard2 = ({ course }: { course: Course }) => {
           {course.instructor.map(
             (instructor, index) =>
               index < 2 && (
-                <MentorCard
+                <InstructorCard
                   key={index}
-                  image={instructor.profileImage || ""}
-                  name={instructor.name || "Instructor"}
+                  instructorId={instructor}
                 />
               )
           )}
           {course.instructor.length > 2 && (
-            <div className="mentor-count hidden sm:flex gap-0.25 items-center bg-[#EEEEEE] rounded-md p-1">
+            <div className="instructor-count hidden sm:flex gap-0.25 items-center bg-[#EEEEEE] rounded-md p-1">
               <Plus className="w-3 h-3 text-text-primary" fill="#2B1508" />
               <span className="text-xs font-semibold text-text-primary">
                 {course.instructor.length - 2}

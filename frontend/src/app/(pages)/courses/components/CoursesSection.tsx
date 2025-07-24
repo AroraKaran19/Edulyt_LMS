@@ -9,7 +9,8 @@ import { ENDPOINTS } from "@/constants/endpoints";
 import { getErrorUIConfig } from "@/configs/errorUIConfig";
 import Error from "@/components/ui/Error";
 import useSWR from "swr";
-import { Course, Filter } from "@/types";
+import { Course } from "@/types";
+import { Filter } from "@/types";
 
 const CoursesSection = () => {
   // Local state management instead of context
@@ -61,7 +62,7 @@ const CoursesSection = () => {
     errorRetryInterval: 5000,
   });
 
-  const courses = data?.data?.courses || [];
+  const courses: Course[] = data?.data?.courses || [];
 
   // Handle filter selection
   const handleFilterClick = useCallback((filter: Filter) => {

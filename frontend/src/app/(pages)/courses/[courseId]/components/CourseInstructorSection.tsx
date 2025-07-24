@@ -5,6 +5,9 @@ import React from "react";
 import InstructorCarousel from "../../components/InstructorCarousel";
 
 const CourseInstructorSection = ({ course }: { course: Course }) => {
+
+  // TODO: Add dynamic instructors
+
   return (
     <SectionContainer id="course-instructor">
       <div className="course-instructor-header w-full flex flex-col items-center gap-4">

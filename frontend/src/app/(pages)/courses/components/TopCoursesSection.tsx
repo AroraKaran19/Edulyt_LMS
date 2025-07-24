@@ -7,11 +7,12 @@ import { fetcher } from '@/lib/utils';
 import { getErrorUIConfig } from '@/configs/errorUIConfig';
 import Error from "@/components/ui/Error";
 import { ENDPOINTS } from "@/constants/endpoints";
+import { Course } from "@/types";
 
 const TopCoursesSection = () => {
   const { featured } = ENDPOINTS.courses;
   const { data, error, isLoading } = useSWR(featured, fetcher);
-  const courses = data?.data?.courses;
+  const courses: Course[] = data?.data?.courses || [];
 
   const renderContent = () => {
     if (isLoading) {

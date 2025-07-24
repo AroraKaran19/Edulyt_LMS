@@ -14,7 +14,6 @@ import FAQSection from "./components/FAQSection";
 import VideoPlayer from "./watch/components/VideoPlayer";
 
 const CoursePage = ({ course }: { course: Course }) => {
-
   return (
     <div
       className={cn(
@@ -38,11 +37,11 @@ const CoursePage = ({ course }: { course: Course }) => {
         <CourseHeader course={course} />
       </div>
       {course?.scholarship && <ScholarshipBanner />}
-      <TestimonialSection /> {/* TODO: Add dynamic testimonials */}
+      <TestimonialSection testimonials={course?.featuredReviews || []} />
       <CourseOverviewSection course={course} />
       <CourseInstructorSection course={course} />
       <CertificateSection course={course} />
-      <VerticalCarouselSection course={course} />
+      <VerticalCarouselSection />
       <CurriculumSection course={course} />
       <FAQSection course={course} />
     </div>

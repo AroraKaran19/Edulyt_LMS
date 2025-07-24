@@ -1,5 +1,6 @@
 import OrangeButton from "@/components/ui/OrangeButton";
 import { formatDuration } from "@/lib/formatDuration";
+import { cn } from "@/lib/utils";
 import { CourseModule } from "@/types";
 import Image from "next/image";
 import React from "react";
@@ -7,12 +8,21 @@ import React from "react";
 const VideoCard = ({
   module,
   index,
+  ...props
 }: {
   module: CourseModule;
   index: number;
+} & {
+  className?: string;
+  style?: React.CSSProperties;
 }) => {
   return (
-    <div className="video-card w-full min-h-[150px] flex flex-col md:flex-row items-stretch gap-4 p-3 rounded-2xl border border-gray-200">
+    <div
+      className={cn(
+        "video-card w-full min-h-[150px] flex flex-col md:flex-row items-stretch gap-4 p-3 rounded-2xl border border-gray-200",
+        props.className
+      )}
+    >
       <div className="video-thumbnail w-full max-h-[200px] md:max-h-auto md:w-1/3 rounded-2xl overflow-hidden relative aspect-video">
         <Image
           src={module.thumbnailUrl || "/CourseCardDemo.jpg"}
@@ -42,21 +52,18 @@ const VideoCard = ({
           <p className="video-duration text-sm text-gray-500 mt-auto">
             {formatDuration(
               module.lessons.reduce(
-                (acc, lesson) =>
-                  acc +
-                  lesson.content.reduce(
-                    (contentAcc, content) =>
-                      contentAcc +
-                      (content.type === "video" && Array.isArray(content.content)
-                        ? content.content.reduce(
-                            (videoAcc, video) =>
-                              videoAcc +
-                              ('duration' in video ? video.duration || 0 : 0),
-                            0
-                          )
-                        : 0),
-                    0
-                  ),
+                (moduleAcc, lesson) =>
+                  moduleAcc +
+                  lesson.content.reduce((lessonAcc, content) => {
+                    if (
+                      content.type === "video" &&
+                      content.content &&
+                      "duration" in content.content
+                    ) {
+                      return lessonAcc + (content.content.duration || 0);
+                    }
+                    return lessonAcc;
+                  }, 0),
                 0
               )
             )}

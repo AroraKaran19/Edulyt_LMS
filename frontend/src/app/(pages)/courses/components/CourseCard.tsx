@@ -1,6 +1,6 @@
 import BestsellerBadge from "@/components/ui/course/BestsellerBadge";
 import DiscountBadge from "@/components/ui/course/DiscountBadge";
-import MentorCard from "@/components/ui/course/MentorCard";
+import InstructorCard from "@/components/ui/course/InstructorCard";
 import RatingContainer from "@/components/ui/course/RatingContainer";
 import OrangeButton from "@/components/ui/OrangeButton";
 import { cn } from "@/lib/utils";
@@ -60,22 +60,19 @@ const CourseCard = ({
           className="mt-2 text-xs"
           courseId={course?.slug}
         />
-        <div className="mentors mt-2 flex gap-2 select-none mb-2 flex-col sm:flex-row items-start sm:items-center">
-          {course?.instructor.map((mentor, index) => {
+        <div className="instructors mt-2 flex gap-2 select-none mb-2 flex-col sm:flex-row items-start sm:items-center">
+          {course?.instructor.map((instructor, index) => {
             if (index < 2) {
               return (
-                <MentorCard
+                <InstructorCard
                   key={index}
-                  image={
-                    mentor?.profileImage || "/courseDefaultTestimonial.png"
-                  }
-                  name={mentor.name}
+                  instructorId={instructor}
                 />
               );
             }
           })}
           {course?.instructor.length > 2 && (
-            <div className="mentor-count flex gap-0.25 items-center bg-[#EEEEEE] rounded-full p-1">
+            <div className="instructor-count flex gap-0.25 items-center bg-[#EEEEEE] rounded-full p-1">
               <Plus className="w-3 h-3 text-text-primary" fill="#2B1508" />
               <p className="text-xs font-bold text-text-primary">
                 {course?.instructor.length - 2}
@@ -89,16 +86,16 @@ const CourseCard = ({
               ₹
               {course?.discount
                 ? Math.round(
-                    (course.plans.essential?.[0].price || 0 -
-                      (course.plans.essential?.[0].price || 0) *
+                    (course.plans.essential?.price || course.plans.elite?.price || 0 -
+                      (course.plans.essential?.price || course.plans.elite?.price || 0) *
                         (Number(course.discount) / 100)) *
                       100
                   ) / 100
-                : course.plans.essential?.[0].price || 0}
+                : course.plans.essential?.price || course.plans.elite?.price || 0}
             </p>
             {course?.discount && (
               <span className="text-sm font-normal text-black line-through opacity-50">
-                ₹{course.plans.essential?.[0].price || 0}
+                ₹{course.plans.essential?.price || course.plans.elite?.price || 0}
               </span>
             )}
             <p className="text-sm font-normal text-black">onwards/-</p>

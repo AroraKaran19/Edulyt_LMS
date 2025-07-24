@@ -26,8 +26,10 @@ const CourseOverviewSection = ({ course }: { course: Course }) => {
                 className="size-4 lg:size-5"
               />
             ),
-            component: <VideoShowcase course={course} />,
-            showCount: course?.modules.length || 0,
+            component: <VideoShowcase modules={course?.modules || []} />,
+            ...(course?.modules.length > 0 && {
+              showCount: course?.modules.length,
+            }),
           },
         ]}
       />

@@ -5,22 +5,15 @@ import { Plus } from "lucide-react";
 import BestsellerBadge from "@/components/ui/course/BestsellerBadge";
 import RatingContainer from "@/components/ui/course/RatingContainer";
 import DiscountBadge from "@/components/ui/course/DiscountBadge";
-import MentorCard from "@/components/ui/course/MentorCard";
+import InstructorCard from "@/components/ui/course/InstructorCard";
 import OrangeButton from "@/components/ui/OrangeButton";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 
 const TopCourseCard = ({
-  thumbnail,
-  title,
-  enrolledCount,
-  instructor,
-  featuredReviews,
-  plans,
-  discount,
-  slug,
+  course,
   ...props
-}: Course & { className?: string; style?: React.CSSProperties }) => {
+}: { course: Course } & { className?: string; style?: React.CSSProperties }) => {
   
   const router = useRouter();
 
@@ -33,8 +26,8 @@ const TopCourseCard = ({
     >
       <div className="course-card-image rounded-2xl h-1/2 w-full relative">
         <Image
-          src={thumbnail || "/CourseCardDemo.jpg"}
-          alt={title}
+          src={course.thumbnail || "/CourseCardDemo.jpg"}
+          alt={course.title}
           className="rounded-2xl max-h-[200px] select-none w-full h-full"
           draggable={false}
           width={100}
@@ -42,43 +35,42 @@ const TopCourseCard = ({
           priority
           loading="eager"
         />
-        {discount && (
+        {course.discount && (
           <DiscountBadge
-            discount={Number(discount)}
+            discount={Number(course.discount)}
             className="absolute top-2 right-2"
           />
         )}
       </div>
-      <BestsellerBadge enrollStudents={enrolledCount} className="mt-3" />
+      <BestsellerBadge enrollStudents={course.enrolledCount} className="mt-3" />
       <p
         className={cn(
           "text-2xl font-bold mt-2 font-coolvetica select-none text-balance"
         )}
       >
-        {title}
+        {course.title}
       </p>
       <RatingContainer
-        ratings={featuredReviews}
+        ratings={course.featuredReviews}
         className="mt-2"
-        courseId={slug}
+        courseId={course.slug}
       />
-      <div className={cn("mentors mt-2 flex gap-2 items-center select-none")}>
-        {instructor.map((mentor, index) => {
+      <div className={cn("instructors mt-2 flex gap-2 items-center select-none")}>
+        {course.instructor.map((instructor, index) => {
           if (index < 2) {
             return (
-              <MentorCard
+              <InstructorCard
                 key={index}
-                image={mentor?.profileImage || "/courseDefaultTestimonial.png"}
-                name={mentor.name}
+                instructorId={instructor}
               />
             );
           }
         })}
-        {instructor.length > 2 && (
-          <div className="mentor flex items-center bg-[#EEEEEE] rounded-full p-1">
+        {course.instructor.length > 2 && (
+          <div className="instructor flex items-center bg-[#EEEEEE] rounded-full p-1">
             <Plus className="w-3 h-3 text-text-primary" fill="#2B1508" />
             <p className="text-xs font-bold text-text-primary">
-              {instructor.length - 2}
+              {course.instructor.length - 2}
             </p>
           </div>
         )}
@@ -87,14 +79,14 @@ const TopCourseCard = ({
         <div className="pricing flex flex-row lg:flex-col xl:flex-row gap-2 sm:items-center flex-wrap">
           <p className="text-xl font-bold text-black">
             ₹
-            {discount
-              ? Math.round((plans.essential?.[0].price || 0 - 
-                (plans.essential?.[0].price || 0) * (Number(discount) / 100)) * 100) / 100
-              : plans.essential?.[0].price || 0}
+            {course.discount
+              ? Math.round((course.plans.essential?.price || course.plans.elite?.price || 0 - 
+                (course.plans.essential?.price || course.plans.elite?.price || 0) * (Number(course.discount) / 100)) * 100) / 100
+              : course.plans.essential?.price || course.plans.elite?.price || 0}
           </p>
-          {discount && (
+          {course.discount && (
             <span className="text-sm font-normal text-black line-through opacity-50">
-              ₹{plans.essential?.[0].price || 0}
+              ₹{course.plans.essential?.price || course.plans.elite?.price || 0}
             </span>
           )}
           <p className="text-sm font-normal text-black">onwards/-</p>
@@ -103,7 +95,7 @@ const TopCourseCard = ({
           className="sm:ml-auto font-bold text-sm px-8 py-4"
           onClick={(e) => {
             e.stopPropagation();
-            router.push(`/courses/${slug}`);
+            router.push(`/courses/${course.slug}`);
           }}
         >
           View Details

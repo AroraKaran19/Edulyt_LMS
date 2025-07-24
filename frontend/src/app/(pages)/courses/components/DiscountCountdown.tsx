@@ -6,12 +6,14 @@ const DiscountCountdown = ({
   hours,
   minutes,
   seconds,
-  className,
+  ...props
 }: {
   hours: number;
   minutes: number;
   seconds: number;
+} & {
   className?: string;
+  style?: React.CSSProperties;
 }) => {
   const [countdown, setCountdown] = useState<{
     hours: number;
@@ -39,11 +41,23 @@ const DiscountCountdown = ({
   }, [hours, minutes, seconds]);
 
   return (
-    <div className={cn("discount-countdown flex flex-col gap-2 text-base", className)}>
+    <div
+      className={cn(
+        "discount-countdown flex flex-col gap-2 text-base",
+        props.className
+      )}
+    >
       <p className="font-medium text-text-primary flex flex-wrap gap-2 justify-center md:justify-start">
         <span className="underline">Limited Offer</span>
         <span className="underline">
-          {countdown.hours} Hr : {countdown.minutes < 10 ? `0${countdown.minutes} Min` : `${countdown.minutes} Min`} : {countdown.seconds < 10 ? `0${countdown.seconds} Sec` : `${countdown.seconds} Sec`}
+          {countdown.hours} Hr :{" "}
+          {countdown.minutes < 10
+            ? `0${countdown.minutes} Min`
+            : `${countdown.minutes} Min`}{" "}
+          :{" "}
+          {countdown.seconds < 10
+            ? `0${countdown.seconds} Sec`
+            : `${countdown.seconds} Sec`}
         </span>
       </p>
     </div>

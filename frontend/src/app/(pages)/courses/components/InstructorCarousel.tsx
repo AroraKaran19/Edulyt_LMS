@@ -6,28 +6,16 @@ import "swiper/css";
 import "swiper/css/effect-coverflow";
 import { Autoplay } from "swiper/modules";
 
-export interface Testimonial {
-  name: string;
-  image: string;
-  category: string;
-  pastRole: string;
-  pastCompany: string;
-  currentRole: string;
-  currentCompany: string;
-  linkedin?: string;
-}
-
-const InstructorCarousel = ({ instructors }: { instructors: Instructor[] }) => {
-
+const InstructorCarousel = ({ instructors }: { instructors: Instructor["_id"][] }) => {
   return (
     <Swiper
       centeredSlides={true}
       grabCursor={true}
-			modules={[Autoplay]}
-			autoplay={{
-				delay: 5000,
-				disableOnInteraction: false,
-			}}
+      modules={[Autoplay]}
+      autoplay={{
+        delay: 5000,
+        disableOnInteraction: false,
+      }}
       breakpoints={{
         0: {
           slidesPerView: 1.1,
@@ -48,11 +36,12 @@ const InstructorCarousel = ({ instructors }: { instructors: Instructor[] }) => {
       }}
       className="w-full h-full px-4 !py-4 sm:px-0 [&_.swiper-slide]:!h-auto [&_.swiper-slide]:!flex [&_.swiper-slide]:!flex-col"
     >
-      {instructors.length > 0 && instructors.map((instructor, index) => (
-        <SwiperSlide key={index}>
-          <InstructorCard instructor={instructor} />
-        </SwiperSlide>
-      ))}
+      {instructors.length > 0 &&
+        instructors.map((instructor, index) => (
+          <SwiperSlide key={index}>
+            <InstructorCard instructorId={instructor} />
+          </SwiperSlide>
+        ))}
     </Swiper>
   );
 };

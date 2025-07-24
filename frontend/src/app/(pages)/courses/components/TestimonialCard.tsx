@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import Image from "next/image";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import Link from "next/link";
-import { Testimonial } from "./TestimonialCarousel";
+import { FeaturedReview } from "@/types";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -12,21 +12,23 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 
 const TestimonialCard = ({
   testimonial,
-  className,
+  ...props
 }: {
-  testimonial: Testimonial;
-  className: string;
+  testimonial: FeaturedReview;
+} & {
+  className?: string;
+  style?: React.CSSProperties;
 }) => {
   return (
     <div
       className={cn(
         `${testimonial.name}-card h-full bg-white rounded-2xl flex flex-col items-center py-3 px-2`,
-        className
+        props.className
       )}
     >
-      <div className="testimonial-image size-16 md:size-20 rounded-full mb-3 md:mb-4">
+      <div className="testimonial-image size-16 md:size-20 rounded-full mb-3 md:mb-4 overflow-hidden">
         <Image
-          src={testimonial.image}
+          src={testimonial.profileImage || "/courseDefaultTestimonial.png"}
           alt={testimonial.name}
           width={100}
           height={100}
@@ -44,7 +46,13 @@ const TestimonialCard = ({
           </div>
           {testimonial.linkedin && (
             <Link href={testimonial.linkedin} target="_blank">
-              <Image src="/linkedin-icon.svg" alt="Linkedin Icon" width={20} height={20} className="size-5" />
+              <Image
+                src="/linkedin-icon.svg"
+                alt="Linkedin Icon"
+                width={20}
+                height={20}
+                className="size-5"
+              />
             </Link>
           )}
         </div>

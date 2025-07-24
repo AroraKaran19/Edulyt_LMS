@@ -8,7 +8,14 @@ interface CourseSearchBarProps {
   onSearchChange: (search: string) => void;
 }
 
-const CourseSearchBar: React.FC<CourseSearchBarProps> = ({ search, onSearchChange }) => {
+const CourseSearchBar = ({
+  search,
+  onSearchChange,
+  ...props
+}: CourseSearchBarProps & {
+  className?: string;
+  style?: React.CSSProperties;
+}) => {
   useEffect(() => {
     const debouncedSearch = setTimeout(() => {
       console.log(search);
@@ -18,9 +25,12 @@ const CourseSearchBar: React.FC<CourseSearchBarProps> = ({ search, onSearchChang
   }, [search]);
 
   return (
-    <div className={cn(
-      "courses-search-bar w-full bg-[#F5F5F5] p-4 shrink rounded-xl flex gap-2 items-center border border-black/10 shadow-[inset_0_-1px_2px_rgba(0,0,0,0.2)]",
-    )}>
+    <div
+      className={cn(
+        "courses-search-bar w-full bg-[#F5F5F5] p-4 shrink rounded-xl flex gap-2 items-center border border-black/10 shadow-[inset_0_-1px_2px_rgba(0,0,0,0.2)]",
+        props.className
+      )}
+    >
       <Search className="size-6 text-black/30" />
       <input
         type="text"

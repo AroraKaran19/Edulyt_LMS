@@ -3,13 +3,18 @@ import React from "react";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import TestimonialCarousel from "../../components/TestimonialCarousel";
 import SectionContainer from "@/components/ui/course/SectionContainer";
+import { FeaturedReview } from "@/types";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700", "800"],
 });
 
-const TestimonialSection = () => {
+const TestimonialSection = ({
+  testimonials,
+}: {
+  testimonials: FeaturedReview[];
+}) => {
   const howItHelped = [
     {
       title: "50%",
@@ -61,10 +66,12 @@ const TestimonialSection = () => {
           </div>
         ))}
       </div>
-      <div className="testimonial-cards w-full flex flex-col items-center justify-center relative">
-        <TestimonialCarousel />
-        <div className="absolute w-full h-full bg-gradient-to-r from-white/50 via-transparent to-white/50 z-10 pointer-events-none" />
-      </div>
+      {testimonials && testimonials.length > 0 && (
+        <div className="testimonial-cards w-full flex flex-col items-center justify-center relative">
+          <TestimonialCarousel testimonials={testimonials} />
+          <div className="absolute w-full h-full bg-gradient-to-r from-white/50 via-transparent to-white/50 z-10 pointer-events-none" />
+        </div>
+      )}
     </SectionContainer>
   );
 };

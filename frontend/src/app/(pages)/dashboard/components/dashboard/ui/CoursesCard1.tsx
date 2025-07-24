@@ -1,5 +1,5 @@
 "use client";
-import MentorCard from "@/components/ui/course/MentorCard";
+import InstructorCard from "@/components/ui/course/InstructorCard";
 import FlexBox from "@/components/ui/FlexBox";
 import ProgressChart from "@/components/ui/charts/ProgressChart";
 import WhiteButton from "@/components/ui/WhiteButton";
@@ -25,19 +25,18 @@ const CoursesCard1 = ({ course }: { course: Course }) => {
         <h2 className="text-base font-bold line-clamp-1 text-ellipsis">
           {course.title}
         </h2>
-        <FlexBox className="mentors gap-2 flex-wrap">
+        <FlexBox className="instructors gap-2 flex-wrap">
           {course.instructor.map(
             (instructor, index) =>
               index < 2 && (
-                <MentorCard
+                <InstructorCard
                   key={index}
-                  image={instructor.profileImage || ""}
-                  name={instructor.name}
+                  instructorId={instructor}
                 />
               )
           )}
           {course.instructor.length > 2 && (
-            <div className="mentor-count hidden sm:flex gap-0.25 items-center bg-[#EEEEEE] rounded-md p-1">
+            <div className="instructor-count hidden sm:flex gap-0.25 items-center bg-[#EEEEEE] rounded-md p-1">
               <Plus className="w-3 h-3 text-text-primary" fill="#2B1508" />
               <span className="text-xs font-semibold text-text-primary">
                 {course.instructor.length - 2}

@@ -6,7 +6,6 @@ import OrangeButton from "@/components/ui/OrangeButton";
 import { cn } from "@/lib/utils";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { Star } from "lucide-react";
-import { formatDuration } from "@/lib/formatDuration";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -56,7 +55,7 @@ const CourseHeader = ({ course }: { course: Course }) => {
                 plusJakartaSans.className
               )}
             >
-              {course?.subtitle}
+              {course?.language}
             </p>
           </div>
         </div>
@@ -114,38 +113,10 @@ const CourseHeader = ({ course }: { course: Course }) => {
         </div>
         <div className="course-total-time w-max flex flex-col items-center md:items-start">
           <p className="text-sm md:text-base font-normal text-text-primary">
-            Total Time
+            Course Duration
           </p>
           <p className="text-base md:text-2xl font-normal text-text-primary font-coolvetica tracking-wide">
-            {formatDuration(
-              course?.modules.reduce(
-                (acc, module) =>
-                  acc +
-                  module.lessons.reduce(
-                    (lessonAcc, lesson) =>
-                      lessonAcc +
-                      (lesson.content.reduce((contentAcc, content) => {
-                        if (
-                          content.type === "video" &&
-                          Array.isArray(content.content)
-                        ) {
-                          return (
-                            contentAcc +
-                            content.content.reduce(
-                              (videoAcc, video) =>
-                                videoAcc +
-                                ("duration" in video ? video.duration || 0 : 0),
-                              0
-                            )
-                          );
-                        }
-                        return contentAcc;
-                      }, 0) || 0),
-                    0
-                  ),
-                0
-              )
-            )}
+            {course.duration}
           </p>
         </div>
       </div>

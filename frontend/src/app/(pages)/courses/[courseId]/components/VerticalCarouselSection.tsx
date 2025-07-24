@@ -3,9 +3,8 @@ import OrangeButton from "@/components/ui/OrangeButton";
 import React from "react";
 import Link from "next/link";
 import VerticalCarousel from "../../components/VerticalCarousel";
-import { Course } from "@/types";
 
-const VerticalCarouselSection = ({ course }: { course: Course }) => {
+const VerticalCarouselSection = () => {
   return (
     <SectionContainer
       id="explore"
@@ -26,8 +25,8 @@ const VerticalCarouselSection = ({ course }: { course: Course }) => {
         </OrangeButton>
       </div>
       <div className="vertical-carousel w-full md:w-3/5">
-				<VerticalCarousel course={course} />
-			</div>
+        <VerticalCarousel />
+      </div>
     </SectionContainer>
   );
 };

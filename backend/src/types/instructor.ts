@@ -1,10 +1,12 @@
-// Instructor-related types for Edulyt platform
+// ===================
+// Instructor Type
+// ===================
 
 export interface Instructor {
-  id: string;
+  _id: string;
   name: string;
   profileImage?: string;
-  experience: string; // e.g., "14 of Experience"
+  experience: string;
   rating: number;
   totalStudents: number;
   totalCourses: number;
@@ -13,4 +15,4 @@ export interface Instructor {
   previousExperience?: string[];
   education?: string[];
   linkedinUrl: string;
-} 
+}

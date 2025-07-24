@@ -14,29 +14,43 @@ const CertificateSection = ({ course }: { course: Course }) => {
       icon: <Crown className="size-5" />,
       name: "Essential",
       theme: "bg-[#F68A5C]",
-      price: course.plans.essential?.[0]?.price || 0,
-      features: course.plans.essential?.[0]?.features || [],
-      discount: course.discount,
-      discountLabel: `${course.discount}% off`,
-      discountPrice:
-        Math.round((
-          (course.plans.essential?.[0]?.price ?? 0) -
-            ((course.plans.essential?.[0]?.price ?? 0) * (Number(course.discount) || 0)) / 100
-        ) * 100) / 100,
+      price: course.plans.essential?.price || 0,
+      features: course.plans.essential?.features || [],
+      discountType: course.plans.essential?.discount?.discount,
+      discountValue: course.plans.essential?.discount?.value,
+      discountLabel: `${
+        course.plans.essential?.discount?.discount === "fixed"
+          ? `₹${course.plans.essential?.discount?.value} off`
+          : `${course.plans.essential?.discount?.value}% off`
+      }`,
+      discountPrice: Math.round(
+        (course.plans.essential?.price || 0) -
+          (course.plans.essential?.discount?.discount === "fixed"
+            ? course.plans.essential?.discount?.value || 0
+            : (course.plans.essential?.price || 0) *
+              (course.plans.essential?.discount?.value || 0) / 100)
+      ),
     },
     {
       icon: <Crown className="size-5" />,
       name: "Elite",
       theme: "bg-[#8B5CF6]",
-      price: course.plans.elite?.[0]?.price || 0,
-      features: course.plans.elite?.[0]?.features || [],
-      discount: course.discount,
-      discountLabel: `${course.discount}% off`,
-      discountPrice:
-        Math.round((
-          (course.plans.elite?.[0]?.price ?? 0) -
-            ((course.plans.elite?.[0]?.price ?? 0) * (Number(course.discount) || 0)) / 100
-        ) * 100) / 100,
+      price: course.plans.elite?.price || 0,
+      features: course.plans.elite?.features || [],
+      discountType: course.plans.elite?.discount?.discount,
+      discountValue: course.plans.elite?.discount?.value,
+      discountLabel: `${
+        course.plans.elite?.discount?.discount === "fixed"
+          ? `₹${course.plans.elite?.discount?.value} off`
+          : `${course.plans.elite?.discount?.value}% off`
+      }`,
+      discountPrice: Math.round(
+        (course.plans.elite?.price || 0) -
+          (course.plans.elite?.discount?.discount === "fixed"
+            ? course.plans.elite?.discount?.value || 0
+            : (course.plans.elite?.price || 0) *
+              (course.plans.elite?.discount?.value || 0) / 100)
+      ),
     },
   ];
 
@@ -84,7 +98,7 @@ const CertificateSection = ({ course }: { course: Course }) => {
                 <div className="plan-name text-text-primary text-xl font-bold">
                   {plan.name}
                 </div>
-                {plan.discount && (
+                {plan.discountType && plan.discountLabel && (
                   <span
                     className={`plan-discount ml-auto text-white text-xs ${plan.theme} p-1 rounded-md font-bold`}
                   >
@@ -95,14 +109,19 @@ const CertificateSection = ({ course }: { course: Course }) => {
 
               <div className="plan-price-container mt-3 md:mt-7 flex gap-1 bg-black/5 p-3">
                 <div className="plan-price text-2xl text-text-primary font-extrabold flex items-center gap-2">
-                  ₹{plan.discount ? `${plan.discountPrice}` : `${plan.price}`}
-                  {plan.discount && (
+                  ₹
+                  {plan.discountType && plan.discountPrice !== plan.price
+                    ? `${plan.discountPrice}`
+                    : `${plan.price}`}
+                  {plan.discountType && plan.discountPrice !== plan.price && (
                     <span className="text-sm text-gray-500 line-through font-normal">
                       ₹{plan.price}
                     </span>
                   )}
                 </div>
-                <span className="text-sm text-text-primary mt-auto">/ month</span>
+                <span className="text-sm text-text-primary mt-auto">
+                  / month
+                </span>
               </div>
 
               <div className="plan-features w-full flex flex-col gap-2 p-3">
@@ -119,9 +138,7 @@ const CertificateSection = ({ course }: { course: Course }) => {
 
               <div className="plan-button-container mt-auto w-full flex justify-center p-3">
                 <WhiteButton className="w-full">
-                  <span
-                    className="w-full text-center text-text-primary font-extrabold text-sm md:text-base"
-                  >
+                  <span className="w-full text-center text-text-primary font-extrabold text-sm md:text-base">
                     Select
                   </span>
                 </WhiteButton>

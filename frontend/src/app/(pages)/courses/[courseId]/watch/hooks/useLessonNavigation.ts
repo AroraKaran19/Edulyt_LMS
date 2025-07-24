@@ -1,115 +1,176 @@
 import { useCallback, useEffect, useState } from "react";
-import { Course, CourseLesson, CourseModule } from "@/types";
+import { Course, CourseLesson, CourseModule, Content, Video } from "@/types";
 
 export const useLessonNavigation = (course: Course) => {
   const [selectedModule, setSelectedModule] = useState<CourseModule | null>(null);
   const [selectedLesson, setSelectedLesson] = useState<CourseLesson | null>(null);
+  const [selectedContent, setSelectedContent] = useState<Content | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Initialize with first module and lesson
+  // Initialize with first module, lesson, and content
   useEffect(() => {
-    if (isInitialized || !course.modules[0]?.lessons[0]) return;
+    if (isInitialized || !course.modules[0]?.lessons[0]?.content[0]) return;
 
-    setSelectedModule(course.modules[0]);
-    setSelectedLesson(course.modules[0].lessons[0]);
+    const firstModule = course.modules[0];
+    const firstLesson = firstModule.lessons[0];
+    const firstContent = firstLesson.content[0];
+
+    setSelectedModule(firstModule);
+    setSelectedLesson(firstLesson);
+    setSelectedContent(firstContent);
     setIsInitialized(true);
   }, [course.modules, isInitialized]);
 
-  // Preload next lesson video
+  // Preload next video content
   useEffect(() => {
-    if (!selectedModule || !selectedLesson) return;
+    if (!selectedModule || !selectedLesson || !selectedContent) return;
 
     const moduleIndex = course.modules.findIndex((m) => m._id === selectedModule._id);
     const lessonIndex = selectedModule.lessons.findIndex((l) => l._id === selectedLesson._id);
+    const contentIndex = selectedLesson.content.findIndex((c) => c._id === selectedContent._id);
 
-    const nextLesson =
-      lessonIndex < selectedModule.lessons.length - 1
-        ? selectedModule.lessons[lessonIndex + 1]
-        : moduleIndex < course.modules.length - 1
-        ? course.modules[moduleIndex + 1].lessons[0] || null
-        : null;
+    // Find next content
+    let nextContent: Content | null = null;
 
-    // Extract first video URL from next lesson for preloading
-    const videoContent = nextLesson?.content
-      .find(content => content.type === 'video' && Array.isArray(content.content));
-    
-    const firstVideo = videoContent?.content
-      .find(video => 'sources' in video) as { sources: { videoUrl: string }[] } | undefined;
-    
-    const nextVideoUrl = firstVideo?.sources?.[0]?.videoUrl;
-
-    if (nextVideoUrl) {
-      const preloadLink = document.createElement("link");
-      preloadLink.href = nextVideoUrl;
-      preloadLink.rel = "preload";
-      preloadLink.as = "video";
-      document.head.appendChild(preloadLink);
-
-      return () => {
-        if (document.head.contains(preloadLink)) {
-          document.head.removeChild(preloadLink);
-        }
-      };
+    // Try next content in same lesson
+    if (contentIndex < selectedLesson.content.length - 1) {
+      nextContent = selectedLesson.content[contentIndex + 1];
     }
-  }, [selectedModule, selectedLesson, course.modules]);
+    // Try first content of next lesson in same module
+    else if (lessonIndex < selectedModule.lessons.length - 1) {
+      nextContent = selectedModule.lessons[lessonIndex + 1].content[0] || null;
+    }
+    // Try first content of first lesson in next module
+    else if (moduleIndex < course.modules.length - 1) {
+      nextContent = course.modules[moduleIndex + 1].lessons[0]?.content[0] || null;
+    }
 
-  // Navigate to a specific lesson
-  const navigateToLesson = useCallback(
-    (lessonId: string) => {
-      const courseModule = course.modules.find((m) => m.lessons.some((l) => l._id === lessonId));
-      const lesson = courseModule?.lessons.find((l) => l._id === lessonId);
+    // Preload if next content is a video
+    if (nextContent?.type === "video" && nextContent.content && "sources" in nextContent.content) {
+      const videoSources = (nextContent.content as Video).sources;
+      const nextVideoUrl = videoSources?.[0]?.videoUrl;
 
-      if (courseModule && lesson) {
-        setSelectedModule(courseModule);
-        setSelectedLesson(lesson);
+      if (nextVideoUrl) {
+        const preloadLink = document.createElement("link");
+        preloadLink.href = nextVideoUrl;
+        preloadLink.rel = "preload";
+        preloadLink.as = "video";
+        document.head.appendChild(preloadLink);
+
+        return () => {
+          if (document.head.contains(preloadLink)) {
+            document.head.removeChild(preloadLink);
+          }
+        };
+      }
+    }
+  }, [selectedModule, selectedLesson, selectedContent, course.modules]);
+
+  // Navigate to a specific content
+  const navigateToContent = useCallback(
+    (contentId: string) => {
+      for (const module of course.modules) {
+        for (const lesson of module.lessons) {
+          const content = lesson.content.find((c) => c._id === contentId);
+          if (content) {
+            setSelectedModule(module);
+            setSelectedLesson(lesson);
+            setSelectedContent(content);
+            return;
+          }
+        }
       }
     },
     [course.modules]
   );
 
-  // Navigate to next lesson
+  // Navigate to next content
   const navigateToNext = useCallback(() => {
-    if (!selectedModule || !selectedLesson) return;
+    if (!selectedModule || !selectedLesson || !selectedContent) return;
 
     const moduleIndex = course.modules.findIndex((m) => m._id === selectedModule._id);
     const lessonIndex = selectedModule.lessons.findIndex((l) => l._id === selectedLesson._id);
+    const contentIndex = selectedLesson.content.findIndex((c) => c._id === selectedContent._id);
 
-    if (lessonIndex < selectedModule.lessons.length - 1) {
-      navigateToLesson(selectedModule.lessons[lessonIndex + 1]._id);
-    } else if (moduleIndex < course.modules.length - 1) {
-      const nextModule = course.modules[moduleIndex + 1];
-      if (nextModule.lessons[0]) navigateToLesson(nextModule.lessons[0]._id);
+    // Try next content in same lesson
+    if (contentIndex < selectedLesson.content.length - 1) {
+      const nextContent = selectedLesson.content[contentIndex + 1];
+      setSelectedContent(nextContent);
     }
-  }, [selectedModule, selectedLesson, course.modules, navigateToLesson]);
+    // Try first content of next lesson in same module
+    else if (lessonIndex < selectedModule.lessons.length - 1) {
+      const nextLesson = selectedModule.lessons[lessonIndex + 1];
+      if (nextLesson.content[0]) {
+        setSelectedLesson(nextLesson);
+        setSelectedContent(nextLesson.content[0]);
+      }
+    }
+    // Try first content of first lesson in next module
+    else if (moduleIndex < course.modules.length - 1) {
+      const nextModule = course.modules[moduleIndex + 1];
+      const firstLesson = nextModule.lessons[0];
+      if (firstLesson?.content[0]) {
+        setSelectedModule(nextModule);
+        setSelectedLesson(firstLesson);
+        setSelectedContent(firstLesson.content[0]);
+      }
+    }
+  }, [selectedModule, selectedLesson, selectedContent, course.modules]);
 
-  // Navigate to previous lesson
+  // Navigate to previous content
   const navigateToPrevious = useCallback(() => {
-    if (!selectedModule || !selectedLesson) return;
+    if (!selectedModule || !selectedLesson || !selectedContent) return;
 
     const moduleIndex = course.modules.findIndex((m) => m._id === selectedModule._id);
     const lessonIndex = selectedModule.lessons.findIndex((l) => l._id === selectedLesson._id);
+    const contentIndex = selectedLesson.content.findIndex((c) => c._id === selectedContent._id);
 
-    if (lessonIndex > 0) {
-      navigateToLesson(selectedModule.lessons[lessonIndex - 1]._id);
-    } else if (moduleIndex > 0) {
+    // Try previous content in same lesson
+    if (contentIndex > 0) {
+      const prevContent = selectedLesson.content[contentIndex - 1];
+      setSelectedContent(prevContent);
+    }
+    // Try last content of previous lesson in same module
+    else if (lessonIndex > 0) {
+      const prevLesson = selectedModule.lessons[lessonIndex - 1];
+      const lastContent = prevLesson.content[prevLesson.content.length - 1];
+      if (lastContent) {
+        setSelectedLesson(prevLesson);
+        setSelectedContent(lastContent);
+      }
+    }
+    // Try last content of last lesson in previous module
+    else if (moduleIndex > 0) {
       const prevModule = course.modules[moduleIndex - 1];
       const lastLesson = prevModule.lessons[prevModule.lessons.length - 1];
-      if (lastLesson) navigateToLesson(lastLesson._id);
+      const lastContent = lastLesson?.content[lastLesson.content.length - 1];
+      if (lastContent) {
+        setSelectedModule(prevModule);
+        setSelectedLesson(lastLesson);
+        setSelectedContent(lastContent);
+      }
     }
-  }, [selectedModule, selectedLesson, course.modules, navigateToLesson]);
+  }, [selectedModule, selectedLesson, selectedContent, course.modules]);
 
   // Toggle module expansion
-  const toggleModule = useCallback((courseModule: CourseModule) => {
-    setSelectedModule((prev) => (prev?._id === courseModule._id ? prev : courseModule));
+  const toggleModule = useCallback((module: CourseModule) => {
+    setSelectedModule((prev) => (prev?._id === module._id ? null : module));
+  }, []);
+
+  // Toggle lesson expansion
+  const toggleLesson = useCallback((lesson: CourseLesson) => {
+    setSelectedLesson((prev) => (prev?._id === lesson._id ? null : lesson));
   }, []);
 
   return {
     selectedModule,
     selectedLesson,
-    navigateToLesson,
+    selectedContent,
+    navigateToContent,
     navigateToNext,
     navigateToPrevious,
     toggleModule,
+    toggleLesson,
     isInitialized,
   };
 };

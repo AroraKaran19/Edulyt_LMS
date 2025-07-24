@@ -111,5 +111,9 @@ html {
 	--animate-course-card-fade-in: courseCardFadeIn 0.8s ease-out forwards;
 	--animate-marquee-vertical: marqueeVertical 20s linear infinite;
 	--animate-marquee-vertical-paused: marqueeVertical 20s linear infinite paused;
+	--animate-marquee-vertical-medium: marqueeVertical 12s linear infinite;
+	--animate-marquee-vertical-medium-paused: marqueeVertical 12s linear infinite paused;
+	--animate-marquee-vertical-fast: marqueeVertical 8s linear infinite;
+	--animate-marquee-vertical-fast-paused: marqueeVertical 8s linear infinite paused;
 	--animate-fade-from-left: fadeFromLeft 0.3s ease-in-out forwards;
 }

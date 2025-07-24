@@ -40,7 +40,7 @@ export async function generateMetadata({
 
   if (!course) {
     return {
-      title: "Module Not Found",
+      title: "Module Not Found | Edulyt",
       description: "The module you are looking for does not exist.",
     };
   }

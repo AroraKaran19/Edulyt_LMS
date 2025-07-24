@@ -2,6 +2,8 @@
 // Utility Types
 // ===================
 
+import { Instructor } from "./instructor";
+
 export type Discount = {
     discount: "percentage" | "fixed";
     value: number;
@@ -20,21 +22,11 @@ export interface VideoQuality {
     videoUrl: string;
 }
 
-export interface UserVideoNote {
-    _id: string;
-    note: string;
-    timestamp: number; // in seconds
-    createdAt?: Date;
-    updatedAt?: Date;
-}
-
 export interface Video {
     _id: string;
     sources: VideoQuality[];
     thumbnailUrl?: string;
     duration?: number; // in seconds
-    order: number;
-    notes?: UserVideoNote[];
 }
 
 // ===================
@@ -61,7 +53,6 @@ export interface Quiz {
     questions: QuizQuestion[];
     passingScore?: number;
     maxAttempts?: number;
-    order: number;
     createdAt?: Date;
     updatedAt?: Date;
 }
@@ -70,21 +61,20 @@ export interface Quiz {
 // Content Types
 // ===================
 
-export interface ReadingMaterial {
-    _id: string;
-    content: "pdf" | "docx";
-    estimatedReadTime: number;
-    downloadUrl?: string;
-}
+// export interface ReadingMaterial {
+//     _id: string;
+//     content: "pdf" | "docx";
+//     estimatedReadTime: number;
+//     downloadUrl?: string;
+// }
 
-export interface LessonContent {
+export interface Content {
     _id: string;
     title: string;
     description?: string;
-    content: Video[] | Quiz[];
+    content: Video | Quiz;
     type: "video" | "quiz";
-    readingMaterials?: ReadingMaterial[];
-    order: number;
+    // readingMaterials?: ReadingMaterial[];
     isCompleted?: boolean;
     completedAt?: Date;
     isLocked?: boolean;
@@ -96,8 +86,7 @@ export interface CourseLesson {
     _id: string;
     title: string;
     description?: string;
-    content: LessonContent[];
-    order: number;
+    content: Content[];
     isCompleted?: boolean;
     completedAt?: Date;
     isLocked?: boolean;
@@ -111,7 +100,6 @@ export interface CourseModule {
     thumbnailUrl?: string;
     lessons: CourseLesson[];
     description?: string;
-    order: number;
     isCompleted?: boolean;
     isLocked?: boolean;
     createdAt?: Date;
@@ -125,8 +113,6 @@ export interface CourseModule {
 export interface PlanFeatures {
     title: string;
     provided: boolean;
-    description?: string;
-    order: number;
 }
 
 export interface Plan {
@@ -145,25 +131,6 @@ export interface Plan {
 }
 
 // ===================
-// Instructor Type
-// ===================
-
-export interface Instructor {
-    _id: string;
-    name: string;
-    profileImage?: string;
-    experience: string;
-    rating: number;
-    totalStudents: number;
-    totalCourses: number;
-    bio: string;
-    currentPosition?: string;
-    previousExperience?: string[];
-    education?: string[];
-    linkedinUrl: string;
-}
-
-// ===================
 // FAQ & Review Types
 // ===================
 
@@ -171,14 +138,19 @@ export interface FAQ {
     _id: string;
     question: string;
     answer: string;
-    order: number;
 }
 
 export interface Review {
-    _id: string;
+    _id?: string;
     name: string;
     rating: number;
     comment: string;
+    profileImage?: string;
+    currentRole?: string;
+    pastRole?: string;
+    pastCompany?: string;
+    currentCompany?: string;
+    linkedin?: string;
     date: Date;
     isActive?: boolean;
     createdAt?: Date;
@@ -186,6 +158,13 @@ export interface Review {
 }
 
 export interface FeaturedReview extends Review {
+    // Required fields for featured reviews
+    profileImage: string;
+    currentRole: string;
+    currentCompany: string;
+    pastRole: string;
+    pastCompany: string;
+    linkedin: string;
     verified?: boolean;
 }
 
@@ -197,13 +176,11 @@ export interface Course {
     // Basic Information
     _id: string;
     title: string;
-    subtitle?: string;
     description: string;
     shortDescription?: string;
     category: string;
     subcategory?: string;
     thumbnail: string;
-    images?: string[];
     previewVideoUrl: string;
 
     isFeatured?: boolean;
@@ -213,7 +190,6 @@ export interface Course {
     enrolledCount: number;
     totalRatings: number;
     totalLectures: number;
-    duration?: string; // like: 3 months, 1 year, 2 years, etc. (will not be accurate)
 
     // UI & Learning Info
     whatYouWillLearn: string;
@@ -227,17 +203,19 @@ export interface Course {
     skillLevel: string;
     whoShouldJoin: string;
     prerequisites?: string[];
+    discount?: number; // in percentage just for display purpose
+    duration: string; // like: 3 months, 1 year, 2 years, etc. (will not be accurate)
 
     // Content
     modules: CourseModule[];
 
     // Instructor
-    instructor: Instructor[];
+    instructor: Instructor["_id"][];
 
     // Pricing Plans
     plans: {
-        elite?: Plan[];
-        essential?: Plan[];
+        elite?: Plan;
+        essential?: Plan;
     };
 
     // Reviews
@@ -266,6 +244,6 @@ export interface Course {
     scholarshipDescription?: string;
     scholarshipQuiz?: Quiz[];
 
-    // Discount
-    discount?: Discount;
+    // Language
+    language: string;
 }
