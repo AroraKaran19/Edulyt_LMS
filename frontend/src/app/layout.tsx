@@ -1,12 +1,8 @@
-"use client";
-// app/layout.tsx
-
 import "@/app/globals.css";
 // import { ReduxProvider } from "@/store/Provider";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import LayoutWrapper from "@/components/shared/LayoutWrapper";
 import { cn } from "@/lib/utils";
-import { SessionProvider } from "next-auth/react";
 import { Metadata } from "next";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
@@ -28,9 +24,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={cn(plusJakartaSans.className, "antialiased")}>
         {/* <ReduxProvider> */}
-        <SessionProvider>
           <LayoutWrapper>{children}</LayoutWrapper>
-        </SessionProvider>
         {/* </ReduxProvider> */}
       </body>
     </html>
