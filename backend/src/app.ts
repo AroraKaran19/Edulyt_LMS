@@ -14,7 +14,7 @@ app.use(cors({
   origin: true,
   credentials: true,
 })); // Enable CORS
-app.use(express.json({ limit: '50mb' })); // Parse JSON bodies
+app.use(express.json({ limit: '50gb' })); // Parse JSON bodies
 app.use(express.urlencoded({ extended: true })); // Parse URL-encoded bodies
 
 // Routes
