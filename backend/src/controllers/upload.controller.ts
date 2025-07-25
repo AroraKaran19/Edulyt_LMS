@@ -35,7 +35,7 @@ export class UploadController {
       storage,
       fileFilter,
       limits: {
-        fileSize: 100 * 1024 * 1024, // 100MB limit
+        fileSize: 5 * 1024 * 1024 * 1024, // 5GB limit for video uploads
         files: 10 // Maximum 10 files per request
       }
     });
