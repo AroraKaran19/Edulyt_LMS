@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { S3Service } from '../services/s3.service';
+import { UploadFolderType } from '../types/upload';
 
 export class MultipartUploadController {
   private s3Service: S3Service;
@@ -16,7 +17,15 @@ export class MultipartUploadController {
    */
   initializeMultipartUpload = async (req: Request, res: Response): Promise<void> => {
     try {
-      const { fileName, fileType, uploadType = 'large-files' } = req.body;
+      const { 
+        fileName, 
+        fileType, 
+        folderType = 'LARGE_COURSE_CONTENT_VIDEOS',
+        courseId,
+        instructorId,
+        moduleId,
+        lessonId 
+      } = req.body;
 
       if (!fileName || !fileType) {
         res.status(400).json({
@@ -26,35 +35,45 @@ export class MultipartUploadController {
         return;
       }
 
-      // Validate file type for large uploads
-      const allowedTypes = [
-        'video/mp4', 'video/avi', 'video/mov', 'video/wmv', 'video/flv', 'video/webm',
-        'application/zip', 'application/x-zip-compressed',
-        'application/octet-stream', // For generic large files
-        'application/pdf'
-      ];
+      // Convert string to enum value
+      const uploadFolderType = UploadFolderType[folderType as keyof typeof UploadFolderType] || UploadFolderType.LARGE_COURSE_CONTENT_VIDEOS;
 
-      if (!allowedTypes.includes(fileType)) {
+      // Validate file type against folder requirements
+      const validation = this.s3Service.validateFileForFolder(uploadFolderType, fileType);
+      if (!validation.isValid) {
         res.status(400).json({
           success: false,
-          message: `File type ${fileType} is not allowed for large uploads. Allowed types: ${allowedTypes.join(', ')}`
+          message: validation.error
         });
         return;
       }
 
-      // Generate unique key
-      const fileExtension = fileName.split('.').pop();
-      const uniqueFileName = `${uploadType}/${uuidv4()}.${fileExtension}`;
+      // Create additional path based on provided IDs
+      let additionalPath: string | undefined;
+      if (courseId) {
+        additionalPath = `course-${courseId}`;
+        if (moduleId) {
+          additionalPath += `/module-${moduleId}`;
+          if (lessonId) {
+            additionalPath += `/lesson-${lessonId}`;
+          }
+        }
+      } else if (instructorId) {
+        additionalPath = `instructor-${instructorId}`;
+      }
 
-      // Initialize multipart upload
-      const result = await this.s3Service.createMultipartUpload(
-        uniqueFileName,
+      // Initialize organized multipart upload
+      const result = await this.s3Service.createOrganizedMultipartUpload(
+        uploadFolderType,
+        fileName,
         fileType,
         {
-          originalName: fileName,
-          uploadType: 'multipart-large-file',
-          initiatedAt: new Date().toISOString()
-        }
+          courseId,
+          instructorId,
+          moduleId,
+          lessonId
+        },
+        additionalPath
       );
 
       res.status(200).json({
@@ -62,8 +81,9 @@ export class MultipartUploadController {
         message: 'Multipart upload initialized successfully',
         data: {
           uploadId: result.uploadId,
-          fileName: uniqueFileName,
-          publicUrl: this.s3Service.getPublicUrl(uniqueFileName)
+          fileName: result.key,
+          folderType: result.folderType,
+          publicUrl: this.s3Service.getPublicUrl(result.key)
         }
       });
 

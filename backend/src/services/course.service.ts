@@ -157,20 +157,31 @@ export class CourseService {
   }
 
   /**
-   * Generate unique course ID
+   * Generate unique course ID with retry mechanism
    * @returns Promise<string> - Unique course ID
    */
   private async generateUniqueCourseId(): Promise<string> {
-    let id: string;
-    let exists = true;
+    const maxRetries = 10;
+    let retries = 0;
     
-    while (exists) {
-      id = uuidv4();
-      const existingCourse = await CourseModel.findById(id);
-      exists = !!existingCourse;
+    while (retries < maxRetries) {
+      const id = uuidv4();
+      
+      try {
+        // Check if ID already exists
+        const existingCourse = await CourseModel.findById(id);
+        if (!existingCourse) {
+          return id;
+        }
+        retries++;
+      } catch (error) {
+        // If there's a database error during the check, try again
+        console.warn(`Database error while checking course ID uniqueness (attempt ${retries + 1}):`, error);
+        retries++;
+      }
     }
     
-    return id!;
+    throw new Error('Failed to generate unique course ID after maximum retries');
   }
 
   /**

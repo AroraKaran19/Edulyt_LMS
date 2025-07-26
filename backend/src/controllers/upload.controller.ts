@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { S3Service } from '../services/s3.service';
 import multer from 'multer';
 import { v4 as uuidv4 } from 'uuid';
+import { UploadFolderType } from '../types/upload';
 
 export class UploadController {
   private s3Service: S3Service;
@@ -66,30 +67,31 @@ export class UploadController {
         return;
       }
 
-      // Generate unique filename
-      const fileExtension = req.file.originalname.split('.').pop();
-      const fileName = `course-thumbnails/${uuidv4()}.${fileExtension}`;
+      // Get course ID from request body if provided
+      const courseId = req.body.courseId;
+      const additionalPath = courseId ? `course-${courseId}` : undefined;
 
-      // Upload to S3
-      const uploadResult = await this.s3Service.uploadFile(
-        fileName,
+      // Upload to organized folder
+      const uploadResult = await this.s3Service.uploadToOrganizedFolder(
+        UploadFolderType.COURSE_THUMBNAIL,
+        req.file.originalname,
         req.file.buffer,
         req.file.mimetype,
         {
-          originalName: req.file.originalname,
-          uploadType: 'course-thumbnail',
-          uploadedAt: new Date().toISOString()
-        }
+          courseId: courseId
+        },
+        additionalPath
       );
 
       res.status(200).json({
         success: true,
         message: 'Thumbnail uploaded successfully',
         data: {
-          fileName,
+          fileName: uploadResult.organizedPath,
           url: uploadResult.location,
           size: req.file.size,
-          mimetype: req.file.mimetype
+          mimetype: req.file.mimetype,
+          folderType: uploadResult.folderType
         }
       });
 
@@ -128,30 +130,47 @@ export class UploadController {
         return;
       }
 
-      // Generate unique filename
-      const fileExtension = req.file.originalname.split('.').pop();
-      const fileName = `course-videos/${uuidv4()}.${fileExtension}`;
+      // Get course ID and video type from request body
+      const courseId = req.body.courseId;
+      const videoType = req.body.videoType || 'preview'; // 'preview' or 'content'
+      const additionalPath = courseId ? `course-${courseId}` : undefined;
 
-      // Upload to S3
-      const uploadResult = await this.s3Service.uploadFile(
-        fileName,
+      // Determine folder type based on video type
+      let folderType: UploadFolderType;
+      switch (videoType) {
+        case 'content':
+          folderType = UploadFolderType.COURSE_CONTENT_VIDEO;
+          break;
+        case 'preview':
+        default:
+          folderType = UploadFolderType.COURSE_PREVIEW_VIDEO;
+          break;
+      }
+
+      // Upload to organized folder
+      const uploadResult = await this.s3Service.uploadToOrganizedFolder(
+        folderType,
+        req.file.originalname,
         req.file.buffer,
         req.file.mimetype,
         {
-          originalName: req.file.originalname,
-          uploadType: 'course-video',
-          uploadedAt: new Date().toISOString()
-        }
+          courseId: courseId,
+          moduleId: req.body.moduleId,
+          lessonId: req.body.lessonId
+        },
+        additionalPath
       );
 
       res.status(200).json({
         success: true,
         message: 'Video uploaded successfully',
         data: {
-          fileName,
+          fileName: uploadResult.organizedPath,
           url: uploadResult.location,
           size: req.file.size,
-          mimetype: req.file.mimetype
+          mimetype: req.file.mimetype,
+          folderType: uploadResult.folderType,
+          videoType: videoType
         }
       });
 
@@ -190,30 +209,31 @@ export class UploadController {
         return;
       }
 
-      // Generate unique filename
-      const fileExtension = req.file.originalname.split('.').pop();
-      const fileName = `instructor-images/${uuidv4()}.${fileExtension}`;
+      // Get instructor ID from request body if provided
+      const instructorId = req.body.instructorId;
+      const additionalPath = instructorId ? `instructor-${instructorId}` : undefined;
 
-      // Upload to S3
-      const uploadResult = await this.s3Service.uploadFile(
-        fileName,
+      // Upload to organized folder
+      const uploadResult = await this.s3Service.uploadToOrganizedFolder(
+        UploadFolderType.INSTRUCTOR_PROFILE_IMAGE,
+        req.file.originalname,
         req.file.buffer,
         req.file.mimetype,
         {
-          originalName: req.file.originalname,
-          uploadType: 'instructor-image',
-          uploadedAt: new Date().toISOString()
-        }
+          instructorId: instructorId
+        },
+        additionalPath
       );
 
       res.status(200).json({
         success: true,
         message: 'Instructor image uploaded successfully',
         data: {
-          fileName,
+          fileName: uploadResult.organizedPath,
           url: uploadResult.location,
           size: req.file.size,
-          mimetype: req.file.mimetype
+          mimetype: req.file.mimetype,
+          folderType: uploadResult.folderType
         }
       });
 

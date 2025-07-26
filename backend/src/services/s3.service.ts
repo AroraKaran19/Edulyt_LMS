@@ -22,6 +22,7 @@ import {
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { getS3Client, getBucketName } from '../config/s3';
+import { UploadFolderType, UploadMetadata, generateFileName, getFolderConfig, isValidMimeType } from '../types/upload';
 
 export class S3Service {
   private s3Client;
@@ -267,6 +268,171 @@ export class S3Service {
    */
   getBucket(): string {
     return this.bucketName;
+  }
+
+  // ==================== ORGANIZED UPLOAD METHODS ====================
+
+  /**
+   * Upload a file to organized folder structure
+   * @param folderType - Type of folder to upload to
+   * @param originalName - Original filename
+   * @param body - File content
+   * @param contentType - MIME type
+   * @param additionalMetadata - Extra metadata
+   * @param additionalPath - Additional path within folder (e.g., courseId/moduleId)
+   * @returns Promise with upload result
+   */
+  async uploadToOrganizedFolder(
+    folderType: UploadFolderType,
+    originalName: string,
+    body: Buffer | Uint8Array | string,
+    contentType: string,
+    additionalMetadata: Partial<UploadMetadata> = {},
+    additionalPath?: string
+  ): Promise<any> {
+    try {
+      // Validate MIME type
+      if (!isValidMimeType(folderType, contentType)) {
+        const config = getFolderConfig(folderType);
+        throw new Error(`Invalid file type ${contentType} for folder ${folderType}. Allowed types: ${config.allowedMimeTypes.join(', ')}`);
+      }
+
+      // Generate organized filename
+      const fileName = generateFileName(folderType, originalName, additionalPath);
+
+      // Prepare metadata
+      const metadata: UploadMetadata = {
+        originalName,
+        uploadType: 'organized-upload',
+        folderType,
+        uploadedAt: new Date().toISOString(),
+        ...additionalMetadata
+      };
+
+      // Convert metadata to Record<string, string>
+      const metadataRecord: Record<string, string> = {};
+      Object.entries(metadata).forEach(([key, value]) => {
+        if (value !== undefined) {
+          metadataRecord[key] = String(value);
+        }
+      });
+
+      // Upload file
+      const result = await this.uploadFile(fileName, body, contentType, metadataRecord);
+
+      console.log(`✅ File uploaded to organized folder: ${folderType}/${fileName}`);
+      return {
+        ...result,
+        folderType,
+        organizedPath: fileName
+      };
+
+    } catch (error) {
+      console.error(`❌ Error uploading to organized folder ${folderType}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Create multipart upload with organized folder structure
+   * @param folderType - Type of folder to upload to
+   * @param originalName - Original filename
+   * @param contentType - MIME type
+   * @param additionalMetadata - Extra metadata
+   * @param additionalPath - Additional path within folder
+   * @returns Promise with upload details
+   */
+  async createOrganizedMultipartUpload(
+    folderType: UploadFolderType,
+    originalName: string,
+    contentType: string,
+    additionalMetadata: Partial<UploadMetadata> = {},
+    additionalPath?: string
+  ): Promise<{ uploadId: string; key: string; folderType: UploadFolderType }> {
+    try {
+      // Validate MIME type
+      if (!isValidMimeType(folderType, contentType)) {
+        const config = getFolderConfig(folderType);
+        throw new Error(`Invalid file type ${contentType} for folder ${folderType}. Allowed types: ${config.allowedMimeTypes.join(', ')}`);
+      }
+
+      // Generate organized filename
+      const fileName = generateFileName(folderType, originalName, additionalPath);
+
+      // Prepare metadata
+      const metadata: UploadMetadata = {
+        originalName,
+        uploadType: 'organized-multipart-upload',
+        folderType,
+        uploadedAt: new Date().toISOString(),
+        ...additionalMetadata
+      };
+
+      // Convert metadata to Record<string, string>
+      const metadataRecord: Record<string, string> = {};
+      Object.entries(metadata).forEach(([key, value]) => {
+        if (value !== undefined) {
+          metadataRecord[key] = String(value);
+        }
+      });
+
+      // Create multipart upload
+      const result = await this.createMultipartUpload(fileName, contentType, metadataRecord);
+
+      console.log(`✅ Organized multipart upload created: ${folderType}/${fileName}`);
+      return {
+        ...result,
+        folderType
+      };
+
+    } catch (error) {
+      console.error(`❌ Error creating organized multipart upload for ${folderType}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get folder configuration for a specific upload type
+   * @param folderType - Type of folder
+   * @returns Folder configuration
+   */
+  getFolderConfig(folderType: UploadFolderType) {
+    return getFolderConfig(folderType);
+  }
+
+  /**
+   * Validate file against folder requirements
+   * @param folderType - Type of folder
+   * @param contentType - MIME type to validate
+   * @param fileSize - File size in bytes (optional)
+   * @returns Validation result
+   */
+  validateFileForFolder(
+    folderType: UploadFolderType,
+    contentType: string,
+    fileSize?: number
+  ): { isValid: boolean; error?: string } {
+    const config = getFolderConfig(folderType);
+
+    // Check MIME type
+    if (!isValidMimeType(folderType, contentType)) {
+      return {
+        isValid: false,
+        error: `Invalid file type ${contentType} for folder ${folderType}. Allowed types: ${config.allowedMimeTypes.join(', ')}`
+      };
+    }
+
+    // Check file size if specified
+    if (fileSize && config.maxFileSize && fileSize > config.maxFileSize) {
+      const maxSizeMB = Math.round(config.maxFileSize / (1024 * 1024));
+      const fileSizeMB = Math.round(fileSize / (1024 * 1024));
+      return {
+        isValid: false,
+        error: `File size ${fileSizeMB}MB exceeds maximum allowed size ${maxSizeMB}MB for folder ${folderType}`
+      };
+    }
+
+    return { isValid: true };
   }
 
   // ==================== MULTIPART UPLOAD METHODS ====================

@@ -173,6 +173,16 @@ export class InstructorController {
         return;
       }
 
+      // Check if LinkedIn URL already exists
+      const existingInstructorByLinkedIn = await InstructorModel.findOne({ linkedinUrl: linkedinUrl.trim() });
+      if (existingInstructorByLinkedIn) {
+        res.status(409).json({
+          success: false,
+          message: 'An instructor with this LinkedIn URL already exists'
+        });
+        return;
+      }
+
       // Generate unique ID
       const instructorId = await this.generateUniqueInstructorId();
       
@@ -192,9 +202,27 @@ export class InstructorController {
         totalCourses: 0
       };
 
-      // Create the instructor
-      const instructor = new InstructorModel(instructorData);
-      const savedInstructor = await instructor.save();
+      // Create the instructor with retry mechanism for duplicate key errors
+      let savedInstructor;
+      let saveRetries = 0;
+      const maxSaveRetries = 3;
+
+      while (saveRetries < maxSaveRetries) {
+        try {
+          const instructor = new InstructorModel(instructorData);
+          savedInstructor = await instructor.save();
+          break; // Success, exit the retry loop
+        } catch (error: any) {
+          if (error.code === 11000 && saveRetries < maxSaveRetries - 1) {
+            // Duplicate key error, regenerate ID and try again
+            console.warn(`Duplicate key error during instructor creation (attempt ${saveRetries + 1}), regenerating ID:`, error);
+            instructorData._id = await this.generateUniqueInstructorId();
+            saveRetries++;
+          } else {
+            throw error; // Re-throw if it's not a duplicate key error or we've exceeded retries
+          }
+        }
+      }
 
       res.status(201).json({
         success: true,
@@ -367,19 +395,30 @@ export class InstructorController {
   };
 
   /**
-   * Generate unique instructor ID
+   * Generate unique instructor ID with retry mechanism
    * @returns Promise<string> - Unique instructor ID
    */
   private async generateUniqueInstructorId(): Promise<string> {
-    let id: string;
-    let exists = true;
+    const maxRetries = 10;
+    let retries = 0;
     
-    while (exists) {
-      id = uuidv4();
-      const existingInstructor = await InstructorModel.findById(id);
-      exists = !!existingInstructor;
+    while (retries < maxRetries) {
+      const id = uuidv4();
+      
+      try {
+        // Check if ID already exists
+        const existingInstructor = await InstructorModel.findById(id);
+        if (!existingInstructor) {
+          return id;
+        }
+        retries++;
+      } catch (error) {
+        // If there's a database error during the check, try again
+        console.warn(`Database error while checking instructor ID uniqueness (attempt ${retries + 1}):`, error);
+        retries++;
+      }
     }
     
-    return id!;
+    throw new Error('Failed to generate unique instructor ID after maximum retries');
   }
 } 
