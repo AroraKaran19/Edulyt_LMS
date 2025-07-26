@@ -1,5 +1,5 @@
+import { UploadController } from '@/controllers';
 import { Router } from 'express';
-import { UploadController } from '../controllers/upload.controller';
 
 const router = Router();
 const uploadController = new UploadController();

@@ -618,4 +618,5 @@ export class S3Service {
   getPublicUrl(key: string): string {
     return `https://${this.bucketName}.s3.amazonaws.com/${key}`;
   }
+
 } 
