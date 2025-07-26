@@ -7,10 +7,13 @@ export class CourseService {
    * @param courseData - Course data to create
    * @returns Promise<Course> - Created course
    */
-  async createCourse(courseData: Partial<Course>): Promise<Course> {
-    try {
-      // Generate slug from title if not provided (let MongoDB handle uniqueness)
-      const slug = courseData.slug || this.generateSlug(courseData.title || '');
+     async createCourse(courseData: Partial<Course>): Promise<Course> {
+     try {
+       // Fix database indexes if needed
+       await this.ensureProperIndexes();
+       
+       // Generate unique slug from title if not provided
+       const slug = courseData.slug || await this.generateUniqueSlug(courseData.title || '');
       
       // Set default values according to Course schema
       const courseToCreate: Partial<Course> = {
@@ -80,11 +83,32 @@ export class CourseService {
         ...(courseData.discount && typeof courseData.discount === 'object' ? { discount: courseData.discount } : {})
       };
 
-      // Validate required fields
-      const validation = this.validateCourseData(courseToCreate);
-      if (!validation.isValid) {
-        throw new Error(`Validation failed: ${validation.errors.join(', ')}`);
-      }
+             // Remove any _id if provided - let MongoDB generate it
+       if ('_id' in courseToCreate) {
+         delete courseToCreate._id;
+       }
+
+       // Remove any id field that might conflict with MongoDB's _id
+       if ('id' in courseToCreate) {
+         delete (courseToCreate as any).id;
+       }
+
+       // Remove all manual _id fields from nested objects - let MongoDB auto-generate them
+       this.removeManualIds(courseToCreate);
+
+       // Debug: Check for any remaining problematic fields
+       if (process.env.NODE_ENV === 'development') {
+         const hasId = JSON.stringify(courseToCreate).includes('"_id":');
+         if (hasId) {
+           console.warn('⚠️  Warning: Course data still contains "_id" fields after cleaning');
+         }
+       }
+
+       // Validate required fields
+       const validation = this.validateCourseData(courseToCreate);
+       if (!validation.isValid) {
+         throw new Error(`Validation failed: ${validation.errors.join(', ')}`);
+       }
 
       // Create the course
       console.log('Creating course with data:', {
@@ -120,8 +144,64 @@ export class CourseService {
     }
   }
 
+     /**
+    * Generate a unique slug from title
+    * @param title - Course title
+    * @returns Promise<string> - Generated unique slug
+    */
+   private async generateUniqueSlug(title: string): Promise<string> {
+     if (!title?.trim()) {
+       // Generate a random slug if no title provided
+       return `course-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+     }
+
+     const baseSlug = title
+       .toLowerCase()
+       .trim()
+       .replace(/[^\w\s-]/g, '') // Remove special characters
+       .replace(/\s+/g, '-') // Replace spaces with hyphens
+       .replace(/-+/g, '-') // Replace multiple hyphens with single
+       .replace(/^-+|-+$/g, ''); // Remove leading/trailing hyphens
+     
+     // If baseSlug is empty after cleaning, generate a random one
+     if (!baseSlug) {
+       return `course-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+     }
+
+     // Check if base slug is unique
+     try {
+       const existingCourse = await CourseModel.findOne({ slug: baseSlug });
+       if (!existingCourse) {
+         return baseSlug;
+       }
+       
+       // If not unique, append a timestamp and counter
+       const timestamp = Date.now();
+       let counter = 1;
+       let uniqueSlug = `${baseSlug}-${timestamp}-${counter}`;
+       
+       // Keep trying until we find a unique slug
+       while (await CourseModel.findOne({ slug: uniqueSlug })) {
+         counter++;
+         uniqueSlug = `${baseSlug}-${timestamp}-${counter}`;
+         
+         // Safety break to prevent infinite loop
+         if (counter > 1000) {
+           uniqueSlug = `${baseSlug}-${Date.now()}-${Math.random().toString(36).substr(2, 8)}`;
+           break;
+         }
+       }
+       
+       return uniqueSlug;
+     } catch (error) {
+       console.error('Error generating unique slug:', error);
+       // Fallback to timestamp-based slug
+       return `course-${Date.now()}-${Math.random().toString(36).substr(2, 8)}`;
+     }
+   }
+
   /**
-   * Generate a slug from title
+   * Generate a slug from title (legacy method for backward compatibility)
    * @param title - Course title
    * @returns string - Generated slug
    */
@@ -725,5 +805,73 @@ export class CourseService {
       }
       throw new Error('Failed to fetch course stats');
     }
+  }
+
+  /**
+   * Ensure proper database indexes and fix any problematic ones
+   */
+  private async ensureProperIndexes(): Promise<void> {
+    try {
+      const collection = CourseModel.collection;
+      
+      // Check if problematic id_1 index exists and drop it
+      try {
+        const indexes = await collection.getIndexes();
+        if (indexes['id_1']) {
+          console.log('🔧 Dropping problematic id_1 index...');
+          await collection.dropIndex('id_1');
+          console.log('✅ Dropped id_1 index successfully');
+        }
+      } catch (error) {
+        // Index doesn't exist or can't be dropped, that's fine
+        console.log('ℹ️  No problematic id_1 index found');
+      }
+
+      // Ensure slug index exists and is unique
+      try {
+        await collection.createIndex({ slug: 1 }, { unique: true, sparse: true });
+        console.log('✅ Ensured slug index exists');
+      } catch (error) {
+        // Index might already exist, that's fine
+        console.log('ℹ️  Slug index already exists');
+      }
+    } catch (error) {
+      console.warn('⚠️  Could not ensure proper indexes:', error);
+      // Don't throw error, just warn - the app should still work
+    }
+  }
+
+  /**
+   * Recursively remove all manual _id and id fields from an object
+   * Let MongoDB auto-generate ObjectIds for nested documents
+   * @param obj - Object to clean
+   */
+  private removeManualIds(obj: any): void {
+    if (!obj || typeof obj !== 'object') {
+      return;
+    }
+
+    // Handle arrays
+    if (Array.isArray(obj)) {
+      obj.forEach(item => this.removeManualIds(item));
+      return;
+    }
+
+    // Remove _id from current object if it exists
+    if ('_id' in obj) {
+      delete obj._id;
+    }
+
+    // Remove id from current object if it exists (to prevent conflicts)
+    if ('id' in obj) {
+      delete obj.id;
+    }
+
+    // Recursively process all properties
+    Object.keys(obj).forEach(key => {
+      if (obj[key] && typeof obj[key] === 'object') {
+        this.removeManualIds(obj[key]);
+      }
+    });
   }
 } 

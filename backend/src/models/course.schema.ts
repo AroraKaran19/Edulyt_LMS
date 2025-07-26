@@ -21,10 +21,6 @@ import { Instructor } from "../types/instructor";
 // Video Quality Schema
 const videoQualitySchema = new Schema<VideoQuality>(
   {
-    _id: {
-      type: String,
-      required: true,
-    },
     quality: {
       type: String,
       required: true,
@@ -35,17 +31,12 @@ const videoQualitySchema = new Schema<VideoQuality>(
       required: true,
       trim: true,
     },
-  },
-  { _id: false }
+  }
 );
 
 // Video Schema
 const videoSchema = new Schema<Video>(
   {
-    _id: {
-      type: String,
-      required: true,
-    },
     sources: [videoQualitySchema],
     thumbnailUrl: {
       type: String,
@@ -55,33 +46,23 @@ const videoSchema = new Schema<Video>(
       type: Number,
       min: 0,
     },
-  },
-  { _id: false }
+  }
 );
 
 // Quiz Option Schema
 const quizOptionSchema = new Schema<QuizOption>(
   {
-    _id: {
-      type: String,
-      required: true,
-    },
     option: {
       type: String,
       required: true,
       trim: true,
     },
-  },
-  { _id: false }
+  }
 );
 
 // Quiz Question Schema
 const quizQuestionSchema = new Schema<QuizQuestion>(
   {
-    _id: {
-      type: String,
-      required: true,
-    },
     question: {
       type: String,
       required: true,
@@ -93,17 +74,12 @@ const quizQuestionSchema = new Schema<QuizQuestion>(
       type: Number,
       min: 0,
     },
-  },
-  { _id: false }
+  }
 );
 
 // Quiz Schema
 const quizSchema = new Schema<Quiz>(
   {
-    _id: {
-      type: String,
-      required: true,
-    },
     title: {
       type: String,
       required: true,
@@ -131,17 +107,12 @@ const quizSchema = new Schema<Quiz>(
       type: Date,
       default: Date.now,
     },
-  },
-  { _id: false }
+  }
 );
 
 // Lesson Content Schema
 const lessonContentSchema = new Schema<Content>(
   {
-    _id: {
-      type: String,
-      required: true,
-    },
     title: {
       type: String,
       required: true,
@@ -161,8 +132,8 @@ const lessonContentSchema = new Schema<Content>(
           // Content should be a single object (Video or Quiz), not an array
           if (Array.isArray(value)) return false;
 
-          // Basic validation - just check if it has an _id
-          return value && typeof value._id === "string";
+          // Basic validation - just check if it has an _id (MongoDB will auto-generate)
+          return value && (typeof value._id === "string" || value._id);
         },
         message: "Content must be a valid content object (Video or Quiz), not an array",
       },
@@ -191,17 +162,12 @@ const lessonContentSchema = new Schema<Content>(
       type: Date,
       default: Date.now,
     },
-  },
-  { _id: false }
+  }
 );
 
 // Course Lesson Schema
 const courseLessonSchema = new Schema<CourseLesson>(
   {
-    _id: {
-      type: String,
-      required: true,
-    },
     title: {
       type: String,
       required: true,
@@ -231,17 +197,12 @@ const courseLessonSchema = new Schema<CourseLesson>(
       type: Date,
       default: Date.now,
     },
-  },
-  { _id: false }
+  }
 );
 
 // Course Module Schema
 const courseModuleSchema = new Schema<CourseModule>(
   {
-    _id: {
-      type: String,
-      required: true,
-    },
     title: {
       type: String,
       required: true,
@@ -272,8 +233,7 @@ const courseModuleSchema = new Schema<CourseModule>(
       type: Date,
       default: Date.now,
     },
-  },
-  { _id: false }
+  }
 );
 
 // Plan Features Schema
@@ -288,8 +248,7 @@ const planFeaturesSchema = new Schema<PlanFeatures>(
       type: Boolean,
       required: true,
     },
-  },
-  { _id: false }
+  }
 );
 
 // Discount Schema
@@ -315,16 +274,12 @@ const discountSchema = new Schema<Discount>(
       type: Boolean,
       default: true,
     },
-  },
-  { _id: false }
+  }
 );
 
 // Plan Schema - Fixed to match Plan type exactly
 const planSchema = new Schema<Plan>(
   {
-    _id: {
-      type: String,
-    },
     title: {
       type: String,
       required: true,
@@ -367,17 +322,12 @@ const planSchema = new Schema<Plan>(
       type: Date,
       default: Date.now,
     },
-  },
-  { _id: false }
+  }
 );
 
 // Instructor Schema (embedded)
 const instructorSchema = new Schema<Instructor>(
   {
-    _id: {
-      type: String,
-      required: true,
-    },
     name: {
       type: String,
       required: true,
@@ -440,16 +390,12 @@ const instructorSchema = new Schema<Instructor>(
       required: true,
       trim: true,
     },
-  },
-  { _id: false }
+  }
 );
 
 // Review Schema - Fixed to match Review type exactly
 const reviewSchema = new Schema<Review>(
   {
-    _id: {
-      type: String,
-    },
     name: {
       type: String,
       required: true,
@@ -507,16 +453,12 @@ const reviewSchema = new Schema<Review>(
       type: Date,
       default: Date.now,
     },
-  },
-  { _id: false }
+  }
 );
 
 // Featured Review Schema - Fixed to match FeaturedReview type exactly
 const featuredReviewSchema = new Schema<FeaturedReview>(
   {
-    _id: {
-      type: String,
-    },
     name: {
       type: String,
       required: true,
@@ -584,17 +526,12 @@ const featuredReviewSchema = new Schema<FeaturedReview>(
       type: Date,
       default: Date.now,
     },
-  },
-  { _id: false }
+  }
 );
 
 // FAQ Schema
 const faqSchema = new Schema<FAQ>(
   {
-    _id: {
-      type: String,
-      required: true,
-    },
     question: {
       type: String,
       required: true,
@@ -605,8 +542,7 @@ const faqSchema = new Schema<FAQ>(
       required: true,
       trim: true,
     },
-  },
-  { _id: false }
+  }
 );
 
 // Main Course Schema - Fixed to match Course type exactly

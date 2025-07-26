@@ -2,6 +2,7 @@
 // Utility Types
 // ===================
 
+import { Types } from "mongoose";
 import { Instructor } from "./instructor";
 
 export type Discount = {
@@ -17,13 +18,13 @@ export type Discount = {
 // ===================
 
 export interface VideoQuality {
-    _id: string;
+    _id?: Types.ObjectId;
     quality: "1080p" | "720p" | "480p" | "360p";
     videoUrl: string;
 }
 
 export interface Video {
-    _id: string;
+    _id?: Types.ObjectId;
     sources: VideoQuality[];
     thumbnailUrl?: string;
     duration?: number; // in seconds
@@ -34,12 +35,12 @@ export interface Video {
 // ===================
 
 export interface QuizOption {
-    _id: string;
+    _id?: Types.ObjectId;
     option: string;
 }
 
 export interface QuizQuestion {
-    _id: string;
+    _id?: Types.ObjectId;
     question: string;
     options: QuizOption[];
     correctAnswer: QuizOption[];
@@ -47,7 +48,7 @@ export interface QuizQuestion {
 }
 
 export interface Quiz {
-    _id: string;
+    _id?: Types.ObjectId;
     title: string;
     description?: string;
     questions: QuizQuestion[];
@@ -69,7 +70,7 @@ export interface Quiz {
 // }
 
 export interface Content {
-    _id: string;
+    _id?: Types.ObjectId;
     title: string;
     description?: string;
     content: Video | Quiz;
@@ -83,7 +84,7 @@ export interface Content {
 }
 
 export interface CourseLesson {
-    _id: string;
+    _id?: Types.ObjectId;
     title: string;
     description?: string;
     content: Content[];
@@ -95,7 +96,7 @@ export interface CourseLesson {
 }
 
 export interface CourseModule {
-    _id: string;
+    _id?: Types.ObjectId;
     title: string;
     thumbnailUrl?: string;
     lessons: CourseLesson[];
@@ -116,7 +117,7 @@ export interface PlanFeatures {
 }
 
 export interface Plan {
-    _id?: string;
+    _id?: Types.ObjectId;
     title: string;
     type: "elite" | "essential";
     price: number;
@@ -135,13 +136,13 @@ export interface Plan {
 // ===================
 
 export interface FAQ {
-    _id: string;
+    _id?: Types.ObjectId;
     question: string;
     answer: string;
 }
 
 export interface Review {
-    _id?: string;
+    _id?: Types.ObjectId;
     name: string;
     rating: number;
     comment: string;
@@ -174,7 +175,7 @@ export interface FeaturedReview extends Review {
 
 export interface Course {
     // Basic Information
-    _id: string;
+    _id?: Types.ObjectId;
     title: string;
     description: string;
     shortDescription?: string;

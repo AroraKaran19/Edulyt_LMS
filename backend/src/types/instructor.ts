@@ -2,8 +2,10 @@
 // Instructor Type
 // ===================
 
+import { Types } from "mongoose";
+
 export interface Instructor {
-  _id: string;
+  _id?: Types.ObjectId;
   name: string;
   profileImage?: string;
   experience: string;
