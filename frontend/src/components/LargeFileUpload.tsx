@@ -19,6 +19,7 @@ const LargeFileUpload: React.FC<LargeFileUploadProps> = ({
   const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
   const [uploadResult, setUploadResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [uploadStartTime, setUploadStartTime] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const formatFileSize = (bytes: number): string => {
@@ -59,6 +60,7 @@ const LargeFileUpload: React.FC<LargeFileUploadProps> = ({
     setUploadProgress(null);
 
     const startTime = Date.now();
+    setUploadStartTime(startTime);
 
     try {
       const result = await largeFileUploader.uploadLargeFile(selectedFile, {
@@ -91,6 +93,7 @@ const LargeFileUpload: React.FC<LargeFileUploadProps> = ({
     } finally {
       setIsUploading(false);
       setUploadProgress(null);
+      setUploadStartTime(null);
     }
   };
 
@@ -98,6 +101,7 @@ const LargeFileUpload: React.FC<LargeFileUploadProps> = ({
     largeFileUploader.cancelUpload();
     setIsUploading(false);
     setUploadProgress(null);
+    setUploadStartTime(null);
     setError('Upload cancelled by user');
   };
 
@@ -107,6 +111,7 @@ const LargeFileUpload: React.FC<LargeFileUploadProps> = ({
     setUploadProgress(null);
     setUploadResult(null);
     setError(null);
+    setUploadStartTime(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -172,8 +177,8 @@ const LargeFileUpload: React.FC<LargeFileUploadProps> = ({
           <div className="flex justify-between text-xs text-blue-600">
             <span>{formatFileSize(uploadProgress.loaded)} / {formatFileSize(uploadProgress.total)}</span>
             <span>
-              {uploadProgress.loaded > 0 && uploadProgress.total > 0 && (
-                `${formatFileSize(uploadProgress.loaded / ((Date.now() - (window as any).uploadStartTime || Date.now()) / 1000))}/s`
+              {uploadProgress.loaded > 0 && uploadProgress.total > 0 && uploadStartTime && (
+                `${formatFileSize(uploadProgress.loaded / ((Date.now() - uploadStartTime) / 1000))}/s`
               )}
             </span>
           </div>
