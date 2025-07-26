@@ -11,8 +11,9 @@ export class CourseService {
   async createCourse(courseData: Partial<Course>): Promise<Course> {
     try {
       // Generate unique ID and slug if not provided
-      const courseId = courseData._id || uuidv4();
-      const slug = courseData.slug || this.generateSlug(courseData.title || '');
+      const courseId = courseData._id || await this.generateUniqueCourseId();
+      const baseSlug = courseData.slug || this.generateSlug(courseData.title || '');
+      const slug = await this.ensureUniqueSlug(baseSlug);
       
       // Set default values according to Course schema
       const courseToCreate: Partial<Course> = {
@@ -136,6 +137,40 @@ export class CourseService {
       .replace(/[^\w\s-]/g, '') // Remove special characters
       .replace(/\s+/g, '-') // Replace spaces with hyphens
       .replace(/-+/g, '-'); // Replace multiple hyphens with single
+  }
+
+  /**
+   * Ensure slug is unique by checking database and appending number if needed
+   * @param baseSlug - Base slug to check
+   * @returns Promise<string> - Unique slug
+   */
+  private async ensureUniqueSlug(baseSlug: string): Promise<string> {
+    let slug = baseSlug;
+    let counter = 1;
+    
+    while (await CourseModel.findOne({ slug })) {
+      slug = `${baseSlug}-${counter}`;
+      counter++;
+    }
+    
+    return slug;
+  }
+
+  /**
+   * Generate unique course ID
+   * @returns Promise<string> - Unique course ID
+   */
+  private async generateUniqueCourseId(): Promise<string> {
+    let id: string;
+    let exists = true;
+    
+    while (exists) {
+      id = uuidv4();
+      const existingCourse = await CourseModel.findById(id);
+      exists = !!existingCourse;
+    }
+    
+    return id!;
   }
 
   /**

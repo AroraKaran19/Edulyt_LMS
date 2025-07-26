@@ -173,9 +173,12 @@ export class InstructorController {
         return;
       }
 
+      // Generate unique ID
+      const instructorId = await this.generateUniqueInstructorId();
+      
       // Create instructor data
       const instructorData: Partial<IInstructor> = {
-        _id: uuidv4(),
+        _id: instructorId,
         name: name.trim(),
         profileImage: profileImage?.trim(),
         experience: experience.trim(),
@@ -362,4 +365,21 @@ export class InstructorController {
       });
     }
   };
+
+  /**
+   * Generate unique instructor ID
+   * @returns Promise<string> - Unique instructor ID
+   */
+  private async generateUniqueInstructorId(): Promise<string> {
+    let id: string;
+    let exists = true;
+    
+    while (exists) {
+      id = uuidv4();
+      const existingInstructor = await InstructorModel.findById(id);
+      exists = !!existingInstructor;
+    }
+    
+    return id!;
+  }
 } 
