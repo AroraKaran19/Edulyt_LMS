@@ -211,10 +211,20 @@ class CourseService {
       );
 
       const result = await response.json();
+      
+      // Check if the request was successful
+      if (!response.ok) {
+        return {
+          success: false,
+          message: result.message || "Failed to fetch course",
+          error: result.error || "Unknown error",
+        };
+      }
+      
       return {
-        success: true,
-        message: "Course fetched successfully",
-        data: result.course as Course
+        success: result.success || true,
+        message: result.message || "Course fetched successfully",
+        data: result.data as Course  // Backend returns course in 'data' field
       };
     } catch (error) {
       console.error("Error fetching course:", error);
@@ -248,6 +258,13 @@ class CourseService {
 
       // Transform form data to backend format for updates
       const courseData = await this.transformFormDataToBackend(formData, true) as Record<string, unknown>;
+      
+      console.log("Transformed course data being sent to backend:", {
+        title: courseData.title,
+        description: courseData.description,
+        category: courseData.category,
+        transformedDataKeys: Object.keys(courseData)
+      });
 
       // Ensure the course ID is preserved
       courseData._id = courseId;
@@ -356,6 +373,15 @@ class CourseService {
     formData: CourseFormState,
     isUpdate: boolean = false
   ): Promise<Record<string, unknown>> {
+    console.log("=== TRANSFORM DEBUG ===");
+    console.log("Input form data:", {
+      title: formData.title,
+      description: formData.description,
+      category: formData.category,
+      isUpdate: isUpdate,
+      fullKeys: Object.keys(formData)
+    });
+    console.log("=== END TRANSFORM DEBUG ===");
     // Generate unique ID and slug
     const generateId = (): string => {
       return Math.random().toString(36).substr(2, 9) + Date.now().toString(36);

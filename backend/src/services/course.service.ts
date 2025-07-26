@@ -502,23 +502,57 @@ export class CourseService {
         throw new Error('Course ID is required');
       }
 
+      // Remove any _id if provided - let MongoDB generate it
+      if ('_id' in updateData) {
+        delete updateData._id;
+      }
+
+      // Remove any id field that might conflict with MongoDB's _id
+      if ('id' in updateData) {
+        delete (updateData as any).id;
+      }
+
+      // Remove all manual _id fields from nested objects - let MongoDB auto-generate them
+      this.removeManualIds(updateData);
+
+      // Debug: Check for any remaining problematic fields
+      if (process.env.NODE_ENV === 'development') {
+        const hasId = JSON.stringify(updateData).includes('"_id":');
+        if (hasId) {
+          console.warn('⚠️  Warning: Update data still contains "_id" fields after cleaning');
+        }
+      }
+
       // Add updated timestamp
       const dataToUpdate = {
         ...updateData,
         updatedAt: new Date()
       };
 
+      console.log('Updating course with ID:', courseId);
+      console.log('Update data keys:', Object.keys(dataToUpdate));
+      console.log('Update data sample:', {
+        title: dataToUpdate.title,
+        description: dataToUpdate.description?.substring(0, 50) + '...',
+        category: dataToUpdate.category,
+        thumbnail: dataToUpdate.thumbnail,
+        previewVideoUrl: dataToUpdate.previewVideoUrl,
+        whatYouWillLearn: dataToUpdate.whatYouWillLearn?.substring(0, 50) + '...',
+        whoShouldJoin: dataToUpdate.whoShouldJoin
+      });
+
       const updatedCourse = await CourseModel.findOneAndUpdate(
         { _id: courseId.trim() },
         dataToUpdate,
         { 
           new: true, // Return updated document
-          runValidators: true // Run schema validators
+          runValidators: false // Skip validators for partial updates
         }
       )
       .select('-__v') // Exclude version field
       .lean(); // Return plain JavaScript object
 
+      console.log('Course updated successfully:', !!updatedCourse);
       return updatedCourse;
     } catch (error) {
       console.error('Error updating course:', error);

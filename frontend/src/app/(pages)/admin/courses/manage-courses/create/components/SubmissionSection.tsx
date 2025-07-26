@@ -210,13 +210,9 @@ const SubmissionSection = () => {
     try {
       let result;
       if (isEditMode) {
-        // For edit mode, get transformed data and use updateCourse
-        const transformedData = await courseService.transformFormDataToBackend(
-          state,
-          isEditMode
-        );
+        // For edit mode, pass form data directly to updateCourse (it handles transformation internally)
         const courseId = window.location.pathname.split("/").pop();
-        result = await courseService.updateCourse(courseId!, transformedData as CourseFormState);
+        result = await courseService.updateCourse(courseId!, state);
       } else {
         // For create mode, pass form data directly to createCourse (it handles transformation internally)
         result = await courseService.createCourse(state);

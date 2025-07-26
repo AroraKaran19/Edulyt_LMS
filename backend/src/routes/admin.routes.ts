@@ -63,6 +63,9 @@ router.get('/courses/:courseId', adminController.getCourseByIdAdmin);
  *   Body: { basicInfo: { courseTitle: "...", courseDescription: "..." }, ... }
  */
 router.put('/courses/:courseId', adminController.updateCourse);
+router.options('/courses/:courseId', (req, res) => {
+  res.status(200).end();
+});
 
 /**
  * @route   PATCH /api/admin/courses/:courseId/status

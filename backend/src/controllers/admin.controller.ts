@@ -215,85 +215,113 @@ export class AdminController {
       };
     };
 
-    const courseTitle = frontendData.basicInfo?.courseTitle || '';
-    const slug = generateSlug(courseTitle);
+         const courseTitle = frontendData.basicInfo?.courseTitle || '';
+     const slug = courseTitle ? generateSlug(courseTitle) : undefined;
 
-    return {
-      title: courseTitle,
-      description: frontendData.basicInfo?.courseDescription || '',
-      shortDescription: frontendData.basicInfo?.shortDescription,
-      category: frontendData.courseDetails?.category || '',
-      subcategory: frontendData.courseDetails?.subcategory,
-      thumbnail: frontendData.media?.courseThumbnailUrl || '',
-      previewVideoUrl: frontendData.media?.promotionalVideoUrl || '',
-      slug: slug,
+         const transformedData: Partial<Course> = {};
+     
+     // Only include fields that are actually provided and not empty
+     if (courseTitle && courseTitle.trim()) transformedData.title = courseTitle.trim();
+     if (frontendData.basicInfo?.courseDescription && frontendData.basicInfo.courseDescription.trim()) {
+       transformedData.description = frontendData.basicInfo.courseDescription.trim();
+     }
+     if (frontendData.basicInfo?.shortDescription && frontendData.basicInfo.shortDescription.trim()) {
+       transformedData.shortDescription = frontendData.basicInfo.shortDescription.trim();
+     }
+     if (frontendData.courseDetails?.category && frontendData.courseDetails.category.trim()) {
+       transformedData.category = frontendData.courseDetails.category.trim();
+     }
+     if (frontendData.courseDetails?.subcategory && frontendData.courseDetails.subcategory.trim()) {
+       transformedData.subcategory = frontendData.courseDetails.subcategory.trim();
+     }
+     if (frontendData.media?.courseThumbnailUrl && frontendData.media.courseThumbnailUrl.trim()) {
+       transformedData.thumbnail = frontendData.media.courseThumbnailUrl.trim();
+     }
+     if (frontendData.media?.promotionalVideoUrl && frontendData.media.promotionalVideoUrl.trim()) {
+       transformedData.previewVideoUrl = frontendData.media.promotionalVideoUrl.trim();
+     }
+     if (slug) transformedData.slug = slug;
+     
+     // Course details - only set if not empty
+     if (frontendData.courseDetails?.courseDuration && frontendData.courseDetails.courseDuration.trim()) {
+       transformedData.duration = frontendData.courseDetails.courseDuration.trim();
+     }
+     if (frontendData.courseDetails?.skillLevel && frontendData.courseDetails.skillLevel.trim()) {
+       transformedData.skillLevel = frontendData.courseDetails.skillLevel.trim();
+     }
+     if (frontendData.courseDetails?.totalLectures) transformedData.totalLectures = parseInt(frontendData.courseDetails.totalLectures) || 0;
       
-      // Course details
-      duration: frontendData.courseDetails?.courseDuration || '1 month',
-      skillLevel: frontendData.courseDetails?.skillLevel || 'Beginner',
-      totalLectures: parseInt(frontendData.courseDetails?.totalLectures) || 0,
-      
-      // Learning info - whatYouWillLearn should be a string, not array
-      whatYouWillLearn: parseWhatYoullLearn(frontendData.learningOutcomes?.whatYoullLearn || ''),
-      whoShouldJoin: frontendData.learningOutcomes?.targetAudience || '',
-      prerequisites: frontendData.learningOutcomes?.prerequisites ? 
-        frontendData.learningOutcomes.prerequisites.split(',').map((p: string) => p.trim()) : [],
-      
-      // Required arrays with proper structure
-      skills: parseFeatures(frontendData.courseFeatures?.keyFeatures || ''),
-      keyFeatures: parseFeatures(frontendData.courseFeatures?.keyFeatures || '').map((feature, index) => ({
-        title: feature,
-        description: feature
-      })),
-      careerPaths: parseFeatures(frontendData.courseFeatures?.careerPaths || ''),
-      features: parseFeatures(frontendData.courseFeatures?.keyFeatures || ''),
-      tags: parseFeatures(frontendData.courseFeatures?.courseTags || ''),
-      
-      // Pricing with proper Plan structure
-      plans: transformPlans(frontendData.pricing) as { elite?: Plan, essential?: Plan },
-      
-      // Settings
-      isActive: true,
-      isFeatured: frontendData.settings?.courseStatus?.featuredCourse || false,
-      isCertified: frontendData.settings?.courseStatus?.certifiedCourse || false,
-      
-      // SEO
-      metaTitle: frontendData.seoSettings?.metaTitle,
-      metaDescription: frontendData.seoSettings?.metaDescription,
-      keywords: [
-        ...(frontendData.seoSettings?.focusKeywords ? 
-          frontendData.seoSettings.focusKeywords.split(',').map((k: string) => k.trim()) : []),
-        ...(frontendData.seoSettings?.secondaryKeywords ? 
-          frontendData.seoSettings.secondaryKeywords.split(',').map((k: string) => k.trim()) : [])
-      ],
-      
-      // Administrative
-      createdBy: frontendData.settings?.administrativeDetails?.courseCreator || 'admin',
-      enrolledCount: 0,
-      totalRatings: 0,
-      audience: 'professionals', // Default value, should be determined by logic
-      
-      // Content with proper CourseModule structure
-      modules: transformModules(frontendData.courseModules || []),
-      
-      // Required empty arrays
-      instructor: [], // This should be populated separately
-      reviews: [],
-      featuredReviews: [],
-      faqs: [],
-      
-      // Proper discount structure - only set if there's actual discount data
-      ...(frontendData.discount && typeof frontendData.discount === 'object' && frontendData.discount.value > 0 
-          ? { discount: createDiscount() } 
-          : {}),
-      
-      // Scholarship
-      scholarship: false,
-      
-      // Timestamps
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
+           // Learning info - only set if not empty
+     if (frontendData.learningOutcomes?.whatYoullLearn && frontendData.learningOutcomes.whatYoullLearn.trim()) {
+       transformedData.whatYouWillLearn = parseWhatYoullLearn(frontendData.learningOutcomes.whatYoullLearn);
+     }
+     if (frontendData.learningOutcomes?.targetAudience && frontendData.learningOutcomes.targetAudience.trim()) {
+       transformedData.whoShouldJoin = frontendData.learningOutcomes.targetAudience.trim();
+     }
+     if (frontendData.learningOutcomes?.prerequisites) {
+       transformedData.prerequisites = frontendData.learningOutcomes.prerequisites.split(',').map((p: string) => p.trim());
+     }
+     
+     // Course features
+     if (frontendData.courseFeatures?.keyFeatures) {
+       transformedData.skills = parseFeatures(frontendData.courseFeatures.keyFeatures);
+       transformedData.keyFeatures = parseFeatures(frontendData.courseFeatures.keyFeatures).map((feature) => ({
+         title: feature,
+         description: feature
+       }));
+       transformedData.features = parseFeatures(frontendData.courseFeatures.keyFeatures);
+     }
+     if (frontendData.courseFeatures?.careerPaths) {
+       transformedData.careerPaths = parseFeatures(frontendData.courseFeatures.careerPaths);
+     }
+     if (frontendData.courseFeatures?.courseTags) {
+       transformedData.tags = parseFeatures(frontendData.courseFeatures.courseTags);
+     }
+     
+     // Pricing
+     if (frontendData.pricing) {
+       transformedData.plans = transformPlans(frontendData.pricing) as { elite?: Plan, essential?: Plan };
+     }
+     
+     // Settings
+     if (frontendData.settings?.courseStatus?.featuredCourse !== undefined) {
+       transformedData.isFeatured = frontendData.settings.courseStatus.featuredCourse;
+     }
+     if (frontendData.settings?.courseStatus?.certifiedCourse !== undefined) {
+       transformedData.isCertified = frontendData.settings.courseStatus.certifiedCourse;
+     }
+     
+     // SEO
+     if (frontendData.seoSettings?.metaTitle) transformedData.metaTitle = frontendData.seoSettings.metaTitle;
+     if (frontendData.seoSettings?.metaDescription) transformedData.metaDescription = frontendData.seoSettings.metaDescription;
+     if (frontendData.seoSettings?.focusKeywords || frontendData.seoSettings?.secondaryKeywords) {
+       transformedData.keywords = [
+         ...(frontendData.seoSettings?.focusKeywords ? 
+           frontendData.seoSettings.focusKeywords.split(',').map((k: string) => k.trim()) : []),
+         ...(frontendData.seoSettings?.secondaryKeywords ? 
+           frontendData.seoSettings.secondaryKeywords.split(',').map((k: string) => k.trim()) : [])
+       ];
+     }
+     
+     // Administrative
+     if (frontendData.settings?.administrativeDetails?.courseCreator) {
+       transformedData.createdBy = frontendData.settings.administrativeDetails.courseCreator;
+     }
+     
+     // Content modules
+     if (frontendData.courseModules) {
+       transformedData.modules = transformModules(frontendData.courseModules);
+     }
+     
+     // Discount
+     if (frontendData.discount && typeof frontendData.discount === 'object' && frontendData.discount.value > 0) {
+       transformedData.discount = createDiscount();
+     }
+     
+     // Always update the timestamp
+     transformedData.updatedAt = new Date();
+     
+     return transformedData;
   }
 
   /**
@@ -433,11 +461,17 @@ export class AdminController {
    */
   updateCourse = async (req: Request, res: Response): Promise<void> => {
     try {
+      console.log('🔄 Admin updateCourse called');
+      console.log('Method:', req.method);
+      console.log('Params:', req.params);
+      console.log('Body keys:', Object.keys(req.body));
+
       const { courseId } = req.params;
       const frontendData = req.body;
 
       // Validate course ID
       if (!courseId?.trim()) {
+        console.log('❌ Course ID validation failed');
         res.status(400).json({
           success: false,
           message: 'Course ID is required'
@@ -447,6 +481,7 @@ export class AdminController {
 
       // Validate request body
       if (!frontendData || Object.keys(frontendData).length === 0) {
+        console.log('❌ Request body validation failed');
         res.status(400).json({
           success: false,
           message: 'Course data is required'
@@ -454,8 +489,20 @@ export class AdminController {
         return;
       }
 
-      // Transform frontend data to course schema format (same as in addCourse)
-      const courseData: Partial<Course> = this.transformFrontendDataToCourse(frontendData);
+             // Transform frontend data to course schema format (same as in addCourse)
+       let courseData: Partial<Course>;
+       try {
+         courseData = this.transformFrontendDataToCourse(frontendData);
+         console.log('✅ Data transformation successful');
+       } catch (transformError) {
+         console.error('❌ Data transformation failed:', transformError);
+         res.status(400).json({
+           success: false,
+           message: 'Failed to transform course data',
+           error: process.env.NODE_ENV === 'development' ? (transformError instanceof Error ? transformError.message : transformError) : 'Invalid data format'
+         });
+         return;
+       }
 
       // Update the course using the service
       const updatedCourse = await this.courseService.updateCourse(courseId, courseData);
@@ -472,11 +519,7 @@ export class AdminController {
       res.status(200).json({
         success: true,
         message: 'Course updated successfully',
-        data: {
-          course: updatedCourse,
-          courseId: updatedCourse._id,
-          slug: updatedCourse.slug
-        }
+        data: updatedCourse // Return course directly for consistency with getCourseById
       });
 
     } catch (error) {
@@ -502,12 +545,12 @@ export class AdminController {
         }
       }
 
-      // Generic error response
-      res.status(500).json({
-        success: false,
-        message: 'Internal server error while updating course',
-        error: process.env.NODE_ENV === 'development' ? error : 'Something went wrong'
-      });
+             // Generic error response
+       res.status(500).json({
+         success: false,
+         message: 'Internal server error while updating course',
+         error: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.message : error) : 'Something went wrong'
+       });
     }
   };
 
