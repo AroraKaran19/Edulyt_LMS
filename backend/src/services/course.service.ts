@@ -1,6 +1,5 @@
 import { Course, CourseModule, Discount } from '../types/course';
 import { CourseModel } from '../models';
-import { v4 as uuidv4 } from 'uuid';
 
 export class CourseService {
   /**
@@ -10,15 +9,12 @@ export class CourseService {
    */
   async createCourse(courseData: Partial<Course>): Promise<Course> {
     try {
-      // Generate unique ID and slug if not provided
-      const courseId = courseData._id || await this.generateUniqueCourseId();
-      const baseSlug = courseData.slug || this.generateSlug(courseData.title || '');
-      const slug = await this.ensureUniqueSlug(baseSlug);
+      // Generate slug from title if not provided (let MongoDB handle uniqueness)
+      const slug = courseData.slug || this.generateSlug(courseData.title || '');
       
       // Set default values according to Course schema
       const courseToCreate: Partial<Course> = {
         ...courseData,
-        _id: courseId,
         slug,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -92,7 +88,6 @@ export class CourseService {
 
       // Create the course
       console.log('Creating course with data:', {
-        _id: courseToCreate._id,
         title: courseToCreate.title,
         language: courseToCreate.language,
         plansStructure: typeof courseToCreate.plans,
@@ -139,50 +134,7 @@ export class CourseService {
       .replace(/-+/g, '-'); // Replace multiple hyphens with single
   }
 
-  /**
-   * Ensure slug is unique by checking database and appending number if needed
-   * @param baseSlug - Base slug to check
-   * @returns Promise<string> - Unique slug
-   */
-  private async ensureUniqueSlug(baseSlug: string): Promise<string> {
-    let slug = baseSlug;
-    let counter = 1;
-    
-    while (await CourseModel.findOne({ slug })) {
-      slug = `${baseSlug}-${counter}`;
-      counter++;
-    }
-    
-    return slug;
-  }
 
-  /**
-   * Generate unique course ID with retry mechanism
-   * @returns Promise<string> - Unique course ID
-   */
-  private async generateUniqueCourseId(): Promise<string> {
-    const maxRetries = 10;
-    let retries = 0;
-    
-    while (retries < maxRetries) {
-      const id = uuidv4();
-      
-      try {
-        // Check if ID already exists
-        const existingCourse = await CourseModel.findById(id);
-        if (!existingCourse) {
-          return id;
-        }
-        retries++;
-      } catch (error) {
-        // If there's a database error during the check, try again
-        console.warn(`Database error while checking course ID uniqueness (attempt ${retries + 1}):`, error);
-        retries++;
-      }
-    }
-    
-    throw new Error('Failed to generate unique course ID after maximum retries');
-  }
 
   /**
    * Calculate total lectures from modules
@@ -686,9 +638,6 @@ export class CourseService {
     // Validate modules if provided
     if (courseData.modules && Array.isArray(courseData.modules)) {
       courseData.modules.forEach((module, moduleIndex) => {
-        if (!module._id) {
-          errors.push(`Module ${moduleIndex + 1} must have an ID`);
-        }
         if (!module.title?.trim()) {
           errors.push(`Module ${moduleIndex + 1} must have a title`);
         }

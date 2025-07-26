@@ -1,6 +1,5 @@
 import { Request, Response } from 'express';
 import { InstructorModel, IInstructor } from '../models/instructor.schema';
-import { v4 as uuidv4 } from 'uuid';
 
 export class InstructorController {
   /**
@@ -140,89 +139,25 @@ export class InstructorController {
         linkedinUrl
       } = req.body;
 
-      // Validate required fields
-      if (!name?.trim()) {
-        res.status(400).json({
-          success: false,
-          message: 'Name is required'
-        });
-        return;
-      }
-
-      if (!experience?.trim()) {
-        res.status(400).json({
-          success: false,
-          message: 'Experience is required'
-        });
-        return;
-      }
-
-      if (!bio?.trim()) {
-        res.status(400).json({
-          success: false,
-          message: 'Bio is required'
-        });
-        return;
-      }
-
-      if (!linkedinUrl?.trim()) {
-        res.status(400).json({
-          success: false,
-          message: 'LinkedIn URL is required'
-        });
-        return;
-      }
-
-      // Check if LinkedIn URL already exists
-      const existingInstructorByLinkedIn = await InstructorModel.findOne({ linkedinUrl: linkedinUrl.trim() });
-      if (existingInstructorByLinkedIn) {
-        res.status(409).json({
-          success: false,
-          message: 'An instructor with this LinkedIn URL already exists'
-        });
-        return;
-      }
-
-      // Generate unique ID
-      const instructorId = await this.generateUniqueInstructorId();
-      
-      // Create instructor data
+      // Create instructor data (let MongoDB handle validation and unique constraints)
       const instructorData: Partial<IInstructor> = {
-        _id: instructorId,
-        name: name.trim(),
+        name: name?.trim(),
         profileImage: profileImage?.trim(),
-        experience: experience.trim(),
-        bio: bio.trim(),
+        experience: experience?.trim(),
+        bio: bio?.trim(),
         currentPosition: currentPosition?.trim(),
         previousExperience: previousExperience || [],
         education: education || [],
-        linkedinUrl: linkedinUrl.trim(),
+        linkedinUrl: linkedinUrl?.trim(),
         rating: 0,
         totalStudents: 0,
         totalCourses: 0
       };
 
-      // Create the instructor with retry mechanism for duplicate key errors
-      let savedInstructor;
-      let saveRetries = 0;
-      const maxSaveRetries = 3;
-
-      while (saveRetries < maxSaveRetries) {
-        try {
-          const instructor = new InstructorModel(instructorData);
-          savedInstructor = await instructor.save();
-          break; // Success, exit the retry loop
-        } catch (error: any) {
-          if (error.code === 11000 && saveRetries < maxSaveRetries - 1) {
-            // Duplicate key error, regenerate ID and try again
-            console.warn(`Duplicate key error during instructor creation (attempt ${saveRetries + 1}), regenerating ID:`, error);
-            instructorData._id = await this.generateUniqueInstructorId();
-            saveRetries++;
-          } else {
-            throw error; // Re-throw if it's not a duplicate key error or we've exceeded retries
-          }
-        }
-      }
+      // Create the instructor (MongoDB will handle ID generation and uniqueness)
+      const instructor = new InstructorModel(instructorData);
+      const savedInstructor = await instructor.save();
+      console.log(`✅ Successfully created instructor with ID: ${savedInstructor._id}`);
 
       res.status(201).json({
         success: true,
@@ -230,32 +165,42 @@ export class InstructorController {
         data: savedInstructor
       });
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error in createInstructor:', error);
       
-      if (error instanceof Error) {
-        if (error.message.includes('validation')) {
-          res.status(400).json({
-            success: false,
-            message: 'Invalid instructor data',
-            error: error.message
-          });
-          return;
+      // Handle MongoDB duplicate key errors (E11000)
+      if (error.code === 11000) {
+        // Extract field name from error message for better user experience
+        let field = 'data';
+        let detailedMessage = error.message;
+        
+        if (error.message.includes('linkedinUrl')) {
+          field = 'LinkedIn URL';
         }
+        
+        res.status(409).json({
+          success: false,
+          message: `An instructor with this ${field} already exists`,
+          debug: process.env.NODE_ENV === 'development' ? detailedMessage : undefined
+        });
+        return;
+      }
 
-        if (error.message.includes('duplicate key')) {
-          res.status(409).json({
-            success: false,
-            message: 'Instructor with this ID already exists'
-          });
-          return;
-        }
+      // Handle validation errors
+      if (error.name === 'ValidationError') {
+        const validationErrors = Object.values(error.errors).map((err: any) => err.message);
+        res.status(400).json({
+          success: false,
+          message: 'Invalid instructor data',
+          errors: validationErrors
+        });
+        return;
       }
 
       res.status(500).json({
         success: false,
         message: 'Internal server error while creating instructor',
-        error: process.env.NODE_ENV === 'development' ? error : 'Something went wrong'
+        error: process.env.NODE_ENV === 'development' ? error.message : 'Something went wrong'
       });
     }
   };
@@ -394,31 +339,5 @@ export class InstructorController {
     }
   };
 
-  /**
-   * Generate unique instructor ID with retry mechanism
-   * @returns Promise<string> - Unique instructor ID
-   */
-  private async generateUniqueInstructorId(): Promise<string> {
-    const maxRetries = 10;
-    let retries = 0;
-    
-    while (retries < maxRetries) {
-      const id = uuidv4();
-      
-      try {
-        // Check if ID already exists
-        const existingInstructor = await InstructorModel.findById(id);
-        if (!existingInstructor) {
-          return id;
-        }
-        retries++;
-      } catch (error) {
-        // If there's a database error during the check, try again
-        console.warn(`Database error while checking instructor ID uniqueness (attempt ${retries + 1}):`, error);
-        retries++;
-      }
-    }
-    
-    throw new Error('Failed to generate unique instructor ID after maximum retries');
-  }
+
 } 

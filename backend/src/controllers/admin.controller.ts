@@ -53,44 +53,40 @@ export class AdminController {
         }
       });
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error in addCourse admin controller:', error);
 
-      // Handle specific error types
-      if (error instanceof Error) {
-        if (error.message.includes('duplicate key')) {
-          res.status(409).json({
-            success: false,
-            message: 'Course with this ID or slug already exists',
-            error: error.message
-          });
-          return;
+      // Handle MongoDB duplicate key errors (E11000)
+      if (error.code === 11000) {
+        // Extract field name from error message for better user experience
+        let field = 'data';
+        if (error.message.includes('slug')) {
+          field = 'course slug';
         }
+        
+        res.status(409).json({
+          success: false,
+          message: `A course with this ${field} already exists`
+        });
+        return;
+      }
 
-        if (error.message.includes('validation')) {
-          res.status(400).json({
-            success: false,
-            message: 'Invalid course data',
-            error: error.message
-          });
-          return;
-        }
-
-        if (error.message.includes('E11000')) {
-          res.status(409).json({
-            success: false,
-            message: 'Course with this title or slug already exists',
-            error: 'Duplicate course detected'
-          });
-          return;
-        }
+      // Handle validation errors
+      if (error.name === 'ValidationError') {
+        const validationErrors = Object.values(error.errors).map((err: any) => err.message);
+        res.status(400).json({
+          success: false,
+          message: 'Invalid course data',
+          errors: validationErrors
+        });
+        return;
       }
 
       // Generic error response
       res.status(500).json({
         success: false,
         message: 'Internal server error while adding course',
-        error: process.env.NODE_ENV === 'development' ? error : 'Something went wrong'
+        error: process.env.NODE_ENV === 'development' ? error.message : 'Something went wrong'
       });
     }
   };
@@ -101,10 +97,7 @@ export class AdminController {
    * @returns Partial<Course> - Transformed course data
    */
   private transformFrontendDataToCourse(frontendData: any): Partial<Course> {
-    // Generate unique IDs
-    const generateId = (): string => {
-      return Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
-    };
+
 
     // Generate slug from course title
     const generateSlug = (title: string): string => {
@@ -124,7 +117,6 @@ export class AdminController {
     // Transform lessons with proper structure
     const transformLessons = (lessons: any[]): CourseLesson[] => {
       return lessons?.map((lesson) => ({
-        _id: lesson.id || generateId(),
         title: lesson.title || '',
         description: lesson.description || '',
         content: [], // Will need to be populated with LessonContent
@@ -138,7 +130,6 @@ export class AdminController {
     // Transform modules with proper CourseModule structure
     const transformModules = (modules: any[]): CourseModule[] => {
       return modules?.map((module) => ({
-        _id: module.id || generateId(),
         title: module.title || '',
         thumbnailUrl: module.thumbnailUrl,
         description: module.description || '',
@@ -168,7 +159,6 @@ export class AdminController {
       
       if (pricingData?.professionals?.elite) {
         plans.elite = {
-          _id: generateId(),
           title: 'Elite Plan',
           type: 'elite' as const,
           price: pricingData.professionals.elite.price || 0,
@@ -185,7 +175,6 @@ export class AdminController {
 
       if (pricingData?.professionals?.essential) {
         plans.essential = {
-          _id: generateId(),
           title: 'Essential Plan',
           type: 'essential' as const,
           price: pricingData.professionals.essential.price || 0,
@@ -228,10 +217,8 @@ export class AdminController {
 
     const courseTitle = frontendData.basicInfo?.courseTitle || '';
     const slug = generateSlug(courseTitle);
-    const courseId = generateId();
 
     return {
-      _id: courseId,
       title: courseTitle,
       description: frontendData.basicInfo?.courseDescription || '',
       shortDescription: frontendData.basicInfo?.shortDescription,

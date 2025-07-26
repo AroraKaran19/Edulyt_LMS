@@ -52,35 +52,40 @@ export class CourseController {
         }
       });
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error in createCourse controller:', error);
 
-      // Handle specific error types
-      if (error instanceof Error) {
-        if (error.message.includes('duplicate key')) {
-          res.status(409).json({
-            success: false,
-            message: 'Course with this ID or slug already exists',
-            error: error.message
-          });
-          return;
+      // Handle MongoDB duplicate key errors (E11000)
+      if (error.code === 11000) {
+        // Extract field name from error message for better user experience
+        let field = 'data';
+        if (error.message.includes('slug')) {
+          field = 'course slug';
         }
+        
+        res.status(409).json({
+          success: false,
+          message: `A course with this ${field} already exists`
+        });
+        return;
+      }
 
-        if (error.message.includes('validation')) {
-          res.status(400).json({
-            success: false,
-            message: 'Invalid course data',
-            error: error.message
-          });
-          return;
-        }
+      // Handle validation errors
+      if (error.name === 'ValidationError') {
+        const validationErrors = Object.values(error.errors).map((err: any) => err.message);
+        res.status(400).json({
+          success: false,
+          message: 'Invalid course data',
+          errors: validationErrors
+        });
+        return;
       }
 
       // Generic error response
       res.status(500).json({
         success: false,
         message: 'Internal server error while creating course',
-        error: process.env.NODE_ENV === 'development' ? error : 'Something went wrong'
+        error: process.env.NODE_ENV === 'development' ? error.message : 'Something went wrong'
       });
     }
   };

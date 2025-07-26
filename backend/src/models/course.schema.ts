@@ -612,12 +612,7 @@ const faqSchema = new Schema<FAQ>(
 // Main Course Schema - Fixed to match Course type exactly
 const courseSchema = new Schema<Course>(
   {
-    // Basic Information
-    _id: {
-      type: String,
-      required: true,
-      unique: true,
-    },
+    // Basic Information - MongoDB automatically creates _id
     title: {
       type: String,
       required: true,

@@ -5,7 +5,6 @@ import mongoose, { Schema, Document } from 'mongoose';
 // ===================
 
 export interface IInstructor extends Document {
-  _id: string;
   name: string;
   profileImage?: string;
   experience: string;
@@ -28,11 +27,6 @@ export interface IInstructor extends Document {
 // ===================
 
 const InstructorSchema = new Schema<IInstructor>({
-  _id: {
-    type: String,
-    required: true,
-    unique: true
-  },
   name: {
     type: String,
     required: true,
@@ -97,6 +91,7 @@ const InstructorSchema = new Schema<IInstructor>({
   linkedinUrl: {
     type: String,
     required: true,
+    unique: true,
     trim: true,
     match: [
       /^https?:\/\/(www\.)?linkedin\.com\/.*$/,
@@ -114,7 +109,7 @@ const InstructorSchema = new Schema<IInstructor>({
 // Indexes
 // ===================
 
-InstructorSchema.index({ _id: 1 });
+// Remove _id index as MongoDB creates it automatically
 InstructorSchema.index({ name: 1 });
 InstructorSchema.index({ rating: -1 });
 InstructorSchema.index({ totalStudents: -1 });
