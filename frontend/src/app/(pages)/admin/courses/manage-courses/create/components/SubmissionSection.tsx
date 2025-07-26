@@ -15,7 +15,7 @@ import {
   Play,
   MapPin,
 } from "lucide-react";
-import { CourseFormState, useCourseFormContext } from "../context/CourseFormContext";
+import { useCourseFormContext } from "../context/CourseFormContext";
 import courseService from "@/services/courseService";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
