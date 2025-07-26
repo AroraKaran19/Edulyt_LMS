@@ -35,7 +35,7 @@ export class UploadController {
       storage,
       fileFilter,
       limits: {
-        fileSize: 5 * 1024 * 1024 * 1024, // 5GB limit for video uploads
+        fileSize: 100 * 1024 * 1024, // 100MB limit for regular uploads (Vercel compatible). Use /multipart-upload endpoints for files up to 50GB
         files: 10 // Maximum 10 files per request
       }
     });
