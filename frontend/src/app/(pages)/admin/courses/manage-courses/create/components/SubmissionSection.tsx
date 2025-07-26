@@ -704,10 +704,14 @@ const SubmissionSection = () => {
                   console.log("Final state: ", state);
                   handleSubmit();
                 }}
-                disabled={!canSubmit}
-                className="px-6 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                disabled={!canSubmit || isSubmitting}
+                className="flex items-center justify-center gap-2 px-6 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
               >
-                Launch Course
+                {isSubmitting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  "Launch Course"
+                )}
               </button>
             </div>
           </div>

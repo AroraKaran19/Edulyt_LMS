@@ -8,6 +8,7 @@ export interface UploadResponse {
     url: string;
     size: number;
     mimetype: string;
+    duration?: number; // Add duration to response interface
   };
   error?: string;
 }
@@ -32,6 +33,36 @@ class UploadService {
     if (!this.baseUrl) {
       throw new Error("NEXT_PUBLIC_API_BASE_URL is not set");
     }
+  }
+
+  /**
+   * Extract video duration from file
+   * @param file - Video file to extract duration from
+   * @returns Promise with duration in seconds
+   */
+  private getVideoDuration(file: File): Promise<number> {
+    return new Promise((resolve) => {
+      if (!file.type.startsWith('video/')) {
+        resolve(0);
+        return;
+      }
+
+      const video = document.createElement('video');
+      video.preload = 'metadata';
+      
+      video.onloadedmetadata = () => {
+        window.URL.revokeObjectURL(video.src);
+        const duration = Math.round(video.duration || 0);
+        resolve(duration);
+      };
+      
+      video.onerror = () => {
+        window.URL.revokeObjectURL(video.src);
+        resolve(0);
+      };
+      
+      video.src = URL.createObjectURL(file);
+    });
   }
 
   /**
@@ -68,6 +99,9 @@ class UploadService {
    */
   async uploadCourseVideo(file: File): Promise<UploadResponse> {
     try {
+      // Extract video duration first
+      const duration = await this.getVideoDuration(file);
+      
       const formData = new FormData();
       formData.append('video', file);
 
@@ -77,6 +111,12 @@ class UploadService {
       });
 
       const result = await response.json();
+      
+      // Add duration to the response
+      if (result.success && result.data) {
+        result.data.duration = duration;
+      }
+      
       return result;
     } catch (error) {
       console.error('Error uploading course video:', error);
@@ -122,6 +162,9 @@ class UploadService {
    */
   async uploadLessonVideo(file: File): Promise<UploadResponse> {
     try {
+      // Extract video duration first
+      const duration = await this.getVideoDuration(file);
+      
       const formData = new FormData();
       formData.append('video', file);
 
@@ -131,6 +174,12 @@ class UploadService {
       });
 
       const result = await response.json();
+      
+      // Add duration to the response
+      if (result.success && result.data) {
+        result.data.duration = duration;
+      }
+      
       return result;
     } catch (error) {
       console.error('Error uploading lesson video:', error);

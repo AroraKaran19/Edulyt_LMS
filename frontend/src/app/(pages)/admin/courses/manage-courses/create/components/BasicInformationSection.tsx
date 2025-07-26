@@ -144,8 +144,13 @@ const BasicInformationSection = () => {
     return `${baseClassName} ${hasError ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-orange-500 focus:ring-orange-500'}`;
   };
 
-  const handleVideoUpload = (url: string) => {
+  const handleVideoUpload = (url: string, fileName: string, duration?: number) => {
     updateField('previewVideoUrl', url);
+    // Note: Course preview video duration is not stored in the main course data
+    // Duration is mainly used for lesson content videos
+    if (duration) {
+      console.log(`📹 Preview video duration: ${duration} seconds`);
+    }
   };
 
   const skillLevels = ["Beginner", "Intermediate", "Advanced"];

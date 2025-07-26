@@ -1,636 +1,66 @@
-import { Schema, model } from "mongoose";
-import {
-  Course,
-  CourseLesson,
-  CourseModule,
-  Video,
-  VideoQuality,
-  Quiz,
-  QuizQuestion,
-  QuizOption,
-  Plan,
-  PlanFeatures,
-  FAQ,
-  Review,
-  FeaturedReview,
-  Discount,
-  Content,
-} from "../types/course";
-import { Instructor } from "../types/instructor";
+import mongoose from "mongoose";
+import { Course, FAQ, Plan, Testimonial } from "../types";
+import plansSchema from "./plans.schema";
 
-// Video Quality Schema
-const videoQualitySchema = new Schema<VideoQuality>(
-  {
-    _id: {
-      type: String,
-      required: true,
-    },
-    quality: {
-      type: String,
-      required: true,
-      enum: ["1080p", "720p", "480p", "360p"],
-    },
-    videoUrl: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-  },
-  { _id: false }
-);
-
-// Video Schema
-const videoSchema = new Schema<Video>(
-  {
-    _id: {
-      type: String,
-      required: true,
-    },
-    sources: [videoQualitySchema],
-    thumbnailUrl: {
-      type: String,
-      trim: true,
-    },
-    duration: {
-      type: Number,
-      min: 0,
-    },
-  },
-  { _id: false }
-);
-
-// Quiz Option Schema
-const quizOptionSchema = new Schema<QuizOption>(
-  {
-    _id: {
-      type: String,
-      required: true,
-    },
-    option: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-  },
-  { _id: false }
-);
-
-// Quiz Question Schema
-const quizQuestionSchema = new Schema<QuizQuestion>(
-  {
-    _id: {
-      type: String,
-      required: true,
-    },
-    question: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    options: [quizOptionSchema],
-    correctAnswer: [quizOptionSchema],
-    timeLimit: {
-      type: Number,
-      min: 0,
-    },
-  },
-  { _id: false }
-);
-
-// Quiz Schema
-const quizSchema = new Schema<Quiz>(
-  {
-    _id: {
-      type: String,
-      required: true,
-    },
-    title: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    description: {
-      type: String,
-      trim: true,
-    },
-    questions: [quizQuestionSchema],
-    passingScore: {
-      type: Number,
-      min: 0,
-      max: 100,
-    },
-    maxAttempts: {
-      type: Number,
-      min: 1,
-    },
-    createdAt: {
-      type: Date,
-      default: Date.now,
-    },
-    updatedAt: {
-      type: Date,
-      default: Date.now,
-    },
-  },
-  { _id: false }
-);
-
-// Lesson Content Schema
-const lessonContentSchema = new Schema<Content>(
-  {
-    _id: {
-      type: String,
-      required: true,
-    },
-    title: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    description: {
-      type: String,
-      trim: true,
-    },
-    content: {
-      type: Schema.Types.Mixed, // Will store Video or Quiz object
-      validate: {
-        validator: function (value: any) {
-          // Allow undefined/null for now
-          if (!value) return true;
-
-          // Content should be a single object (Video or Quiz), not an array
-          if (Array.isArray(value)) return false;
-
-          // Basic validation - just check if it has an _id
-          return value && typeof value._id === "string";
-        },
-        message: "Content must be a valid content object (Video or Quiz), not an array",
-      },
-    },
-    type: {
-      type: String,
-      required: true,
-      enum: ["video", "quiz"],
-    },
-    isCompleted: {
-      type: Boolean,
-      default: false,
-    },
-    completedAt: {
-      type: Date,
-    },
-    isLocked: {
-      type: Boolean,
-      default: false,
-    },
-    createdAt: {
-      type: Date,
-      default: Date.now,
-    },
-    updatedAt: {
-      type: Date,
-      default: Date.now,
-    },
-  },
-  { _id: false }
-);
-
-// Course Lesson Schema
-const courseLessonSchema = new Schema<CourseLesson>(
-  {
-    _id: {
-      type: String,
-      required: true,
-    },
-    title: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    description: {
-      type: String,
-      trim: true,
-    },
-    content: [lessonContentSchema],
-    isCompleted: {
-      type: Boolean,
-      default: false,
-    },
-    completedAt: {
-      type: Date,
-    },
-    isLocked: {
-      type: Boolean,
-      default: false,
-    },
-    createdAt: {
-      type: Date,
-      default: Date.now,
-    },
-    updatedAt: {
-      type: Date,
-      default: Date.now,
-    },
-  },
-  { _id: false }
-);
-
-// Course Module Schema
-const courseModuleSchema = new Schema<CourseModule>(
-  {
-    _id: {
-      type: String,
-      required: true,
-    },
-    title: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    thumbnailUrl: {
-      type: String,
-      trim: true,
-    },
-    lessons: [courseLessonSchema],
-    description: {
-      type: String,
-      trim: true,
-    },
-    isCompleted: {
-      type: Boolean,
-      default: false,
-    },
-    isLocked: {
-      type: Boolean,
-      default: false,
-    },
-    createdAt: {
-      type: Date,
-      default: Date.now,
-    },
-    updatedAt: {
-      type: Date,
-      default: Date.now,
-    },
-  },
-  { _id: false }
-);
-
-// Plan Features Schema
-const planFeaturesSchema = new Schema<PlanFeatures>(
-  {
-    title: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    provided: {
-      type: Boolean,
-      required: true,
-    },
-  },
-  { _id: false }
-);
-
-// Discount Schema
-const discountSchema = new Schema<Discount>(
-  {
-    discount: {
-      type: String,
-      required: true,
-      enum: ["percentage", "fixed"],
-    },
-    value: {
-      type: Number,
-      required: true,
-      min: 0,
-    },
-    startDate: {
-      type: Date,
-    },
-    endDate: {
-      type: Date,
-    },
-    isActive: {
-      type: Boolean,
-      default: true,
-    },
-  },
-  { _id: false }
-);
-
-// Plan Schema - Fixed to match Plan type exactly
-const planSchema = new Schema<Plan>(
-  {
-    _id: {
-      type: String,
-    },
-    title: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    type: {
-      type: String,
-      required: true,
-      enum: ["elite", "essential"],
-    },
-    price: {
-      type: Number,
-      required: true,
-      min: 0,
-    },
-    features: [planFeaturesSchema],
-    discount: discountSchema, // Optional in type, so should be optional in schema
-    isPopular: {
-      type: Boolean,
-      default: false,
-    },
-    billingPeriod: {
-      type: String,
-      enum: ["monthly", "annually", "lifetime"],
-      default: "lifetime",
-    },
-    trialDays: {
-      type: Number,
-      min: 0,
-    },
-    isActive: {
-      type: Boolean,
-      default: true,
-    },
-    createdAt: {
-      type: Date,
-      default: Date.now,
-    },
-    updatedAt: {
-      type: Date,
-      default: Date.now,
-    },
-  },
-  { _id: false }
-);
-
-// Instructor Schema (embedded)
-const instructorSchema = new Schema<Instructor>(
-  {
-    _id: {
-      type: String,
-      required: true,
-    },
-    name: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    profileImage: {
-      type: String,
-      trim: true,
-    },
-    experience: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    rating: {
-      type: Number,
-      required: true,
-      min: 0,
-      max: 5,
-    },
-    totalStudents: {
-      type: Number,
-      required: true,
-      min: 0,
-      default: 0,
-    },
-    totalCourses: {
-      type: Number,
-      required: true,
-      min: 0,
-      default: 0,
-    },
-    bio: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    currentPosition: {
-      type: String,
-      trim: true,
-    },
-    currentCompany: {
-      type: String,
-      trim: true,
-    },
-    previousExperience: [
-      {
-        type: String,
-        trim: true,
-      },
-    ],
-    education: [
-      {
-        type: String,
-        trim: true,
-      },
-    ],
-    linkedinUrl: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-  },
-  { _id: false }
-);
-
-// Review Schema - Fixed to match Review type exactly
-const reviewSchema = new Schema<Review>(
-  {
-    _id: {
-      type: String,
-    },
-    name: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    rating: {
-      type: Number,
-      required: true,
-      min: 1,
-      max: 5,
-    },
-    comment: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    profileImage: {
-      type: String,
-      trim: true,
-    },
-    currentRole: {
-      type: String,
-      trim: true,
-    },
-    pastRole: {
-      type: String,
-      trim: true,
-    },
-    pastCompany: {
-      type: String,
-      trim: true,
-    },
-    currentCompany: {
-      type: String,
-      trim: true,
-    },
-    linkedin: {
-      type: String,
-      trim: true,
-    },
-    date: {
-      type: Date,
-      required: true,
-      default: Date.now,
-    },
-    isActive: {
-      type: Boolean,
-      default: true,
-    },
-    createdAt: {
-      type: Date,
-      default: Date.now,
-    },
-    updatedAt: {
-      type: Date,
-      default: Date.now,
-    },
-  },
-  { _id: false }
-);
-
-// Featured Review Schema - Fixed to match FeaturedReview type exactly
-const featuredReviewSchema = new Schema<FeaturedReview>(
-  {
-    _id: {
-      type: String,
-    },
-    name: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    rating: {
-      type: Number,
-      required: true,
-      min: 1,
-      max: 5,
-    },
-    comment: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    profileImage: {
-      type: String,
-      required: true, // Required for featured reviews
-      trim: true,
-    },
-    currentRole: {
-      type: String,
-      required: true, // Required for featured reviews
-      trim: true,
-    },
-    currentCompany: {
-      type: String,
-      required: true, // Required for featured reviews
-      trim: true,
-    },
-    pastRole: {
-      type: String,
-      required: true, // Required for featured reviews
-      trim: true,
-    },
-    pastCompany: {
-      type: String,
-      required: true, // Required for featured reviews
-      trim: true,
-    },
-    linkedin: {
-      type: String,
-      required: true, // Required for featured reviews
-      trim: true,
-    },
-    date: {
-      type: Date,
-      required: true,
-      default: Date.now,
-    },
-    verified: {
-      type: Boolean,
-      default: false,
-    },
-    isActive: {
-      type: Boolean,
-      default: true,
-    },
-    createdAt: {
-      type: Date,
-      default: Date.now,
-    },
-    updatedAt: {
-      type: Date,
-      default: Date.now,
-    },
-  },
-  { _id: false }
-);
-
+// ===================
 // FAQ Schema
-const faqSchema = new Schema<FAQ>(
+// ===================
+
+const faqSchema = new mongoose.Schema<FAQ>(
   {
-    _id: {
-      type: String,
-      required: true,
-    },
-    question: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    answer: {
-      type: String,
-      required: true,
-      trim: true,
-    },
+    question: { type: String, required: true },
+    answer: { type: String, required: true },
   },
-  { _id: false }
+  { timestamps: true, _id: false }
 );
 
-// Main Course Schema - Fixed to match Course type exactly
-const courseSchema = new Schema<Course>(
+// ===================
+// Testimonial Schema
+// ===================
+
+const testimonialSchema = new mongoose.Schema<Testimonial>(
   {
-    // Basic Information
-    _id: {
+    name: { type: String, required: true },
+    rating: { type: Number, required: true },
+    comment: { type: String, required: true },
+    profileImage: { type: String, required: true },
+    currentRole: { type: String, required: true },
+    pastRole: { type: String, required: true },
+    pastCompany: { type: String, required: true },
+    currentCompany: { type: String, required: true },
+    linkedin: { type: String, required: true },
+    isActive: { type: Boolean, default: true, required: true },
+  },
+  { timestamps: true, _id: false }
+);
+
+// ===================
+// Course Schema
+// ===================
+
+const courseSchema = new mongoose.Schema<Course>(
+  {
+    title: {
       type: String,
       required: true,
+      trim: true,
+      minlength: 5,
+      maxlength: 100,
       unique: true,
     },
-    title: {
-      type: String,
-      required: true,
-      trim: true,
-    },
     description: {
       type: String,
       required: true,
       trim: true,
+      minlength: 25,
+      maxlength: 1000,
     },
     shortDescription: {
       type: String,
+      required: true,
       trim: true,
+      minlength: 10,
+      maxlength: 100,
     },
     category: {
       type: String,
@@ -639,241 +69,147 @@ const courseSchema = new Schema<Course>(
     },
     subcategory: {
       type: String,
+      required: false,
+      default: "",
       trim: true,
     },
     thumbnail: {
       type: String,
       required: true,
-      trim: true,
+      validate: {
+        validator: (value: string) => {
+          return value.startsWith("https://") || value.startsWith("http://");
+        },
+        message: "Thumbnail must be a link",
+      },
     },
-    previewVideoUrl: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-
-    // Flags - Optional in type
-    isFeatured: {
-      type: Boolean,
-      default: false,
-    },
-    isCertified: {
-      type: Boolean,
-      default: false,
-    },
-
-    // Metrics - Required in type
+    previewVideoUrl: { type: String, required: true },
+    isFeatured: { type: Boolean, default: false, required: true },
+    isCertified: { type: Boolean, default: false, required: true },
     enrolledCount: {
       type: Number,
-      required: true,
-      min: 0,
       default: 0,
+      required: true,
+      min: [0, "Enrolled count must be positive"],
     },
     totalRatings: {
       type: Number,
-      required: true,
-      min: 0,
       default: 0,
+      required: true,
+      min: [0, "Total ratings must be positive"],
+      max: [5, "Total ratings must be less than 5"],
     },
-    totalLectures: {
-      type: Number,
+    whatYouWillLearn: { type: String, required: true },
+    skills: { type: [String], required: true },
+    courseTestimonials: {
+      type: [
+        {
+          title: { type: String, required: true },
+          description: { type: String, required: true },
+        },
+      ],
       required: true,
-      min: 0,
+      default: [],
+    },
+    features: { type: [String], required: true },
+    careerPaths: { type: [String], required: true },
+    skillLevel: { type: String, required: true },
+    whoShouldJoin: { type: String, required: true },
+    prerequisites: { type: [String], required: false, default: [] },
+    fakeDiscount: {
+      type: Number,
+      required: false,
       default: 0,
+      min: [0, "Discount must be positive"],
+      max: [100, "Discount must be less than 100"],
     },
     duration: {
       type: String,
-      trim: true,
       required: true,
-      default: "1 month",
+      min: [1, "Duration must be positive"],
     },
-
-    // UI & Learning Info - Required in type
-    whatYouWillLearn: {
-      type: String,
+    modules: {
+      type: [mongoose.Schema.Types.ObjectId],
       required: true,
-      trim: true,
+      ref: "CourseModule",
     },
-    skills: [
-      {
-        type: String,
-        required: true,
-        trim: true,
-      },
-    ],
-    keyFeatures: [
-      {
-        title: {
-          type: String,
-          required: true,
-          trim: true,
-        },
-        description: {
-          type: String,
-          required: true,
-          trim: true,
-        },
-      },
-    ],
-    features: [
-      {
-        type: String,
-        trim: true,
-      },
-    ],
-    careerPaths: [
-      {
-        type: String,
-        required: true,
-        trim: true,
-      },
-    ],
-    skillLevel: {
-      type: String,
+    instructor: {
+      type: [mongoose.Schema.Types.ObjectId],
       required: true,
-      trim: true,
+      ref: "CourseInstructor",
     },
-    whoShouldJoin: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    prerequisites: [
-      {
-        type: String,
-        trim: true,
-      },
-    ],
-    discount: discountSchema, // Optional in type
-
-    // Content
-    modules: [courseModuleSchema],
-
-    // Instructor
-    instructor: [instructorSchema],
-
-    // Pricing Plans
     plans: {
-      elite: planSchema,
-      essential: planSchema,
-    },
-
-    // Reviews
-    reviews: [reviewSchema],
-    featuredReviews: [featuredReviewSchema], // Optional in type
-
-    // FAQs
-    faqs: [faqSchema],
-
-    // Administrative - Required in type
-    isActive: {
-      type: Boolean,
+      elite: { type: plansSchema, required: false, default: null },
+      essential: { type: plansSchema, required: false, default: null },
       required: true,
-      default: true,
+      validate: {
+        validator: (plans: { elite?: Plan; essential?: Plan }) => {
+          return !!(plans.elite || plans.essential);
+        },
+        message: "Course must have at least one plan (elite or essential)",
+      },
     },
-    createdAt: {
-      type: Date,
+    reviews: {
+      type: [mongoose.Schema.Types.ObjectId],
       required: true,
-      default: Date.now,
+      ref: "Review",
     },
-    updatedAt: {
-      type: Date,
-      required: true,
-      default: Date.now,
-    },
+    testimonials: { type: [testimonialSchema], required: true },
+
+    faqs: { type: [faqSchema], required: true },
+
+    isActive: { type: Boolean, default: true },
     createdBy: {
       type: String,
+      ref: "User",
       required: true,
-      trim: true,
     },
-    tags: [
-      {
-        type: String,
-        trim: true,
-      },
-    ],
+    tags: { type: [String], required: false, default: [] },
     audience: {
       type: String,
       required: true,
       enum: ["college-students", "professionals"],
+      validate: {
+        validator: (value: string) =>
+          value === "college-students" || value === "professionals",
+        message: "Audience must be either college-students or professionals",
+      },
     },
-
-    // SEO - slug is required, others optional
-    slug: {
-      type: String,
-      required: true,
-      unique: true,
-      trim: true,
-      lowercase: true,
-    },
-    metaTitle: {
-      type: String,
-      trim: true,
-    },
+    slug: { type: String, required: true, unique: true },
+    metaTitle: { type: String, required: false, default: "Edulyt Course" },
     metaDescription: {
       type: String,
-      trim: true,
+      required: false,
+      default: "Edulyt Course",
     },
-    keywords: [
-      {
-        type: String,
-        trim: true,
-      },
-    ],
+    keywords: { type: [String], required: false, default: [] },
+    scholarship: { type: Boolean, default: false, required: true },
+    scholarshipDescription: { type: String, required: false, default: "" },
 
-    // Scholarship - Optional in type
-    scholarship: {
-      type: Boolean,
-      default: false,
-    },
-    scholarshipDescription: {
-      type: String,
-      trim: true,
-    },
-    scholarshipQuiz: [quizSchema],
-
-    // Language - Required in type
-    language: {
-      type: String,
-      required: true,
-      trim: true,
-      default: "English",
-    },
+    language: { type: String, required: true },
   },
-  {
-    timestamps: true,
-    collection: "courses",
-  }
+  { timestamps: true }
 );
 
-// Create indexes for better query performance
-courseSchema.index({ category: 1 });
-courseSchema.index({ skillLevel: 1 });
-courseSchema.index({ isFeatured: 1 });
-courseSchema.index({ isActive: 1 });
-courseSchema.index({ audience: 1 });
+// Indexes
+courseSchema.index({ slug: 1, isActive: 1 }); // For fetching active courses by slug
+courseSchema.index({ category: 1 }); // For browsing by category
+courseSchema.index({ category: 1, subcategory: 1 }); // For browsing by category
+courseSchema.index({ instructor: 1 }); // For finding courses by instructor
+courseSchema.index({ audience: 1 }); // For filtering by audience
+courseSchema.index({ language: 1 }); // For filtering by language
+courseSchema.index({ isFeatured: 1, isActive: 1 }); // For listing featured courses
+courseSchema.index({ createdAt: 1 }); // For listing courses by creation date
+courseSchema.index({ updatedAt: 1 }); // For listing courses by update date
+courseSchema.index({ enrolledCount: 1 }); // For listing courses by enrolled count
 
-courseSchema.index({ enrolledCount: -1 });
-courseSchema.index({ createdAt: -1 });
-courseSchema.index({ updatedAt: -1 });
+courseSchema.index({ createdAt: -1 }); // For listing courses by creation date
+courseSchema.index({ updatedAt: -1 }); // For listing courses by update date
+courseSchema.index({ enrolledCount: -1 }); // For listing courses by enrolled count
 
-// Text search index for title and description
-courseSchema.index({
-  title: "text",
-  description: "text",
-  shortDescription: "text",
-});
-
-// Compound indexes for common queries
-courseSchema.index({ category: 1, isActive: 1 });
-courseSchema.index({ isFeatured: 1, isActive: 1 });
-courseSchema.index({ skillLevel: 1, category: 1 });
-courseSchema.index({ audience: 1, isActive: 1 });
-
-// Pre-save middleware to update the updatedAt field
 courseSchema.pre("save", function (next) {
   this.set("updatedAt", new Date());
   next();
 });
 
-export const CourseModel = model<Course>("Course", courseSchema);
+export default mongoose.model<Course>("Course", courseSchema);

@@ -109,21 +109,21 @@ export interface UserEnrollmentPlan {
   };
 }
 
-// export interface UserQuizAttempt {
-//   _id: string;
-//   quizId: string;
-//   score: number;
-//   totalQuestions: number;
-//   correctAnswers: number;
-//   timeSpent: number; // seconds
-//   answers: {
-//     questionId: string;
-//     selectedOptions: string[];
-//     isCorrect: boolean;
-//   }[];
-//   attemptedAt: Date;
-//   passed: boolean;
-// }
+export interface UserQuizAttempt {
+  _id: string;
+  quizId: string;
+  score: number;
+  totalQuestions: number;
+  correctAnswers: number;
+  timeSpent: number; // seconds
+  answers: {
+    questionId: string;
+    selectedOptions: string[];
+    isCorrect: boolean;
+  }[];
+  attemptedAt: Date;
+  passed: boolean;
+}
 
 export interface UserEnrollment {
   _id: string;
@@ -148,7 +148,7 @@ export interface UserEnrollment {
   timeSpent: number; // minutes
   lastAccessDate: Date;
   totalVideoWatched: number; // minutes
-  // quizAttempts: UserQuizAttempt[];
+  quizAttempts: UserQuizAttempt[];
 
   // Plan and payment
   plan: UserEnrollmentPlan;
@@ -271,7 +271,7 @@ export interface ScholarshipApplication {
     uploadedAt: Date;
   }[];
   essay?: string;
-  // quizResults?: UserQuizAttempt[];
+  quizResults?: UserQuizAttempt[];
   reviewNotes?: string;
   reviewedAt?: Date;
   reviewedBy?: string;
@@ -309,7 +309,7 @@ export interface InternshipApplication {
 
 export interface User {
   // Core user information
-  _id: string;
+  _id?: string;
   profile: UserProfile;
   socialProfiles?: SocialProfile[];
 

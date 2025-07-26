@@ -1,4 +1,10 @@
 // Types - Data types for Edulyt platform
+
+export interface Discount {
+    discount: "percentage" | "fixed";
+    value: number;
+    isActive?: boolean;
+}
  
 // Re-export all types
 export * from './course';

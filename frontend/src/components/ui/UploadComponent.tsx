@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 import uploadService, { UploadResponse } from '@/services/uploadService';
 
 export interface UploadComponentProps {
-  onUploadComplete: (url: string, fileName: string) => void;
+  onUploadComplete: (url: string, fileName: string, duration?: number) => void;
   onUploadError?: (error: string) => void;
   onUploadStart?: () => void;
   acceptedFileTypes: string[];
@@ -104,6 +104,32 @@ export const UploadComponent: React.FC<UploadComponentProps> = ({
     return `${formatFileSize(bytesPerSecond)}/s`;
   };
 
+  // Function to extract video duration
+  const getVideoDuration = (file: File): Promise<number> => {
+    return new Promise((resolve) => {
+      if (!file.type.startsWith('video/')) {
+        resolve(0);
+        return;
+      }
+
+      const video = document.createElement('video');
+      video.preload = 'metadata';
+      
+      video.onloadedmetadata = () => {
+        window.URL.revokeObjectURL(video.src);
+        const duration = Math.round(video.duration || 0);
+        resolve(duration);
+      };
+      
+      video.onerror = () => {
+        window.URL.revokeObjectURL(video.src);
+        resolve(0);
+      };
+      
+      video.src = URL.createObjectURL(file);
+    });
+  };
+
   const uploadFile = async (file: File) => {
     const startTime = Date.now();
     setState(prev => ({
@@ -166,6 +192,21 @@ export const UploadComponent: React.FC<UploadComponentProps> = ({
       clearInterval(progressInterval);
 
       if (result.success && result.data?.url) {
+        // Use duration from upload service if available, otherwise extract it locally
+        let duration = result.data.duration || 0;
+        
+        // Fallback to local extraction if duration not provided by service
+        if (duration === 0 && file.type.startsWith('video/') && (uploadType === 'video' || uploadType === 'lesson-video')) {
+          try {
+            duration = await getVideoDuration(file);
+            console.log(`✅ Video duration extracted locally: ${duration} seconds`);
+          } catch (error) {
+            console.warn('Failed to extract video duration:', error);
+          }
+        } else if (duration > 0) {
+          console.log(`✅ Video duration from service: ${duration} seconds`);
+        }
+
         setState(prev => ({
           ...prev,
           uploadProgress: 100,
@@ -178,7 +219,7 @@ export const UploadComponent: React.FC<UploadComponentProps> = ({
           timeRemaining: 0,
         }));
 
-        onUploadComplete(result.data.url, file.name);
+        onUploadComplete(result.data.url, file.name, duration);
         setShowUrlInput(false);
       } else {
         throw new Error(result.message || 'Upload failed');

@@ -58,6 +58,7 @@ const ModulesSection = () => {
     videoUrl: "",
     thumbnailUrl: "",
     quality: "720p" as VideoQuality["quality"],
+    duration: 0,
   });
 
   const [quizForm, setQuizForm] = useState({
@@ -77,17 +78,20 @@ const ModulesSection = () => {
 
   // Reset indices when modules change to prevent out-of-bounds errors
   useEffect(() => {
-    if (selectedModuleIndex !== null && selectedModuleIndex >= state.modules.length) {
-      console.log('Resetting selectedModuleIndex due to modules change');
+    // Reset if modules array is empty or selectedModuleIndex is out of bounds
+    if (selectedModuleIndex !== null && (state.modules.length === 0 || selectedModuleIndex >= state.modules.length)) {
+      console.log('Resetting selectedModuleIndex due to modules change - selectedModuleIndex:', selectedModuleIndex, 'modules length:', state.modules.length);
       setSelectedModuleIndex(null);
       setSelectedLessonIndex(null);
       setCurrentStep("overview");
+      return; // Early return to prevent further processing
     }
     
+    // Reset lesson index if it's out of bounds
     if (selectedModuleIndex !== null && selectedLessonIndex !== null) {
       const currentModule = state.modules[selectedModuleIndex];
-      if (currentModule && selectedLessonIndex >= currentModule.lessons.length) {
-        console.log('Resetting selectedLessonIndex due to lessons change');
+      if (!currentModule || !currentModule.lessons || selectedLessonIndex >= currentModule.lessons.length) {
+        console.log('Resetting selectedLessonIndex due to lessons change - selectedLessonIndex:', selectedLessonIndex, 'lessons length:', currentModule?.lessons?.length || 0);
         setSelectedLessonIndex(null);
         setCurrentStep("manage-lessons");
       }
@@ -117,6 +121,7 @@ const ModulesSection = () => {
       videoUrl: "",
       thumbnailUrl: "",
       quality: "720p",
+      duration: 0,
     });
   };
 
@@ -150,14 +155,16 @@ const ModulesSection = () => {
     }));
   };
 
-  const handleVideoUpload = (url: string) => {
+  const handleVideoUpload = (url: string, fileName: string, duration?: number) => {
     setVideoForm(prev => ({
       ...prev,
-      videoUrl: url
+      videoUrl: url,
+      duration: duration || 0
     }));
     
     // Show success message
     console.log('✅ Video uploaded successfully');
+    console.log(`🎬 Duration: ${duration ? `${duration} seconds` : 'Not available'}`);
     console.log('🎬 Don\'t forget to click "Create Video" to add it to your lesson!');
   };
 
@@ -303,7 +310,7 @@ const ModulesSection = () => {
       _id: Date.now().toString() + '_video',
       sources: [videoQuality],
       thumbnailUrl: videoForm.thumbnailUrl || undefined,
-      duration: 0, // Duration will be automatically calculated from the video file
+      duration: videoForm.duration, // Duration extracted from the uploaded video file
     };
 
     const content: Content = {
