@@ -373,15 +373,7 @@ class CourseService {
     formData: CourseFormState,
     isUpdate: boolean = false
   ): Promise<Record<string, unknown>> {
-    console.log("=== TRANSFORM DEBUG ===");
-    console.log("Input form data:", {
-      title: formData.title,
-      description: formData.description,
-      category: formData.category,
-      isUpdate: isUpdate,
-      fullKeys: Object.keys(formData)
-    });
-    console.log("=== END TRANSFORM DEBUG ===");
+
     // Generate unique ID and slug
     const generateId = (): string => {
       return Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
@@ -502,19 +494,22 @@ class CourseService {
     ): unknown => {
       // Handle string values with trimming
       const trimmedValue = typeof value === 'string' && value.trim ? value.trim() : value;
+      
+
 
       if (isUpdate) {
-        // For updates of required fields, never send empty values - use existing or default
-        if (isRequired && !trimmedValue && !value) {
-          return defaultValue || undefined;
+        // For updates, if we have a valid value (even empty string), use it
+        if (trimmedValue !== undefined && trimmedValue !== null) {
+          return trimmedValue;
         }
-        // For optional fields in updates, undefined means "don't change"
-        if (!trimmedValue && !value) {
-          return undefined;
+        if (value !== undefined && value !== null) {
+          return value;
         }
+        // Only return undefined if the value is truly not provided
+        return isRequired ? (defaultValue || "") : undefined;
       }
 
-      // For create operations or when we have a value, handle empty strings properly
+      // For create operations, handle empty strings properly
       return trimmedValue || value || defaultValue;
     };
 

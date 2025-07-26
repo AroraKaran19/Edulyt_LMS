@@ -215,107 +215,125 @@ export class AdminController {
       };
     };
 
-         const courseTitle = frontendData.basicInfo?.courseTitle || '';
+         // Check if data is in the new direct Course format or old nested format
+     const isDirectFormat = frontendData.title !== undefined;
+     
+     const courseTitle = isDirectFormat ? frontendData.title : (frontendData.basicInfo?.courseTitle || '');
      const slug = courseTitle ? generateSlug(courseTitle) : undefined;
 
          const transformedData: Partial<Course> = {};
      
-     // Only include fields that are actually provided and not empty
-     if (courseTitle && courseTitle.trim()) transformedData.title = courseTitle.trim();
-     if (frontendData.basicInfo?.courseDescription && frontendData.basicInfo.courseDescription.trim()) {
-       transformedData.description = frontendData.basicInfo.courseDescription.trim();
-     }
-     if (frontendData.basicInfo?.shortDescription && frontendData.basicInfo.shortDescription.trim()) {
-       transformedData.shortDescription = frontendData.basicInfo.shortDescription.trim();
-     }
-     if (frontendData.courseDetails?.category && frontendData.courseDetails.category.trim()) {
-       transformedData.category = frontendData.courseDetails.category.trim();
-     }
-     if (frontendData.courseDetails?.subcategory && frontendData.courseDetails.subcategory.trim()) {
-       transformedData.subcategory = frontendData.courseDetails.subcategory.trim();
-     }
-     if (frontendData.media?.courseThumbnailUrl && frontendData.media.courseThumbnailUrl.trim()) {
-       transformedData.thumbnail = frontendData.media.courseThumbnailUrl.trim();
-     }
-     if (frontendData.media?.promotionalVideoUrl && frontendData.media.promotionalVideoUrl.trim()) {
-       transformedData.previewVideoUrl = frontendData.media.promotionalVideoUrl.trim();
-     }
-     if (slug) transformedData.slug = slug;
-     
-     // Course details - only set if not empty
-     if (frontendData.courseDetails?.courseDuration && frontendData.courseDetails.courseDuration.trim()) {
-       transformedData.duration = frontendData.courseDetails.courseDuration.trim();
-     }
-     if (frontendData.courseDetails?.skillLevel && frontendData.courseDetails.skillLevel.trim()) {
-       transformedData.skillLevel = frontendData.courseDetails.skillLevel.trim();
-     }
-     if (frontendData.courseDetails?.totalLectures) transformedData.totalLectures = parseInt(frontendData.courseDetails.totalLectures) || 0;
-      
-           // Learning info - only set if not empty
-     if (frontendData.learningOutcomes?.whatYoullLearn && frontendData.learningOutcomes.whatYoullLearn.trim()) {
-       transformedData.whatYouWillLearn = parseWhatYoullLearn(frontendData.learningOutcomes.whatYoullLearn);
-     }
-     if (frontendData.learningOutcomes?.targetAudience && frontendData.learningOutcomes.targetAudience.trim()) {
-       transformedData.whoShouldJoin = frontendData.learningOutcomes.targetAudience.trim();
-     }
-     if (frontendData.learningOutcomes?.prerequisites) {
-       transformedData.prerequisites = frontendData.learningOutcomes.prerequisites.split(',').map((p: string) => p.trim());
+     // Handle both direct Course format and legacy nested format
+     if (isDirectFormat) {
+       // New direct format - data is already in Course schema format, just pass it through
+       // Remove any fields that shouldn't be updated (like _id, createdAt)
+       const { _id, createdAt, ...courseFields } = frontendData;
+       Object.assign(transformedData, courseFields);
+       
+       // Ensure slug is generated from title if needed
+       if (transformedData.title && !transformedData.slug) {
+         transformedData.slug = generateSlug(transformedData.title as string);
+       }
+     } else {
+       // Legacy nested format
+       if (courseTitle && courseTitle.trim()) transformedData.title = courseTitle.trim();
+       if (frontendData.basicInfo?.courseDescription && frontendData.basicInfo.courseDescription.trim()) {
+         transformedData.description = frontendData.basicInfo.courseDescription.trim();
+       }
+       if (frontendData.basicInfo?.shortDescription && frontendData.basicInfo.shortDescription.trim()) {
+         transformedData.shortDescription = frontendData.basicInfo.shortDescription.trim();
+       }
+       if (frontendData.courseDetails?.category && frontendData.courseDetails.category.trim()) {
+         transformedData.category = frontendData.courseDetails.category.trim();
+       }
+       if (frontendData.courseDetails?.subcategory && frontendData.courseDetails.subcategory.trim()) {
+         transformedData.subcategory = frontendData.courseDetails.subcategory.trim();
+       }
+       if (frontendData.media?.courseThumbnailUrl && frontendData.media.courseThumbnailUrl.trim()) {
+         transformedData.thumbnail = frontendData.media.courseThumbnailUrl.trim();
+       }
+       if (frontendData.media?.promotionalVideoUrl && frontendData.media.promotionalVideoUrl.trim()) {
+         transformedData.previewVideoUrl = frontendData.media.promotionalVideoUrl.trim();
+       }
      }
      
-     // Course features
-     if (frontendData.courseFeatures?.keyFeatures) {
-       transformedData.skills = parseFeatures(frontendData.courseFeatures.keyFeatures);
-       transformedData.keyFeatures = parseFeatures(frontendData.courseFeatures.keyFeatures).map((feature) => ({
-         title: feature,
-         description: feature
-       }));
-       transformedData.features = parseFeatures(frontendData.courseFeatures.keyFeatures);
-     }
-     if (frontendData.courseFeatures?.careerPaths) {
-       transformedData.careerPaths = parseFeatures(frontendData.courseFeatures.careerPaths);
-     }
-     if (frontendData.courseFeatures?.courseTags) {
-       transformedData.tags = parseFeatures(frontendData.courseFeatures.courseTags);
-     }
-     
-     // Pricing
-     if (frontendData.pricing) {
-       transformedData.plans = transformPlans(frontendData.pricing) as { elite?: Plan, essential?: Plan };
-     }
-     
-     // Settings
-     if (frontendData.settings?.courseStatus?.featuredCourse !== undefined) {
-       transformedData.isFeatured = frontendData.settings.courseStatus.featuredCourse;
-     }
-     if (frontendData.settings?.courseStatus?.certifiedCourse !== undefined) {
-       transformedData.isCertified = frontendData.settings.courseStatus.certifiedCourse;
-     }
-     
-     // SEO
-     if (frontendData.seoSettings?.metaTitle) transformedData.metaTitle = frontendData.seoSettings.metaTitle;
-     if (frontendData.seoSettings?.metaDescription) transformedData.metaDescription = frontendData.seoSettings.metaDescription;
-     if (frontendData.seoSettings?.focusKeywords || frontendData.seoSettings?.secondaryKeywords) {
-       transformedData.keywords = [
-         ...(frontendData.seoSettings?.focusKeywords ? 
-           frontendData.seoSettings.focusKeywords.split(',').map((k: string) => k.trim()) : []),
-         ...(frontendData.seoSettings?.secondaryKeywords ? 
-           frontendData.seoSettings.secondaryKeywords.split(',').map((k: string) => k.trim()) : [])
-       ];
-     }
-     
-     // Administrative
-     if (frontendData.settings?.administrativeDetails?.courseCreator) {
-       transformedData.createdBy = frontendData.settings.administrativeDetails.courseCreator;
-     }
-     
-     // Content modules
-     if (frontendData.courseModules) {
-       transformedData.modules = transformModules(frontendData.courseModules);
-     }
-     
-     // Discount
-     if (frontendData.discount && typeof frontendData.discount === 'object' && frontendData.discount.value > 0) {
-       transformedData.discount = createDiscount();
+     // For legacy format only, handle the nested structure conversion
+     if (!isDirectFormat) {
+       // Legacy nested format
+       if (frontendData.courseDetails?.courseDuration && frontendData.courseDetails.courseDuration.trim()) {
+         transformedData.duration = frontendData.courseDetails.courseDuration.trim();
+       }
+       if (frontendData.courseDetails?.skillLevel && frontendData.courseDetails.skillLevel.trim()) {
+         transformedData.skillLevel = frontendData.courseDetails.skillLevel.trim();
+       }
+       if (frontendData.courseDetails?.totalLectures) transformedData.totalLectures = parseInt(frontendData.courseDetails.totalLectures) || 0;
+        
+       // Learning info - legacy format
+       if (frontendData.learningOutcomes?.whatYoullLearn && frontendData.learningOutcomes.whatYoullLearn.trim()) {
+         transformedData.whatYouWillLearn = parseWhatYoullLearn(frontendData.learningOutcomes.whatYoullLearn);
+       }
+       if (frontendData.learningOutcomes?.targetAudience && frontendData.learningOutcomes.targetAudience.trim()) {
+         transformedData.whoShouldJoin = frontendData.learningOutcomes.targetAudience.trim();
+       }
+       if (frontendData.learningOutcomes?.prerequisites) {
+         transformedData.prerequisites = frontendData.learningOutcomes.prerequisites.split(',').map((p: string) => p.trim());
+       }
+       
+       // Course features (legacy format)
+       if (frontendData.courseFeatures?.keyFeatures) {
+         transformedData.skills = parseFeatures(frontendData.courseFeatures.keyFeatures);
+         transformedData.keyFeatures = parseFeatures(frontendData.courseFeatures.keyFeatures).map((feature) => ({
+           title: feature,
+           description: feature
+         }));
+         transformedData.features = parseFeatures(frontendData.courseFeatures.keyFeatures);
+       }
+       if (frontendData.courseFeatures?.careerPaths) {
+         transformedData.careerPaths = parseFeatures(frontendData.courseFeatures.careerPaths);
+       }
+       if (frontendData.courseFeatures?.courseTags) {
+         transformedData.tags = parseFeatures(frontendData.courseFeatures.courseTags);
+       }
+       
+       // Pricing (legacy format)
+       if (frontendData.pricing) {
+         transformedData.plans = transformPlans(frontendData.pricing) as { elite?: Plan, essential?: Plan };
+       }
+       
+       // Settings (legacy format)
+       if (frontendData.settings?.courseStatus?.featuredCourse !== undefined) {
+         transformedData.isFeatured = frontendData.settings.courseStatus.featuredCourse;
+       }
+       if (frontendData.settings?.courseStatus?.certifiedCourse !== undefined) {
+         transformedData.isCertified = frontendData.settings.courseStatus.certifiedCourse;
+       }
+       
+       // SEO (legacy format)
+       if (frontendData.seoSettings?.metaTitle) transformedData.metaTitle = frontendData.seoSettings.metaTitle;
+       if (frontendData.seoSettings?.metaDescription) transformedData.metaDescription = frontendData.seoSettings.metaDescription;
+       if (frontendData.seoSettings?.focusKeywords || frontendData.seoSettings?.secondaryKeywords) {
+         transformedData.keywords = [
+           ...(frontendData.seoSettings?.focusKeywords ? 
+             frontendData.seoSettings.focusKeywords.split(',').map((k: string) => k.trim()) : []),
+           ...(frontendData.seoSettings?.secondaryKeywords ? 
+             frontendData.seoSettings.secondaryKeywords.split(',').map((k: string) => k.trim()) : [])
+         ];
+       }
+       
+       // Administrative (legacy format)
+       if (frontendData.settings?.administrativeDetails?.courseCreator) {
+         transformedData.createdBy = frontendData.settings.administrativeDetails.courseCreator;
+       }
+       
+       // Content modules (legacy format)
+       if (frontendData.courseModules) {
+         transformedData.modules = transformModules(frontendData.courseModules);
+       }
+       
+       // Discount (legacy format)
+       if (frontendData.discount && typeof frontendData.discount === 'object' && frontendData.discount.value > 0) {
+         transformedData.discount = createDiscount();
+       }
      }
      
      // Always update the timestamp
