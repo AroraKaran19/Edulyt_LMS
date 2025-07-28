@@ -16,7 +16,7 @@ export type CourseFormState = {
   description: string;
   category: string;
   thumbnail: string;
-  previewVideoUrl: string;
+  previewVideoUrl?: string;
   
   // Optional basic fields
   shortDescription?: string;
@@ -90,7 +90,7 @@ const initialState: CourseFormState = {
   description: "",
   category: "",
   thumbnail: "",
-  previewVideoUrl: "",
+  previewVideoUrl: undefined,
   shortDescription: "",
   subcategory: "",
 
@@ -436,7 +436,7 @@ export const useCourseForm = (storageKey: string = "course-form-draft") => {
       state.description.trim() &&
       state.category.trim() &&
       state.thumbnail.trim() &&
-      state.previewVideoUrl.trim() &&
+      // previewVideoUrl is now optional
       state.skillLevel.trim() &&
       state.whatYouWillLearn.trim() &&
       state.whoShouldJoin.trim() &&

@@ -181,7 +181,7 @@ export interface Course {
     category: string;
     subcategory?: string;
     thumbnail: string;
-    previewVideoUrl: string;
+    previewVideoUrl?: string;
 
     isFeatured?: boolean;
     isCertified?: boolean;

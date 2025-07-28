@@ -579,7 +579,7 @@ const courseSchema = new Schema<Course>(
     },
     previewVideoUrl: {
       type: String,
-      required: true,
+      required: false,
       trim: true,
     },
 

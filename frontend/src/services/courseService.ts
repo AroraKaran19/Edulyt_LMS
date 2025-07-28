@@ -521,7 +521,8 @@ class CourseService {
       description: getFieldValue(formData.description, "", true) || "",
       category: getFieldValue(formData.category, "", true) || "",
       thumbnail: getFieldValue(formData.thumbnail, "", true) || "",
-      previewVideoUrl: getFieldValue(formData.previewVideoUrl, "", true) || "",
+      // previewVideoUrl is now optional - only include if provided
+      ...(formData.previewVideoUrl && { previewVideoUrl: formData.previewVideoUrl }),
       enrolledCount: formData.enrolledCount || 0,
       totalRatings: formData.totalRatings || 0,
       totalLectures: formData.totalLectures || 0,

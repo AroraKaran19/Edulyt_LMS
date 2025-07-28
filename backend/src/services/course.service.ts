@@ -27,7 +27,8 @@ export class CourseService {
         description: courseData.description || '',
         category: courseData.category || '',
         thumbnail: courseData.thumbnail || '',
-        previewVideoUrl: courseData.previewVideoUrl || '',
+        // previewVideoUrl is now optional - only set if provided
+        ...(courseData.previewVideoUrl && { previewVideoUrl: courseData.previewVideoUrl }),
         
         // Administrative defaults
         isActive: courseData.isActive !== undefined ? courseData.isActive : true,
@@ -702,9 +703,10 @@ export class CourseService {
       errors.push('Course thumbnail is required');
     }
 
-    if (!courseData.previewVideoUrl?.trim()) {
-      errors.push('Preview video URL is required');
-    }
+    // Preview video URL is now optional
+    // if (!courseData.previewVideoUrl?.trim()) {
+    //   errors.push('Preview video URL is required');
+    // }
 
     if (!courseData.createdBy?.trim()) {
       errors.push('Created by field is required');
