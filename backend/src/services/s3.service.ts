@@ -297,8 +297,14 @@ export class S3Service {
         throw new Error(`Invalid file type ${contentType} for folder ${folderType}. Allowed types: ${config.allowedMimeTypes.join(', ')}`);
       }
 
-      // Generate organized filename
-      const fileName = generateFileName(folderType, originalName, additionalPath);
+      // Generate organized filename using new structure
+      const fileName = generateFileName(
+        folderType, 
+        originalName, 
+        additionalMetadata.courseName,
+        additionalMetadata.moduleTitle,
+        additionalMetadata.lessonTitle
+      );
 
       // Prepare metadata
       const metadata: UploadMetadata = {
@@ -356,8 +362,14 @@ export class S3Service {
         throw new Error(`Invalid file type ${contentType} for folder ${folderType}. Allowed types: ${config.allowedMimeTypes.join(', ')}`);
       }
 
-      // Generate organized filename
-      const fileName = generateFileName(folderType, originalName, additionalPath);
+      // Generate organized filename using new structure
+      const fileName = generateFileName(
+        folderType, 
+        originalName, 
+        additionalMetadata.courseName,
+        additionalMetadata.moduleTitle,
+        additionalMetadata.lessonTitle
+      );
 
       // Prepare metadata
       const metadata: UploadMetadata = {
@@ -617,6 +629,238 @@ export class S3Service {
    */
   getPublicUrl(key: string): string {
     return `https://${this.bucketName}.s3.amazonaws.com/${key}`;
+  }
+
+  // ==================== COURSE CLEANUP METHODS ====================
+
+  /**
+   * Extract S3 key from various URL formats
+   * @param url - S3 URL or key
+   * @returns S3 key or null if invalid
+   */
+  private extractS3Key(url: string): string | null {
+    if (!url) return null;
+    
+    try {
+      // Handle different S3 URL formats
+      const s3UrlPatterns = [
+        /https:\/\/.*\.s3\..*\.amazonaws\.com\/(.+)/,
+        /https:\/\/s3\..*\.amazonaws\.com\/.*\/(.+)/,
+        /https:\/\/.*\.s3-.*\.amazonaws\.com\/(.+)/
+      ];
+      
+      for (const pattern of s3UrlPatterns) {
+        const match = url.match(pattern);
+        if (match) {
+          return decodeURIComponent(match[1]);
+        }
+      }
+      
+      // If it's already a key (not a full URL), return as is
+      if (!url.startsWith('http')) {
+        return url;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error(`Error extracting S3 key from URL: ${url}`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Delete multiple files from S3 in parallel
+   * @param keys - Array of S3 object keys to delete
+   * @returns Promise with deletion results
+   */
+  async deleteMultipleFiles(keys: string[]): Promise<{
+    successful: string[];
+    failed: Array<{ key: string; error: string }>;
+  }> {
+    const successful: string[] = [];
+    const failed: Array<{ key: string; error: string }> = [];
+
+    if (keys.length === 0) {
+      return { successful, failed };
+    }
+
+    console.log(`🗑️ Deleting ${keys.length} files from S3...`);
+
+    const deletePromises = keys.map(async (key) => {
+      try {
+        await this.deleteFile(key);
+        successful.push(key);
+        console.log(`✅ Deleted: ${key}`);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        failed.push({ key, error: errorMessage });
+        console.error(`❌ Failed to delete ${key}: ${errorMessage}`);
+      }
+    });
+
+    await Promise.allSettled(deletePromises);
+
+    console.log(`✅ Deletion complete: ${successful.length} successful, ${failed.length} failed`);
+    return { successful, failed };
+  }
+
+  /**
+   * Delete all assets associated with a course
+   * @param course - Course object with asset URLs
+   * @returns Promise with cleanup results
+   */
+  async cleanupCourseAssets(course: any): Promise<{
+    totalAssets: number;
+    successful: string[];
+    failed: Array<{ key: string; error: string }>;
+  }> {
+    try {
+      const assetsToDelete: string[] = [];
+
+      // Course thumbnail
+      if (course.thumbnail) {
+        const thumbnailKey = this.extractS3Key(course.thumbnail);
+        if (thumbnailKey) assetsToDelete.push(thumbnailKey);
+      }
+
+      // Course preview video
+      if (course.previewVideoUrl) {
+        const videoKey = this.extractS3Key(course.previewVideoUrl);
+        if (videoKey) assetsToDelete.push(videoKey);
+      }
+
+      // Instructor profile images
+      if (course.instructor && Array.isArray(course.instructor)) {
+        course.instructor.forEach((instructor: any) => {
+          if (instructor.profileImage) {
+            const profileKey = this.extractS3Key(instructor.profileImage);
+            if (profileKey) assetsToDelete.push(profileKey);
+          }
+        });
+      }
+
+      // Module and lesson content
+      if (course.modules && Array.isArray(course.modules)) {
+        course.modules.forEach((module: any) => {
+          // Module thumbnail
+          if (module.thumbnailUrl) {
+            const moduleThumbKey = this.extractS3Key(module.thumbnailUrl);
+            if (moduleThumbKey) assetsToDelete.push(moduleThumbKey);
+          }
+
+          // Process lessons
+          if (module.lessons && Array.isArray(module.lessons)) {
+            module.lessons.forEach((lesson: any) => {
+              // Process lesson content
+              if (lesson.content && Array.isArray(lesson.content)) {
+                lesson.content.forEach((content: any) => {
+                  if (content.type === 'video' && content.content) {
+                    const videoContent = content.content;
+                    
+                    // Video thumbnail
+                    if (videoContent.thumbnailUrl) {
+                      const thumbKey = this.extractS3Key(videoContent.thumbnailUrl);
+                      if (thumbKey) assetsToDelete.push(thumbKey);
+                    }
+
+                    // Video sources (multiple qualities)
+                    if (videoContent.sources && Array.isArray(videoContent.sources)) {
+                      videoContent.sources.forEach((source: any) => {
+                        if (source.videoUrl) {
+                          const sourceKey = this.extractS3Key(source.videoUrl);
+                          if (sourceKey) assetsToDelete.push(sourceKey);
+                        }
+                      });
+                    }
+                  }
+                });
+              }
+
+              // Legacy support: direct videoUrl on lesson (if exists)
+              if (lesson.videoUrl) {
+                const lessonVideoKey = this.extractS3Key(lesson.videoUrl);
+                if (lessonVideoKey) assetsToDelete.push(lessonVideoKey);
+              }
+            });
+          }
+        });
+      }
+
+      // Remove duplicates
+      const uniqueAssets = [...new Set(assetsToDelete)];
+      
+      console.log(`🧹 Found ${uniqueAssets.length} assets to delete for course: ${course.title || course._id}`);
+      
+      if (uniqueAssets.length === 0) {
+        return { totalAssets: 0, successful: [], failed: [] };
+      }
+
+      // Delete all assets
+      const result = await this.deleteMultipleFiles(uniqueAssets);
+      
+      return {
+        totalAssets: uniqueAssets.length,
+        successful: result.successful,
+        failed: result.failed
+      };
+
+    } catch (error) {
+      console.error('Error in cleanupCourseAssets:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete entire course folder from S3 (for new folder structure)
+   * @param courseName - Sanitized course name
+   * @returns Promise with deletion results
+   */
+  async deleteCourseFolder(courseName: string): Promise<{
+    totalDeleted: number;
+    successful: string[];
+    failed: Array<{ key: string; error: string }>;
+  }> {
+    try {
+      // Sanitize course name same way as generateFileName
+      const sanitizeName = (name: string): string => {
+        return name
+          .toLowerCase()
+          .replace(/[^a-z0-9\s-]/g, '')
+          .replace(/\s+/g, '-')
+          .replace(/-+/g, '-')
+          .trim();
+      };
+
+      const sanitizedCourseName = sanitizeName(courseName);
+      const coursePrefix = `Course/${sanitizedCourseName}/`;
+
+      console.log(`🗂️ Listing all objects in course folder: ${coursePrefix}`);
+
+      // List all objects in the course folder
+      const listResult = await this.listObjects(coursePrefix);
+      
+      if (!listResult.objects || listResult.objects.length === 0) {
+        console.log(`📁 No objects found in course folder: ${coursePrefix}`);
+        return { totalDeleted: 0, successful: [], failed: [] };
+      }
+
+      const objectKeys = listResult.objects.map((obj: any) => obj.Key).filter(Boolean);
+      
+      console.log(`📁 Found ${objectKeys.length} objects in course folder`);
+
+      // Delete all objects in the folder
+      const result = await this.deleteMultipleFiles(objectKeys);
+
+      return {
+        totalDeleted: result.successful.length,
+        successful: result.successful,
+        failed: result.failed
+      };
+
+    } catch (error) {
+      console.error(`Error deleting course folder for ${courseName}:`, error);
+      throw error;
+    }
   }
 
 } 

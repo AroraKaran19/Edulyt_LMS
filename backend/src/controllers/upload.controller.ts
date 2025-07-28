@@ -67,9 +67,9 @@ export class UploadController {
         return;
       }
 
-      // Get course ID from request body if provided
+      // Get course information from request body
       const courseId = req.body.courseId;
-      const additionalPath = courseId ? `course-${courseId}` : undefined;
+      const courseName = req.body.courseName || `Course-${courseId}`;
 
       // Upload to organized folder
       const uploadResult = await this.s3Service.uploadToOrganizedFolder(
@@ -78,9 +78,9 @@ export class UploadController {
         req.file.buffer,
         req.file.mimetype,
         {
-          courseId: courseId
-        },
-        additionalPath
+          courseId: courseId,
+          courseName: courseName
+        }
       );
 
       res.status(200).json({
@@ -130,10 +130,14 @@ export class UploadController {
         return;
       }
 
-      // Get course ID and video type from request body
+      // Get course and content information from request body
       const courseId = req.body.courseId;
+      const courseName = req.body.courseName || `Course-${courseId}`;
       const videoType = req.body.videoType || 'preview'; // 'preview' or 'content'
-      const additionalPath = courseId ? `course-${courseId}` : undefined;
+      const moduleId = req.body.moduleId;
+      const moduleTitle = req.body.moduleTitle;
+      const lessonId = req.body.lessonId;
+      const lessonTitle = req.body.lessonTitle;
 
       // Determine folder type based on video type
       let folderType: UploadFolderType;
@@ -155,10 +159,12 @@ export class UploadController {
         req.file.mimetype,
         {
           courseId: courseId,
-          moduleId: req.body.moduleId,
-          lessonId: req.body.lessonId
-        },
-        additionalPath
+          courseName: courseName,
+          moduleId: moduleId,
+          moduleTitle: moduleTitle,
+          lessonId: lessonId,
+          lessonTitle: lessonTitle
+        }
       );
 
       res.status(200).json({

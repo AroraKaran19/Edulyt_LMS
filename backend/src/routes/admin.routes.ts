@@ -91,4 +91,15 @@ router.patch('/courses/:courseId/status', adminController.updateCourseStatus);
  */
 router.delete('/courses/:courseId', adminController.deleteCourse);
 
+/**
+ * @route   POST /api/admin/courses/:courseId/cleanup-s3
+ * @desc    Manually cleanup S3 assets for a course (Admin utility)
+ * @access  Private (Admin only)
+ * @params  
+ *   - courseId: Course ID (URL parameter)
+ * @example 
+ *   POST /api/admin/courses/course-123/cleanup-s3
+ */
+router.post('/courses/:courseId/cleanup-s3', adminController.cleanupCourseS3Assets);
+
 export { router as adminRoutes }; 

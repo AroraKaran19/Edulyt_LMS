@@ -612,8 +612,7 @@ export class AdminController {
         return;
       }
 
-      // TODO: Implement AWS S3 file cleanup for course assets
-      // This should be done asynchronously to avoid blocking the response
+      // Cleanup AWS S3 assets asynchronously to avoid blocking the response
       this.cleanupCourseAssets(course).catch(error => {
         console.error('Error cleaning up course assets:', error);
         // Log error but don't fail the request since course is already deleted
@@ -655,77 +654,58 @@ export class AdminController {
    */
   private async cleanupCourseAssets(course: any): Promise<void> {
     try {
-      const s3Service = new (await import('../services/s3.service')).S3Service();
-      const assetsToDelete: string[] = [];
+      const { S3Service } = await import('../services/s3.service');
+      const s3Service = new S3Service();
 
-      // Extract S3 key from URL helper function
-      const extractS3Key = (url: string): string | null => {
-        if (!url) return null;
-        
-        // Handle different S3 URL formats
-        const s3UrlPattern = /https:\/\/.*\.s3\..*\.amazonaws\.com\/(.+)/;
-        const match = url.match(s3UrlPattern);
-        
-        if (match) {
-          return decodeURIComponent(match[1]);
+      console.log(`🧹 Starting cleanup for course: ${course.title || course._id}`);
+
+      // Try both cleanup methods for maximum coverage
+      const results = await Promise.allSettled([
+        // Method 1: Clean up by individual asset URLs (works with both old and new structure)
+        s3Service.cleanupCourseAssets(course),
+        // Method 2: Clean up entire course folder (works with new folder structure)
+        course.title ? s3Service.deleteCourseFolder(course.title) : Promise.resolve({ totalDeleted: 0, successful: [], failed: [] })
+      ]);
+
+      // Process results
+      const assetCleanup = results[0].status === 'fulfilled' ? results[0].value : null;
+      const folderCleanup = results[1].status === 'fulfilled' ? results[1].value : null;
+
+      // Log results
+      if (assetCleanup) {
+        console.log(`📊 Asset cleanup: ${assetCleanup.successful.length}/${assetCleanup.totalAssets} files deleted`);
+        if (assetCleanup.failed.length > 0) {
+          console.warn(`⚠️ Failed to delete ${assetCleanup.failed.length} assets:`, assetCleanup.failed);
         }
-        
-        // If it's already a key (not a full URL), return as is
-        if (!url.startsWith('http')) {
-          return url;
+      }
+
+      if (folderCleanup && folderCleanup.totalDeleted > 0) {
+        console.log(`📁 Folder cleanup: ${folderCleanup.totalDeleted} files deleted from course folder`);
+        if (folderCleanup.failed.length > 0) {
+          console.warn(`⚠️ Failed to delete ${folderCleanup.failed.length} folder files:`, folderCleanup.failed);
         }
-        
-        return null;
-      };
-
-      // Add course thumbnail
-      if (course.thumbnail) {
-        const thumbnailKey = extractS3Key(course.thumbnail);
-        if (thumbnailKey) assetsToDelete.push(thumbnailKey);
       }
 
-      // Add preview video
-      if (course.previewVideoUrl) {
-        const videoKey = extractS3Key(course.previewVideoUrl);
-        if (videoKey) assetsToDelete.push(videoKey);
-      }
+      // Calculate total cleanup
+      const totalDeleted = (assetCleanup?.successful.length || 0) + (folderCleanup?.totalDeleted || 0);
+      const totalFailed = (assetCleanup?.failed.length || 0) + (folderCleanup?.failed.length || 0);
 
-      // Add module lesson videos
-      if (course.modules && Array.isArray(course.modules)) {
-        course.modules.forEach((module: any) => {
-          if (module.lessons && Array.isArray(module.lessons)) {
-            module.lessons.forEach((lesson: any) => {
-              if (lesson.videoUrl) {
-                const lessonVideoKey = extractS3Key(lesson.videoUrl);
-                if (lessonVideoKey) assetsToDelete.push(lessonVideoKey);
-              }
-            });
-          }
-        });
-      }
-
-      // Delete all assets in parallel
-      if (assetsToDelete.length > 0) {
-        console.log(`Cleaning up ${assetsToDelete.length} assets for course ${course._id}`);
-        
-        const deletePromises = assetsToDelete.map(async (key) => {
-          try {
-            await s3Service.deleteFile(key);
-            console.log(`✅ Deleted asset: ${key}`);
-          } catch (error) {
-            console.error(`❌ Failed to delete asset ${key}:`, error);
-            // Continue with other deletions even if one fails
-          }
-        });
-
-        await Promise.allSettled(deletePromises);
-        console.log(`✅ Completed cleanup for course ${course._id}`);
+      if (totalDeleted > 0) {
+        console.log(`✅ Course cleanup completed: ${totalDeleted} files deleted, ${totalFailed} failed`);
       } else {
-        console.log(`No assets to clean up for course ${course._id}`);
+        console.log(`📭 No assets found to clean up for course: ${course.title || course._id}`);
       }
+
+      // Log any errors from failed promises
+      results.forEach((result, index) => {
+        if (result.status === 'rejected') {
+          const method = index === 0 ? 'asset cleanup' : 'folder cleanup';
+          console.error(`❌ ${method} failed:`, result.reason);
+        }
+      });
 
     } catch (error) {
-      console.error('Error in cleanupCourseAssets:', error);
+      console.error('❌ Critical error in cleanupCourseAssets:', error);
       throw error;
     }
   }
@@ -823,6 +803,85 @@ export class AdminController {
       res.status(500).json({
         success: false,
         message: 'Internal server error while fetching debug courses',
+        error: process.env.NODE_ENV === 'development' ? error : 'Something went wrong'
+      });
+    }
+  };
+
+  /**
+   * Manually cleanup S3 assets for a specific course (Admin utility)
+   * @param req - Express request object
+   * @param res - Express response object
+   */
+  cleanupCourseS3Assets = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { courseId } = req.params;
+
+      if (!courseId?.trim()) {
+        res.status(400).json({
+          success: false,
+          message: 'Course ID is required'
+        });
+        return;
+      }
+
+      // Get the course
+      const course = await this.courseService.getCourseById(courseId);
+      
+      if (!course) {
+        res.status(404).json({
+          success: false,
+          message: 'Course not found'
+        });
+        return;
+      }
+
+      // Perform cleanup
+      const { S3Service } = await import('../services/s3.service');
+      const s3Service = new S3Service();
+
+      const [assetCleanup, folderCleanup] = await Promise.allSettled([
+        s3Service.cleanupCourseAssets(course),
+        course.title ? s3Service.deleteCourseFolder(course.title) : Promise.resolve({ totalDeleted: 0, successful: [], failed: [] })
+      ]);
+
+      // Process results
+      const assetResult = assetCleanup.status === 'fulfilled' ? assetCleanup.value : null;
+      const folderResult = folderCleanup.status === 'fulfilled' ? folderCleanup.value : null;
+
+      const totalDeleted = (assetResult?.successful.length || 0) + (folderResult?.totalDeleted || 0);
+      const totalFailed = (assetResult?.failed.length || 0) + (folderResult?.failed.length || 0);
+
+      res.status(200).json({
+        success: true,
+        message: 'S3 cleanup completed',
+        data: {
+          courseId,
+          courseTitle: course.title,
+          summary: {
+            totalDeleted,
+            totalFailed
+          },
+          assetCleanup: assetResult ? {
+            totalAssets: assetResult.totalAssets,
+            successful: assetResult.successful.length,
+            failed: assetResult.failed.length,
+            failedFiles: assetResult.failed
+          } : null,
+          folderCleanup: folderResult ? {
+            totalDeleted: folderResult.totalDeleted,
+            successful: folderResult.successful.length,
+            failed: folderResult.failed.length,
+            failedFiles: folderResult.failed
+          } : null
+        }
+      });
+
+    } catch (error) {
+      console.error('Error in cleanupCourseS3Assets:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error while cleaning up S3 assets',
         error: process.env.NODE_ENV === 'development' ? error : 'Something went wrong'
       });
     }

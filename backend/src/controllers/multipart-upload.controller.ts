@@ -22,9 +22,12 @@ export class MultipartUploadController {
         fileType, 
         folderType = 'LARGE_COURSE_CONTENT_VIDEOS',
         courseId,
+        courseName,
         instructorId,
         moduleId,
-        lessonId 
+        moduleTitle,
+        lessonId,
+        lessonTitle 
       } = req.body;
 
       if (!fileName || !fileType) {
@@ -48,20 +51,6 @@ export class MultipartUploadController {
         return;
       }
 
-      // Create additional path based on provided IDs
-      let additionalPath: string | undefined;
-      if (courseId) {
-        additionalPath = `course-${courseId}`;
-        if (moduleId) {
-          additionalPath += `/module-${moduleId}`;
-          if (lessonId) {
-            additionalPath += `/lesson-${lessonId}`;
-          }
-        }
-      } else if (instructorId) {
-        additionalPath = `instructor-${instructorId}`;
-      }
-
       // Initialize organized multipart upload
       const result = await this.s3Service.createOrganizedMultipartUpload(
         uploadFolderType,
@@ -69,11 +58,13 @@ export class MultipartUploadController {
         fileType,
         {
           courseId,
+          courseName: courseName || (courseId ? `Course-${courseId}` : undefined),
           instructorId,
           moduleId,
-          lessonId
-        },
-        additionalPath
+          moduleTitle,
+          lessonId,
+          lessonTitle
+        }
       );
 
       res.status(200).json({

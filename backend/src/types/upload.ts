@@ -34,9 +34,12 @@ export interface UploadMetadata {
   folderType: UploadFolderType;
   uploadedAt: string;
   courseId?: string;
+  courseName?: string;
   instructorId?: string;
   moduleId?: string;
+  moduleTitle?: string;
   lessonId?: string;
+  lessonTitle?: string;
 }
 
 export interface FolderConfig {
@@ -166,14 +169,119 @@ export const getMaxFileSize = (folderType: UploadFolderType): number | undefined
   return config.maxFileSize;
 };
 
-export const generateFileName = (folderType: UploadFolderType, originalName: string, additionalPath?: string): string => {
+export const generateFileName = (
+  folderType: UploadFolderType, 
+  originalName: string, 
+  courseName?: string,
+  moduleTitle?: string,
+  lessonTitle?: string
+): string => {
   const fileExtension = originalName.split('.').pop();
   const uniqueId = require('uuid').v4();
-  const baseFolder = folderType.toString();
   
-  if (additionalPath) {
-    return `${baseFolder}/${additionalPath}/${uniqueId}.${fileExtension}`;
+  // Sanitize names for file paths (remove special characters, spaces to hyphens)
+  const sanitizeName = (name: string): string => {
+    return name
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '') // Remove special characters
+      .replace(/\s+/g, '-') // Replace spaces with hyphens
+      .replace(/-+/g, '-') // Replace multiple hyphens with single
+      .trim();
+  };
+  
+  if (!courseName) {
+    // Fallback to old structure if no course name provided
+    return `${folderType.toString()}/${uniqueId}.${fileExtension}`;
   }
   
-  return `${baseFolder}/${uniqueId}.${fileExtension}`;
+  const sanitizedCourseName = sanitizeName(courseName);
+  
+  // New structure: Course/{courseName}/...
+  switch (folderType) {
+    case UploadFolderType.COURSE_THUMBNAIL:
+      return `Course/${sanitizedCourseName}/thumbnail/${uniqueId}.${fileExtension}`;
+      
+    case UploadFolderType.COURSE_PREVIEW_VIDEO:
+      return `Course/${sanitizedCourseName}/preview-video/${uniqueId}.${fileExtension}`;
+      
+    case UploadFolderType.COURSE_CONTENT_VIDEO:
+    case UploadFolderType.LARGE_COURSE_CONTENT_VIDEOS:
+      if (moduleTitle && lessonTitle) {
+        const sanitizedModuleTitle = sanitizeName(moduleTitle);
+        const sanitizedLessonTitle = sanitizeName(lessonTitle);
+        return `Course/${sanitizedCourseName}/modules/${sanitizedModuleTitle}/${sanitizedLessonTitle}/${uniqueId}.${fileExtension}`;
+      } else if (moduleTitle) {
+        const sanitizedModuleTitle = sanitizeName(moduleTitle);
+        return `Course/${sanitizedCourseName}/modules/${sanitizedModuleTitle}/${uniqueId}.${fileExtension}`;
+      } else {
+        return `Course/${sanitizedCourseName}/modules/general/${uniqueId}.${fileExtension}`;
+      }
+      
+    case UploadFolderType.COURSE_DOCUMENTS:
+      return `Course/${sanitizedCourseName}/documents/${uniqueId}.${fileExtension}`;
+      
+    case UploadFolderType.INSTRUCTOR_PROFILE_IMAGE:
+      return `Course/${sanitizedCourseName}/instructor/${uniqueId}.${fileExtension}`;
+      
+    default:
+      // For other types, use the old structure
+      return `${folderType.toString()}/${uniqueId}.${fileExtension}`;
+  }
+}; 
+
+// Test function to demonstrate the new folder structure
+export const testNewFolderStructure = () => {
+  console.log('=== New S3 Folder Structure Examples ===');
+  
+  // Course thumbnail
+  const thumbnailPath = generateFileName(
+    UploadFolderType.COURSE_THUMBNAIL,
+    'course-image.jpg',
+    'Complete Web Development Bootcamp',
+    undefined,
+    undefined
+  );
+  console.log('📸 Thumbnail:', thumbnailPath);
+  
+  // Course preview video
+  const previewVideoPath = generateFileName(
+    UploadFolderType.COURSE_PREVIEW_VIDEO,
+    'preview.mp4',
+    'Complete Web Development Bootcamp',
+    undefined,
+    undefined
+  );
+  console.log('🎬 Preview Video:', previewVideoPath);
+  
+  // Course content video
+  const contentVideoPath = generateFileName(
+    UploadFolderType.COURSE_CONTENT_VIDEO,
+    'lesson-video.mp4',
+    'Complete Web Development Bootcamp',
+    'Introduction to HTML',
+    'Basic HTML Structure'
+  );
+  console.log('📹 Content Video:', contentVideoPath);
+  
+  // Course document
+  const documentPath = generateFileName(
+    UploadFolderType.COURSE_DOCUMENTS,
+    'syllabus.pdf',
+    'Complete Web Development Bootcamp',
+    undefined,
+    undefined
+  );
+  console.log('📄 Document:', documentPath);
+  
+  console.log('=== Structure Summary ===');
+  console.log('Course/');
+  console.log('└── {course-name}/');
+  console.log('    ├── thumbnail/');
+  console.log('    ├── preview-video/');
+  console.log('    ├── documents/');
+  console.log('    ├── instructor/');
+  console.log('    └── modules/');
+  console.log('        └── {module-name}/');
+  console.log('            └── {lesson-name}/');
+  console.log('                └── video files');
 }; 
