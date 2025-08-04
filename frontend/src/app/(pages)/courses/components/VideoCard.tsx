@@ -1,4 +1,4 @@
-import OrangeButton from "@/components/ui/OrangeButton";
+import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import { formatDuration } from "@/lib/formatDuration";
 import { cn } from "@/lib/utils";
 import { CourseModule } from "@/types";

@@ -2,7 +2,7 @@
 import InstructorCard from "@/components/ui/course/InstructorCard";
 import FlexBox from "@/components/ui/FlexBox";
 import ProgressChart from "@/components/ui/charts/ProgressChart";
-import WhiteButton from "@/components/ui/WhiteButton";
+import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import { Course } from "@/types";
 import { Plus } from "lucide-react";
 import Image from "next/image";

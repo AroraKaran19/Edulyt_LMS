@@ -6,7 +6,7 @@ import BestsellerBadge from "@/components/ui/course/BestsellerBadge";
 import RatingContainer from "@/components/ui/course/RatingContainer";
 import DiscountBadge from "@/components/ui/course/DiscountBadge";
 import InstructorCard from "@/components/ui/course/InstructorCard";
-import OrangeButton from "@/components/ui/OrangeButton";
+import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import { useRouter } from "next/navigation";
 
 const TopCourseCard = ({

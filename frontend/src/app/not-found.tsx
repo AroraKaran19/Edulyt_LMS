@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { Home, ArrowLeft } from 'lucide-react';
-import OrangeButton from '@/components/ui/OrangeButton';
+import OrangeButton from '@/components/ui/buttons/OrangeButton';
 
 const NotFound = () => {
   return (

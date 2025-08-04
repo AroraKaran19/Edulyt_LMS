@@ -1,9 +1,9 @@
 import app from './app';
 import { connectDB, disconnectDB } from './config/database';
 import dotenv from 'dotenv';
+import { initializeS3 } from './config/s3';
 
 dotenv.config();
-
 
 if (!process.env.PORT) {
   throw new Error('PORT is not defined in environment variables');
@@ -16,6 +16,7 @@ const startServer = async () => {
   try {
     // Connect to MongoDB
     await connectDB();
+    await initializeS3();
 
     // Start the server
     const server = app.listen(PORT, () => {

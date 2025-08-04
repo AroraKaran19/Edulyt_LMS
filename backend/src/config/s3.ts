@@ -1,74 +1,83 @@
-import { S3Client } from '@aws-sdk/client-s3';
+import { S3Client, S3ClientConfig, HeadBucketCommand } from '@aws-sdk/client-s3';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
-// S3 configuration interface
-interface S3Config {
-  accessKeyId: string;
-  secretAccessKey: string;
-  region: string;
-  bucketName?: string;
-}
-
 // S3 client instance
 let s3Client: S3Client | null = null;
 
-// Initialize S3 client
-const initializeS3 = (): S3Client => {
+/**
+ * Initializes an AWS S3 client with credentials and region from environment variables.
+ * Validates bucket accessibility.
+ * @param regionOverride Optional region to override environment variable.
+ * @throws Error if required environment variables are missing or client initialization fails.
+ * @returns A configured S3Client instance.
+ */
+const initializeS3 = async (regionOverride?: string): Promise<S3Client> => {
   try {
-    // Get environment variables
-    const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
-    const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
-    const region = process.env.AWS_REGION || 'eu-north-1';
-
-    // Validate required environment variables
-    if (!accessKeyId) {
-      throw new Error('AWS_ACCESS_KEY_ID is not defined in environment variables');
+    const region = regionOverride || process.env.AWS_REGION;
+    if (!region) {
+      throw new Error('AWS_REGION is not defined in environment variables');
     }
 
-    if (!secretAccessKey) {
-      throw new Error('AWS_SECRET_ACCESS_KEY is not defined in environment variables');
-    }
-
-    console.log('🔄 Initializing AWS S3 client...');
-
-    // Create S3 client configuration
-    const s3Config: S3Config = {
-      accessKeyId,
-      secretAccessKey,
-      region
+    const config: S3ClientConfig = {
+      region,
+      maxAttempts: 3,
     };
 
-    // Initialize S3 client
-    s3Client = new S3Client({
-      region: s3Config.region,
-      credentials: {
-        accessKeyId: s3Config.accessKeyId,
-        secretAccessKey: s3Config.secretAccessKey
-      }
-    });
+    if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
+      config.credentials = {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+      };
+    }
+
+    s3Client = new S3Client(config);
+    const bucketName = getBucketName();
+    await validateBucket(s3Client, bucketName);
 
     console.log(`✅ AWS S3 client initialized successfully`);
-    console.log(`📍 Region: ${region}`);
-
+    console.log(`🌍 Region: ${region}`);
+    console.log(`🗂️ Bucket: ${bucketName}`);
     return s3Client;
-
   } catch (error) {
-    console.error('❌ Error initializing AWS S3 client:', error);
+    console.error('Error initializing AWS S3 client:', error);
     throw error;
   }
 };
 
-// Get S3 client instance (singleton pattern)
-const getS3Client = (): S3Client => {
+/**
+ * Validates that the specified S3 bucket is accessible.
+ * @param client S3Client instance.
+ * @param bucketName Name of the bucket to validate.
+ * @throws Error if the bucket is not accessible.
+ */
+const validateBucket = async (client: S3Client, bucketName: string): Promise<void> => {
+  try {
+    await client.send(new HeadBucketCommand({ Bucket: bucketName }));
+    console.log(`Bucket ${bucketName} is accessible`);
+  } catch (error) {
+    console.error(`Bucket ${bucketName} is not accessible or does not exist:`, error);
+    throw error;
+  }
+};
+
+/**
+ * Gets the singleton S3 client instance, initializing it if necessary.
+ * @returns A configured S3Client instance.
+ */
+const getS3Client = async (): Promise<S3Client> => {
   if (!s3Client) {
-    return initializeS3();
+    return await initializeS3();
   }
   return s3Client;
 };
 
-// Get bucket name from environment
+/**
+ * Gets the S3 bucket name from environment variables.
+ * @throws Error if AWS_S3_BUCKET_NAME is not defined.
+ * @returns The bucket name.
+ */
 const getBucketName = (): string => {
   const bucketName = process.env.AWS_S3_BUCKET_NAME;
   if (!bucketName) {
@@ -77,15 +86,4 @@ const getBucketName = (): string => {
   return bucketName;
 };
 
-// S3 configuration object for external use
-const s3Config = {
-  region: process.env.AWS_REGION || 'eu-north-1',
-  bucketName: process.env.AWS_S3_BUCKET_NAME
-};
-
-export {
-  initializeS3,
-  getS3Client,
-  getBucketName,
-  s3Config
-}; 
+export { initializeS3, getS3Client, getBucketName };

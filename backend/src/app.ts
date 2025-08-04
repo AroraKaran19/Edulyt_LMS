@@ -1,7 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import apiRoutes from './routes';
+import courseRoutes from './routes/course.routes';
+import uploadRoutes from './routes/upload.routes';
 
 // Load environment variables
 dotenv.config();
@@ -17,8 +18,17 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' })); // Parse JSON bodies
 app.use(express.urlencoded({ extended: true })); // Parse URL-encoded bodies
 
-// Routes
-app.use('/api', apiRoutes);
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    message: 'Edulyt Backend Server is running',
+    timestamp: new Date().toISOString()
+  });
+});
 
+// Routes
+app.use('/api/courses', courseRoutes);
+app.use('/api/upload', uploadRoutes);
 
 export default app; 

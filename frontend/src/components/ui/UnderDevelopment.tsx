@@ -24,8 +24,8 @@ const UnderDevelopment = ({ className }: { className?: string }) => {
           Work in Progress
         </h2>
         <p className="text-text-primary/70 font-normal">
-          This page is not accessible right now. We&apos;re working hard to bring you
-          something amazing!
+          This page is not accessible right now. We&apos;re working hard to
+          bring you something amazing!
         </p>
       </div>
       <div className="bg-[#FFE9DB] border border-[#F77124]/20 rounded-lg p-4">

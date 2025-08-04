@@ -1,7 +1,7 @@
 import CourseTitle from "@/components/ui/course/CourseTitle";
 import SectionContainer from "@/components/ui/course/SectionContainer";
-import OrangeButton from "@/components/ui/OrangeButton";
-import WhiteButton from "@/components/ui/WhiteButton";
+import OrangeButton from "@/components/ui/buttons/OrangeButton";
+import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import { Course } from "@/types";
 import { Check, Crown } from "lucide-react";
 import Image from "next/image";

@@ -2,18 +2,25 @@
 // Instructor Type
 // ===================
 
-export interface Instructor {
-  _id: string;
+import { Course } from ".";
+import { Review } from "./review";
+
+export interface CourseInstructor {
+  _id?: string;
   name: string;
   profileImage?: string;
-  experience: string;
+  // experience?: string;
   rating: number;
   totalStudents: number;
   totalCourses: number;
-  bio: string;
+  bio?: string;
   currentPosition?: string;
   currentCompany?: string;
   previousExperience?: string[];
-  education?: string[];
-  linkedinUrl: string;
+  // education?: string[];
+  linkedinUrl?: string;
+  reviews: Review["_id"][];
+  courseIds: Course["_id"][];
+  createdAt?: Date;
+  updatedAt?: Date;
 }

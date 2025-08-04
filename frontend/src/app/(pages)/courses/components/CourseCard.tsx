@@ -2,7 +2,7 @@ import BestsellerBadge from "@/components/ui/course/BestsellerBadge";
 import DiscountBadge from "@/components/ui/course/DiscountBadge";
 import InstructorCard from "@/components/ui/course/InstructorCard";
 import RatingContainer from "@/components/ui/course/RatingContainer";
-import OrangeButton from "@/components/ui/OrangeButton";
+import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import { cn } from "@/lib/utils";
 import { Course } from "@/types";
 import { Plus } from "lucide-react";

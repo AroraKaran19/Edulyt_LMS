@@ -7,6 +7,7 @@ import {
   ReadingMaterial,
   Video,
 } from "../types";
+import { validateQuiz, validateUrl } from "./validators";
 
 // ===================
 // Reading Material Schema
@@ -23,10 +24,8 @@ const readingMaterialSchema = new mongoose.Schema<ReadingMaterial>(
     downloadUrl: {
       type: String,
       validate: {
-        validator: (value: string) => {
-          return value.startsWith("https://") || value.startsWith("http://");
-        },
-        message: "Download URL must be a link",
+        validator: validateUrl,
+        message: "Download URL must be a valid URL",
       },
     },
   },
@@ -47,7 +46,7 @@ const quizSchema = new mongoose.Schema<Quiz>(
             type: [String],
             required: true,
             validate: {
-              validator: (options: string[]) => options.length >= 2,
+              validator: validateQuiz,
               message: "Quiz must have at least 2 options",
             },
           },
@@ -81,12 +80,8 @@ const videoSchema = new mongoose.Schema<Video>(
             type: String,
             required: true,
             validate: {
-              validator: (value: string) => {
-                return (
-                  value.startsWith("https://") || value.startsWith("http://")
-                );
-              },
-              message: "Video URL must be a link",
+              validator: validateUrl,
+              message: "Video URL must be a valid URL",
             },
           },
         },
@@ -96,10 +91,8 @@ const videoSchema = new mongoose.Schema<Video>(
     thumbnailUrl: {
       type: String,
       validate: {
-        validator: (value: string) => {
-          return value.startsWith("https://") || value.startsWith("http://");
-        },
-        message: "Thumbnail must be a link",
+        validator: validateUrl,
+        message: "Thumbnail must be a valid URL",
       },
     },
     duration: { type: Number, min: [0, "Duration must be positive"] },
@@ -154,10 +147,8 @@ const courseModuleSchema = new mongoose.Schema<CourseModule>(
       type: String,
       required: true,
       validate: {
-        validator: (value: string) => {
-          return value.startsWith("https://") || value.startsWith("http://");
-        },
-        message: "Thumbnail must be a link",
+        validator: validateUrl,
+        message: "Thumbnail must be a valid URL",
       },
     },
     lessonIds: [

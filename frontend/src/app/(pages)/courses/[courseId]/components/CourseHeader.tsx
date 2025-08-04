@@ -2,7 +2,7 @@ import BestsellerBadge from "@/components/ui/course/BestsellerBadge";
 import { Course } from "@/types";
 import React from "react";
 import DiscountCountdown from "../../components/DiscountCountdown";
-import OrangeButton from "@/components/ui/OrangeButton";
+import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import { cn } from "@/lib/utils";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { Star } from "lucide-react";

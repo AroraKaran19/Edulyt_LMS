@@ -2,7 +2,7 @@
 import { Course, CourseLesson, CourseModule, Content } from "@/types";
 import React, { memo, useEffect, useMemo, useState } from "react";
 import SectionContainer from "./components/SectionContainer";
-import WhiteButton from "@/components/ui/WhiteButton";
+import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import { Clock3, Play, FileText } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useLessonNavigation } from "./hooks/useLessonNavigation";

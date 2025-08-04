@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { Course, FAQ, Plan, Testimonial } from "../types";
 import plansSchema from "./plans.schema";
+import { validateAudience, validatePlans, validateUrl } from "./validators";
 
 // ===================
 // FAQ Schema
@@ -77,10 +78,8 @@ const courseSchema = new mongoose.Schema<Course>(
       type: String,
       required: true,
       validate: {
-        validator: (value: string) => {
-          return value.startsWith("https://") || value.startsWith("http://");
-        },
-        message: "Thumbnail must be a link",
+        validator: validateUrl,
+        message: "Thumbnail must be a valid URL",
       },
     },
     previewVideoUrl: { type: String, required: true },
@@ -139,13 +138,13 @@ const courseSchema = new mongoose.Schema<Course>(
       ref: "CourseInstructor",
     },
     plans: {
-      elite: { type: plansSchema, required: false, default: null },
-      essential: { type: plansSchema, required: false, default: null },
+      type: {
+        elite: { type: plansSchema, required: false, default: null },
+        essential: { type: plansSchema, required: false, default: null },
+      },
       required: true,
       validate: {
-        validator: (plans: { elite?: Plan; essential?: Plan }) => {
-          return !!(plans.elite || plans.essential);
-        },
+        validator: validatePlans,
         message: "Course must have at least one plan (elite or essential)",
       },
     },
@@ -170,17 +169,20 @@ const courseSchema = new mongoose.Schema<Course>(
       required: true,
       enum: ["college-students", "professionals"],
       validate: {
-        validator: (value: string) =>
-          value === "college-students" || value === "professionals",
+        validator: validateAudience,
         message: "Audience must be either college-students or professionals",
       },
     },
     slug: { type: String, required: true, unique: true },
-    metaTitle: { type: String, required: false, default: "Edulyt Course" },
+    metaTitle: {
+      type: String,
+      required: false,
+      default: "Course | Edulyt India",
+    },
     metaDescription: {
       type: String,
       required: false,
-      default: "Edulyt Course",
+      default: "Course Edulyt India",
     },
     keywords: { type: [String], required: false, default: [] },
     scholarship: { type: Boolean, default: false, required: true },

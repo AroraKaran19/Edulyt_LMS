@@ -1,6 +1,6 @@
 "use client";
-import OrangeButton from "@/components/ui/OrangeButton";
-import WhiteButton from "@/components/ui/WhiteButton";
+import OrangeButton from "@/components/ui/buttons/OrangeButton";
+import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import { Eye, Lock, Mail } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";

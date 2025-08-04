@@ -1,23 +1,21 @@
-// Types - Data types for Edulyt platform
-export interface NavItem {
-  label: string;
-  href: string;
-  isDashboard?: boolean;
-  featureBox?: string;
-  active?: boolean;
-  onMouseEnter?: () => void;
+// ===================
+// Type Exports
+// ===================
+
+export interface Discount {
+    discount: "percentage" | "fixed";
+    value: number;
+    isActive?: boolean;
 }
 
-export interface Filter {
-    label: string;
-    value: string;
-    featureBox?: {
-      value: string;
-    };
-  }
-  
- 
-// Re-export all types
-export * from './course';
-export * from './instructor';
-export * from './user'; 
+// User Types
+export * from "./user";
+
+// Course Types
+export * from "./course";
+
+// Instructor Types
+export * from "./instructor";
+
+// Course Reducer (New Modular Structure)
+export * from "../app/admin/courses/course-reducer/index"; 

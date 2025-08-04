@@ -1,12 +1,12 @@
 import Image from "next/image";
 import Link from "next/link";
 import React, { useState } from "react";
-import OrangeButton from "../../ui/OrangeButton";
+import OrangeButton from "../../ui/buttons/OrangeButton";
 import Navlink from "./Navlink";
 import { Manrope, Plus_Jakarta_Sans } from "next/font/google";
 import { cn } from "@/lib/utils";
 import { NavItem } from "@/types";
-import WhiteButton from "@/components/ui/WhiteButton";
+import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import { Menu, X } from "lucide-react";
 import HoverContainer from "./HoverContainer";
 

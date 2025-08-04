@@ -1,6 +1,6 @@
 import CourseTitle from "@/components/ui/course/CourseTitle";
 import SectionContainer from "@/components/ui/course/SectionContainer";
-import OrangeButton from "@/components/ui/OrangeButton";
+import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import { Course } from "@/types";
 import React from "react";
 

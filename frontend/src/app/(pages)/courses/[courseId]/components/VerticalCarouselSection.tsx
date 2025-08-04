@@ -1,5 +1,5 @@
 import SectionContainer from "@/components/ui/course/SectionContainer";
-import OrangeButton from "@/components/ui/OrangeButton";
+import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import React from "react";
 import Link from "next/link";
 import VerticalCarousel from "../../components/VerticalCarousel";

@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { CourseInstructor } from "../types";
+import { validateLinkedinUrl, validateUrl } from "./validators";
 
 // ===================
 // Instructor Schema
@@ -16,19 +17,21 @@ const instructorSchema = new mongoose.Schema<CourseInstructor>(
     bio: { type: String, required: false },
     currentPosition: { type: String, required: false },
     currentCompany: { type: String, required: false },
-    previousExperience: { type: [String], required: false },
+    previousExperience: {
+      type: [String],
+      required: false,
+      validate: {
+        validator: validateUrl,
+        message: "Previous experience must be a valid URL",
+      },
+    },
     // education: { type: [String], required: false },
     linkedinUrl: {
       type: String,
       required: false,
       validate: {
-        validator: (value: string) => {
-          return (
-            value.startsWith("https://www.linkedin.com/in/") ||
-            value.startsWith("https://www.linkedin.com/in/")
-          );
-        },
-        message: "Linkedin URL must start with https://www.linkedin.com/in/",
+        validator: validateLinkedinUrl,
+        message: "Linkedin URL must be a valid LinkedIn profile URL",
       },
     },
     reviews: {

@@ -1,109 +1,97 @@
-// ===================
-// Utility Types
-// ===================
-
-import { Instructor } from "./instructor";
-
-export type Discount = {
-    discount: "percentage" | "fixed";
-    value: number;
-    startDate?: Date;
-    endDate?: Date;
-    isActive?: boolean;
-};
+import { Discount, User } from ".";
+import { CourseInstructor } from "./instructor";
+import { Review } from "./review";
 
 // ===================
 // Video & Note Types
 // ===================
 
-export interface VideoQuality {
-    _id: string;
+export interface Video {
+  sources: {
     quality: "1080p" | "720p" | "480p" | "360p";
     videoUrl: string;
-}
-
-export interface Video {
-    _id: string;
-    sources: VideoQuality[];
-    thumbnailUrl?: string;
-    duration?: number; // in seconds
+  }[];
+  thumbnailUrl?: string;
+  duration?: number; // in seconds
 }
 
 // ===================
 // Quiz Types
 // ===================
 
-export interface QuizOption {
-    _id: string;
-    option: string;
-}
-
 export interface QuizQuestion {
-    _id: string;
-    question: string;
-    options: QuizOption[];
-    correctAnswer: QuizOption[];
-    timeLimit?: number;
+  question: string;
+  options: string[];
+  correctAnswer: string[];
+  timeLimit?: number;
 }
 
 export interface Quiz {
-    _id: string;
-    title: string;
-    description?: string;
-    questions: QuizQuestion[];
-    passingScore?: number;
-    maxAttempts?: number;
-    createdAt?: Date;
-    updatedAt?: Date;
+  _id?: string;
+  questions: QuizQuestion[];
+  passingScore?: number;
+  maxAttempts?: number;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 // ===================
 // Content Types
 // ===================
 
-// export interface ReadingMaterial {
-//     _id: string;
-//     content: "pdf" | "docx";
-//     estimatedReadTime: number;
-//     downloadUrl?: string;
-// }
+export interface ReadingMaterial {
+  _id?: string;
+  content: "pdf" | "docx";
+  estimatedReadTime: number;
+  downloadUrl?: string;
+}
 
 export interface Content {
-    _id: string;
-    title: string;
-    description?: string;
-    content: Video | Quiz;
-    type: "video" | "quiz";
-    // readingMaterials?: ReadingMaterial[];
-    isCompleted?: boolean;
-    completedAt?: Date;
-    isLocked?: boolean;
-    createdAt?: Date;
-    updatedAt?: Date;
+  _id?: string;
+  title: string;
+  description?: string;
+  content: Video | Quiz;
+  type: "video" | "quiz";
+  readingMaterials?: ReadingMaterial[];
+  isCompleted?: boolean;
+  completedAt?: Date;
+  isLocked?: boolean;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
+
+// ===================
+// Course Lesson Types
+// ===================
 
 export interface CourseLesson {
-    _id: string;
-    title: string;
-    description?: string;
-    content: Content[];
-    isCompleted?: boolean;
-    completedAt?: Date;
-    isLocked?: boolean;
-    createdAt?: Date;
-    updatedAt?: Date;
+  _id?: string;
+  title: string;
+  description?: string;
+  moduleId: CourseModule["_id"];
+  contentIds: Content["_id"][];
+  isCompleted?: boolean;
+  completedAt?: Date;
+  isLocked?: boolean;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
+// ===================
+// Course Module Types
+// ===================
+
 export interface CourseModule {
-    _id: string;
-    title: string;
-    thumbnailUrl?: string;
-    lessons: CourseLesson[];
-    description?: string;
-    isCompleted?: boolean;
-    isLocked?: boolean;
-    createdAt?: Date;
-    updatedAt?: Date;
+  _id?: string;
+  title: string;
+  thumbnailUrl?: string;
+  lessonIds: CourseLesson["_id"][];
+  description?: string;
+  isCompleted?: boolean;
+  isActive?: boolean;
+  isLocked?: boolean; // if the module is locked, the user cannot access the lessons
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 // ===================
@@ -111,23 +99,23 @@ export interface CourseModule {
 // ===================
 
 export interface PlanFeatures {
-    title: string;
-    provided: boolean;
+  title: string;
+  provided: boolean;
 }
 
 export interface Plan {
-    _id?: string;
-    title: string;
-    type: "elite" | "essential";
-    price: number;
-    features: PlanFeatures[];
-    discount?: Discount;
-    isPopular?: boolean;
-    billingPeriod?: "monthly" | "annually" | "lifetime";
-    trialDays?: number;
-    isActive?: boolean;
-    createdAt?: Date;
-    updatedAt?: Date;
+  _id?: string;
+  title: string;
+  type: "elite" | "essential";
+  price: number;
+  features: PlanFeatures[];
+  discount?: Discount;
+  isPopular?: boolean;
+  billingPeriod?: "monthly" | "annually" | "lifetime";
+  trialDays?: number;
+  isActive?: boolean;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 // ===================
@@ -135,37 +123,15 @@ export interface Plan {
 // ===================
 
 export interface FAQ {
-    _id: string;
-    question: string;
-    answer: string;
+  question: string;
+  answer: string;
 }
 
-export interface Review {
-    _id?: string;
-    name: string;
-    rating: number;
-    comment: string;
-    profileImage?: string;
-    currentRole?: string;
-    pastRole?: string;
-    pastCompany?: string;
-    currentCompany?: string;
-    linkedin?: string;
-    date: Date;
-    isActive?: boolean;
-    createdAt?: Date;
-    updatedAt?: Date;
-}
-
-export interface FeaturedReview extends Review {
-    // Required fields for featured reviews
-    profileImage: string;
-    currentRole: string;
-    currentCompany: string;
-    pastRole: string;
-    pastCompany: string;
-    linkedin: string;
-    verified?: boolean;
+export interface Testimonial extends Omit<Review, "_id" | "profileImage"> {
+  pastRole: string;
+  pastCompany: string;
+  verified?: boolean;
+  profileImage: string;
 }
 
 // ===================
@@ -173,77 +139,76 @@ export interface FeaturedReview extends Review {
 // ===================
 
 export interface Course {
-    // Basic Information
-    _id: string;
+  // Basic Information
+  _id?: string;
+  title: string;
+  description: string;
+  shortDescription?: string;
+  category: string;
+  subcategory?: string;
+  thumbnail: string;
+  previewVideoUrl?: string;
+
+  isFeatured?: boolean;
+  isCertified?: boolean;
+
+  // Metrics
+  enrolledCount: number;
+  totalRatings: number;
+
+  // UI & Learning Info
+  whatYouWillLearn: string;
+  skills: string[];
+  courseTestimonials: {
     title: string;
     description: string;
-    shortDescription?: string;
-    category: string;
-    subcategory?: string;
-    thumbnail: string;
-    previewVideoUrl: string;
+  }[];
+  features?: string[];
+  careerPaths: string[];
+  skillLevel: string;
+  whoShouldJoin: string;
+  prerequisites?: string[];
+  fakeDiscount?: number; // in percentage for display purposes
+  duration: string; // like: 3 months, 1 year, 2 years, etc. (will not be accurate)
 
-    isFeatured?: boolean;
-    isCertified?: boolean;
+  // Content
+  modules: CourseModule["_id"][];
 
-    // Metrics
-    enrolledCount: number;
-    totalRatings: number;
-    totalLectures: number;
+  // Instructor
+  instructor: CourseInstructor["_id"][]; // can be multiple instructors
 
-    // UI & Learning Info
-    whatYouWillLearn: string;
-    skills: string[];
-    keyFeatures: {
-        title: string;
-        description: string;
-    }[];
-    features?: string[];
-    careerPaths: string[];
-    skillLevel: string;
-    whoShouldJoin: string;
-    prerequisites?: string[];
-    discount?: Discount;
-    duration: string; // like: 3 months, 1 year, 2 years, etc. (will not be accurate)
+  // Pricing Plans
+  plans: {
+    elite?: Plan;
+    essential?: Plan;
+  };
 
-    // Content
-    modules: CourseModule[];
+  // Reviews
+  reviews: Review["_id"][];
+  testimonials?: Testimonial[];
 
-    // Instructor
-    instructor: Instructor[];
+  // FAQs
+  faqs: FAQ[];
 
-    // Pricing Plans
-    plans: {
-        elite?: Plan;
-        essential?: Plan;
-    };
+  // Administrative
+  isActive: boolean;
+  createdAt?: Date;
+  updatedAt?: Date;
+  createdBy: User["_id"];
+  tags?: string[];
+  audience: "college-students" | "professionals";
 
-    // Reviews
-    reviews: Review[];
-    featuredReviews?: FeaturedReview[];
+  // SEO
+  slug: string;
+  metaTitle?: string;
+  metaDescription?: string;
+  keywords?: string[];
 
-    // FAQs
-    faqs: FAQ[];
+  // Scholarship
+  scholarship?: boolean;
+  scholarshipDescription?: string;
+  // scholarshipQuiz?: Quiz[];
 
-    // Administrative
-    isActive: boolean;
-    createdAt: Date;
-    updatedAt: Date;
-    createdBy: string;
-    tags?: string[];
-    audience: "college-students" | "professionals";
-
-    // SEO
-    slug: string;
-    metaTitle?: string;
-    metaDescription?: string;
-    keywords?: string[];
-
-    // Scholarship
-    scholarship?: boolean;
-    scholarshipDescription?: string;
-    scholarshipQuiz?: Quiz[];
-
-    // Language
-    language: string;
+  // Language
+  language: string;
 }

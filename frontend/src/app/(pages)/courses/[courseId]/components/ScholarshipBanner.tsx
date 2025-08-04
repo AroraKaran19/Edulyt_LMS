@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 import React from "react";
 import { Plus_Jakarta_Sans } from "next/font/google";
-import OrangeButton from "@/components/ui/OrangeButton";
+import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import SectionContainer from "@/components/ui/course/SectionContainer";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
