@@ -25,35 +25,35 @@ const Leaderboard = () => {
   ];
 
   return (
-    <FlexBox className="w-full flex-col h-max gap-6 border border-gray-200 rounded-lg p-5">
+    <FlexBox className="w-full flex-col h-max gap-4 sm:gap-5 md:gap-6 border border-gray-200 rounded-lg p-3 sm:p-4 md:p-5">
       <FlexBox className="w-full justify-between items-center">
-        <h2 className="text-base font-bold">Leaderboard</h2>
+        <h2 className="text-sm sm:text-base font-bold">Leaderboard</h2>
       </FlexBox>
-      <FlexBox className="w-full h-full flex-col gap-4">
+      <FlexBox className="w-full h-full flex-col gap-2 sm:gap-3 md:gap-4">
         {demoUsers.map(
           (user, index) =>
             index < 10 && (
               <FlexBox
                 key={index}
-                className={`w-full h-full flex-col p-2.5 gap-2 rounded-xl ${
+                className={`w-full h-full flex-col p-2 sm:p-2.5 gap-1.5 sm:gap-2 rounded-xl ${
                   index === 0
                     ? "border-3 border-[#F7AD24]"
                     : "border border-gray-200"
                 }`}
               >
-                <FlexBox className="w-full h-full gap-4 items-stretch">
-                  <FlexBox className="items-center gap-2 shrink-0">
+                <FlexBox className="w-full h-full gap-2 sm:gap-3 md:gap-4 items-stretch">
+                  <FlexBox className="items-center gap-1.5 sm:gap-2 shrink-0">
                     {user.avatar ? (
                       <Image
                         src={user.avatar}
                         alt={user.name}
-                        width={40}
-                        height={40}
-                        className="rounded-full"
+                        width={32}
+                        height={32}
+                        className="rounded-full sm:w-10 sm:h-10"
                       />
                     ) : (
-                      <div className="size-10 bg-[#5E00FF] rounded-xl overflow-hidden flex items-center justify-center">
-                        <span className="text-white text-base font-bold select-none">
+                      <div className="size-8 sm:size-10 bg-[#5E00FF] rounded-xl overflow-hidden flex items-center justify-center">
+                        <span className="text-white text-sm sm:text-base font-bold select-none">
                           {user.name.split(" ").length === 1
                             ? user.name.substring(0, 2).toUpperCase()
                             : (
@@ -77,12 +77,12 @@ const Leaderboard = () => {
                     <Image
                       src="/LeaderboardMedal.svg"
                       alt="medal"
-                      width={24}
-                      height={24}
-                      className="ml-auto shrink-0 select-none"
-											quality={100}
-											draggable={false}
-											loading="lazy"
+                      width={20}
+                      height={20}
+                      className="ml-auto shrink-0 select-none sm:w-6 sm:h-6"
+                      quality={100}
+                      draggable={false}
+                      loading="lazy"
                     />
                   )}
                 </FlexBox>
