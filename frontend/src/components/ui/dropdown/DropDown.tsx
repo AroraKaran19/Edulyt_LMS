@@ -14,6 +14,7 @@ interface DropDownProps {
   options: string[];
   className?: string;
   defaultValue?: string;
+  value?: string; // Add controlled value prop
   disabled?: boolean;
   onChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void;
   [key: string]: any; // For other HTML select attributes
@@ -25,10 +26,13 @@ const DropDown = ({
   options,
   className,
   defaultValue = "Select an option",
+  value,
   ...props
 }: DropDownProps) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [selectedValue, setSelectedValue] = useState(defaultValue);
+  // Use value prop if provided (controlled), otherwise use internal state (uncontrolled)
+  const [internalValue, setInternalValue] = useState(defaultValue);
+  const selectedValue = value !== undefined ? value : internalValue;
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown when clicking outside
@@ -110,7 +114,10 @@ const DropDown = ({
                 key={option}
                 type="button"
                 onClick={() => {
-                  setSelectedValue(option);
+                  // Only update internal state if not controlled
+                  if (value === undefined) {
+                    setInternalValue(option);
+                  }
                   setIsOpen(false);
                   // Trigger onChange if provided
                   if (props.onChange) {
@@ -143,7 +150,10 @@ const DropDown = ({
         required={required}
         value={selectedValue === defaultValue ? "" : selectedValue}
         onChange={(e) => {
-          setSelectedValue(e.target.value || defaultValue);
+          // Only update internal state if not controlled
+          if (value === undefined) {
+            setInternalValue(e.target.value || defaultValue);
+          }
           if (props.onChange) {
             props.onChange(e);
           }

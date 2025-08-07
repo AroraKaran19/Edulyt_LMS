@@ -14,6 +14,7 @@ interface CategoryInputProps {
   options: string[];
   className?: string;
   defaultValue?: string;
+  value?: string; // Add controlled value prop
   disabled?: boolean;
   onChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void;
   setChange?: (value: string) => void;
@@ -26,6 +27,7 @@ const CategoryInput = ({
   options,
   className,
   defaultValue = "Select a category",
+  value,
   disabled = false,
   onChange,
   setChange,
@@ -34,7 +36,9 @@ const CategoryInput = ({
   // Destructure setChange from props to avoid passing it to DOM elements
   const { setChange: _, ...domProps } = props;
   const [isOpen, setIsOpen] = useState(false);
-  const [selectedValue, setSelectedValue] = useState(defaultValue);
+  // Use value prop if provided (controlled), otherwise use internal state (uncontrolled)
+  const [internalValue, setInternalValue] = useState(defaultValue);
+  const selectedValue = value !== undefined ? value : internalValue;
   const [isTyping, setIsTyping] = useState(false);
   const [customValue, setCustomValue] = useState("");
   const [showCustomInput, setShowCustomInput] = useState(false);
@@ -65,7 +69,10 @@ const CategoryInput = ({
   }, [showCustomInput]);
 
   const handleOptionSelect = (option: string) => {
-    setSelectedValue(option);
+    // Only update internal state if not controlled
+    if (value === undefined) {
+      setInternalValue(option);
+    }
     setIsOpen(false);
     setShowCustomInput(false);
     setIsTyping(false);
@@ -237,7 +244,10 @@ const CategoryInput = ({
         required={required}
         value={selectedValue === defaultValue ? "" : selectedValue}
         onChange={(e) => {
-          setSelectedValue(e.target.value || defaultValue);
+          // Only update internal state if not controlled
+          if (value === undefined) {
+            setInternalValue(e.target.value || defaultValue);
+          }
           if (onChange) {
             onChange(e);
           }

@@ -17,5 +17,8 @@ export * from "./course";
 // Instructor Types
 export * from "./instructor";
 
+// Review Types
+export * from "./review";
+
 // Course Reducer (New Modular Structure)
 export * from "../app/admin/courses/course-reducer/index"; 

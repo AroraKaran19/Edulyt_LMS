@@ -502,7 +502,7 @@ const UploadMediaContainer: React.FC<UploadMediaContainerProps> = ({
                 </p>
                 <p className="text-xs text-gray-500 mt-1">
                   {formats.join(", ").toUpperCase()} up to{" "}
-                  {maxSize > 1024
+                  {maxSize >= 1024
                     ? `${(maxSize / 1024).toFixed(0)}GB`
                     : `${maxSize.toFixed(0)}MB`}
                 </p>

@@ -1,25 +1,23 @@
 import Container from "@/app/admin/components/ui/Container";
 import FlexBox from "@/components/ui/FlexBox";
-import Input from "@/components/ui/inputs/Input";
 import React from "react";
 import { useCourseContext } from "../../../course-reducer/CourseReducerProvider";
 import TextArea from "@/components/ui/inputs/TextArea";
-import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import { useScreen } from "../contexts/ScreenContext";
 import CheckBoxContainer from "@/components/ui/inputs/CheckBoxContainer";
 import UploadMediaContainer from "@/components/ui/container/UploadMediaContainer";
-import { generateCourseFolderName } from "@/utils/folderUtils";
 import { useUpload } from "@/hooks/useUpload";
+import ScreenNavigation from "./shared/ScreenNavigation";
 
 const Screen3 = () => {
   const { state, actions } = useCourseContext();
   const { setActiveScreen } = useScreen();
-  const { uploadFile } = useUpload();
+  const { uploadFile, isUploading } = useUpload();
 
   // Generate folder names based on course title
   const courseTitle = state.course.title || "untitled-course";
-  const thumbnailFolder = generateCourseFolderName(courseTitle, "thumbnails");
-  const videoFolder = generateCourseFolderName(courseTitle, "videos");
+  const thumbnailFolder = `courses/${courseTitle}/thumbnail`;
+  const videoFolder = `courses/${courseTitle}/previewVideo`;
 
   // Handle file uploads
   const handleThumbnailUpload = async (file: File, folderName: string): Promise<string> => {
@@ -59,8 +57,7 @@ const Screen3 = () => {
 
   return (
     <Container
-      title="Content & Media"
-      description="Add course media and content information"
+      title="Preview Video & Thumbnail"
       className="rounded-b-none h-full w-full max-h-full overflow-y-auto flex flex-col"
       style={{ scrollbarWidth: "thin" }}
     >
@@ -73,6 +70,7 @@ const Screen3 = () => {
           maxSize={5}
           onFileUpload={handleThumbnailUpload}
           onFileRemove={() => actions.setCourseThumbnail("")}
+          isUploading={isUploading}
           folderName={thumbnailFolder}
           showConfirmation={true}
           onConfirmUpload={handleUploadConfirmation}
@@ -88,9 +86,10 @@ const Screen3 = () => {
           description={`Upload the preview video for "${courseTitle}"`}
           type="video"
           mediaUrl={state.course.previewVideoUrl}
-          maxSize={100}
+          maxSize={1024}
           onFileUpload={handleVideoUpload}
           onFileRemove={() => actions.setCoursePreviewVideoUrl("")}
+          isUploading={isUploading}
           folderName={videoFolder}
           showConfirmation={true}
           onConfirmUpload={handleUploadConfirmation}
@@ -144,24 +143,15 @@ const Screen3 = () => {
         />
       )}
 
-      <FlexBox className="w-full gap-4 mt-auto mb-4 justify-between">
-        <OrangeButton
-          className="w-max px-16"
-          onClick={() => setActiveScreen("screen2")}
-        >
-          Previous
-        </OrangeButton>
-        <OrangeButton
-          className="w-max px-16"
-          onClick={() => setActiveScreen("screen4")}
-          disabled={
-            !state.course.thumbnail ||
-            (state.course.scholarship && !state.course.scholarshipDescription)
-          }
-        >
-          Next Page
-        </OrangeButton>
-      </FlexBox>
+      <ScreenNavigation
+        currentStep={3}
+        previousScreen="screen2"
+        nextScreen="screen4"
+        isNextDisabled={
+          !state.course.thumbnail ||
+          (state.course.scholarship && !state.course.scholarshipDescription)
+        }
+      />
     </Container>
   );
 };

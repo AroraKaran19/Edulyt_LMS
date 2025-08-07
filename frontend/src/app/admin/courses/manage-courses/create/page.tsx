@@ -10,13 +10,12 @@ import Screen4 from "./components/Screen4";
 import Screen5 from "./components/Screen5";
 import Screen6 from "./components/Screen6";
 import Screen7 from "./components/Screen7";
+import Screen8 from "./components/Screen8";
 import { ScreenProvider, useScreen } from "./contexts/ScreenContext";
 import { CourseReducerProvider } from "../../course-reducer/CourseReducerProvider";
-import { useDraftNotification } from "./hooks/useDraftNotification";
 
 const CreateCourseContent = () => {
   const { activeScreen } = useScreen();
-  const { showDraftNotification, dismissNotification } = useDraftNotification();
 
   return (
     <FlexBox className="w-full h-full flex-col gap-8 px-8 relative">
@@ -30,9 +29,10 @@ const CreateCourseContent = () => {
         {activeScreen === "screen2" && <Screen2 />}
         {activeScreen === "screen3" && <Screen3 />}
         {activeScreen === "screen4" && <Screen4 />}
-        {/* {activeScreen === "screen5" && <Screen5 />} */}
-        {activeScreen === "screen5" && <Screen6 />}
-        {activeScreen === "screen6" && <Screen7 />}
+        {activeScreen === "screen5" && <Screen5 />}
+        {activeScreen === "screen6" && <Screen6 />}
+        {activeScreen === "screen7" && <Screen7 />}
+        {activeScreen === "screen8" && <Screen8 />}
       </FlexBox>
     </FlexBox>
   );

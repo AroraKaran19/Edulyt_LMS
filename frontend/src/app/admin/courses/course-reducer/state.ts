@@ -7,17 +7,17 @@ import { Course } from "../../../../types/course";
 export interface CourseState {
   // Course Data
   course: Course;
-  
+
   // UI States
   isLoading: boolean;
   isSaving: boolean;
   error: string | null;
   validationErrors: Record<string, string[]>;
-  
+
   // Form States
   isDirty: boolean;
   hasUnsavedChanges: boolean;
-  
+
   // Metadata
   lastSaved: Date | null;
   version: number;
@@ -37,70 +37,84 @@ export const initialCourseState: CourseState = {
     subcategory: "",
     thumbnail: "",
     previewVideoUrl: "",
-    slug: "",
-    language: "English",
-    
-    // Status
+
     isFeatured: false,
     isCertified: false,
-    isActive: true,
-    scholarship: false,
-    scholarshipDescription: "",
-    
+
     // Metrics
     enrolledCount: 0,
     totalRatings: 0,
-    totalLectures: 0,
-    
-    // Learning Info
+
+    // UI & Learning Info
     whatYouWillLearn: "",
     skills: [],
-    keyFeatures: [],
+    courseTestimonials: [
+      {
+        title: "",
+        description: "",
+      },
+    ],
     features: [],
     careerPaths: [],
-    skillLevel: "Beginner",
+    skillLevel: "",
     whoShouldJoin: "",
     prerequisites: [],
-    discount: undefined,
-    audience: "college-students",
-    duration: "",
-    tags: [],
-    
+    fakeDiscount: 0, // in percentage for display purposes
+    duration: "", // like: 3 months, 1 year, 2 years, etc. (will not be accurate)
+
     // Content
     modules: [],
-    instructor: [],
-    plans: {},
-    
-    // Reviews & FAQs
+
+    // Instructor
+    instructor: [], // can be multiple instructors
+
+    // Pricing Plans
+    plans: {
+      elite: undefined,
+      essential: undefined,
+    },
+
+    // Reviews
     reviews: [],
-    featuredReviews: [],
+    testimonials: [],
+
+    // FAQs
     faqs: [],
-    
-    // Quiz
-    scholarshipQuiz: [],
-    
-    // SEO
-    metaTitle: "",
-    metaDescription: "",
-    keywords: [],
-    
-    // Timestamps
+
+    // Administrative
+    isActive: false,
     createdAt: new Date(),
     updatedAt: new Date(),
     createdBy: "",
+    tags: [],
+    audience: "college-students" as "college-students" | "professionals",
+
+    // SEO
+    slug: "",
+    metaTitle: "",
+    metaDescription: "",
+    keywords: [],
+
+    // Scholarship
+    scholarship: false,
+    scholarshipDescription: "",
+    // scholarshipQuiz?: Quiz[];
+
+    // Language
+    language: "",
   },
-  
+
   // UI States
   isLoading: false,
   isSaving: false,
   error: null,
   validationErrors: {},
-  
+
   // Form States
   isDirty: false,
   hasUnsavedChanges: false,
-  
+
   // Metadata
   lastSaved: null,
   version: 1,
-}; 
+};

@@ -5,18 +5,16 @@ import React from "react";
 import { useCourseContext } from "../../../course-reducer/CourseReducerProvider";
 import TextArea from "@/components/ui/inputs/TextArea";
 import DropDown from "@/components/ui/dropdown/DropDown";
-import OrangeButton from "@/components/ui/buttons/OrangeButton";
-import { useScreen } from "../contexts/ScreenContext";
 import TagInput from "@/components/ui/inputs/TagInput";
+import ScreenNavigation from "./shared/ScreenNavigation";
 
 const Screen2 = () => {
   const { state, actions } = useCourseContext();
-  const { setActiveScreen } = useScreen();
 
   return (
     <Container
-      title="Learning Information & Skills"
-      description="Define what students will learn and the skills they'll acquire"
+      title="UI related information"
+      description="These are required to fill the UI of the course" 
       className="rounded-b-none h-full w-full max-h-full overflow-y-auto flex flex-col"
       style={{ scrollbarWidth: "thin" }}
     >
@@ -55,8 +53,7 @@ const Screen2 = () => {
           label="Skill Level"
           name="skillLevel"
           options={["Beginner", "Intermediate", "Advanced", "Expert"]}
-          defaultValue={state.course.skillLevel || "Select skill level"}
-          key={state.course.skillLevel || "skill-level-empty"}
+          value={state.course.skillLevel || "Select skill level"}
           onChange={(e) => actions.setCourseSkillLevel(e.target.value)}
           required
         />
@@ -83,28 +80,19 @@ const Screen2 = () => {
         required
       />
 
-      <FlexBox className="w-full gap-4 mt-auto mb-4 justify-between">
-        <OrangeButton
-          className="w-max px-16"
-          onClick={() => setActiveScreen("screen1")}
-        >
-          Previous
-        </OrangeButton>
-        <OrangeButton
-          className="w-max px-16"
-          onClick={() => setActiveScreen("screen3")}
-          disabled={
-            !state.course.whatYouWillLearn ||
-            state.course.skills.length === 0 ||
-            state.course.careerPaths.length === 0 ||
-            !state.course.skillLevel ||
-            !state.course.language ||
-            !state.course.whoShouldJoin
-          }
-        >
-          Next Page
-        </OrangeButton>
-      </FlexBox>
+      <ScreenNavigation
+        currentStep={2}
+        previousScreen="screen1"
+        nextScreen="screen3"
+        isNextDisabled={
+          !state.course.whatYouWillLearn ||
+          state.course.skills.length === 0 ||
+          state.course.careerPaths.length === 0 ||
+          !state.course.skillLevel ||
+          !state.course.language ||
+          !state.course.whoShouldJoin
+        }
+      />
     </Container>
   );
 };

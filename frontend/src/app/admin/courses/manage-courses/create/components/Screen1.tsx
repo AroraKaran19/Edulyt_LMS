@@ -7,8 +7,8 @@ import { useCourseContext } from "../../../course-reducer/CourseReducerProvider"
 import TextArea from "@/components/ui/inputs/TextArea";
 import DropDown from "@/components/ui/dropdown/DropDown";
 import PercentageInput from "@/components/ui/inputs/PercentageInput";
-import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import { useScreen } from "../contexts/ScreenContext";
+import ScreenNavigation from "./shared/ScreenNavigation";
 
 const Screen1 = () => {
   const { state, actions } = useCourseContext();
@@ -25,7 +25,7 @@ const Screen1 = () => {
           label="Title"
           name="title"
           placeholder="Enter the title of the course"
-          value={state.course.title}
+          value={state.course.title || ""}
           onChange={(e) => actions.setCourseTitle(e.target.value)}
           className="w-2/3"
           required
@@ -34,7 +34,7 @@ const Screen1 = () => {
           label="Category"
           name="category"
           options={["Programming", "Design", "Business", "Marketing"]}
-          defaultValue={state.course.category || "Select a category"}
+          value={state.course.category || "Select a category"}
           setChange={(value) => actions.setCourseCategory(value)}
           className="w-1/3"
           required
@@ -45,12 +45,15 @@ const Screen1 = () => {
           label="Target Audience"
           name="targetAudience"
           options={["College Students", "Professionals"]}
-          defaultValue={state.course.audience.split("-").join(" ") || "Select a target audience"}
-          onChange={(e) =>
-            actions.setCourseAudience(
-              e.target.value as "college-students" | "professionals"
-            )
+          value={
+            state.course.audience === "college-students" ? "College Students" :
+            state.course.audience === "professionals" ? "Professionals" :
+            "Select a target audience"
           }
+          onChange={(e) => {
+            const technicalValue = e.target.value === "College Students" ? "college-students" : "professionals";
+            actions.setCourseAudience(technicalValue);
+          }}
           required
         />
         <Input
@@ -97,26 +100,20 @@ const Screen1 = () => {
         <PercentageInput
           label="Show Discount (Optional)"
           placeholder="Enter the show discount of the course"
-          value={state.course.discount?.value?.toString() || ""}
+          value={state.course.fakeDiscount?.toString() || ""}
           onChange={(e) => {
-            if (e.target.value === "" || e.target.value === "0") {
-              // Clear the discount if empty or zero
-              actions.setCourseDiscount(undefined);
-            } else {
-              actions.setCourseDiscount({
-                value: Number(e.target.value),
-                discount: "percentage",
-              });
-            }
+            const numValue = e.target.value === "" ? 0 : Number(e.target.value);
+            actions.setCourseFakeDiscount(numValue);
           }}
           className="w-full"
           required={false}
         />
       </FlexBox>
-      <OrangeButton
-        className="mt-auto mb-4 w-max px-16 self-end"
-        onClick={() => setActiveScreen("screen2")}
-        disabled={
+      <ScreenNavigation
+        currentStep={1}
+        nextScreen="screen2"
+        showPrevious={false}
+        isNextDisabled={
           !state.course.title ||
           !state.course.category ||
           !state.course.audience ||
@@ -124,9 +121,7 @@ const Screen1 = () => {
           !state.course.shortDescription ||
           !state.course.duration
         }
-      >
-        Next Page
-      </OrangeButton>
+      />
     </Container>
   );
 };

@@ -55,7 +55,7 @@ const TextArea = ({
       )}
     >
       {label && (
-        <label className="font-medium text-black mb-2 block">
+        <label className="font-medium text-black block">
           {label} {required && <span className="text-red-500">*</span>}
         </label>
       )}

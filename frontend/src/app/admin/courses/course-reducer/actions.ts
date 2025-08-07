@@ -1,5 +1,4 @@
-import { Course, CourseModule, Plan, Review, FAQ, Quiz, Discount } from "../../../../types/course";
-import { Instructor } from "../../../../types/instructor";
+import { Course, CourseModule, Plan, Review, FAQ, Quiz, CourseInstructor } from "../../../../types";
 
 // ===================
 // Action Types
@@ -48,7 +47,7 @@ export enum CourseActionType {
   SET_COURSE_TAGS = "SET_COURSE_TAGS",
   
   // Pricing & Discount
-  SET_COURSE_DISCOUNT = "SET_COURSE_DISCOUNT",
+  SET_COURSE_FAKE_DISCOUNT = "SET_COURSE_FAKE_DISCOUNT",
   SET_COURSE_PLANS = "SET_COURSE_PLANS",
   UPDATE_COURSE_PLAN = "UPDATE_COURSE_PLAN",
   
@@ -304,12 +303,12 @@ export const courseActions = {
   }),
   
   // Instructor Management
-  setCourseInstructor: (instructor: Instructor[]) => ({
+  setCourseInstructor: (instructor: CourseInstructor[]) => ({
     type: CourseActionType.SET_COURSE_INSTRUCTOR,
     payload: instructor,
   }),
   
-  addCourseInstructor: (instructor: Instructor) => ({
+  addCourseInstructor: (instructor: CourseInstructor) => ({
     type: CourseActionType.ADD_COURSE_INSTRUCTOR,
     payload: instructor,
   }),
@@ -409,9 +408,9 @@ export const courseActions = {
   }),
   
   // Pricing & Discount
-  setCourseDiscount: (discount: Discount) => ({
-    type: CourseActionType.SET_COURSE_DISCOUNT,
-    payload: discount,
+  setCourseFakeDiscount: (fakeDiscount: number) => ({
+    type: CourseActionType.SET_COURSE_FAKE_DISCOUNT,
+    payload: fakeDiscount,
   }),
   
   setCoursePlans: (plans: { elite?: Plan; essential?: Plan }) => ({

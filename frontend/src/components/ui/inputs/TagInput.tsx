@@ -103,7 +103,7 @@ const TagInput = ({
       {/* Input Container */}
       <div className="relative">
         <div className={cn(
-          "w-full flex items-center gap-2 p-3 border border-gray-300 rounded-xl",
+          "w-full flex items-center gap-2 p-3 border border-gray-300 rounded-xl bg-white",
           "focus-within:ring-2 focus-within:ring-orange-500/20 focus-within:border-orange-500",
           "hover:border-orange-400 hover:shadow-sm",
           "transition-all duration-200 ease-in-out",
@@ -120,7 +120,7 @@ const TagInput = ({
             disabled={disabled}
             {...props}
             className={cn(
-              "flex-1 bg-transparent outline-none",
+              "flex-1 outline-none",
               "placeholder-gray-400",
               "disabled:cursor-not-allowed"
             )}

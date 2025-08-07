@@ -421,6 +421,7 @@ export const useUpload = () => {
     getFileExtension,
     isImageFile,
     isVideoFile,
+    getVideoDuration,
     
     // Reset error
     clearError: () => setError('')

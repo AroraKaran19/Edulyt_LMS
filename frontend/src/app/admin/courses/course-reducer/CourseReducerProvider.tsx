@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect } from "react";
 import { useCourseReducer } from "./useCourseReducer";
-import { CourseState } from "./state";
+import { CourseState, initialCourseState } from "./state";
 import { ReducerResult } from "./reducer";
 
 // ===================
@@ -45,24 +45,38 @@ export const CourseReducerProvider = ({
       const savedDraft = localStorage.getItem(COURSE_DRAFT_KEY);
       if (savedDraft) {
         const parsedDraft = JSON.parse(savedDraft);
-        // Restore the course data
-        courseReducer.actions.setCourse(parsedDraft);
-        console.log("Restored course draft from localStorage");
+        // Merge saved data with initial state to ensure all fields exist
+        const mergedCourse = {
+          ...initialCourseState.course,
+          ...parsedDraft
+        };
+        courseReducer.actions.setCourse(mergedCourse);
+        console.log("Restored course draft from localStorage with merged initial state");
+      } else {
+        // Ensure we start with a complete initial state
+        courseReducer.actions.setCourse(initialCourseState.course);
       }
     } catch (error) {
       console.error("Failed to load course draft from localStorage:", error);
+      // Fallback to initial state if localStorage fails
+      courseReducer.actions.setCourse(initialCourseState.course);
     }
   }, []);
 
   // Save course data to localStorage whenever it changes
   useEffect(() => {
     try {
+      // Ensure course object exists before checking properties
+      if (!courseReducer.state.course) {
+        return;
+      }
+
       // Only save if the course has some meaningful data (not just initial state)
       const hasData = 
         courseReducer.state.course.title ||
         courseReducer.state.course.description ||
-        courseReducer.state.course.skills.length > 0 ||
-        courseReducer.state.course.careerPaths.length > 0;
+        (courseReducer.state.course.skills && courseReducer.state.course.skills.length > 0) ||
+        (courseReducer.state.course.careerPaths && courseReducer.state.course.careerPaths.length > 0);
 
       if (hasData) {
         localStorage.setItem(COURSE_DRAFT_KEY, JSON.stringify(courseReducer.state.course));

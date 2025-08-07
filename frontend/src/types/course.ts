@@ -127,7 +127,7 @@ export interface FAQ {
   answer: string;
 }
 
-export interface Testimonial extends Omit<Review, "_id" | "profileImage"> {
+export interface Testimonial extends Omit<Review, "_id" | "profileImage" | "rating"> {
   pastRole: string;
   pastCompany: string;
   verified?: boolean;
@@ -211,4 +211,18 @@ export interface Course {
 
   // Language
   language: string;
+
+  // Analytics
+  analytics?: {
+    totalEnrollments: number;
+    activeEnrollments: number;
+    completionRate: number;
+    averageRating: number;
+    averageCompletionTime: number; // in days
+    dropoffPoints: {
+      moduleId: string;
+      lessonId: string;
+      dropoffRate: number;
+    }[];
+  };
 }

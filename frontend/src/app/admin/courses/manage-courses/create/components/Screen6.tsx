@@ -550,9 +550,9 @@ const Screen6 = () => {
           {/* URL Preview */}
           {state.course.slug && (
             <div className="mt-2 p-3 bg-gray-50 rounded-lg border">
-              <p className="text-sm text-gray-600 mb-1">Course URL Preview:</p>
+              <p className="text-sm text-gray-600 mb-1">Course URL Preview: (Do not change this manually unless needed)</p>
               <p className="text-sm font-mono text-gray-800 break-all">
-                <span className="text-gray-500">https://yoursite.com/courses/</span>
+                <span className="text-gray-500">https://www.edulyt.com/courses/</span>
                 <span className={slugValidation.isValid ? 'text-green-600' : 'text-red-600'}>
                   {state.course.slug}
                 </span>
@@ -628,20 +628,34 @@ const Screen6 = () => {
         >
           Previous
         </OrangeButton>
-        <OrangeButton
-          className="w-max px-16"
-          onClick={() => setActiveScreen("screen7")}
-          disabled={
-            !state.course.metaTitle ||
-            !state.course.slug ||
-            !slugValidation.isValid ||
-            !state.course.metaDescription ||
-            (state.course.keywords?.length || 0) === 0 ||
-            (state.course.faqs?.length || 0) === 0
-          }
-        >
-          Next Page
-        </OrangeButton>
+
+        <FlexBox className="gap-4 items-center">
+          {/* Progress indicator */}
+          <div className="hidden md:flex items-center gap-2 text-sm text-gray-600">
+            <span>Step 6 of 8</span>
+            <div className="w-20 bg-gray-200 rounded-full h-2">
+              <div
+                className="bg-orange-500 h-2 rounded-full"
+                style={{ width: "75%" }}
+              ></div>
+            </div>
+          </div>
+
+          <OrangeButton
+            className="w-max px-16"
+            onClick={() => setActiveScreen("screen7")}
+            disabled={
+              !state.course.metaTitle ||
+              !state.course.slug ||
+              !slugValidation.isValid ||
+              !state.course.metaDescription ||
+              (state.course.keywords?.length || 0) === 0 ||
+              (state.course.faqs?.length || 0) === 0
+            }
+          >
+            Next Page
+          </OrangeButton>
+        </FlexBox>
       </FlexBox>
     </Container>
   );
