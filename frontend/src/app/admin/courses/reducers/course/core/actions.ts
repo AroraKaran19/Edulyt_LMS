@@ -1,4 +1,4 @@
-import { Course, CourseModule, CourseLesson, Content, Plan, Review, FAQ, Quiz, CourseInstructor } from "../../../../types";
+import { Course, CourseModule, CourseLesson, Content, Plan, Review, FAQ, Quiz, CourseInstructor } from "../../../../../types";
 
 // ===================
 // Action Types
@@ -403,14 +403,14 @@ export const courseActions = {
     payload: faq,
   }),
   
-  updateCourseFaq: (faqId: string, updates: Partial<FAQ>) => ({
+  updateCourseFaq: (faqIndex: number, updates: Partial<FAQ>) => ({
     type: CourseActionType.UPDATE_COURSE_FAQ,
-    payload: { faqId, updates },
+    payload: { faqIndex, updates },
   }),
   
-  deleteCourseFaq: (faqId: string) => ({
+  deleteCourseFaq: (faqIndex: number) => ({
     type: CourseActionType.DELETE_COURSE_FAQ,
-    payload: faqId,
+    payload: faqIndex,
   }),
   
   reorderCourseFaqs: (faqs: FAQ[]) => ({

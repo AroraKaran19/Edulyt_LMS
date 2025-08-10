@@ -12,7 +12,7 @@ import Screen6 from "./components/Screen6";
 import Screen7 from "./components/Screen7";
 import Screen8 from "./components/Screen8";
 import { ScreenProvider, useScreen } from "./contexts/ScreenContext";
-import { CourseReducerProvider } from "../../course-reducer/CourseReducerProvider";
+import { CourseReducerProvider } from "../../reducers";
 
 const CreateCourseContent = () => {
   const { activeScreen } = useScreen();

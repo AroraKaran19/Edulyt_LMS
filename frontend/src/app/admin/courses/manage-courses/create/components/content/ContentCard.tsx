@@ -69,10 +69,16 @@ const ContentCard: React.FC<ContentCardProps> = ({
   };
 
   const isContentComplete = () => {
-    if (!content.title) return false;
+    if (!content.title || content.title.trim() === "") return false;
     if (content.type === "video") {
       const videoContent = content.content as VideoType;
-      return !!(videoContent.sources?.[0]?.videoUrl);
+      // For video content: title, video URL, and thumbnail are all required
+      return !!(
+        videoContent.sources?.[0]?.videoUrl && 
+        videoContent.sources[0].videoUrl.trim() !== "" &&
+        videoContent.thumbnailUrl && 
+        videoContent.thumbnailUrl.trim() !== ""
+      );
     } else {
       const quizContent = content.content as Quiz;
       return !!(quizContent.passingScore && quizContent.maxAttempts);
@@ -397,7 +403,7 @@ const VideoContentForm: React.FC<VideoContentFormProps> = ({
       <div className="grid grid-cols-1 gap-3">
         <UploadMediaContainer
           title="Video Content"
-          description="Upload your lesson video or provide a video URL"
+          description="Upload your lesson video or provide a video URL (required)"
           type="video"
           mediaUrl={videoContent.sources[0]?.videoUrl}
           maxSize={15360} // 15GB
@@ -410,13 +416,13 @@ const VideoContentForm: React.FC<VideoContentFormProps> = ({
           folderName={`courses/${courseTitle}/modules/module-${(moduleIndex || 0) + 1}/lessons/lesson-${(lessonIndex || 0) + 1}/content`}
           uploadContext={`video-${(index || 0) + 1}`}
           showConfirmation={true}
-          required={false}
+          required={true}
           className="w-full"
         />
         
         <UploadMediaContainer
           title="Video Thumbnail"
-          description="Upload a thumbnail image for this video"
+          description="Upload a thumbnail image for this video (required)"
           type="image"
           mediaUrl={videoContent.thumbnailUrl}
           maxSize={100} // 10MB for images
@@ -460,7 +466,7 @@ const VideoContentForm: React.FC<VideoContentFormProps> = ({
           folderName={`courses/${courseTitle}/modules/module-${(moduleIndex || 0) + 1}/lessons/lesson-${(lessonIndex || 0) + 1}/content`}
           uploadContext={`thumbnail-${(index || 0) + 1}`}
           showConfirmation={true}
-          required={false}
+          required={true}
           className="w-full"
         />
         

@@ -52,6 +52,7 @@ const quizSchema = new mongoose.Schema<Quiz>(
           },
           correctAnswer: { type: [String], required: true },
           timeLimit: { type: Number, min: [0, "Time limit must be positive"] },
+          _id: false,
         },
       ],
       required: true,
@@ -84,6 +85,7 @@ const videoSchema = new mongoose.Schema<Video>(
               message: "Video URL must be a valid URL",
             },
           },
+          _id: false,
         },
       ],
       required: true,
@@ -107,7 +109,7 @@ const videoSchema = new mongoose.Schema<Video>(
 const contentSchema = new mongoose.Schema<Content>(
   {
     title: { type: String, required: true },
-    description: { Trang: String },
+    description: { type: String },
     type: { type: String, required: true, enum: ["video", "quiz"] },
     readingMaterials: [readingMaterialSchema],
     isLocked: { type: Boolean, default: false, required: true },
@@ -123,11 +125,6 @@ const courseLessonSchema = new mongoose.Schema<CourseLesson>(
   {
     title: { type: String, required: true },
     description: { type: String },
-    moduleId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "CourseModule",
-      required: true,
-    },
     contentIds: [
       { type: mongoose.Schema.Types.ObjectId, ref: "Content", required: true },
     ],
@@ -187,22 +184,24 @@ contentSchema.index({ createdAt: -1 }); // For listing content by creation date
 contentSchema.index({ updatedAt: -1 }); // For listing content by update date
 
 // ===================
+// Models
+// ===================
+
+export const CourseModuleModel = mongoose.model<CourseModule>(
+  "CourseModule",
+  courseModuleSchema
+);
+
+export const CourseLessonModel = mongoose.model<CourseLesson>(
+  "CourseLesson",
+  courseLessonSchema
+);
+
+export const ContentModel = mongoose.model<Content>("Content", contentSchema);
+
+// ===================
 // Discriminators
 // ===================
 
-const VideoContent = contentSchema.discriminator("video", videoSchema);
-const QuizContent = contentSchema.discriminator("quiz", quizSchema);
-
-export default {
-  CourseModule: mongoose.model<CourseModule>(
-    "CourseModule",
-    courseModuleSchema
-  ),
-  CourseLesson: mongoose.model<CourseLesson>(
-    "CourseLesson",
-    courseLessonSchema
-  ),
-  Content: mongoose.model<Content>("Content", contentSchema),
-  VideoContent: VideoContent,
-  QuizContent: QuizContent,
-};
+export const VideoContentModel = ContentModel.discriminator("video", videoSchema);
+export const QuizContentModel = ContentModel.discriminator("quiz", quizSchema);

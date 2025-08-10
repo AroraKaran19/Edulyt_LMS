@@ -30,6 +30,8 @@ const Input = ({
   onChange,
   setChange,
   disabled = false,
+  min,
+  max,
   ...props
 }: InputProps) => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -63,6 +65,8 @@ const Input = ({
         placeholder={placeholder}
         value={value}
         disabled={disabled}
+        min={min}
+        max={max}
         {...props}
         className={cn(
           "w-full px-4 py-3.5 border border-gray-300 rounded-xl",

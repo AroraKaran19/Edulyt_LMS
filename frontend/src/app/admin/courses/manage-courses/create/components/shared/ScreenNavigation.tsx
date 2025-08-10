@@ -60,7 +60,9 @@ const ScreenNavigation: React.FC<ScreenNavigationProps> = ({
   };
 
   return (
-    <FlexBox className={`w-full gap-4 mt-auto mb-4 justify-between ${className}`}>
+    <FlexBox
+      className={`w-full gap-4 mt-auto mb-4 justify-between ${className}`}
+    >
       {/* Previous Button */}
       {showPrevious ? (
         <OrangeButton
@@ -77,7 +79,9 @@ const ScreenNavigation: React.FC<ScreenNavigationProps> = ({
       <FlexBox className="gap-4 items-center">
         {/* Progress indicator */}
         <div className="hidden md:flex items-center gap-2 text-sm text-gray-600">
-          <span>Step {currentStep} of {totalSteps}</span>
+          <span>
+            Step {currentStep} of {totalSteps}
+          </span>
           <div className="w-20 bg-gray-200 rounded-full h-2">
             <div
               className="bg-orange-500 h-2 rounded-full transition-all duration-300"

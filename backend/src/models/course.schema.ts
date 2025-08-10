@@ -22,7 +22,6 @@ const faqSchema = new mongoose.Schema<FAQ>(
 const testimonialSchema = new mongoose.Schema<Testimonial>(
   {
     name: { type: String, required: true },
-    rating: { type: Number, required: true },
     comment: { type: String, required: true },
     profileImage: { type: String, required: true },
     currentRole: { type: String, required: true },
@@ -31,6 +30,7 @@ const testimonialSchema = new mongoose.Schema<Testimonial>(
     currentCompany: { type: String, required: true },
     linkedin: { type: String, required: true },
     isActive: { type: Boolean, default: true, required: true },
+    verified: { type: Boolean, default: false },
   },
   { timestamps: true, _id: false }
 );
@@ -105,6 +105,7 @@ const courseSchema = new mongoose.Schema<Course>(
         {
           title: { type: String, required: true },
           description: { type: String, required: true },
+          _id: false,
         },
       ],
       required: true,
@@ -147,6 +148,7 @@ const courseSchema = new mongoose.Schema<Course>(
         validator: validatePlans,
         message: "Course must have at least one plan (elite or essential)",
       },
+      _id: false,
     },
     reviews: {
       type: [mongoose.Schema.Types.ObjectId],
@@ -188,7 +190,12 @@ const courseSchema = new mongoose.Schema<Course>(
     scholarship: { type: Boolean, default: false, required: true },
     scholarshipDescription: { type: String, required: false, default: "" },
 
-    language: { type: String, required: true },
+    language: { 
+      type: String, 
+      required: true,
+      enum: ["en", "es", "fr", "de", "pt", "it", "ru", "zh", "ja", "ko", "hi", "ar"],
+      default: "en"
+    },
   },
   { timestamps: true }
 );

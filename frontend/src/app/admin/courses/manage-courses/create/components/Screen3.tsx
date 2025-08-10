@@ -1,7 +1,7 @@
 import Container from "@/app/admin/components/ui/Container";
 import FlexBox from "@/components/ui/FlexBox";
 import React from "react";
-import { useCourseContext } from "../../../course-reducer/CourseReducerProvider";
+import { useCourseContext } from "../../../reducers";
 import TextArea from "@/components/ui/inputs/TextArea";
 import { useScreen } from "../contexts/ScreenContext";
 import CheckBoxContainer from "@/components/ui/inputs/CheckBoxContainer";

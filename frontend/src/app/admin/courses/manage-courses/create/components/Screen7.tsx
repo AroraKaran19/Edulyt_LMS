@@ -2,7 +2,7 @@ import Container from "@/app/admin/components/ui/Container";
 import FlexBox from "@/components/ui/FlexBox";
 import Input from "@/components/ui/inputs/Input";
 import React, { useMemo, useState, useEffect } from "react";
-import { useCourseContext } from "../../../course-reducer/CourseReducerProvider";
+import { useCourseContext } from "../../../reducers";
 import TextArea from "@/components/ui/inputs/TextArea";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import { useScreen } from "../contexts/ScreenContext";
@@ -57,20 +57,18 @@ const Screen7 = () => {
       errors.push("At least one lesson is required in any module");
     }
 
-    // Check if at least one lesson has at least one video content
-    const hasVideoContent = state.course.modules.some(module => 
+    // Check if at least one lesson has at least one content
+    const hasContent = state.course.modules.some(module => 
       module && module.lessons && module.lessons.some(lesson => 
-        lesson && lesson.contents && lesson.contents.some(content => 
-          content && content.type === "video"
-        )
+        lesson && lesson.contents && lesson.contents.length > 0
       )
     );
-    if (!hasVideoContent) {
-      errors.push("At least one video content is required in any lesson");
+    if (!hasContent) {
+      errors.push("At least one content item is required in any lesson");
     }
 
-    // Check for content titles
-    const contentTitleErrors: string[] = [];
+    // Validate video content requirements
+    const videoContentErrors: string[] = [];
     state.course.modules.forEach((module, moduleIndex) => {
       if (!module || !module.lessons) return;
       
@@ -78,16 +76,38 @@ const Screen7 = () => {
         if (!lesson || !lesson.contents) return;
         
         lesson.contents.forEach((content, contentIndex) => {
-          if (!content || !content.title || content.title.trim() === "") {
-            contentTitleErrors.push(
+          if (!content) return;
+          
+          // Title is required for all content
+          if (!content.title || content.title.trim() === "") {
+            videoContentErrors.push(
               `Module ${moduleIndex + 1}, Lesson ${lessonIndex + 1}, Content ${contentIndex + 1}: Title is required`
             );
+          }
+          
+          // Video-specific validation
+          if (content.type === "video") {
+            const videoContent = content.content as VideoType;
+            
+            // Video URL is required
+            if (!videoContent.sources || !videoContent.sources[0]?.videoUrl || videoContent.sources[0].videoUrl.trim() === "") {
+              videoContentErrors.push(
+                `Module ${moduleIndex + 1}, Lesson ${lessonIndex + 1}, Content ${contentIndex + 1}: Video URL is required`
+              );
+            }
+            
+            // Video thumbnail is required
+            if (!videoContent.thumbnailUrl || videoContent.thumbnailUrl.trim() === "") {
+              videoContentErrors.push(
+                `Module ${moduleIndex + 1}, Lesson ${lessonIndex + 1}, Content ${contentIndex + 1}: Video thumbnail is required`
+              );
+            }
           }
         });
       });
     });
     
-    errors.push(...contentTitleErrors);
+    errors.push(...videoContentErrors);
     return errors;
   }, [state.course]);
 
@@ -137,7 +157,6 @@ const Screen7 = () => {
       _id: generateId(),
       title: "",
       description: "",
-      moduleId: module._id,
       contents: [], // Now store full content objects
     };
 

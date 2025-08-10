@@ -1,6 +1,6 @@
 import { CourseActionType, CourseAction } from "./actions";
 import { CourseState, initialCourseState } from "./state";
-import { validateAction, ValidationError } from "./validation";
+import { validateAction, ValidationError } from "../utils/validation";
 
 // ===================
 // Error Handling Types
@@ -690,7 +690,7 @@ export const courseReducer = (
           course: {
             ...state.course,
             faqs: state.course.faqs.map((faq, index) =>
-              index === action.payload.faqId
+              index === action.payload.faqIndex
                 ? { ...faq, ...action.payload.updates }
                 : faq
             ),

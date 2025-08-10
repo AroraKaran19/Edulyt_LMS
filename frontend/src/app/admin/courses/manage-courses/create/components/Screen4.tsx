@@ -2,7 +2,7 @@ import Container from "@/app/admin/components/ui/Container";
 import FlexBox from "@/components/ui/FlexBox";
 import Input from "@/components/ui/inputs/Input";
 import React, { useState } from "react";
-import { useCourseContext } from "../../../course-reducer/CourseReducerProvider";
+import { useCourseContext } from "../../../reducers";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import { Button } from "@/components/ui/buttons/button";

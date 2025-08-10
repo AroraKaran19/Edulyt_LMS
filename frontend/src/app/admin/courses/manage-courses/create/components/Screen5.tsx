@@ -2,7 +2,7 @@ import Container from "@/app/admin/components/ui/Container";
 import FlexBox from "@/components/ui/FlexBox";
 import Input from "@/components/ui/inputs/Input";
 import React, { useMemo, useState, useEffect } from "react";
-import { useCourseContext } from "../../../course-reducer/CourseReducerProvider";
+import { useCourseContext } from "../../../reducers";
 import TextArea from "@/components/ui/inputs/TextArea";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import { useScreen } from "../contexts/ScreenContext";

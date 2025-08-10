@@ -109,19 +109,13 @@ export class CourseController {
     try {
       const courseData: Partial<Course> = req.body;
 
-      console.log("📝 Received course creation request:", {
-        title: courseData.title,
-        category: courseData.category,
-        language: courseData.language,
-        audience: courseData.audience,
-        createdBy: courseData.createdBy,
-        hasPlans: !!courseData.plans,
-        planTypes: courseData.plans ? Object.keys(courseData.plans) : [],
-        dataKeys: Object.keys(courseData).slice(0, 10), // First 10 keys for debugging
-      });
+      // console.log("📝 Received course creation request:", courseData);
+
+      const cleanedData = await this.courseService.cleanCourseData(courseData);
+      // console.log("📝 Cleaned course data:", JSON.stringify(cleanedData, null, 2));
 
       // Validate course data
-      const validation = this.courseService.validateCourseData(courseData);
+      const validation = this.courseService.validateCourseData(cleanedData);
       if (!validation.isValid) {
         res.status(400).json({
           success: false,
@@ -131,8 +125,8 @@ export class CourseController {
         return;
       }
 
-      // Create the course
-      const createdCourse = await this.courseService.createCourse(courseData);
+      // // Create the course
+      const createdCourse = await this.courseService.createCourse(cleanedData);
 
       // Return success response
       res.status(201).json({

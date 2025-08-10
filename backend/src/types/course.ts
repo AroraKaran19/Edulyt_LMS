@@ -46,11 +46,11 @@ export interface ReadingMaterial {
   downloadUrl?: string;
 }
 
-export interface Content {
+// Base Content interface
+export interface BaseContent {
   _id?: string;
   title: string;
   description?: string;
-  content: Video | Quiz;
   type: "video" | "quiz";
   readingMaterials?: ReadingMaterial[];
   isCompleted?: boolean;
@@ -60,6 +60,28 @@ export interface Content {
   updatedAt?: Date;
 }
 
+// Video Content interface (extends BaseContent + Video fields)
+export interface VideoContent extends BaseContent {
+  type: "video";
+  sources: {
+    quality: "1080p" | "720p" | "480p" | "360p";
+    videoUrl: string;
+  }[];
+  thumbnailUrl?: string;
+  duration?: number; // in seconds
+}
+
+// Quiz Content interface (extends BaseContent + Quiz fields)  
+export interface QuizContent extends BaseContent {
+  type: "quiz";
+  questions: QuizQuestion[];
+  passingScore?: number;
+  maxAttempts?: number;
+}
+
+// Union type for Content (discriminated union)
+export type Content = VideoContent | QuizContent;
+
 // ===================
 // Course Lesson Types
 // ===================
@@ -68,8 +90,8 @@ export interface CourseLesson {
   _id?: string;
   title: string;
   description?: string;
-  moduleId: CourseModule["_id"];
   contentIds: Content["_id"][];
+  contents?: Content[];
   isCompleted?: boolean;
   completedAt?: Date;
   isLocked?: boolean;
@@ -86,6 +108,7 @@ export interface CourseModule {
   title: string;
   thumbnailUrl?: string;
   lessonIds: CourseLesson["_id"][];
+  lessons?: CourseLesson[];
   description?: string;
   isCompleted?: boolean;
   isActive?: boolean;
@@ -104,7 +127,6 @@ export interface PlanFeatures {
 }
 
 export interface Plan {
-  _id?: string;
   title: string;
   type: "elite" | "essential";
   price: number;
@@ -127,7 +149,7 @@ export interface FAQ {
   answer: string;
 }
 
-export interface Testimonial extends Omit<Review, "_id" | "profileImage"> {
+export interface Testimonial extends Omit<Review, "_id" | "profileImage" | "rating"> {
   pastRole: string;
   pastCompany: string;
   verified?: boolean;
@@ -172,7 +194,8 @@ export interface Course {
   duration: string; // like: 3 months, 1 year, 2 years, etc. (will not be accurate)
 
   // Content
-  modules: CourseModule["_id"][];
+  moduleIds: CourseModule["_id"][];
+  modules?: CourseModule[];
 
   // Instructor
   instructor: CourseInstructor["_id"][]; // can be multiple instructors

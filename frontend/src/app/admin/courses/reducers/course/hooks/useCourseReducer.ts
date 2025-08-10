@@ -1,12 +1,9 @@
 import { useReducer, useCallback, useRef } from "react";
-import { ReducerResult, ReducerError, courseReducer } from "./reducer";
-import { initialCourseState, CourseState } from "./state";
-import { CourseAction, courseActions } from "./actions";
+import { ReducerResult, ReducerError, courseReducer } from "../core/reducer";
+import { initialCourseState, CourseState } from "../core/state";
+import { CourseAction, courseActions } from "../core/actions";
 
-// ===================
-// Enhanced Reducer Hook
-// ===================
-
+// This hook is used to manage the state of the course reducer
 export const useCourseReducer = () => {
   const [state, dispatch] = useReducer(
     (prevState: CourseState, action: CourseAction): CourseState => {
@@ -509,16 +506,16 @@ export const useCourseReducer = () => {
     ),
 
     updateCourseFaq: useCallback(
-      (faqId: string, updates: any) => {
-        const action = courseActions.updateCourseFaq(faqId, updates);
+      (faqIndex: number, updates: any) => {
+        const action = courseActions.updateCourseFaq(faqIndex, updates);
         return enhancedDispatch(action);
       },
       [enhancedDispatch]
     ),
 
     deleteCourseFaq: useCallback(
-      (faqId: string) => {
-        const action = courseActions.deleteCourseFaq(faqId);
+      (faqIndex: number) => {
+        const action = courseActions.deleteCourseFaq(faqIndex);
         return enhancedDispatch(action);
       },
       [enhancedDispatch]

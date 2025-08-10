@@ -46,11 +46,11 @@ export interface ReadingMaterial {
   downloadUrl?: string;
 }
 
-export interface Content {
+// API Content interfaces (flattened structure for backend compatibility)
+export interface BaseContent {
   _id?: string;
   title: string;
   description?: string;
-  content: Video | Quiz;
   type: "video" | "quiz";
   readingMaterials?: ReadingMaterial[];
   isCompleted?: boolean;
@@ -60,6 +60,26 @@ export interface Content {
   updatedAt?: Date;
 }
 
+export interface VideoContent extends BaseContent {
+  type: "video";
+  sources: {
+    quality: "1080p" | "720p" | "480p" | "360p";
+    videoUrl: string;
+  }[];
+  thumbnailUrl?: string;
+  duration?: number;
+}
+
+export interface QuizContent extends BaseContent {
+  type: "quiz";
+  questions: QuizQuestion[];
+  passingScore?: number;
+  maxAttempts?: number;
+}
+
+// Union type for API Content
+export type Content = VideoContent | QuizContent;
+
 // ===================
 // Course Lesson Types
 // ===================
@@ -68,7 +88,6 @@ export interface CourseLesson {
   _id?: string;
   title: string;
   description?: string;
-  moduleId?: CourseModule["_id"];
   // For frontend: store full content objects instead of just IDs
   contents: Content[];
   // Keep the original for backend compatibility when needed
@@ -110,7 +129,6 @@ export interface PlanFeatures {
 }
 
 export interface Plan {
-  _id?: string;
   title: string;
   type: "elite" | "essential";
   price: number;

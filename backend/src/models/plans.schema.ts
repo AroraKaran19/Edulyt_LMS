@@ -19,6 +19,7 @@ const planSchema = new mongoose.Schema<Plan>(
         {
           title: { type: String, required: true },
           provided: { type: Boolean, required: true },
+          _id: false,
         },
       ],
       required: true,

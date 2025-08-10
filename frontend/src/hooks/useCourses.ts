@@ -130,7 +130,7 @@ export const useCourses = () => {
     setError('');
 
     try {
-      const response = await fetch(`${baseUrl}/api/courses`, {
+      const response = await fetch(`${baseUrl}/courses`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

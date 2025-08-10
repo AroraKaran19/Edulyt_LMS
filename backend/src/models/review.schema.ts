@@ -1,4 +1,4 @@
-import { Review } from "@/types/review";
+import { Review } from "@/types";
 import mongoose from "mongoose";
 import { validateLinkedinUrl, validateReview, validateUrl } from "./validators";
 

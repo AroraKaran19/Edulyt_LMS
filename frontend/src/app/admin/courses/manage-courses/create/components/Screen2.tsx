@@ -2,13 +2,12 @@ import Container from "@/app/admin/components/ui/Container";
 import FlexBox from "@/components/ui/FlexBox";
 import Input from "@/components/ui/inputs/Input";
 import React from "react";
-import { useCourseContext } from "../../../course-reducer/CourseReducerProvider";
+import { useCourseContext } from "../../../reducers";
 import TextArea from "@/components/ui/inputs/TextArea";
 import DropDown from "@/components/ui/dropdown/DropDown";
 import TagInput from "@/components/ui/inputs/TagInput";
 import ScreenNavigation from "./shared/ScreenNavigation";
-import { useScreen } from "../contexts/ScreenContext";
-import { Plus, Trash2, Edit3 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 
 const Screen2 = () => {
@@ -78,13 +77,56 @@ const Screen2 = () => {
           onChange={(e) => actions.setCourseSkillLevel(e.target.value)}
           required
         />
-        <Input
+        <DropDown
           label="Language"
           name="language"
-          placeholder="Course language (e.g., English, Spanish)"
-          value={state.course.language}
-          onChange={(e) => actions.setCourseLanguage(e.target.value)}
-          className="w-full"
+          options={[
+            "English", 
+            "Spanish", 
+            "French", 
+            "German", 
+            "Portuguese", 
+            "Italian", 
+            "Russian", 
+            "Chinese", 
+            "Japanese", 
+            "Korean", 
+            "Hindi", 
+            "Arabic"
+          ]}
+          value={
+            state.course.language === "en" ? "English" :
+            state.course.language === "es" ? "Spanish" :
+            state.course.language === "fr" ? "French" :
+            state.course.language === "de" ? "German" :
+            state.course.language === "pt" ? "Portuguese" :
+            state.course.language === "it" ? "Italian" :
+            state.course.language === "ru" ? "Russian" :
+            state.course.language === "zh" ? "Chinese" :
+            state.course.language === "ja" ? "Japanese" :
+            state.course.language === "ko" ? "Korean" :
+            state.course.language === "hi" ? "Hindi" :
+            state.course.language === "ar" ? "Arabic" :
+            state.course.language || "Select language"
+          }
+          onChange={(e) => {
+            const languageMap: { [key: string]: string } = {
+              "English": "en",
+              "Spanish": "es", 
+              "French": "fr",
+              "German": "de",
+              "Portuguese": "pt",
+              "Italian": "it",
+              "Russian": "ru",
+              "Chinese": "zh",
+              "Japanese": "ja",
+              "Korean": "ko",
+              "Hindi": "hi",
+              "Arabic": "ar"
+            };
+            const languageCode = languageMap[e.target.value] || "en";
+            actions.setCourseLanguage(languageCode);
+          }}
           required
         />
       </FlexBox>

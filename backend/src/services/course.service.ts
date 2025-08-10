@@ -1,5 +1,6 @@
-import { Course } from "../types/course";
+import { Content, Course, CourseLesson, CourseModule, QuizContent, VideoContent } from "../types/course";
 import CourseModel from "../models/course.schema";
+import { ContentModel, CourseLessonModel, CourseModuleModel, VideoContentModel, QuizContentModel } from "../models/course-module.schema";
 
 export class CourseService {
   /**
@@ -17,7 +18,7 @@ export class CourseService {
         courseData.slug ||
         (await this.generateUniqueSlug(courseData.title || ""));
 
-      // Set default values according to Course schema
+      // Set default values according to Upcoming Course schema
       const courseToCreate: Partial<Course> = {
         ...courseData,
         slug,
@@ -85,43 +86,98 @@ export class CourseService {
         language: courseData.language || "English",
       };
 
-      // Remove any _id if provided - let MongoDB generate it
-      if ("_id" in courseToCreate) {
-        delete courseToCreate._id;
-      }
-
-      // Remove any id field that might conflict with MongoDB's _id
-      if ("id" in courseToCreate) {
-        delete (courseToCreate as any).id;
-      }
-
-      // Remove all manual _id fields from nested objects - let MongoDB auto-generate them
-      this.removeManualIds(courseToCreate);
-
-      // Debug: Check for any remaining problematic fields
-      if (process.env.NODE_ENV === "development") {
-        const hasId = JSON.stringify(courseToCreate).includes('"_id":');
-        if (hasId) {
-          console.warn(
-            '⚠️  Warning: Course data still contains "_id" fields after cleaning'
-          );
+      const savedModuleIds: string[] = [];
+      
+      // Process modules sequentially to avoid race conditions
+      if (courseToCreate.modules && Array.isArray(courseToCreate.modules) && courseToCreate.modules.length > 0) {
+        for (const module of courseToCreate.modules) {
+          const savedLessonIds: string[] = [];
+          
+          // Process lessons sequentially
+          if (module.lessons && Array.isArray(module.lessons)) {
+            for (const lesson of module.lessons) {
+              const savedContentIds: string[] = [];
+              
+              // Process contents sequentially
+              if (lesson.contents && Array.isArray(lesson.contents)) {
+                for (const content of lesson.contents) {
+                  try {
+                    let savedContent;
+                    
+                    // Prepare content data by flattening the nested structure
+                    const contentData = {
+                      title: content.title,
+                      description: content.description,
+                      type: content.type,
+                      readingMaterials: content.readingMaterials || [],
+                      isLocked: content.isLocked || false,
+                      // Flatten the nested content structure
+                      ...((content as any).content || {})
+                    };
+                    
+                    // Handle different content types using discriminators
+                    if (contentData.type === "video") {
+                      savedContent = new VideoContentModel(contentData);
+                    } else if (contentData.type === "quiz") {
+                      savedContent = new QuizContentModel(contentData);
+                    } else {
+                      throw new Error(`Invalid content type: ${content.title || 'Untitled'}`);
+                    }
+                    
+                    await savedContent.save();
+                    savedContentIds.push(savedContent._id.toString());
+                  } catch (error) {
+                    console.error(`❌ Error saving content ${content.title || 'Untitled'}:`, error);
+                    throw new Error(`Failed to save content: ${content.title || 'Untitled'}`);
+                  }
+                }
+              }
+              
+              // Create lesson with content references
+              try {
+                const lessonData = {
+                  ...lesson,
+                  contentIds: savedContentIds,
+                };
+                // Remove nested contents to avoid schema conflicts
+                delete (lessonData as any).contents;
+                
+                const savedLesson = new CourseLessonModel(lessonData);
+                await savedLesson.save();
+                savedLessonIds.push(savedLesson._id.toString());
+              } catch (error) {
+                console.error(`❌ Error saving lesson ${lesson.title || 'Untitled'}:`, error);
+                throw new Error(`Failed to save lesson: ${lesson.title || 'Untitled'}`);
+              }
+            }
+          }
+          
+          // Create module with lesson references
+          try {
+            const moduleData = {
+              ...module,
+              lessonIds: savedLessonIds,
+            };
+            // Remove nested lessons to avoid schema conflicts
+            delete (moduleData as any).lessons;
+            
+            const savedModule = new CourseModuleModel(moduleData);
+            await savedModule.save();
+            savedModuleIds.push(savedModule._id.toString());
+          } catch (error) {
+            console.error(`❌ Error saving module ${module.title || 'Untitled'}:`, error);
+            throw new Error(`Failed to save module: ${module.title || 'Untitled'}`);
+          }
         }
       }
 
-      // Validate required fields
-      const validation = this.validateCourseData(courseToCreate);
-      if (!validation.isValid) {
-        throw new Error(`Validation failed: ${validation.errors.join(", ")}`);
-      }
+      // Update course data to use module references  
+      (courseToCreate as any).modules = savedModuleIds;
 
-      // Create the course
-      console.log("Creating course with data:", {
-        title: courseToCreate.title,
-        language: courseToCreate.language,
-        plansStructure: typeof courseToCreate.plans,
-        hasElitePlan: !!courseToCreate.plans?.elite,
-        hasEssentialPlan: !!courseToCreate.plans?.essential,
-      });
+      // Validate that we have at least one module
+      if (savedModuleIds.length === 0) {
+        throw new Error("Course must have at least one module");
+      }
 
       const course = new CourseModel(courseToCreate);
       const savedCourse = await course.save();
@@ -702,13 +758,13 @@ export class CourseService {
       errors.push("Course thumbnail is required");
     }
 
-    if (!courseData.previewVideoUrl?.trim()) {
-      errors.push("Preview video URL is required");
-    }
+    // if (!courseData.previewVideoUrl?.trim()) {
+    //   errors.push("Preview video URL is required");
+    // }
 
-    if (!courseData.createdBy?.trim()) {
-      errors.push("Created by field is required");
-    }
+    // if (!courseData.createdBy?.trim()) {
+    //   errors.push("Created by field is required");
+    // }
 
     if (
       !courseData.audience ||
@@ -731,6 +787,14 @@ export class CourseService {
     if (!courseData.language?.trim()) {
       errors.push("Language is required");
     }
+
+    // if (!courseData.createdBy?.trim()) {
+    //   errors.push("Created by field is required");
+    // }
+
+    // if (!courseData.instructor || !Array.isArray(courseData.instructor) || courseData.instructor.length === 0) {
+    //   errors.push("Course must have at least one instructor");
+    // }
 
     // Validate plans
     if (courseData.plans) {
@@ -772,15 +836,143 @@ export class CourseService {
       }
     }
 
-    // Validate modules if provided
-    if (
-      courseData.modules &&
-      Array.isArray(courseData.modules) &&
-      courseData.modules.length > 0
-    ) {
-      courseData.modules.forEach((module, moduleIndex) => {
+    // Validate modules - at least one is required
+    if (!courseData.modules || !Array.isArray(courseData.modules) || courseData.modules.length === 0) {
+      errors.push("Course must have at least one module");
+    } else {
+      courseData.modules.forEach((module: any, moduleIndex) => {
         if (!module) {
           errors.push(`Module ${moduleIndex + 1} is required`);
+          return;
+        }
+
+        // Check if module has required fields
+        if (typeof module === 'object' && module !== null) {
+          if (!module.title || typeof module.title !== 'string' || !module.title.trim()) {
+            errors.push(`Module ${moduleIndex + 1}: Title is required`);
+          }
+
+          // Validate thumbnailUrl if present
+          if (module.thumbnailUrl && typeof module.thumbnailUrl === 'string') {
+            const urlPattern = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/;
+            if (!urlPattern.test(module.thumbnailUrl)) {
+              errors.push(`Module ${moduleIndex + 1}: Invalid thumbnail URL format`);
+            }
+          }
+
+          // Validate lessons if they exist (for nested structure)
+          if (module.lessons && Array.isArray(module.lessons)) {
+            if (module.lessons.length === 0) {
+              errors.push(`Module ${moduleIndex + 1}: Must contain at least one lesson`);
+            } else {
+              module.lessons.forEach((lesson: any, lessonIndex: number) => {
+                if (!lesson) {
+                  errors.push(`Module ${moduleIndex + 1}, Lesson ${lessonIndex + 1}: Lesson is required`);
+                  return;
+                }
+
+                if (!lesson.title || typeof lesson.title !== 'string' || !lesson.title.trim()) {
+                  errors.push(`Module ${moduleIndex + 1}, Lesson ${lessonIndex + 1}: Title is required`);
+                }
+
+                // Validate contents if they exist
+                if (lesson.contents && Array.isArray(lesson.contents)) {
+                  if (lesson.contents.length === 0) {
+                    errors.push(`Module ${moduleIndex + 1}, Lesson ${lessonIndex + 1}: Must contain at least one content item`);
+                  } else {
+                    lesson.contents.forEach((content: any, contentIndex: number) => {
+                      if (!content) {
+                        errors.push(`Module ${moduleIndex + 1}, Lesson ${lessonIndex + 1}, Content ${contentIndex + 1}: Content is required`);
+                        return;
+                      }
+
+                      if (!content.title || typeof content.title !== 'string' || !content.title.trim()) {
+                        errors.push(`Module ${moduleIndex + 1}, Lesson ${lessonIndex + 1}, Content ${contentIndex + 1}: Title is required`);
+                      }
+
+                      if (!content.type || !['video', 'quiz'].includes(content.type)) {
+                        errors.push(`Module ${moduleIndex + 1}, Lesson ${lessonIndex + 1}, Content ${contentIndex + 1}: Type must be 'video' or 'quiz'`);
+                      }
+
+                      // Validate video content
+                      if (content.type === 'video' && content.content) {
+                        if (!content.content.sources || !Array.isArray(content.content.sources) || content.content.sources.length === 0) {
+                          errors.push(`Module ${moduleIndex + 1}, Lesson ${lessonIndex + 1}, Content ${contentIndex + 1}: Video must have at least one source`);
+                        } else {
+                          content.content.sources.forEach((source: any, sourceIndex: number) => {
+                            if (!source.quality || !['1080p', '720p', '480p', '360p'].includes(source.quality)) {
+                              errors.push(`Module ${moduleIndex + 1}, Lesson ${lessonIndex + 1}, Content ${contentIndex + 1}, Source ${sourceIndex + 1}: Invalid quality. Must be 1080p, 720p, 480p, or 360p`);
+                            }
+                            if (!source.videoUrl || typeof source.videoUrl !== 'string' || !source.videoUrl.trim()) {
+                              errors.push(`Module ${moduleIndex + 1}, Lesson ${lessonIndex + 1}, Content ${contentIndex + 1}, Source ${sourceIndex + 1}: Video URL is required`);
+                            } else {
+                              const urlPattern = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/;
+                              if (!urlPattern.test(source.videoUrl)) {
+                                errors.push(`Module ${moduleIndex + 1}, Lesson ${lessonIndex + 1}, Content ${contentIndex + 1}, Source ${sourceIndex + 1}: Invalid video URL format`);
+                              }
+                            }
+                          });
+                        }
+
+                        // Validate video thumbnail is required
+                        if (!content.content.thumbnailUrl || typeof content.content.thumbnailUrl !== 'string' || !content.content.thumbnailUrl.trim()) {
+                          errors.push(`Module ${moduleIndex + 1}, Lesson ${lessonIndex + 1}, Content ${contentIndex + 1}: Video thumbnail URL is required`);
+                        } else {
+                          const urlPattern = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/;
+                          if (!urlPattern.test(content.content.thumbnailUrl)) {
+                            errors.push(`Module ${moduleIndex + 1}, Lesson ${lessonIndex + 1}, Content ${contentIndex + 1}: Invalid thumbnail URL format`);
+                          }
+                        }
+
+                        // Validate video duration if present
+                        if (content.content.duration !== undefined && (typeof content.content.duration !== 'number' || content.content.duration < 0)) {
+                          errors.push(`Module ${moduleIndex + 1}, Lesson ${lessonIndex + 1}, Content ${contentIndex + 1}: Duration must be a positive number`);
+                        }
+                      }
+
+                      // Validate quiz content
+                      if (content.type === 'quiz' && content.content) {
+                        if (!content.content.questions || !Array.isArray(content.content.questions) || content.content.questions.length === 0) {
+                          errors.push(`Module ${moduleIndex + 1}, Lesson ${lessonIndex + 1}, Content ${contentIndex + 1}: Quiz must have at least one question`);
+                        } else {
+                          content.content.questions.forEach((question: any, questionIndex: number) => {
+                            if (!question.question || typeof question.question !== 'string' || !question.question.trim()) {
+                              errors.push(`Module ${moduleIndex + 1}, Lesson ${lessonIndex + 1}, Content ${contentIndex + 1}, Question ${questionIndex + 1}: Question text is required`);
+                            }
+                            if (!question.options || !Array.isArray(question.options) || question.options.length < 2) {
+                              errors.push(`Module ${moduleIndex + 1}, Lesson ${lessonIndex + 1}, Content ${contentIndex + 1}, Question ${questionIndex + 1}: Must have at least 2 options`);
+                            }
+                            if (!question.correctAnswer || !Array.isArray(question.correctAnswer) || question.correctAnswer.length === 0) {
+                              errors.push(`Module ${moduleIndex + 1}, Lesson ${lessonIndex + 1}, Content ${contentIndex + 1}, Question ${questionIndex + 1}: Must have at least one correct answer`);
+                            }
+                          });
+                        }
+                      }
+
+                      // Validate reading materials if present
+                      if (content.readingMaterials && Array.isArray(content.readingMaterials)) {
+                        content.readingMaterials.forEach((material: any, materialIndex: number) => {
+                          if (!material.content || !['pdf', 'docx'].includes(material.content)) {
+                            errors.push(`Module ${moduleIndex + 1}, Lesson ${lessonIndex + 1}, Content ${contentIndex + 1}, Reading Material ${materialIndex + 1}: Content type must be 'pdf' or 'docx'`);
+                          }
+                          if (material.estimatedReadTime !== undefined && (typeof material.estimatedReadTime !== 'number' || material.estimatedReadTime < 0)) {
+                            errors.push(`Module ${moduleIndex + 1}, Lesson ${lessonIndex + 1}, Content ${contentIndex + 1}, Reading Material ${materialIndex + 1}: Estimated read time must be a positive number`);
+                          }
+                        });
+                      }
+                    });
+                  }
+                }
+              });
+            }
+          }
+          
+          // Validate lessonIds if using reference structure
+          else if (module.lessonIds && Array.isArray(module.lessonIds)) {
+            if (module.lessonIds.length === 0) {
+              errors.push(`Module ${moduleIndex + 1}: Must contain at least one lesson ID`);
+            }
+          }
         }
       });
     }
@@ -939,5 +1131,25 @@ export class CourseService {
         this.removeManualIds(obj[key]);
       }
     });
+  }
+
+  async cleanCourseData(courseData: Partial<Course>): Promise<Partial<Course>> {
+    // Deep clone to avoid mutating the original course data
+    const cleanedData = JSON.parse(JSON.stringify(courseData));
+
+    // Remove any _id field from the top level
+    if ("_id" in cleanedData) {
+      delete cleanedData._id;
+    }
+
+    // Remove any id field that might conflict with MongoDB's _id
+    if ("id" in cleanedData) {
+      delete cleanedData.id;
+    }
+
+    // Remove all manual _id fields from nested objects - let MongoDB auto-generate them
+    this.removeManualIds(cleanedData);
+
+    return cleanedData;
   }
 }

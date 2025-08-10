@@ -1,9 +1,9 @@
 "use client";
 
 import React, { createContext, useContext, useEffect } from "react";
-import { useCourseReducer } from "./useCourseReducer";
-import { CourseState, initialCourseState } from "./state";
-import { ReducerResult } from "./reducer";
+import { useCourseReducer } from "../hooks/useCourseReducer";
+import { CourseState, initialCourseState } from "../core/state";
+import { ReducerResult } from "../core/reducer";
 
 // ===================
 // Course Reducer Context

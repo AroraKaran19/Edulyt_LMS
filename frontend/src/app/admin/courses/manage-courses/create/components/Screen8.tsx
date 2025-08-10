@@ -1,6 +1,6 @@
 import Container from "@/app/admin/components/ui/Container";
 import React, { useState, useMemo } from "react";
-import { useCourseContext } from "../../../course-reducer/CourseReducerProvider";
+import { useCourseContext } from "../../../reducers";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import ScreenNavigation from "./shared/ScreenNavigation";
 import {
@@ -29,7 +29,32 @@ const Screen8 = ({ isEditMode = false, courseId }: Screen8Props = {}) => {
   const { state, actions } = useCourseContext();
   const { createCourse, updateCourse } = useCourses();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Navigate to specific screen based on error
+  const navigateToScreen = (screenName: string) => {
+    const screenMap: { [key: string]: string } = {
+      "Screen 1": "screen1",
+      "Screen 2": "screen2", 
+      "Screen 3": "screen3",
+      "Screen 4": "screen4",
+      "Screen 5": "screen5",
+      "Screen 6": "screen6",
+      "Screen 7": "screen7"
+    };
+    
+    const screenKey = screenMap[screenName];
+    if (screenKey) {
+      // Navigate to the specific screen
+      router.push(`/admin/courses/manage-courses/create?screen=${screenKey}`);
+    }
+  };
   const [submitError, setSubmitError] = useState<string>("");
+  const [validationErrors, setValidationErrors] = useState<Array<{
+    field: string;
+    message: string;
+    screen: string;
+    action: string;
+  }>>([]);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const router = useRouter();
 
@@ -160,6 +185,96 @@ const Screen8 = ({ isEditMode = false, courseId }: Screen8Props = {}) => {
     };
   }, [state.course]);
 
+  // Parse validation errors from backend response
+  const parseValidationErrors = (errorMessage: string) => {
+    const errors: Array<{
+      field: string;
+      message: string;
+      screen: string;
+      action: string;
+    }> = [];
+
+    // Parse Mongoose validation errors
+    if (errorMessage.includes("Course validation failed:")) {
+      const errorParts = errorMessage.split(", ");
+      
+      errorParts.forEach(part => {
+        if (part.includes("Path `")) {
+          // Extract field name and message
+          const fieldMatch = part.match(/Path `([^`]+)`/);
+          const messageMatch = part.match(/`([^`]+)` is ([^.]+)/);
+          
+          if (fieldMatch && messageMatch) {
+            const field = fieldMatch[1];
+            const message = messageMatch[2];
+            
+            // Map fields to screens and actions
+            let screen = "";
+            let action = "";
+            
+            switch (field) {
+              case "title":
+              case "description":
+              case "shortDescription":
+              case "category":
+              case "subcategory":
+              case "thumbnail":
+              case "previewVideoUrl":
+                screen = "Screen 1";
+                action = "Complete basic course information";
+                break;
+              case "whatYouWillLearn":
+              case "skills":
+              case "highlights":
+              case "careerPaths":
+                screen = "Screen 2";
+                action = "Add learning outcomes and skills";
+                break;
+              case "skillLevel":
+              case "language":
+              case "whoShouldJoin":
+              case "prerequisites":
+              case "duration":
+                screen = "Screen 3";
+                action = "Complete course details";
+                break;
+              case "plans":
+              case "plans.essential":
+              case "plans.elite":
+                screen = "Screen 4";
+                action = "Set up pricing plans";
+                break;
+              case "testimonials":
+                screen = "Screen 5";
+                action = "Add complete testimonials";
+                break;
+              case "faqs":
+                screen = "Screen 6";
+                action = "Add frequently asked questions";
+                break;
+              case "modules":
+                screen = "Screen 7";
+                action = "Add course modules and content";
+                break;
+              default:
+                screen = "General";
+                action = "Review course data";
+            }
+            
+            errors.push({
+              field,
+              message: `${field}: ${message}`,
+              screen,
+              action
+            });
+          }
+        }
+      });
+    }
+    
+    return errors;
+  };
+
   // Handle course submission
   const handleSubmitCourse = async () => {
     console.log("🚀 Starting course submission process...");
@@ -242,6 +357,7 @@ const Screen8 = ({ isEditMode = false, courseId }: Screen8Props = {}) => {
 
     setIsSubmitting(true);
     setSubmitError("");
+    setValidationErrors([]);
 
     try {
       let result;
@@ -268,15 +384,25 @@ const Screen8 = ({ isEditMode = false, courseId }: Screen8Props = {}) => {
           localStorage.removeItem("course_creation_current_screen");
         }
       } else {
-        setSubmitError(result.error || result.message || `Failed to ${isEditMode ? 'update' : 'create'} course.`);
+        const errorMessage = result.error || result.message || `Failed to ${isEditMode ? 'update' : 'create'} course.`;
+        setSubmitError(errorMessage);
+        
+        // Parse validation errors if present
+        const parsedErrors = parseValidationErrors(errorMessage);
+        if (parsedErrors.length > 0) {
+          setValidationErrors(parsedErrors);
+        }
       }
     } catch (error) {
       console.error(`Course ${isEditMode ? 'update' : 'creation'} failed:`, error);
-      setSubmitError(
-        error instanceof Error
-          ? error.message
-          : `Failed to ${isEditMode ? 'update' : 'create'} course. Please try again.`
-      );
+      const errorMessage = error instanceof Error ? error.message : `Failed to ${isEditMode ? 'update' : 'create'} course. Please try again.`;
+      setSubmitError(errorMessage);
+      
+      // Parse validation errors if present
+      const parsedErrors = parseValidationErrors(errorMessage);
+      if (parsedErrors.length > 0) {
+        setValidationErrors(parsedErrors);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -416,6 +542,83 @@ const Screen8 = ({ isEditMode = false, courseId }: Screen8Props = {}) => {
           </div>
         </div>
       </div>
+
+      {/* Validation Errors Display */}
+      {validationErrors.length > 0 && (
+        <div className="mb-6">
+          <div className="p-4 rounded-lg border-2 border-red-200 bg-red-50">
+            <div className="flex items-center gap-3 mb-4">
+              <AlertCircle className="w-6 h-6 text-red-600" />
+              <div>
+                <h3 className="font-semibold text-red-800">
+                  Validation Errors Found
+                </h3>
+                <p className="text-sm text-red-700">
+                  Please fix the following issues before submitting:
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              {validationErrors.map((error, index) => (
+                <div 
+                  key={index} 
+                  className="bg-white border border-red-200 rounded-lg p-3 cursor-pointer hover:bg-red-50 transition-colors"
+                  onClick={() => navigateToScreen(error.screen)}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="w-2 h-2 bg-red-500 rounded-full mt-2 flex-shrink-0"></div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-sm font-medium text-red-800">
+                          {error.screen}
+                        </span>
+                        <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded">
+                          {error.field}
+                        </span>
+                        <span className="text-xs text-red-500 ml-auto">
+                          Click to navigate →
+                        </span>
+                      </div>
+                      <p className="text-sm text-red-700 mb-2">
+                        {error.message}
+                      </p>
+                      <p className="text-xs text-red-600">
+                        💡 {error.action}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-4 p-3 bg-red-100 rounded-lg">
+              <p className="text-sm text-red-800">
+                <strong>Next Steps:</strong> Navigate to the indicated screens above to fix these validation errors, then return to this screen to submit your course.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* General Error Display */}
+      {submitError && validationErrors.length === 0 && (
+        <div className="mb-6">
+          <div className="p-4 rounded-lg border-2 border-red-200 bg-red-50">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="w-6 h-6 text-red-600" />
+              <div>
+                <h3 className="font-semibold text-red-800">
+                  Submission Error
+                </h3>
+                <p className="text-sm text-red-700">
+                  {submitError}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Course Summary */}
       <div className="space-y-6 mb-8">

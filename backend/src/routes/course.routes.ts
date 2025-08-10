@@ -45,6 +45,7 @@ router.get("/:slug", courseController.getCourseBySlug);
  * @access  Private (should be protected with admin middleware)
  * @body @type {Course}
  */
-router.post("/", verifyAdmin, courseController.createCourse);
+// router.post("/", verifyAdmin, courseController.createCourse);
+router.post("/", courseController.createCourse)
 
 export default router;

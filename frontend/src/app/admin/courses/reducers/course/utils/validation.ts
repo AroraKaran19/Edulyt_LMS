@@ -1,5 +1,4 @@
-import { Course, CourseModule, CourseLesson, Content, Plan, Review, FAQ, Quiz, Discount } from "../../../../types/course";
-import { Instructor } from "../../../../types/instructor";
+import { CourseModule, Review, FAQ, Quiz, CourseInstructor } from "@/types"
 
 // ===================
 // Validation Error Types
@@ -843,17 +842,22 @@ export const actionValidators = {
       };
     }
 
-    // Validate faqId
-    const faqIdError = validationUtils.isValidId(payload.faqId, "faqId");
-    if (faqIdError) errors.push(faqIdError);
+    // Validate faqIndex
+    if (payload.faqIndex !== undefined && typeof payload.faqIndex !== "number") {
+      errors.push({
+        field: "faqIndex",
+        message: "FAQ index must be a number",
+        code: "INVALID_FAQ_INDEX"
+      });
+    }
 
-    // Check if FAQ exists
-    if (payload.faqId && state.course.faqs) {
-      const faqExists = state.course.faqs.some((f: FAQ) => f._id === payload.faqId);
+    // Check if FAQ exists (using array index since FAQs don't have IDs)
+    if (payload.faqIndex !== undefined && state.course.faqs) {
+      const faqExists = state.course.faqs[payload.faqIndex] !== undefined;
       if (!faqExists) {
         errors.push({
-          field: "faqId",
-          message: `FAQ with ID '${payload.faqId}' not found`,
+          field: "faqIndex",
+          message: `FAQ at index '${payload.faqIndex}' not found`,
           code: "FAQ_NOT_FOUND"
         });
       }
@@ -1022,13 +1026,16 @@ export const actionValidators = {
           entityExists = state.course.reviews?.some((r: Review) => r._id === payload);
           break;
         case "faq":
-          entityExists = state.course.faqs?.some((f: FAQ) => f._id === payload);
+          // FAQs don't have IDs, use array index instead
+          entityExists = typeof payload === "number" && 
+                        state.course.faqs && 
+                        state.course.faqs[payload] !== undefined;
           break;
         case "quiz":
           entityExists = state.course.scholarshipQuiz?.some((q: Quiz) => q._id === payload);
           break;
         case "instructor":
-          entityExists = state.course.instructor?.some((i: Instructor) => i._id === payload);
+          entityExists = state.course.instructor?.some((i: CourseInstructor) => i._id === payload);
           break;
       }
 
