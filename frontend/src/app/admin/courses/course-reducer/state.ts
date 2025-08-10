@@ -48,7 +48,7 @@ export const initialCourseState: CourseState = {
     // UI & Learning Info
     whatYouWillLearn: "",
     skills: [],
-    courseTestimonials: [
+    highlights: [
       {
         title: "",
         description: "",
@@ -62,7 +62,7 @@ export const initialCourseState: CourseState = {
     fakeDiscount: 0, // in percentage for display purposes
     duration: "", // like: 3 months, 1 year, 2 years, etc. (will not be accurate)
 
-    // Content
+    // Content - Store full module objects for frontend
     modules: [],
 
     // Instructor
@@ -82,7 +82,7 @@ export const initialCourseState: CourseState = {
     faqs: [],
 
     // Administrative
-    isActive: false,
+    isActive: true,
     createdAt: new Date(),
     updatedAt: new Date(),
     createdBy: "",

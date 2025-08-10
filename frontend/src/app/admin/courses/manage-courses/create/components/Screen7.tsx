@@ -32,21 +32,62 @@ import ContentSection from "./content/ContentSection";
 
 const Screen7 = () => {
   const { state, actions } = useCourseContext();
-  const { setActiveScreen } = useScreen();
   const { uploadFile, isUploading } = useUpload();
   const [savedModules, setSavedModules] = useState<Set<number>>(new Set());
   const [expandedModules, setExpandedModules] = useState<Set<number>>(new Set());
   const [expandedLessons, setExpandedLessons] = useState<Set<string>>(new Set());
   const [expandedContent, setExpandedContent] = useState<Set<string>>(new Set());
-  const [moduleData, setModuleData] = useState<Map<string, CourseModule>>(new Map());
-  const [lessonData, setLessonData] = useState<Map<string, CourseLesson>>(new Map());
-  const [contentData, setContentData] = useState<Map<string, Content>>(new Map());
+
 
   // Validation checks
   const validationErrors = useMemo(() => {
     const errors = [];
-    if (!state.course.modules || state.course.modules.length === 0)
+    
+    // Check if at least one module exists
+    if (!state.course.modules || state.course.modules.length === 0) {
       errors.push("At least one module is required");
+      return errors; // Early return if no modules
+    }
+
+    // Check if at least one module has at least one lesson
+    const hasLessons = state.course.modules.some(module => 
+      module && module.lessons && module.lessons.length > 0
+    );
+    if (!hasLessons) {
+      errors.push("At least one lesson is required in any module");
+    }
+
+    // Check if at least one lesson has at least one video content
+    const hasVideoContent = state.course.modules.some(module => 
+      module && module.lessons && module.lessons.some(lesson => 
+        lesson && lesson.contents && lesson.contents.some(content => 
+          content && content.type === "video"
+        )
+      )
+    );
+    if (!hasVideoContent) {
+      errors.push("At least one video content is required in any lesson");
+    }
+
+    // Check for content titles
+    const contentTitleErrors: string[] = [];
+    state.course.modules.forEach((module, moduleIndex) => {
+      if (!module || !module.lessons) return;
+      
+      module.lessons.forEach((lesson, lessonIndex) => {
+        if (!lesson || !lesson.contents) return;
+        
+        lesson.contents.forEach((content, contentIndex) => {
+          if (!content || !content.title || content.title.trim() === "") {
+            contentTitleErrors.push(
+              `Module ${moduleIndex + 1}, Lesson ${lessonIndex + 1}, Content ${contentIndex + 1}: Title is required`
+            );
+          }
+        });
+      });
+    });
+    
+    errors.push(...contentTitleErrors);
     return errors;
   }, [state.course]);
 
@@ -74,44 +115,34 @@ const Screen7 = () => {
       _id: generateId(),
       title: "",
       description: "",
-      lessonIds: [],
+      lessons: [], // Now store full lesson objects
       thumbnailUrl: "",
       isActive: true,
     };
     
-    const currentModules = state.course.modules || [];
-    const newIndex = currentModules.length;
-    actions.updateCourseField("modules", [...currentModules, newModule._id!]);
+    // Use the proper action to add the module with full object
+    actions.addCourseModule(newModule);
     
-    // Store the module data (you might need to add this to your reducer)
-    // For now, we'll work with a local state approach
+    const newIndex = (state.course.modules || []).length;
     setExpandedModules((prev) => new Set([...prev, newIndex]));
+    console.log("Module added successfully:", newModule);
   };
 
   // Helper function to add a new lesson to a module
   const addLesson = (moduleIndex: number) => {
-    const moduleId = state.course.modules?.[moduleIndex];
-    if (!moduleId) return;
+    const module = state.course.modules?.[moduleIndex];
+    if (!module) return;
 
     const newLesson: CourseLesson = {
       _id: generateId(),
       title: "",
       description: "",
-      moduleId: moduleId,
-      contentIds: [],
+      moduleId: module._id,
+      contents: [], // Now store full content objects
     };
 
-    // Store lesson data
-    setLessonData(prev => {
-      const newMap = new Map(prev);
-      newMap.set(newLesson._id!, newLesson);
-      return newMap;
-    });
-
-    // Update module's lesson IDs
-    updateModuleData(moduleId, {
-      lessonIds: [...(getModuleData(moduleId).lessonIds || []), newLesson._id!]
-    });
+    // Use the proper action to add the lesson
+    actions.addCourseLesson(module._id!, newLesson);
 
     // Expand the new lesson
     setExpandedLessons((prev) => new Set([...prev, newLesson._id!]));
@@ -119,9 +150,19 @@ const Screen7 = () => {
 
   // Helper function to add content to a lesson
   const addContent = (lessonId: string, type: "video" | "quiz") => {
+    // Generate a default title that meets the requirement
+    const contentCount = state.course.modules
+      .flatMap(m => m.lessons || [])
+      .flatMap(l => l.contents || [])
+      .filter(c => c.type === type).length + 1;
+    
+    const defaultTitle = type === "video" 
+      ? `Video Content ${contentCount}`
+      : `Quiz ${contentCount}`;
+
     const newContent: Content = {
       _id: generateId(),
-      title: "",
+      title: defaultTitle,
       description: "",
       type,
       content: type === "video" 
@@ -138,20 +179,25 @@ const Screen7 = () => {
       readingMaterials: [],
     };
 
-    // Store content data
-    setContentData(prev => {
-      const newMap = new Map(prev);
-      newMap.set(newContent._id!, newContent);
-      return newMap;
-    });
+    // Find the module and lesson to add content to
+    const moduleId = findModuleIdByLessonId(lessonId);
+    if (!moduleId) return;
 
-    // Update lesson's content IDs
-    updateLessonData(lessonId, {
-      contentIds: [...(getLessonData(lessonId).contentIds || []), newContent._id!]
-    });
+    // Use the proper action to add the content
+    actions.addCourseContent(moduleId, lessonId, newContent);
 
     // Expand the new content
     setExpandedContent((prev) => new Set([...prev, newContent._id!]));
+  };
+
+  // Helper function to find module ID by lesson ID
+  const findModuleIdByLessonId = (lessonId: string): string | undefined => {
+    for (const module of state.course.modules) {
+      if (module.lessons.some(lesson => lesson._id === lessonId)) {
+        return module._id;
+      }
+    }
+    return undefined;
   };
 
   // Helper function to toggle module expansion
@@ -200,94 +246,39 @@ const Screen7 = () => {
 
   // Helper function to update module data
   const updateModuleData = (moduleId: string, updates: Partial<CourseModule>) => {
-    setModuleData(prev => {
-      const newMap = new Map(prev);
-      const currentModule = newMap.get(moduleId) || {
-        _id: moduleId,
-      title: "",
-      description: "",
-        lessonIds: [],
-        thumbnailUrl: "",
-        isActive: true,
-    };
-      newMap.set(moduleId, { ...currentModule, ...updates });
-      return newMap;
-    });
-  };
-
-  // Helper function to get module data
-  const getModuleData = (moduleId: string): CourseModule => {
-    return moduleData.get(moduleId) || {
-      _id: moduleId,
-      title: "",
-      description: "",
-      lessonIds: [],
-      thumbnailUrl: "",
-      isActive: true,
-    };
+    actions.updateCourseModule(moduleId, updates);
   };
 
   // Helper function to update lesson data
   const updateLessonData = (lessonId: string, updates: Partial<CourseLesson>) => {
-    setLessonData(prev => {
-      const newMap = new Map(prev);
-      const currentLesson = newMap.get(lessonId) || {
-        _id: lessonId,
-        title: "",
-        description: "",
-        moduleId: "",
-        contentIds: [],
-      };
-      newMap.set(lessonId, { ...currentLesson, ...updates });
-      return newMap;
-    });
-  };
-
-  // Helper function to get lesson data
-  const getLessonData = (lessonId: string): CourseLesson => {
-    return lessonData.get(lessonId) || {
-      _id: lessonId,
-      title: "",
-      description: "",
-      moduleId: "",
-      contentIds: [],
-    };
+    const moduleId = findModuleIdByLessonId(lessonId);
+    if (moduleId) {
+      actions.updateCourseLesson(moduleId, lessonId, updates);
+    }
   };
 
   // Helper function to update content data
   const updateContentData = (contentId: string, updates: Partial<Content>) => {
-    setContentData(prev => {
-      const newMap = new Map(prev);
-      const currentContent = newMap.get(contentId) || {
-        _id: contentId,
-        title: "",
-        description: "",
-        type: "video" as const,
-        content: {
-          sources: [{ quality: "1080p", videoUrl: "" }],
-          thumbnailUrl: "",
-          duration: 0,
-        } as VideoType,
-      };
-      newMap.set(contentId, { ...currentContent, ...updates });
-      return newMap;
-    });
+    const location = findContentLocation(contentId);
+    if (!location) return;
+
+    const { moduleId, lessonId } = location;
+    actions.updateCourseContent(moduleId, lessonId, contentId, updates);
   };
 
-  // Helper function to get content data
-  const getContentData = (contentId: string): Content => {
-    return contentData.get(contentId) || {
-      _id: contentId,
-      title: "",
-      description: "",
-      type: "video",
-      content: {
-        sources: [{ quality: "1080p", videoUrl: "" }],
-            thumbnailUrl: "",
-        duration: 0,
-      } as VideoType,
-    };
+  // Helper function to find the location of content by content ID
+  const findContentLocation = (contentId: string): { moduleId: string; lessonId: string } | undefined => {
+    for (const module of state.course.modules) {
+      for (const lesson of module.lessons) {
+        if (lesson.contents.some(content => content._id === contentId)) {
+          return { moduleId: module._id!, lessonId: lesson._id! };
+        }
+      }
+    }
+    return undefined;
   };
+
+
 
   // Helper function to handle thumbnail upload
   const handleThumbnailUpload = async (moduleId: string, file: File, folderName: string): Promise<string> => {
@@ -349,11 +340,14 @@ const Screen7 = () => {
     >
       {/* Validation Feedback */}
       {validationErrors.length > 0 && (
-        <AlertBanner
-          message={`Please complete: ${validationErrors.join(", ")}`}
-          type="info"
-          className="mb-4"
-        />
+        <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="font-medium mb-2 text-blue-800">Please complete the following:</div>
+          <ul className="list-disc list-inside space-y-1 text-blue-700">
+            {validationErrors.map((error, index) => (
+              <li key={index} className="text-sm">{error}</li>
+            ))}
+          </ul>
+        </div>
       )}
 
       {/* Modules Section */}
@@ -383,11 +377,10 @@ const Screen7 = () => {
 
         {/* Modules List */}
         <div className="space-y-4">
-          {(state.course.modules || []).map((moduleId, moduleIndex) => {
-            if (!moduleId) return null;
+          {(state.course.modules || []).map((module, moduleIndex) => {
+            if (!module) return null;
             const isSaved = savedModules.has(moduleIndex);
             const isExpanded = expandedModules.has(moduleIndex);
-            const module = getModuleData(moduleId);
             const isComplete = isModuleComplete(module);
 
             return (
@@ -420,7 +413,7 @@ const Screen7 = () => {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-gray-500">
-                      {module.lessonIds.length} lessons
+                      {module.lessons.length} lessons
                     </span>
                     {isExpanded ? (
                       <ChevronUp className="w-4 h-4 text-gray-500" />
@@ -441,7 +434,7 @@ const Screen7 = () => {
                           placeholder="e.g., Introduction to React"
                           value={module.title}
                           onChange={(e) => {
-                            updateModuleData(moduleId, { title: e.target.value });
+                            updateModuleData(module._id!, { title: e.target.value });
                           }}
                           required
                         />
@@ -452,7 +445,7 @@ const Screen7 = () => {
                         placeholder="Describe what students will learn in this module"
                         value={module.description || ""}
                         onChange={(e) => {
-                          updateModuleData(moduleId, { description: e.target.value });
+                          updateModuleData(module._id!, { description: e.target.value });
                         }}
                         rows={3}
                         lockHeight
@@ -467,12 +460,12 @@ const Screen7 = () => {
                         mediaUrl={module.thumbnailUrl}
                         maxSize={10} // 10MB
                         acceptedFormats={[".jpg", ".jpeg", ".png", ".webp"]}
-                        onFileUpload={(file, folderName) => handleThumbnailUpload(moduleId, file, folderName)}
-                        onFileRemove={() => handleThumbnailRemove(moduleId)}
+                        onFileUpload={(file, folderName) => handleThumbnailUpload(module._id!, file, folderName)}
+                        onFileRemove={() => handleThumbnailRemove(module._id!)}
                         isUploading={isUploading}
                         required={true}
                         allowUrlInput={true}
-                        onUrlSubmit={(url) => updateModuleData(moduleId, { thumbnailUrl: url })}
+                        onUrlSubmit={(url) => updateModuleData(module._id!, { thumbnailUrl: url })}
                         folderName={`courses/${state.course.title || 'untitled'}/modules`}
                         uploadContext={`module-${moduleIndex + 1}`}
                         className="w-full"
@@ -485,7 +478,7 @@ const Screen7 = () => {
                             type="checkbox"
                             checked={module.isActive}
                             onChange={(e) => {
-                              updateModuleData(moduleId, { isActive: e.target.checked });
+                              updateModuleData(module._id!, { isActive: e.target.checked });
                             }}
                             className="rounded"
                           />
@@ -510,19 +503,19 @@ const Screen7 = () => {
 
                         {/* Lessons List */}
                         <div className="space-y-3 pl-4">
-                          {module.lessonIds.map((lessonId, lessonIndex) => 
-                            lessonId ? (
+                          {module.lessons.map((lesson, lessonIndex) => 
+                            lesson ? (
                               <LessonItem
-                                key={lessonId}
-                                lessonId={lessonId}
-                                lessonData={getLessonData(lessonId)}
-                                isExpanded={expandedLessons.has(lessonId)}
-                                onToggleExpansion={() => toggleLessonExpansion(lessonId)}
+                                key={lesson._id!}
+                                lessonId={lesson._id!}
+                                lessonData={lesson}
+                                isExpanded={expandedLessons.has(lesson._id!)}
+                                onToggleExpansion={() => toggleLessonExpansion(lesson._id!)}
                                 onUpdateLesson={updateLessonData}
                                 onAddContent={addContent}
                                 expandedContent={expandedContent}
                                 onToggleContentExpansion={toggleContentExpansion}
-                                getContentData={getContentData}
+
                                 onUpdateContent={updateContentData}
                                 courseTitle={state.course.title || "untitled"}
                                 moduleIndex={moduleIndex}
@@ -531,7 +524,7 @@ const Screen7 = () => {
                             ) : null
                           )}
 
-                          {module.lessonIds.length === 0 && (
+                          {module.lessons.length === 0 && (
                             <div className="text-center py-4 text-gray-500 border-2 border-dashed border-gray-200 rounded-lg">
                               <BookOpen className="w-8 h-8 mx-auto mb-2 text-gray-300" />
                               <p className="text-sm">No lessons added yet</p>
@@ -575,7 +568,7 @@ const Screen7 = () => {
                           {module.description || "No description"}
                         </p>
                         <div className="flex items-center gap-4 text-xs text-gray-500">
-                          <span>{module.lessonIds.length} lessons</span>
+                          <span>{module.lessons.length} lessons</span>
                           <span className={module.isActive ? "text-green-600" : "text-red-600"}>
                             {module.isActive ? "Active" : "Inactive"}
                           </span>
@@ -609,6 +602,7 @@ const Screen7 = () => {
         previousScreen="screen6"
         nextScreen="screen8"
         nextButtonText="Review & Submit"
+
         isNextDisabled={validationErrors.length > 0}
       />
     </Container>
@@ -625,7 +619,6 @@ interface LessonItemProps {
   onAddContent: (lessonId: string, type: "video" | "quiz") => void;
   expandedContent: Set<string>;
   onToggleContentExpansion: (contentId: string) => void;
-  getContentData: (contentId: string) => Content;
   onUpdateContent: (contentId: string, updates: Partial<Content>) => void;
   courseTitle?: string;
   moduleIndex?: number;
@@ -641,7 +634,6 @@ const LessonItem: React.FC<LessonItemProps> = ({
   onAddContent,
   expandedContent,
   onToggleContentExpansion,
-  getContentData,
   onUpdateContent,
   courseTitle,
   moduleIndex,
@@ -667,7 +659,7 @@ const LessonItem: React.FC<LessonItemProps> = ({
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs text-gray-500">
-            {lesson.contentIds.length} items
+            {lesson.contents.length} items
           </span>
           {isExpanded ? (
             <ChevronUp className="w-3 h-3 text-gray-500" />
@@ -707,10 +699,9 @@ const LessonItem: React.FC<LessonItemProps> = ({
             {/* Content Section */}
             <ContentSection
               lessonId={lessonId}
-              contentIds={lesson.contentIds.filter((id): id is string => !!id)}
+              contents={lesson.contents || []}
               expandedContent={expandedContent}
               onToggleContentExpansion={onToggleContentExpansion}
-              getContentData={getContentData}
               onUpdateContent={onUpdateContent}
               onAddContent={onAddContent}
               courseTitle={courseTitle}

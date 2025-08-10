@@ -3,14 +3,16 @@ import Container from "@/app/admin/components/ui/Container";
 import FlexBox from "@/components/ui/FlexBox";
 import { BookOpenIcon } from "lucide-react";
 import React from "react";
-import Screen1 from "../../create/components/Screen1";
-import Screen2 from "../../create/components/Screen2";
-import Screen3 from "../../create/components/Screen3";
-import Screen4 from "../../create/components/Screen4";
-import Screen5 from "../../create/components/Screen5";
-import Screen6 from "../../create/components/Screen6";
-import Screen7 from "../../create/components/Screen7";
-import Screen8 from "../../create/components/Screen8";
+import { 
+  EditScreen1 as Screen1,
+  EditScreen2 as Screen2,
+  EditScreen3 as Screen3,
+  EditScreen4 as Screen4,
+  EditScreen5 as Screen5,
+  EditScreen6 as Screen6,
+  EditScreen7 as Screen7,
+  EditScreen8 as Screen8
+} from "./components/EditScreens";
 import { EditScreenProvider, useEditScreen } from "./contexts/EditScreenContext";
 import { EditCourseReducerProvider, useEditCourseContext } from "./contexts/EditCourseReducerProvider";
 
@@ -88,7 +90,7 @@ const EditCourseContent = ({ courseId }: EditCourseContentProps) => {
         {activeScreen === "screen5" && <Screen5 />}
         {activeScreen === "screen6" && <Screen6 />}
         {activeScreen === "screen7" && <Screen7 />}
-        {activeScreen === "screen8" && <Screen8 isEditMode={true} courseId={courseId} />}
+        {activeScreen === "screen8" && <Screen8 courseId={courseId} />}
       </FlexBox>
     </FlexBox>
   );

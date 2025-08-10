@@ -32,13 +32,62 @@ const Screen5 = () => {
     new Map()
   );
 
+  // Helper function to check if testimonial is complete
+  const isTestimonialComplete = (testimonial: Testimonial) => {
+    return (
+      testimonial.name?.trim() &&
+      testimonial.comment?.trim() &&
+      testimonial.currentRole?.trim() &&
+      testimonial.currentCompany?.trim() &&
+      testimonial.pastRole?.trim() &&
+      testimonial.pastCompany?.trim() &&
+      testimonial.linkedin?.trim() &&
+      testimonial.profileImage?.trim()
+    );
+  };
+
   // Validation checks
   const validationErrors = useMemo(() => {
     const errors = [];
-    if (!state.course.testimonials || state.course.testimonials.length === 0)
+    
+    // Check if at least one testimonial exists
+    if (!state.course.testimonials || state.course.testimonials.length === 0) {
       errors.push("At least one testimonial is required");
+      return errors; // Early return if no testimonials
+    }
+
+    // Check if at least one testimonial is complete
+    const hasCompleteTestimonial = state.course.testimonials.some(testimonial => 
+      isTestimonialComplete(testimonial)
+    );
+    
+    if (!hasCompleteTestimonial) {
+      errors.push("At least one complete testimonial is required (all fields must be filled)");
+    }
+
+    // Check for incomplete testimonials and provide specific feedback
+    const incompleteTestimonials = state.course.testimonials.map((testimonial, index) => {
+      const missingFields = [];
+      if (!testimonial.name || testimonial.name.trim() === "") missingFields.push("name");
+      if (!testimonial.comment || testimonial.comment.trim() === "") missingFields.push("comment");
+      if (!testimonial.currentRole || testimonial.currentRole.trim() === "") missingFields.push("current role");
+      if (!testimonial.currentCompany || testimonial.currentCompany.trim() === "") missingFields.push("current company");
+      if (!testimonial.pastRole || testimonial.pastRole.trim() === "") missingFields.push("past role");
+      if (!testimonial.pastCompany || testimonial.pastCompany.trim() === "") missingFields.push("past company");
+      if (!testimonial.linkedin || testimonial.linkedin.trim() === "") missingFields.push("LinkedIn URL");
+      if (!testimonial.profileImage || testimonial.profileImage.trim() === "") missingFields.push("profile image URL");
+      
+      return { index, missingFields };
+    }).filter(item => item.missingFields.length > 0);
+
+    if (incompleteTestimonials.length > 0) {
+      incompleteTestimonials.forEach(item => {
+        errors.push(`Testimonial ${item.index + 1}: Missing ${item.missingFields.join(", ")}`);
+      });
+    }
+
     return errors;
-  }, [state.course]);
+  }, [state.course.testimonials]);
 
   // Function to check if image URL is valid
   const checkImageUrl = async (url: string): Promise<boolean> => {
@@ -80,12 +129,7 @@ const Screen5 = () => {
 
     testimonials.forEach((testimonial, index) => {
       // Consider a testimonial as saved if it has all required fields
-      if (
-        testimonial.name &&
-        testimonial.comment &&
-        testimonial.currentRole &&
-        testimonial.currentCompany
-      ) {
+      if (isTestimonialComplete(testimonial)) {
         savedIndices.add(index);
       }
     });
@@ -169,13 +213,7 @@ const Screen5 = () => {
   // Helper function to save a testimonial
   const saveTestimonial = (index: number) => {
     const testimonial = state.course.testimonials?.[index];
-    if (
-      testimonial &&
-      testimonial.name &&
-      testimonial.comment &&
-      testimonial.currentRole &&
-      testimonial.currentCompany
-    ) {
+    if (testimonial && isTestimonialComplete(testimonial)) {
       setSavedTestimonials((prev) => new Set([...prev, index]));
       setExpandedTestimonials((prev) => {
         const newSet = new Set(prev);
@@ -196,16 +234,6 @@ const Screen5 = () => {
       }
       return newSet;
     });
-  };
-
-  // Helper function to check if testimonial is complete
-  const isTestimonialComplete = (testimonial: Testimonial) => {
-    return (
-      testimonial.name &&
-      testimonial.comment &&
-      testimonial.currentRole &&
-      testimonial.currentCompany
-    );
   };
 
   // Helper function to render profile image or fallback
@@ -244,15 +272,20 @@ const Screen5 = () => {
     >
       {/* Validation Feedback */}
       {validationErrors.length > 0 && (
-        <AlertBanner
-          message={`Please complete: ${validationErrors.join(", ")}`}
-          type="info"
-          className="mb-4"
-        />
+        <div className="mb-4 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+          <div className="font-medium mb-2 text-orange-800">Please complete the following:</div>
+          <ul className="list-disc list-inside space-y-1 text-orange-700">
+            {validationErrors.map((error, index) => (
+              <li key={index} className="text-sm">{error}</li>
+            ))}
+          </ul>
+        </div>
       )}
 
       {/* Testimonials Section */}
-      <div className="bg-gradient-to-r from-orange-50 to-yellow-50 rounded-xl p-6 mb-6 border border-orange-100">
+      <div className={`bg-gradient-to-r from-orange-50 to-yellow-50 rounded-xl p-6 mb-6 border ${
+        validationErrors.length > 0 ? 'border-orange-300 bg-orange-50' : 'border-orange-100'
+      }`}>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-orange-500 rounded-lg">
@@ -260,10 +293,13 @@ const Screen5 = () => {
             </div>
             <div>
               <h3 className="text-lg font-semibold text-gray-800">
-                Student Testimonials
+                Student Testimonials <span className="text-red-500">*</span>
               </h3>
-              <p className="text-sm text-gray-600">
-                Add authentic student testimonials to build trust
+              <p className={`text-sm ${validationErrors.length > 0 ? 'text-orange-600' : 'text-gray-600'}`}>
+                {validationErrors.length > 0 
+                  ? 'At least one complete testimonial is required' 
+                  : 'Add authentic student testimonials to build trust'
+                }
               </p>
             </div>
           </div>

@@ -13,6 +13,7 @@ import {
   Globe,
   Target,
   TrendingUp,
+  User,
   Award,
 } from "lucide-react";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
@@ -25,7 +26,7 @@ interface Screen8Props {
 }
 
 const Screen8 = ({ isEditMode = false, courseId }: Screen8Props = {}) => {
-  const { state } = useCourseContext();
+  const { state, actions } = useCourseContext();
   const { createCourse, updateCourse } = useCourses();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string>("");
@@ -45,9 +46,12 @@ const Screen8 = ({ isEditMode = false, courseId }: Screen8Props = {}) => {
         id: "learning-outcomes",
         label: "Learning Outcomes",
         isValid: !!(
-          state.course.whatYouWillLearn && state.course.skills.length > 0
+          state.course.whatYouWillLearn && 
+          state.course.skills.length > 0 &&
+          state.course.highlights.length > 0 &&
+          state.course.highlights.every(h => h.title.trim() && h.description.trim())
         ),
-        details: "What students will learn and skills",
+        details: "What students will learn, skills, and highlights",
       },
       {
         id: "course-details",
@@ -78,8 +82,63 @@ const Screen8 = ({ isEditMode = false, courseId }: Screen8Props = {}) => {
       {
         id: "modules",
         label: "Course Content",
-        isValid: !!(state.course.modules && state.course.modules.length > 0),
-        details: "At least one module with content",
+        isValid: (() => {
+          // Check if at least one module exists
+          if (!state.course.modules || state.course.modules.length === 0) return false;
+          
+          // Check if at least one module has at least one lesson
+          const hasLessons = state.course.modules.some(module => 
+            module && module.lessons && module.lessons.length > 0
+          );
+          if (!hasLessons) return false;
+          
+          // Check if at least one lesson has at least one video content
+          const hasVideoContent = state.course.modules.some(module => 
+            module && module.lessons && module.lessons.some(lesson => 
+              lesson && lesson.contents && lesson.contents.some(content => 
+                content && content.type === "video"
+              )
+            )
+          );
+          if (!hasVideoContent) return false;
+          
+          // Check that all content has titles
+          const allContentHasTitles = state.course.modules.every(module => 
+            !module || !module.lessons || module.lessons.every(lesson =>
+              !lesson || !lesson.contents || lesson.contents.every(content =>
+                !content || (content.title && content.title.trim() !== "")
+              )
+            )
+          );
+          
+          return allContentHasTitles;
+        })(),
+        details: "At least one module, one lesson, one video content, and all content must have titles",
+      },
+      {
+        id: "testimonials",
+        label: "Testimonials",
+        isValid: (() => {
+          // Check if at least one testimonial exists
+          if (!state.course.testimonials || state.course.testimonials.length === 0) return false;
+          
+          // Check if at least one testimonial is complete
+          const hasCompleteTestimonial = state.course.testimonials.some(testimonial => 
+            testimonial.name && testimonial.name.trim() !== "" &&
+            testimonial.comment && testimonial.comment.trim() !== "" &&
+            testimonial.currentRole && testimonial.currentRole.trim() !== "" &&
+            testimonial.currentCompany && testimonial.currentCompany.trim() !== ""
+          );
+          
+          return hasCompleteTestimonial;
+        })(),
+        details: "At least one complete testimonial (name, comment, role, and company)",
+      },
+      {
+        id: "administrative",
+        label: "Administrative Info",
+        isValid: true, // Optional field - always valid
+        details: "Created by field is optional",
       },
     ];
 
@@ -92,28 +151,94 @@ const Screen8 = ({ isEditMode = false, courseId }: Screen8Props = {}) => {
   // Calculate course statistics
   const courseStats = useMemo(() => {
     const moduleCount = state.course.modules?.length || 0;
-    // Note: modules is an array of IDs, not objects with lessons
-    // Duration calculation would need access to actual module data from context or API
-    const totalDuration = 0; // TODO: Calculate from actual module data when available
-    const contentCount = 0; // TODO: Calculate from actual module data when available
 
     return {
       moduleCount,
-      totalDuration,
-      contentCount,
       skillsCount: state.course.skills?.length || 0,
       careerPathsCount: state.course.careerPaths?.length || 0,
+      testimonialsCount: state.course.testimonials?.length || 0,
     };
   }, [state.course]);
 
   // Handle course submission
   const handleSubmitCourse = async () => {
+    console.log("🚀 Starting course submission process...");
+    
     if (!allValid) {
       setSubmitError(
         "Please complete all required sections before submitting."
       );
       return;
     }
+
+    // Log the complete course state before submission
+    console.log("=== COURSE CREATION/UPDATE - COMPLETE STATE ===");
+    console.log("Course State:", JSON.stringify(state.course, null, 2));
+    
+    // Log course structure in a more readable format
+    console.log("Course Structure:", {
+      basicInfo: {
+        title: state.course.title,
+        category: state.course.category,
+        subcategory: state.course.subcategory,
+        audience: state.course.audience,
+        language: state.course.language,
+        skillLevel: state.course.skillLevel,
+        duration: state.course.duration,
+      },
+      media: {
+        thumbnail: state.course.thumbnail ? "Uploaded" : "Not uploaded",
+        previewVideo: state.course.previewVideoUrl ? "Uploaded" : "Not uploaded",
+      },
+      content: {
+        modules: state.course.modules?.map(module => ({
+          title: module.title,
+          lessonsCount: module.lessons?.length || 0,
+          contentsCount: module.lessons?.reduce((total, lesson) => 
+            total + (lesson.contents?.length || 0), 0) || 0,
+        })) || [],
+      },
+      pricing: {
+        essentialPlan: state.course.plans?.essential ? {
+          title: state.course.plans.essential.title,
+          price: state.course.plans.essential.price,
+          billingPeriod: state.course.plans.essential.billingPeriod,
+          isActive: state.course.plans.essential.isActive,
+          featuresCount: state.course.plans.essential.features?.length || 0,
+        } : null,
+        elitePlan: state.course.plans?.elite ? {
+          title: state.course.plans.elite.title,
+          price: state.course.plans.elite.price,
+          billingPeriod: state.course.plans.elite.billingPeriod,
+          isActive: state.course.plans.elite.isActive,
+          isPopular: state.course.plans.elite.isPopular,
+          featuresCount: state.course.plans.elite.features?.length || 0,
+        } : null,
+      },
+    });
+    
+    console.log("Course Statistics:", {
+      moduleCount: state.course.modules?.length || 0,
+      lessonCount: state.course.modules?.reduce((total, module) => total + (module.lessons?.length || 0), 0) || 0,
+      contentCount: state.course.modules?.reduce((total, module) => 
+        total + module.lessons?.reduce((lessonTotal, lesson) => 
+          lessonTotal + (lesson.contents?.length || 0), 0) || 0, 0) || 0,
+      skillsCount: state.course.skills?.length || 0,
+      highlightsCount: state.course.highlights?.length || 0,
+      careerPathsCount: state.course.careerPaths?.length || 0,
+      testimonialsCount: state.course.testimonials?.length || 0,
+      faqsCount: state.course.faqs?.length || 0,
+      reviewsCount: state.course.reviews?.length || 0,
+      hasEssentialPlan: !!state.course.plans?.essential,
+      hasElitePlan: !!state.course.plans?.elite,
+    });
+    console.log("Validation Status:", {
+      allValid,
+      validCount,
+      totalChecks: validationChecks.length,
+      failedChecks: validationChecks.filter(check => !check.isValid).map(check => check.label)
+    });
+    console.log("=== END COURSE STATE LOG ===");
 
     setIsSubmitting(true);
     setSubmitError("");
@@ -124,11 +249,11 @@ const Screen8 = ({ isEditMode = false, courseId }: Screen8Props = {}) => {
       if (isEditMode && courseId) {
         // Update existing course
         result = await updateCourse(courseId, state.course);
-        console.log("Updating course with data:", state.course);
+        console.log("Course update result:", result);
       } else {
         // Create new course
         result = await createCourse(state.course);
-        console.log("Creating course with data:", state.course);
+        console.log("Course creation result:", result);
       }
 
       if (result.success) {
@@ -449,9 +574,9 @@ const Screen8 = ({ isEditMode = false, courseId }: Screen8Props = {}) => {
             </h3>
 
             <div className="space-y-3">
-              {state.course.modules.map((moduleId, index) => (
+              {state.course.modules.map((module, index) => (
                 <div
-                  key={moduleId || index}
+                  key={module._id || index}
                   className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg"
                 >
                   <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -462,7 +587,7 @@ const Screen8 = ({ isEditMode = false, courseId }: Screen8Props = {}) => {
                       Module {index + 1}
                     </p>
                     <p className="text-sm text-gray-600">
-                      {moduleId ? "Configured" : "In progress"}
+                      {module._id ? "Configured" : "In progress"}
                     </p>
                   </div>
                 </div>
@@ -470,6 +595,41 @@ const Screen8 = ({ isEditMode = false, courseId }: Screen8Props = {}) => {
             </div>
           </div>
         )}
+      </div>
+
+      {/* Administrative Information */}
+      <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-6 mb-6 border border-indigo-100">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="p-2 bg-indigo-500 rounded-lg">
+            <User className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-gray-800">
+              Administrative Information
+            </h3>
+            <p className="text-sm text-gray-600">
+              Set the course creator and other administrative details
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Created By (User ID)
+            </label>
+            <input
+              type="text"
+              value={state.course.createdBy || ""}
+              onChange={(e) => actions.setCourseCreatedBy(e.target.value)}
+              placeholder="Enter the user ID who created this course"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              This should be set to the User ID of the course creator
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Error Message */}

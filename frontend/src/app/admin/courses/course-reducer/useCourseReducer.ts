@@ -262,6 +262,14 @@ export const useCourseReducer = () => {
       [enhancedDispatch]
     ),
 
+    setCourseHighlights: useCallback(
+      (highlights: { title: string; description: string }[]) => {
+        const action = courseActions.setCourseHighlights(highlights);
+        return enhancedDispatch(action);
+      },
+      [enhancedDispatch]
+    ),
+
     setCourseSkillLevel: useCallback(
       (skillLevel: string) => {
         const action = courseActions.setCourseSkillLevel(skillLevel);
@@ -346,6 +354,72 @@ export const useCourseReducer = () => {
     reorderCourseModules: useCallback(
       (modules: any[]) => {
         const action = courseActions.reorderCourseModules(modules);
+        return enhancedDispatch(action);
+      },
+      [enhancedDispatch]
+    ),
+
+    // Lesson Management
+    addCourseLesson: useCallback(
+      (moduleId: string, lesson: any) => {
+        const action = courseActions.addCourseLesson(moduleId, lesson);
+        return enhancedDispatch(action);
+      },
+      [enhancedDispatch]
+    ),
+
+    updateCourseLesson: useCallback(
+      (moduleId: string, lessonId: string, updates: any) => {
+        const action = courseActions.updateCourseLesson(moduleId, lessonId, updates);
+        return enhancedDispatch(action);
+      },
+      [enhancedDispatch]
+    ),
+
+    deleteCourseLesson: useCallback(
+      (moduleId: string, lessonId: string) => {
+        const action = courseActions.deleteCourseLesson(moduleId, lessonId);
+        return enhancedDispatch(action);
+      },
+      [enhancedDispatch]
+    ),
+
+    reorderCourseLessons: useCallback(
+      (moduleId: string, lessons: any[]) => {
+        const action = courseActions.reorderCourseLessons(moduleId, lessons);
+        return enhancedDispatch(action);
+      },
+      [enhancedDispatch]
+    ),
+
+    // Content Management
+    addCourseContent: useCallback(
+      (moduleId: string, lessonId: string, content: any) => {
+        const action = courseActions.addCourseContent(moduleId, lessonId, content);
+        return enhancedDispatch(action);
+      },
+      [enhancedDispatch]
+    ),
+
+    updateCourseContent: useCallback(
+      (moduleId: string, lessonId: string, contentId: string, updates: any) => {
+        const action = courseActions.updateCourseContent(moduleId, lessonId, contentId, updates);
+        return enhancedDispatch(action);
+      },
+      [enhancedDispatch]
+    ),
+
+    deleteCourseContent: useCallback(
+      (moduleId: string, lessonId: string, contentId: string) => {
+        const action = courseActions.deleteCourseContent(moduleId, lessonId, contentId);
+        return enhancedDispatch(action);
+      },
+      [enhancedDispatch]
+    ),
+
+    reorderCourseContent: useCallback(
+      (moduleId: string, lessonId: string, contents: any[]) => {
+        const action = courseActions.reorderCourseContent(moduleId, lessonId, contents);
         return enhancedDispatch(action);
       },
       [enhancedDispatch]

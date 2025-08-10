@@ -6,10 +6,9 @@ import ContentAddButton from "./ContentAddButton";
 
 interface ContentSectionProps {
   lessonId: string;
-  contentIds: string[];
+  contents: Content[]; // Now pass full content objects instead of IDs
   expandedContent: Set<string>;
   onToggleContentExpansion: (contentId: string) => void;
-  getContentData: (contentId: string) => Content;
   onUpdateContent: (contentId: string, updates: Partial<Content>) => void;
   onAddContent: (lessonId: string, type: "video" | "quiz") => void;
   onDeleteContent?: (contentId: string) => void;
@@ -20,10 +19,9 @@ interface ContentSectionProps {
 
 const ContentSection: React.FC<ContentSectionProps> = ({
   lessonId,
-  contentIds,
+  contents,
   expandedContent,
   onToggleContentExpansion,
-  getContentData,
   onUpdateContent,
   onAddContent,
   onDeleteContent,
@@ -31,7 +29,7 @@ const ContentSection: React.FC<ContentSectionProps> = ({
   moduleIndex,
   lessonIndex,
 }) => {
-  const hasContent = contentIds.length > 0;
+  const hasContent = contents.length > 0;
 
   return (
     <div className="border-t border-gray-200 pt-4">
@@ -40,7 +38,7 @@ const ContentSection: React.FC<ContentSectionProps> = ({
         <div className="flex items-center gap-2">
           <h6 className="text-sm font-semibold text-gray-800">Lesson Content</h6>
           <div className="flex items-center gap-1 px-2 py-1 bg-gray-100 rounded-full">
-            <span className="text-xs text-gray-600">{contentIds.length}</span>
+            <span className="text-xs text-gray-600">{contents.length}</span>
             <span className="text-xs text-gray-500">items</span>
           </div>
         </div>
@@ -52,14 +50,14 @@ const ContentSection: React.FC<ContentSectionProps> = ({
       {/* Content List */}
       {hasContent ? (
         <div className="space-y-3">
-          {contentIds.map((contentId, index) => 
-            contentId ? (
+          {contents.map((content, index) => 
+            content && content._id ? (
               <ContentCard
-                key={contentId}
-                contentId={contentId}
-                contentData={getContentData(contentId)}
-                isExpanded={expandedContent.has(contentId)}
-                onToggleExpansion={() => onToggleContentExpansion(contentId)}
+                key={content._id}
+                contentId={content._id}
+                contentData={content}
+                isExpanded={expandedContent.has(content._id)}
+                onToggleExpansion={() => onToggleContentExpansion(content._id!)}
                 onUpdateContent={onUpdateContent}
                 onDeleteContent={onDeleteContent}
                 index={index}

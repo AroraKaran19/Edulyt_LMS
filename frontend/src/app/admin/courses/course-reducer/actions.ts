@@ -1,4 +1,4 @@
-import { Course, CourseModule, Plan, Review, FAQ, Quiz, CourseInstructor } from "../../../../types";
+import { Course, CourseModule, CourseLesson, Content, Plan, Review, FAQ, Quiz, CourseInstructor } from "../../../../types";
 
 // ===================
 // Action Types
@@ -39,6 +39,7 @@ export enum CourseActionType {
   SET_COURSE_KEY_FEATURES = "SET_COURSE_KEY_FEATURES",
   SET_COURSE_FEATURES = "SET_COURSE_FEATURES",
   SET_COURSE_CAREER_PATHS = "SET_COURSE_CAREER_PATHS",
+  SET_COURSE_HIGHLIGHTS = "SET_COURSE_HIGHLIGHTS",
   SET_COURSE_SKILL_LEVEL = "SET_COURSE_SKILL_LEVEL",
   SET_COURSE_WHO_SHOULD_JOIN = "SET_COURSE_WHO_SHOULD_JOIN",
   SET_COURSE_PREREQUISITES = "SET_COURSE_PREREQUISITES",
@@ -246,6 +247,11 @@ export const courseActions = {
     payload: careerPaths,
   }),
   
+  setCourseHighlights: (highlights: { title: string; description: string }[]) => ({
+    type: CourseActionType.SET_COURSE_HIGHLIGHTS,
+    payload: highlights,
+  }),
+  
   setCourseSkillLevel: (skillLevel: string) => ({
     type: CourseActionType.SET_COURSE_SKILL_LEVEL,
     payload: skillLevel,
@@ -300,6 +306,48 @@ export const courseActions = {
   reorderCourseModules: (modules: CourseModule[]) => ({
     type: CourseActionType.REORDER_COURSE_MODULES,
     payload: modules,
+  }),
+  
+  // Lesson Management
+  addCourseLesson: (moduleId: string, lesson: CourseLesson) => ({
+    type: CourseActionType.ADD_COURSE_LESSON,
+    payload: { moduleId, lesson },
+  }),
+  
+  updateCourseLesson: (moduleId: string, lessonId: string, updates: Partial<CourseLesson>) => ({
+    type: CourseActionType.UPDATE_COURSE_LESSON,
+    payload: { moduleId, lessonId, updates },
+  }),
+  
+  deleteCourseLesson: (moduleId: string, lessonId: string) => ({
+    type: CourseActionType.DELETE_COURSE_LESSON,
+    payload: { moduleId, lessonId },
+  }),
+  
+  reorderCourseLessons: (moduleId: string, lessons: CourseLesson[]) => ({
+    type: CourseActionType.REORDER_COURSE_LESSONS,
+    payload: { moduleId, lessons },
+  }),
+  
+  // Content Management
+  addCourseContent: (moduleId: string, lessonId: string, content: Content) => ({
+    type: CourseActionType.ADD_COURSE_CONTENT,
+    payload: { moduleId, lessonId, content },
+  }),
+  
+  updateCourseContent: (moduleId: string, lessonId: string, contentId: string, updates: Partial<Content>) => ({
+    type: CourseActionType.UPDATE_COURSE_CONTENT,
+    payload: { moduleId, lessonId, contentId, updates },
+  }),
+  
+  deleteCourseContent: (moduleId: string, lessonId: string, contentId: string) => ({
+    type: CourseActionType.DELETE_COURSE_CONTENT,
+    payload: { moduleId, lessonId, contentId },
+  }),
+  
+  reorderCourseContent: (moduleId: string, lessonId: string, contents: Content[]) => ({
+    type: CourseActionType.REORDER_COURSE_CONTENT,
+    payload: { moduleId, lessonId, contents },
   }),
   
   // Instructor Management

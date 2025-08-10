@@ -40,7 +40,7 @@ export class CourseService {
         // UI & Learning Info
         whatYouWillLearn: courseData.whatYouWillLearn || "",
         skills: courseData.skills || [],
-        courseTestimonials: courseData.courseTestimonials || [],
+        highlights: courseData.highlights || [],
         features: courseData.features || [],
         careerPaths: courseData.careerPaths || [],
         skillLevel: courseData.skillLevel || "",

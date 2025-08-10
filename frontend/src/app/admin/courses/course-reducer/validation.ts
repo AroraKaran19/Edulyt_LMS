@@ -174,7 +174,7 @@ export const validationUtils = {
 // ===================
 
 export const entityValidators = {
-  // Validate CourseModule
+  // Validate CourseModule (strict validation for form submission)
   validateCourseModule: (module: any): ValidationError[] => {
     const errors: ValidationError[] = [];
 
@@ -218,7 +218,60 @@ export const entityValidators = {
     return errors;
   },
 
-  // Validate CourseLesson
+  // Validate CourseModule Lenient (allows empty fields during creation/editing)
+  validateCourseModuleLenient: (module: any): ValidationError[] => {
+    const errors: ValidationError[] = [];
+
+    // Validate ID if present
+    if (module._id) {
+      const idError = validationUtils.isValidId(module._id, "_id");
+      if (idError) errors.push(idError);
+    }
+
+    // Allow empty title during input - only check type if provided
+    if (module.title !== undefined && module.title !== null && typeof module.title !== "string") {
+      errors.push({
+        field: "title",
+        message: "Title must be a string",
+        code: "INVALID_TYPE"
+      });
+    }
+
+    // Optional fields validation
+    if (module.description !== undefined && module.description !== null && typeof module.description !== "string") {
+      errors.push({
+        field: "description",
+        message: "Description must be a string",
+        code: "INVALID_TYPE"
+      });
+    }
+
+    if (module.thumbnailUrl && typeof module.thumbnailUrl === "string" && module.thumbnailUrl.trim() !== "") {
+      try {
+        new URL(module.thumbnailUrl);
+      } catch {
+        errors.push({
+          field: "thumbnailUrl",
+          message: "Thumbnail URL must be a valid URL",
+          code: "INVALID_URL"
+        });
+      }
+    }
+
+    // Validate lessons if present (with lenient validation)
+    if (module.lessons && Array.isArray(module.lessons)) {
+      const lessonErrors = validationUtils.isValidObjectArray(
+        module.lessons,
+        "lessons",
+        entityValidators.validateCourseLessonLenient
+      );
+      errors.push(...lessonErrors);
+    }
+
+    return errors;
+  },
+
+  // Validate CourseLesson (strict validation)
   validateCourseLesson: (lesson: any): ValidationError[] => {
     const errors: ValidationError[] = [];
 
@@ -245,7 +298,49 @@ export const entityValidators = {
     return errors;
   },
 
-  // Validate Content
+  // Validate CourseLesson Lenient (allows empty fields during creation/editing)
+  validateCourseLessonLenient: (lesson: any): ValidationError[] => {
+    const errors: ValidationError[] = [];
+
+    // Validate ID if present
+    if (lesson._id) {
+      const idError = validationUtils.isValidId(lesson._id, "_id");
+      if (idError) errors.push(idError);
+    }
+
+    // Allow empty title during input - only check type if provided
+    if (lesson.title !== undefined && lesson.title !== null && typeof lesson.title !== "string") {
+      errors.push({
+        field: "title",
+        message: "Title must be a string",
+        code: "INVALID_TYPE"
+      });
+    }
+
+    // Validate content if present (with lenient validation)
+    if (lesson.content && Array.isArray(lesson.content)) {
+      const contentErrors = validationUtils.isValidObjectArray(
+        lesson.content,
+        "content",
+        entityValidators.validateContentLenient
+      );
+      errors.push(...contentErrors);
+    }
+
+    // Validate contents if present (with lenient validation)
+    if (lesson.contents && Array.isArray(lesson.contents)) {
+      const contentErrors = validationUtils.isValidObjectArray(
+        lesson.contents,
+        "contents",
+        entityValidators.validateContentLenient
+      );
+      errors.push(...contentErrors);
+    }
+
+    return errors;
+  },
+
+  // Validate Content (strict validation)
   validateContent: (content: any): ValidationError[] => {
     const errors: ValidationError[] = [];
 
@@ -261,6 +356,32 @@ export const entityValidators = {
     });
 
     // Validate content type
+    if (content.type && !["video", "quiz"].includes(content.type)) {
+      errors.push({
+        field: "type",
+        message: "Content type must be 'video' or 'quiz'",
+        code: "INVALID_CONTENT_TYPE"
+      });
+    }
+
+    return errors;
+  },
+
+  // Validate Content Lenient (allows empty fields during creation/editing, but title is required)
+  validateContentLenient: (content: any): ValidationError[] => {
+    const errors: ValidationError[] = [];
+
+    // Validate ID if present
+    if (content._id) {
+      const idError = validationUtils.isValidId(content._id, "_id");
+      if (idError) errors.push(idError);
+    }
+
+    // Content title is now required even in lenient mode
+    const titleError = validationUtils.isNonEmptyString(content.title, "title");
+    if (titleError) errors.push(titleError);
+
+    // Validate content type if provided
     if (content.type && !["video", "quiz"].includes(content.type)) {
       errors.push({
         field: "type",
@@ -575,9 +696,9 @@ export const actionValidators = {
       }
     }
 
-    // Validate updates object
+    // Validate updates object - use lenient validation for updates to allow partial/incomplete data
     if (payload.updates && typeof payload.updates === "object") {
-      const updateErrors = entityValidators.validateCourseModule(payload.updates);
+      const updateErrors = entityValidators.validateCourseModuleLenient(payload.updates);
       errors.push(...updateErrors);
     }
 
@@ -602,8 +723,8 @@ export const actionValidators = {
       };
     }
 
-    // Validate module object
-    const moduleErrors = entityValidators.validateCourseModule(payload);
+    // Use lenient validation for ADD actions to allow empty titles during creation
+    const moduleErrors = entityValidators.validateCourseModuleLenient(payload);
     errors.push(...moduleErrors);
 
     return {

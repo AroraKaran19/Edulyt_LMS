@@ -43,7 +43,7 @@ const mockCourses: Course[] = [
     whatYouWillLearn:
       "Build modern web applications with the latest technologies",
     skills: ["React", "Node.js", "MongoDB", "JavaScript", "Express"],
-    courseTestimonials: [],
+    highlights: [],
     features: ["Lifetime Access", "Certificate", "Community Support"],
     careerPaths: [
       "Full Stack Developer",
@@ -101,7 +101,7 @@ const mockCourses: Course[] = [
     totalRatings: 220,
     whatYouWillLearn: "Data analysis, visualization, and machine learning",
     skills: ["Python", "Pandas", "NumPy", "Scikit-learn", "Matplotlib"],
-    courseTestimonials: [],
+    highlights: [],
     features: ["Projects", "Mentorship", "Job Support"],
     careerPaths: ["Data Scientist", "ML Engineer", "Data Analyst"],
     skillLevel: "Intermediate",
@@ -161,7 +161,7 @@ const mockCourses: Course[] = [
       "Analytics",
       "Content Marketing",
     ],
-    courseTestimonials: [],
+    highlights: [],
     features: ["Case Studies", "Templates", "Tools Access"],
     careerPaths: ["Digital Marketer", "Social Media Manager", "SEO Specialist"],
     skillLevel: "Beginner",

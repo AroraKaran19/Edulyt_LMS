@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Content, Video as VideoType, Quiz } from "@/types/course";
 import UploadMediaContainer from "@/components/ui/container/UploadMediaContainer";
+import DropDown from "@/components/ui/dropdown/DropDown";
 import { useUpload } from "@/hooks/useUpload";
 
 interface ContentCardProps {
@@ -510,6 +511,42 @@ const VideoContentForm: React.FC<VideoContentFormProps> = ({
             </p>
           )}
         </div>
+        
+        <DropDown
+          label="Video Quality"
+          options={["1080p (Full HD)", "720p (HD)", "480p (SD)", "360p (Low)"]}
+          value={
+            videoContent.sources?.[0]?.quality 
+              ? `${videoContent.sources[0].quality} (${
+                  videoContent.sources[0].quality === "1080p" ? "Full HD" :
+                  videoContent.sources[0].quality === "720p" ? "HD" :
+                  videoContent.sources[0].quality === "480p" ? "SD" : "Low"
+                })`
+              : "1080p (Full HD)"
+          }
+          onChange={(e) => {
+            const valueToQuality = {
+              "1080p (Full HD)": "1080p",
+              "720p (HD)": "720p", 
+              "480p (SD)": "480p",
+              "360p (Low)": "360p"
+            } as const;
+            
+            const newQuality = valueToQuality[e.target.value as keyof typeof valueToQuality] || "1080p";
+            const currentSource = videoContent.sources?.[0] || { quality: "1080p", videoUrl: "" };
+            
+            onUpdateContent(contentId, {
+              content: {
+                ...videoContent,
+                sources: [{
+                  ...currentSource,
+                  quality: newQuality
+                }]
+              } as VideoType
+            });
+          }}
+          className="w-full"
+        />
       </div>
     </div>
   );

@@ -100,7 +100,7 @@ const courseSchema = new mongoose.Schema<Course>(
     },
     whatYouWillLearn: { type: String, required: true },
     skills: { type: [String], required: true },
-    courseTestimonials: {
+    highlights: {
       type: [
         {
           title: { type: String, required: true },

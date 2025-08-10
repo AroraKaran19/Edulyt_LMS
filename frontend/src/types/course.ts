@@ -68,8 +68,11 @@ export interface CourseLesson {
   _id?: string;
   title: string;
   description?: string;
-  moduleId: CourseModule["_id"];
-  contentIds: Content["_id"][];
+  moduleId?: CourseModule["_id"];
+  // For frontend: store full content objects instead of just IDs
+  contents: Content[];
+  // Keep the original for backend compatibility when needed
+  contentIds?: Content["_id"][];
   isCompleted?: boolean;
   completedAt?: Date;
   isLocked?: boolean;
@@ -85,7 +88,10 @@ export interface CourseModule {
   _id?: string;
   title: string;
   thumbnailUrl?: string;
-  lessonIds: CourseLesson["_id"][];
+  // For frontend: store full lesson objects instead of just IDs
+  lessons: CourseLesson[];
+  // Keep the original for backend compatibility when needed
+  lessonIds?: CourseLesson["_id"][];
   description?: string;
   isCompleted?: boolean;
   isActive?: boolean;
@@ -159,7 +165,7 @@ export interface Course {
   // UI & Learning Info
   whatYouWillLearn: string;
   skills: string[];
-  courseTestimonials: {
+  highlights: {
     title: string;
     description: string;
   }[];
@@ -171,8 +177,10 @@ export interface Course {
   fakeDiscount?: number; // in percentage for display purposes
   duration: string; // like: 3 months, 1 year, 2 years, etc. (will not be accurate)
 
-  // Content
-  modules: CourseModule["_id"][];
+  // Content - For frontend: store full module objects instead of just IDs
+  modules: CourseModule[];
+  // Keep the original for backend compatibility when needed
+  moduleIds?: CourseModule["_id"][];
 
   // Instructor
   instructor: CourseInstructor["_id"][]; // can be multiple instructors

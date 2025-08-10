@@ -471,7 +471,11 @@ const Screen4 = () => {
     const defaultTitle =
       planType === "essential" ? "Essential Plan" : "Elite Plan";
 
+    // Preserve all existing plan fields and only override with provided updates
     return {
+      // Start with existing plan data
+      ...existingPlan,
+      // Ensure required fields have defaults
       title: existingPlan?.title || defaultTitle,
       type: planType,
       price: existingPlan?.price || 0,
@@ -479,6 +483,7 @@ const Screen4 = () => {
       isActive: existingPlan?.isActive ?? true,
       isPopular:
         planType === "elite" ? existingPlan?.isPopular ?? false : false,
+      // Apply updates last to override defaults
       ...updates,
     };
   };

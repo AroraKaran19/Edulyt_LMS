@@ -11,7 +11,6 @@ import ScreenNavigation from "./shared/ScreenNavigation";
 
 const Screen3 = () => {
   const { state, actions } = useCourseContext();
-  const { setActiveScreen } = useScreen();
   const { uploadFile, isUploading } = useUpload();
 
   // Generate folder names based on course title
@@ -147,6 +146,7 @@ const Screen3 = () => {
         currentStep={3}
         previousScreen="screen2"
         nextScreen="screen4"
+
         isNextDisabled={
           !state.course.thumbnail ||
           (state.course.scholarship && !state.course.scholarshipDescription)

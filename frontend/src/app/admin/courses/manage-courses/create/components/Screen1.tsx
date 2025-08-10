@@ -12,7 +12,6 @@ import ScreenNavigation from "./shared/ScreenNavigation";
 
 const Screen1 = () => {
   const { state, actions } = useCourseContext();
-  const { setActiveScreen } = useScreen();
 
   return (
     <Container
@@ -113,6 +112,7 @@ const Screen1 = () => {
         currentStep={1}
         nextScreen="screen2"
         showPrevious={false}
+
         isNextDisabled={
           !state.course.title ||
           !state.course.category ||

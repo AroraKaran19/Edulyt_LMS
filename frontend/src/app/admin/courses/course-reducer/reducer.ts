@@ -287,6 +287,10 @@ export const courseReducer = (
         newState = safeUpdateCourseField(state, "careerPaths", action.payload);
         break;
 
+      case CourseActionType.SET_COURSE_HIGHLIGHTS:
+        newState = safeUpdateCourseField(state, "highlights", action.payload);
+        break;
+
       case CourseActionType.SET_COURSE_SKILL_LEVEL:
         newState = safeUpdateCourseField(state, "skillLevel", action.payload);
         break;
@@ -344,8 +348,10 @@ export const courseReducer = (
           ...state,
           course: {
             ...state.course,
-            modules: state.course.modules.map((id) =>
-              id === action.payload.moduleId ? action.payload.moduleId : id
+            modules: state.course.modules.map((module) =>
+              module._id === action.payload.moduleId 
+                ? { ...module, ...action.payload.updates }
+                : module
             ),
           },
           isDirty: true,
@@ -359,7 +365,7 @@ export const courseReducer = (
           ...state,
           course: {
             ...state.course,
-            modules: state.course.modules.filter((id) => id !== action.payload),
+            modules: state.course.modules.filter((module) => module._id !== action.payload),
           },
           isDirty: true,
           hasUnsavedChanges: true,
@@ -369,6 +375,202 @@ export const courseReducer = (
 
       case CourseActionType.REORDER_COURSE_MODULES:
         newState = safeUpdateCourseField(state, "modules", action.payload);
+        break;
+
+      // ===================
+      // Lesson Management
+      // ===================
+
+      case CourseActionType.ADD_COURSE_LESSON:
+        newState = {
+          ...state,
+          course: {
+            ...state.course,
+            modules: state.course.modules.map((module) =>
+              module._id === action.payload.moduleId
+                ? {
+                    ...module,
+                    lessons: [...module.lessons, action.payload.lesson],
+                  }
+                : module
+            ),
+          },
+          isDirty: true,
+          hasUnsavedChanges: true,
+        };
+        break;
+
+      case CourseActionType.UPDATE_COURSE_LESSON:
+        newState = {
+          ...state,
+          course: {
+            ...state.course,
+            modules: state.course.modules.map((module) =>
+              module._id === action.payload.moduleId
+                ? {
+                    ...module,
+                    lessons: module.lessons.map((lesson) =>
+                      lesson._id === action.payload.lessonId
+                        ? { ...lesson, ...action.payload.updates }
+                        : lesson
+                    ),
+                  }
+                : module
+            ),
+          },
+          isDirty: true,
+          hasUnsavedChanges: true,
+        };
+        break;
+
+      case CourseActionType.DELETE_COURSE_LESSON:
+        newState = {
+          ...state,
+          course: {
+            ...state.course,
+            modules: state.course.modules.map((module) =>
+              module._id === action.payload.moduleId
+                ? {
+                    ...module,
+                    lessons: module.lessons.filter((lesson) => lesson._id !== action.payload.lessonId),
+                  }
+                : module
+            ),
+          },
+          isDirty: true,
+          hasUnsavedChanges: true,
+        };
+        break;
+
+      case CourseActionType.REORDER_COURSE_LESSONS:
+        newState = {
+          ...state,
+          course: {
+            ...state.course,
+            modules: state.course.modules.map((module) =>
+              module._id === action.payload.moduleId
+                ? {
+                    ...module,
+                    lessons: action.payload.lessons,
+                  }
+                : module
+            ),
+          },
+          isDirty: true,
+          hasUnsavedChanges: true,
+        };
+        break;
+
+      // ===================
+      // Content Management
+      // ===================
+
+      case CourseActionType.ADD_COURSE_CONTENT:
+        newState = {
+          ...state,
+          course: {
+            ...state.course,
+            modules: state.course.modules.map((module) =>
+              module._id === action.payload.moduleId
+                ? {
+                    ...module,
+                    lessons: module.lessons.map((lesson) =>
+                      lesson._id === action.payload.lessonId
+                        ? {
+                            ...lesson,
+                            contents: [...lesson.contents, action.payload.content],
+                          }
+                        : lesson
+                    ),
+                  }
+                : module
+            ),
+          },
+          isDirty: true,
+          hasUnsavedChanges: true,
+        };
+        break;
+
+      case CourseActionType.UPDATE_COURSE_CONTENT:
+        newState = {
+          ...state,
+          course: {
+            ...state.course,
+            modules: state.course.modules.map((module) =>
+              module._id === action.payload.moduleId
+                ? {
+                    ...module,
+                    lessons: module.lessons.map((lesson) =>
+                      lesson._id === action.payload.lessonId
+                        ? {
+                            ...lesson,
+                            contents: lesson.contents.map((content) =>
+                              content._id === action.payload.contentId
+                                ? { ...content, ...action.payload.updates }
+                                : content
+                            ),
+                          }
+                        : lesson
+                    ),
+                  }
+                : module
+            ),
+          },
+          isDirty: true,
+          hasUnsavedChanges: true,
+        };
+        break;
+
+      case CourseActionType.DELETE_COURSE_CONTENT:
+        newState = {
+          ...state,
+          course: {
+            ...state.course,
+            modules: state.course.modules.map((module) =>
+              module._id === action.payload.moduleId
+                ? {
+                    ...module,
+                    lessons: module.lessons.map((lesson) =>
+                      lesson._id === action.payload.lessonId
+                        ? {
+                            ...lesson,
+                            contents: lesson.contents.filter((content) => content._id !== action.payload.contentId),
+                          }
+                        : lesson
+                    ),
+                  }
+                : module
+            ),
+          },
+          isDirty: true,
+          hasUnsavedChanges: true,
+        };
+        break;
+
+      case CourseActionType.REORDER_COURSE_CONTENT:
+        newState = {
+          ...state,
+          course: {
+            ...state.course,
+            modules: state.course.modules.map((module) =>
+              module._id === action.payload.moduleId
+                ? {
+                    ...module,
+                    lessons: module.lessons.map((lesson) =>
+                      lesson._id === action.payload.lessonId
+                        ? {
+                            ...lesson,
+                            contents: action.payload.contents,
+                          }
+                        : lesson
+                    ),
+                  }
+                : module
+            ),
+          },
+          isDirty: true,
+          hasUnsavedChanges: true,
+        };
         break;
 
       // ===================

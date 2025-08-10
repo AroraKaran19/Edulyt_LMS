@@ -159,7 +159,7 @@ export interface Course {
   // UI & Learning Info
   whatYouWillLearn: string;
   skills: string[];
-  courseTestimonials: {
+  highlights: {
     title: string;
     description: string;
   }[];

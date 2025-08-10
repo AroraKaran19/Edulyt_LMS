@@ -8,6 +8,15 @@ export interface Discount {
     isActive?: boolean;
 }
 
+export interface NavItem {
+    label: string;
+    href: string;
+    isDashboard?: boolean;
+    featureBox?: string;
+    onMouseEnter?: () => void;
+    active?: boolean;
+}
+
 // User Types
 export * from "./user";
 
