@@ -12,7 +12,7 @@ const DashboardBanner = () => {
   const timeMessage = hour >= 18 ? "Good Evening" : hour >= 12 ? "Good Afternoon" : "Good Morning";
   
 	return (
-    <FlexBox className="w-full items-stretch py-6 px-20">
+    <FlexBox className="w-full items-stretch py-4 px-20">
       <FlexBox className="w-1/2 flex-col gap-1 text-text-primary">
         <h2 className="text-2xl font-bold">
           {timeMessage}, {user.name}
