@@ -113,8 +113,8 @@ const DashboardNavbar = () => {
 
   return (
     <header className="dashboard-navbar fixed top-0 left-0 w-full bg-white z-50 shadow-[0_0_10px_rgba(0,0,0,0.5)]">
-      <FlexBox className="w-full flex items-stretch justify-between h-40 px-10 md:px-20 border-b border-gray-300">
-        <div className="navbar-left w-1/2 h-full flex flex-col gap-8 mt-4">
+      <FlexBox className="w-full flex items-stretch justify-between h-full px-10 md:px-20 border-b border-gray-300">
+        <div className="navbar-left w-1/2 h-full flex flex-col gap-4 my-4">
           <div className="flex gap-5 w-full items-center">
             <Link href="/">
               <Image
@@ -256,7 +256,7 @@ const DashboardNavbar = () => {
       <AlertBanner
         message="50% off on every new course purchased!"
         type="limited-time-offer"
-        className="px-20"
+        className="px-20 py-[5px]"
       />
     </header>
   );
