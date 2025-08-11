@@ -182,10 +182,16 @@ const TagInput = ({
         </div>
       )}
 
-      {/* Max Tags Warning */}
-      {maxTags !== 0 && tags.length >= maxTags && (
-        <p className="text-xs text-orange-600 mt-1">
-          Maximum {maxTags} tags allowed
+      {/* Tags Count */}
+      {maxTags !== 0 && (
+        <p className={cn(
+          "text-xs mt-1",
+          tags.length >= maxTags ? "text-orange-600" : "text-gray-500"
+        )}>
+          {tags.length >= maxTags 
+            ? `Maximum ${maxTags} tags allowed (${tags.length}/${maxTags})`
+            : `${tags.length}/${maxTags} tags`
+          }
         </p>
       )}
     </div>

@@ -1,5 +1,5 @@
 import React from "react";
-import { Course, Instructor } from "@/types";
+import { Course, CourseInstructor } from "@/types";
 import { cn } from "@/lib/utils";
 import { Plus } from "lucide-react";
 import BestsellerBadge from "@/components/ui/course/BestsellerBadge";
@@ -33,7 +33,7 @@ const TopCourseCard = ({
           draggable={false}
           loading="lazy"
         />
-        {course.discount && course.discount.isActive && (
+        {course.discount && course.discount.isActive && course.discount.value > 0 && (
           <DiscountBadge
             discount={course.discount.value}
             className="absolute top-2 right-2"
@@ -49,14 +49,14 @@ const TopCourseCard = ({
         {course.title}
       </p>
       <RatingContainer
-        ratings={course.featuredReviews}
+        ratings={course.reviews}
         className="mt-2"
         courseId={course.slug}
       />
       <div
         className={cn("instructors mt-2 flex gap-2 items-center select-none")}
       >
-        {course.instructor.map((instructor: Instructor, index: number) => {
+        {course.instructor.map((instructor: CourseInstructor, index: number) => {
           if (index < 2) {
             return <InstructorCard key={index} instructor={instructor} />;
           }
@@ -72,25 +72,30 @@ const TopCourseCard = ({
       </div>
       <div className="price mt-auto flex flex-col sm:flex-row gap-2 sm:items-center select-none">
         <div className="pricing flex flex-row lg:flex-col xl:flex-row gap-2 sm:items-center flex-wrap">
-          <p className="text-xl font-bold text-black">
-            ₹
-            {course.discount && course.discount.isActive
-              ? Math.round(
-                  (course.plans.essential?.price ||
-                    course.plans.elite?.price ||
-                    0 -
+        {course?.discount && course.discount.isActive && course.discount.value > 0 && (
+              <span className="text-xl font-bold text-black"> 
+                ₹
+                {course.plans.essential?.price ||
+                  course.plans.elite?.price ||
+                  0}
+              </span>
+            )}
+            <p className="text-sm font-normal text-black line-through opacity-50">
+              ₹
+              {course?.discount && course.discount.isActive
+                ? Math.round(
+                    (course.plans.essential?.price ||
+                      course.plans.elite?.price ||
+                      0) +
                       (course.plans.essential?.price ||
                         course.plans.elite?.price ||
                         0) *
-                        (course.discount.value / 100)) * 100
-                ) / 100
-              : course.plans.essential?.price || course.plans.elite?.price || 0}
-          </p>
-          {course.discount && course.discount.isActive && (
-            <span className="text-sm font-normal text-black line-through opacity-50">
-              ₹{course.plans.essential?.price || course.plans.elite?.price || 0}
-            </span>
-          )}
+                        (course.discount.value / 100)
+                  )
+                : course.plans.essential?.price ||
+                  course.plans.elite?.price ||
+                  0}
+            </p>
           <p className="text-sm font-normal text-black">onwards/-</p>
         </div>
         <OrangeButton

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Course, CourseLesson, CourseModule, Content, Video } from "@/types";
+import { Course, CourseLesson, CourseModule, Content, VideoContent } from "@/types";
 
 export const useLessonNavigation = (course: Course) => {
   const [selectedModule, setSelectedModule] = useState<CourseModule | null>(null);
@@ -9,11 +9,11 @@ export const useLessonNavigation = (course: Course) => {
 
   // Initialize with first module, lesson, and content
   useEffect(() => {
-    if (isInitialized || !course.modules[0]?.lessons[0]?.content[0]) return;
+    if (isInitialized || !course.modules[0]?.lessons[0]?.contents[0]) return;
 
     const firstModule = course.modules[0];
     const firstLesson = firstModule.lessons[0];
-    const firstContent = firstLesson.content[0];
+    const firstContent = firstLesson.contents[0];
 
     setSelectedModule(firstModule);
     setSelectedLesson(firstLesson);
@@ -27,27 +27,27 @@ export const useLessonNavigation = (course: Course) => {
 
     const moduleIndex = course.modules.findIndex((m) => m._id === selectedModule._id);
     const lessonIndex = selectedModule.lessons.findIndex((l) => l._id === selectedLesson._id);
-    const contentIndex = selectedLesson.content.findIndex((c) => c._id === selectedContent._id);
+    const contentIndex = selectedLesson.contents.findIndex((c) => c._id === selectedContent._id);
 
     // Find next content
     let nextContent: Content | null = null;
 
     // Try next content in same lesson
-    if (contentIndex < selectedLesson.content.length - 1) {
-      nextContent = selectedLesson.content[contentIndex + 1];
+    if (contentIndex < selectedLesson.contents.length - 1) {
+      nextContent = selectedLesson.contents[contentIndex + 1];
     }
     // Try first content of next lesson in same module
     else if (lessonIndex < selectedModule.lessons.length - 1) {
-      nextContent = selectedModule.lessons[lessonIndex + 1].content[0] || null;
+      nextContent = selectedModule.lessons[lessonIndex + 1].contents[0] || null;
     }
     // Try first content of first lesson in next module
     else if (moduleIndex < course.modules.length - 1) {
-      nextContent = course.modules[moduleIndex + 1].lessons[0]?.content[0] || null;
+      nextContent = course.modules[moduleIndex + 1].lessons[0]?.contents[0] || null;
     }
 
     // Preload if next content is a video
-    if (nextContent?.type === "video" && nextContent.content && "sources" in nextContent.content) {
-      const videoSources = (nextContent.content as Video).sources;
+    if (nextContent?.type === "video" && nextContent.sources) {
+      const videoSources = nextContent.sources;
       const nextVideoUrl = videoSources?.[0]?.videoUrl;
 
       if (nextVideoUrl) {
@@ -71,7 +71,7 @@ export const useLessonNavigation = (course: Course) => {
     (contentId: string) => {
       for (const courseModule of course.modules) {
         for (const lesson of courseModule.lessons) {
-          const content = lesson.content.find((c) => c._id === contentId);
+          const content = lesson.contents.find((c) => c._id === contentId);
           if (content) {
             setSelectedModule(courseModule);
             setSelectedLesson(lesson);
@@ -90,29 +90,29 @@ export const useLessonNavigation = (course: Course) => {
 
     const moduleIndex = course.modules.findIndex((m) => m._id === selectedModule._id);
     const lessonIndex = selectedModule.lessons.findIndex((l) => l._id === selectedLesson._id);
-    const contentIndex = selectedLesson.content.findIndex((c) => c._id === selectedContent._id);
+    const contentIndex = selectedLesson.contents.findIndex((c) => c._id === selectedContent._id);
 
     // Try next content in same lesson
-    if (contentIndex < selectedLesson.content.length - 1) {
-      const nextContent = selectedLesson.content[contentIndex + 1];
+    if (contentIndex < selectedLesson.contents.length - 1) {
+      const nextContent = selectedLesson.contents[contentIndex + 1];
       setSelectedContent(nextContent);
     }
     // Try first content of next lesson in same module
     else if (lessonIndex < selectedModule.lessons.length - 1) {
       const nextLesson = selectedModule.lessons[lessonIndex + 1];
-      if (nextLesson.content[0]) {
+      if (nextLesson.contents[0]) {
         setSelectedLesson(nextLesson);
-        setSelectedContent(nextLesson.content[0]);
+        setSelectedContent(nextLesson.contents[0]);
       }
     }
     // Try first content of first lesson in next module
     else if (moduleIndex < course.modules.length - 1) {
       const nextModule = course.modules[moduleIndex + 1];
       const firstLesson = nextModule.lessons[0];
-      if (firstLesson?.content[0]) {
+      if (firstLesson?.contents[0]) {
         setSelectedModule(nextModule);
         setSelectedLesson(firstLesson);
-        setSelectedContent(firstLesson.content[0]);
+        setSelectedContent(firstLesson.contents[0]);
       }
     }
   }, [selectedModule, selectedLesson, selectedContent, course.modules]);
@@ -123,17 +123,17 @@ export const useLessonNavigation = (course: Course) => {
 
     const moduleIndex = course.modules.findIndex((m) => m._id === selectedModule._id);
     const lessonIndex = selectedModule.lessons.findIndex((l) => l._id === selectedLesson._id);
-    const contentIndex = selectedLesson.content.findIndex((c) => c._id === selectedContent._id);
+    const contentIndex = selectedLesson.contents.findIndex((c) => c._id === selectedContent._id);
 
     // Try previous content in same lesson
     if (contentIndex > 0) {
-      const prevContent = selectedLesson.content[contentIndex - 1];
+      const prevContent = selectedLesson.contents[contentIndex - 1];
       setSelectedContent(prevContent);
     }
     // Try last content of previous lesson in same module
     else if (lessonIndex > 0) {
       const prevLesson = selectedModule.lessons[lessonIndex - 1];
-      const lastContent = prevLesson.content[prevLesson.content.length - 1];
+      const lastContent = prevLesson.contents[prevLesson.contents.length - 1];
       if (lastContent) {
         setSelectedLesson(prevLesson);
         setSelectedContent(lastContent);
@@ -143,7 +143,7 @@ export const useLessonNavigation = (course: Course) => {
     else if (moduleIndex > 0) {
       const prevModule = course.modules[moduleIndex - 1];
       const lastLesson = prevModule.lessons[prevModule.lessons.length - 1];
-      const lastContent = lastLesson?.content[lastLesson.content.length - 1];
+      const lastContent = lastLesson?.contents[lastLesson.contents.length - 1];
       if (lastContent) {
         setSelectedModule(prevModule);
         setSelectedLesson(lastLesson);

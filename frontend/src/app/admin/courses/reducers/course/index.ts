@@ -29,3 +29,10 @@ export {
   type ValidationError,
   type ValidationResult
 } from "./utils";
+
+// Sanitization
+export { 
+  sanitizeCourseForBackend,
+  validateSanitizedCourse,
+  type SanitizedCourse
+} from "./utils/sanitization";

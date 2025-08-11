@@ -2,6 +2,7 @@ import { useReducer, useCallback, useRef } from "react";
 import { ReducerResult, ReducerError, courseReducer } from "../core/reducer";
 import { initialCourseState, CourseState } from "../core/state";
 import { CourseAction, courseActions } from "../core/actions";
+import { Discount } from "@/types";
 
 // This hook is used to manage the state of the course reducer
 export const useCourseReducer = () => {
@@ -150,9 +151,41 @@ export const useCourseReducer = () => {
       [enhancedDispatch]
     ),
 
+    setCourseThumbnailSource: useCallback(
+      (source: "upload" | "url" | undefined) => {
+        const action = courseActions.setCourseThumbnailSource(source);
+        return enhancedDispatch(action);
+      },
+      [enhancedDispatch]
+    ),
+
+    setCourseThumbnailS3Key: useCallback(
+      (s3Key: string) => {
+        const action = courseActions.setCourseThumbnailS3Key(s3Key);
+        return enhancedDispatch(action);
+      },
+      [enhancedDispatch]
+    ),
+
     setCoursePreviewVideoUrl: useCallback(
       (previewVideoUrl: string) => {
         const action = courseActions.setCoursePreviewVideoUrl(previewVideoUrl);
+        return enhancedDispatch(action);
+      },
+      [enhancedDispatch]
+    ),
+
+    setCoursePreviewVideoSource: useCallback(
+      (source: "upload" | "url" | undefined) => {
+        const action = courseActions.setCoursePreviewVideoSource(source);
+        return enhancedDispatch(action);
+      },
+      [enhancedDispatch]
+    ),
+
+    setCoursePreviewVideoS3Key: useCallback(
+      (s3Key: string) => {
+        const action = courseActions.setCoursePreviewVideoS3Key(s3Key);
         return enhancedDispatch(action);
       },
       [enhancedDispatch]
@@ -588,12 +621,14 @@ export const useCourseReducer = () => {
     ),
 
     // Pricing & Discount
-    setCourseFakeDiscount: useCallback(
-      (fakeDiscount: number) => {
-        const action = courseActions.setCourseFakeDiscount(fakeDiscount);
-        return enhancedDispatch(action);
+
+
+    setCourseDiscount: useCallback(
+      (discount: Discount | null) => {
+        const action = courseActions.setCourseDiscount(discount);
+        dispatch(action);
       },
-      [enhancedDispatch]
+      [dispatch]
     ),
 
     setCoursePlans: useCallback(

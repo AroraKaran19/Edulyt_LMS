@@ -3,15 +3,17 @@ import CategoryInput from "@/components/ui/inputs/CategoryInput";
 import FlexBox from "@/components/ui/FlexBox";
 import Input from "@/components/ui/inputs/Input";
 import React, { useMemo } from "react";
-import { useCourseContext } from "../../../reducers";
+import { useCourseContext } from "../../../reducers/course/providers/CourseReducerProvider";
 import TextArea from "@/components/ui/inputs/TextArea";
 import DropDown from "@/components/ui/dropdown/DropDown";
 import PercentageInput from "@/components/ui/inputs/PercentageInput";
 import ScreenNavigation from "./shared/ScreenNavigation";
 import AlertBanner from "@/components/ui/AlertBanner";
+import { useScreen } from "../contexts/ScreenContext";
 
 const Screen1 = () => {
   const { state, actions } = useCourseContext();
+  const { setActiveScreen } = useScreen();
 
   // Validation checks for minimum character requirements
   const validationErrors = useMemo(() => {
@@ -214,23 +216,13 @@ const Screen1 = () => {
           className="w-full"
           required
         />
-        <PercentageInput
-          label="Show Discount (Optional)"
-          placeholder="Enter the show discount of the course"
-          value={state.course.fakeDiscount?.toString() || ""}
-          onChange={(e) => {
-            const numValue = e.target.value === "" ? 0 : Number(e.target.value);
-            actions.setCourseFakeDiscount(numValue);
-          }}
-          className="w-full"
-          required={false}
-        />
       </FlexBox>
       <ScreenNavigation
         currentStep={1}
         nextScreen="screen2"
         showPrevious={false}
         isNextDisabled={!isFormValid}
+        setActiveScreen={setActiveScreen}
       />
     </Container>
   );

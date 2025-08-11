@@ -1,6 +1,4 @@
-import { Discount, User } from ".";
-import { CourseInstructor } from "./instructor";
-import { Review } from "./review";
+import { CourseInstructor, Discount, Review, User } from ".";
 
 // ===================
 // Video & Note Types
@@ -71,7 +69,7 @@ export interface VideoContent extends BaseContent {
   duration?: number; // in seconds
 }
 
-// Quiz Content interface (extends BaseContent + Quiz fields)  
+// Quiz Content interface (extends BaseContent + Quiz fields)
 export interface QuizContent extends BaseContent {
   type: "quiz";
   questions: QuizQuestion[];
@@ -149,7 +147,8 @@ export interface FAQ {
   answer: string;
 }
 
-export interface Testimonial extends Omit<Review, "_id" | "profileImage" | "rating"> {
+export interface Testimonial
+  extends Omit<Review, "_id" | "profileImage" | "rating" | "comment"> {
   pastRole: string;
   pastCompany: string;
   verified?: boolean;
@@ -190,7 +189,7 @@ export interface Course {
   skillLevel: string;
   whoShouldJoin: string;
   prerequisites?: string[];
-  fakeDiscount?: number; // in percentage for display purposes
+
   duration: string; // like: 3 months, 1 year, 2 years, etc. (will not be accurate)
 
   // Content
@@ -205,6 +204,7 @@ export interface Course {
     elite?: Plan;
     essential?: Plan;
   };
+  discount?: Discount;
 
   // Reviews
   reviews: Review["_id"][];
@@ -230,6 +230,7 @@ export interface Course {
   // Scholarship
   scholarship?: boolean;
   scholarshipDescription?: string;
+  scholarshipRef?: string;
   // scholarshipQuiz?: Quiz[];
 
   // Language

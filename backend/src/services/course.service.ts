@@ -1,6 +1,6 @@
-import { Content, Course, CourseLesson, CourseModule, QuizContent, VideoContent } from "../types/course";
+import { Course, CourseLesson, CourseModule, QuizContent, VideoContent } from "../types";
 import CourseModel from "../models/course.schema";
-import { ContentModel, CourseLessonModel, CourseModuleModel, VideoContentModel, QuizContentModel } from "../models/course-module.schema";
+import { CourseLessonModel, CourseModuleModel, VideoContentModel, QuizContentModel } from "../models/course-module.schema";
 
 export class CourseService {
   /**
@@ -47,7 +47,7 @@ export class CourseService {
         skillLevel: courseData.skillLevel || "",
         whoShouldJoin: courseData.whoShouldJoin || "",
         prerequisites: courseData.prerequisites || [],
-        fakeDiscount: courseData.fakeDiscount || 0,
+
         duration: courseData.duration || "",
 
         // Content
@@ -111,8 +111,19 @@ export class CourseService {
                       type: content.type,
                       readingMaterials: content.readingMaterials || [],
                       isLocked: content.isLocked || false,
-                      // Flatten the nested content structure
-                      ...((content as any).content || {})
+                      // Handle both nested and direct content structures
+                      ...((content as any).content || {}),
+                      // Also include direct properties for backward compatibility
+                      ...(content.type === 'video' ? {
+                        sources: (content as any).sources,
+                        thumbnailUrl: (content as any).thumbnailUrl,
+                        duration: (content as any).duration
+                      } : {}),
+                      ...(content.type === 'quiz' ? {
+                        questions: (content as any).questions,
+                        passingScore: (content as any).passingScore,
+                        maxAttempts: (content as any).maxAttempts
+                      } : {})
                     };
                     
                     // Handle different content types using discriminators
@@ -329,14 +340,11 @@ export class CourseService {
         ];
       }
 
-      console.log("getAllCourses query:", JSON.stringify(query, null, 2));
-
       // Calculate skip value for pagination
       const skip = (page - 1) * limit;
 
       // Get total count for pagination
       const total = await CourseModel.countDocuments(query);
-      console.log("Total courses found:", total);
 
       // Get courses with pagination
       const courses = await CourseModel.find(query)
@@ -345,8 +353,6 @@ export class CourseService {
         .skip(skip)
         .limit(limit)
         .lean(); // Return plain JavaScript objects instead of Mongoose documents
-
-      console.log("Courses returned:", courses.length);
 
       // Calculate total pages
       const totalPages = Math.ceil(total / limit);
@@ -382,7 +388,42 @@ export class CourseService {
         isActive: true,
       })
         .select("-__v") // Exclude version field
-        .lean(); // Return plain JavaScript object instead of Mongoose document
+        .lean() // Return plain JavaScript object instead of Mongoose document
+        .populate({
+          path: "modules",
+          select: "-__v",
+          populate: {
+            path: "lessonIds",
+            select: "-__v",
+            populate: {
+              path: "contentIds",
+              select: "-__v"
+            }
+          }
+        });
+
+      // Transform field names after population
+      if (course) {
+        // Transform modules.lessonIds to modules.lessons
+        if (course.modules) {
+          course.modules.forEach((module: any) => {
+            if (module.lessonIds) {
+              module.lessons = module.lessonIds;
+              delete module.lessonIds;
+              
+              // Transform lessons.contentIds to lessons.contents
+              if (module.lessons) {
+                module.lessons.forEach((lesson: any) => {
+                  if (lesson.contentIds) {
+                    lesson.contents = lesson.contentIds;
+                    delete lesson.contentIds;
+                  }
+                });
+              }
+            }
+          });
+        }
+      }
 
       return course;
     } catch (error) {
@@ -410,11 +451,108 @@ export class CourseService {
         isActive: true,
       })
         .select("-__v") // Exclude version field
-        .lean(); // Return plain JavaScript object instead of Mongoose document
+        .lean() // Return plain JavaScript object instead of Mongoose document
+        .populate({
+          path: "modules",
+          select: "-__v",
+          populate: {
+            path: "lessonIds",
+            select: "-__v",
+            populate: {
+              path: "contentIds",
+              select: "-__v"
+            }
+          }
+        });
+
+      // Transform field names after population
+      if (course) {
+        // Transform modules.lessonIds to modules.lessons
+        if (course.modules) {
+          course.modules.forEach((module: any) => {
+            if (module.lessonIds) {
+              module.lessons = module.lessonIds;
+              delete module.lessonIds;
+              
+              // Transform lessons.contentIds to lessons.contents
+              if (module.lessons) {
+                module.lessons.forEach((lesson: any) => {
+                  if (lesson.contentIds) {
+                    lesson.contents = lesson.contentIds;
+                    delete lesson.contentIds;
+                  }
+                });
+              }
+            }
+          });
+        }
+      }
 
       return course;
     } catch (error) {
       console.error("Error fetching course by ID:", error);
+      if (error instanceof Error) {
+        throw new Error(`Failed to fetch course: ${error.message}`);
+      }
+      throw new Error("Failed to fetch course");
+    }
+  }
+
+  /**
+   * Get a course by ID (Admin version - includes inactive courses)
+   * @param courseId - Course ID
+   * @returns Promise<Course | null> - Course data or null if not found
+   */
+  async getCourseByIdAdmin(courseId: string): Promise<Course | null> {
+    try {
+      if (!courseId?.trim()) {
+        throw new Error("Course ID is required");
+      }
+
+      const course = await CourseModel.findOne({
+        _id: courseId.trim(),
+      })
+        .select("-__v") // Exclude version field
+        .lean() // Return plain JavaScript object instead of Mongoose document
+        .populate({
+          path: "modules",
+          select: "-__v",
+          populate: {
+            path: "lessonIds",
+            select: "-__v",
+            populate: {
+              path: "contentIds",
+              select: "-__v"
+            }
+          }
+        });
+
+      // Transform field names after population
+      if (course) {
+        // Transform modules.lessonIds to modules.lessons
+        if (course.modules) {
+          course.modules.forEach((module: any) => {
+            if (module.lessonIds) {
+              module.lessons = module.lessonIds;
+              delete module.lessonIds;
+              
+              // Transform lessons.contentIds to lessons.contents
+              if (module.lessons) {
+                module.lessons.forEach((lesson: any) => {
+                  if (lesson.contentIds) {
+                    lesson.contents = lesson.contentIds;
+                    delete lesson.contentIds;
+                  }
+                });
+              }
+            }
+          });
+        }
+      }
+
+      return course;
+    } catch (error) {
+      console.error("Error fetching course by ID (admin):", error);
       if (error instanceof Error) {
         throw new Error(`Failed to fetch course: ${error.message}`);
       }
@@ -547,27 +685,151 @@ export class CourseService {
         throw new Error("Course ID is required");
       }
 
-      // Remove any _id if provided - let MongoDB generate it
-      if ("_id" in updateData) {
-        delete updateData._id;
+      const existingCourse = await CourseModel.findById(courseId);
+      if (!existingCourse) {
+        throw new Error("Course not found");
       }
 
-      // Remove any id field that might conflict with MongoDB's _id
-      if ("id" in updateData) {
-        delete (updateData as any).id;
-      }
+      // Process modules to handle new and existing ones
+      if (updateData.modules && Array.isArray(updateData.modules)) {
+        const processedModules: any[] = [];
+        
+        // Process modules sequentially to avoid race conditions
+        for (const module of updateData.modules) {
+          const isNewModule = module._id && module._id.toString().startsWith('temp_');
+          
+          if (isNewModule) {
+            // Create new module
+            console.log(`Creating new module: ${module.title}`);
+            const newModuleData = { ...module };
+            delete newModuleData._id; // Remove temp_ _id for new module
+            
+            const newModule = new CourseModuleModel({
+              ...newModuleData,
+              lessonIds: [], // Will be populated below
+              createdAt: new Date(),
+              updatedAt: new Date()
+            });
 
-      // Remove all manual _id fields from nested objects - let MongoDB auto-generate them
-      this.removeManualIds(updateData);
+            // Process lessons for this module
+            if (module.lessons && Array.isArray(module.lessons)) {
+              const processedLessons: any[] = [];
+              
+              // Process lessons sequentially
+              for (const lesson of module.lessons) {
+                const isNewLesson = lesson._id && lesson._id.toString().startsWith('temp_');
+                
+                if (isNewLesson) {
+                  // Create new lesson
+                  const newLessonData = { ...lesson };
+                  delete newLessonData._id; // Remove temp_ _id for new lesson
+                  
+                  const newLesson = new CourseLessonModel({
+                    ...newLessonData,
+                    contentIds: [], // Will be populated below
+                    createdAt: new Date(),
+                    updatedAt: new Date()
+                  });
 
-      // Debug: Check for any remaining problematic fields
-      if (process.env.NODE_ENV === "development") {
-        const hasId = JSON.stringify(updateData).includes('"_id":');
-        if (hasId) {
-          console.warn(
-            '⚠️  Warning: Update data still contains "_id" fields after cleaning'
-          );
+                  // Process contents for this lesson
+                  if (lesson.contents && Array.isArray(lesson.contents)) {
+                    const processedContents: any[] = [];
+                    
+                    // Process contents sequentially
+                    for (const content of lesson.contents) {
+                      const isNewContent = content._id && content._id.toString().startsWith('temp_');
+                      
+                      if (isNewContent) {
+                        // Create new content
+                        console.log(`Creating new content: ${(content as any).title}`);
+                        const newContentData = { ...content };
+                        delete newContentData._id; // Remove temp_ _id for new content
+                        
+                        let newContent: any;
+                        
+                        if ((content as any).type === 'video') {
+                          newContent = new VideoContentModel({
+                            ...newContentData,
+                            createdAt: new Date(),
+                            updatedAt: new Date()
+                          });
+                        } else if ((content as any).type === 'quiz') {
+                          newContent = new QuizContentModel({
+                            ...newContentData,
+                            createdAt: new Date(),
+                            updatedAt: new Date()
+                          });
+                        } else {
+                          // Default to video content
+                          newContent = new VideoContentModel({
+                            ...newContentData,
+                            type: 'video',
+                            createdAt: new Date(),
+                            updatedAt: new Date()
+                          });
+                        }
+                        
+                        // Save the new content
+                        await newContent.save();
+                        processedContents.push(newContent._id);
+                      } else {
+                        // Existing content - preserve the _id reference
+                        processedContents.push((content as any)._id);
+                      }
+                    }
+                    
+                    newLesson.contentIds = processedContents;
+                  }
+                  
+                  // Save the new lesson
+                  await newLesson.save();
+                  processedLessons.push(newLesson._id);
+                } else {
+                  // Existing lesson - update it
+                  const lessonId = lesson._id;
+                  const lessonUpdateData = { ...lesson };
+                  
+                  // Update lesson
+                  await CourseLessonModel.findByIdAndUpdate(
+                    lessonId,
+                    {
+                      ...lessonUpdateData,
+                      updatedAt: new Date()
+                    },
+                    { new: true, runValidators: false }
+                  );
+                  
+                  processedLessons.push(lessonId);
+                }
+              }
+              
+              newModule.lessonIds = processedLessons;
+            }
+            
+            // Save the new module
+            await newModule.save();
+            processedModules.push(newModule._id);
+          } else {
+            // Existing module - update it
+            const moduleId = module._id;
+            const moduleUpdateData = { ...module };
+            
+            // Update module
+            await CourseModuleModel.findByIdAndUpdate(
+              moduleId,
+              {
+                ...moduleUpdateData,
+                updatedAt: new Date()
+              },
+              { new: true, runValidators: false }
+            );
+            
+            processedModules.push(moduleId);
+          }
         }
+        
+        // Save the processed module IDs to the correct schema field
+        updateData.moduleIds = processedModules;
       }
 
       // Add updated timestamp
@@ -576,21 +838,8 @@ export class CourseService {
         updatedAt: new Date(),
       };
 
-      console.log("Updating course with ID:", courseId);
-      console.log("Update data keys:", Object.keys(dataToUpdate));
-      console.log("Update data sample:", {
-        title: dataToUpdate.title,
-        description: dataToUpdate.description?.substring(0, 50) + "...",
-        category: dataToUpdate.category,
-        thumbnail: dataToUpdate.thumbnail,
-        previewVideoUrl: dataToUpdate.previewVideoUrl,
-        whatYouWillLearn:
-          dataToUpdate.whatYouWillLearn?.substring(0, 50) + "...",
-        whoShouldJoin: dataToUpdate.whoShouldJoin,
-      });
-
-      const updatedCourse = await CourseModel.findOneAndUpdate(
-        { _id: courseId.trim() },
+      const updatedCourse = await CourseModel.findByIdAndUpdate(
+        courseId,
         dataToUpdate,
         {
           new: true, // Return updated document
@@ -598,7 +847,46 @@ export class CourseService {
         }
       )
         .select("-__v") // Exclude version field
-        .lean(); // Return plain JavaScript object
+        .lean() // Return plain JavaScript object
+        .populate({
+          path: "modules",
+          select: "-__v",
+          populate: {
+            path: "lessonIds",
+            select: "-__v",
+            populate: {
+              path: "contentIds",
+              select: "-__v"
+            }
+          }
+        });
+
+      if (!updatedCourse) {
+        throw new Error("Failed to update course");
+      }
+
+      // Transform field names after population
+      if (updatedCourse) {
+        // Transform modules.lessonIds to modules.lessons
+        if (updatedCourse.modules) {
+          updatedCourse.modules.forEach((module: any) => {
+            if (module.lessonIds) {
+              module.lessons = module.lessonIds;
+              delete module.lessonIds;
+              
+              // Transform lessons.contentIds to lessons.contents
+              if (module.lessons) {
+                module.lessons.forEach((lesson: any) => {
+                  if (lesson.contentIds) {
+                    lesson.contents = lesson.contentIds;
+                    delete lesson.contentIds;
+                  }
+                });
+              }
+            }
+          });
+        }
+      }
 
       console.log("Course updated successfully:", !!updatedCourse);
       return updatedCourse;
@@ -655,7 +943,19 @@ export class CourseService {
         .select("-__v")
         .sort({ enrolledCount: -1, createdAt: -1 }) // Sort by popularity then newest
         .limit(limit)
-        .lean();
+        .lean()
+        .populate({
+          path: "modules",
+          select: "-__v",
+          populate: {
+            path: "lessonIds",
+            select: "-__v",
+            populate: {
+              path: "contentIds",
+              select: "-__v"
+            }
+          }
+        });;
 
       return courses;
     } catch (error) {

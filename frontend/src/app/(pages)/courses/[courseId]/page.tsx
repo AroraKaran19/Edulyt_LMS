@@ -106,6 +106,7 @@ const IndividualCoursePage = async ({
       />
     );
   }
+
   return (
     <CoursePage course={course} />
   );

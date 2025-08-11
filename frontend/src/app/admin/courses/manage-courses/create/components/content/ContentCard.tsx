@@ -12,7 +12,7 @@ import {
   AlertCircle,
   Loader2,
 } from "lucide-react";
-import { Content, Video as VideoType, Quiz } from "@/types/course";
+import { Content, VideoContent, QuizContent, Quiz } from "@/types/course";
 import UploadMediaContainer from "@/components/ui/container/UploadMediaContainer";
 import DropDown from "@/components/ui/dropdown/DropDown";
 import { useUpload } from "@/hooks/useUpload";
@@ -71,7 +71,7 @@ const ContentCard: React.FC<ContentCardProps> = ({
   const isContentComplete = () => {
     if (!content.title || content.title.trim() === "") return false;
     if (content.type === "video") {
-      const videoContent = content.content as VideoType;
+      const videoContent = content as VideoContent;
       // For video content: title, video URL, and thumbnail are all required
       return !!(
         videoContent.sources?.[0]?.videoUrl && 
@@ -80,14 +80,14 @@ const ContentCard: React.FC<ContentCardProps> = ({
         videoContent.thumbnailUrl.trim() !== ""
       );
     } else {
-      const quizContent = content.content as Quiz;
+      const quizContent = content as QuizContent;
       return !!(quizContent.passingScore && quizContent.maxAttempts);
     }
   };
 
   const getContentDuration = () => {
     if (content.type === "video") {
-      const videoContent = content.content as VideoType;
+      const videoContent = content as VideoContent;
       const duration = videoContent.duration || 0;
       const minutes = Math.floor(duration / 60);
       const seconds = duration % 60;
@@ -289,9 +289,9 @@ const ContentPreview: React.FC<ContentPreviewProps> = ({ content }) => {
       )}
       
       {content.type === "video" ? (
-        <VideoContentPreview content={content.content as VideoType} />
+        <VideoContentPreview content={content as VideoContent} />
       ) : (
-        <QuizContentPreview content={content.content as Quiz} />
+        <QuizContentPreview content={content as QuizContent} />
       )}
     </div>
   );
@@ -317,7 +317,7 @@ const VideoContentForm: React.FC<VideoContentFormProps> = ({
   lessonIndex,
   index,
 }) => {
-  const videoContent = content.content as VideoType;
+  const videoContent = content as VideoContent;
   const { uploadFile, isUploading, getVideoDuration } = useUpload();
   const [isExtractingDuration, setIsExtractingDuration] = useState(false);
   const [durationExtractionMessage, setDurationExtractionMessage] = useState<string>("");
@@ -336,14 +336,17 @@ const VideoContentForm: React.FC<VideoContentFormProps> = ({
       const result = await uploadFile(file, folderName);
       
       if (result.success && result.data) {
-        // Update content with URL and duration
+        // Update content with URL, duration, and source tracking
         onUpdateContent(contentId, {
-          content: {
-            ...videoContent,
-            sources: [{ quality: "1080p", videoUrl: result.data.url }],
-            duration: duration
-          } as VideoType
-        });
+          ...videoContent,
+          sources: [{ 
+            quality: "1080p", 
+            videoUrl: result.data.url,
+            videoSource: "upload",
+            videoS3Key: result.data.s3Key || ""
+          }],
+          duration: duration
+        } as VideoContent);
         
         // Show success message
         if (duration > 0) {
@@ -376,21 +379,27 @@ const VideoContentForm: React.FC<VideoContentFormProps> = ({
   // Handle video URL input
   const handleVideoUrlSubmit = (url: string) => {
     onUpdateContent(contentId, {
-      content: {
-        ...videoContent,
-        sources: [{ quality: "1080p", videoUrl: url }]
-      } as VideoType
-    });
+      ...videoContent,
+      sources: [{ 
+        quality: "1080p", 
+        videoUrl: url,
+        videoSource: "url",
+        videoS3Key: ""
+      }]
+    } as VideoContent);
   };
 
   // Handle video removal
   const handleVideoRemove = () => {
     onUpdateContent(contentId, {
-      content: {
-        ...videoContent,
-        sources: [{ quality: "1080p", videoUrl: "" }]
-      } as VideoType
-    });
+      ...videoContent,
+      sources: [{ 
+        quality: "1080p", 
+        videoUrl: "",
+        videoSource: undefined,
+        videoS3Key: ""
+      }]
+    } as VideoContent);
   };
 
   return (
@@ -406,6 +415,8 @@ const VideoContentForm: React.FC<VideoContentFormProps> = ({
           description="Upload your lesson video or provide a video URL (required)"
           type="video"
           mediaUrl={videoContent.sources[0]?.videoUrl}
+          mediaSource={videoContent.sources[0]?.videoSource}
+          s3Key={videoContent.sources[0]?.videoS3Key}
           maxSize={15360} // 15GB
           onFileUpload={handleVideoUpload}
           onFileRemove={handleVideoRemove}
@@ -425,17 +436,19 @@ const VideoContentForm: React.FC<VideoContentFormProps> = ({
           description="Upload a thumbnail image for this video (required)"
           type="image"
           mediaUrl={videoContent.thumbnailUrl}
+          mediaSource={videoContent.thumbnailSource}
+          s3Key={videoContent.thumbnailS3Key}
           maxSize={100} // 10MB for images
           onFileUpload={async (file: File, folderName: string) => {
             try {
               const result = await uploadFile(file, folderName);
               if (result.success && result.data) {
                 onUpdateContent(contentId, {
-                  content: {
-                    ...videoContent,
-                    thumbnailUrl: result.data.url
-                  } as VideoType
-                });
+                  ...videoContent,
+                  thumbnailUrl: result.data.url,
+                  thumbnailSource: "upload",
+                  thumbnailS3Key: result.data.s3Key || ""
+                } as VideoContent);
                 return result.data.url;
               }
               throw new Error(result.error || "Upload failed");
@@ -446,18 +459,18 @@ const VideoContentForm: React.FC<VideoContentFormProps> = ({
           }}
           onFileRemove={() => {
             onUpdateContent(contentId, {
-              content: {
-                ...videoContent,
-                thumbnailUrl: ""
-              } as VideoType
+              ...videoContent,
+              thumbnailUrl: "",
+              thumbnailSource: undefined,
+              thumbnailS3Key: ""
             });
           }}
           onUrlSubmit={(url) => {
             onUpdateContent(contentId, {
-              content: {
-                ...videoContent,
-                thumbnailUrl: url
-              } as VideoType
+              ...videoContent,
+              thumbnailUrl: url,
+              thumbnailSource: "url",
+              thumbnailS3Key: ""
             });
           }}
           isUploading={isUploading}
@@ -481,10 +494,8 @@ const VideoContentForm: React.FC<VideoContentFormProps> = ({
               value={videoContent.duration?.toString() || ""}
               onChange={(e) => {
                 onUpdateContent(contentId, {
-                  content: {
-                    ...videoContent,
-                    duration: parseInt(e.target.value) || 0
-                  } as VideoType
+                  ...videoContent,
+                  duration: parseInt(e.target.value) || 0
                 });
               }}
               placeholder="300"
@@ -542,13 +553,11 @@ const VideoContentForm: React.FC<VideoContentFormProps> = ({
             const currentSource = videoContent.sources?.[0] || { quality: "1080p", videoUrl: "" };
             
             onUpdateContent(contentId, {
-              content: {
-                ...videoContent,
-                sources: [{
-                  ...currentSource,
-                  quality: newQuality
-                }]
-              } as VideoType
+              ...videoContent,
+              sources: [{
+                ...currentSource,
+                quality: newQuality
+              }]
             });
           }}
           className="w-full"
@@ -570,7 +579,7 @@ const QuizContentForm: React.FC<QuizContentFormProps> = ({
   contentId,
   onUpdateContent,
 }) => {
-  const quizContent = content.content as Quiz;
+  const quizContent = content as QuizContent;
 
   return (
     <div className="space-y-3 p-4 bg-emerald-50 rounded-lg">
@@ -591,10 +600,8 @@ const QuizContentForm: React.FC<QuizContentFormProps> = ({
             value={quizContent.passingScore?.toString() || ""}
             onChange={(e) => {
               onUpdateContent(contentId, {
-                content: {
-                  ...quizContent,
-                  passingScore: parseInt(e.target.value) || 70
-                } as Quiz
+                ...quizContent,
+                passingScore: parseInt(e.target.value) || 70
               });
             }}
             placeholder="70"
@@ -612,10 +619,8 @@ const QuizContentForm: React.FC<QuizContentFormProps> = ({
             value={quizContent.maxAttempts?.toString() || ""}
             onChange={(e) => {
               onUpdateContent(contentId, {
-                content: {
-                  ...quizContent,
-                  maxAttempts: parseInt(e.target.value) || 3
-                } as Quiz
+                ...quizContent,
+                maxAttempts: parseInt(e.target.value) || 3
               });
             }}
             placeholder="3"
@@ -634,7 +639,7 @@ const QuizContentForm: React.FC<QuizContentFormProps> = ({
 
 // Video Content Preview
 interface VideoContentPreviewProps {
-  content: VideoType;
+  content: VideoContent;
 }
 
 const VideoContentPreview: React.FC<VideoContentPreviewProps> = ({ content }) => {

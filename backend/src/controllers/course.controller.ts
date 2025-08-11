@@ -109,10 +109,7 @@ export class CourseController {
     try {
       const courseData: Partial<Course> = req.body;
 
-      // console.log("📝 Received course creation request:", courseData);
-
       const cleanedData = await this.courseService.cleanCourseData(courseData);
-      // console.log("📝 Cleaned course data:", JSON.stringify(cleanedData, null, 2));
 
       // Validate course data
       const validation = this.courseService.validateCourseData(cleanedData);
@@ -261,6 +258,176 @@ export class CourseController {
           res.status(400).json({
             success: false,
             message: "Invalid course slug",
+            error: error.message,
+          });
+          return;
+        }
+      }
+
+      // Generic error response
+      res.status(500).json({
+        success: false,
+        message: "Internal server error while fetching course",
+        error:
+          process.env.NODE_ENV === "development"
+            ? error
+            : "Something went wrong",
+      });
+    }
+  };
+
+  /**
+   * Get a course by ID
+   * @param req - Express request object
+   * @param res - Express response object
+   * @param courseId - Course ID from URL parameters
+   */
+  getCourseById = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { courseId } = req.params;
+
+      // Validate courseId parameter
+      if (!courseId?.trim()) {
+        res.status(400).json({
+          success: false,
+          message: "Course ID is required",
+        });
+        return;
+      }
+
+      // Get course by ID
+      const course = await this.courseService.getCourseById(courseId);
+
+      // Handle course not found
+      if (!course) {
+        res.status(404).json({
+          success: false,
+          message: "Course not found",
+        });
+        return;
+      }
+
+      // Return success response
+      res.status(200).json({
+        success: true,
+        message: "Course retrieved successfully",
+        data: {
+          course,
+        },
+      });
+    } catch (error) {
+      console.error("Error in getCourseById controller:", error);
+
+      // Handle specific error types
+      if (error instanceof Error) {
+        if (error.message.includes("Course ID is required")) {
+          res.status(400).json({
+            success: false,
+            message: "Invalid course ID",
+            error: error.message,
+          });
+          return;
+        }
+      }
+
+      // Generic error response
+      res.status(500).json({
+        success: false,
+        message: "Internal server error while fetching course",
+        error:
+          process.env.NODE_ENV === "development"
+            ? error
+            : "Something went wrong",
+      });
+    }
+  };
+
+  /**
+   * Update a course by ID
+   * @param req - Express request object
+   * @param res - Express response object
+   * @param courseId - Course ID from URL parameters
+   */
+  updateCourseById = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { courseId } = req.params;
+      const courseData: Partial<Course> = req.body;
+
+      // Validate course data
+      const validation = this.courseService.validateCourseData(courseData);
+      if (!validation.isValid) {
+        res.status(400).json({
+          success: false,
+          message: "Validation failed",
+          errors: validation.errors,
+        });
+        return;
+      }
+
+      // Update the course
+      const updatedCourse = await this.courseService.updateCourse(courseId, courseData);
+
+      // Return success response
+      res.status(200).json({
+        success: true,
+        message: "Course updated successfully",
+        data: {
+          course: updatedCourse,
+        },
+      });
+    } catch (error) {
+      console.error("Error in updateCourseById controller:", error);
+    }
+  };
+
+  /**
+   * Get a course by ID (Admin version - includes inactive courses)
+   * @param req - Express request object
+   * @param res - Express response object
+   * @param courseId - Course ID from URL parameters
+   */
+  getCourseByIdAdmin = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { courseId } = req.params;
+
+      // Validate courseId parameter
+      if (!courseId?.trim()) {
+        res.status(400).json({
+          success: false,
+          message: "Course ID is required",
+        });
+        return;
+      }
+
+      // Get course by ID (admin version - includes inactive courses)
+      const course = await this.courseService.getCourseByIdAdmin(courseId);
+
+      // Handle course not found
+      if (!course) {
+        res.status(404).json({
+          success: false,
+          message: "Course not found",
+        });
+        return;
+      }
+
+      // Return success response
+      res.status(200).json({
+        success: true,
+        message: "Course retrieved successfully",
+        data: {
+          course,
+        },
+      });
+    } catch (error) {
+      console.error("Error in getCourseByIdAdmin controller:", error);
+
+      // Handle specific error types
+      if (error instanceof Error) {
+        if (error.message.includes("Course ID is required")) {
+          res.status(400).json({
+            success: false,
+            message: "Invalid course ID",
             error: error.message,
           });
           return;

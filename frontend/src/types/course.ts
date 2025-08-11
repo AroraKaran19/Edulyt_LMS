@@ -3,19 +3,6 @@ import { CourseInstructor } from "./instructor";
 import { Review } from "./review";
 
 // ===================
-// Video & Note Types
-// ===================
-
-export interface Video {
-  sources: {
-    quality: "1080p" | "720p" | "480p" | "360p";
-    videoUrl: string;
-  }[];
-  thumbnailUrl?: string;
-  duration?: number; // in seconds
-}
-
-// ===================
 // Quiz Types
 // ===================
 
@@ -65,8 +52,12 @@ export interface VideoContent extends BaseContent {
   sources: {
     quality: "1080p" | "720p" | "480p" | "360p";
     videoUrl: string;
+    videoSource?: "upload" | "url"; // Track whether video came from upload or URL
+    videoS3Key?: string; // S3 key for uploaded videos (for deletion)
   }[];
   thumbnailUrl?: string;
+  thumbnailSource?: "upload" | "url"; // Track whether thumbnail came from upload or URL
+  thumbnailS3Key?: string; // S3 key for uploaded thumbnails (for deletion)
   duration?: number;
 }
 
@@ -107,6 +98,8 @@ export interface CourseModule {
   _id?: string;
   title: string;
   thumbnailUrl?: string;
+  thumbnailSource?: "upload" | "url"; // Track whether thumbnail came from upload or URL
+  thumbnailS3Key?: string; // S3 key for uploaded thumbnails (for deletion)
   // For frontend: store full lesson objects instead of just IDs
   lessons: CourseLesson[];
   // Keep the original for backend compatibility when needed
@@ -151,7 +144,7 @@ export interface FAQ {
   answer: string;
 }
 
-export interface Testimonial extends Omit<Review, "_id" | "profileImage" | "rating"> {
+export interface Testimonial extends Omit<Review, "_id" | "profileImage" | "rating" | "comment"> {
   pastRole: string;
   pastCompany: string;
   verified?: boolean;
@@ -171,7 +164,11 @@ export interface Course {
   category: string;
   subcategory?: string;
   thumbnail: string;
+  thumbnailSource?: "upload" | "url"; // Track whether thumbnail came from upload or URL
+  thumbnailS3Key?: string; // S3 key for uploaded thumbnails (for deletion)
   previewVideoUrl?: string;
+  previewVideoSource?: "upload" | "url"; // Track whether preview video came from upload or URL
+  previewVideoS3Key?: string; // S3 key for uploaded preview videos (for deletion)
 
   isFeatured?: boolean;
   isCertified?: boolean;
@@ -192,7 +189,7 @@ export interface Course {
   skillLevel: string;
   whoShouldJoin: string;
   prerequisites?: string[];
-  fakeDiscount?: number; // in percentage for display purposes
+
   duration: string; // like: 3 months, 1 year, 2 years, etc. (will not be accurate)
 
   // Content - For frontend: store full module objects instead of just IDs
@@ -201,13 +198,14 @@ export interface Course {
   moduleIds?: CourseModule["_id"][];
 
   // Instructor
-  instructor: CourseInstructor["_id"][]; // can be multiple instructors
+  instructor: CourseInstructor[]; // can be multiple instructors
 
   // Pricing Plans
   plans: {
     elite?: Plan;
     essential?: Plan;
   };
+  discount?: Discount;
 
   // Reviews
   reviews: Review["_id"][];
@@ -233,6 +231,7 @@ export interface Course {
   // Scholarship
   scholarship?: boolean;
   scholarshipDescription?: string;
+  scholarshipRef?: string;
   // scholarshipQuiz?: Quiz[];
 
   // Language

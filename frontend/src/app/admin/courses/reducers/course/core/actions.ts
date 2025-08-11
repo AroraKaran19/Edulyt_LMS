@@ -1,4 +1,4 @@
-import { Course, CourseModule, CourseLesson, Content, Plan, Review, FAQ, Quiz, CourseInstructor } from "../../../../../types";
+import { Course, CourseModule, CourseLesson, Content, Plan, Review, FAQ, Quiz, CourseInstructor, Discount } from "@/types";
 
 // ===================
 // Action Types
@@ -17,7 +17,11 @@ export enum CourseActionType {
   SET_COURSE_CATEGORY = "SET_COURSE_CATEGORY",
   SET_COURSE_SUBCATEGORY = "SET_COURSE_SUBCATEGORY",
   SET_COURSE_THUMBNAIL = "SET_COURSE_THUMBNAIL",
+  SET_COURSE_THUMBNAIL_SOURCE = "SET_COURSE_THUMBNAIL_SOURCE",
+  SET_COURSE_THUMBNAIL_S3_KEY = "SET_COURSE_THUMBNAIL_S3_KEY",
   SET_COURSE_PREVIEW_VIDEO_URL = "SET_COURSE_PREVIEW_VIDEO_URL",
+  SET_COURSE_PREVIEW_VIDEO_SOURCE = "SET_COURSE_PREVIEW_VIDEO_SOURCE",
+  SET_COURSE_PREVIEW_VIDEO_S3_KEY = "SET_COURSE_PREVIEW_VIDEO_S3_KEY",
   SET_COURSE_SLUG = "SET_COURSE_SLUG",
   SET_COURSE_LANGUAGE = "SET_COURSE_LANGUAGE",
   
@@ -48,7 +52,8 @@ export enum CourseActionType {
   SET_COURSE_TAGS = "SET_COURSE_TAGS",
   
   // Pricing & Discount
-  SET_COURSE_FAKE_DISCOUNT = "SET_COURSE_FAKE_DISCOUNT",
+
+  SET_COURSE_DISCOUNT = "SET_COURSE_DISCOUNT",
   SET_COURSE_PLANS = "SET_COURSE_PLANS",
   UPDATE_COURSE_PLAN = "UPDATE_COURSE_PLAN",
   
@@ -179,10 +184,30 @@ export const courseActions = {
     type: CourseActionType.SET_COURSE_THUMBNAIL,
     payload: thumbnail,
   }),
+
+  setCourseThumbnailSource: (source: "upload" | "url" | undefined) => ({
+    type: CourseActionType.SET_COURSE_THUMBNAIL_SOURCE,
+    payload: source,
+  }),
+
+  setCourseThumbnailS3Key: (s3Key: string) => ({
+    type: CourseActionType.SET_COURSE_THUMBNAIL_S3_KEY,
+    payload: s3Key,
+  }),
   
   setCoursePreviewVideoUrl: (previewVideoUrl: string) => ({
     type: CourseActionType.SET_COURSE_PREVIEW_VIDEO_URL,
     payload: previewVideoUrl,
+  }),
+
+  setCoursePreviewVideoSource: (source: "upload" | "url" | undefined) => ({
+    type: CourseActionType.SET_COURSE_PREVIEW_VIDEO_SOURCE,
+    payload: source,
+  }),
+
+  setCoursePreviewVideoS3Key: (s3Key: string) => ({
+    type: CourseActionType.SET_COURSE_PREVIEW_VIDEO_S3_KEY,
+    payload: s3Key,
   }),
   
   setCourseSlug: (slug: string) => ({
@@ -456,9 +481,11 @@ export const courseActions = {
   }),
   
   // Pricing & Discount
-  setCourseFakeDiscount: (fakeDiscount: number) => ({
-    type: CourseActionType.SET_COURSE_FAKE_DISCOUNT,
-    payload: fakeDiscount,
+
+  
+  setCourseDiscount: (discount: Discount | null) => ({
+    type: CourseActionType.SET_COURSE_DISCOUNT,
+    payload: discount,
   }),
   
   setCoursePlans: (plans: { elite?: Plan; essential?: Plan }) => ({

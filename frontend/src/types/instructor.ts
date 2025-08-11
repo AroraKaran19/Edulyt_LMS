@@ -10,17 +10,17 @@ export interface CourseInstructor {
   name: string;
   profileImage?: string;
   // experience?: string;
-  rating: number;
-  totalStudents: number;
-  totalCourses: number;
+  rating?: number;
+  totalStudents?: number;
+  totalCourses?: number;
   bio?: string;
   currentPosition?: string;
   currentCompany?: string;
   previousExperience?: string[];
   // education?: string[];
   linkedinUrl?: string;
-  reviews: Review["_id"][];
-  courseIds: Course["_id"][];
+  reviews?: Review[];
+  courses?: Course[];
   createdAt?: Date;
   updatedAt?: Date;
 }

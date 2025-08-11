@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { PutObjectCommand, DeleteObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { getS3Client, getBucketName } from '../config/s3';
 import multer from 'multer';
@@ -247,6 +247,57 @@ export class UploadController {
       res.status(500).json({
         success: false,
         message: 'Failed to generate presigned URL',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  }
+
+  /**
+   * Generate presigned URL for secure file access
+   * @route POST /api/upload/presigned-url/access
+   * @access Public (need to be protected with auth middleware in production)
+   */
+  async generateAccessPresignedUrl(req: Request, res: Response): Promise<void> {
+    try {
+      const { s3Key, expiresIn = 60 } = req.body;
+
+      if (!s3Key) {
+        res.status(400).json({
+          success: false,
+          message: 's3Key is required',
+          error: 'Missing s3Key in request body'
+        });
+        return;
+      }
+
+      const s3Client = await getS3Client();
+      const bucketName = getBucketName();
+
+      // Generate presigned URL for GET access
+      const command = new GetObjectCommand({
+        Bucket: bucketName,
+        Key: s3Key,
+      });
+
+      const presignedUrl = await getSignedUrl(s3Client, command, {
+        expiresIn: parseInt(expiresIn.toString()),
+      });
+
+      res.status(200).json({
+        success: true,
+        message: 'Access presigned URL generated successfully',
+        data: {
+          presignedUrl,
+          s3Key,
+          expiresIn: parseInt(expiresIn.toString())
+        }
+      });
+
+    } catch (error) {
+      console.error('Error generating access presigned URL:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to generate access presigned URL',
         error: error instanceof Error ? error.message : 'Unknown error'
       });
     }

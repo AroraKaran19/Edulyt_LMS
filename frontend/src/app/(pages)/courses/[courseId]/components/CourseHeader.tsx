@@ -1,6 +1,7 @@
+"use client";
 import BestsellerBadge from "@/components/ui/course/BestsellerBadge";
 import { Course } from "@/types";
-import React from "react";
+import React, { useMemo } from "react";
 import DiscountCountdown from "../../components/DiscountCountdown";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import { cn } from "@/lib/utils";
@@ -13,20 +14,45 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 });
 
 const CourseHeader = ({ course }: { course: Course }) => {
+
   const formattedReviewsCount =
-    course?.featuredReviews?.length &&
-    course?.featuredReviews?.length >= 1000000
-      ? `${(course?.featuredReviews?.length / 1000000)
+    course?.reviews?.length &&
+    course?.reviews?.length >= 1000000
+      ? `${(course?.reviews?.length / 1000000)
           .toFixed(1)
           .replace(/\.0$/, "")}M`
-      : course?.featuredReviews?.length &&
-        course?.featuredReviews?.length >= 1000
-      ? `${(course?.featuredReviews?.length / 1000)
+      : course?.reviews?.length &&
+        course?.reviews?.length >= 1000
+      ? `${(course?.reviews?.length / 1000)
           .toFixed(1)
           .replace(/\.0$/, "")}K`
-      : course?.featuredReviews?.length?.toString();
+      : course?.reviews?.length?.toString();
 
-  if (!course) return null;
+  const discountCountdown = useMemo(() => {
+    if (!course?.discount) return null;
+    const now = new Date();
+    const startDate = new Date(course?.discount?.startDate || "");
+    const endDate = new Date(course?.discount?.endDate || "");
+    if (startDate && endDate && endDate > now) {
+      // Convert string dates to Date objects if they are strings
+      const endDateObj = typeof endDate === 'string' ? new Date(endDate) : endDate;
+      
+      const diff = endDateObj.getTime() - now.getTime();
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+      
+      // Ensure we don't return negative values
+      return { 
+        days: Math.max(0, days), 
+        hours: Math.max(0, hours), 
+        minutes: Math.max(0, minutes), 
+        seconds: Math.max(0, seconds) 
+      };
+    }
+    return null;
+  }, [course]);
 
   return (
     <div className="course-header-content w-full my-6 flex flex-col gap-6">
@@ -60,17 +86,18 @@ const CourseHeader = ({ course }: { course: Course }) => {
           </div>
         </div>
         <div className="course-details-content-right w-full lg:w-2/5 flex flex-col gap-4 mt-3 lg:mt-0 items-center lg:items-end justify-center">
-          {course?.discount && (
+          {course?.discount && course.discount.isActive && course.discount.value > 0 && new Date(course.discount.endDate || "").getTime() > Date.now() && (
             <div className="course-discount flex flex-col gap-2">
               <DiscountCountdown
-                hours={0}
-                minutes={5}
-                seconds={50}
+                days={discountCountdown?.days || 0}
+                hours={discountCountdown?.hours || 0}
+                minutes={discountCountdown?.minutes || 0}
+                seconds={discountCountdown?.seconds || 0}
                 className={`${plusJakartaSans.className} text-sm md:text-base`}
               />
             </div>
           )}
-          {course && (
+          {course?.isActive && (
             <OrangeButton className="font-bold text-sm md:text-base">
               Enroll Now
             </OrangeButton>
@@ -84,17 +111,12 @@ const CourseHeader = ({ course }: { course: Course }) => {
           <div className="course-rating w-full flex flex-wrap gap-1 md:gap-2 items-center justify-center md:justify-start">
             <Star className="size-4 md:size-5 text-[#F7AD24]" fill="#F7AD24" />
             <span className="text-base md:text-2xl font-normal text-text-primary font-coolvetica tracking-wide">
-              {(course?.featuredReviews?.length &&
-                course?.featuredReviews?.reduce(
-                  (acc, review) => acc + review.rating,
-                  0
-                ) / (course?.featuredReviews?.length || 0)) ||
-                0}
+              0 {/* TODO: Add rating */}
             </span>
             <span className="text-sm md:text-base font-normal text-text-primary">
               (
-              {course?.featuredReviews?.length &&
-              course?.featuredReviews?.length > 100
+              {course?.reviews?.length &&
+              course?.reviews?.length > 100
                 ? `(more than ${formattedReviewsCount} reviews)`
                 : formattedReviewsCount === "1"
                 ? `${formattedReviewsCount} review`

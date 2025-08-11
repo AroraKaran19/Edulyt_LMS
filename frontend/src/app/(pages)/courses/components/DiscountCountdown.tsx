@@ -3,11 +3,13 @@ import { cn } from "@/lib/utils";
 import React, { useEffect, useState } from "react";
 
 const DiscountCountdown = ({
+  days,
   hours,
   minutes,
   seconds,
   ...props
 }: {
+  days: number;
   hours: number;
   minutes: number;
   seconds: number;
@@ -16,14 +18,20 @@ const DiscountCountdown = ({
   style?: React.CSSProperties;
 }) => {
   const [countdown, setCountdown] = useState<{
+    days: number;
     hours: number;
     minutes: number;
     seconds: number;
-  }>({ hours, minutes, seconds });
+  }>({ days, hours, minutes, seconds });
 
   useEffect(() => {
     const interval = setInterval(() => {
       setCountdown((prev) => {
+        // If countdown has reached zero, stop the timer
+        if (prev.days === 0 && prev.hours === 0 && prev.minutes === 0 && prev.seconds === 0) {
+          return prev;
+        }
+        
         if (prev.seconds > 0) {
           return { ...prev, seconds: prev.seconds - 1 };
         }
@@ -33,12 +41,15 @@ const DiscountCountdown = ({
         if (prev.hours > 0) {
           return { ...prev, hours: prev.hours - 1, minutes: 59, seconds: 59 };
         }
-        // When countdown reaches zero, restart it
-        return { hours, minutes, seconds };
+        if (prev.days > 0) {
+          return { ...prev, days: prev.days - 1, hours: 23, minutes: 59, seconds: 59 };
+        }
+        // If we reach here, countdown is at zero
+        return { days: 0, hours: 0, minutes: 0, seconds: 0 };
       });
     }, 1000);
     return () => clearInterval(interval);
-  }, [hours, minutes, seconds]);
+  }, [days, hours, minutes, seconds]);
 
   return (
     <div
@@ -50,14 +61,10 @@ const DiscountCountdown = ({
       <p className="font-medium text-text-primary flex flex-wrap gap-2 justify-center md:justify-start">
         <span className="underline">Limited Offer</span>
         <span className="underline">
-          {countdown.hours} Hr :{" "}
-          {countdown.minutes < 10
-            ? `0${countdown.minutes} Min`
-            : `${countdown.minutes} Min`}{" "}
-          :{" "}
-          {countdown.seconds < 10
-            ? `0${countdown.seconds} Sec`
-            : `${countdown.seconds} Sec`}
+          {countdown.days > 0 ? `${countdown.days} D : ` : ""}
+          {countdown.hours > 0 ? `${countdown.hours} Hr : ` : ""}
+          {countdown.minutes > 0 ? `${countdown.minutes} Min : ` : ""}
+          {countdown.seconds > 0 ? `${countdown.seconds} Sec` : ""}
         </span>
       </p>
     </div>

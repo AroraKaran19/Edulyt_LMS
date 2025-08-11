@@ -5,16 +5,16 @@ import { cn } from "@/lib/utils";
 import "swiper/css";
 import "swiper/css/effect-coverflow";
 import TestimonialCard from "./TestimonialCard";
-import { FeaturedReview } from "@/types";
+import { Testimonial } from "@/types";
 
 const TestimonialCarousel = ({
   testimonials,
   ...props
-}: { testimonials: FeaturedReview[] } & {
+}: { testimonials: Testimonial[] } & {
   className?: string;
   style?: React.CSSProperties;
 }) => {
-  const fallbackTestimonials: FeaturedReview[] = [
+    const fallbackTestimonials: Testimonial[] = [
     {
       name: "Priya Sharma",
       profileImage: "/courseDefaultTestimonial.png",
@@ -23,9 +23,10 @@ const TestimonialCarousel = ({
       pastCompany: "StartupTech Solutions",
       currentCompany: "Microsoft",
       linkedin: "https://www.linkedin.com/",
-      rating: 5,
-      comment: "I loved the course and learned a lot from it.",
-      date: new Date(),
+      verified: true,
+      reviewableType: "Course",
+      reviewableId: "123",
+      isActive: true,
     },
     {
       name: "Rahul Gupta",
@@ -35,9 +36,10 @@ const TestimonialCarousel = ({
       currentRole: "Senior Data Scientist",
       currentCompany: "Amazon",
       linkedin: "https://www.linkedin.com/",
-      rating: 5,
-      comment: "I loved the course and learned a lot from it.",
-      date: new Date(),
+      verified: true,
+      reviewableType: "Course",
+      reviewableId: "123",
+      isActive: true,
     },
     {
       name: "Sneha Patel",
@@ -47,9 +49,10 @@ const TestimonialCarousel = ({
       currentRole: "Lead UX Designer",
       currentCompany: "Adobe",
       linkedin: "https://www.linkedin.com/",
-      rating: 5,
-      comment: "I loved the course and learned a lot from it.",
-      date: new Date(),
+      verified: true,
+      reviewableType: "Course",
+      reviewableId: "123",
+      isActive: true,
     },
     {
       name: "Arjun Singh",
@@ -59,22 +62,11 @@ const TestimonialCarousel = ({
       currentRole: "Cloud Solutions Architect",
       currentCompany: "Google Cloud",
       linkedin: "https://www.linkedin.com/",
-      rating: 5,
-      comment: "I loved the course and learned a lot from it.",
-      date: new Date(),
-    },
-    {
-      name: "Kavya Reddy",
-      profileImage: "/courseDefaultTestimonial.png",
-      pastRole: "Marketing Assistant",
-      pastCompany: "Small Business",
-      currentRole: "Digital Marketing Manager",
-      currentCompany: "HubSpot",
-      linkedin: "https://www.linkedin.com/",
-      rating: 5,
-      comment: "I loved the course and learned a lot from it.",
-      date: new Date(),
-    },
+      verified: true,
+      reviewableType: "Course",
+      reviewableId: "123",
+      isActive: true,
+    }, 
     {
       name: "Vikram Joshi",
       profileImage: "/courseDefaultTestimonial.png",
@@ -83,9 +75,10 @@ const TestimonialCarousel = ({
       currentRole: "Security Engineer",
       currentCompany: "Cisco",
       linkedin: "https://www.linkedin.com/",
-      rating: 5,
-      comment: "I loved the course and learned a lot from it.",
-      date: new Date(),
+      verified: true,
+      reviewableType: "Course",
+      reviewableId: "123",
+      isActive: true,
     },
   ];
 

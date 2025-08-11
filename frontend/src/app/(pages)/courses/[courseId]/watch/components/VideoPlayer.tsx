@@ -7,6 +7,8 @@ import {
   Maximize,
   Settings,
   AlertCircle,
+  SkipBack,
+  SkipForward,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -72,6 +74,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   );
   const [isMobile, setIsMobile] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [showSeekButtons, setShowSeekButtons] = useState(false);
 
   // Detect mobile/iOS devices
   useEffect(() => {
@@ -378,16 +381,23 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
     const resetTimeout = () => {
       setShowControls(true);
+      setShowSeekButtons(true);
       clearTimeout(timeout);
       timeout = setTimeout(() => {
-        if (isPlaying && !isMobile) setShowControls(false);
+        if (isPlaying && !isMobile) {
+          setShowControls(false);
+          setShowSeekButtons(false);
+        }
       }, isMobile ? 5000 : 3000); // Longer timeout on mobile
     };
 
     const handleInteraction = () => resetTimeout();
     const handleMouseLeave = () => {
       clearTimeout(timeout);
-      if (isPlaying && !isMobile) setShowControls(false);
+      if (isPlaying && !isMobile) {
+        setShowControls(false);
+        setShowSeekButtons(false);
+      }
     };
 
     const container = containerRef.current;
@@ -427,6 +437,57 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       }
     }
   };
+
+  const seekForward = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    
+    const newTime = Math.min(video.currentTime + 10, video.duration);
+    video.currentTime = newTime;
+  };
+
+  const seekBackward = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    
+    const newTime = Math.max(video.currentTime - 10, 0);
+    video.currentTime = newTime;
+  };
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle keyboard shortcuts when the video container is focused or when video is playing
+      if (!videoRef.current) return;
+      
+      switch (e.key) {
+        case " ":
+        case "k":
+          e.preventDefault();
+          togglePlay();
+          break;
+        case "ArrowRight":
+          e.preventDefault();
+          seekForward();
+          break;
+        case "ArrowLeft":
+          e.preventDefault();
+          seekBackward();
+          break;
+        case "f":
+          e.preventDefault();
+          toggleFullscreen();
+          break;
+        case "m":
+          e.preventDefault();
+          toggleMute();
+          break;
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isPlaying, isMuted, isFullscreen]);
 
   // Enhanced progress bar handling for mobile
   const handleProgressInteraction = (clientX: number) => {
@@ -639,11 +700,17 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         preload="metadata"
         onClick={(e) => {
           e.stopPropagation();
-          togglePlay();
+          // Only toggle play if clicking on the video itself, not on controls
+          if (e.target === e.currentTarget || e.target === videoRef.current) {
+            togglePlay();
+          }
         }}
         onTouchEnd={(e) => {
           e.stopPropagation();
-          togglePlay();
+          // Only toggle play if touching the video itself, not on controls
+          if (e.target === e.currentTarget || e.target === videoRef.current) {
+            togglePlay();
+          }
         }}
       />
 
@@ -700,11 +767,45 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             e.stopPropagation();
             togglePlay();
           }}
-          className="bg-black/50 hover:bg-[#F77124]/90 text-white p-4 rounded-full transition-all duration-300 hover:scale-110 hover:shadow-[0_0_20px_rgba(247,113,36,0.5)]"
+          className="bg-black/50 hover:bg-[#F77124]/90 text-white p-4 rounded-full transition-all duration-300 hover:scale-110 hover:shadow-[0_0_20px_rgba(247,113,36,0.5)] z-20"
           disabled={isLoading || !!error}
         >
           {isPlaying ? <Pause size={32} /> : <Play size={32} />}
         </button>
+      </div>
+
+      {/* Seek Buttons Overlay */}
+      <div
+        className={`absolute inset-0 flex items-center justify-center transition-opacity duration-300 ${
+          showSeekButtons && !isLoading && !isBuffering && !error
+            ? "opacity-100"
+            : "opacity-0 pointer-events-none"
+        }`}
+      >
+        <div className="flex items-center gap-16 sm:gap-20">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              seekBackward();
+            }}
+            className="bg-black/50 hover:bg-[#F77124]/90 text-white p-3 rounded-full transition-all duration-300 hover:scale-110 hover:shadow-[0_0_20px_rgba(247,113,36,0.5)] z-10"
+            disabled={isLoading || !!error}
+            title="Seek 10 seconds backward (←)"
+          >
+            <SkipBack size={24} />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              seekForward();
+            }}
+            className="bg-black/50 hover:bg-[#F77124]/90 text-white p-3 rounded-full transition-all duration-300 hover:scale-110 hover:shadow-[0_0_20px_rgba(247,113,36,0.5)] z-10"
+            disabled={isLoading || !!error}
+            title="Seek 10 seconds forward (→)"
+          >
+            <SkipForward size={24} />
+          </button>
+        </div>
       </div>
 
       {/* Controls */}
@@ -741,11 +842,31 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             <button
               onClick={(e) => {
                 e.stopPropagation();
+                seekBackward();
+              }}
+              className="text-white hover:text-[#F77124] transition-colors duration-200 p-1 touch-manipulation"
+              title="10 seconds backward"
+            >
+              <SkipBack size={18} className="sm:w-5 sm:h-5" />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
                 togglePlay();
               }}
               className="text-white hover:text-[#F77124] transition-colors duration-200 p-1 touch-manipulation"
             >
               {isPlaying ? <Pause size={20} className="sm:w-5 sm:h-5" /> : <Play size={20} className="sm:w-5 sm:h-5" />}
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                seekForward();
+              }}
+              className="text-white hover:text-[#F77124] transition-colors duration-200 p-1 touch-manipulation"
+              title="10 seconds forward"
+            >
+              <SkipForward size={18} className="sm:w-5 sm:h-5" />
             </button>
 
             {/* Volume controls - hidden on mobile */}

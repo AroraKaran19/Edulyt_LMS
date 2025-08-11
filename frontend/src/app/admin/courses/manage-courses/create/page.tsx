@@ -11,10 +11,9 @@ import Screen5 from "./components/Screen5";
 import Screen6 from "./components/Screen6";
 import Screen7 from "./components/Screen7";
 import Screen8 from "./components/Screen8";
-import { ScreenProvider, useScreen } from "./contexts/ScreenContext";
-import { CourseReducerProvider } from "../../reducers";
+import { useScreen } from "./contexts/ScreenContext";
 
-const CreateCourseContent = () => {
+const CreateCoursePage = () => {
   const { activeScreen } = useScreen();
 
   return (
@@ -35,16 +34,6 @@ const CreateCourseContent = () => {
         {activeScreen === "screen8" && <Screen8 />}
       </FlexBox>
     </FlexBox>
-  );
-};
-
-const CreateCoursePage = () => {
-  return (
-    <CourseReducerProvider>
-      <ScreenProvider>
-        <CreateCourseContent />
-      </ScreenProvider>
-    </CourseReducerProvider>
   );
 };
 

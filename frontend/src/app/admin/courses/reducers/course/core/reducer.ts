@@ -215,12 +215,28 @@ export const courseReducer = (
         newState = safeUpdateCourseField(state, "thumbnail", action.payload);
         break;
 
+      case CourseActionType.SET_COURSE_THUMBNAIL_SOURCE:
+        newState = safeUpdateCourseField(state, "thumbnailSource", action.payload);
+        break;
+
+      case CourseActionType.SET_COURSE_THUMBNAIL_S3_KEY:
+        newState = safeUpdateCourseField(state, "thumbnailS3Key", action.payload);
+        break;
+
       case CourseActionType.SET_COURSE_PREVIEW_VIDEO_URL:
         newState = safeUpdateCourseField(
           state,
           "previewVideoUrl",
           action.payload
         );
+        break;
+
+      case CourseActionType.SET_COURSE_PREVIEW_VIDEO_SOURCE:
+        newState = safeUpdateCourseField(state, "previewVideoSource", action.payload);
+        break;
+
+      case CourseActionType.SET_COURSE_PREVIEW_VIDEO_S3_KEY:
+        newState = safeUpdateCourseField(state, "previewVideoS3Key", action.payload);
         break;
 
       case CourseActionType.SET_COURSE_SLUG:
@@ -751,8 +767,8 @@ export const courseReducer = (
       // Pricing & Discount
       // ===================
 
-      case CourseActionType.SET_COURSE_FAKE_DISCOUNT:
-        newState = safeUpdateCourseField(state, "fakeDiscount", action.payload);
+      case CourseActionType.SET_COURSE_DISCOUNT:
+        newState = safeUpdateCourseField(state, "discount", action.payload);
         break;
 
       case CourseActionType.SET_COURSE_PLANS:

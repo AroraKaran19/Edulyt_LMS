@@ -36,7 +36,11 @@ export const initialCourseState: CourseState = {
     category: "",
     subcategory: "",
     thumbnail: "",
+    thumbnailSource: undefined,
+    thumbnailS3Key: "",
     previewVideoUrl: "",
+    previewVideoSource: undefined,
+    previewVideoS3Key: "",
 
     isFeatured: false,
     isCertified: false,
@@ -59,8 +63,11 @@ export const initialCourseState: CourseState = {
     skillLevel: "",
     whoShouldJoin: "",
     prerequisites: [],
-    fakeDiscount: 0, // in percentage for display purposes
+
     duration: "", // like: 3 months, 1 year, 2 years, etc. (will not be accurate)
+    
+    // Discount settings
+    discount: undefined,
 
     // Content - Store full module objects for frontend
     modules: [],

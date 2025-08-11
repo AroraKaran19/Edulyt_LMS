@@ -1,9 +1,9 @@
-import React from "react";
+import React, { useState } from "react";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import Link from "next/link";
-import { FeaturedReview } from "@/types";
+import { Testimonial } from "@/types";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -14,11 +14,23 @@ const TestimonialCard = ({
   testimonial,
   ...props
 }: {
-  testimonial: FeaturedReview;
+  testimonial: Testimonial;
 } & {
   className?: string;
   style?: React.CSSProperties;
 }) => {
+  if (!testimonial) return null;
+
+  const [imageError, setImageError] = useState(false);
+
+  const getInitials = (name: string) => {
+    const parts = name.trim().split(" ");
+    if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+    return `${parts[0].charAt(0)}${parts[parts.length - 1].charAt(
+      0
+    )}`.toUpperCase();
+  };
+
   return (
     <div
       className={cn(
@@ -27,25 +39,42 @@ const TestimonialCard = ({
       )}
     >
       <div className="testimonial-image size-16 md:size-20 rounded-full mb-3 md:mb-4 overflow-hidden">
-        <Image
-          src={testimonial.profileImage || "/courseDefaultTestimonial.png"}
-          alt={testimonial.name}
-          width={100}
-          height={100}
-          className="object-cover"
-          draggable={false}
-          loading="eager"
-          unoptimized
-          priority
-        />
+        {!imageError ? (
+          <Image
+            src={testimonial.profileImage}
+            alt={testimonial.name}
+            width={100}
+            height={100}
+            className="w-full h-full object-cover"
+            draggable={false}
+            loading="eager"
+            unoptimized
+            priority
+            onError={() => setImageError(true)}
+          />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center">
+            <span className="text-white text-lg font-bold">
+              {getInitials(testimonial.name)}
+            </span>
+          </div>
+        )}
       </div>
       <div className="testimonial-information flex flex-col items-center justify-center gap-1 mb-4 flex-shrink-0">
         <div className="testimonial-name-container w-full flex items-center justify-center gap-3">
           <div className="testimonial-name text-sm md:text-xl font-coolvetica font-normal">
             {testimonial.name}
           </div>
-          {testimonial.linkedin && (
-            <Link href={testimonial.linkedin} target="_blank">
+          {testimonial.linkedin && testimonial.linkedin.trim() !== "" && (
+            <Link
+              href={
+                testimonial.linkedin.startsWith("http")
+                  ? testimonial.linkedin
+                  : `https://${testimonial.linkedin}`
+              }
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               <Image
                 src="/linkedin-icon.svg"
                 alt="Linkedin Icon"

@@ -5,14 +5,36 @@ import { Course } from "@/types";
 import React from "react";
 
 const CurriculumSection = ({ course }: { course: Course }) => {
+
+  const totalLessons = course.modules?.reduce(
+    (acc, module) => acc + module.lessons.length,
+    0
+  );
+
+  const courseLanguage = (language: string) => {
+    if (language === "en") return "English";
+    if (language === "hi") return "Hindi";
+    if (language === "es") return "Spanish";
+    if (language === "fr") return "French";
+    if (language === "de") return "German";
+    if (language === "pt") return "Portuguese";
+    if (language === "it") return "Italian";
+    if (language === "ru") return "Russian";
+    if (language === "zh") return "Chinese";
+    if (language === "ja") return "Japanese";
+    if (language === "ko") return "Korean";
+    if (language === "ar") return "Arabic";
+    return language;
+  };
+
   const courseInformation = [
     {
       title: "Learning content",
-      value: `${course.modules.length} Modules`,
+      value: `${totalLessons} ${totalLessons === 1 ? "Lesson" : "Lessons"}`,
     },
     {
       title: "Languages and tools",
-      value: course.language,
+      value: courseLanguage(course.language),
     },
     {
       title: "Capstone project",

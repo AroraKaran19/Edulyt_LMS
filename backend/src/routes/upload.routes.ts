@@ -62,6 +62,25 @@ router.post(
 );
 
 /**
+ * @route   POST /api/upload/presigned-url/access
+ * @desc    Generate presigned URL for secure file access
+ * @access  Public (should be protected with auth middleware in production)
+ * @body    
+ *   - s3Key: S3 key of the file to access
+ *   - expiresIn: Number of seconds until URL expires (default: 60)
+ * @example
+ *   POST /api/upload/presigned-url/access
+ *   Body: { 
+ *     s3Key: "course-videos/lesson1.mp4", 
+ *     expiresIn: 3600 
+ *   }
+ */
+router.post(
+  '/presigned-url/access', 
+  uploadController.generateAccessPresignedUrl.bind(uploadController)
+);
+
+/**
  * @route   DELETE /api/upload/:s3Key
  * @desc    Delete file from S3
  * @access  Public (should be protected with auth middleware in production)

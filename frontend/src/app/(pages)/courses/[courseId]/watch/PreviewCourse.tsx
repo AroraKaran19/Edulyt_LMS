@@ -13,7 +13,8 @@ import {
 } from "./context/VideoTimeContext";
 import TabSwitcher from "@/components/ui/course/TabSwitcher";
 import OverviewSection from "./components/OverviewSection";
-import { VideoQuality } from "@/types";
+import { VideoContent } from "@/types";
+import { usePresignedVideoSources } from "@/hooks/usePresignedUrl";
 
 const VideoPlayer = dynamic(() => import("./components/VideoPlayer"), {
   ssr: false,
@@ -28,14 +29,14 @@ const VideoSection = ({
 }) => {
   const { connectToVideo } = useVideoTimeContext();
 
-  const videoSources = useMemo(() => {
+  const rawVideoSources = useMemo(() => {
     if (!selectedContent || selectedContent.type !== "video") return [];
 
     // Extract video sources from content
     const allVideoSources: Array<{ quality: string; src: string }> = [];
 
-    if (selectedContent.content && "sources" in selectedContent.content) {
-      selectedContent.content.sources.forEach((source: VideoQuality) => {
+    if (selectedContent.sources) {
+      selectedContent.sources.forEach((source: VideoContent["sources"][number]) => {
         allVideoSources.push({
           quality: source.quality,
           src: source.videoUrl,
@@ -45,6 +46,12 @@ const VideoSection = ({
 
     return allVideoSources;
   }, [selectedContent]);
+
+  // Convert S3 keys to presigned URLs for secure access
+  const { sources: videoSources, isLoading: isUrlLoading, error: urlError } = usePresignedVideoSources(
+    rawVideoSources,
+    { expiresIn: 3600, autoRefresh: true, refreshThreshold: 300 }
+  );
 
   const handleVideoReady = (video: HTMLVideoElement) => {
     connectToVideo(video);
@@ -62,6 +69,35 @@ const VideoSection = ({
         <div className="text-center">
           <Play className="size-16 text-gray-400 mx-auto mb-4" />
           <p className="text-gray-600">Select a video to start watching</p>
+        </div>
+      </SectionContainer>
+    );
+  }
+
+  // Show loading state while generating presigned URLs
+  if (isUrlLoading) {
+    return (
+      <SectionContainer id="video-player" className="w-full aspect-video bg-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-300 border-t-[#F77124] mx-auto mb-4"></div>
+          <p className="text-gray-600">Preparing secure video access...</p>
+        </div>
+      </SectionContainer>
+    );
+  }
+
+  // Show error state if presigned URL generation failed
+  if (urlError) {
+    return (
+      <SectionContainer id="video-player" className="w-full aspect-video bg-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-500 mb-4">
+            <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          </div>
+          <p className="text-gray-600 mb-2">Failed to load video securely</p>
+          <p className="text-sm text-gray-500">{urlError}</p>
         </div>
       </SectionContainer>
     );
@@ -101,9 +137,9 @@ const CourseContentSection = ({
     return module.lessons.reduce(
       (moduleAcc, lesson) =>
         moduleAcc +
-        lesson.content.reduce((lessonAcc, content) => {
-          if (content.type === "video" && content.content && "duration" in content.content) {
-            return lessonAcc + (content.content.duration || 0);
+        lesson.contents.reduce((lessonAcc, content) => {
+          if (content.type === "video" && content.duration) {
+            return lessonAcc + (content.duration || 0);
           }
           return lessonAcc;
         }, 0),
@@ -113,9 +149,9 @@ const CourseContentSection = ({
 
   // Calculate total duration for a lesson
   const getLessonDuration = (lesson: CourseLesson) => {
-    return lesson.content.reduce((lessonAcc, content) => {
-      if (content.type === "video" && content.content && "duration" in content.content) {
-        return lessonAcc + (content.content.duration || 0);
+    return lesson.contents.reduce((lessonAcc, content) => {
+      if (content.type === "video" && content.duration) {
+        return lessonAcc + (content.duration || 0);
       }
       return lessonAcc;
     }, 0);
@@ -123,8 +159,8 @@ const CourseContentSection = ({
 
   // Get content duration (only for videos)
   const getContentDuration = (content: Content) => {
-    if (content.type === "video" && content.content && "duration" in content.content) {
-      return content.content.duration || 0;
+    if (content.type === "video" && content.duration) {
+      return content.duration || 0;
     }
     return 0;
   };
@@ -186,7 +222,7 @@ const CourseContentSection = ({
                         {formatDuration(getLessonDuration(lesson))}
                       </span>
                       <span className="text-xs text-gray-500">
-                        ({lesson.content.length} items)
+                        ({lesson.contents.length} items)
                       </span>
                     </div>
                   </div>
@@ -194,10 +230,10 @@ const CourseContentSection = ({
                   {/* Content: only shown if lesson is selected */}
                   {selectedLesson?._id === lesson._id && (
                     <div className="bg-gray-50">
-                      {lesson.content.map((content) => (
+                      {lesson.contents.map((content) => (
                         <div
                           key={content._id}
-                          onClick={() => navigateToContent(content._id)}
+                          onClick={() => navigateToContent(content._id || "")}
                           className={`w-full p-3 pl-16 cursor-pointer transition-all duration-200 hover:bg-gray-100 border-b border-gray-200 last:border-b-0 ${
                             selectedContent?._id === content._id
                               ? "bg-orange-50 border-orange-200"

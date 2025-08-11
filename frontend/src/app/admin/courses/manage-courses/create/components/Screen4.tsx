@@ -2,11 +2,11 @@ import Container from "@/app/admin/components/ui/Container";
 import FlexBox from "@/components/ui/FlexBox";
 import Input from "@/components/ui/inputs/Input";
 import React, { useState } from "react";
-import { useCourseContext } from "../../../reducers";
+import { useCourseContext } from "../../../reducers/course/providers/CourseReducerProvider";
+import { useScreen } from "../contexts/ScreenContext";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import { Button } from "@/components/ui/buttons/button";
-import { useScreen } from "../contexts/ScreenContext";
 import DropDown from "@/components/ui/dropdown/DropDown";
 import CheckBoxContainer from "@/components/ui/inputs/CheckBoxContainer";
 import AlertBanner from "@/components/ui/AlertBanner";
@@ -23,7 +23,11 @@ import {
   DollarSign,
   BarChart3,
   FileText,
+  Percent,
+  Calendar,
 } from "lucide-react";
+import DateSelector from "@/components/ui/inputs/DateSelector";
+import ScreenNavigation from "./shared/ScreenNavigation";
 
 // Feature templates for quick selection
 const FEATURE_TEMPLATES = {
@@ -752,6 +756,154 @@ const Screen4 = () => {
               </div>
             </div>
           </div>
+
+          {/* Plan Discount Section */}
+          <div className="mt-6 p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border border-purple-200">
+            <div className="flex items-center gap-2 mb-4">
+              <Percent className="w-4 h-4 text-purple-600" />
+              <h4 className="text-md font-medium text-gray-800">
+                Plan Discount (Optional)
+              </h4>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <DropDown
+                label="Discount Type"
+                options={["percentage", "fixed"]}
+                value={
+                  state.course.plans?.[activeTab]?.discount?.discount ||
+                  "percentage"
+                }
+                onChange={(e) => {
+                  const currentPlan = state.course.plans?.[activeTab];
+                  if (currentPlan) {
+                    const updatedPlan = {
+                      ...currentPlan,
+                      discount: {
+                        ...currentPlan.discount,
+                        discount: e.target.value as "percentage" | "fixed",
+                        value: currentPlan.discount?.value || 0,
+                      },
+                    };
+                    actions.updateCoursePlan(activeTab, updatedPlan);
+                  }
+                }}
+              />
+
+              <Input
+                label={`Discount ${
+                  state.course.plans?.[activeTab]?.discount?.discount ===
+                  "fixed"
+                    ? "Amount ($)"
+                    : "Percentage (%)"
+                }`}
+                type="number"
+                min="0"
+                max={
+                  state.course.plans?.[activeTab]?.discount?.discount ===
+                  "percentage"
+                    ? "100"
+                    : undefined
+                }
+                placeholder={
+                  state.course.plans?.[activeTab]?.discount?.discount ===
+                  "fixed"
+                    ? "0.00"
+                    : "0"
+                }
+                step={
+                  state.course.plans?.[activeTab]?.discount?.discount ===
+                  "fixed"
+                    ? "0.01"
+                    : "1"
+                }
+                value={
+                  state.course.plans?.[
+                    activeTab
+                  ]?.discount?.value?.toString() || ""
+                }
+                onChange={(e) => {
+                  const value =
+                    e.target.value === "" ? 0 : Number(e.target.value);
+                  const currentPlan = state.course.plans?.[activeTab];
+                  if (currentPlan) {
+                    const updatedPlan = {
+                      ...currentPlan,
+                      discount: {
+                        ...currentPlan.discount,
+                        discount:
+                          currentPlan.discount?.discount || "percentage",
+                        value: value,
+                      },
+                    };
+                    actions.updateCoursePlan(activeTab, updatedPlan);
+                  }
+                }}
+              />
+
+              <div className="flex items-center gap-2">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={
+                      !!state.course.plans?.[activeTab]?.discount?.value &&
+                      state.course.plans?.[activeTab]?.discount?.value > 0
+                    }
+                    onChange={(e) => {
+                      const currentPlan = state.course.plans?.[activeTab];
+                      if (currentPlan) {
+                        const updatedPlan = {
+                          ...currentPlan,
+                          discount: e.target.checked
+                            ? {
+                                discount: "percentage",
+                                value: 10,
+                              }
+                            : undefined,
+                        };
+                        actions.updateCoursePlan(activeTab, updatedPlan);
+                      }
+                    }}
+                    className="rounded"
+                  />
+                  <span className="text-sm text-gray-700">Enable discount</span>
+                </label>
+              </div>
+            </div>
+
+            {state.course.plans?.[activeTab]?.discount?.value &&
+              state.course.plans?.[activeTab]?.discount?.value > 0 && (
+                <div className="mt-4 p-3 bg-white rounded-lg border border-purple-200">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Percent className="w-4 h-4 text-purple-600" />
+                    <span className="text-purple-800 font-medium">
+                      Discount Preview:{" "}
+                      {state.course.plans?.[activeTab]?.discount?.discount ===
+                      "percentage"
+                        ? `${state.course.plans?.[activeTab]?.discount?.value}% off`
+                        : `$${state.course.plans?.[activeTab]?.discount?.value} off`}
+                    </span>
+                  </div>
+                  <div className="text-xs text-purple-600 mt-1">
+                    Original Price: ${state.course.plans?.[activeTab]?.price} →
+                    Discounted Price: $
+                    {state.course.plans?.[activeTab]?.discount?.discount ===
+                    "percentage"
+                      ? (
+                          state.course.plans?.[activeTab]?.price *
+                          (1 -
+                            state.course.plans?.[activeTab]?.discount?.value /
+                              100)
+                        ).toFixed(2)
+                      : Math.max(
+                          0,
+                          state.course.plans?.[activeTab]?.price -
+                            state.course.plans?.[activeTab]?.discount?.value
+                        ).toFixed(2)}
+                  </div>
+                </div>
+              )}
+          </div>
         </div>
 
         {/* Features Section */}
@@ -900,36 +1052,173 @@ const Screen4 = () => {
           </div>
         )}
 
-      {/* Enhanced Navigation */}
-      <FlexBox className="w-full gap-4 mt-8 pt-6 border-t border-gray-200 justify-between items-center">
-        <OrangeButton
-          className="w-max px-16"
-          onClick={() => setActiveScreen("screen3")}
-        >
-          Previous
-        </OrangeButton>
-
-        <FlexBox className="gap-4 items-center">
-          {/* Progress indicator */}
-          <div className="hidden md:flex items-center gap-2 text-sm text-gray-600">
-            <span>Step 4 of 8</span>
-            <div className="w-20 bg-gray-200 rounded-full h-2">
-              <div
-                className="bg-orange-500 h-2 rounded-full"
-                style={{ width: "50%" }}
-              ></div>
-            </div>
+      {/* Course Discount Section */}
+      <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-6 border border-purple-100">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="p-2 bg-purple-500 rounded-lg">
+            <Percent className="w-5 h-5 text-white" />
           </div>
+          <div>
+            <h3 className="text-lg font-semibold text-gray-800">
+              Course Discount
+            </h3>
+            <p className="text-sm text-gray-600">
+              Set up limited-time promotional pricing
+            </p>
+          </div>
+        </div>
 
-          <OrangeButton
-            onClick={() => setActiveScreen("screen5")}
-            disabled={!hasAtLeastOneActivePlan()}
-            className="w-max px-16"
-          >
-            Next Page
-          </OrangeButton>
-        </FlexBox>
-      </FlexBox>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <DropDown
+            label="Discount Type"
+            options={["percentage", "fixed"]}
+            value={state.course.discount?.discount || "percentage"}
+            onChange={(e) => {
+              const currentDiscount = state.course.discount;
+              const newDiscount = {
+                ...currentDiscount,
+                discount: e.target.value as "percentage" | "fixed",
+                value: currentDiscount?.value || 0,
+                isActive: currentDiscount?.isActive || false,
+              };
+              actions.setCourseDiscount(newDiscount);
+            }}
+          />
+
+          <Input
+            label={`Discount ${
+              state.course.discount?.discount === "fixed"
+                ? "Amount (₹)"
+                : "Percentage (%)"
+            }`}
+            type="number"
+            min="0"
+            max={
+              state.course.discount?.discount === "percentage"
+                ? "100"
+                : undefined
+            }
+            placeholder={
+              state.course.discount?.discount === "fixed" ? "0.00" : "0"
+            }
+            step={state.course.discount?.discount === "fixed" ? "0.01" : "1"}
+            value={state.course.discount?.value?.toString() || ""}
+            onChange={(e) => {
+              const value = e.target.value === "" ? 0 : Number(e.target.value);
+              const currentDiscount = state.course.discount;
+              const newDiscount = {
+                ...currentDiscount,
+                discount: currentDiscount?.discount || "percentage",
+                value: value,
+                isActive: currentDiscount?.isActive || false,
+              };
+              console.log("🎯 Setting discount value:", newDiscount);
+              actions.setCourseDiscount(newDiscount);
+            }}
+            className="w-full"
+          />
+
+          <DateSelector
+            label="Discount Start Date"
+            value={state.course.discount?.startDate}
+            onChange={(date) => {
+              console.log("🎯 Setting discount start date:", date);
+              const currentDiscount = state.course.discount;
+              const newDiscount = {
+                ...currentDiscount,
+                discount: currentDiscount?.discount || "percentage",
+                value: currentDiscount?.value || 0,
+                startDate: date,
+                isActive: currentDiscount?.isActive || false,
+              };
+              actions.setCourseDiscount(newDiscount);
+            }}
+            placeholder="Select start date"
+            minDate={new Date()}
+            className="w-full"
+          />
+
+          <DateSelector
+            label="Discount End Date"
+            value={state.course.discount?.endDate}
+            onChange={(date) => {
+              console.log("🎯 Setting discount end date:", date);
+              const currentDiscount = state.course.discount;
+              const newDiscount = {
+                ...currentDiscount,
+                discount: currentDiscount?.discount || "percentage",
+                value: currentDiscount?.value || 0,
+                endDate: date,
+                isActive: currentDiscount?.isActive || false,
+              };
+              actions.setCourseDiscount(newDiscount);
+            }}
+            placeholder="Select end date"
+            minDate={state.course.discount?.startDate || new Date()}
+            className="w-full"
+          />
+        </div>
+
+        {/* Discount Active Toggle */}
+        <div className="mt-4">
+          <CheckBoxContainer
+            label="Activate Discount"
+            checked={state.course.discount?.isActive || false}
+            onChange={(checked) => {
+              const currentDiscount = state.course.discount;
+              const newDiscount = {
+                ...currentDiscount,
+                discount: currentDiscount?.discount || "percentage",
+                value: currentDiscount?.value || 0,
+                isActive: checked,
+              };
+              console.log("🎯 Setting discount isActive:", newDiscount);
+              actions.setCourseDiscount(newDiscount);
+            }}
+          />
+        </div>
+
+        {state.course.discount?.value && 
+         state.course.discount.value > 0 && 
+         state.course.discount.isActive && (
+          <div className="mt-4 p-3 bg-white rounded-lg border border-purple-200">
+            <div className="flex items-center gap-2 text-purple-700">
+              <Calendar className="w-4 h-4" />
+              <span className="text-sm font-medium">Discount Preview</span>
+            </div>
+            <p className="text-sm text-gray-600 mt-1">
+              Save{" "}
+              {state.course.discount.discount === "percentage"
+                ? `${state.course.discount.value}%`
+                : `₹${state.course.discount.value}`}{" "}
+              on all plans
+              {state.course.discount?.startDate &&
+                state.course.discount?.endDate && (
+                  <span>
+                    {" "}
+                    from{" "}
+                    {new Date(
+                      state.course.discount.startDate
+                    ).toLocaleDateString()}{" "}
+                    to{" "}
+                    {new Date(
+                      state.course.discount.endDate
+                    ).toLocaleDateString()}
+                  </span>
+                )}
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Enhanced Navigation */}
+      <ScreenNavigation
+        currentStep={4}
+        previousScreen="screen3"
+        nextScreen="screen5"
+        setActiveScreen={setActiveScreen}
+        isNextDisabled={!hasAtLeastOneActivePlan()}
+      />
 
       {!hasAtLeastOneActivePlan() && (
         <div className="mt-3 text-center">

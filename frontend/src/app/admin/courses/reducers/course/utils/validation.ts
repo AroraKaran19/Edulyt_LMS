@@ -655,6 +655,35 @@ export const entityValidators = {
     }
 
     return errors;
+  },
+
+  // Validate Discount Lenient (allows partial/incomplete data during updates)
+  validateDiscountLenient: (discount: any): ValidationError[] => {
+    const errors: ValidationError[] = [];
+
+    // Only validate if values are provided
+    if (discount.discount !== undefined && discount.discount !== null) {
+      if (typeof discount.discount !== "string" || discount.discount.trim() === "") {
+        errors.push({
+          field: "discount",
+          message: "Discount type must be a non-empty string",
+          code: "INVALID_DISCOUNT_TYPE"
+        });
+      } else if (!["percentage", "fixed"].includes(discount.discount)) {
+        errors.push({
+          field: "discount",
+          message: "Discount type must be 'percentage' or 'fixed'",
+          code: "INVALID_DISCOUNT_TYPE"
+        });
+      }
+    }
+
+    if (discount.value !== undefined && discount.value !== null) {
+      const valueError = validationUtils.isValidNumber(discount.value, "value", 0, 100);
+      if (valueError) errors.push(valueError);
+    }
+
+    return errors;
   }
 };
 
@@ -1006,6 +1035,30 @@ export const actionValidators = {
     };
   },
 
+  // Validate SET_COURSE_DISCOUNT action
+  validateSetCourseDiscount: (payload: any): ValidationResult => {
+    const errors: ValidationError[] = [];
+
+    // Allow null for clearing discount
+    if (payload === null) {
+      return {
+        isValid: true,
+        errors: []
+      };
+    }
+
+    // Validate discount object
+    if (payload && typeof payload === "object") {
+      const discountErrors = entityValidators.validateDiscountLenient(payload);
+      errors.push(...discountErrors);
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors
+    };
+  },
+
   // Validate DELETE actions (check if ID exists)
   validateDeleteAction: (payload: any, state: any, entityType: string): ValidationResult => {
     const errors: ValidationError[] = [];
@@ -1116,6 +1169,9 @@ export const validateAction = (action: any, state: any): ValidationResult => {
     
     case "UPDATE_COURSE_PLAN":
       return actionValidators.validateUpdateCoursePlan(action.payload);
+    
+    case "SET_COURSE_DISCOUNT":
+      return actionValidators.validateSetCourseDiscount(action.payload);
     
     case "DELETE_COURSE_MODULE":
       return actionValidators.validateDeleteAction(action.payload, state, "module");

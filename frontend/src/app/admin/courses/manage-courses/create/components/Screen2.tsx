@@ -2,22 +2,18 @@ import Container from "@/app/admin/components/ui/Container";
 import FlexBox from "@/components/ui/FlexBox";
 import Input from "@/components/ui/inputs/Input";
 import React from "react";
-import { useCourseContext } from "../../../reducers";
+import { useCourseContext } from "../../../reducers/course/providers/CourseReducerProvider";
 import TextArea from "@/components/ui/inputs/TextArea";
 import DropDown from "@/components/ui/dropdown/DropDown";
 import TagInput from "@/components/ui/inputs/TagInput";
 import ScreenNavigation from "./shared/ScreenNavigation";
 import { Plus, Trash2 } from "lucide-react";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
+import { useScreen } from "../contexts/ScreenContext";
 
 const Screen2 = () => {
   const { state, actions } = useCourseContext();
-
-  // Helper function to check if highlights are valid
-  const areHighlightsValid = () => {
-    return state.course.highlights.length > 0 && 
-           state.course.highlights.every(h => h.title.trim() && h.description.trim());
-  };
+  const { setActiveScreen } = useScreen();
 
   const highlightsHaveErrors = state.course.highlights.length === 0 || 
                               state.course.highlights.some(h => !h.title.trim() || !h.description.trim());
@@ -235,7 +231,7 @@ const Screen2 = () => {
         currentStep={2}
         previousScreen="screen1"
         nextScreen="screen3"
-
+        setActiveScreen={setActiveScreen}
         isNextDisabled={
           !state.course.whatYouWillLearn ||
           state.course.skills.length === 0 ||

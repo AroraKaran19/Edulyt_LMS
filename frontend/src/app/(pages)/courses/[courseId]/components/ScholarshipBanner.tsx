@@ -3,13 +3,14 @@ import React from "react";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import SectionContainer from "@/components/ui/course/SectionContainer";
+import { Course } from "@/types";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
 });
 
-const ScholarshipBanner = () => {
+const ScholarshipBanner = ({ course }: { course: Course }) => {
   return (
     <SectionContainer
       id="scholarship"
@@ -27,8 +28,7 @@ const ScholarshipBanner = () => {
             plusJakartaSans.className
           )}
         >
-          The <span className="text-[#F77124]">PG program</span> in AI & ML
-          empowers you to align your learning with your professional aspirations
+          {course?.scholarshipDescription}
         </p>
       </div>
       <div className="banner-cta w-full lg:w-1/5 flex flex-col gap-4 items-center">

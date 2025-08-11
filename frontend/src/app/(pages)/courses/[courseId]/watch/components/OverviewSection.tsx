@@ -6,35 +6,25 @@ import InstructorCarousel from "../../../components/InstructorCarousel";
 
 const OverviewSection = ({ course }: { course: Course }) => {
   const totalDuration = useMemo(() => {
-    return formatDuration(
-      course?.modules.reduce(
-        (acc, module) =>
-          acc +
-          module.lessons.reduce(
-            (lessonAcc, lesson) => lessonAcc + (lesson.content.reduce((contentAcc, content) => {
-              if (content.type === 'video' && Array.isArray(content.content)) {
-                return contentAcc + content.content.reduce((videoAcc, video) => videoAcc + ('duration' in video ? video.duration || 0 : 0), 0);
-              }
-              return contentAcc;
-            }, 0) || 0),
-            0
-          ),
-        0
-      ) 
-    );
+    return formatDuration(course.modules.reduce((acc, module) => acc + module.lessons.reduce((lessonAcc, lesson) => lessonAcc + lesson.contents.reduce((contentAcc, content) => {
+      if (content.type === 'video' && content.duration) {
+        return contentAcc + content.duration;
+      }
+      return contentAcc;
+    }, 0), 0), 0));
   }, [course]);
 
   const formattedReviewsCount = useMemo(
     () =>
-      course?.featuredReviews?.length && course?.featuredReviews?.length >= 1000000
-        ? `${(course?.featuredReviews?.length / 1000000)
+      course?.reviews?.length && course?.reviews?.length >= 1000000
+        ? `${(course?.reviews?.length / 1000000)
             .toFixed(1)
             .replace(/\.0$/, "")}M`
-        : course?.featuredReviews?.length && course?.featuredReviews?.length >= 1000
-        ? `${(course?.featuredReviews?.length / 1000)
+        : course?.reviews?.length && course?.reviews?.length >= 1000
+        ? `${(course?.reviews?.length / 1000)
             .toFixed(1)
             .replace(/\.0$/, "")}K`
-        : course?.featuredReviews?.length?.toString(),
+        : course?.reviews?.length?.toString(),
     [course]
   );
 
@@ -55,17 +45,13 @@ const OverviewSection = ({ course }: { course: Course }) => {
           <div className="course-rating w-full flex flex-wrap gap-1 md:gap-2 items-center justify-center md:justify-start">
             <Star className="size-4 md:size-5 text-[#F7AD24]" fill="#F7AD24" />
             <span className="text-base md:text-2xl font-normal text-text-primary font-coolvetica tracking-wide">
-              {(course?.featuredReviews?.length &&
-              course?.featuredReviews?.reduce(
-                (acc, review) => acc + review.rating,
-                0
-              ) / course?.featuredReviews?.length) ||
-                0}
+              {/* TODO: Add rating */}
+              {course?.totalRatings}
             </span>
             <span className="text-sm md:text-base font-normal text-text-primary">
               (
-              {course?.featuredReviews?.length &&
-              course?.featuredReviews?.length > 100
+                {course?.reviews?.length &&
+              course?.reviews?.length > 100
                 ? `(more than ${formattedReviewsCount} reviews)`
                 : formattedReviewsCount === "1"
                 ? `${formattedReviewsCount} review`

@@ -4,6 +4,8 @@
 
 export interface Discount {
     discount: "percentage" | "fixed";
+    startDate?: Date;
+    endDate?: Date;
     value: number;
     isActive?: boolean;
 }
@@ -15,6 +17,14 @@ export interface NavItem {
     featureBox?: string;
     onMouseEnter?: () => void;
     active?: boolean;
+}
+
+export interface Filter {
+    label: string;
+    value: string;
+    featureBox?: {
+        value: string;
+    };
 }
 
 // User Types

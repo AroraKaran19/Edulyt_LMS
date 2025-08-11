@@ -27,3 +27,15 @@ export const validateLinkedinUrl = (url: string) => {
 export const validateReview = (review: Review) => {
   return review.rating >= 1 && review.rating <= 5;
 };
+
+export const validateEmail = (email: string) => {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+};
+
+export const validatePhoneNumber = (phone: string) => {
+  return /^\+91[0-9]{10}$/.test(phone);
+};
+
+export const validateGithubUrl = (url: string) => {
+  return url.startsWith("https://github.com/");
+};

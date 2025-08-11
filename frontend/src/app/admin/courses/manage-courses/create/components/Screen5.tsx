@@ -2,12 +2,10 @@ import Container from "@/app/admin/components/ui/Container";
 import FlexBox from "@/components/ui/FlexBox";
 import Input from "@/components/ui/inputs/Input";
 import React, { useMemo, useState, useEffect } from "react";
-import { useCourseContext } from "../../../reducers";
-import TextArea from "@/components/ui/inputs/TextArea";
+import { useCourseContext } from "../../../reducers/course/providers/CourseReducerProvider";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import { useScreen } from "../contexts/ScreenContext";
 import TagInput from "@/components/ui/inputs/TagInput";
-import AlertBanner from "@/components/ui/AlertBanner";
 import {
   Star,
   Award,
@@ -18,6 +16,8 @@ import {
   ChevronUp,
 } from "lucide-react";
 import { Testimonial } from "@/types/course";
+import DropDown from "@/components/ui/dropdown/DropDown";
+import ScreenNavigation from "./shared/ScreenNavigation";
 
 const Screen5 = () => {
   const { state, actions } = useCourseContext();
@@ -32,16 +32,42 @@ const Screen5 = () => {
     new Map()
   );
 
+  // Helper function to validate LinkedIn URL
+  const validateLinkedInUrl = (url: string): boolean => {
+    if (!url || url.trim() === "") return false;
+
+    // Normalize URL by adding https:// if missing
+    const normalizedUrl = url.startsWith("http") ? url : `https://${url}`;
+
+    // Check if it's a valid LinkedIn URL
+    const linkedinPattern =
+      /^https?:\/\/(www\.)?linkedin\.com\/in\/[\w-]+\/?$/i;
+    return linkedinPattern.test(normalizedUrl);
+  };
+
+  // Helper function to normalize LinkedIn URL
+  const normalizeLinkedInUrl = (url: string): string => {
+    if (!url || url.trim() === "") return "";
+
+    // Add https:// if missing
+    let normalized = url.startsWith("http") ? url : `https://${url}`;
+
+    // Remove trailing slash if present
+    normalized = normalized.replace(/\/$/, "");
+
+    return normalized;
+  };
+
   // Helper function to check if testimonial is complete
   const isTestimonialComplete = (testimonial: Testimonial) => {
     return (
       testimonial.name?.trim() &&
-      testimonial.comment?.trim() &&
       testimonial.currentRole?.trim() &&
       testimonial.currentCompany?.trim() &&
       testimonial.pastRole?.trim() &&
       testimonial.pastCompany?.trim() &&
       testimonial.linkedin?.trim() &&
+      validateLinkedInUrl(testimonial.linkedin) &&
       testimonial.profileImage?.trim()
     );
   };
@@ -49,7 +75,7 @@ const Screen5 = () => {
   // Validation checks
   const validationErrors = useMemo(() => {
     const errors = [];
-    
+
     // Check if at least one testimonial exists
     if (!state.course.testimonials || state.course.testimonials.length === 0) {
       errors.push("At least one testimonial is required");
@@ -57,32 +83,56 @@ const Screen5 = () => {
     }
 
     // Check if at least one testimonial is complete
-    const hasCompleteTestimonial = state.course.testimonials.some(testimonial => 
-      isTestimonialComplete(testimonial)
+    const hasCompleteTestimonial = state.course.testimonials.some(
+      (testimonial) => isTestimonialComplete(testimonial)
     );
-    
+
     if (!hasCompleteTestimonial) {
-      errors.push("At least one complete testimonial is required (all fields must be filled)");
+      errors.push(
+        "At least one complete testimonial is required (all fields must be filled)"
+      );
     }
 
+
+
     // Check for incomplete testimonials and provide specific feedback
-    const incompleteTestimonials = state.course.testimonials.map((testimonial, index) => {
-      const missingFields = [];
-      if (!testimonial.name || testimonial.name.trim() === "") missingFields.push("name");
-      if (!testimonial.comment || testimonial.comment.trim() === "") missingFields.push("comment");
-      if (!testimonial.currentRole || testimonial.currentRole.trim() === "") missingFields.push("current role");
-      if (!testimonial.currentCompany || testimonial.currentCompany.trim() === "") missingFields.push("current company");
-      if (!testimonial.pastRole || testimonial.pastRole.trim() === "") missingFields.push("past role");
-      if (!testimonial.pastCompany || testimonial.pastCompany.trim() === "") missingFields.push("past company");
-      if (!testimonial.linkedin || testimonial.linkedin.trim() === "") missingFields.push("LinkedIn URL");
-      if (!testimonial.profileImage || testimonial.profileImage.trim() === "") missingFields.push("profile image URL");
-      
-      return { index, missingFields };
-    }).filter(item => item.missingFields.length > 0);
+    const incompleteTestimonials = state.course.testimonials
+      .map((testimonial, index) => {
+        const missingFields = [];
+        if (!testimonial.name || testimonial.name.trim() === "")
+          missingFields.push("name");
+        if (!testimonial.currentRole || testimonial.currentRole.trim() === "")
+          missingFields.push("current role");
+        if (
+          !testimonial.currentCompany ||
+          testimonial.currentCompany.trim() === ""
+        )
+          missingFields.push("current company");
+        if (!testimonial.pastRole || testimonial.pastRole.trim() === "")
+          missingFields.push("past role");
+        if (!testimonial.pastCompany || testimonial.pastCompany.trim() === "")
+          missingFields.push("past company");
+        if (!testimonial.linkedin || testimonial.linkedin.trim() === "") {
+          missingFields.push("LinkedIn URL");
+        } else if (!validateLinkedInUrl(testimonial.linkedin)) {
+          missingFields.push(
+            "valid LinkedIn URL (e.g., linkedin.com/in/username)"
+          );
+        }
+        if (!testimonial.profileImage || testimonial.profileImage.trim() === "")
+          missingFields.push("profile image URL");
+
+        return { index, missingFields };
+      })
+      .filter((item) => item.missingFields.length > 0);
 
     if (incompleteTestimonials.length > 0) {
-      incompleteTestimonials.forEach(item => {
-        errors.push(`Testimonial ${item.index + 1}: Missing ${item.missingFields.join(", ")}`);
+      incompleteTestimonials.forEach((item) => {
+        errors.push(
+          `Testimonial ${item.index + 1}: Missing ${item.missingFields.join(
+            ", "
+          )}`
+        );
       });
     }
 
@@ -141,7 +191,6 @@ const Screen5 = () => {
   const addTestimonial = () => {
     const newTestimonial: Testimonial = {
       name: "",
-      comment: "",
       reviewableType: "Course",
       reviewableId: "",
       currentRole: "",
@@ -273,19 +322,27 @@ const Screen5 = () => {
       {/* Validation Feedback */}
       {validationErrors.length > 0 && (
         <div className="mb-4 p-4 bg-orange-50 border border-orange-200 rounded-lg">
-          <div className="font-medium mb-2 text-orange-800">Please complete the following:</div>
+          <div className="font-medium mb-2 text-orange-800">
+            Please complete the following:
+          </div>
           <ul className="list-disc list-inside space-y-1 text-orange-700">
             {validationErrors.map((error, index) => (
-              <li key={index} className="text-sm">{error}</li>
+              <li key={index} className="text-sm">
+                {error}
+              </li>
             ))}
           </ul>
         </div>
       )}
 
       {/* Testimonials Section */}
-      <div className={`bg-gradient-to-r from-orange-50 to-yellow-50 rounded-xl p-6 mb-6 border ${
-        validationErrors.length > 0 ? 'border-orange-300 bg-orange-50' : 'border-orange-100'
-      }`}>
+      <div
+        className={`bg-gradient-to-r from-orange-50 to-yellow-50 rounded-xl p-6 mb-6 border ${
+          validationErrors.length > 0
+            ? "border-orange-300 bg-orange-50"
+            : "border-orange-100"
+        }`}
+      >
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-orange-500 rounded-lg">
@@ -295,11 +352,16 @@ const Screen5 = () => {
               <h3 className="text-lg font-semibold text-gray-800">
                 Student Testimonials <span className="text-red-500">*</span>
               </h3>
-              <p className={`text-sm ${validationErrors.length > 0 ? 'text-orange-600' : 'text-gray-600'}`}>
-                {validationErrors.length > 0 
-                  ? 'At least one complete testimonial is required' 
-                  : 'Add authentic student testimonials to build trust'
-                }
+              <p
+                className={`text-sm ${
+                  validationErrors.length > 0
+                    ? "text-orange-600"
+                    : "text-gray-600"
+                }`}
+              >
+                {validationErrors.length > 0
+                  ? "At least one complete testimonial is required"
+                  : "Add authentic student testimonials to build trust"}
               </p>
             </div>
           </div>
@@ -370,16 +432,17 @@ const Screen5 = () => {
                         />
                       </div>
 
-                      <TextArea
-                        label="Testimonial Comment"
-                        placeholder="What did this student say about the course?"
-                        value={testimonial.comment}
+                      <DropDown
+                        label="Verified"
+                        options={["Verified", "Unverified"]}
+                        value={testimonial.verified ? "Verified" : "Unverified"}
                         onChange={(e) =>
-                          updateTestimonial(index, "comment", e.target.value)
+                          updateTestimonial(
+                            index,
+                            "verified",
+                            e.target.value === "Verified"
+                          )
                         }
-                        rows={3}
-                        lockHeight
-                        required
                       />
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -437,15 +500,53 @@ const Screen5 = () => {
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <Input
-                          label="LinkedIn Profile URL"
-                          placeholder="https://linkedin.com/in/username"
-                          value={testimonial.linkedin}
-                          onChange={(e) =>
-                            updateTestimonial(index, "linkedin", e.target.value)
-                          }
-                          required
-                        />
+                        <div className="space-y-1">
+                          <Input
+                            label="LinkedIn Profile URL"
+                            placeholder="linkedin.com/in/username or https://linkedin.com/in/username"
+                            value={testimonial.linkedin}
+                            onChange={(e) =>
+                              updateTestimonial(
+                                index,
+                                "linkedin",
+                                e.target.value
+                              )
+                            }
+                            onBlur={(e: React.FocusEvent<HTMLInputElement>) => {
+                              // Auto-normalize URL on blur
+                              const normalized = normalizeLinkedInUrl(
+                                e.target.value
+                              );
+                              if (normalized !== e.target.value) {
+                                updateTestimonial(
+                                  index,
+                                  "linkedin",
+                                  normalized
+                                );
+                              }
+                            }}
+                            className={
+                              testimonial.linkedin &&
+                              !validateLinkedInUrl(testimonial.linkedin)
+                                ? "border-red-300 focus:border-red-500 focus:ring-red-500/20"
+                                : ""
+                            }
+                            required
+                          />
+                          {testimonial.linkedin &&
+                            !validateLinkedInUrl(testimonial.linkedin) && (
+                              <p className="text-xs text-red-600">
+                                Please enter a valid LinkedIn profile URL (e.g.,
+                                linkedin.com/in/username)
+                              </p>
+                            )}
+                          {testimonial.linkedin &&
+                            validateLinkedInUrl(testimonial.linkedin) && (
+                              <p className="text-xs text-green-600">
+                                ✓ Valid LinkedIn URL
+                              </p>
+                            )}
+                        </div>
                         <div className="flex flex-col gap-2">
                           <Input
                             label="Profile Image URL"
@@ -545,7 +646,7 @@ const Screen5 = () => {
                           </span>
                         </div>
                         <p className="text-sm text-gray-700 line-clamp-2">
-                          {testimonial.comment}
+                          {testimonial.verified ? "Verified" : "Unverified"}
                         </p>
                       </div>
                     </div>
@@ -564,6 +665,8 @@ const Screen5 = () => {
           )}
         </div>
       </div>
+
+
 
       {/* Course Features Section */}
       <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-6 mb-6 border border-green-100">
@@ -592,35 +695,13 @@ const Screen5 = () => {
         />
       </div>
 
-      <FlexBox className="w-full gap-4 mt-auto mb-4 justify-between">
-        <OrangeButton
-          className="w-max px-16"
-          onClick={() => setActiveScreen("screen4")}
-        >
-          Previous
-        </OrangeButton>
-
-        <FlexBox className="gap-4 items-center">
-          {/* Progress indicator */}
-          <div className="hidden md:flex items-center gap-2 text-sm text-gray-600">
-            <span>Step 5 of 8</span>
-            <div className="w-20 bg-gray-200 rounded-full h-2">
-              <div
-                className="bg-orange-500 h-2 rounded-full"
-                style={{ width: "62.5%" }}
-              ></div>
-            </div>
-          </div>
-
-          <OrangeButton
-            className="w-max px-16"
-            onClick={() => setActiveScreen("screen6")}
-            disabled={validationErrors.length > 0}
-          >
-            Next Page
-          </OrangeButton>
-        </FlexBox>
-      </FlexBox>
+      <ScreenNavigation
+        currentStep={5}
+        previousScreen="screen4"
+        nextScreen="screen6"
+        setActiveScreen={setActiveScreen}
+        isNextDisabled={validationErrors.length > 0}
+      />
     </Container>
   );
 };

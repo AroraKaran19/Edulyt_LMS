@@ -17,6 +17,7 @@ const CourseCard = ({
   style?: React.CSSProperties;
 }) => {
   const router = useRouter();
+  console.log(course.discount)
 
   return (
     <div
@@ -52,7 +53,7 @@ const CourseCard = ({
           {course?.title}
         </p>
         <RatingContainer
-          ratings={course?.featuredReviews}
+          ratings={course?.reviews}
           className="mt-2 text-xs"
           courseId={course?.slug}
         />
@@ -73,7 +74,7 @@ const CourseCard = ({
         </div>
         <div className="mt-auto flex flex-col sm:flex-row gap-2 sm:items-center select-none">
           <div className="pricing flex flex-row lg:flex-col xl:flex-row gap-2 sm:items-center flex-wrap">  
-            {course?.discount && course.discount.isActive && (
+            {course?.discount && course.discount.isActive && course.discount.value > 0 && (
               <span className="text-xl font-bold text-black"> 
                 ₹
                 {course.plans.essential?.price ||

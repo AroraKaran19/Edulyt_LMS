@@ -3,7 +3,7 @@ import React from "react";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import TestimonialCarousel from "../../components/TestimonialCarousel";
 import SectionContainer from "@/components/ui/course/SectionContainer";
-import { FeaturedReview } from "@/types";
+import { Testimonial } from "@/types";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -13,7 +13,7 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 const TestimonialSection = ({
   testimonials,
 }: {
-  testimonials: FeaturedReview[];
+  testimonials: Testimonial[];
 }) => {
   const howItHelped = [
     {

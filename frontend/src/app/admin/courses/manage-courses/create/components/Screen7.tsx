@@ -1,13 +1,11 @@
 import Container from "@/app/admin/components/ui/Container";
 import FlexBox from "@/components/ui/FlexBox";
+import { useCourseContext } from "../../../reducers/course/providers/CourseReducerProvider";
+import UploadMediaContainer from "@/components/ui/container/UploadMediaContainer";
 import Input from "@/components/ui/inputs/Input";
 import React, { useMemo, useState, useEffect } from "react";
-import { useCourseContext } from "../../../reducers";
 import TextArea from "@/components/ui/inputs/TextArea";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
-import { useScreen } from "../contexts/ScreenContext";
-import AlertBanner from "@/components/ui/AlertBanner";
-import UploadMediaContainer from "@/components/ui/container/UploadMediaContainer";
 import { useUpload } from "@/hooks/useUpload";
 import ScreenNavigation from "./shared/ScreenNavigation";
 import {
@@ -25,14 +23,16 @@ import {
   CourseModule,
   CourseLesson,
   Content,
-  Video as VideoType,
-  Quiz,
-} from "@/types/course";
+  VideoContent,
+  QuizContent,
+} from "@/types";
 import ContentSection from "./content/ContentSection";
+import { useScreen } from "../contexts/ScreenContext";
 
 const Screen7 = () => {
   const { state, actions } = useCourseContext();
   const { uploadFile, isUploading } = useUpload();
+  const { setActiveScreen } = useScreen();
   const [savedModules, setSavedModules] = useState<Set<number>>(new Set());
   const [expandedModules, setExpandedModules] = useState<Set<number>>(new Set());
   const [expandedLessons, setExpandedLessons] = useState<Set<string>>(new Set());
@@ -41,7 +41,7 @@ const Screen7 = () => {
 
   // Validation checks
   const validationErrors = useMemo(() => {
-    const errors = [];
+    const errors: string[] = [];
     
     // Check if at least one module exists
     if (!state.course.modules || state.course.modules.length === 0) {
@@ -49,65 +49,90 @@ const Screen7 = () => {
       return errors; // Early return if no modules
     }
 
-    // Check if at least one module has at least one lesson
-    const hasLessons = state.course.modules.some(module => 
-      module && module.lessons && module.lessons.length > 0
-    );
-    if (!hasLessons) {
-      errors.push("At least one lesson is required in any module");
-    }
-
-    // Check if at least one lesson has at least one content
-    const hasContent = state.course.modules.some(module => 
-      module && module.lessons && module.lessons.some(lesson => 
-        lesson && lesson.contents && lesson.contents.length > 0
-      )
-    );
-    if (!hasContent) {
-      errors.push("At least one content item is required in any lesson");
-    }
-
-    // Validate video content requirements
-    const videoContentErrors: string[] = [];
+    // Validate each module is fully configured
     state.course.modules.forEach((module, moduleIndex) => {
-      if (!module || !module.lessons) return;
-      
+      if (!module) {
+        errors.push(`Module ${moduleIndex + 1}: Module data is missing`);
+        return;
+      }
+
+      // Check module basic requirements
+      if (!module.title || module.title.trim() === "") {
+        errors.push(`Module ${moduleIndex + 1}: Title is required`);
+      }
+
+      if (!module.description || module.description.trim() === "") {
+        errors.push(`Module ${moduleIndex + 1}: Description is required`);
+      }
+
+      if (!module.thumbnailUrl || module.thumbnailUrl.trim() === "") {
+        errors.push(`Module ${moduleIndex + 1}: Thumbnail is required`);
+      }
+
+      // Check if module has at least one lesson
+      if (!module.lessons || module.lessons.length === 0) {
+        errors.push(`Module ${moduleIndex + 1}: At least one lesson is required`);
+        return; // Skip lesson validation if no lessons
+      }
+
+      // Validate each lesson in the module
       module.lessons.forEach((lesson, lessonIndex) => {
-        if (!lesson || !lesson.contents) return;
-        
+        if (!lesson) {
+          errors.push(`Module ${moduleIndex + 1}, Lesson ${lessonIndex + 1}: Lesson data is missing`);
+          return;
+        }
+
+        // Check lesson basic requirements
+        if (!lesson.title || lesson.title.trim() === "") {
+          errors.push(`Module ${moduleIndex + 1}, Lesson ${lessonIndex + 1}: Title is required`);
+        }
+
+        // Check if lesson has at least one content
+        if (!lesson.contents || lesson.contents.length === 0) {
+          errors.push(`Module ${moduleIndex + 1}, Lesson ${lessonIndex + 1}: At least one content item is required`);
+          return; // Skip content validation if no contents
+        }
+
+        // Validate each content in the lesson
         lesson.contents.forEach((content, contentIndex) => {
-          if (!content) return;
-          
+          if (!content) {
+            errors.push(`Module ${moduleIndex + 1}, Lesson ${lessonIndex + 1}, Content ${contentIndex + 1}: Content data is missing`);
+            return;
+          }
+
           // Title is required for all content
           if (!content.title || content.title.trim() === "") {
-            videoContentErrors.push(
-              `Module ${moduleIndex + 1}, Lesson ${lessonIndex + 1}, Content ${contentIndex + 1}: Title is required`
-            );
+            errors.push(`Module ${moduleIndex + 1}, Lesson ${lessonIndex + 1}, Content ${contentIndex + 1}: Title is required`);
           }
           
           // Video-specific validation
           if (content.type === "video") {
-            const videoContent = content.content as VideoType;
+            const videoContent = content as VideoContent;
             
             // Video URL is required
             if (!videoContent.sources || !videoContent.sources[0]?.videoUrl || videoContent.sources[0].videoUrl.trim() === "") {
-              videoContentErrors.push(
-                `Module ${moduleIndex + 1}, Lesson ${lessonIndex + 1}, Content ${contentIndex + 1}: Video URL is required`
-              );
+              errors.push(`Module ${moduleIndex + 1}, Lesson ${lessonIndex + 1}, Content ${contentIndex + 1}: Video URL is required`);
             }
             
             // Video thumbnail is required
             if (!videoContent.thumbnailUrl || videoContent.thumbnailUrl.trim() === "") {
-              videoContentErrors.push(
-                `Module ${moduleIndex + 1}, Lesson ${lessonIndex + 1}, Content ${contentIndex + 1}: Video thumbnail is required`
-              );
+              errors.push(`Module ${moduleIndex + 1}, Lesson ${lessonIndex + 1}, Content ${contentIndex + 1}: Video thumbnail is required`);
+            }
+          }
+
+          // Quiz-specific validation (if needed)
+          if (content.type === "quiz") {
+            const quizContent = content as QuizContent;
+            
+            // Check if quiz has at least one question
+            if (!quizContent.questions || quizContent.questions.length === 0) {
+              errors.push(`Module ${moduleIndex + 1}, Lesson ${lessonIndex + 1}, Content ${contentIndex + 1}: At least one question is required for quiz`);
             }
           }
         });
       });
     });
     
-    errors.push(...videoContentErrors);
     return errors;
   }, [state.course]);
 
@@ -179,24 +204,34 @@ const Screen7 = () => {
       ? `Video Content ${contentCount}`
       : `Quiz ${contentCount}`;
 
-    const newContent: Content = {
-      _id: generateId(),
-      title: defaultTitle,
-      description: "",
-      type,
-      content: type === "video" 
-        ? {
-            sources: [{ quality: "1080p", videoUrl: "" }],
-            thumbnailUrl: "",
-            duration: 0,
-          } as VideoType
-        : {
-            questions: [],
-            passingScore: 70,
-            maxAttempts: 3,
-          } as Quiz,
-      readingMaterials: [],
-    };
+    const newContent: Content = type === "video" 
+      ? {
+          _id: generateId(),
+          title: defaultTitle,
+          description: "",
+          type: "video",
+          sources: [{ 
+            quality: "1080p" as const, 
+            videoUrl: "",
+            videoSource: undefined,
+            videoS3Key: ""
+          }],
+          thumbnailUrl: "",
+          thumbnailSource: undefined,
+          thumbnailS3Key: "",
+          duration: 0,
+          readingMaterials: [],
+        } as VideoContent
+      : {
+          _id: generateId(),
+          title: defaultTitle,
+          description: "",
+          type: "quiz",
+          questions: [],
+          passingScore: 70,
+          maxAttempts: 3,
+          readingMaterials: [],
+        } as QuizContent;
 
     // Find the module and lesson to add content to
     const moduleId = findModuleIdByLessonId(lessonId);
@@ -305,7 +340,11 @@ const Screen7 = () => {
       const uploadResponse = await uploadFile(file, folderName);
       if (uploadResponse.success && uploadResponse.data?.url) {
         const uploadedUrl = uploadResponse.data.url;
-        updateModuleData(moduleId, { thumbnailUrl: uploadedUrl });
+        updateModuleData(moduleId, { 
+          thumbnailUrl: uploadedUrl,
+          thumbnailSource: "upload",
+          thumbnailS3Key: uploadResponse.data.s3Key || ""
+        });
         return uploadedUrl;
       } else {
         throw new Error(uploadResponse.error || "Upload failed");
@@ -316,9 +355,22 @@ const Screen7 = () => {
     }
   };
 
+  // Helper function to handle thumbnail URL submission
+  const handleThumbnailUrlSubmit = (moduleId: string, url: string) => {
+    updateModuleData(moduleId, { 
+      thumbnailUrl: url,
+      thumbnailSource: "url",
+      thumbnailS3Key: ""
+    });
+  };
+
   // Helper function to handle thumbnail removal
   const handleThumbnailRemove = (moduleId: string) => {
-    updateModuleData(moduleId, { thumbnailUrl: "" });
+    updateModuleData(moduleId, { 
+      thumbnailUrl: "",
+      thumbnailSource: undefined,
+      thumbnailS3Key: ""
+    });
   };
 
   // Helper function to save a module
@@ -477,14 +529,16 @@ const Screen7 = () => {
                         description="Upload a thumbnail image for this module (required)"
                         type="image"
                         mediaUrl={module.thumbnailUrl}
+                        mediaSource={module.thumbnailSource}
+                        s3Key={module.thumbnailS3Key}
                         maxSize={10} // 10MB
                         acceptedFormats={[".jpg", ".jpeg", ".png", ".webp"]}
                         onFileUpload={(file, folderName) => handleThumbnailUpload(module._id!, file, folderName)}
                         onFileRemove={() => handleThumbnailRemove(module._id!)}
+                        onUrlSubmit={(url) => handleThumbnailUrlSubmit(module._id!, url)}
                         isUploading={isUploading}
                         required={true}
                         allowUrlInput={true}
-                        onUrlSubmit={(url) => updateModuleData(module._id!, { thumbnailUrl: url })}
                         folderName={`courses/${state.course.title || 'untitled'}/modules`}
                         uploadContext={`module-${moduleIndex + 1}`}
                         className="w-full"
@@ -621,7 +675,7 @@ const Screen7 = () => {
         previousScreen="screen6"
         nextScreen="screen8"
         nextButtonText="Review & Submit"
-
+        setActiveScreen={setActiveScreen}
         isNextDisabled={validationErrors.length > 0}
       />
     </Container>

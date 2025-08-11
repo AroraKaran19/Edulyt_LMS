@@ -75,7 +75,7 @@ const AboutTheCourseComponent = ({ course }: { course: Course }) => {
           <CourseTitle title="Why should you join?" />
         </div>
         <div className="reasons-cards-container w-full grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-10">
-          {course?.keyFeatures.map((item, index) => (
+          {course?.highlights.map((item, index) => (
             <div
               key={index}
               className="w-full bg-white px-3 md:px-6 py-3 md:py-4 rounded-xl border-2 border-[rgb(233,117,0)] shadow-[0_0_2px_3px_rgba(233,117,0,0.3)] flex flex-col items-center justify-center gap-1.5 md:gap-2.5"
@@ -94,10 +94,10 @@ const AboutTheCourseComponent = ({ course }: { course: Course }) => {
                 />
               </div>
               <p className="text-xl md:text-2xl font-normal text-center font-coolvetica text-[#F77124]">
-                {item.title}
+                {item.title || "Title"}
               </p>
               <p className="text-xs md:text-sm font-normal text-center mt-1.5">
-                {item.description}
+                {item.description || "Description"}
               </p>
             </div>
           ))}

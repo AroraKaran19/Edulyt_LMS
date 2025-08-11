@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import {
   Upload,
   X,
@@ -17,6 +17,8 @@ interface UploadMediaContainerProps {
   description: string;
   type: "image" | "video" | "document";
   mediaUrl?: string;
+  mediaSource?: "upload" | "url"; // Track whether current media came from upload or URL
+  s3Key?: string; // S3 key for uploaded file to enable deletion from bucket
   maxSize?: number; // in MB
   acceptedFormats?: string[];
   onFileSelect?: (file: File, folderName: string) => void;
@@ -41,6 +43,8 @@ const UploadMediaContainer: React.FC<UploadMediaContainerProps> = ({
   description,
   type,
   mediaUrl,
+  mediaSource: propMediaSource,
+  s3Key,
   maxSize = 100, // 100MB default
   acceptedFormats,
   onFileSelect,
@@ -65,7 +69,14 @@ const UploadMediaContainer: React.FC<UploadMediaContainerProps> = ({
   const [urlInput, setUrlInput] = useState("");
   const [showConfirmationDialog, setShowConfirmationDialog] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [urlSubmitted, setUrlSubmitted] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [userChangedTab, setUserChangedTab] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const prevMediaSource = useRef(propMediaSource);
+  
+  // Use upload hook for file operations
+  const { deleteFile } = useUpload();
 
   // Generate final folder name with context if provided
   const finalFolderName = uploadContext ? `${folderName}/${uploadContext}` : folderName;
@@ -79,6 +90,28 @@ const UploadMediaContainer: React.FC<UploadMediaContainerProps> = ({
 
   const formats = acceptedFormats || defaultFormats[type];
   const accept = formats.join(",");
+
+  // Auto-switch to the correct tab when media source changes (but not if user manually changed tab)
+  useEffect(() => {
+    // Only auto-switch if:
+    // 1. We have a media source from parent
+    // 2. URL input is allowed
+    // 3. The media source actually changed (not just re-rendering)
+    // 4. User hasn't manually changed tabs recently
+    if (propMediaSource && allowUrlInput && propMediaSource !== prevMediaSource.current && !userChangedTab) {
+      setInputMethod(propMediaSource);
+    }
+    
+    // Update the previous media source reference
+    prevMediaSource.current = propMediaSource;
+  }, [propMediaSource, allowUrlInput, userChangedTab]);
+
+  // Reset user tab change flag when media is removed
+  useEffect(() => {
+    if (!mediaUrl && !propMediaSource) {
+      setUserChangedTab(false);
+    }
+  }, [mediaUrl, propMediaSource]);
 
   // File validation
   const validateFile = useCallback(
@@ -112,18 +145,26 @@ const UploadMediaContainer: React.FC<UploadMediaContainerProps> = ({
         return "Please enter a valid URL";
       }
 
-      // Basic validation for video URLs (YouTube, Vimeo, direct links)
+      // More flexible validation for video URLs
       if (type === "video") {
         const videoUrlPatterns = [
-          /^https?:\/\/(www\.)?(youtube\.com|youtu\.be|vimeo\.com)/,
-          /\.(mp4|mov|avi|mkv|webm)(\?.*)?$/i,
+          // YouTube patterns
+          /^https?:\/\/(www\.)?(youtube\.com|youtu\.be)\/.+/,
+          // Vimeo patterns
+          /^https?:\/\/(www\.)?(vimeo\.com)\/.+/,
+          // Other video platforms
+          /^https?:\/\/(www\.)?(dailymotion\.com|twitch\.tv|facebook\.com|instagram\.com)\/.+/,
+          // Direct video file links (with extensions)
+          /\.(mp4|mov|avi|mkv|webm|m4v|3gp|flv|wmv)(\?.*)?$/i,
+          // Generic video hosting domains
+          /^https?:\/\/(www\.)?(.*\.)?(video|media|stream|content)\.(com|org|net|io|co|tv)\/.+/i,
         ];
 
         const isValidVideoUrl = videoUrlPatterns.some((pattern) =>
           pattern.test(url)
         );
         if (!isValidVideoUrl) {
-          return "Please enter a valid video URL (YouTube, Vimeo, or direct video link)";
+          return "Please enter a valid video URL (YouTube, Vimeo, Twitch, or direct video link)";
         }
       }
 
@@ -150,8 +191,15 @@ const UploadMediaContainer: React.FC<UploadMediaContainerProps> = ({
       return;
     }
 
+    // Call the URL submit handler but don't switch to upload tab
     onUrlSubmit?.(urlInput);
     setUrlInput("");
+    setUrlSubmitted(true);
+    
+    // Reset the success message after 3 seconds
+    setTimeout(() => {
+      setUrlSubmitted(false);
+    }, 3000);
   }, [urlInput, validateUrl, onUrlSubmit]);
 
   // Handle file selection
@@ -266,26 +314,55 @@ const UploadMediaContainer: React.FC<UploadMediaContainerProps> = ({
 
   // Handle click to open file dialog
   const handleClick = useCallback(() => {
-    if (!disabled && !isUploading) {
+    if (!disabled && !isUploading && !isDeleting) {
       fileInputRef.current?.click();
     }
-  }, [disabled, isUploading]);
+  }, [disabled, isUploading, isDeleting]);
 
   // Handle file removal
   const handleRemove = useCallback(
-    (e: React.MouseEvent) => {
+    async (e: React.MouseEvent) => {
       e.stopPropagation();
       setLocalError("");
-      onFileRemove?.();
+      setIsDeleting(true);
+
+      try {
+        // If we have an s3Key and the media was uploaded (not from URL), delete from bucket
+        if (s3Key && propMediaSource === "upload") {
+          const result = await deleteFile(s3Key);
+          
+          if (!result.success) {
+            setLocalError(result.error || "Failed to delete file from storage");
+            setIsDeleting(false);
+            return;
+          }
+        }
+
+        // Call the parent's remove handler
+        onFileRemove?.();
+      } catch (error) {
+        console.error("Error deleting file:", error);
+        setLocalError(error instanceof Error ? error.message : "Failed to delete file");
+      } finally {
+        setIsDeleting(false);
+      }
     },
-    [onFileRemove]
+    [onFileRemove, s3Key, propMediaSource, deleteFile]
   );
 
   // Handle input method change
   const handleMethodChange = useCallback((method: "upload" | "url") => {
     setInputMethod(method);
+    setUserChangedTab(true);
     setLocalError("");
     setUrlInput("");
+    setUrlSubmitted(false);
+    
+    // Reset the user changed tab flag after a short delay
+    // This allows the next upload/URL submission to auto-switch tabs again
+    setTimeout(() => {
+      setUserChangedTab(false);
+    }, 1000);
   }, []);
 
   // Get default placeholder for URL input
@@ -381,64 +458,127 @@ const UploadMediaContainer: React.FC<UploadMediaContainerProps> = ({
       {/* URL Input Section */}
       {allowUrlInput && inputMethod === "url" ? (
         <div className="flex flex-col gap-3">
-          <div className="flex gap-2">
-            <input
-              type="url"
-              value={urlInput}
-              onChange={(e) => setUrlInput(e.target.value)}
-              placeholder={getUrlPlaceholder()}
-              className={cn(
-                "flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm",
-                "focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500",
-                "disabled:opacity-50 disabled:cursor-not-allowed",
-                displayError &&
-                  "border-red-300 focus:border-red-500 focus:ring-red-500/20"
+          {/* Show URL input form if not from URL source or no media URL */}
+          {propMediaSource === "url" && mediaUrl ? (
+            /* Show URL preview when URL is added via this tab */
+            <div className="flex flex-col items-center gap-3 p-6 border-2 border-dashed border-green-300 bg-green-50 rounded-lg">
+              {/* Preview for images */}
+              {type === "image" && (
+                <img
+                  src={mediaUrl}
+                  alt="Preview"
+                  className="max-w-full max-h-32 object-contain rounded"
+                />
               )}
-              disabled={disabled || isUploading}
-            />
-            <button
-              type="button"
-              onClick={handleUrlSubmit}
-              disabled={disabled || isUploading || !urlInput.trim()}
-              className={cn(
-                "px-4 py-2 bg-orange-500 text-white text-sm font-medium rounded-lg",
-                "hover:bg-orange-600 focus:ring-2 focus:ring-orange-500/20 focus:ring-offset-2",
-                "disabled:opacity-50 disabled:cursor-not-allowed",
-                "transition-colors duration-200"
-              )}
-            >
-              Add URL
-            </button>
-          </div>
 
-          {/* URL Help Text */}
-          <p className="text-xs text-gray-500">
-            {type === "video" &&
-              "Supports YouTube, Vimeo, or direct video links"}
-            {type === "image" &&
-              "Direct link to image file (.jpg, .png, .gif, .webp)"}
-            {type === "document" && "Direct link to document file"}
-          </p>
+              {/* Preview for videos */}
+              {type === "video" && (
+                <video
+                  src={mediaUrl}
+                  className="max-w-full max-h-32 object-contain rounded"
+                  controls
+                />
+              )}
+
+              {/* URL info */}
+              <div className="flex items-center gap-2">
+                <Link className="w-6 h-6 text-green-600" />
+                <span className="text-sm text-green-700 font-medium">
+                  URL added successfully
+                </span>
+              </div>
+
+              {/* URL display */}
+              <div className="text-xs text-gray-600 bg-white px-2 py-1 rounded border max-w-full truncate">
+                {mediaUrl}
+              </div>
+
+              {/* Remove button */}
+              <button
+                onClick={handleRemove}
+                disabled={isDeleting || isUploading}
+                className="flex items-center gap-1 text-red-600 hover:text-red-700 bg-red-500/10 hover:bg-red-500/20 rounded-lg px-2 py-1 text-sm font-medium transition-colors duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isDeleting ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-500"></div>
+                ) : (
+                  <X className="w-4 h-4" />
+                )}
+                {isDeleting ? "Removing..." : "Remove URL"}
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="flex gap-2">
+                <input
+                  type="url"
+                  value={urlInput}
+                  onChange={(e) => setUrlInput(e.target.value)}
+                  placeholder={getUrlPlaceholder()}
+                  className={cn(
+                    "flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm",
+                    "focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500",
+                    "disabled:opacity-50 disabled:cursor-not-allowed",
+                    displayError &&
+                      "border-red-300 focus:border-red-500 focus:ring-red-500/20"
+                  )}
+                  disabled={disabled || isUploading}
+                />
+                <button
+                  type="button"
+                  onClick={handleUrlSubmit}
+                  disabled={disabled || isUploading || !urlInput.trim()}
+                  className={cn(
+                    "px-4 py-2 bg-orange-500 text-white text-sm font-medium rounded-lg",
+                    "hover:bg-orange-600 focus:ring-2 focus:ring-orange-500/20 focus:ring-offset-2",
+                    "disabled:opacity-50 disabled:cursor-not-allowed",
+                    "transition-colors duration-200"
+                  )}
+                >
+                  Add URL
+                </button>
+              </div>
+
+              {/* URL Success Message */}
+              {urlSubmitted && (
+                <div className="flex items-center gap-2 text-green-600 text-sm bg-green-50 border border-green-200 rounded-lg p-3">
+                  <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                    <span className="text-white text-xs">✓</span>
+                  </div>
+                  <span>URL has been added successfully!</span>
+                </div>
+              )}
+
+              {/* URL Help Text */}
+              <p className="text-xs text-gray-500">
+                {type === "video" &&
+                  "Supports YouTube, Vimeo, Twitch, Facebook, Instagram, or direct video links"}
+                {type === "image" &&
+                  "Direct link to image file (.jpg, .png, .gif, .webp)"}
+                {type === "document" && "Direct link to document file"}
+              </p>
+            </>
+          )}
         </div>
       ) : (
         /* Upload Area */
         <div
           className={cn(
             "relative w-full border-2 border-dashed rounded-lg p-8 text-center transition-all duration-200",
-            dragActive && !disabled
+            dragActive && !disabled && !isDeleting
               ? "border-orange-400 bg-orange-50"
               : "border-gray-300 hover:border-gray-400",
-            disabled
+            disabled || isDeleting
               ? "opacity-50 cursor-not-allowed bg-gray-50"
               : "cursor-pointer hover:bg-gray-50",
             displayError && "border-red-300 bg-red-50",
-            mediaUrl && "border-green-300 bg-green-50"
+            propMediaSource === "upload" && mediaUrl && "border-green-300 bg-green-50"
           )}
-          onDragEnter={handleDrag}
-          onDragLeave={handleDrag}
-          onDragOver={handleDrag}
-          onDrop={handleDrop}
-          onClick={handleClick}
+          onDragEnter={disabled || isDeleting ? undefined : handleDrag}
+          onDragLeave={disabled || isDeleting ? undefined : handleDrag}
+          onDragOver={disabled || isDeleting ? undefined : handleDrag}
+          onDrop={disabled || isDeleting ? undefined : handleDrop}
+          onClick={disabled || isDeleting ? undefined : handleClick}
         >
           {/* Hidden file input */}
           <input
@@ -447,16 +587,18 @@ const UploadMediaContainer: React.FC<UploadMediaContainerProps> = ({
             accept={accept}
             onChange={handleInputChange}
             className="hidden"
-            disabled={disabled}
+            disabled={disabled || isDeleting}
           />
 
           {/* Content */}
-          {isUploading ? (
+          {isUploading || isDeleting ? (
             <div className="flex flex-col items-center gap-3">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
-              <p className="text-sm text-gray-600">Uploading...</p>
+              <p className="text-sm text-gray-600">
+                {isUploading ? "Uploading..." : "Deleting..."}
+              </p>
             </div>
-          ) : mediaUrl ? (
+          ) : propMediaSource === "upload" && mediaUrl ? (
             <div className="flex flex-col items-center gap-3">
               {/* Preview for images */}
               {type === "image" && (
@@ -487,10 +629,15 @@ const UploadMediaContainer: React.FC<UploadMediaContainerProps> = ({
               {/* Remove button */}
               <button
                 onClick={handleRemove}
-                className="flex items-center gap-1 text-red-600 hover:text-red-700 bg-red-500/10 hover:bg-red-500/20 rounded-lg px-2 py-1 text-sm font-medium transition-colors duration-200 cursor-pointer"
+                disabled={isDeleting || isUploading}
+                className="flex items-center gap-1 text-red-600 hover:text-red-700 bg-red-500/10 hover:bg-red-500/20 rounded-lg px-2 py-1 text-sm font-medium transition-colors duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <X className="w-4 h-4" />
-                Remove
+                {isDeleting ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-500"></div>
+                ) : (
+                  <X className="w-4 h-4" />
+                )}
+                {isDeleting ? "Removing..." : "Remove"}
               </button>
             </div>
           ) : (

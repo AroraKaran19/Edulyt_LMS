@@ -2,6 +2,8 @@
 
 export interface Discount {
     discount: "percentage" | "fixed";
+    startDate?: Date;
+    endDate?: Date;
     value: number;
     isActive?: boolean;
 }

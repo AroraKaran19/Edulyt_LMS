@@ -1,12 +1,15 @@
 import { useState, useCallback } from 'react';
 import { Course } from '@/types/course';
 
-// Response types
+
 export interface CourseResponse {
   success: boolean;
-  message: string;
-  data?: Course;
+  data?: {
+    course: Course;
+  };
+  message?: string;
   error?: string;
+  errors?: string[];
 }
 
 export interface CourseListResponse {
@@ -49,7 +52,7 @@ export const useCourses = () => {
         params.append('category', category);
       }
 
-      const response = await fetch(`${baseUrl}/api/courses?${params}`);
+      const response = await fetch(`${baseUrl}/courses?${params}`);
       const result = await response.json();
       
       if (!result.success) {
@@ -76,7 +79,7 @@ export const useCourses = () => {
     setError('');
 
     try {
-      const response = await fetch(`${baseUrl}/api/courses/${slug}`);
+      const response = await fetch(`${baseUrl}/courses/${slug}`);
       const result = await response.json();
       
       if (!result.success) {
@@ -103,7 +106,7 @@ export const useCourses = () => {
     setError('');
 
     try {
-      const response = await fetch(`${baseUrl}/api/courses/id/${courseId}`);
+      const response = await fetch(`${baseUrl}/courses/id/${courseId}`);
       const result = await response.json();
       
       if (!result.success) {
@@ -164,7 +167,7 @@ export const useCourses = () => {
     setError('');
 
     try {
-      const response = await fetch(`${baseUrl}/api/courses/${courseId}`, {
+      const response = await fetch(`${baseUrl}/courses/${courseId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -193,12 +196,12 @@ export const useCourses = () => {
   }, [baseUrl]);
 
   // Delete course
-  const deleteCourse = useCallback(async (courseId: string): Promise<CourseResponse> => {
+  const deleteCourse = useCallback(async (courseId: string): Promise<CourseListResponse> => {
     setIsLoading(true);
     setError('');
 
     try {
-      const response = await fetch(`${baseUrl}/api/courses/${courseId}`, {
+      const response = await fetch(`${baseUrl}/courses/${courseId}`, {
         method: 'DELETE',
       });
 
@@ -222,6 +225,33 @@ export const useCourses = () => {
     }
   }, [baseUrl]);
 
+  // Get course by ID (Admin version - includes inactive courses)
+  const getCourseByIdAdmin = useCallback(async (courseId: string): Promise<CourseResponse> => {
+    setIsLoading(true);
+    setError('');
+
+    try {
+      const response = await fetch(`${baseUrl}/courses/admin/id/${courseId}`);
+      const result = await response.json();
+      
+      if (!result.success) {
+        setError(result.error || result.message);
+      }
+      
+      return result;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch course';
+      setError(errorMessage);
+      return {
+        success: false,
+        message: 'Failed to fetch course',
+        error: errorMessage
+      };
+    } finally {
+      setIsLoading(false);
+    }
+  }, [baseUrl]);
+
   return {
     // State
     isLoading,
@@ -231,6 +261,7 @@ export const useCourses = () => {
     getAllCourses,
     getCourseBySlug,
     getCourseById,
+    getCourseByIdAdmin,
     createCourse,
     updateCourse,
     deleteCourse,

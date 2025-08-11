@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
-import { Course, FAQ, Plan, Testimonial } from "../types";
+import { Course, FAQ, Testimonial } from "../types";
 import plansSchema from "./plans.schema";
-import { validateAudience, validatePlans, validateUrl } from "./validators";
+import { validateAudience, validateLinkedinUrl, validatePlans, validateUrl } from "./validators";
 
 // ===================
 // FAQ Schema
@@ -22,13 +22,19 @@ const faqSchema = new mongoose.Schema<FAQ>(
 const testimonialSchema = new mongoose.Schema<Testimonial>(
   {
     name: { type: String, required: true },
-    comment: { type: String, required: true },
     profileImage: { type: String, required: true },
     currentRole: { type: String, required: true },
     pastRole: { type: String, required: true },
     pastCompany: { type: String, required: true },
     currentCompany: { type: String, required: true },
-    linkedin: { type: String, required: true },
+    linkedin: {
+      type: String,
+      required: true,
+      validate: {
+        validator: validateLinkedinUrl,
+        message: "LinkedIn must be a valid URL",
+      },
+    },
     isActive: { type: Boolean, default: true, required: true },
     verified: { type: Boolean, default: false },
   },
@@ -116,13 +122,7 @@ const courseSchema = new mongoose.Schema<Course>(
     skillLevel: { type: String, required: true },
     whoShouldJoin: { type: String, required: true },
     prerequisites: { type: [String], required: false, default: [] },
-    fakeDiscount: {
-      type: Number,
-      required: false,
-      default: 0,
-      min: [0, "Discount must be positive"],
-      max: [100, "Discount must be less than 100"],
-    },
+
     duration: {
       type: String,
       required: true,
@@ -149,6 +149,22 @@ const courseSchema = new mongoose.Schema<Course>(
         message: "Course must have at least one plan (elite or essential)",
       },
       _id: false,
+    },
+    discount: {
+      type: {
+        startDate: { type: Date, required: false, default: null },
+        endDate: { type: Date, required: false, default: null },
+        value: { type: Number, required: false, default: 0 },
+        discount: {
+          type: String,
+          required: false,
+          default: "percentage",
+          enum: ["percentage", "fixed"],
+        },
+        isActive: { type: Boolean, required: false, default: true },
+      },
+      required: false,
+      default: null,
     },
     reviews: {
       type: [mongoose.Schema.Types.ObjectId],
@@ -189,12 +205,30 @@ const courseSchema = new mongoose.Schema<Course>(
     keywords: { type: [String], required: false, default: [] },
     scholarship: { type: Boolean, default: false, required: true },
     scholarshipDescription: { type: String, required: false, default: "" },
-
-    language: { 
-      type: String, 
+    scholarshipRef: {
+      type: mongoose.Schema.Types.ObjectId,
+      required: false,
+      default: null,
+      ref: "Scholarship",
+    },
+    language: {
+      type: String,
       required: true,
-      enum: ["en", "es", "fr", "de", "pt", "it", "ru", "zh", "ja", "ko", "hi", "ar"],
-      default: "en"
+      enum: [
+        "en",
+        "es",
+        "fr",
+        "de",
+        "pt",
+        "it",
+        "ru",
+        "zh",
+        "ja",
+        "ko",
+        "hi",
+        "ar",
+      ],
+      default: "en",
     },
   },
   { timestamps: true }
