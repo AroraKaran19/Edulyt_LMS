@@ -14,7 +14,7 @@ const CertificateSection = ({ course }: { course: Course }) => {
   if (course.plans.essential) {
     plans.push({
       icon: <Crown className="size-5" />,
-      name: "Essential",
+      name: course.plans.essential.title,
       theme: "bg-[#F68A5C]",
       price: course.plans.essential.price || 0,
       features: course.plans.essential.features || [],
@@ -40,7 +40,7 @@ const CertificateSection = ({ course }: { course: Course }) => {
   if (course.plans.elite) {
     plans.push({
       icon: <Crown className="size-5" />,
-      name: "Elite",
+      name: course.plans.elite.title,
       theme: "bg-[#8B5CF6]",
       price: course.plans.elite.price || 0,
       features: course.plans.elite.features || [],
