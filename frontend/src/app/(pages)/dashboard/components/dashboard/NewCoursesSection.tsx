@@ -1,5 +1,4 @@
 import FlexBox from "@/components/ui/FlexBox";
-import { demoCourses } from "@/data/demoCourses";
 import { Course } from "@/types";
 import { ArrowRight } from "lucide-react";
 import React from "react";
@@ -7,7 +6,7 @@ import CoursesCard2 from "./ui/CourseCard2";
 
 const NewCoursesSection = () => {
 
-	const courses: Course[] = demoCourses;
+	const courses: Course[] = [];
 
   return (
     <FlexBox className="w-full h-full flex-col gap-3 sm:gap-4 px-3 sm:px-4 md:px-6">

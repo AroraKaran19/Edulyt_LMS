@@ -1,12 +1,12 @@
 import React from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
-import { Instructor } from "@/types";
+import { CourseInstructor } from "@/types";
 import InstructorCard from "./InstructorCard";
 import "swiper/css";
 import "swiper/css/effect-coverflow";
 import { Autoplay } from "swiper/modules";
 
-const InstructorCarousel = ({ instructors }: { instructors: Instructor[] }) => {
+const InstructorCarousel = ({ instructors }: { instructors: CourseInstructor[] }) => {
   return (
     <Swiper
       centeredSlides={true}

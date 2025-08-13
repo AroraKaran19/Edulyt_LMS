@@ -57,8 +57,10 @@ const verifyToken = (token: string): CustomJwtPayload => {
  * @returns True if token is revoked
  */
 const isTokenRevoked = (payload: CustomJwtPayload, user: User): boolean => {
-  if (!user.lastLogout) return false;
-  return user.lastLogout.getTime() / 1000 > payload.iat;
+  // TODO: Uncomment this when we have a proper logout system
+  // if (!user.lastLogout) return false;
+  // return user.lastLogout.getTime() / 1000 > payload.iat;
+  return false;
 };
 
 /**

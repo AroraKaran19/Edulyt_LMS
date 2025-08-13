@@ -6,7 +6,7 @@ import CourseHeader from "./components/CourseHeader";
 import ScholarshipBanner from "./components/ScholarshipBanner";
 import TestimonialSection from "./components/TestimonialSection";
 import CourseOverviewSection from "./components/CourseOverviewSection";
-import CourseInstructorSection from "./components/CourseInstructorSection";
+// import CourseInstructorSection from "./components/CourseInstructorSection";
 import CertificateSection from "./components/CertificateSection";
 import VerticalCarouselSection from "./components/VerticalCarouselSection";
 import CurriculumSection from "./components/CurriculumSection";
@@ -58,7 +58,7 @@ const CoursePage = ({ course }: { course: Course }) => {
         </div>
         <CourseHeader course={course} />
       </div>
-      {/* {course?.scholarship && <ScholarshipBanner />} */}
+      {course?.scholarship && <ScholarshipBanner course={course} />}
       <TestimonialSection testimonials={course?.testimonials || []} />
       <CourseOverviewSection course={course} />
       {/* <CourseInstructorSection course={course} /> */}

@@ -1,4 +1,4 @@
-import { CourseModule, Review, FAQ, Quiz, CourseInstructor } from "@/types"
+import { CourseModule, Review, Quiz, CourseInstructor } from "@/types"
 
 // ===================
 // Validation Error Types
@@ -1113,8 +1113,6 @@ export const actionValidators = {
 // ===================
 
 export const validateAction = (action: any, state: any): ValidationResult => {
-  const errors: ValidationError[] = [];
-
   // Basic action validation
   if (!action || typeof action !== "object") {
     return {

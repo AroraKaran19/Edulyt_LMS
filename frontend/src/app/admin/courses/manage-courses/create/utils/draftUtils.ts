@@ -1,5 +1,7 @@
 // Utility functions for managing course creation drafts
 
+import { Course } from "@/types";
+
 const COURSE_DRAFT_KEY = "course_creation_draft";
 const CURRENT_SCREEN_KEY = "course_creation_current_screen";
 
@@ -23,7 +25,7 @@ export const draftUtils = {
   },
 
   // Get draft data
-  getDraft: (): any | null => {
+  getDraft: (): Course | null => {
     try {
       const draft = localStorage.getItem(COURSE_DRAFT_KEY);
       return draft ? JSON.parse(draft) : null;

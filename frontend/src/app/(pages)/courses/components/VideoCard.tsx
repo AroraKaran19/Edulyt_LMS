@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { CourseModule } from "@/types";
 import Image from "next/image";
 import React, { useState } from "react";
-import { ChevronDown, ChevronUp, Play, FileText, Clock } from "lucide-react";
+import { ChevronDown, ChevronUp, Play, Clock } from "lucide-react";
 
 const VideoCard = ({
   module,

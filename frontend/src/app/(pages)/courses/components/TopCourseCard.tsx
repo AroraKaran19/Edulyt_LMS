@@ -49,9 +49,10 @@ const TopCourseCard = ({
         {course.title}
       </p>
       <RatingContainer
-        ratings={course.reviews}
+        reviewCount={course.reviews.length}
+        totalRating={course.totalRatings}
         className="mt-2"
-        courseId={course.slug}
+        courseSlug={course.slug}
       />
       <div
         className={cn("instructors mt-2 flex gap-2 items-center select-none")}

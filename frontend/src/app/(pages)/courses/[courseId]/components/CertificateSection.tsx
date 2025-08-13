@@ -1,4 +1,3 @@
-import CourseTitle from "@/components/ui/course/CourseTitle";
 import SectionContainer from "@/components/ui/course/SectionContainer";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";

@@ -19,9 +19,9 @@ const TestimonialCard = ({
   className?: string;
   style?: React.CSSProperties;
 }) => {
-  if (!testimonial) return null;
-
   const [imageError, setImageError] = useState(false);
+
+  if (!testimonial) return null;
 
   const getInitials = (name: string) => {
     const parts = name.trim().split(" ");

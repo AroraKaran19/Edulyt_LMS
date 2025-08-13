@@ -1,4 +1,4 @@
-import { Instructor } from "@/types";
+import { CourseInstructor } from "@/types";
 import Image from "next/image";
 import React from "react";
 import { Star } from "lucide-react";
@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 const InstructorCard = ({
   instructor,
   ...props
-}: { instructor: Instructor } & {
+}: { instructor: CourseInstructor } & {
   className?: string;
   style?: React.CSSProperties;
 }) => {
@@ -59,14 +59,12 @@ const InstructorCard = ({
           </p>
           <div className="instructor-info flex items-center gap-2 flex-wrap">
             <p className="text-xs text-gray-500 whitespace-nowrap">
-              {instructor.currentPosition
-                ? `${instructor.currentPosition} at ${instructor.currentCompany}`
-                : `${instructor.experience} of experience`}
+              {instructor.currentPosition} at {instructor.currentCompany}
             </p>
             <p className="rating text-xs text-gray-500 flex items-center gap-1 whitespace-nowrap">
               <Star className="size-3 text-yellow-500 fill-yellow-500" />
               {instructor.rating}{" "}
-              {instructor.totalStudents > 1 ? `students` : `student`}
+              {instructor.totalStudents && instructor.totalStudents > 1 ? `students` : `student`}
             </p>
           </div>
         </div>

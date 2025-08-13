@@ -171,7 +171,7 @@ const Screen2 = () => {
               <Plus className="w-full h-full" />
             </div>
             <p className="text-sm">No highlights added yet</p>
-            <p className="text-xs">Click "Add Highlight" to get started</p>
+            <p className="text-xs">Click &quot;Add Highlight&quot; to get started</p>
           </div>
         ) : (
           <div className="space-y-4">

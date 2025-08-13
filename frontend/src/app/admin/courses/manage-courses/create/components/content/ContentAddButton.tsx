@@ -1,5 +1,5 @@
 import React from "react";
-import { Video, HelpCircle, Plus } from "lucide-react";
+import { Video, HelpCircle } from "lucide-react";
 
 interface ContentAddButtonProps {
   type: "video" | "quiz";

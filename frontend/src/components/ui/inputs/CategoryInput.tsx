@@ -33,8 +33,9 @@ const CategoryInput = ({
   setChange,
   ...props
 }: CategoryInputProps) => {
-  // Destructure setChange from props to avoid passing it to DOM elements
-  const { setChange: _, ...domProps } = props;
+  // Create domProps without setChange to avoid passing it to DOM elements
+  const domProps = { ...props };
+  delete domProps.setChange;
   const [isOpen, setIsOpen] = useState(false);
   // Use value prop if provided (controlled), otherwise use internal state (uncontrolled)
   const [internalValue, setInternalValue] = useState(defaultValue);
@@ -209,9 +210,9 @@ const CategoryInput = ({
             {/* Existing Options */}
             {filteredOptions.length > 0 && (
               <div className="py-1">
-                {filteredOptions.map((option) => (
+                {filteredOptions.map((option, index) => (
                   <button
-                    key={option}
+                    key={index}
                     type="button"
                     onClick={() => handleOptionSelect(option)}
                     className={cn(
@@ -230,7 +231,7 @@ const CategoryInput = ({
             {/* No results message */}
             {isTyping && filteredOptions.length === 0 && customValue.trim() && (
               <div className="px-4 py-3 text-sm text-gray-500 text-center">
-                No matching categories found. Press Enter to create "{customValue.trim()}"
+                No matching categories found. Press Enter to create &quot;{customValue.trim()}&quot;
               </div>
             )}
           </div>

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Course, CourseLesson, CourseModule, Content, VideoContent } from "@/types";
+import { Course, CourseLesson, CourseModule, Content } from "@/types";
 
 export const useLessonNavigation = (course: Course) => {
   const [selectedModule, setSelectedModule] = useState<CourseModule | null>(null);

@@ -2,22 +2,19 @@ import { Star } from "lucide-react";
 import React from "react";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
-import { Course } from "@/types";
 
 const RatingContainer = ({
-  ratings,
+  reviewCount,
+  totalRating,
   className,
-  courseId,
+  courseSlug,
 }: {
-  ratings: Course["featuredReviews"];
+  reviewCount: number;
+  totalRating: number;
   className?: string;
-  courseId: string;
+  courseSlug: string;
 }) => {
   const router = useRouter();
-  const rating =
-    (ratings?.reduce((acc, review) => acc + review.rating, 0) || 0) /
-    (ratings?.length || 1);
-  const ratingCount = ratings?.length || 0;
 
   return (
     <div
@@ -31,22 +28,18 @@ const RatingContainer = ({
           className="whitespace-nowrap underline cursor-pointer flex gap-2 items-center"
           onClick={(e) => {
             e.stopPropagation();
-            router.push(`/courses/${courseId}#ratings`);
+            router.push(`/courses/${courseSlug}#ratings`);
           }}
         >
           <Star className="w-4 h-4 text-[#F7AD24]" fill="#F7AD24" />
-          {rating} Rating
+          {totalRating} Rating
         </span>
         <span className="font-normal text-gray-500 break-all">
-          {ratingCount > 100 ? (
-            `(more than ${ratingCount} reviews)`
-          ) : (
-            ratingCount === 1 ? (
-              `(${ratingCount} review)`
-            ) : (
-              `(${ratingCount} reviews)`
-            )
-          )}
+          {reviewCount > 100
+            ? `(more than ${reviewCount} reviews)`
+            : reviewCount === 1
+            ? `(${reviewCount} review)`
+            : `(${reviewCount} reviews)`}
         </span>
       </span>
     </div>

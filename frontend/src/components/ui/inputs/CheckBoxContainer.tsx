@@ -47,7 +47,8 @@ const CheckBoxContainer = ({
     <div className={cn(
       "w-full flex flex-col gap-2",
       plusJakartaSans.className,
-      "text-sm"
+      "text-sm",
+      className
     )}>
       {/* Container for checkbox and label */}
       <div className={cn(

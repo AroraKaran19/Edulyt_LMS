@@ -15,13 +15,16 @@ const Screen2 = () => {
   const { state, actions } = useEditCourseContext();
   const { setActiveScreen } = useEditScreen();
 
-  const highlightsHaveErrors = state.course.highlights.length === 0 || 
-                              state.course.highlights.some(h => !h.title.trim() || !h.description.trim());
+  const highlightsHaveErrors =
+    state.course.highlights.length === 0 ||
+    state.course.highlights.some(
+      (h) => !h.title.trim() || !h.description.trim()
+    );
 
   return (
     <Container
       title="UI related information"
-      description="These are required to fill the UI of the course" 
+      description="These are required to fill the UI of the course"
       className="rounded-b-none h-full w-full max-h-full overflow-y-auto flex flex-col"
       style={{ scrollbarWidth: "thin" }}
     >
@@ -36,7 +39,7 @@ const Screen2 = () => {
         lockHeight
         required
       />
-      
+
       <TagInput
         label="Skills Students Will Acquire"
         placeholder="Add skills (e.g., JavaScript, React, Node.js)"
@@ -77,48 +80,60 @@ const Screen2 = () => {
           label="Language"
           name="language"
           options={[
-            "English", 
-            "Spanish", 
-            "French", 
-            "German", 
-            "Portuguese", 
-            "Italian", 
-            "Russian", 
-            "Chinese", 
-            "Japanese", 
-            "Korean", 
-            "Hindi", 
-            "Arabic"
+            "English",
+            "Spanish",
+            "French",
+            "German",
+            "Portuguese",
+            "Italian",
+            "Russian",
+            "Chinese",
+            "Japanese",
+            "Korean",
+            "Hindi",
+            "Arabic",
           ]}
           value={
-            state.course.language === "en" ? "English" :
-            state.course.language === "es" ? "Spanish" :
-            state.course.language === "fr" ? "French" :
-            state.course.language === "de" ? "German" :
-            state.course.language === "pt" ? "Portuguese" :
-            state.course.language === "it" ? "Italian" :
-            state.course.language === "ru" ? "Russian" :
-            state.course.language === "zh" ? "Chinese" :
-            state.course.language === "ja" ? "Japanese" :
-            state.course.language === "ko" ? "Korean" :
-            state.course.language === "hi" ? "Hindi" :
-            state.course.language === "ar" ? "Arabic" :
-            state.course.language || "Select language"
+            state.course.language === "en"
+              ? "English"
+              : state.course.language === "es"
+              ? "Spanish"
+              : state.course.language === "fr"
+              ? "French"
+              : state.course.language === "de"
+              ? "German"
+              : state.course.language === "pt"
+              ? "Portuguese"
+              : state.course.language === "it"
+              ? "Italian"
+              : state.course.language === "ru"
+              ? "Russian"
+              : state.course.language === "zh"
+              ? "Chinese"
+              : state.course.language === "ja"
+              ? "Japanese"
+              : state.course.language === "ko"
+              ? "Korean"
+              : state.course.language === "hi"
+              ? "Hindi"
+              : state.course.language === "ar"
+              ? "Arabic"
+              : state.course.language || "Select language"
           }
           onChange={(e) => {
             const languageMap: { [key: string]: string } = {
-              "English": "en",
-              "Spanish": "es", 
-              "French": "fr",
-              "German": "de",
-              "Portuguese": "pt",
-              "Italian": "it",
-              "Russian": "ru",
-              "Chinese": "zh",
-              "Japanese": "ja",
-              "Korean": "ko",
-              "Hindi": "hi",
-              "Arabic": "ar"
+              English: "en",
+              Spanish: "es",
+              French: "fr",
+              German: "de",
+              Portuguese: "pt",
+              Italian: "it",
+              Russian: "ru",
+              Chinese: "zh",
+              Japanese: "ja",
+              Korean: "ko",
+              Hindi: "hi",
+              Arabic: "ar",
             };
             const languageCode = languageMap[e.target.value] || "en";
             actions.setCourseLanguage(languageCode);
@@ -140,22 +155,34 @@ const Screen2 = () => {
       />
 
       {/* Course Highlights Section */}
-      <div className={`w-full ${highlightsHaveErrors ? 'border border-red-200 rounded-lg p-4 bg-red-50' : ''}`}>
+      <div
+        className={`w-full ${
+          highlightsHaveErrors
+            ? "border border-red-200 rounded-lg p-4 bg-red-50"
+            : ""
+        }`}
+      >
         <div className="flex items-center justify-between mb-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Course Highlights <span className="text-red-500">*</span>
             </label>
-            <p className={`text-sm ${highlightsHaveErrors ? 'text-red-500' : 'text-gray-500'}`}>
-              {highlightsHaveErrors 
-                ? 'At least one complete highlight is required' 
-                : 'Add key highlights or selling points for your course'
-              }
+            <p
+              className={`text-sm ${
+                highlightsHaveErrors ? "text-red-500" : "text-gray-500"
+              }`}
+            >
+              {highlightsHaveErrors
+                ? "At least one complete highlight is required"
+                : "Add key highlights or selling points for your course"}
             </p>
           </div>
           <OrangeButton
             onClick={() => {
-              const newHighlights = [...state.course.highlights, { title: "", description: "" }];
+              const newHighlights = [
+                ...state.course.highlights,
+                { title: "", description: "" },
+              ];
               actions.setCourseHighlights(newHighlights);
             }}
             className="flex items-center gap-2 px-3 py-2 text-sm"
@@ -171,17 +198,26 @@ const Screen2 = () => {
               <Plus className="w-full h-full" />
             </div>
             <p className="text-sm">No highlights added yet</p>
-            <p className="text-xs">Click "Add Highlight" to get started</p>
+            <p className="text-xs">
+              Click &quot;Add Highlight&quot; to get started
+            </p>
           </div>
         ) : (
           <div className="space-y-4">
             {state.course.highlights.map((highlight, index) => (
-              <div key={index} className="p-4 border border-gray-200 rounded-lg bg-white">
+              <div
+                key={index}
+                className="p-4 border border-gray-200 rounded-lg bg-white"
+              >
                 <div className="flex items-start justify-between mb-3">
-                  <h4 className="text-sm font-medium text-gray-700">Highlight {index + 1}</h4>
+                  <h4 className="text-sm font-medium text-gray-700">
+                    Highlight {index + 1}
+                  </h4>
                   <button
                     onClick={() => {
-                      const newHighlights = state.course.highlights.filter((_, i) => i !== index);
+                      const newHighlights = state.course.highlights.filter(
+                        (_, i) => i !== index
+                      );
                       actions.setCourseHighlights(newHighlights);
                     }}
                     className="p-1 text-gray-400 hover:text-red-500 transition-colors"
@@ -189,29 +225,33 @@ const Screen2 = () => {
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
-                
+
                 <div className="space-y-3">
                   <Input
                     label="Title"
                     placeholder="e.g., Industry-Relevant Projects"
                     value={highlight.title}
                     onChange={(e) => {
-                      const newHighlights = state.course.highlights.map((h, i) =>
-                        i === index ? { ...h, title: e.target.value } : h
+                      const newHighlights = state.course.highlights.map(
+                        (h, i) =>
+                          i === index ? { ...h, title: e.target.value } : h
                       );
                       actions.setCourseHighlights(newHighlights);
                     }}
                     className="w-full"
                     required
                   />
-                  
+
                   <TextArea
                     label="Description"
                     placeholder="e.g., Build real-world projects that you can showcase in your portfolio"
                     value={highlight.description}
                     onChange={(e) => {
-                      const newHighlights = state.course.highlights.map((h, i) =>
-                        i === index ? { ...h, description: e.target.value } : h
+                      const newHighlights = state.course.highlights.map(
+                        (h, i) =>
+                          i === index
+                            ? { ...h, description: e.target.value }
+                            : h
                       );
                       actions.setCourseHighlights(newHighlights);
                     }}
@@ -240,7 +280,9 @@ const Screen2 = () => {
           !state.course.language ||
           !state.course.whoShouldJoin ||
           state.course.highlights.length === 0 ||
-          state.course.highlights.some(h => !h.title.trim() || !h.description.trim())
+          state.course.highlights.some(
+            (h) => !h.title.trim() || !h.description.trim()
+          )
         }
       />
     </Container>

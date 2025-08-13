@@ -1,5 +1,4 @@
 import Container from "@/app/admin/components/ui/Container";
-import FlexBox from "@/components/ui/FlexBox";
 import Input from "@/components/ui/inputs/Input";
 import React, { useState } from "react";
 import { useCourseContext } from "../../../reducers/course/providers/CourseReducerProvider";
@@ -64,14 +63,12 @@ const FEATURE_TEMPLATES = {
 const FeatureCard = ({
   feature,
   index,
-  planType,
   onRemove,
   onEdit,
   onToggleProvided,
 }: {
   feature: { title: string; provided: boolean };
   index: number;
-  planType: "essential" | "elite";
   onRemove: (index: number) => void;
   onEdit: (index: number, newTitle: string) => void;
   onToggleProvided: (index: number) => void;
@@ -183,10 +180,8 @@ const FeatureCard = ({
 // Feature Template Selector
 const FeatureTemplateSelector = ({
   onAddFeatures,
-  planType,
 }: {
   onAddFeatures: (features: string[]) => void;
-  planType: "essential" | "elite";
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [isOpen, setIsOpen] = useState(false);
@@ -344,10 +339,7 @@ const FeatureManager = ({
           </p>
         </div>
         <div className="flex gap-2">
-          <FeatureTemplateSelector
-            onAddFeatures={addMultipleFeatures}
-            planType={planType}
-          />
+          <FeatureTemplateSelector onAddFeatures={addMultipleFeatures} />
         </div>
       </div>
 
@@ -390,7 +382,6 @@ const FeatureManager = ({
               key={index}
               feature={feature}
               index={index}
-              planType={planType}
               onRemove={removeFeature}
               onEdit={editFeature}
               onToggleProvided={toggleFeatureProvided}
@@ -433,7 +424,7 @@ const Screen4 = () => {
   const [showPreview, setShowPreview] = useState(false);
 
   // Helper function to check if a plan is valid and active
-  const isPlanValidAndActive = (plan: any) => {
+  const isPlanValidAndActive = (plan: Plan | undefined) => {
     return (
       plan &&
       plan.isActive &&

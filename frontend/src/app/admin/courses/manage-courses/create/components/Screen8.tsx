@@ -8,9 +8,7 @@ import { useCourses } from "@/hooks/useCourses";
 import { validateSanitizedCourse } from "../../../reducers/course/utils/sanitization";
 import ScreenNavigation from "./shared/ScreenNavigation";
 import { useScreen } from "../contexts/ScreenContext";
-import FlexBox from "@/components/ui/FlexBox";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
-import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import {
   CheckCircle,
   AlertCircle,
@@ -22,7 +20,6 @@ import {
   TrendingUp,
   FileText,
   Award,
-  Users,
   Clock,
   Star,
   Zap,

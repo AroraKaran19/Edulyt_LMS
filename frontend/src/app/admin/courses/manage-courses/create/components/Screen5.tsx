@@ -148,6 +148,7 @@ const Screen5 = () => {
       const contentType = response.headers.get("content-type");
       return response.ok && (contentType?.startsWith("image/") || false);
     } catch (error) {
+      console.error("Error checking image URL:", error);
       return false;
     }
   };
@@ -216,7 +217,7 @@ const Screen5 = () => {
   const updateTestimonial = (
     index: number,
     field: keyof Testimonial,
-    value: any
+    value: string | boolean | number | undefined
   ) => {
     const currentTestimonials = state.course.testimonials || [];
     const updatedTestimonials = [...currentTestimonials];
@@ -228,7 +229,7 @@ const Screen5 = () => {
 
     // Validate image if profileImage is updated
     if (field === "profileImage") {
-      validateTestimonialImage(index, value);
+      validateTestimonialImage(index, value as string);
     }
   };
 
@@ -660,7 +661,7 @@ const Screen5 = () => {
             <div className="text-center py-8 text-gray-500">
               <Star className="w-12 h-12 mx-auto mb-3 text-gray-300" />
               <p>No testimonials added yet</p>
-              <p className="text-sm">Click "Add Testimonial" to get started</p>
+              <p className="text-sm">Click &quot;Add Testimonial&quot; to get started</p>
             </div>
           )}
         </div>

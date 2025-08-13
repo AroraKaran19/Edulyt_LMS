@@ -111,7 +111,7 @@ const DropDown = ({
           >
             {options.map((option, index) => (
               <button
-                key={option}
+                key={index}
                 type="button"
                 onClick={() => {
                   // Only update internal state if not controlled

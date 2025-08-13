@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { getPresignedUrl, getVideoPresignedUrl } from '@/lib/presignedUrl';
+import { getVideoPresignedUrl } from '@/lib/presignedUrl';
 
 interface UsePresignedUrlOptions {
   expiresIn?: number;

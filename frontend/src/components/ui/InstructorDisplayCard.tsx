@@ -1,10 +1,10 @@
 import React from "react";
-import { Instructor } from "@/types";
+import { CourseInstructor } from "@/types";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 interface InstructorDisplayCardProps {
-  instructor: Instructor;
+  instructor: CourseInstructor;
   className?: string;
 }
 

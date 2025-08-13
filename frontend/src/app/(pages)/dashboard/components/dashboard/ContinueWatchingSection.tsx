@@ -1,12 +1,11 @@
 import FlexBox from "@/components/ui/FlexBox";
-import { demoCourses } from "@/data/demoCourses";
 import { Course } from "@/types";
 import { ArrowRight } from "lucide-react";
 import React from "react";
 import CoursesCard1 from "./ui/CoursesCard1";
 
 const ContinueWatchingSection = () => {
-  const courses: Course[] = demoCourses;
+  const courses: Course[] = [];
 
   return (
     <>

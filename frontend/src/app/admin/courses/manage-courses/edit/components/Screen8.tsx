@@ -20,7 +20,6 @@ import {
   TrendingUp,
   FileText,
   Award,
-  Users,
   Clock,
   Star,
   Zap,
@@ -128,7 +127,7 @@ const Screen8 = () => {
 
   const handleSubmitCourse = async () => {
     if (!allValid) {
-      setSubmitError("Please complete all required fields before creating the course.");
+      setSubmitError("Please complete all required fields before updating the course.");
       return;
     }
 
@@ -198,7 +197,7 @@ const Screen8 = () => {
             </div>
             <div className="flex-1">
               <h3 className="text-xl font-bold text-orange-800 mb-1">
-                🎉 Course Ready for Creation!
+                🎉 Course Ready for Update!
               </h3>
               <p className="text-orange-700">
                 All required fields are completed. Your course is ready to be updated and published.
@@ -225,7 +224,7 @@ const Screen8 = () => {
         title="Course Validation"
         description={`${allValid 
           ? "All requirements met - Course is ready!" 
-          : `${invalidChecks.length} validation issue${invalidChecks.length !== 1 ? 's' : ''} found - Please fix before creating`
+          : `${invalidChecks.length} validation issue${invalidChecks.length !== 1 ? 's' : ''} found - Please fix before updating`
         }`}
         icon={Award}
         className="mb-6"
@@ -296,7 +295,7 @@ const Screen8 = () => {
                   Action Required
                 </span>
                 <div className="text-sm mt-1">
-                  Please complete all required fields above before creating your course. 
+                  Please complete all required fields above before updating your course. 
                   Each section marked with a red icon needs attention.
                 </div>
               </div>

@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { Search, Filter, Download } from "lucide-react";
 import Image from "next/image";
-import { demoCourses } from "@/data/demoCourses";
+import { Course } from "@/types";
 
 const tabs = [
   { label: "All" },
@@ -74,8 +74,9 @@ const CoursesPage = () => {
       {/* Courses Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
         {Array.from({ length: 8 }, (_, idx) => {
-          const courseIndex = idx % demoCourses.length;
-          const course = demoCourses[courseIndex];
+          // const courseIndex = idx % 0;
+          // TODO: Add course data
+          const course: Course = {} as Course;
           // Mock progress and certificate for demo - cycling through 0%, 12%, 100%
           const progress = [0, 12, 100][idx % 3];
           const showCertificate = progress === 100;

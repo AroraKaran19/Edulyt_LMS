@@ -44,7 +44,6 @@ const ContentCard: React.FC<ContentCardProps> = ({
 }) => {
   const [isEditing, setIsEditing] = useState(!contentData.title);
   const content = contentData;
-  const { uploadFile, isUploading } = useUpload();
 
   const getContentConfig = () => {
     if (content.type === "video") {

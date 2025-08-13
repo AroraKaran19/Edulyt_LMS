@@ -11,7 +11,7 @@ export default function NotFound() {
           Course Not Found
         </h2>
         <p className="text-gray-600 mb-6">
-          The course you're looking for doesn't exist or has been removed.
+          The course you&apos;re looking for doesn&apos;t exist or has been removed.
         </p>
         <div className="flex gap-4 justify-center">
           <Link href="/admin/courses/manage-courses">

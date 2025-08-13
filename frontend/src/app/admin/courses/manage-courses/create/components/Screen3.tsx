@@ -79,7 +79,7 @@ const Screen3 = () => {
   };
 
   // Custom confirmation handler
-  const handleUploadConfirmation = async (file: File, folderName: string): Promise<boolean> => {
+  const handleUploadConfirmation = async (): Promise<boolean> => {
     // You can add custom logic here if needed
     // For now, just return true to proceed
     return true;

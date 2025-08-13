@@ -53,9 +53,10 @@ const CourseCard = ({
           {course?.title}
         </p>
         <RatingContainer
-          ratings={course?.reviews}
+          reviewCount={course?.reviews.length}
+          totalRating={course.totalRatings}
           className="mt-2 text-xs"
-          courseId={course?.slug}
+          courseSlug={course?.slug}
         />
         <div className="instructors mt-2 flex gap-2 select-none mb-2 flex-col sm:flex-row items-start sm:items-center">
           {course?.instructor.map((instructor, index) => {

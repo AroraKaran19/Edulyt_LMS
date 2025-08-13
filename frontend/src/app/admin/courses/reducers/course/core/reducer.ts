@@ -97,31 +97,6 @@ const safeUpdateCourseField = (
   };
 };
 
-const safeUpdateArrayItem = <T extends { _id?: string }>(
-  array: T[],
-  id: string,
-  updates: Partial<T>
-): T[] => {
-  const index = array.findIndex((item) => item._id === id);
-  if (index === -1) {
-    throw new Error(`Item with ID '${id}' not found in array`);
-  }
-
-  return array.map((item, i) => (i === index ? { ...item, ...updates } : item));
-};
-
-const safeRemoveArrayItem = <T extends { _id?: string }>(
-  array: T[],
-  id: string
-): T[] => {
-  const index = array.findIndex((item) => item._id === id);
-  if (index === -1) {
-    throw new Error(`Item with ID '${id}' not found in array`);
-  }
-
-  return array.filter((item) => item._id !== id);
-};
-
 // ===================
 // Enhanced Reducer
 // ===================

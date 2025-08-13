@@ -430,7 +430,7 @@ const SEOQualityIndicator = ({
               </div>
               <div className="flex items-start gap-2">
                 <div className="w-1.5 h-1.5 bg-orange-500 rounded-full mt-2 flex-shrink-0"></div>
-                <span>Title will be formatted as "Course Title | Edulyt"</span>
+                <span>Title will be formatted as &quot;Course Title | Edulyt&quot;</span>
               </div>
               <div className="flex items-start gap-2">
                 <div className="w-1.5 h-1.5 bg-orange-500 rounded-full mt-2 flex-shrink-0"></div>
@@ -1201,7 +1201,7 @@ const Screen6 = () => {
           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-colors text-sm"
         />
         <div className="mt-2 flex justify-between text-sm text-gray-500">
-          <span>Format: "Course Title | Edulyt" (max 60 characters)</span>
+          <span>Format: &quot;Course Title | Edulyt&quot; (max 60 characters)</span>
           <span
             className={
               (state.course.metaTitle?.length || 0) > 60
@@ -1312,7 +1312,7 @@ const Screen6 = () => {
                     clipRule="evenodd"
                   />
                 </svg>
-                Manually edited - won't auto-update from title
+                Manually edited - won&apos;t auto-update from title
               </p>
             ) : (
               <p className="text-green-600 mt-1">

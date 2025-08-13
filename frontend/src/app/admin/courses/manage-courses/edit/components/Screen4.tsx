@@ -63,14 +63,12 @@ const FEATURE_TEMPLATES = {
 const FeatureCard = ({
   feature,
   index,
-  planType,
   onRemove,
   onEdit,
   onToggleProvided,
 }: {
   feature: { title: string; provided: boolean };
   index: number;
-  planType: "essential" | "elite";
   onRemove: (index: number) => void;
   onEdit: (index: number, newTitle: string) => void;
   onToggleProvided: (index: number) => void;
@@ -182,10 +180,8 @@ const FeatureCard = ({
 // Feature Template Selector
 const FeatureTemplateSelector = ({
   onAddFeatures,
-  planType,
 }: {
   onAddFeatures: (features: string[]) => void;
-  planType: "essential" | "elite";
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [isOpen, setIsOpen] = useState(false);
@@ -343,10 +339,7 @@ const FeatureManager = ({
           </p>
         </div>
         <div className="flex gap-2">
-          <FeatureTemplateSelector
-            onAddFeatures={addMultipleFeatures}
-            planType={planType}
-          />
+          <FeatureTemplateSelector onAddFeatures={addMultipleFeatures} />
         </div>
       </div>
 
@@ -389,7 +382,6 @@ const FeatureManager = ({
               key={index}
               feature={feature}
               index={index}
-              planType={planType}
               onRemove={removeFeature}
               onEdit={editFeature}
               onToggleProvided={toggleFeatureProvided}
@@ -432,7 +424,7 @@ const Screen4 = () => {
   const [showPreview, setShowPreview] = useState(false);
 
   // Helper function to check if a plan is valid and active
-  const isPlanValidAndActive = (plan: any) => {
+  const isPlanValidAndActive = (plan: Plan | undefined) => {
     return (
       plan &&
       plan.isActive &&
@@ -465,8 +457,8 @@ const Screen4 = () => {
     return (completed / checks.length) * 100;
   };
 
-  // Helper function to create a valid plan object
-  const createValidPlan = (
+  // Helper function to update a valid plan object
+  const updateValidPlan = (
     planType: "essential" | "elite",
     updates: Partial<Plan>
   ): Plan => {
@@ -647,7 +639,7 @@ const Screen4 = () => {
                 placeholder={`Enter title for ${activeTab} plan`}
                 value={state.course.plans?.[activeTab]?.title || ""}
                 onChange={(e) => {
-                  const validPlan = createValidPlan(activeTab, {
+                  const validPlan = updateValidPlan(activeTab, {
                     title: e.target.value,
                   });
                   actions.updateCoursePlan(activeTab, validPlan);
@@ -671,7 +663,7 @@ const Screen4 = () => {
                     const price =
                       e.target.value === "" ? 0 : Number(e.target.value);
                     if (!isNaN(price)) {
-                      const validPlan = createValidPlan(activeTab, { price });
+                      const validPlan = updateValidPlan(activeTab, { price });
                       actions.updateCoursePlan(activeTab, validPlan);
                     }
                   }}
@@ -692,7 +684,7 @@ const Screen4 = () => {
                     const value = e.target.value.trim();
                     const trialDays = value === "" ? undefined : Number(value);
                     if (value === "" || !isNaN(trialDays!)) {
-                      const validPlan = createValidPlan(activeTab, {
+                      const validPlan = updateValidPlan(activeTab, {
                         trialDays,
                       });
                       actions.updateCoursePlan(activeTab, validPlan);
@@ -715,7 +707,7 @@ const Screen4 = () => {
                   "Select billing period"
                 }
                 onChange={(e) => {
-                  const validPlan = createValidPlan(activeTab, {
+                  const validPlan = updateValidPlan(activeTab, {
                     billingPeriod: e.target.value as
                       | "monthly"
                       | "annually"
@@ -731,7 +723,7 @@ const Screen4 = () => {
                   label="Plan is Active"
                   checked={state.course.plans?.[activeTab]?.isActive || false}
                   onChange={(checked) => {
-                    const validPlan = createValidPlan(activeTab, {
+                    const validPlan = updateValidPlan(activeTab, {
                       isActive: checked,
                     });
                     actions.updateCoursePlan(activeTab, validPlan);
@@ -744,7 +736,7 @@ const Screen4 = () => {
                     label="Mark as Popular (Recommended badge)"
                     checked={state.course.plans?.elite?.isPopular || false}
                     onChange={(checked) => {
-                      const validPlan = createValidPlan("elite", {
+                      const validPlan = updateValidPlan("elite", {
                         isPopular: checked,
                       });
                       actions.updateCoursePlan("elite", validPlan);
@@ -911,7 +903,7 @@ const Screen4 = () => {
             planType={activeTab}
             features={state.course.plans?.[activeTab]?.features || []}
             onUpdateFeatures={(features) => {
-              const validPlan = createValidPlan(activeTab, { features });
+              const validPlan = updateValidPlan(activeTab, { features });
               actions.updateCoursePlan(activeTab, validPlan);
             }}
           />

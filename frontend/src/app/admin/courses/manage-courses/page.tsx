@@ -21,7 +21,7 @@ import { useCourses } from "@/hooks/useCourses";
 
 const ManageCoursesPage = () => {
   const router = useRouter();
-  const { getAllCourses, isLoading, error } = useCourses();
+  const { getAllCourses } = useCourses();
   const [courses, setCourses] = useState<Course[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");

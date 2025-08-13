@@ -6,7 +6,6 @@ import React, { useMemo } from "react";
 import { useCourseContext } from "../../../reducers/course/providers/CourseReducerProvider";
 import TextArea from "@/components/ui/inputs/TextArea";
 import DropDown from "@/components/ui/dropdown/DropDown";
-import PercentageInput from "@/components/ui/inputs/PercentageInput";
 import ScreenNavigation from "./shared/ScreenNavigation";
 import AlertBanner from "@/components/ui/AlertBanner";
 import { useScreen } from "../contexts/ScreenContext";

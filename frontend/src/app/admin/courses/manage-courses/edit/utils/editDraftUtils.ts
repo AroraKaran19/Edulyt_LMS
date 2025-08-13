@@ -1,5 +1,7 @@
 // Utility functions for managing course edit drafts
 
+import { Course } from "@/types";
+
 const COURSE_EDIT_DRAFT_KEY = "course_edit_draft";
 const COURSE_EDIT_CURRENT_SCREEN_KEY = "course_edit_current_screen";
 const COURSE_EDIT_ID_KEY = "course_edit_id";
@@ -24,7 +26,7 @@ export const editDraftUtils = {
   },
 
   // Get edit draft data
-  getDraft: (): any | null => {
+  getDraft: (): Course | null => {
     try {
       const draft = localStorage.getItem(COURSE_EDIT_DRAFT_KEY);
       return draft ? JSON.parse(draft) : null;
@@ -52,7 +54,7 @@ export const editDraftUtils = {
   },
 
   // Save edit draft data
-  saveDraft: (courseData: any): void => {
+  saveDraft: (courseData: Course): void => {
     try {
       localStorage.setItem(COURSE_EDIT_DRAFT_KEY, JSON.stringify(courseData));
       console.log("Edit draft saved");

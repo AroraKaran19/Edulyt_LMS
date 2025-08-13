@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { Instructor } from "@/types";
+import { CourseInstructor } from "@/types";
 import Image from "next/image";
 import Link from "next/link";
 import React from "react";
@@ -7,7 +7,7 @@ import React from "react";
 const InstructorCard = ({
   instructor,
   ...props
-}: { instructor: Instructor } & {
+}: { instructor: CourseInstructor } & {
   className?: string;
   style?: React.CSSProperties;
 }) => {
