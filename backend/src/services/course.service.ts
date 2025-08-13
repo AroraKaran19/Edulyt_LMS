@@ -888,7 +888,6 @@ export class CourseService {
         }
       }
 
-      console.log("Course updated successfully:", !!updatedCourse);
       return updatedCourse;
     } catch (error) {
       console.error("Error updating course:", error);

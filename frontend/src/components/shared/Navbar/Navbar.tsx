@@ -4,11 +4,13 @@ import React, { useState } from "react";
 import OrangeButton from "../../ui/buttons/OrangeButton";
 import Navlink from "./Navlink";
 import { Manrope, Plus_Jakarta_Sans } from "next/font/google";
-import { cn } from "@/lib/utils";
+import { cn, fetcher } from "@/lib/utils";
 import { NavItem } from "@/types";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import { Menu, X } from "lucide-react";
 import HoverContainer from "./HoverContainer";
+import useSWR from "swr";
+import { ENDPOINTS } from "@/constants/endpoints";
 
 const manrope = Manrope({
   subsets: ["latin"],
@@ -20,16 +22,34 @@ const plusJakartaSans = Plus_Jakarta_Sans({
   weight: ["400", "500", "600", "700"],
 });
 
+const formatNumber = (number: number) => {
+  if (number > 100) {
+    return "100+";
+  } else {
+    if (number > 10) {
+      return "10+";
+    } else {
+      return `${number}`;
+    }
+  }
+};
+
 const Navbar = () => {
+  // TODO: implement redux to store the course count
+  const { data } = useSWR(ENDPOINTS.courses.all, fetcher);
+  const courses = data?.data.courses;
+  const courseCount = courses?.length;
+
   const navItems: NavItem[] = [
     {
       label: "Courses",
       href: "/courses",
-      featureBox: "10+",
+      featureBox: formatNumber(courseCount),
     },
     {
       label: "Internships",
-      href: "/internships",
+      // TODO: change to the actual link when the internship page is ready
+      href: "https://edulyt.com/internships.php",
       featureBox: "100+",
     },
   ];
@@ -76,7 +96,8 @@ const Navbar = () => {
       >
         <div className="logo h-[52px] min-h-[24px] flex-none w-1/3 flex items-center lg:w-1/4">
           <Link
-            href="/"
+            href="https://edulyt.com"
+            target="_blank"
             className="h-full cursor-pointer select-none"
             draggable={false}
           >

@@ -17,6 +17,7 @@ const DiscountCountdown = ({
   className?: string;
   style?: React.CSSProperties;
 }) => {
+  const [mounted, setMounted] = useState(false);
   const [countdown, setCountdown] = useState<{
     days: number;
     hours: number;
@@ -24,7 +25,14 @@ const DiscountCountdown = ({
     seconds: number;
   }>({ days, hours, minutes, seconds });
 
+  // Set mounted to true after component mounts on client
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return; // Don't start countdown until mounted
+
     const interval = setInterval(() => {
       setCountdown((prev) => {
         // If countdown has reached zero, stop the timer
@@ -49,10 +57,13 @@ const DiscountCountdown = ({
       });
     }, 1000);
     return () => clearInterval(interval);
-  }, [days, hours, minutes, seconds]);
+  }, [mounted, days, hours, minutes, seconds]);
+
+  // Show initial values during SSR and until mounted
+  const displayCountdown = mounted ? countdown : { days, hours, minutes, seconds };
 
   return (
-    <div
+    mounted ? <div
       className={cn(
         "discount-countdown flex flex-col gap-2 text-base",
         props.className
@@ -61,13 +72,14 @@ const DiscountCountdown = ({
       <p className="font-medium text-text-primary flex flex-wrap gap-2 justify-center md:justify-start">
         <span className="underline">Limited Offer</span>
         <span className="underline">
-          {countdown.days > 0 ? `${countdown.days} D : ` : ""}
-          {countdown.hours > 0 ? `${countdown.hours} Hr : ` : ""}
-          {countdown.minutes > 0 ? `${countdown.minutes} Min : ` : ""}
-          {countdown.seconds > 0 ? `${countdown.seconds} Sec` : ""}
+          {displayCountdown.days > 0 ? `${displayCountdown.days} D : ` : ""}
+          {displayCountdown.hours > 0 ? `${displayCountdown.hours} Hr : ` : ""}
+          {displayCountdown.minutes > 0 ? `${displayCountdown.minutes} Min : ` : ""}
+          {displayCountdown.seconds > 0 ? `${displayCountdown.seconds} Sec` : ""}
         </span>
       </p>
     </div>
+    : null
   );
 };
 

@@ -32,6 +32,7 @@ const Input = ({
   disabled = false,
   min,
   max,
+  variant = "default",
   ...props
 }: InputProps) => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -75,6 +76,7 @@ const Input = ({
           "transition-all duration-200 ease-in-out outline-none",
           "disabled:opacity-50 disabled:cursor-not-allowed",
           "shadow-sm hover:shadow-md",
+          variant === "small" && "text-xs py-2 px-3",
         )}
         required={required}
         onChange={handleChange}

@@ -9,8 +9,10 @@ import { NavItem } from "@/types";
 const Navlink = ({ href, label, featureBox, onMouseEnter, active, isDashboard }: NavItem) => {
   const pathname = usePathname();
   const [windowWidth, setWindowWidth] = useState(0);
+  const [mounted, setMounted] = useState(false);
   
   useEffect(() => {
+    setMounted(true);
     const handleResize = () => {
       setWindowWidth(window.innerWidth);
     };
@@ -20,7 +22,7 @@ const Navlink = ({ href, label, featureBox, onMouseEnter, active, isDashboard }:
     return () => window.removeEventListener('resize', handleResize);
   }, []);
   
-  const isMobile = windowWidth > 0 && windowWidth <= 768;
+  const isMobile = mounted && windowWidth > 0 && windowWidth <= 768;
   const isActive = isDashboard
     ? pathname === href
     : pathname === href || (href !== "/" && pathname.startsWith(href));
@@ -28,6 +30,7 @@ const Navlink = ({ href, label, featureBox, onMouseEnter, active, isDashboard }:
   return (
     <Link
       href={href}
+      target={href.startsWith("https") ? "_blank" : undefined}
       className={cn(
         "text-sm font-semibold px-5 py-2.5 transition-colors duration-400 ease-in-out rounded-full select-none",
         {

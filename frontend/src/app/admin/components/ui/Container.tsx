@@ -8,6 +8,7 @@ const Container = ({
   icon,
   title,
   description,
+  classNameBody,
   ...props
 }: { children?: React.ReactNode } & React.HTMLAttributes<HTMLDivElement> & {
     id?: string;
@@ -15,6 +16,7 @@ const Container = ({
     icon?: React.ComponentType<{ className?: string }>;
     title?: string;
     description?: string;
+    classNameBody?: string;
   }) => {
   return (
     <section
@@ -30,13 +32,16 @@ const Container = ({
             {React.createElement(icon, { className: "size-6" })}
           </FlexBox>
         )}
-        <FlexBox className="container-header-content w-full flex-col justify-center">
+        <FlexBox className="container-header-content w-full flex flex-col justify-center">
           <h2 className="text-xl font-semibold">{title}</h2>
           <p className="text-sm text-gray-500">{description}</p>
         </FlexBox>
       </FlexBox>
       <FlexBox
-        className="container-body w-full h-full flex-col gap-4 max-h-full overflow-y-auto"
+        className={cn(
+          "container-body w-full h-full flex-col gap-4 max-h-full overflow-y-auto",
+          classNameBody
+        )}
         style={{ scrollbarWidth: "thin" }}
       >
         {children}

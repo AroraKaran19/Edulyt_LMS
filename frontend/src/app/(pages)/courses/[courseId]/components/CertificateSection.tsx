@@ -3,9 +3,10 @@ import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import { Course } from "@/types";
 import { Check, Crown, X } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import React from "react";
+import CertificateCarousel from "../../components/CertificateCarousel";
+import { cn } from "@/lib/utils";
 
 const CertificateSection = ({ course }: { course: Course }) => {
   const plans = [];
@@ -63,7 +64,7 @@ const CertificateSection = ({ course }: { course: Course }) => {
   }
 
   return (
-    <SectionContainer id="plans" className="bg-text-primary !px-20">
+    <SectionContainer id="plans" className="bg-text-primary xl:!px-20">
       <div className="plans-header w-full flex flex-col md:flex-row items-center gap-4">
         <div className="header-left w-full md:w-1/2 flex flex-col gap-2">
           <h2 className="font-normal font-coolvetica text-white text-2xl md:text-4xl text-center md:text-left">
@@ -96,7 +97,11 @@ const CertificateSection = ({ course }: { course: Course }) => {
           {plans.map((plan, index) => (
             <div
               key={index}
-              className="plan-card w-1/2 flex flex-col gap-2 bg-white rounded-2xl"
+              className={cn(
+                "plan-card flex flex-col gap-2 bg-white rounded-2xl",
+                plans.length === 1 && "w-full sm:w-2/4 lg:w-3/4 mx-auto",
+                plans.length === 2 && "w-1/2"
+              )}
             >
               <div className="flex w-full items-center gap-2 p-3 md:p-4">
                 <div className="plan-icon p-0.5 bg-[#E9E9E9] rounded-md">
@@ -163,18 +168,8 @@ const CertificateSection = ({ course }: { course: Course }) => {
             </div>
           ))}
         </div>
-        <div className="certificate-preview w-full md:w-1/2 relative">
-          <Image
-            src="/certificate.svg"
-            alt="Certificate Preview"
-            width={1500}
-            height={569}
-            className="w-full h-full object-contain object-center select-none max-h-[470px]"
-            priority
-            quality={100}
-            draggable={false}
-            unoptimized
-          />
+        <div className="certificate-preview !h-[400px] md:h-auto w-full sm:w-3/4 md:w-1/2 mx-auto relative">
+          <CertificateCarousel />
         </div>
       </div>
     </SectionContainer>
