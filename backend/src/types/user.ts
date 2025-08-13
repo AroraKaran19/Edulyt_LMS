@@ -25,6 +25,7 @@ interface User {
   username: string;
   fullName: string;
   email: string;
+  password: string;
   phone: string;
   isPhoneVerified: boolean;
   dob: Date;
@@ -45,6 +46,7 @@ interface User {
   pursuingMarks?: PursuingMarks[];
   enrolledCourses?: string[]; // Array of Course IDs
   referral?: string;
+  refreshToken?: string;
   isActive: boolean;
   createdAt?: Date;
   updatedAt?: Date;

@@ -117,6 +117,12 @@ const userSchema = new mongoose.Schema<User>(
         message: "Email must be a valid email address",
       },
     },
+    password: {
+      type: String,
+      required: true,
+      minlength: [5, "Password must be at least 8 characters"],
+      maxlength: [100, "Password cannot exceed 100 characters"],
+    },
     phone: {
       type: String,
       required: true,
@@ -244,6 +250,11 @@ const userSchema = new mongoose.Schema<User>(
       required: false,
       default: "",
       trim: true,
+    },
+    refreshToken: {
+      type: String,
+      required: false,
+      default: "",
     },
     isActive: {
       type: Boolean,
