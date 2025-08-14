@@ -1,9 +1,10 @@
 import { Router } from "express";
-import { authController } from "../controllers/auth.controller";
+import { AuthController } from "../controllers/auth.controller";
 import dotenv from "dotenv";
 dotenv.config();
 
 const router = Router();
+const authController = new AuthController();
 
 /**
  * @route   POST /api/auth/register
@@ -18,5 +19,12 @@ router.post("/register", authController.register);
  * @access  Public
  */
 router.post("/login", authController.login);
+
+/**
+ * @route   POST /api/auth/refresh-token
+ * @desc    Refresh a token
+ * @access  Public
+ */
+router.post("/refresh-token", authController.refreshToken);
 
 export default router;

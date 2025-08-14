@@ -49,26 +49,35 @@ router.get("/id/:courseId", courseController.getCourseById);
 router.put("/:courseId", courseController.updateCourseById);
 
 /**
+ * @route   PUT /api/courses/status/:courseId
+ * @desc    Update course status
+ * @access  Private (Admin only)
+ * @params
+ *   - courseId: Course ID (URL parameter)
+ * @example
+ *   PUT /api/courses/status/507f1f77bcf86cd799439011
+ *   PUT /api/courses/status/64f8a1b2c3d4e5f6a7b8c9d0
+ */
+router.put("/status/:courseId", courseController.updateCourseStatus);
+
+/**
+ * @route   PUT /api/courses/status/bulk
+ * @desc    Update course status in bulk
+ * @access  Private (Admin only)
+ * @body @type {Course[]}
+ * @example
+ *   PUT /api/courses/status/bulk
+ */
+router.put("/status/bulk", courseController.updateCourseStatusBulk);
+
+/**
  * @route   DELETE /api/courses/id/:courseId
  * @desc    Delete a course by ID
  * @access  Private (Admin only)
  * @params
  *   - courseId: Course ID (URL parameter)
  */
-// router.delete("/id/:courseId", courseController.deleteCourseById);
-
-/**
- * @route   GET /api/courses/admin/id/:courseId
- * @desc    Get a course by ID (Admin version - includes inactive courses)
- * @access  Private (Admin only)
- * @params
- *   - courseId: Course ID (URL parameter)
- * @example
- *   GET /api/courses/admin/id/507f1f77bcf86cd799439011
- *   GET /api/courses/admin/id/64f8a1b2c3d4e5f6a7b8c9d0
- */
-// router.get("/admin/id/:courseId", verifyAdmin, courseController.getCourseByIdAdmin);
-router.get("/admin/id/:courseId", courseController.getCourseByIdAdmin);
+router.delete("/:courseId", courseController.deleteCourseById);
 
 /**
  * @route   GET /api/courses/:slug
@@ -90,5 +99,18 @@ router.get("/:slug", courseController.getCourseBySlug);
  */
 // router.post("/", verifyAdmin, courseController.createCourse);
 router.post("/", courseController.createCourse)
+
+/**
+ * @route   GET /api/courses/admin/id/:courseId
+ * @desc    Get a course by ID (Admin version - includes inactive courses)
+ * @access  Private (Admin only)
+ * @params
+ *   - courseId: Course ID (URL parameter)
+ * @example
+ *   GET /api/courses/admin/id/507f1f77bcf86cd799439011
+ *   GET /api/courses/admin/id/64f8a1b2c3d4e5f6a7b8c9d0
+ */
+// router.get("/admin/id/:courseId", verifyAdmin, courseController.getCourseByIdAdmin);
+router.get("/admin/id/:courseId", courseController.getCourseByIdAdmin);
 
 export default router;

@@ -18,10 +18,86 @@ import {
   Star,
 } from "lucide-react";
 import { useCourses } from "@/hooks/useCourses";
+import { cn } from "@/lib/utils";
+
+// Status Toggle Component
+const StatusToggle = ({
+  isActive,
+  onToggle,
+  courseId,
+  isLoading = false,
+}: {
+  isActive: boolean;
+  onToggle: (courseId: string, newStatus: boolean) => void;
+  courseId: string;
+  isLoading?: boolean;
+}) => {
+  return (
+    <button
+      onClick={() => onToggle(courseId, !isActive)}
+      disabled={isLoading}
+      className={cn(
+        "relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2",
+        isActive ? "bg-orange-500" : "bg-gray-200",
+        isLoading && "opacity-50 cursor-not-allowed"
+      )}
+    >
+      <span
+        className={cn(
+          "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+          isActive ? "translate-x-6" : "translate-x-1"
+        )}
+      />
+      {isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+        </div>
+      )}
+    </button>
+  );
+};
+
+// Status Badge Component
+const StatusBadge = ({
+  isActive,
+  isFeatured,
+  isCertified,
+}: {
+  isActive: boolean;
+  isFeatured?: boolean;
+  isCertified?: boolean;
+}) => {
+  return (
+    <div className="flex flex-col gap-1">
+      <span
+        className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+          isActive ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+        }`}
+      >
+        {isActive ? "Active" : "Inactive"}
+      </span>
+      {isFeatured && (
+        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
+          Featured
+        </span>
+      )}
+      {isCertified && (
+        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+          Certified
+        </span>
+      )}
+    </div>
+  );
+};
 
 const ManageCoursesPage = () => {
   const router = useRouter();
-  const { getAllCourses } = useCourses();
+  const {
+    getAllCourses,
+    deleteCourseById,
+    updateCourseStatusBulk,
+    updateCourseStatus,
+  } = useCourses();
   const [courses, setCourses] = useState<Course[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
@@ -29,6 +105,9 @@ const ManageCoursesPage = () => {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [selectedCourses, setSelectedCourses] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
+  const [loadingStates, setLoadingStates] = useState<{
+    [key: string]: boolean;
+  }>({});
 
   useEffect(() => {
     const fetchCourses = async () => {
@@ -84,6 +163,7 @@ const ManageCoursesPage = () => {
     ) {
       try {
         setCourses((prev) => prev.filter((course) => course._id !== courseId));
+        await deleteCourseById(courseId);
       } catch (error) {
         console.error("Failed to delete course:", error);
       }
@@ -94,7 +174,31 @@ const ManageCoursesPage = () => {
     router.push(`/courses/${slug}`);
   };
 
-  const handleBulkAction = (action: string) => {
+  // Individual course status toggle
+  const handleStatusToggle = async (courseId: string, newStatus: boolean) => {
+    setLoadingStates((prev) => ({ ...prev, [courseId]: true }));
+
+    try {
+      const result = await updateCourseStatus(courseId, newStatus);
+      if (result.success) {
+        setCourses((prev) =>
+          prev.map((course) =>
+            course._id === courseId
+              ? { ...course, isActive: newStatus }
+              : course
+          )
+        );
+      } else {
+        console.error("Failed to update course status:", result.error);
+      }
+    } catch (error) {
+      console.error("Error updating course status:", error);
+    } finally {
+      setLoadingStates((prev) => ({ ...prev, [courseId]: false }));
+    }
+  };
+
+  const handleBulkAction = async (action: string) => {
     if (selectedCourses.length === 0) {
       alert("Please select courses first");
       return;
@@ -110,23 +214,11 @@ const ManageCoursesPage = () => {
         }
         break;
       case "activate":
-        setCourses((prev) =>
-          prev.map((course) =>
-            selectedCourses.includes(course._id!)
-              ? { ...course, isActive: true }
-              : course
-          )
-        );
+        await updateCourseStatusBulk(selectedCourses, true);
         setSelectedCourses([]);
         break;
       case "deactivate":
-        setCourses((prev) =>
-          prev.map((course) =>
-            selectedCourses.includes(course._id!)
-              ? { ...course, isActive: false }
-              : course
-          )
-        );
+        await updateCourseStatusBulk(selectedCourses, false);
         setSelectedCourses([]);
         break;
     }
@@ -158,7 +250,9 @@ const ManageCoursesPage = () => {
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center">
               <BookOpen className="w-8 h-8 text-orange-500 mr-3" />
-              <h1 className="text-2xl font-bold text-gray-900">Course Management</h1>
+              <h1 className="text-2xl font-bold text-gray-900">
+                Course Management
+              </h1>
             </div>
             <OrangeButton
               onClick={handleCreateCourse}
@@ -413,6 +507,19 @@ const ManageCoursesPage = () => {
                     </span>
                   </div>
 
+                  {/* Status Toggle */}
+                  <div className="flex items-center justify-between mb-4 p-3 bg-gray-50 rounded-lg">
+                    <span className="text-sm font-medium text-gray-700">
+                      Status
+                    </span>
+                    <StatusToggle
+                      isActive={course.isActive}
+                      onToggle={handleStatusToggle}
+                      courseId={course._id!}
+                      isLoading={loadingStates[course._id!]}
+                    />
+                  </div>
+
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => handleViewCourse(course.slug!)}
@@ -447,7 +554,9 @@ const ManageCoursesPage = () => {
                     <th className="px-6 py-4 text-left">
                       <input
                         type="checkbox"
-                        checked={selectedCourses.length === filteredCourses.length}
+                        checked={
+                          selectedCourses.length === filteredCourses.length
+                        }
                         onChange={handleSelectAll}
                         className="w-4 h-4 text-orange-600 bg-gray-100 border-gray-300 rounded focus:ring-orange-500"
                       />
@@ -468,6 +577,9 @@ const ManageCoursesPage = () => {
                       Status
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Toggle
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                       Updated
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
@@ -477,14 +589,20 @@ const ManageCoursesPage = () => {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {filteredCourses.map((course) => (
-                    <tr key={course._id} className="hover:bg-gray-50 transition-colors">
+                    <tr
+                      key={course._id}
+                      className="hover:bg-gray-50 transition-colors"
+                    >
                       <td className="px-6 py-4 whitespace-nowrap">
                         <input
                           type="checkbox"
                           checked={selectedCourses.includes(course._id!)}
                           onChange={(e) => {
                             if (e.target.checked) {
-                              setSelectedCourses((prev) => [...prev, course._id!]);
+                              setSelectedCourses((prev) => [
+                                ...prev,
+                                course._id!,
+                              ]);
                             } else {
                               setSelectedCourses((prev) =>
                                 prev.filter((id) => id !== course._id)
@@ -521,22 +639,19 @@ const ManageCoursesPage = () => {
                         {formatPrice(course)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex flex-col gap-1">
-                          <span
-                            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                              course.isActive
-                                ? "bg-green-100 text-green-800"
-                                : "bg-red-100 text-red-800"
-                            }`}
-                          >
-                            {course.isActive ? "Active" : "Inactive"}
-                          </span>
-                          {course.isFeatured && (
-                            <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                              Featured
-                            </span>
-                          )}
-                        </div>
+                        <StatusBadge
+                          isActive={course.isActive}
+                          isFeatured={course.isFeatured}
+                          isCertified={course.isCertified}
+                        />
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <StatusToggle
+                          isActive={course.isActive}
+                          onToggle={handleStatusToggle}
+                          courseId={course._id!}
+                          isLoading={loadingStates[course._id!]}
+                        />
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {formatDate(course.updatedAt)}

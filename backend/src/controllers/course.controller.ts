@@ -365,7 +365,10 @@ export class CourseController {
       }
 
       // Update the course
-      const updatedCourse = await this.courseService.updateCourse(courseId, courseData);
+      const updatedCourse = await this.courseService.updateCourse(
+        courseId,
+        courseData
+      );
 
       // Return success response
       res.status(200).json({
@@ -377,6 +380,88 @@ export class CourseController {
       });
     } catch (error) {
       console.error("Error in updateCourseById controller:", error);
+    }
+  };
+
+  /**
+   * Update course status
+   * @param req - Express request object
+   * @param res - Express response object
+   * @param courseId - Course ID from URL parameters
+   */
+  updateCourseStatus = async (req: Request, res: Response): Promise<void> => {  
+    try {
+      const { courseId } = req.params;
+      const { isActive } = req.body;
+
+      // Update course status
+      const updatedCourse = await this.courseService.updateCourseStatus(courseId, isActive);
+
+      // Return success response
+      res.status(200).json({
+        success: true,
+        message: "Course status updated successfully",
+        data: {
+          course: updatedCourse,
+        },
+      });
+    } catch (error) {
+      console.error("Error in updateCourseStatus controller:", error);
+      res.status(500).json({
+        success: false,
+        message: "Internal server error while updating course status",
+      });
+    }
+  };
+
+  /**
+   * Update course status in bulk
+   * @param req - Express request object
+   * @param res - Express response object
+   */
+  updateCourseStatusBulk = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const courses = req.body.courses;
+      const isActive = req.body.isActive;
+
+      // Update course status in bulk
+      await this.courseService.updateCourseStatusBulk(courses, isActive);
+
+      // Return success response
+      res.status(200).json({
+        success: true,
+        message: "Course status updated successfully in bulk",
+      });
+    } catch (error) {
+      console.error("Error in updateCourseStatusBulk controller:", error);
+    }
+  };
+
+  /**
+   * Delete a course by ID
+   * @param req - Express request object
+   * @param res - Express response object
+   * @param courseId - Course ID from URL parameters
+   */
+  deleteCourseById = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { courseId } = req.params;
+
+      // Delete the course
+      await this.courseService.deleteCourse(courseId);
+
+      // Return success response
+      res.status(200).json({
+        success: true,
+        message: "Course deleted successfully",
+      });
+    } catch (error) {
+      console.error("Error in deleteCourseById controller:", error);
+
+      res.status(500).json({
+        success: false,
+        message: "Internal server error while deleting course",
+      });
     }
   };
 

@@ -5,31 +5,25 @@ import { Eye, Lock, Mail } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
-import { signIn } from "next-auth/react";
-
-// export async function generateMetadata() {
-//   return {
-//     title: "Create Your Edulyt Account | Edulyt",
-//     description:
-//       "Create a new Edulyt account to start exploring educational courses",
-//     keywords: ["sign up", "edulyt", "education", "courses", "learning"],
-//   };
-// }
+import { signIn, useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import axios, { isAxiosError } from "axios";
 
 const RegisterPage = () => {
-  // const { data: session, status } = useSession();
-  const session = true;
+  const { data: session, status } = useSession();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
-    if (session) {
-      console.log("Session credentials:", session);
+    console.log("Session status:", session);
+    if (status === "authenticated") {
+      router.push("/dashboard");
     }
-  }, [session]);
+  }, [status]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,31 +34,26 @@ const RegisterPage = () => {
     }
     setLoading(true);
     try {
-      // Replace with your real registration API endpoint
-      const res = await fetch("https://your-api.com/api/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-      const data = await res.json();
-      console.log("Register response:", data);
-      if (!res.ok) {
-        setError(data.message || "Registration failed");
-        setLoading(false);
-        return;
+      const res = await axios.post(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/register`,
+        {
+          email,
+          password,
+          confirmPassword,
+        }
+      );
+      if (res.status === 201) {
+        router.push("/auth/login");
+      } else {
+        console.log("Register error:", res.data);
+        setError(res.data.message);
       }
-      // Auto-login after registration
-      const loginRes = await signIn("credentials", {
-        email,
-        password,
-        redirect: false,
-      });
-      console.log("Login after register response:", loginRes);
-      if (loginRes && loginRes.error) {
-        setError(loginRes.error);
+    } catch (error) {
+      if (isAxiosError(error)) {
+        setError(error.response?.data.message as string);
+      } else {
+        setError("Something went wrong. Please try again.");
       }
-    } catch {
-      setError("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -157,7 +146,10 @@ const RegisterPage = () => {
           />
           <span>Sign Up using Google</span>
         </WhiteButton>
-        <WhiteButton className="w-full flex items-center justify-center gap-2 rounded-xl font-bold shadow-[inset_0_-2px_7px_0_rgba(183,159,255,0.22)]">
+        <WhiteButton
+          className="w-full flex items-center justify-center gap-2 rounded-xl font-bold shadow-[inset_0_-2px_7px_0_rgba(183,159,255,0.22)]"
+          onClick={() => signIn("linkedin")}
+        >
           <Image
             src="/linkedin-icon.svg"
             alt="LinkedIn"

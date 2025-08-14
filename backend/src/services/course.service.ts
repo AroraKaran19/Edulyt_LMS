@@ -1,4 +1,4 @@
-import { Course, CourseLesson, CourseModule, QuizContent, VideoContent } from "../types";
+import { Course } from "../types";
 import CourseModel from "../models/course.schema";
 import { CourseLessonModel, CourseModuleModel, VideoContentModel, QuizContentModel } from "../models/course-module.schema";
 
@@ -660,6 +660,10 @@ export class CourseService {
         .select("-__v") // Exclude version field
         .lean(); // Return plain JavaScript object
 
+      if (!updatedCourse) {
+        throw new Error("Failed to update course status");
+      }
+
       return updatedCourse;
     } catch (error) {
       console.error("Error updating course status:", error);
@@ -667,6 +671,27 @@ export class CourseService {
         throw new Error(`Failed to update course status: ${error.message}`);
       }
       throw new Error("Failed to update course status");
+    }
+  }
+
+  /**
+   * Update course status in bulk
+   * @param courses - Array of courses
+   * @returns Promise<boolean> - Success status
+   */
+  async updateCourseStatusBulk(courses: Course["_id"][], isActive: boolean): Promise<boolean> {
+    try {
+      const updatedCourses = await CourseModel.updateMany({ _id: { $in: courses } }, { isActive: isActive });
+      if (!updatedCourses) {
+        throw new Error("Failed to update course status in bulk");
+      }
+      return true;
+    } catch (error) {
+      console.error("Error updating course status in bulk:", error);
+      if (error instanceof Error) {
+        throw new Error(`Failed to update course status in bulk: ${error.message}`);
+      }
+      throw new Error("Failed to update course status in bulk");
     }
   }
 

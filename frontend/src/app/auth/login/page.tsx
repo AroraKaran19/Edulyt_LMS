@@ -5,46 +5,54 @@ import { Eye, Lock, Mail } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
-import { signIn } from "next-auth/react";
-
-// export async function generateMetadata() {
-//   return {
-//     title: "Sign In to Your Account | Edulyt",
-//     description:
-//       "Sign in to your Edulyt account to get access to educational courses",
-//     keywords: ["sign in", "edulyt", "education", "courses", "learning"],
-//   };
-// }
+import { signIn, useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { isAxiosError } from "axios";
 
 const LoginPage = () => {
-  // const { data: session, status } = useSession();
-  const session = true;
+  const { data: session, status } = useSession();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
-    if (session) {
-      console.log("Session credentials:", session);
+    console.log("Session status:", session);
+    if (status === "authenticated") {
+      router.push("/dashboard");
     }
-  }, [session]);
+  }, [status]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    const res = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-    });
-    console.log("Login response:", res);
-    if (res && res.error) {
-      setError(res.error);
+    setLoading(true);
+    try {
+      const res = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      });
+      if (res?.status === 200) {
+        router.push("/dashboard");
+      } else {
+        setError(res?.error as string);
+      }
+    } catch (error) {
+      if (isAxiosError(error)) {
+        setError(error.response?.data.message as string);
+      } else {
+        setError("Something went wrong. Please try again.");
+        console.log("Login error:", error);
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="login-page h-full lg:h-auto w-full lg:max-w-3xl flex flex-col gap-4 px-8 my-auto justify-center items-center lg:items-start lg:justify-start">
+    <>
       <div className="header flex flex-col gap-2 mb-2">
         <h1 className="text-3xl lg:text-4xl font-regular font-coolvetica text-center lg:text-start text-text-primary">
           Sign up for Free at Edulyt!
@@ -89,8 +97,9 @@ const LoginPage = () => {
           <button
             type="submit"
             className="w-full bg-transparent outline-none font-bold"
+            disabled={loading}
           >
-            Login
+            {loading ? "Logging in..." : "Login"}
           </button>
         </OrangeButton>
       </form>
@@ -115,7 +124,10 @@ const LoginPage = () => {
           />
           <span>Sign In using Google</span>
         </WhiteButton>
-        <WhiteButton className="w-full flex items-center justify-center gap-2 rounded-xl font-bold shadow-[inset_0_-2px_7px_0_rgba(183,159,255,0.22)]">
+        <WhiteButton
+          className="w-full flex items-center justify-center gap-2 rounded-xl font-bold shadow-[inset_0_-2px_7px_0_rgba(183,159,255,0.22)]"
+          onClick={() => signIn("linkedin")}
+        >
           <Image
             src="/linkedin-icon.svg"
             alt="LinkedIn"
@@ -132,7 +144,7 @@ const LoginPage = () => {
           Sign up
         </Link>
       </p>
-    </div>
+    </>
   );
 };
 

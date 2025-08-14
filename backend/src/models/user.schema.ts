@@ -93,7 +93,7 @@ const userSchema = new mongoose.Schema<User>(
   {
     username: {
       type: String,
-      required: true,
+      required: false,
       unique: true,
       trim: true,
       minlength: [3, "Username must be at least 3 characters"],
@@ -101,7 +101,7 @@ const userSchema = new mongoose.Schema<User>(
     },
     fullName: {
       type: String,
-      required: true,
+      required: false,
       trim: true,
       minlength: [3, "Full name must be at least 3 characters"],
       maxlength: [100, "Full name cannot exceed 100 characters"],
@@ -120,12 +120,13 @@ const userSchema = new mongoose.Schema<User>(
     password: {
       type: String,
       required: true,
+      select: false,
       minlength: [5, "Password must be at least 8 characters"],
       maxlength: [100, "Password cannot exceed 100 characters"],
     },
     phone: {
       type: String,
-      required: true,
+      required: false,
       trim: true,
       validate: {
         validator: validatePhoneNumber,
@@ -135,20 +136,20 @@ const userSchema = new mongoose.Schema<User>(
     isPhoneVerified: {
       type: Boolean,
       default: false,
-      required: true,
+      required: false,
     },
     dob: {
       type: Date,
-      required: true,
+      required: false,
     },
     gender: {
       type: String,
-      required: true,
+      required: false,
       enum: ["male", "female", "other", "prefer-not-to-say"],
     },
     experienceLevel: {
       type: String,
-      required: true,
+      required: false,
       enum: [
         "Student",
         "Graduate",
@@ -163,47 +164,40 @@ const userSchema = new mongoose.Schema<User>(
       type: String,
       required: false,
       trim: true,
-      default: "",
     },
     collegeName: {
       type: String,
       required: false,
       trim: true,
-      default: "",
     },
     collegeState: {
       type: String,
       required: false,
       trim: true,
-      default: "",
     },
     country: {
       type: String,
-      required: true,
+      required: false,
       trim: true,
-      default: "India",
     },
     currentDegree: {
       type: String,
       required: false,
       enum: ["graduation", "postgraduation", ""],
-      default: "",
     },
     currentCourse: {
       type: String,
       required: false,
       trim: true,
-      default: "",
     },
-    socialProfiles: {
-      type: socialProfilesSchema,
-      required: true,
-      default: {},
-    },
+    // socialProfiles: {
+    //   type: socialProfilesSchema,
+    //   required: false,
+    //   default: {},
+    // },
     placementCellEmail: {
       type: String,
       required: false,
-      default: "",
       validate: {
         validator: validateEmail,
         message: "Placement cell email must be a valid email address or empty",
@@ -212,7 +206,6 @@ const userSchema = new mongoose.Schema<User>(
     guardianPhone: {
       type: String,
       required: false,
-      default: "",
       trim: true,
       validate: {
         validator: validatePhoneNumber,
@@ -227,41 +220,34 @@ const userSchema = new mongoose.Schema<User>(
     tenthMarks: {
       type: marksSchema,
       required: false,
-      default: null,
     },
     twelfthMarks: {
       type: marksSchema,
       required: false,
-      default: null,
     },
     pursuingMarks: {
       type: [pursuingMarksSchema],
       required: false,
-      default: [],
     },
     enrolledCourses: {
       type: [mongoose.Schema.Types.ObjectId],
       ref: "Course",
       required: false,
-      default: [],
     },
     referral: {
       type: String,
       required: false,
-      default: "",
       trim: true,
     },
     refreshToken: {
       type: String,
       required: false,
-      default: "",
     },
     isActive: {
       type: Boolean,
       default: true,
       required: true,
     },
-    // Additional fields can be added here for scalability, e.g., profileImage, preferences, etc.
   },
   { timestamps: true }
 );

@@ -2,48 +2,127 @@ import { Request, Response } from "express";
 import userSchema from "../models/user.schema";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import dotenv from "dotenv";
+import { AuthService } from "../services/auth.service";
 
-/**
- * Register a new user
- * @param req - Express request object
- * @param res - Express response object
- */
-export const authController = {
-  register: async (req: Request, res: Response) => {
+dotenv.config();
+
+export class AuthController {
+  private authService: AuthService;
+
+  constructor() {
+    this.authService = new AuthService();
+  }
+
+  register = async (req: Request, res: Response) => {
     try {
       const { email, password, confirmPassword } = req.body;
       const existingUser = await userSchema.findOne({ email });
       if (existingUser) {
-        return res.status(400).json({ message: "Email already in use" });
+        return res
+          .status(400)
+          .json({ status: false, message: "Email already in use" });
       }
       if (password !== confirmPassword) {
-        return res.status(400).json({ message: "Passwords do not match" });
+        return res
+          .status(400)
+          .json({ status: false, message: "Passwords do not match" });
       }
-      const user = await userSchema.create({ email, password });
-      const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET!, {
-        expiresIn: "1h",
-      });
+      const { user, accessToken, refreshToken } =
+        await this.authService.register(email, password);
       return res
         .status(201)
-        .json({ message: "User created successfully", user });
+        .json({
+          status: true,
+          message: "User created successfully",
+          user,
+          accessToken,
+          refreshToken,
+        });
     } catch (error) {
-      return res.status(500).json({ message: "Internal server error" });
+      return res
+        .status(500)
+        .json({
+          status: false,
+          message: "Internal server error",
+          error: error,
+        });
     }
-  },
-  login: async (req: Request, res: Response) => {
+  };
+
+  /**
+   * Login a user
+   * @param req - Express request object
+   * @param res - Express response object
+   */
+  login = async (req: Request, res: Response) => {
     try {
       const { email, password } = req.body;
-      const user = await userSchema.findOne({ email });
-      if (!user) {
-        return res.status(401).json({ message: "Invalid credentials" });
+      if (!email || !password) {
+        return res
+          .status(400)
+          .json({ status: false, message: "Email and password are required!" });
       }
+
+      const user = await userSchema.findOne({ email }).select("+password");
+      if (!user) {
+        return res
+          .status(401)
+          .json({ status: false, message: "User not found!" });
+      }
+
       const isPasswordValid = await bcrypt.compare(password, user.password);
       if (!isPasswordValid) {
-        return res.status(401).json({ message: "Invalid credentials" });
+        return res
+          .status(401)
+          .json({ status: false, message: "Invalid credentials!" });
       }
-      return res.status(200).json({ message: "Login successful", user });
+
+      const { accessToken, refreshToken } = await this.authService.login(
+        email,
+        password
+      );
+
+      return res
+        .status(200)
+        .json({
+          status: true,
+          message: "Login successful",
+          user,
+          accessToken,
+          refreshToken,
+        });
     } catch (error) {
-      return res.status(500).json({ message: "Internal server error" });
+      return res
+        .status(500)
+        .json({
+          status: false,
+          message: "Internal server error!",
+          error: error,
+        });
     }
-  },
-};
+  };
+
+  /**
+   * Refresh a token
+   * @param req - Express request object
+   * @param res - Express response object
+   */
+  refreshToken = async (req: Request, res: Response) => {
+    try {
+      const { refreshToken } = req.body;
+      const { accessToken } = await this.authService.refreshToken(refreshToken);
+      return res
+        .status(200)
+        .json({ status: true, message: "Token refreshed", accessToken });
+    } catch (error) {
+      return res
+        .status(500)
+        .json({
+          status: false,
+          message: "Internal server error!",
+          error: error,
+        });
+    }
+  };
+}

@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import OrangeButton from "../../ui/buttons/OrangeButton";
 import Navlink from "./Navlink";
 import { Manrope, Plus_Jakarta_Sans } from "next/font/google";
@@ -36,9 +36,13 @@ const formatNumber = (number: number) => {
 
 const Navbar = () => {
   // TODO: implement redux to store the course count
+  const [courseCount, setCourseCount] = useState(0);
   const { data } = useSWR(ENDPOINTS.courses.all, fetcher);
   const courses = data?.data.courses;
-  const courseCount = courses?.length;
+
+  useEffect(() => {
+    setCourseCount(courses?.length || 0);
+  }, [courses]);
 
   const navItems: NavItem[] = [
     {

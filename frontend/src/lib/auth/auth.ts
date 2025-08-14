@@ -2,6 +2,7 @@ import NextAuth, { AuthOptions, DefaultSession, DefaultUser } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import LinkedInProvider from "next-auth/providers/linkedin";
 import CredentialsProvider from "next-auth/providers/credentials";
+import axios from "axios";
 
 // Extend the built-in session and user types
 declare module "next-auth" {
@@ -16,6 +17,8 @@ declare module "next-auth" {
   interface User extends DefaultUser {
     token?: string;
     username?: string;
+    accessToken?: string;
+    refreshToken?: string;
   }
 }
 
@@ -23,6 +26,7 @@ declare module "next-auth/jwt" {
   interface JWT {
     accessToken?: string;
     username?: string;
+    refreshToken?: string;
   }
 }
 
@@ -31,87 +35,43 @@ export const authOptions: AuthOptions = {
     CredentialsProvider({
       name: "Credentials",
       credentials: {
-        action: { label: "Action", type: "text" },
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
-        confirmPassword: { label: "Confirm Password", type: "password" },
       },
       authorize: async (credentials) => {
         try {
           if (!credentials?.email || !credentials?.password) {
-            return null;
+            throw new Error("Email and password are required");
           }
 
-          const { action } = credentials;
-
-          if (action === "register") {
             // Handle registration
-            const registerData = {
-              email: credentials.email,
-              password: credentials.password,
-            };
-
-            const response = await fetch(
-              `${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/register`,
-              {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify(registerData),
-              }
-            );
-
-            const data = await response.json();
-
-            if (!response.ok) {
-              throw new Error(data.message || "Registration failed");
-            }
-
-            return {
-              id: data.user._id,
-              email: data.user.email,
-              name: data.user.fullName,
-              username: data.user.username,
-              token: data.token,
-            };
-          } else {
-            // Handle login
             const loginData = {
               email: credentials.email,
               password: credentials.password,
             };
 
-            const response = await fetch(
+            const response = await axios.post(
               `${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/login`,
-              {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify(loginData),
-              }
+              loginData
             );
 
-            const data = await response.json();
-
-            if (!response.ok) {
-              throw new Error(data.message || "Login failed");
+            if (response.status !== 200) {
+              throw new Error(response.data.message || "Login failed");
             }
 
             return {
-              id: data.user._id,
-              email: data.user.email,
-              name: data.user.fullName,
-              username: data.user.username,
-              token: data.token,
+              id: response.data.user._id,
+              email: response.data.user.email,
+              name: response.data.user.fullName || response.data.user.email,
+              username: response.data.user.username,
+              refreshToken: response.data.refreshToken,
+              accessToken: response.data.accessToken,
             };
+          } catch (error) {
+            console.error("Login error:", error);
+            throw new Error("Login failed");
           }
-        } catch (error) {
-          console.error("Auth error:", error);
-          return null;
-        }
-      },
+        },
     }),
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
@@ -127,28 +87,67 @@ export const authOptions: AuthOptions = {
   ],
   pages: {
     signIn: "/auth/login",
+    signOut: "/",
   },
   session: {
     strategy: "jwt",
   },
   callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.accessToken = user.token;
-        token.username = user.username;
+    async jwt({ token, user, account }) {
+      try {
+        // Initial sign in
+        if (user && account) {
+          token.accessToken = user.accessToken;
+          token.username = user.username;
+          token.refreshToken = user.refreshToken;
+        }
+        
+        // Return previous token if the access token has not expired yet
+        if (Date.now() < (token.exp as number) * 1000) {
+          return token;
+        }
+        
+        // Access token has expired, try to refresh it
+        if (token.refreshToken) {
+          try {
+            const response = await axios.post(
+              `${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/refresh-token`,
+              { refreshToken: token.refreshToken }
+            );
+            
+            if (response.status === 200) {
+              token.accessToken = response.data.accessToken;
+              token.exp = Math.floor(Date.now() / 1000) + (60 * 60); // 1 hour
+            }
+          } catch (refreshError) {
+            console.error("Token refresh failed:", refreshError);
+            // Clear tokens on refresh failure
+            delete token.accessToken;
+            delete token.refreshToken;
+          }
+        }
+        
+        return token;
+      } catch (error) {
+        console.error("JWT callback error:", error);
+        return token;
       }
-      return token;
     },
     async session({ session, token }) {
-      if (token && session.user) {
-        session.user.id = token.sub || "";
-        session.user.username = token.username;
-        session.accessToken = token.accessToken;
+      try {
+        if (token && session.user) {
+          session.user.id = token.sub || "";
+          session.user.username = token.username as string;
+          session.accessToken = token.accessToken as string;
+        }
+        return session;
+      } catch (error) {
+        console.error("Session callback error:", error);
+        return session;
       }
-      return session;
     },
   },
-  secret: process.env.NEXTAUTH_SECRET,
+  secret: process.env.NEXT_PUBLIC_AUTH_SECRET,
 };
 
 export const { handlers, auth, signIn, signOut } = NextAuth(
