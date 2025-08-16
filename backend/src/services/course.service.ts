@@ -352,6 +352,22 @@ export class CourseService {
         .sort({ createdAt: -1 }) // Sort by newest first
         .skip(skip)
         .limit(limit)
+        .populate({
+          path: "modules",
+          select: "-__v",
+          populate: {
+            path: "lessonIds",
+            select: "-__v",
+            populate: {
+              path: "contentIds",
+              select: "-__v"
+            }
+          }
+        })
+        .populate({
+          path: "instructor",
+          select: "-__v",
+        })
         .lean(); // Return plain JavaScript objects instead of Mongoose documents
 
       // Calculate total pages
@@ -400,6 +416,10 @@ export class CourseService {
               select: "-__v"
             }
           }
+        })
+        .populate({
+          path: "instructor",
+          select: "-__v",
         });
 
       // Transform field names after population
@@ -463,6 +483,10 @@ export class CourseService {
               select: "-__v"
             }
           }
+        })
+        .populate({
+          path: "instructor",
+          select: "-__v",
         });
 
       // Transform field names after population
@@ -525,6 +549,10 @@ export class CourseService {
               select: "-__v"
             }
           }
+        })
+        .populate({
+          path: "instructor",
+          select: "-__v",
         });
 
       // Transform field names after population
@@ -611,6 +639,22 @@ export class CourseService {
         .sort({ createdAt: -1 }) // Sort by newest first
         .skip(skip)
         .limit(limit)
+        .populate({
+          path: "modules",
+          select: "-__v",
+          populate: {
+            path: "lessonIds",
+            select: "-__v",
+            populate: {
+              path: "contentIds",
+              select: "-__v"
+            }
+          }
+        })
+        .populate({
+          path: "instructor",
+          select: "-__v",
+        })
         .lean(); // Return plain JavaScript objects instead of Mongoose documents
 
       // Calculate total pages
@@ -658,6 +702,22 @@ export class CourseService {
         }
       )
         .select("-__v") // Exclude version field
+        .populate({
+          path: "modules",
+          select: "-__v",
+          populate: {
+            path: "lessonIds",
+            select: "-__v",
+            populate: {
+              path: "contentIds",
+              select: "-__v"
+            }
+          }
+        })
+        .populate({
+          path: "instructor",
+          select: "-__v",
+        })
         .lean(); // Return plain JavaScript object
 
       if (!updatedCourse) {
@@ -884,6 +944,10 @@ export class CourseService {
               select: "-__v"
             }
           }
+        })
+        .populate({
+          path: "instructor",
+          select: "-__v",
         });
 
       if (!updatedCourse) {
@@ -979,7 +1043,11 @@ export class CourseService {
               select: "-__v"
             }
           }
-        });;
+        })
+        .populate({
+          path: "instructor",
+          select: "-__v",
+        });
 
       return courses;
     } catch (error) {
@@ -1035,6 +1103,10 @@ export class CourseService {
         .sort({ enrolledCount: -1, createdAt: -1 })
         .skip(skip)
         .limit(limit)
+        .populate({
+          path: "instructor",
+          select: "-__v",
+        })
         .lean();
 
       const totalPages = Math.ceil(total / limit);

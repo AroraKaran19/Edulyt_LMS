@@ -1,12 +1,12 @@
 "use client";
-import React from "react";
+import React, { useState } from "react";
 import { Course } from "@/types";
 import { cn } from "@/lib/utils";
 import CourseHeader from "./components/CourseHeader";
 import ScholarshipBanner from "./components/ScholarshipBanner";
 import TestimonialSection from "./components/TestimonialSection";
 import CourseOverviewSection from "./components/CourseOverviewSection";
-// import CourseInstructorSection from "./components/CourseInstructorSection";
+import CourseInstructorSection from "./components/CourseInstructorSection";
 import CertificateSection from "./components/CertificateSection";
 import VerticalCarouselSection from "./components/VerticalCarouselSection";
 import CurriculumSection from "./components/CurriculumSection";
@@ -14,9 +14,11 @@ import FAQSection from "./components/FAQSection";
 import VideoPlayer from "./watch/components/VideoPlayer";
 import { usePresignedUrl } from "@/hooks/usePresignedUrl";
 import EnquiryForm from "./components/EnquiryForm";
+import { FullScreenLoader } from "@/components/ui/Loader";
 
 const CoursePage = ({ course }: { course: Course }) => {
   console.log(course);
+  const [isPaymentLoading, setIsPaymentLoading] = useState(false);
 
   // Generate presigned URL for preview video if it's an S3 key
   const previewVideoUrl = course?.previewVideoUrl;
@@ -80,16 +82,28 @@ const CoursePage = ({ course }: { course: Course }) => {
             <EnquiryForm course={course} />
           </div>
         </div>
-        <CourseHeader course={course} />
+        <CourseHeader 
+          course={course} 
+          onLoadingChange={setIsPaymentLoading}
+        />
       </div>
       {course?.scholarship && <ScholarshipBanner course={course} />}
       <TestimonialSection testimonials={course?.testimonials || []} />
       <CourseOverviewSection course={course} />
-      {/* <CourseInstructorSection course={course} /> */}
+      <CourseInstructorSection course={course} />
       <CertificateSection course={course} />
       <VerticalCarouselSection />
       <CurriculumSection course={course} />
       <FAQSection course={course} />
+
+      {/* Payment Loading Overlay */}
+      {isPaymentLoading && (
+        <FullScreenLoader
+          text="Generating payment link..."
+          variant="spinner"
+          size="lg"
+        />
+      )}
     </div>
   );
 };

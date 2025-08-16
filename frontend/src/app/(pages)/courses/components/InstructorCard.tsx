@@ -22,13 +22,13 @@ const InstructorCard = ({
       )}
       target="_blank"
       rel="noopener"
-      title={`Click to view ${instructor.name}'s profile`}
+      title={`Click to view ${instructor.fullName}'s profile`}
     >
       <div className="card-top w-full flex items-center gap-2 lg:gap-4 justify-center">
         <div className="instructor-image min-w-[30px] max-h-[50px] lg:max-h-[100px] aspect-square rounded-full flex items-center justify-center shrink-0">
           <Image
-            src={instructor.profileImage || "/courseDefaultTestimonial.png"}
-            alt={instructor.name || "Edulyt Instructor"}
+            src={instructor.profilePicture || "/courseDefaultTestimonial.png"}
+            alt={instructor.fullName || "Edulyt Instructor"}
             width={100}
             height={100}
             draggable={false}
@@ -37,7 +37,7 @@ const InstructorCard = ({
         </div>
         <div className="instructor-details w-max text-base font-medium text-black flex flex-col gap-1">
           <p className="instructor-name text-xs sm:text-sm lg:text-base font-bold flex items-center gap-4">
-            <span className="whitespace-nowrap">{instructor.name}</span>
+            <span className="whitespace-nowrap">{instructor.fullName}</span>
             {instructor.linkedinUrl && (
               <span
                 className="instructor-linkedin w-full flex items-center cursor-pointer"

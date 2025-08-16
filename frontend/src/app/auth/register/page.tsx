@@ -115,14 +115,12 @@ const RegisterPage = () => {
           <Eye className="size-4 absolute right-3 top-1/2 -translate-y-1/2" />
         </div>
         {error && <div className="text-red-500 text-sm font-bold">{error}</div>}
-        <OrangeButton className="w-full mt-1 lg:mt-2 rounded-xl font-bold">
-          <button
-            type="submit"
-            className="w-full bg-transparent outline-none font-bold"
-            disabled={loading}
-          >
-            {loading ? "Registering..." : "Register"}
-          </button>
+        <OrangeButton
+          className="w-full mt-1 lg:mt-2 rounded-xl font-bold"
+          type="submit"
+          disabled={loading}
+        >
+          {loading ? "Registering..." : "Register"}
         </OrangeButton>
       </form>
       <div className="breaker w-full flex items-center justify-center gap-4 my-4">

@@ -12,7 +12,8 @@ export class AuthService {
    */
   async register(
     email: string,
-    password: string
+    password: string,
+    role: string
   ): Promise<{ user: UserType; accessToken: string; refreshToken: string }> {
     try {
       const existingUser = await userSchema.findOne({ email });
@@ -23,6 +24,7 @@ export class AuthService {
       const newUser = new userSchema({
         email,
         password: hashedPassword,
+        role,
       });
       await newUser.save();
       const accessToken = await this.generateAccessToken(newUser._id);
@@ -70,6 +72,84 @@ export class AuthService {
   }
 
   /**
+   * Create a new user with OAuth
+   * @param email - User's email
+   * @param fullName - User's full name
+   * @param provider - User's provider
+   * @returns { user: UserType, accessToken: string, refreshToken: string }
+   */
+  async createUserWithOAuth(
+    email: string,
+    fullName: string,
+    provider: string,
+    role: string,
+    profilePicture: string
+  ): Promise<{ user: UserType; accessToken: string; refreshToken: string }> {
+    try {
+      if (!email || !fullName || !provider || !role) {
+        throw new Error("All fields are required!");
+      }
+      const user = await userSchema.findOne({ email });
+      if (user) {
+        throw new Error("User already exists!");
+      }
+      let username = fullName.toLowerCase().replace(/ /g, "");
+      while (await userSchema.findOne({ username })) {
+        username = username + Math.random().toString(36).substring(2, 5);
+      }
+      const hashedPassword = await bcrypt.hash(Math.random().toString(36), 10);
+      const newUser = new userSchema({
+        email,
+        username,
+        fullName,
+        provider,
+        role,
+        profilePicture,
+        password: hashedPassword,
+      });
+      await newUser.save();
+
+      const accessToken = await this.generateAccessToken(newUser._id);
+      const refreshToken = await this.generateRefreshToken(newUser._id);
+      await userSchema.findByIdAndUpdate(newUser._id, { refreshToken });
+
+      return { user: newUser, accessToken, refreshToken };
+    } catch (error) {
+      console.log(error);
+      throw new Error("Internal server error!");
+    }
+  }
+
+  /**
+   * Login a user with OAuth
+   * @param email - User's email
+   * @param fullName - User's full name
+   * @param provider - User's provider
+   * @returns { user: UserType, accessToken: string, refreshToken: string }
+   */
+  async oauthSignIn(
+    email: string,
+    fullName: string,
+    provider: string
+  ): Promise<{ user: UserType; accessToken: string; refreshToken: string }> {
+    try {
+      const user = await userSchema.findOne({ email });
+      if (!user) {
+        throw new Error("User not found!");
+      }
+
+      const accessToken = await this.generateAccessToken(user._id);
+      const refreshToken = await this.generateRefreshToken(user._id);
+      await userSchema.findByIdAndUpdate(user._id, { refreshToken });
+
+      return { user, accessToken, refreshToken };
+    } catch (error) {
+      console.log(error);
+      throw new Error("Internal server error!");
+    }
+  }
+
+  /**
    * Refresh a token
    * @param refreshToken - User's refresh token
    * @returns { accessToken: string }
@@ -87,13 +167,13 @@ export class AuthService {
     }
   }
 
-  private async generateAccessToken(userId: string): Promise<string> {
+  async generateAccessToken(userId: string): Promise<string> {
     return jwt.sign({ userId }, process.env.JWT_SECRET!, {
       expiresIn: "1h",
     });
   }
 
-  private async generateRefreshToken(userId: string): Promise<string> {
+  async generateRefreshToken(userId: string): Promise<string> {
     return jwt.sign({ userId }, process.env.JWT_SECRET!, {
       expiresIn: "7d",
     });

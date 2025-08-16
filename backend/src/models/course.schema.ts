@@ -136,7 +136,7 @@ const courseSchema = new mongoose.Schema<Course>(
     instructor: {
       type: [mongoose.Schema.Types.ObjectId],
       required: true,
-      ref: "CourseInstructor",
+      ref: "User",
     },
     plans: {
       type: {

@@ -16,7 +16,8 @@ export default function LayoutWrapper({
   const CustomLayout =
     pathname.startsWith("/dashboard") ||
     pathname.startsWith("/admin") ||
-    pathname.startsWith("/auth");
+    pathname.startsWith("/auth") ||
+    pathname.startsWith("/payment/status");
 
   return (
     <>

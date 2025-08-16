@@ -19,10 +19,10 @@ const InstructorDisplayCard: React.FC<InstructorDisplayCardProps> = ({
       className
     )}>
       <div className="size-5 bg-gray-200 rounded-full overflow-hidden flex-shrink-0">
-        {instructor.profileImage ? (
+        {instructor.profilePicture ? (
           <Image
-            src={instructor.profileImage}
-            alt={instructor.name}
+            src={instructor.profilePicture}
+            alt={instructor.fullName}
             width={20}
             height={20}
             className="w-full h-full object-cover"
@@ -31,13 +31,13 @@ const InstructorDisplayCard: React.FC<InstructorDisplayCardProps> = ({
         ) : (
           <div className="w-full h-full bg-gray-300 flex items-center justify-center">
             <span className="text-[8px] text-gray-600 font-medium">
-              {instructor.name.charAt(0).toUpperCase()}
+              {instructor.fullName.charAt(0).toUpperCase()}
             </span>
           </div>
         )}
       </div>
       <span className="text-xs text-gray-700 font-medium truncate max-w-[80px]">
-        {instructor.name}
+        {instructor.fullName}
       </span>
     </div>
   );

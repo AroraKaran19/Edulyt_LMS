@@ -22,9 +22,12 @@ interface SocialProfiles {
 
 interface User {
   _id?: string;
+  role: 'super-admin' | 'admin' | 'instructor' | 'affiliate' | 'user';
   username: string;
   fullName: string;
+  profilePicture?: string;
   email: string;
+  password: string;
   phone: string;
   isPhoneVerified: boolean;
   dob: Date;
@@ -45,6 +48,9 @@ interface User {
   pursuingMarks?: PursuingMarks[];
   enrolledCourses?: string[]; // Array of Course IDs
   referral?: string;
+  refreshToken?: string;
+  pendingPayments?: string[]; // Array of Order IDs whos status is pending
+  provider?: 'google' | 'linkedin' | 'credentials';
   isActive: boolean;
   createdAt?: Date;
   updatedAt?: Date;

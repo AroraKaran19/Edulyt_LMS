@@ -14,7 +14,7 @@ const InstructorCard = ({
 
   return (
     <Link
-      href={`/instructors/${instructor.name
+      href={`/instructors/${instructor.fullName
         .toLowerCase()
         .replace(/\s+/g, "-")
         .replace(/[^a-z0-9-]/g, "")}`}
@@ -27,8 +27,8 @@ const InstructorCard = ({
       }}
     >
       <Image
-        src={instructor.profileImage || "/courseDefaultTestimonial.png"}
-        alt={instructor.name}
+        src={instructor.profilePicture || "/courseDefaultTestimonial.png"}
+        alt={instructor.fullName}
         className="size-5 rounded-full flex-shrink-0"
         width={20}
         height={20}
@@ -38,7 +38,7 @@ const InstructorCard = ({
         priority
       />
       <span className="flex-1 text-ellipsis overflow-hidden whitespace-nowrap min-w-0">
-        {instructor.name}
+        {instructor.fullName}
       </span>
     </Link>
   );

@@ -1,26 +1,35 @@
+import { Course, Review, User } from ".";
+
 // ===================
 // Instructor Type
 // ===================
 
-import { Course } from ".";
-import { Review } from "./review";
-
-export interface CourseInstructor {
-  _id?: string;
-  name: string;
-  profileImage?: string;
-  // experience?: string;
-  rating?: number;
-  totalStudents?: number;
-  totalCourses?: number;
+export interface CourseInstructor
+  extends Omit<
+    User,
+    | "experienceLevel"
+    | "enrolledCourses"
+    | "pendingPayments"
+    | "universityName"
+    | "collegeName"
+    | "collegeState"
+    | "currentDegree"
+    | "currentCourse"
+    | "placementCellEmail"
+    | "guardianPhone"
+    | "isGuardianPhoneVerified"
+    | "tenthMarks"
+    | "twelfthMarks"
+    | "pursuingMarks"
+    | "referral"
+  > {
+  rating: number;
+  totalStudents: number;
   bio?: string;
   currentPosition?: string;
   currentCompany?: string;
   previousExperience?: string[];
-  // education?: string[];
-  linkedinUrl?: string;
-  reviews?: Review[];
-  courses?: Course[];
-  createdAt?: Date;
-  updatedAt?: Date;
+  linkedinUrl?: string; // TODO: remove this and add socialProfiles
+  reviews: Review["_id"][];
+  ownedCourses: Course["_id"][];
 }

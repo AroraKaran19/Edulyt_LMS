@@ -12,6 +12,7 @@ interface OrangeButtonProps {
   glow?: boolean;
   disabled?: boolean;
   variant?: "default" | "small";
+  type?: "button" | "submit" | "reset";
 }
 
 const OrangeButton = ({
@@ -22,9 +23,11 @@ const OrangeButton = ({
   glow = true,
   variant = "default",
   disabled = false,
+  type = "button",
 }: OrangeButtonProps) => {
   return (
     <button
+      type={type}
       className={cn(
         "bg-[#F77124] text-white px-6 py-3 rounded-2xl cursor-pointer",
         blinkIcon && "flex items-center gap-2",

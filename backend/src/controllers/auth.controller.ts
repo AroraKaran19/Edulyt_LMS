@@ -16,7 +16,12 @@ export class AuthController {
 
   register = async (req: Request, res: Response) => {
     try {
-      const { email, password, confirmPassword } = req.body;
+      const { email, password, confirmPassword, role } = req.body;
+      if (!email || !password || !confirmPassword || !role) {
+        return res
+          .status(400)
+          .json({ status: false, message: "All fields are required" });
+      }
       const existingUser = await userSchema.findOne({ email });
       if (existingUser) {
         return res
@@ -29,24 +34,20 @@ export class AuthController {
           .json({ status: false, message: "Passwords do not match" });
       }
       const { user, accessToken, refreshToken } =
-        await this.authService.register(email, password);
-      return res
-        .status(201)
-        .json({
-          status: true,
-          message: "User created successfully",
-          user,
-          accessToken,
-          refreshToken,
-        });
+        await this.authService.register(email, password, role);
+      return res.status(201).json({
+        status: true,
+        message: "User created successfully",
+        user,
+        accessToken,
+        refreshToken,
+      });
     } catch (error) {
-      return res
-        .status(500)
-        .json({
-          status: false,
-          message: "Internal server error",
-          error: error,
-        });
+      return res.status(500).json({
+        status: false,
+        message: "Internal server error",
+        error: error,
+      });
     }
   };
 
@@ -83,23 +84,80 @@ export class AuthController {
         password
       );
 
-      return res
-        .status(200)
-        .json({
+      return res.status(200).json({
+        status: true,
+        message: "Login successful",
+        user,
+        accessToken,
+        refreshToken,
+      });
+    } catch (error) {
+      return res.status(500).json({
+        status: false,
+        message: "Internal server error!",
+        error: error,
+      });
+    }
+  };
+
+  /**
+   * Login a user with OAuth
+   * @param req - Express request object
+   * @param res - Express response object
+   */
+  oauthSignIn = async (req: Request, res: Response) => {
+    try {
+      const { email, fullName, provider, role, profilePicture } = req.body;
+      if (!email || !fullName || !provider || !role) {
+        return res
+          .status(400)
+          .json({ status: false, message: "All fields are required" });
+      }
+      const user = await userSchema.findOne({ email });
+      if (!user) {
+        // Create a new user
+        const { user, accessToken, refreshToken } =
+          await this.authService.createUserWithOAuth(
+            email,
+            fullName,
+            provider,
+            role,
+            profilePicture
+          );
+        return res.status(200).json({
+          status: true,
+          message: "User created successfully",
+          user,
+          accessToken,
+          refreshToken,
+        });
+      }
+      if (user.provider === provider) {
+        // Login the user
+        const { accessToken, refreshToken } =
+          await this.authService.oauthSignIn(email, fullName, provider);
+        return res.status(200).json({
           status: true,
           message: "Login successful",
           user,
           accessToken,
           refreshToken,
         });
+      } else {
+        // return error
+        return res
+          .status(401)
+          .json({
+            status: false,
+            message: "User already registered with different provider!",
+          });
+      }
     } catch (error) {
-      return res
-        .status(500)
-        .json({
-          status: false,
-          message: "Internal server error!",
-          error: error,
-        });
+      return res.status(500).json({
+        status: false,
+        message: "Internal server error!",
+        error: error,
+      });
     }
   };
 
@@ -116,13 +174,11 @@ export class AuthController {
         .status(200)
         .json({ status: true, message: "Token refreshed", accessToken });
     } catch (error) {
-      return res
-        .status(500)
-        .json({
-          status: false,
-          message: "Internal server error!",
-          error: error,
-        });
+      return res.status(500).json({
+        status: false,
+        message: "Internal server error!",
+        error: error,
+      });
     }
   };
 }

@@ -89,15 +89,19 @@ const socialProfilesSchema = new mongoose.Schema(
 // User Schema
 // ===================
 
-const userSchema = new mongoose.Schema<User>(
+export const userSchema = new mongoose.Schema<User>(
   {
     username: {
       type: String,
       required: false,
-      unique: true,
       trim: true,
       minlength: [3, "Username must be at least 3 characters"],
       maxlength: [50, "Username cannot exceed 50 characters"],
+    },
+    role: {
+      type: String,
+      required: true,
+      enum: ["super-admin", "admin", "instructor", "affiliate", "user"],
     },
     fullName: {
       type: String,
@@ -105,6 +109,11 @@ const userSchema = new mongoose.Schema<User>(
       trim: true,
       minlength: [3, "Full name must be at least 3 characters"],
       maxlength: [100, "Full name cannot exceed 100 characters"],
+    },
+    profilePicture: {
+      type: String,
+      required: false,
+      trim: true,
     },
     email: {
       type: String,
@@ -234,6 +243,17 @@ const userSchema = new mongoose.Schema<User>(
       ref: "Course",
       required: false,
     },
+    pendingPayments: {
+      type: [mongoose.Schema.Types.ObjectId],
+      ref: "Order",
+      required: false,
+    },
+    provider: {
+      type: String,
+      required: true,
+      enum: ["google", "linkedin", "credentials"],
+      default: "credentials",
+    },
     referral: {
       type: String,
       required: false,
@@ -253,8 +273,7 @@ const userSchema = new mongoose.Schema<User>(
 );
 
 // Indexes for scalability and query performance
-userSchema.index({ username: 1 }); // Unique already, but explicit for queries
-userSchema.index({ email: 1 }); // Unique already
+userSchema.index({ username: 1 });
 userSchema.index({ phone: 1 }); // For lookups by phone
 userSchema.index({ experienceLevel: 1 }); // For filtering by experience
 userSchema.index({ country: 1 }); // For geographic filtering

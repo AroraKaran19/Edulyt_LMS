@@ -1,7 +1,7 @@
 "use client";
 import BestsellerBadge from "@/components/ui/course/BestsellerBadge";
 import { Course } from "@/types";
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import DiscountCountdown from "../../components/DiscountCountdown";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import { cn } from "@/lib/utils";
@@ -9,26 +9,38 @@ import { Plus_Jakarta_Sans } from "next/font/google";
 import { Star } from "lucide-react";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import EnquiryFormModal from "./EnquiryFormModal";
+import EnrollmentModal from "./EnrollmentModal";
+import { FullScreenLoader } from "@/components/ui/Loader";
+import axios from "axios";
+import { useSession } from "next-auth/react";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
 });
 
-const CourseHeader = ({ course }: { course: Course }) => {
+const CourseHeader = ({ course, onLoadingChange }: { course: Course; onLoadingChange?: (loading: boolean) => void }) => {
   const [isEnquiryModalOpen, setIsEnquiryModalOpen] = useState(false);
+  const [isEnrollmentModalOpen, setIsEnrollmentModalOpen] = useState(false);
+  const [isPaymentLoading, setIsPaymentLoading] = useState(false);
+  const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const { data: session } = useSession();
+
+  // Auto-dismiss notification after 5 seconds
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => {
+        setNotification(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
 
   const formattedReviewsCount =
-    course?.reviews?.length &&
-    course?.reviews?.length >= 1000000
-      ? `${(course?.reviews?.length / 1000000)
-          .toFixed(1)
-          .replace(/\.0$/, "")}M`
-      : course?.reviews?.length &&
-        course?.reviews?.length >= 1000
-      ? `${(course?.reviews?.length / 1000)
-          .toFixed(1)
-          .replace(/\.0$/, "")}K`
+    course?.reviews?.length && course?.reviews?.length >= 1000000
+      ? `${(course?.reviews?.length / 1000000).toFixed(1).replace(/\.0$/, "")}M`
+      : course?.reviews?.length && course?.reviews?.length >= 1000
+      ? `${(course?.reviews?.length / 1000).toFixed(1).replace(/\.0$/, "")}K`
       : course?.reviews?.length?.toString();
 
   const discountCountdown = useMemo(() => {
@@ -38,24 +50,73 @@ const CourseHeader = ({ course }: { course: Course }) => {
     const endDate = new Date(course?.discount?.endDate || "");
     if (startDate && endDate && endDate > now) {
       // Convert string dates to Date objects if they are strings
-      const endDateObj = typeof endDate === 'string' ? new Date(endDate) : endDate;
-      
+      const endDateObj =
+        typeof endDate === "string" ? new Date(endDate) : endDate;
+
       const diff = endDateObj.getTime() - now.getTime();
       const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const hours = Math.floor(
+        (diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
+      );
       const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
       const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-      
+
       // Ensure we don't return negative values
-      return { 
-        days: Math.max(0, days), 
-        hours: Math.max(0, hours), 
-        minutes: Math.max(0, minutes), 
-        seconds: Math.max(0, seconds) 
+      return {
+        days: Math.max(0, days),
+        hours: Math.max(0, hours),
+        minutes: Math.max(0, minutes),
+        seconds: Math.max(0, seconds),
       };
     }
     return null;
   }, [course]);
+
+  const handlePlanSelect = async (planType: "elite" | "essential") => {
+    try {
+      setIsPaymentLoading(true);
+      onLoadingChange?.(true);
+      
+      const generateOrder = await axios.post(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/payment/create-order`,
+        {
+          courseId: course._id,
+          planType: planType,
+          userId: session?.user?.id,
+        }
+      );
+      if (generateOrder.data.success) {
+        window.location.href = generateOrder.data.redirectUrl;
+      } else {
+        console.error(generateOrder.data.message);
+        // Handle specific error cases
+        if (generateOrder.data.message?.includes("already enrolled")) {
+          setNotification({ message: "You are already enrolled in this course!", type: 'error' });
+        } else {
+          setNotification({ message: "Something went wrong. Please try again.", type: 'error' });
+        }
+      }
+    } catch (error: any) {
+      console.error(error);
+      // Handle axios error responses
+      if (error.response?.data?.message) {
+        const errorMessage = error.response.data.message;
+        if (errorMessage.includes("already enrolled") || 
+            errorMessage.includes("already exists") ||
+            errorMessage.includes("User already enrolled")) {
+          setNotification({ message: "You are already enrolled in this course!", type: 'error' });
+        } else {
+          setNotification({ message: "Something went wrong. Please try again.", type: 'error' });
+        }
+      } else {
+        setNotification({ message: "Something went wrong. Please try again.", type: 'error' });
+      }
+    } finally {
+      setIsPaymentLoading(false);
+      onLoadingChange?.(false);
+      setIsEnrollmentModalOpen(false);
+    }
+  };
 
   return (
     <>
@@ -90,24 +151,31 @@ const CourseHeader = ({ course }: { course: Course }) => {
             </div>
           </div>
           <div className="course-details-content-right w-full lg:w-2/5 flex flex-col gap-4 mt-3 lg:mt-0 items-center lg:items-end justify-center">
-            {course?.discount && course.discount.isActive && course.discount.value > 0 && new Date(course.discount.endDate || "").getTime() > Date.now() && (
-              <div className="course-discount flex flex-col gap-2">
-                <DiscountCountdown
-                  days={discountCountdown?.days || 0}
-                  hours={discountCountdown?.hours || 0}
-                  minutes={discountCountdown?.minutes || 0}
-                  seconds={discountCountdown?.seconds || 0}
-                  className={`${plusJakartaSans.className} text-sm md:text-base`}
-                />
-              </div>
-            )}
+            {course?.discount &&
+              course.discount.isActive &&
+              course.discount.value > 0 &&
+              new Date(course.discount.endDate || "").getTime() >
+                Date.now() && (
+                <div className="course-discount flex flex-col gap-2">
+                  <DiscountCountdown
+                    days={discountCountdown?.days || 0}
+                    hours={discountCountdown?.hours || 0}
+                    minutes={discountCountdown?.minutes || 0}
+                    seconds={discountCountdown?.seconds || 0}
+                    className={`${plusJakartaSans.className} text-sm md:text-base`}
+                  />
+                </div>
+              )}
             {course?.isActive && (
               <div className="flex gap-5">
-                <OrangeButton className="font-bold text-sm md:text-base">
+                <OrangeButton
+                  className="font-bold text-sm md:text-base"
+                  onClick={() => setIsEnrollmentModalOpen(true)}
+                >
                   Enroll Now
                 </OrangeButton>
-                <WhiteButton 
-                  glow 
+                <WhiteButton
+                  glow
                   className="font-bold lg:hidden text-sm md:text-base"
                   onClick={() => setIsEnquiryModalOpen(true)}
                 >
@@ -122,14 +190,16 @@ const CourseHeader = ({ course }: { course: Course }) => {
           <div className="rating-container w-max flex flex-col items-center md:items-start">
             <p className="text-base font-normal text-text-primary">Rating</p>
             <div className="course-rating w-full flex flex-wrap gap-1 md:gap-2 items-center justify-center md:justify-start">
-              <Star className="size-4 md:size-5 text-[#F7AD24]" fill="#F7AD24" />
+              <Star
+                className="size-4 md:size-5 text-[#F7AD24]"
+                fill="#F7AD24"
+              />
               <span className="text-base md:text-2xl font-normal text-text-primary font-coolvetica tracking-wide">
                 0 {/* TODO: Add rating */}
               </span>
               <span className="text-sm md:text-base font-normal text-text-primary">
                 (
-                {course?.reviews?.length &&
-                course?.reviews?.length > 100
+                {course?.reviews?.length && course?.reviews?.length > 100
                   ? `(more than ${formattedReviewsCount} reviews)`
                   : formattedReviewsCount === "1"
                   ? `${formattedReviewsCount} review`
@@ -163,6 +233,50 @@ const CourseHeader = ({ course }: { course: Course }) => {
         onClose={() => setIsEnquiryModalOpen(false)}
         courseTitle={course?.title}
       />
+
+      {/* Enrollment Modal */}
+      <EnrollmentModal
+        isOpen={isEnrollmentModalOpen}
+        onClose={() => setIsEnrollmentModalOpen(false)}
+        course={course}
+        onPlanSelect={handlePlanSelect}
+      />
+
+      {/* Payment Loading Overlay */}
+      {isPaymentLoading && (
+        <FullScreenLoader
+          text="Generating payment link..."
+          variant="spinner"
+          size="lg"
+        />
+      )}
+
+      {/* Notification */}
+      {notification && (
+        <div className="fixed top-4 right-4 z-50 max-w-sm">
+          <div className={cn(
+            "bg-white rounded-2xl shadow-lg border p-4 flex items-center gap-3",
+            notification.type === 'error' ? 'border-red-200' : 'border-green-200'
+          )}>
+            <div className={cn(
+              "w-3 h-3 rounded-full",
+              notification.type === 'error' ? 'bg-red-500' : 'bg-green-500'
+            )} />
+            <p className={cn(
+              "text-sm font-medium",
+              notification.type === 'error' ? 'text-red-800' : 'text-green-800'
+            )}>
+              {notification.message}
+            </p>
+            <button
+              onClick={() => setNotification(null)}
+              className="ml-auto text-gray-400 hover:text-gray-600"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 };

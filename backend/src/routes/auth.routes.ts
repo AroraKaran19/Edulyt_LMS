@@ -27,4 +27,11 @@ router.post("/login", authController.login);
  */
 router.post("/refresh-token", authController.refreshToken);
 
+/**
+ * @route   POST /api/auth/oauth-signin
+ * @desc    Handle OAuth sign in (Google, LinkedIn)
+ * @access  Public
+ */
+router.post("/oauth-signin", authController.oauthSignIn);
+
 export default router;

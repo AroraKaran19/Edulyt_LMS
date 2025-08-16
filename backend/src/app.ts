@@ -4,6 +4,8 @@ import dotenv from 'dotenv';
 import courseRoutes from './routes/course.routes';
 import uploadRoutes from './routes/upload.routes';
 import authRoutes from './routes/auth.routes';
+import paymentRoutes from './routes/payment.routes';
+import cleanupRoutes from './routes/cleanup.routes';
 
 // Load environment variables
 dotenv.config();
@@ -32,5 +34,7 @@ app.get('/health', (req, res) => {
 app.use('/api/courses', courseRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/payment', paymentRoutes);
+app.use('/api/cleanup', cleanupRoutes);
 
 export default app; 
