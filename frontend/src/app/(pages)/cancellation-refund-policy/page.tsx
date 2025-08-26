@@ -3,7 +3,7 @@ import React from 'react'
 import { CreditCard, AlertTriangle, Mail, MapPin, Phone, XCircle, CheckCircle, Clock, FileText } from 'lucide-react'
 
 const CancellationRefundPolicy = () => {
-	return (
+  return (
 		<div className="min-h-screen bg-gradient-to-br from-orange-50 to-white">
 			{/* Hero Section */}
 			<div className="bg-gradient-to-r from-orange-600 to-orange-700 text-white py-16">
@@ -259,7 +259,7 @@ const CancellationRefundPolicy = () => {
 				</div>
 			</div>
 		</div>
-	)
+  )
 }
 
 export default CancellationRefundPolicy

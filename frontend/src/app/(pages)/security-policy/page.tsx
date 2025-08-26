@@ -3,7 +3,7 @@ import React from 'react'
 import { Shield, Lock, Users, AlertTriangle, Mail, MapPin, Phone, Key, Search, Bell, CheckCircle } from 'lucide-react'
 
 const SecurityPolicy = () => {
-	return (
+  return (
 		<div className="min-h-screen bg-gradient-to-br from-orange-50 to-white">
 			{/* Hero Section */}
 			<div className="bg-gradient-to-r from-orange-600 to-orange-700 text-white py-16">
@@ -272,7 +272,7 @@ const SecurityPolicy = () => {
 				</div>
 			</div>
 		</div>
-	)
+  )
 }
 
 export default SecurityPolicy

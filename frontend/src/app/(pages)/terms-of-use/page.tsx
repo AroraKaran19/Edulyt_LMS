@@ -3,7 +3,7 @@ import React from 'react'
 import { UserCheck, Lock, AlertTriangle, Scale, Mail, MapPin, Phone, Users, Copy, Gavel } from 'lucide-react'
 
 const TermsOfUse = () => {
-	return (
+  return (
 		<div className="min-h-screen bg-gradient-to-br from-orange-50 to-white">
 			{/* Hero Section */}
 			<div className="bg-gradient-to-r from-orange-600 to-orange-700 text-white py-16">
@@ -300,7 +300,7 @@ const TermsOfUse = () => {
 				</div>
 			</div>
 		</div>
-	)
+  )
 }
 
 export default TermsOfUse
