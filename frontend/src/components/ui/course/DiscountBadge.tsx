@@ -1,13 +1,18 @@
 import React from "react";
 import { cn } from "@/lib/utils";
+import { Discount } from "@/types";
 
 const DiscountBadge = ({
   discount,
   className,
 }: {
-  discount: number;
+  discount: Discount;
   className?: string;
 }) => {
+  const discountText = discount.discount === "percentage" 
+    ? `${discount.value}% off`
+    : `₹${discount.value} off`;
+
   return (
     <div
       className={cn(
@@ -15,7 +20,7 @@ const DiscountBadge = ({
         className
       )}
     >
-      {discount}% off
+      {discountText}
     </div>
   );
 };

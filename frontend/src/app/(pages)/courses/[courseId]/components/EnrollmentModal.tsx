@@ -21,7 +21,14 @@ const PlanCard: React.FC<{
 }> = ({ plan, isPopular = false, onSelect }) => {
   const originalPrice = plan.price;
   const discountedPrice = plan.discount?.isActive
-    ? originalPrice - (originalPrice * plan.discount.value) / 100
+    ? (() => {
+        if (plan.discount.discount === "percentage") {
+          return Math.round(originalPrice - (originalPrice * plan.discount.value / 100));
+        } else if (plan.discount.discount === "fixed") {
+          return Math.max(0, Math.round(originalPrice - plan.discount.value));
+        }
+        return originalPrice;
+      })()
     : originalPrice;
 
   return (
@@ -62,7 +69,10 @@ const PlanCard: React.FC<{
         </div>
         {plan.discount?.isActive && (
           <span className="text-sm text-orange-600 font-medium">
-            {plan.discount.value}% OFF
+            {plan.discount.discount === "percentage" 
+              ? `${plan.discount.value}% OFF`
+              : `₹${plan.discount.value} OFF`
+            }
           </span>
         )}
       </div>

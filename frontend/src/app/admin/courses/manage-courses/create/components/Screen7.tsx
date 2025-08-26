@@ -387,6 +387,15 @@ const Screen7 = () => {
     actions.updateCourseContent(moduleId, lessonId, contentId, updates);
   };
 
+  // Helper function to delete content data
+  const deleteContentData = (contentId: string) => {
+    const location = findContentLocation(contentId);
+    if (!location) return;
+
+    const { moduleId, lessonId } = location;
+    actions.deleteCourseContent(moduleId, lessonId, contentId);
+  };
+
   // Helper function to find the location of content by content ID
   const findContentLocation = (
     contentId: string
@@ -686,6 +695,7 @@ const Screen7 = () => {
                                   toggleContentExpansion
                                 }
                                 onUpdateContent={updateContentData}
+                                onDeleteContent={deleteContentData}
                                 courseTitle={state.course.title || "untitled"}
                                 moduleIndex={moduleIndex}
                                 lessonIndex={lessonIndex}
@@ -799,6 +809,7 @@ interface LessonItemProps {
   expandedContent: Set<string>;
   onToggleContentExpansion: (contentId: string) => void;
   onUpdateContent: (contentId: string, updates: Partial<Content>) => void;
+  onDeleteContent: (contentId: string) => void;
   courseTitle?: string;
   moduleIndex?: number;
   lessonIndex?: number;
@@ -814,6 +825,7 @@ const LessonItem: React.FC<LessonItemProps> = ({
   expandedContent,
   onToggleContentExpansion,
   onUpdateContent,
+  onDeleteContent,
   courseTitle,
   moduleIndex,
   lessonIndex,
@@ -881,6 +893,7 @@ const LessonItem: React.FC<LessonItemProps> = ({
               onToggleContentExpansion={onToggleContentExpansion}
               onUpdateContent={onUpdateContent}
               onAddContent={onAddContent}
+              onDeleteContent={onDeleteContent}
               courseTitle={courseTitle}
               moduleIndex={moduleIndex}
               lessonIndex={lessonIndex}

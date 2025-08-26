@@ -158,13 +158,15 @@ const CoursesCarousel = ({ courses }: { courses: Course[] }) => {
         breakpoints={{
           0: {
             slidesPerView: 1.2,
-            spaceBetween: 5,
+            spaceBetween: 20,
           },
           768: {
             slidesPerView: 2.2,
+            spaceBetween: 30,
           },
           1024: {
             slidesPerView: 3,
+            spaceBetween: 30,
           },
           1100: {
             slidesPerView: 3,

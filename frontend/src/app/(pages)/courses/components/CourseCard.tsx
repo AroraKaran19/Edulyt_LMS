@@ -17,7 +17,6 @@ const CourseCard = ({
   style?: React.CSSProperties;
 }) => {
   const router = useRouter();
-  console.log(course.discount)
 
   return (
     <div
@@ -38,7 +37,7 @@ const CourseCard = ({
         />
         {course?.discount && course.discount.isActive && (
           <DiscountBadge
-            discount={course.discount.value}
+            discount={course.discount}
             className="absolute top-2 right-2"
           />
         )}
@@ -78,26 +77,20 @@ const CourseCard = ({
             {course?.discount && course.discount.isActive && course.discount.value > 0 && (
               <span className="text-xl font-bold text-black"> 
                 ₹
-                {course.plans.essential?.price ||
-                  course.plans.elite?.price ||
-                  0}
+                {(() => {
+                  const originalPrice = course.plans.essential?.price || course.plans.elite?.price || 0;
+                  if (course.discount.discount === "percentage") {
+                    return Math.round(originalPrice - (originalPrice * course.discount.value / 100));
+                  } else if (course.discount.discount === "fixed") {
+                    return Math.max(0, Math.round(originalPrice - course.discount.value));
+                  }
+                  return originalPrice;
+                })()}
               </span>
             )}
             <p className="text-sm font-normal text-black line-through opacity-50">
               ₹
-              {course?.discount && course.discount.isActive
-                ? Math.round(
-                    (course.plans.essential?.price ||
-                      course.plans.elite?.price ||
-                      0) +
-                      (course.plans.essential?.price ||
-                        course.plans.elite?.price ||
-                        0) *
-                        (course.discount.value / 100)
-                  )
-                : course.plans.essential?.price ||
-                  course.plans.elite?.price ||
-                  0}
+              {course.plans.essential?.price || course.plans.elite?.price || 0}
             </p>
             <p className="text-sm font-normal text-black">onwards/-</p>
           </div>

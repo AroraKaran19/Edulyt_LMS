@@ -51,6 +51,7 @@ interface User {
   refreshToken?: string;
   pendingPayments?: string[]; // Array of Order IDs whos status is pending
   provider?: 'google' | 'linkedin' | 'credentials';
+  progress?: UserProgress;
   isActive: boolean;
   createdAt?: Date;
   updatedAt?: Date;
