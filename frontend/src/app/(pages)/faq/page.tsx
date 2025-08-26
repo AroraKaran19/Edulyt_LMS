@@ -1,3 +1,4 @@
+"use client"
 import { FlexBox } from '@/components/ui'
 import React, { useState } from 'react'
 import { HelpCircle, ChevronDown, ChevronUp, BookOpen, CreditCard, Users, Shield, Globe, Award, Mail, Phone } from 'lucide-react'
