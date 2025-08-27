@@ -1,5 +1,5 @@
 import "@/app/globals.css";
-// import { ReduxProvider } from "@/store/Provider";
+import { ReduxProvider } from "@/store/Provider";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import LayoutWrapper from "@/components/shared/LayoutWrapper";
 import { cn } from "@/lib/utils";
@@ -23,9 +23,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={cn(plusJakartaSans.className, "antialiased")}>
-        {/* <ReduxProvider> */}
+        <ReduxProvider>
           <LayoutWrapper>{children}</LayoutWrapper>
-        {/* </ReduxProvider> */}
+        </ReduxProvider>
       </body>
     </html>
   );
