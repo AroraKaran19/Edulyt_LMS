@@ -43,24 +43,24 @@ export const coursesApi = createApi({
       query: ({ category, search = '', filters = [], page = 1 }) => {
         const queryString = buildQueryString(search, filters, page);
         const categoryParam = category ? `category=${category}` : '';
-        
+
         const finalQuery = [categoryParam, queryString]
           .filter(Boolean)
           .join('&');
-        
+
         return {
           url: `/courses${finalQuery ? `?${finalQuery}` : ''}`,
         };
       },
       providesTags: ['Course'],
     }),
-    
+
     // Get featured courses
     getFeaturedCourses: builder.query<CoursesResponse, void>({
       query: () => '/courses/featured',
       providesTags: ['Course'],
     }),
-    
+
     // Get courses by category for navbar
     getCoursesByCategory: builder.query<CoursesResponse, string>({
       query: (category) => `/courses?category=${category}`,

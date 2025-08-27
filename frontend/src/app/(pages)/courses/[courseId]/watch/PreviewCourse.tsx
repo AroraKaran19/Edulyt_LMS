@@ -385,12 +385,12 @@ const PreviewCourse = (props: { course: Course }) => {
       component: <QASections questions={filteredQuestions} search={search} onSearchChange={setSearch} />,
     },
     {
-      label: "Notes",
-      component: <Notes />,
+      label: `Reviews (${filteredQuestions.length})`,
+      component: <Reviews questions={filteredQuestions} search={search} onSearchChange={setSearch} />,
     },
     {
-      label: "Reviews",
-      component: <Reviews questions={filteredQuestions} search={search} onSearchChange={setSearch} />,
+      label: "Notes",
+      component: <Notes />,
     },
   ];
 

@@ -22,7 +22,7 @@ const Reviews = ({ questions, search, onSearchChange }: { questions: any[], sear
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
           />
-          <button type="button" title="Send" className="flex items-center gap-2 hover:text-gray-800 transition-colors border border-[#00000021] rounded-xl py-2 px-6 shadow-[0px_-3px_3.7px_0px_#0146E721_inset]">
+          <button type="button" title="Send" className="cursor-pointer flex items-center gap-2 hover:text-gray-800 transition-colors border border-[#00000021] rounded-xl py-2 px-6 shadow-[0px_-3px_3.7px_0px_#0146E721_inset]">
             Send
           </button>
         </div>
@@ -71,7 +71,7 @@ const Reviews = ({ questions, search, onSearchChange }: { questions: any[], sear
 
             {/* Reply Button */}
             <div className="flex items-center gap-2 ">
-              <button type="button" title="Reply" className="flex items-center gap-2 hover:text-gray-800 transition-colors border border-[#00000021] rounded-xl py-2 px-4 shadow-[0px_-3px_3.7px_0px_#0146E721_inset]">
+              <button type="button" title="Reply" className="cursor-pointer flex items-center gap-2 hover:text-gray-800 transition-colors border border-[#00000021] rounded-xl py-2 px-4 shadow-[0px_-3px_3.7px_0px_#0146E721_inset]">
                 <MessageCircle className="size-6 text-black" />
                 <span className="text-base font-bold font-plus-jakarta text-black">Reply</span>
               </button>
