@@ -8,6 +8,10 @@ export default {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        'coolvetica': ['var(--font-coolvetica)'],
+        'plus-jakarta': ['var(--font-plus-jakarta)'],
+      },
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",

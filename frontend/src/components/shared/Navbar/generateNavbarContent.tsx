@@ -1,12 +1,11 @@
 "use client";
-import { cn, fetcher } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { Course, NavItem } from "@/types";
 import { ChevronRight, Crown } from "lucide-react";
 import Image from "next/image";
 import React, { useMemo, useState } from "react";
 import Link from "next/link";
-import useSWR from "swr";
-import { ENDPOINTS } from "@/constants/endpoints";
+import { useGetCoursesByCategoryQuery } from "@/store/coursesApi";
 
 const GenerateNavbarContent = ({
   navLink,
@@ -30,10 +29,8 @@ const GenerateNavbarContent = ({
     categories[0].value
   );
 
-  const { data, isLoading, error } = useSWR(
-    `${ENDPOINTS.courses.all}?category=${selectedCategory}`,
-    fetcher
-  );
+  const { data, isLoading, error } = useGetCoursesByCategoryQuery(selectedCategory);
+  console.log("courses calling three", data);
 
   const filteredCourses = useMemo(
     () =>

@@ -15,6 +15,49 @@ import TabSwitcher from "@/components/ui/course/TabSwitcher";
 import OverviewSection from "./components/OverviewSection";
 import { VideoContent } from "@/types";
 import { usePresignedVideoSources } from "@/hooks/usePresignedUrl";
+import Reviews from "./components/Reviews";
+import QASections from "./components/QASections";
+import Notes from "./components/Notes";
+
+// Sample Q&A data moved to PreviewCourse
+const questionsData = [
+  {
+    id: 1,
+    user: {
+      name: "Archit Narang",
+      avatar: "/user.svg",
+      course: "Artificial Intelligence & Machine Learning"
+    },
+    question: "Lorem ipsum dolor sit amet consectetur. Orci at ultricies pellentesque egestas sollicitudin amet morbi tortor. Mattis odio sagittis ullamcorper maecenas viverra orci at. Pellentesque sed lacus felis consequat purus turpis purus ornare purus. At lacus sed elementum imperdiet. Faucibus sit massa duis arcu quis ultricies. Tellus aliquam enim commodo egestas rhoncus aliquet velit scelerisque amet. Commodo in eu mattis cras. Mus faucibus netus et aliquet. Pulvinar hendrerit tristique scelerisque sed eget in."
+  },
+  {
+    id: 2,
+    user: {
+      name: "Sarah Johnson",
+      avatar: "/user.svg",
+      course: "Data Science & Analytics"
+    },
+    question: "What are the key differences between supervised and unsupervised learning algorithms? I'm having trouble understanding when to use each approach in real-world scenarios."
+  },
+  {
+    id: 3,
+    user: {
+      name: "Mike Chen",
+      avatar: "/user.svg",
+      course: "Deep Learning Fundamentals"
+    },
+    question: "Can someone explain the concept of gradient descent and how it's used in neural network training? I'm particularly confused about the backpropagation process."
+  },
+  {
+    id: 4,
+    user: {
+      name: "Emily Rodriguez",
+      avatar: "/user.svg",
+      course: "Computer Vision"
+    },
+    question: "How do convolutional neural networks handle image recognition tasks? What makes them more effective than traditional machine learning approaches for visual data?"
+  }
+];
 
 const VideoPlayer = dynamic(() => import("./components/VideoPlayer"), {
   ssr: false,
@@ -169,9 +212,8 @@ const CourseContentSection = ({
     <div className="w-full space-y-3">
       {course.modules.map((module, moduleIndex) => (
         <div
-          className={`w-full border border-gray-200 rounded-lg ${
-            moduleIndex !== course.modules.length - 1 ? "mb-3" : ""
-          }`}
+          className={`w-full border border-gray-200 rounded-lg ${moduleIndex !== course.modules.length - 1 ? "mb-3" : ""
+            }`}
           key={module._id}
         >
           {/* Module Header */}
@@ -234,11 +276,10 @@ const CourseContentSection = ({
                         <div
                           key={content._id}
                           onClick={() => navigateToContent(content._id || "")}
-                          className={`w-full p-3 pl-16 cursor-pointer transition-all duration-200 hover:bg-gray-100 border-b border-gray-200 last:border-b-0 ${
-                            selectedContent?._id === content._id
-                              ? "bg-orange-50 border-orange-200"
-                              : ""
-                          }`}
+                          className={`w-full p-3 pl-16 cursor-pointer transition-all duration-200 hover:bg-gray-100 border-b border-gray-200 last:border-b-0 ${selectedContent?._id === content._id
+                            ? "bg-orange-50 border-orange-200"
+                            : ""
+                            }`}
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
@@ -250,11 +291,10 @@ const CourseContentSection = ({
                                 )}
                               </div>
                               <span
-                                className={`text-sm font-medium truncate ${
-                                  selectedContent?._id === content._id
-                                    ? "text-orange-700"
-                                    : "text-gray-700"
-                                }`}
+                                className={`text-sm font-medium truncate ${selectedContent?._id === content._id
+                                  ? "text-orange-700"
+                                  : "text-gray-700"
+                                  }`}
                               >
                                 {content.title}
                               </span>
@@ -288,6 +328,14 @@ const CourseContentSection = ({
 const PreviewCourse = (props: { course: Course }) => {
   const course = useMemo(() => ({ ...props.course }), [props.course]);
   const [width, setWidth] = useState(0);
+  const [search, setSearch] = useState('');
+
+  // Filter questions based on search
+  const filteredQuestions = questionsData.filter(item =>
+    item.question.toLowerCase().includes(search.toLowerCase()) ||
+    item.user.name.toLowerCase().includes(search.toLowerCase()) ||
+    item.user.course.toLowerCase().includes(search.toLowerCase())
+  );
 
   useEffect(() => {
     const handleResize = () => {
@@ -311,38 +359,38 @@ const PreviewCourse = (props: { course: Course }) => {
   const tabs = [
     ...(width < 1024
       ? [
-          {
-            label: "Course Content",
-            component: (
-              <CourseContentSection
-                course={course}
-                selectedModule={selectedModule}
-                selectedLesson={selectedLesson}
-                selectedContent={selectedContent}
-                toggleModule={toggleModule}
-                toggleLesson={toggleLesson}
-                navigateToContent={navigateToContent}
-              />
-            ),
-            showCount: course.modules.length,
-          },
-        ]
+        {
+          label: "Course Content",
+          component: (
+            <CourseContentSection
+              course={course}
+              selectedModule={selectedModule}
+              selectedLesson={selectedLesson}
+              selectedContent={selectedContent}
+              toggleModule={toggleModule}
+              toggleLesson={toggleLesson}
+              navigateToContent={navigateToContent}
+            />
+          ),
+          showCount: course.modules.length,
+        },
+      ]
       : []),
     {
       label: "Overview",
       component: <OverviewSection course={course} />,
     },
     {
-      label: "Q&A",
-      component: <div>Q&A</div>,
+      label: `Q&A (${filteredQuestions.length})`,
+      component: <QASections questions={filteredQuestions} search={search} onSearchChange={setSearch} />,
+    },
+    {
+      label: `Reviews (${filteredQuestions.length})`,
+      component: <Reviews questions={filteredQuestions} search={search} onSearchChange={setSearch} />,
     },
     {
       label: "Notes",
-      component: <div>Notes</div>,
-    },
-    {
-      label: "Reviews",
-      component: <div>Reviews</div>,
+      component: <Notes />,
     },
   ];
 

@@ -5,9 +5,11 @@ import { ChevronDownIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import React, { useState, useEffect } from "react";
+import Image from "next/image";
 
 interface MenuItem {
   icon?: React.ComponentType<{ className?: string }>;
+  iconSrc?: string;
   label: string;
   href: string;
   submenu?: MenuItem[];
@@ -85,6 +87,17 @@ const SidebarMenuItem = ({
                   "fill-white":
                     isActiveRoute(menuItem.href) &&
                     menuItem.href === "/admin/courses",
+                })}
+              />
+            )}
+            {menuItem.iconSrc && (
+              <Image
+                src={menuItem.iconSrc}
+                alt={menuItem.label}
+                width={24}
+                height={24}
+                className={cn("size-6", {
+                  "filter brightness-0 invert": isActiveRoute(menuItem.href),
                 })}
               />
             )}

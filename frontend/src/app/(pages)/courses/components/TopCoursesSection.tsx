@@ -2,17 +2,15 @@
 import React from "react";
 import CoursesCarousel from "./CoursesCarousel";
 import { Loader2 } from "lucide-react";
-import useSWR from "swr";
-import { fetcher } from '@/lib/utils';
 import { getErrorUIConfig } from '@/configs/errorUIConfig';
 import Error from "@/components/ui/Error";
-import { ENDPOINTS } from "@/constants/endpoints";
 import { Course } from "@/types";
+import { useGetFeaturedCoursesQuery } from "@/store/coursesApi";
 
 const TopCoursesSection = () => {
-  const { featured } = ENDPOINTS.courses;
-  const { data, error, isLoading } = useSWR(featured, fetcher);
+  const { data, error, isLoading } = useGetFeaturedCoursesQuery();
   const courses: Course[] = data?.data?.courses || [];
+  console.log("courses calling one", courses);
 
   const renderContent = () => {
     if (isLoading) {

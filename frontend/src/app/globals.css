@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap');
 @import "tailwindcss";
 
 /* Fonts */
@@ -41,6 +42,7 @@ html {
 @theme {
 	--color-text-primary: #2B1508;
 	--font-coolvetica: "Coolvetica Regular", sans-serif;
+	--font-plus-jakarta: "Plus Jakarta Sans", sans-serif;
 
 	/* Animations */
 	@keyframes fadeFromLeft {

@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { NavItem } from "@/types";
 
 const Navlink = ({ href, label, featureBox, onMouseEnter, active, isDashboard }: NavItem) => {
+  console.log("courses calling two", featureBox);
   const pathname = usePathname();
   const [windowWidth, setWindowWidth] = useState(0);
   const [mounted, setMounted] = useState(false);
