@@ -1,3 +1,5 @@
+import AdminTopHeader from "@/components/admin/AdminTopHeader";
+import AdminDashboard from "@/components/admin/dashboard/AdminDashboard";
 import UnderDevelopment from "@/components/ui/UnderDevelopment";
 import { notFound } from "next/navigation";
 import React from "react";
@@ -18,8 +20,10 @@ const AdminPage = () => {
   }
 
   return (
-    <div className="w-full h-full flex-col gap-4 p-8">
-      <UnderDevelopment className="w-full h-full flex flex-col justify-center" />
+    <div className="w-full h-full flex-col gap-4">
+      <AdminTopHeader />
+      <AdminDashboard />
+      {/* <UnderDevelopment className="w-full h-full flex flex-col justify-center" /> */}
     </div>
   );
 };

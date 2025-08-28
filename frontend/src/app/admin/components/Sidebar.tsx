@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 
 interface MenuItem {
   icon?: React.ComponentType<{ className?: string }>;
+  iconSrc?: string;
   label: string;
   href: string;
   submenu?: MenuItem[];
@@ -23,12 +24,12 @@ const AdminSidebar = ({ isCollapsed, setIsCollapsed }: AdminSidebarProps) => {
 
   const menuItems: MenuItem[] = [
     {
-      icon: LayoutDashboardIcon,
+      iconSrc: "/dashboard-icon.svg",
       label: "Dashboard",
       href: "/admin",
     },
     {
-      icon: BookOpenIcon,
+      iconSrc: "/courses-icon.svg",
       label: "Courses",
       href: "/admin/courses",
       submenu: [
@@ -39,6 +40,40 @@ const AdminSidebar = ({ isCollapsed, setIsCollapsed }: AdminSidebarProps) => {
         {
           label: "Manage Courses",
           href: "/admin/courses/manage-courses",
+        },
+      ],
+    },
+    {
+      iconSrc: "/Internship.svg",
+      label: "Internships",
+      href: "/admin/internships",
+      submenu: [
+        {
+          label: "Analytics",
+          href: "/admin/internships/analytics",
+        },
+        {
+          label: "All Internships",
+          href: "/admin/internships/all-internships",
+        },
+        {
+          label: "Manage Internships",
+          href: "/admin/internships/manage-internships",
+        },
+      ],
+    },
+    {
+      iconSrc: "/all-users-icon.svg",
+      label: "All Users",
+      href: "/admin/users",
+      submenu: [
+        {
+          label: "All Users",
+          href: "/admin/users/all-users",
+        },
+        {
+          label: "Manage Users",
+          href: "/admin/users/manage-users",
         },
       ],
     },
@@ -77,7 +112,7 @@ const AdminSidebar = ({ isCollapsed, setIsCollapsed }: AdminSidebarProps) => {
               draggable={false}
             />
           </FlexBox>
-          
+
           <FlexBox className="admin-sidebar-menu w-full flex-col gap-4 px-8">
             <h2 className="text-sm font-medium text-gray-500 uppercase tracking-wider">
               MENU
@@ -88,7 +123,7 @@ const AdminSidebar = ({ isCollapsed, setIsCollapsed }: AdminSidebarProps) => {
               ))}
             </FlexBox>
           </FlexBox>
-          
+
           <FlexBox className="admin-sidebar-footer w-full mt-auto px-8">
             <WhiteButton className="w-full flex gap-4 items-center justify-center">
               <LogOut className="size-4" />
