@@ -1,6 +1,7 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { MessageCircle, Search, Star } from "lucide-react";
 import Image from 'next/image';
+import TextArea from '@/components/ui/inputs/TextArea';
 
 const Reviews = ({ questions, search, onSearchChange }: { questions: any[], search: string, onSearchChange: (value: string) => void }) => {
   // Filter questions based on search
@@ -9,7 +10,7 @@ const Reviews = ({ questions, search, onSearchChange }: { questions: any[], sear
     item.user.name.toLowerCase().includes(search.toLowerCase()) ||
     item.user.course.toLowerCase().includes(search.toLowerCase())
   );
-
+  const [openReplyId, setOpenReplyId] = useState<string | null>(null);
   return (
     <div>
       {/* search bar */}
@@ -71,11 +72,19 @@ const Reviews = ({ questions, search, onSearchChange }: { questions: any[], sear
 
             {/* Reply Button */}
             <div className="flex items-center gap-2 ">
-              <button type="button" title="Reply" className="cursor-pointer flex items-center gap-2 hover:text-gray-800 transition-colors border border-[#00000021] rounded-xl py-2 px-4 shadow-[0px_-3px_3.7px_0px_#0146E721_inset]">
+              <button type="button" title="Reply"
+                className="cursor-pointer flex items-center gap-2 hover:text-gray-800 transition-colors border border-[#00000021] rounded-xl py-2 px-4 shadow-[0px_-3px_3.7px_0px_#0146E721_inset]"
+                onClick={() => setOpenReplyId(openReplyId === item.id ? null : item.id)}
+              >
                 <MessageCircle className="size-6 text-black" />
                 <span className="text-base font-bold font-plus-jakarta text-black">Reply</span>
               </button>
             </div>
+            {openReplyId === item.id && (
+              <div className="mt-4">
+                <TextArea placeholder="Add your reply here..." onClose={() => setOpenReplyId(null)} onSave={() => {}} onNoteContentChange={() => {}} noteContent={''} />
+              </div>
+            )}
             <hr className="border-3 border-[#0000000D] my-5" />
           </div>
         ))}
