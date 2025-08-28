@@ -8,7 +8,7 @@ export interface PaymentOrder {
   userId: string | User;
   courseId: string | Course;
   planType: "elite" | "essential";
-  paymentMethod: "phonepe";
+  paymentMethod: "paytm";
   paymentMode: string;
   paymentStatus: "pending" | "success" | "failed";
   createdAt?: Date;

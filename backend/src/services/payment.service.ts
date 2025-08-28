@@ -2,31 +2,14 @@ import CourseModel from "../models/course.schema";
 import { OrderModel } from "../models/order.schema";
 import { randomUUID } from "crypto";
 import dotenv from "dotenv";
-import {
-  StandardCheckoutClient,
-  Env,
-  StandardCheckoutPayRequest,
-  MetaInfo,
-} from "pg-sdk-node";
 import UserModel from "../models/user.schema";
 import jwt from "jsonwebtoken";
+import axios from "axios";
+import PaytmChecksum, { PaytmParamsBody } from "paytmchecksum";
 
 dotenv.config();
 
-const clientId = process.env.PHONEPE_CLIENT_ID!;
-const clientSecret = process.env.PHONEPE_CLIENT_SECRET!;
-const clientVersion = Number(process.env.CLIENT_VERSION!);
-const env = Env.SANDBOX;
-
-const client = StandardCheckoutClient.getInstance(
-  clientId,
-  clientSecret,
-  clientVersion,
-  env
-);
-
 export class PaymentService {
-
   /**
    * Get order info
    * @param orderId - Order id
@@ -75,16 +58,21 @@ export class PaymentService {
       throw error;
     }
 
-    const { payment, merchantOrderId } = await this.preparePaymentRequest(
-      order._id.toString(),
-      userId,
-      courseId,
-      planType
-    );
+    const { paymentRequest, merchantOrderId } =
+      await this.preparePaymentRequest(
+        order._id.toString(),
+        userId,
+        courseId,
+        planType
+      );
 
-    const response = await client.pay(payment);
+    const response = await Paytm.Payment.getPaymentStatus(paymentRequest);
 
-    await order.updateOne({ amount: payment.amount/100, orderId: merchantOrderId });
+    await order.updateOne({
+      amount: response.amount,
+      orderId: merchantOrderId,
+    });
+
     await order.save();
 
     // save the orderid in the user's pendingPayments array
@@ -122,9 +110,12 @@ export class PaymentService {
           paymentMode: order.paymentMode,
         };
       }
-      const response = await client.getOrderStatus(order.orderId);
+      const response = await Paytm.Payment.getPaymentStatus(order.orderId);
       if (response.state === "SUCCESS" || response.state === "COMPLETED") {
-        await order.updateOne({ paymentStatus: "success", paymentMode: response.paymentDetails[0].paymentMode || "online" });
+        await order.updateOne({
+          paymentStatus: "success",
+          paymentMode: response.paymentDetails[0].paymentMode || "online",
+        });
         await UserModel.findByIdAndUpdate(order.userId, {
           $pull: { pendingPayments: orderId }, // remove the orderId from the pendingPayments array
         });
@@ -190,28 +181,60 @@ export class PaymentService {
       throw new Error("Plan not found");
     }
 
-    const amount = plan?.price! * 100; // convert to paisa
+    const amount = plan?.price;
     const merchantOrderId = randomUUID();
     const paymentGatewayToken = jwt.sign({ orderId }, process.env.JWT_SECRET!, {
       expiresIn: "5m",
     });
     const redirectUrl = `${process.env.FRONTEND_URL}/payment/status/${orderId}?token=${paymentGatewayToken}`;
-    const metaInfo: MetaInfo = {
-      udf1: `userId: ${userId}`,
-      udf2: `courseId: ${courseId}`,
-      udf3: `planType: ${planType}`,
-      udf4: `amount: ₹${amount / 100}`,
+
+    const body = {
+      requestType: "Payment",
+      mid: process.env.PAYTM_MID!,
+      websiteName: process.env.PAYTM_WEBSITE!,
+      orderId,
+      callbackUrl: redirectUrl,
+      txnAmount: {
+        value: amount.toString(),
+        currency: "INR",
+      },
+      userInfo: {
+        custId: userId,
+      },
     };
 
-    const payment = StandardCheckoutPayRequest.builder()
-      .merchantOrderId(merchantOrderId)
-      .amount(amount)
-      .redirectUrl(redirectUrl)
-      .metaInfo(metaInfo)
-      .build();
+    const checksum = await PaytmChecksum.generateSignature(
+      JSON.stringify(body),
+      process.env.PAYTM_KEY!
+    );
+
+    const verifyChecksum = PaytmChecksum.verifySignature(
+      JSON.stringify(body),
+      process.env.PAYTM_KEY!,
+      checksum
+    );
+    console.log("Checksum valid?", verifyChecksum);
+    console.log("Checksum:", checksum);
+    console.log("Body:", JSON.stringify(body));
+
+    const response = await axios.post(
+      `https://secure.paytmpayments.com/theia/api/v1/initiateTransaction?mid=${process.env.PAYTM_MID}&orderId=${orderId}`,
+      {
+        head: {
+          channelId: "WEB",
+          signature: checksum,
+        },
+        body: JSON.stringify(body),
+      },
+      {
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+
+    console.log(response.data);
 
     return {
-      payment,
+      paymentRequest: response.data.txnToken,
       merchantOrderId,
     };
   }

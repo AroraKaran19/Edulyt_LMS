@@ -10,7 +10,7 @@ const orderSchema = new Schema<PaymentOrder>(
     courseId: { type: Schema.Types.ObjectId, ref: "Course", required: true },
     planType: { type: String, required: true, enum: ["elite", "essential"] },
     paymentMode: { type: String, required: true, default: "online" },
-    paymentMethod: { type: String, required: true, default: "phonepe" },
+    paymentMethod: { type: String, required: true, default: "paytm" },
     paymentStatus: {
       type: String,
       required: true,
