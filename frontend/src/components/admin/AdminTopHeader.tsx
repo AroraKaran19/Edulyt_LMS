@@ -3,7 +3,7 @@ import React from 'react'
 
 const AdminTopHeader = () => {
     return (
-        <div className='flex items-center justify-between w-full bg-white p-6'>
+        <div className='flex items-center justify-between w-full bg-white py-4 px-6'>
             {/* Search Bar */}
             <div className='relative'>
                 <input
