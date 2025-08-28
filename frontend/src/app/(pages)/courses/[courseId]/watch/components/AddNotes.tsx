@@ -1,3 +1,4 @@
+import TextArea from '@/components/ui/inputs/TextArea'
 import { Bold, ChevronDown, Clock, Italic, List } from 'lucide-react'
 import React from 'react'
 
@@ -36,15 +37,13 @@ const AddNotes = ({ onClose, onSave, onNoteContentChange, noteContent }: { onClo
                 </div>
             </div>
 
-            {/* Content Area */}
-            <div className="bg-white border mt-1 border-[#00000026] rounded-lg p-4 flex items-center justify-center min-h-[100px]">
-                <textarea
-                    value={noteContent}
-                    onChange={(e) => onNoteContentChange(e.target.value)}
+            {/* Content Area */}           
+                <TextArea
                     placeholder="Start typing your note..."
-                    className="w-full resize-none"
+                    onChange={(e) => onNoteContentChange(e.target.value)}
+                    className="bg-white border resize-none mt-1 border-[#00000026] rounded-lg p-4 flex items-center justify-center min-h-[100px]"
+                    value={noteContent}
                 />
-            </div>
 
             {/* Footer */}
             <div className="bg-gray-100 px-4 py-3 rounded-b-lg flex justify-end gap-3">
