@@ -125,11 +125,19 @@ const AdminSidebar = ({ isCollapsed, setIsCollapsed }: AdminSidebarProps) => {
           </FlexBox>
 
           <FlexBox className="admin-sidebar-footer w-full mt-auto px-8">
-            <WhiteButton className="w-full flex gap-4 items-center justify-center">
-              <LogOut className="size-4" />
-              <span className="text-sm font-medium">Logout</span>
-            </WhiteButton>
+            <div className="flex gap-2 items-center cursor-pointer">
+              <Image src="/logout-icon.svg" alt="logout" width={20} height={20} />
+              <span className="text-base text-[#00000099] font-medium">Sign Out</span>
+            </div>
           </FlexBox>
+
+          <FlexBox className="admin-sidebar-footer w-full px-8 mt-2">
+            <div className="flex gap-2 items-center cursor-pointer">
+              <Image src="/help-support-icon.svg" alt="logout" width={20} height={20} />
+              <span className="text-base text-[#00000099] font-medium">Help & Support</span>
+            </div>
+          </FlexBox>
+
         </>
       )}
     </FlexBox>

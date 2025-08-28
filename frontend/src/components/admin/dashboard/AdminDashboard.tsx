@@ -2,12 +2,13 @@
 import React, { useState } from 'react'
 import Image from 'next/image'
 import DropDown from '@/components/ui/dropdown/DropDown'
+import AllUsersGraph from './AllUsersGraph'
+import NewSignpUsers from './NewSignupusersGraph'
 
 const AdminDashboard = () => {
     const [selectedFilter, setSelectedFilter] = useState('Yearly')
-    const [selectedSort, setSelectedSort] = useState('Monthly')
     return (
-        <div className="p-2 sm:p-4 flex flex-col gap-4">
+        <div className="p-2 sm:px-4 sm:pb-2 flex flex-col gap-4">
             {/* Header */}
             <div className='flex flex-col sm:flex-row sm:items-center justify-between w-full bg-white pr-2 sm:pr-6 gap-2 sm:gap-0'>
                 {/* Title */}
@@ -23,7 +24,7 @@ const AdminDashboard = () => {
             <div className="space-y-4 sm:space-y-6 sm:pr-6">
                 {/* Top Row - Two Cards with responsive split */}
                 <div className="grid grid-cols-1 lg:grid-cols-10 gap-4 sm:gap-6">
-                    <div className="lg:col-span-5 bg-white rounded-xl p-3 sm:p-4 shadow-sm border border-[#EAECF0]">
+                    <div className="lg:col-span-5 bg-white rounded-xl p-3 shadow-sm border border-[#EAECF0]">
                         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 lg:gap-0">
                             <div className="">
                                 <h3 className="text-[#475467] font-medium text-sm sm:text-base">Total Users</h3>
@@ -43,7 +44,7 @@ const AdminDashboard = () => {
                             </div>
                         </div>
                     </div>
-                    <div className="lg:col-span-5 bg-white rounded-xl p-3 sm:p-4 shadow-sm border border-[#EAECF0]">
+                    <div className="lg:col-span-5 bg-white rounded-xl p-3 shadow-sm border border-[#EAECF0]">
                         <div className="">
                             <div className="flex gap-2 text-left bg-[#1D29390F] border border-[#00000005] rounded-lg px-2 py-1">
 
@@ -59,8 +60,6 @@ const AdminDashboard = () => {
                         </div>
                     </div>
                 </div>
-
-
             </div>
 
             {/* graphs */}
@@ -77,7 +76,7 @@ const AdminDashboard = () => {
 
                                 </div>
                             </div>
-                            <div>
+                            <div className='cursor-pointer'>
                                 <DropDown
                                     options={['Monthly', 'Yearly']}
                                     defaultValue={selectedFilter}
@@ -85,6 +84,9 @@ const AdminDashboard = () => {
                                     className="w-full sm:w-28 font-bold text-base text-[#1D2939]"
                                 />
                             </div>
+                        </div>
+                        <div>
+                            <AllUsersGraph />
                         </div>
                     </div>
 
@@ -104,7 +106,7 @@ const AdminDashboard = () => {
                                     </div>
                                 </div>
                             </div>
-                            <div>
+                            <div className='cursor-pointer'>
                                 <DropDown
                                     options={['Monthly', 'Yearly']}
                                     defaultValue={selectedFilter}
@@ -112,6 +114,9 @@ const AdminDashboard = () => {
                                     className="w-full sm:w-28 font-bold text-base text-[#1D2939]"
                                 />
                             </div>
+                        </div>
+                        <div>
+                            <NewSignpUsers />
                         </div>
                     </div>
 
