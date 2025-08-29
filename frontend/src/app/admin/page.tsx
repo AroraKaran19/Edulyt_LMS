@@ -20,10 +20,11 @@ const AdminPage = () => {
   }
 
   return (
-    <div className="w-full h-full flex-col gap-4">
+    <div className="w-full h-full flex flex-col overflow-hidden">
       <AdminTopHeader />
-      <AdminDashboard />
-      {/* <UnderDevelopment className="w-full h-full flex flex-col justify-center" /> */}
+      <div className="flex-1 overflow-y-auto">
+        <AdminDashboard />
+      </div>
     </div>
   );
 };

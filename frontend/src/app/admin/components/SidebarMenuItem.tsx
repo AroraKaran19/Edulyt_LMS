@@ -51,6 +51,19 @@ const SidebarMenuItem = ({
     }
   };
 
+  const getRedirectHref = (item: MenuItem) => {
+    if (item.submenu) {
+      if (item.href === "/admin/courses") {
+        return "/admin/courses/manage-courses";
+      } else if (item.href === "/admin/internships") {
+        return "/admin/internships/manage-internships";
+      } else if (item.href === "/admin/users") {
+        return "/admin/users/manage-users";
+      }
+    }
+    return item.href;
+  };
+
   const isActiveRoute = (itemHref: string) => {
     if (itemHref === "/admin") {
       return pathname === "/admin";
@@ -62,7 +75,7 @@ const SidebarMenuItem = ({
   return (
     <div className="relative flex flex-col gap-2">
       <Link
-        href={menuItem.href}
+        href={getRedirectHref(menuItem)}
         className={cn(
           `w-full p-3 rounded-lg transition-all duration-300 relative`,
           {

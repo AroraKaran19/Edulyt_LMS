@@ -59,7 +59,7 @@ const NewSignupusersGraph = () => {
         <main className="flex-1 flex flex-col gap-4">
           <div className="bg-white rounded-xl ">
             {/* Chart Area */}
-            <div className="bg-white rounded-xl p-3">
+            <div className="bg-white rounded-xl">
               <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
                 {/* Graph Area */}
                 <div className="flex-1 min-w-0">
