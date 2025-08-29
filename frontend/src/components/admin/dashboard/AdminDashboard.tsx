@@ -8,7 +8,7 @@ import NewSignpUsers from './NewSignupusersGraph'
 const AdminDashboard = () => {
     const [selectedFilter, setSelectedFilter] = useState('Yearly')
     return (
-        <div className="p-2 sm:px-4 sm:pb-2 flex flex-col gap-4">
+        <div className="p-2 sm:px-4 sm:pb-2 flex flex-col gap-4 min-h-full">
             {/* Header */}
             <div className='flex flex-col sm:flex-row sm:items-center justify-between w-full bg-white pr-2 sm:pr-6 gap-2 sm:gap-0'>
                 {/* Title */}
@@ -25,7 +25,7 @@ const AdminDashboard = () => {
                 {/* Top Row - Two Cards with responsive split */}
                 <div className="grid grid-cols-1 lg:grid-cols-10 gap-4 sm:gap-6">
                     <div className="lg:col-span-5 bg-white rounded-xl p-3 shadow-sm border border-[#EAECF0]">
-                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 lg:gap-0">
+                        <div className="flex flex-row lg:items-center justify-between gap-3 lg:gap-0">
                             <div className="">
                                 <h3 className="text-[#475467] font-medium text-sm sm:text-base">Total Users</h3>
                                 <div className="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-2 mb-2">
