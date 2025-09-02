@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { MessageCircle, Search, Star } from "lucide-react";
+import { MessageCircle, Star } from "lucide-react";
 import Image from 'next/image';
 import TextArea from '@/components/ui/inputs/TextArea';
 

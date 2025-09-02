@@ -10,7 +10,7 @@ import { useRouter } from "next/navigation";
 import axios, { isAxiosError } from "axios";
 
 const RegisterPage = () => {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");

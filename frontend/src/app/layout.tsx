@@ -13,6 +13,38 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 export const metadata: Metadata = {
   title: "Edulyt India",
   description: "Educational platform for learning and growth",
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_APP_URL || 
+    process.env.NODE_ENV === 'production' 
+      ? 'https://www.airkrit.com/' 
+      : 'http://localhost:3000'
+  ),
+  openGraph: {
+    title: "Edulyt India",
+    description: "Educational platform for learning and growth",
+    url: "https://www.airkrit.com/",
+    siteName: "Edulyt India",
+    type: "website",
+    images: [
+      {
+        url: "/logo.png",
+        width: 1200,
+        height: 630,
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Edulyt India",
+    description: "Educational platform for learning and growth",
+    images: [
+      {
+        url: "/logo.png",
+        width: 1200,
+        height: 630,
+      },
+    ],
+  },
 };
 
 export default function RootLayout({

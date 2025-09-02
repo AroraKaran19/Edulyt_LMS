@@ -36,7 +36,7 @@ const formatNumber = (number: number) => {
 };
 
 const Navbar = () => {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const isAuthenticated = status === "authenticated";
   // TODO: implement redux to store the course count
   const [courseCount, setCourseCount] = useState(0);

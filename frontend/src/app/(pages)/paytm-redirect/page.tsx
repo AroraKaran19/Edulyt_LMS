@@ -1,6 +1,6 @@
 "use client";
 import { useSearchParams, useRouter } from "next/navigation";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, Suspense } from "react";
 
 declare global {
   interface Window {
@@ -14,7 +14,7 @@ declare global {
   }
 }
 
-const PaymentRedirectPage = () => {
+const PaymentRedirectContent = () => {
   const [orderIdToBeUsed, setOrderIdToBeUsed] = useState<string | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<string>("Continue your payment");
   const [isRedirecting, setIsRedirecting] = useState<boolean>(false);
@@ -120,6 +120,25 @@ const PaymentRedirectPage = () => {
         )}
       </div>
     </div>
+  );
+};
+
+const PaymentRedirectPage = () => {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-[#F3F3F3]">
+        <div className="text-center bg-white rounded-3xl p-8 shadow-[0_0_20px_4px_rgba(0,0,0,0.1)] border border-gray-200 max-w-md mx-4">
+          <div className="mb-6">
+            <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-[#F77124] mx-auto mb-6"></div>
+          </div>
+          <h1 className="text-2xl font-bold text-[#2B1508] mb-4 font-coolvetica">
+            Loading...
+          </h1>
+        </div>
+      </div>
+    }>
+      <PaymentRedirectContent />
+    </Suspense>
   );
 };
 

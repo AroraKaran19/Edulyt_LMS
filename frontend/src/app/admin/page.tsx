@@ -1,6 +1,5 @@
 import AdminTopHeader from "@/components/admin/AdminTopHeader";
 import AdminDashboard from "@/components/admin/dashboard/AdminDashboard";
-import UnderDevelopment from "@/components/ui/UnderDevelopment";
 import { notFound } from "next/navigation";
 import React from "react";
 

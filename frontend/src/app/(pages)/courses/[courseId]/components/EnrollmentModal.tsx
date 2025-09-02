@@ -158,8 +158,11 @@ const PlanCard: React.FC<{
         )}
         onClick={(e) => {
           e.stopPropagation();
-          session?.user?.id && onSelect();
-          !session?.user?.id && redirect("/auth/login");
+          if (session?.user?.id) {
+            onSelect();
+          } else {
+            redirect("/auth/login");
+          }
         }}
       >
         {session?.user?.id ? "Choose " + plan.title : "Login to Choose"}
