@@ -11,6 +11,7 @@ import { Menu, X } from "lucide-react";
 import HoverContainer from "./HoverContainer";
 import useSWR from "swr";
 import { ENDPOINTS } from "@/constants/endpoints";
+import { useSession } from "next-auth/react";
 
 const manrope = Manrope({
   subsets: ["latin"],
@@ -35,6 +36,8 @@ const formatNumber = (number: number) => {
 };
 
 const Navbar = () => {
+  const { data: session, status } = useSession();
+  const isAuthenticated = status === "authenticated";
   // TODO: implement redux to store the course count
   const [courseCount, setCourseCount] = useState(0);
   const { data } = useSWR(ENDPOINTS.courses.all, fetcher);
@@ -149,18 +152,22 @@ const Navbar = () => {
             "xl:gap-4"
           )}
         >
-          <Link href="/auth/login" className="hidden sm:block">
-            <WhiteButton className="text-xs font-semibold">Log In</WhiteButton>
-          </Link>
-          <Link href="/auth/register" className="hidden lg:block">
-            <OrangeButton
-              className="text-xs font-semibold lg:px-4 lg:py-2.5"
-              blinkIcon
-              glow
-            >
-              Register Now
-            </OrangeButton>
-          </Link>
+          {!isAuthenticated && (
+            <>
+              <Link href="/auth/login" className="hidden sm:block">
+                <WhiteButton className="text-xs font-semibold">Log In</WhiteButton>
+              </Link>
+              <Link href="/auth/register" className="hidden lg:block">
+                <OrangeButton
+                  className="text-xs font-semibold lg:px-4 lg:py-2.5"
+                  blinkIcon
+                  glow
+                >
+                  Register Now
+                </OrangeButton>
+              </Link>
+            </>
+          )}
 
           {/* Hamburger Menu Button */}
           <button
@@ -222,20 +229,24 @@ const Navbar = () => {
                   plusJakartaSans.className
                 )}
               >
-                <Link href="/auth/login" onClick={toggleMenu}>
-                  <WhiteButton className="w-full text-sm font-semibold justify-center">
-                    Log In
-                  </WhiteButton>
-                </Link>
-                <Link href="/auth/register" onClick={toggleMenu}>
-                  <OrangeButton
-                    className="w-full text-sm font-semibold justify-center"
-                    blinkIcon
-                    glow
-                  >
-                    Register Now
-                  </OrangeButton>
-                </Link>
+                {!isAuthenticated && (
+                  <>
+                    <Link href="/auth/login" onClick={toggleMenu}>
+                      <WhiteButton className="w-full text-sm font-semibold justify-center">
+                        Log In
+                      </WhiteButton>
+                    </Link>
+                    <Link href="/auth/register" onClick={toggleMenu}>
+                      <OrangeButton
+                        className="w-full text-sm font-semibold justify-center"
+                        blinkIcon
+                        glow
+                      >
+                        Register Now
+                      </OrangeButton>
+                    </Link>
+                  </>
+                )}
               </div>
             </nav>
           </div>

@@ -1,10 +1,10 @@
-import UnderDevelopment from "@/components/ui/UnderDevelopment";
 import React from "react";
+import Applications from "../components/applications/Applications";
 
 const ApplicationsPage = () => {
   return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
-      <UnderDevelopment />
+    <div className="flex flex-col min-h-[60vh]">
+      <Applications />
     </div>
   );
 };
