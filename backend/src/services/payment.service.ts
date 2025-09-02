@@ -58,7 +58,7 @@ export class PaymentService {
       throw error;
     }
 
-    const { paymentRequest, merchantOrderId } =
+    const { token, merchantOrderId, amount } =
       await this.preparePaymentRequest(
         order._id.toString(),
         userId,
@@ -66,10 +66,8 @@ export class PaymentService {
         planType
       );
 
-    const response = await Paytm.Payment.getPaymentStatus(paymentRequest);
-
     await order.updateOne({
-      amount: response.amount,
+      amount: amount,
       orderId: merchantOrderId,
     });
 
@@ -82,7 +80,7 @@ export class PaymentService {
 
     return {
       orderId: order._id.toString(),
-      redirectUrl: response.redirectUrl,
+      token: token,
     };
   }
 
@@ -202,40 +200,43 @@ export class PaymentService {
         custId: userId,
       },
     };
-
+    
     const checksum = await PaytmChecksum.generateSignature(
       JSON.stringify(body),
       process.env.PAYTM_KEY!
     );
-
+    
     const verifyChecksum = PaytmChecksum.verifySignature(
       JSON.stringify(body),
       process.env.PAYTM_KEY!,
       checksum
     );
-    console.log("Checksum valid?", verifyChecksum);
-    console.log("Checksum:", checksum);
-    console.log("Body:", JSON.stringify(body));
-
+    
     const response = await axios.post(
-      `https://secure.paytmpayments.com/theia/api/v1/initiateTransaction?mid=${process.env.PAYTM_MID}&orderId=${orderId}`,
+      `https://securestage.paytmpayments.com/theia/api/v1/initiateTransaction?mid=${process.env.PAYTM_MID}&orderId=${orderId}`,
       {
         head: {
-          channelId: "WEB",
           signature: checksum,
+          channelId: "WEB",
+          version: "v1",
+          requestTimestamp: `${Math.floor(Date.now() / 1000)}`,
         },
-        body: JSON.stringify(body),
+        body,
       },
       {
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
       }
     );
-
-    console.log(response.data);
-
+    
+    console.log("Response:", response);
+    
     return {
-      paymentRequest: response.data.txnToken,
+      token: response.data.body.txnToken,
       merchantOrderId,
+      amount,
     };
   }
 

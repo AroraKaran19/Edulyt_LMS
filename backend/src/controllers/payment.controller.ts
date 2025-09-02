@@ -76,7 +76,7 @@ export class PaymentController {
         success: true,
         message: "Payment created successfully",
         orderId: payment.orderId,
-        redirectUrl: payment.redirectUrl,
+        token: payment.token,
       });
     } catch (error) {
       res.status(500).json({ message: "Error creating payment", error: error });
