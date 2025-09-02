@@ -23,7 +23,6 @@ const LoginPage = () => {
   }, []);
 
   useEffect(() => {
-    console.log("Session status:", session);
     if (status === "authenticated") {
       router.push("/dashboard");
     }
@@ -49,7 +48,7 @@ const LoginPage = () => {
         setError(error.response?.data.message as string);
       } else {
         setError("Something went wrong. Please try again.");
-        console.log("Login error:", error);
+        console.error("Login error:", error);
       }
     } finally {
       setLoading(false);

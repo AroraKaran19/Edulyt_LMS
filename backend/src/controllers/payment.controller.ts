@@ -58,12 +58,10 @@ export class PaymentController {
 
       // Check if user is already enrolled in the course
       if (user.enrolledCourses?.includes(courseId)) {
-        res
-          .status(203)
-          .json({
-            message: "User already enrolled in the course",
-            success: false,
-          });
+        res.status(203).json({
+          message: "User already enrolled in the course",
+          success: false,
+        });
         return;
       }
 
@@ -74,7 +72,7 @@ export class PaymentController {
       );
       res.status(200).json({
         success: true,
-        message: "Payment created successfully",
+        message: "Order created successfully",
         orderId: payment.orderId,
         token: payment.token,
       });
@@ -109,6 +107,7 @@ export class PaymentController {
         orderId: orderStatusResponse?.orderId,
         createdAt: orderStatusResponse?.createdAt,
         amount: orderStatusResponse?.amount,
+        txnId: orderStatusResponse?.txnId,
       });
     } catch (error) {
       res

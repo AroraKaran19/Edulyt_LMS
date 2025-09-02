@@ -222,7 +222,6 @@ const Screen7 = () => {
 
     const newIndex = (state.course.modules || []).length;
     setExpandedModules((prev) => new Set([...prev, newIndex]));
-    console.log("Module added successfully:", newModule);
   };
 
   // Helper function to add a new lesson to a module

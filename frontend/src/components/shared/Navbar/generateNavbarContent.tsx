@@ -5,7 +5,7 @@ import { ChevronRight, Crown } from "lucide-react";
 import Image from "next/image";
 import React, { useMemo, useState } from "react";
 import Link from "next/link";
-import { useGetCoursesByCategoryQuery } from "@/store/coursesApi";
+import { useGetCoursesByAudienceQuery } from "@/store/coursesApi"; 
 
 const GenerateNavbarContent = ({
   navLink,
@@ -25,19 +25,18 @@ const GenerateNavbarContent = ({
       value: "professionals",
     },
   ];
-  const [selectedCategory, setSelectedCategory] = useState<string>(
+  const [selectedAudience, setSelectedAudience] = useState<string>(
     categories[0].value
   );
 
-  const { data, isLoading, error } = useGetCoursesByCategoryQuery(selectedCategory);
-  console.log("courses calling three", data);
+  const { data, isLoading, error } = useGetCoursesByAudienceQuery(selectedAudience);
 
   const filteredCourses = useMemo(
     () =>
       data?.data?.courses.filter(
-        (course: Course) => course.audience === selectedCategory
+        (course: Course) => course.audience === selectedAudience
       ),
-    [data, selectedCategory]
+    [data, selectedAudience]
   );
 
   switch (navLink.label) {
@@ -55,9 +54,9 @@ const GenerateNavbarContent = ({
                   key={index}
                   className={cn(
                     "category w-full px-8 py-4 flex items-center justify-between hover:bg-gray-200 transition-all duration-300 cursor-pointer rounded-xl flex-shrink-0",
-                    selectedCategory === category.value && "bg-gray-200"
+                    selectedAudience === category.value && "bg-gray-200"
                   )}
-                  onClick={() => setSelectedCategory(category.value)}
+                  onClick={() => setSelectedAudience(category.value)}
                 >
                   <span className="text-base lg:text-lg font-normal">
                     {category.label}

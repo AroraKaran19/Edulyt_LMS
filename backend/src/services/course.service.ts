@@ -313,7 +313,8 @@ export class CourseService {
     page: number = 1,
     limit: number = 10,
     search?: string,
-    filters?: string[]
+    filters?: string[],
+    audienceFilter?: string
   ): Promise<{
     courses: Course[];
     total: number;
@@ -338,6 +339,11 @@ export class CourseService {
           { description: { $regex: search, $options: "i" } },
           { shortDescription: { $regex: search, $options: "i" } },
         ];
+      }
+
+      // Add audience filter if provided
+      if (audienceFilter) {
+        query.audience = audienceFilter;
       }
 
       // Calculate skip value for pagination

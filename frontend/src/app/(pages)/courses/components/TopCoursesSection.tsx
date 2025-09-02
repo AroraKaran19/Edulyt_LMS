@@ -2,15 +2,15 @@
 import React from "react";
 import CoursesCarousel from "./CoursesCarousel";
 import { Loader2 } from "lucide-react";
-import { getErrorUIConfig } from '@/configs/errorUIConfig';
+import { getErrorUIConfig } from "@/configs/errorUIConfig";
 import Error from "@/components/ui/Error";
 import { Course } from "@/types";
 import { useGetFeaturedCoursesQuery } from "@/store/coursesApi";
+import { ERROR_TYPES } from "@/constants/error/statusCodes";
 
 const TopCoursesSection = () => {
   const { data, error, isLoading } = useGetFeaturedCoursesQuery();
   const courses: Course[] = data?.data?.courses || [];
-  console.log("courses calling one", courses);
 
   const renderContent = () => {
     if (isLoading) {
@@ -25,7 +25,10 @@ const TopCoursesSection = () => {
     }
 
     if (error) {
-      const errorConfig = getErrorUIConfig(error);
+      const errorConfig = getErrorUIConfig({
+        errorType: ERROR_TYPES.BACKEND_ERROR,
+        statusCode: 500,
+      });
       return (
         <Error
           icon={errorConfig.icon}

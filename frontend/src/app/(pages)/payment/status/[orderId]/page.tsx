@@ -76,26 +76,33 @@ const StatusCard: React.FC<StatusCardProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <FlexBox
         direction="col"
-        className="items-center gap-6 bg-white p-8 rounded-2xl shadow-lg max-w-md w-full mx-4"
+        className="items-center gap-6 bg-white p-4 sm:p-6 md:p-8 rounded-2xl shadow-lg w-full max-w-md mx-auto"
       >
         {/* Icon */}
         <div
-          className={`w-20 h-20 ${getVariantStyles()} rounded-full flex items-center justify-center`}
+          className={`w-16 h-16 sm:w-20 sm:h-20 ${getVariantStyles()} rounded-full flex items-center justify-center`}
         >
           {icon}
         </div>
 
         {/* Content */}
-        <FlexBox direction="col" className="items-center gap-2 text-center">
-          <h2 className="text-2xl font-semibold text-gray-800">{title}</h2>
-          <p className="text-gray-600">{description}</p>
+        <FlexBox
+          direction="col"
+          className="items-center gap-2 text-center w-full"
+        >
+          <h2 className="text-xl sm:text-2xl font-semibold text-gray-800 px-2">
+            {title}
+          </h2>
+          <p className="text-gray-600 text-sm sm:text-base px-2">
+            {description}
+          </p>
         </FlexBox>
 
         {/* Children (Payment Details, Buttons, etc.) */}
-        {children}
+        <div className="w-full">{children}</div>
       </FlexBox>
     </div>
   );
@@ -106,26 +113,34 @@ interface PaymentDetailsProps {
   orderId: string;
   amount: number;
   createdAt: Date;
+  txnId: string;
 }
 
 const PaymentDetails: React.FC<PaymentDetailsProps> = ({
   orderId,
   amount,
   createdAt,
+  txnId,
 }) => {
   return (
-    <div className="w-full bg-gray-50 rounded-lg p-4 space-y-2">
-      <div className="flex justify-between">
-        <span className="text-gray-600">Order ID:</span>
-        <span className="font-medium">{orderId}</span>
+    <div className="w-full bg-gray-50 rounded-lg p-3 sm:p-4 space-y-3">
+      <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-0">
+        <span className="text-gray-600 text-sm font-medium">Order ID:</span>
+        <span className="font-medium text-sm break-all">{orderId}</span>
       </div>
-      <div className="flex justify-between">
-        <span className="text-gray-600">Amount:</span>
-        <span className="font-medium">₹{amount}</span>
+      <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-0">
+        <span className="text-gray-600 text-sm font-medium">Amount:</span>
+        <span className="font-medium text-sm">₹{amount}</span>
       </div>
-      <div className="flex justify-between">
-        <span className="text-gray-600">Date:</span>
-        <span className="font-medium">
+      <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-0">
+        <span className="text-gray-600 text-sm font-medium">
+          Transaction ID:
+        </span>
+        <span className="font-medium text-sm break-all font-mono">{txnId}</span>
+      </div>
+      <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-0">
+        <span className="text-gray-600 text-sm font-medium">Date:</span>
+        <span className="font-medium text-sm">
           {new Date(createdAt).toLocaleDateString()}
         </span>
       </div>
@@ -139,31 +154,36 @@ const PaymentLoadingScreen = ({ pollingCount }: { pollingCount: number }) => {
   const isLongPolling = pollingCount > 30;
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <FlexBox direction="col" className="items-center gap-6">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <FlexBox
+        direction="col"
+        className="items-center gap-4 sm:gap-6 max-w-md w-full"
+      >
         {/* Spinner */}
         <div className="relative">
-          <Loader2 className="w-16 h-16 text-orange-500 animate-spin" />
+          <Loader2 className="w-12 h-12 sm:w-16 sm:h-16 text-orange-500 animate-spin" />
         </div>
 
         {/* Loading Text */}
-        <FlexBox direction="col" className="items-center gap-2">
-          <h2 className="text-2xl font-semibold text-gray-800">
+        <FlexBox direction="col" className="items-center gap-2 text-center">
+          <h2 className="text-xl sm:text-2xl font-semibold text-gray-800 px-2">
             Processing Payment
           </h2>
-          <p className="text-gray-600">
+          <p className="text-gray-600 text-sm sm:text-base px-2">
             Please wait while we verify your payment status{dots}
           </p>
-          <p className="text-sm text-gray-500">This may take a few moments</p>
+          <p className="text-sm text-gray-500 px-2">
+            This may take a few moments
+          </p>
           {isLongPolling && (
-            <p className="text-sm text-orange-600 font-medium">
+            <p className="text-sm text-orange-600 font-medium px-2">
               Taking longer than usual... Please don&apos;t close this page
             </p>
           )}
         </FlexBox>
 
         {/* Progress Bar */}
-        <div className="w-64 bg-gray-200 rounded-full h-2">
+        <div className="w-48 sm:w-64 bg-gray-200 rounded-full h-2">
           <div
             className="bg-orange-500 h-2 rounded-full transition-all duration-300 ease-in-out"
             style={{ width: `${Math.min((pollingCount / 20) * 100, 90)}%` }}
@@ -183,17 +203,20 @@ const PaymentLoadingScreen = ({ pollingCount }: { pollingCount: number }) => {
 // Token Validation Loading Component
 const TokenValidationScreen = () => {
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <FlexBox direction="col" className="items-center gap-6">
-        <Loader2 className="w-16 h-16 text-orange-500 animate-spin" />
-        <FlexBox direction="col" className="items-center gap-2">
-          <h2 className="text-2xl font-semibold text-gray-800">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <FlexBox
+        direction="col"
+        className="items-center gap-4 sm:gap-6 max-w-md w-full"
+      >
+        <Loader2 className="w-12 h-12 sm:w-16 sm:h-16 text-orange-500 animate-spin" />
+        <FlexBox direction="col" className="items-center gap-2 text-center">
+          <h2 className="text-xl sm:text-2xl font-semibold text-gray-800 px-2">
             Validating Payment Token
           </h2>
-          <p className="text-gray-600">
+          <p className="text-gray-600 text-sm sm:text-base px-2">
             Please wait while we verify your payment token
           </p>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-500 px-2">
             This ensures your payment is secure
           </p>
         </FlexBox>
@@ -206,7 +229,13 @@ const TokenValidationScreen = () => {
 const PaymentSuccess = ({
   data,
 }: {
-  data: { status: string; orderId: string; createdAt: Date; amount: number };
+  data: {
+    status: string;
+    orderId: string;
+    createdAt: Date;
+    amount: number;
+    txnId: string;
+  };
 }) => {
   const [countdown, setCountdown] = useState(5);
   const router = useRouter();
@@ -246,6 +275,7 @@ const PaymentSuccess = ({
         orderId={data.orderId}
         amount={data.amount}
         createdAt={data.createdAt}
+        txnId={data.txnId}
       />
 
       <OrangeButton
@@ -262,7 +292,13 @@ const PaymentSuccess = ({
 const PaymentFailed = ({
   data,
 }: {
-  data: { status: string; orderId: string; createdAt: Date; amount: number };
+  data: {
+    status: string;
+    orderId: string;
+    createdAt: Date;
+    amount: number;
+    txnId: string;
+  };
 }) => {
   const router = useRouter();
 
@@ -277,6 +313,7 @@ const PaymentFailed = ({
         orderId={data.orderId}
         amount={data.amount}
         createdAt={data.createdAt}
+        txnId={data.txnId}
       />
 
       <FlexBox direction="col" className="w-full gap-3">
@@ -304,6 +341,7 @@ const PaymentPending = ({
     orderId: string;
     createdAt: Date;
     amount: number;
+    txnId: string;
   } | null;
   onRefresh: () => void;
 }) => {
@@ -319,6 +357,7 @@ const PaymentPending = ({
           orderId={data.orderId}
           amount={data.amount}
           createdAt={data.createdAt}
+          txnId={data.txnId}
         />
       )}
 
@@ -388,6 +427,7 @@ const OrderStatusPage = () => {
     orderId: string;
     createdAt: Date;
     amount: number;
+    txnId: string;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pollingCount, setPollingCount] = useState(0);

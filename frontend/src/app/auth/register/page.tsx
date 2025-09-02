@@ -19,7 +19,6 @@ const RegisterPage = () => {
   const router = useRouter();
 
   useEffect(() => {
-    console.log("Session status:", session);
     if (status === "authenticated") {
       router.push("/dashboard");
     }

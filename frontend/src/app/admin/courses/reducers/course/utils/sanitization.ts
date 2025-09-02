@@ -75,19 +75,15 @@ export const sanitizeCourseForBackend = (course: Course): Omit<Course, typeof FR
                 
                 // Clean video sources
                 if (videoContent.sources) {
-                  console.log("🧹 Before sanitizing video sources:", JSON.stringify(videoContent.sources, null, 2));
                   videoContent.sources = videoContent.sources.map((source: any) => {
                     const cleanSource = { ...source };
                     NESTED_FRONTEND_ONLY_FIELDS.videoSource.forEach(field => {
                       if (field in cleanSource) {
-                        console.log(`🧹 Removing field '${field}' from video source`);
                         delete cleanSource[field];
                       }
                     });
-                    console.log("🧹 After sanitizing video source:", JSON.stringify(cleanSource, null, 2));
                     return cleanSource;
                   });
-                  console.log("🧹 Final video sources:", JSON.stringify(videoContent.sources, null, 2));
                 }
               }
               
@@ -109,8 +105,6 @@ export const sanitizeCourseForBackend = (course: Course): Omit<Course, typeof FR
     if (sanitizedCourse.discount.isActive === undefined) {
       sanitizedCourse.discount.isActive = false;
     }
-    
-    console.log("🧹 Sanitization: Final discount object:", sanitizedCourse.discount);
   }
   
   // Log what fields were removed for debugging

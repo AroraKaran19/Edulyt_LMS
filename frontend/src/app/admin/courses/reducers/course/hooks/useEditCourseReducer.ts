@@ -84,7 +84,6 @@ export const useEditCourseReducer = (courseId?: string) => {
       // Save draft data
       editDraftUtils.saveDraft(state.course);
       
-      console.log("Edit draft auto-saved for course:", courseId);
     }
   }, [state.course, state.isDirty, courseId]);
 

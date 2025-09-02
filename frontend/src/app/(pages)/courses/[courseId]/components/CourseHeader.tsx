@@ -19,11 +19,20 @@ const plusJakartaSans = Plus_Jakarta_Sans({
   weight: ["400", "500", "600", "700"],
 });
 
-const CourseHeader = ({ course, onLoadingChange }: { course: Course; onLoadingChange?: (loading: boolean) => void }) => {
+const CourseHeader = ({
+  course,
+  onLoadingChange,
+}: {
+  course: Course;
+  onLoadingChange?: (loading: boolean) => void;
+}) => {
   const [isEnquiryModalOpen, setIsEnquiryModalOpen] = useState(false);
   const [isEnrollmentModalOpen, setIsEnrollmentModalOpen] = useState(false);
   const [isPaymentLoading, setIsPaymentLoading] = useState(false);
-  const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [notification, setNotification] = useState<{
+    message: string;
+    type: "success" | "error";
+  } | null>(null);
   const { data: session } = useSession();
 
   // Auto-dismiss notification after 5 seconds
@@ -76,40 +85,56 @@ const CourseHeader = ({ course, onLoadingChange }: { course: Course; onLoadingCh
     try {
       setIsPaymentLoading(true);
       onLoadingChange?.(true);
-      
-      const generateOrder = await axios.post(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/payment/create-order`,
-        {
-          courseId: course._id,
-          planType: planType,
-          userId: session?.user?.id,
-        }
-      );
-      if (generateOrder.data.success) {
-        window.location.href = generateOrder.data.redirectUrl;
-      } else {
+
+      const generateOrder = await axios.post(`/api/payment/new`, {
+        courseId: course._id,
+        planType: planType,
+        userId: session?.user?.id,
+      });
+      if (!generateOrder.data.success) {
         console.error(generateOrder.data.message);
         // Handle specific error cases
         if (generateOrder.data.message?.includes("already enrolled")) {
-          setNotification({ message: "You are already enrolled in this course!", type: 'error' });
+          setNotification({
+            message: "You are already enrolled in this course!",
+            type: "error",
+          });
         } else {
-          setNotification({ message: "Something went wrong. Please try again.", type: 'error' });
+          setNotification({
+            message: "Something went wrong. Please try again.",
+            type: "error",
+          });
         }
+      }
+
+      if (generateOrder.data.redirectUrl) {
+        window.location.href = generateOrder.data.redirectUrl;
       }
     } catch (error: any) {
       console.error(error);
       // Handle axios error responses
       if (error.response?.data?.message) {
         const errorMessage = error.response.data.message;
-        if (errorMessage.includes("already enrolled") || 
-            errorMessage.includes("already exists") ||
-            errorMessage.includes("User already enrolled")) {
-          setNotification({ message: "You are already enrolled in this course!", type: 'error' });
+        if (
+          errorMessage.includes("already enrolled") ||
+          errorMessage.includes("already exists") ||
+          errorMessage.includes("User already enrolled")
+        ) {
+          setNotification({
+            message: "You are already enrolled in this course!",
+            type: "error",
+          });
         } else {
-          setNotification({ message: "Something went wrong. Please try again.", type: 'error' });
+          setNotification({
+            message: "Something went wrong. Please try again.",
+            type: "error",
+          });
         }
       } else {
-        setNotification({ message: "Something went wrong. Please try again.", type: 'error' });
+        setNotification({
+          message: "Something went wrong. Please try again.",
+          type: "error",
+        });
       }
     } finally {
       setIsPaymentLoading(false);
@@ -254,18 +279,28 @@ const CourseHeader = ({ course, onLoadingChange }: { course: Course; onLoadingCh
       {/* Notification */}
       {notification && (
         <div className="fixed top-4 right-4 z-50 max-w-sm">
-          <div className={cn(
-            "bg-white rounded-2xl shadow-lg border p-4 flex items-center gap-3",
-            notification.type === 'error' ? 'border-red-200' : 'border-green-200'
-          )}>
-            <div className={cn(
-              "w-3 h-3 rounded-full",
-              notification.type === 'error' ? 'bg-red-500' : 'bg-green-500'
-            )} />
-            <p className={cn(
-              "text-sm font-medium",
-              notification.type === 'error' ? 'text-red-800' : 'text-green-800'
-            )}>
+          <div
+            className={cn(
+              "bg-white rounded-2xl shadow-lg border p-4 flex items-center gap-3",
+              notification.type === "error"
+                ? "border-red-200"
+                : "border-green-200"
+            )}
+          >
+            <div
+              className={cn(
+                "w-3 h-3 rounded-full",
+                notification.type === "error" ? "bg-red-500" : "bg-green-500"
+              )}
+            />
+            <p
+              className={cn(
+                "text-sm font-medium",
+                notification.type === "error"
+                  ? "text-red-800"
+                  : "text-green-800"
+              )}
+            >
               {notification.message}
             </p>
             <button

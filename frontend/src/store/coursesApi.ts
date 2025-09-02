@@ -61,7 +61,13 @@ export const coursesApi = createApi({
       providesTags: ['Course'],
     }),
 
-    // Get courses by category for navbar
+    // Get courses by audience for navbar
+    getCoursesByAudience: builder.query<CoursesResponse, string>({
+      query: (audience) => `/courses?audience=${audience}`,
+      providesTags: ['Course'],
+    }),
+
+    // Get courses by category
     getCoursesByCategory: builder.query<CoursesResponse, string>({
       query: (category) => `/courses?category=${category}`,
       providesTags: ['Course'],
@@ -73,5 +79,6 @@ export const coursesApi = createApi({
 export const {
   useGetCoursesQuery,
   useGetFeaturedCoursesQuery,
+  useGetCoursesByAudienceQuery,
   useGetCoursesByCategoryQuery,
 } = coursesApi;

@@ -1103,7 +1103,6 @@ const Screen4 = () => {
                 value: value,
                 isActive: currentDiscount?.isActive || false,
               };
-              console.log("🎯 Setting discount value:", newDiscount);
               actions.setCourseDiscount(newDiscount);
             }}
             className="w-full"

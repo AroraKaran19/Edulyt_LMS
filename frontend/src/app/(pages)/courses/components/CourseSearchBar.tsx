@@ -18,7 +18,7 @@ const CourseSearchBar = ({
 }) => {
   useEffect(() => {
     const debouncedSearch = setTimeout(() => {
-      console.log(search);
+      // To Do: Implement debounced search
     }, 500);
 
     return () => clearTimeout(debouncedSearch);

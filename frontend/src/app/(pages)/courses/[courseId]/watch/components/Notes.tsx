@@ -1,16 +1,17 @@
-import React, { useState } from 'react'
+import React, { useState } from "react";
 import { PlusCircle, Clock, Edit, Trash2, X } from "lucide-react";
-import AddNotes from './AddNotes';
+import AddNotes from "./AddNotes";
 
 const Notes = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [noteContent, setNoteContent] = useState('');
+  const [noteContent, setNoteContent] = useState("");
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [editNoteContent, setEditNoteContent] = useState('');
+  const [editNoteContent, setEditNoteContent] = useState("");
 
   // Sample existing note data
-  const existingNoteContent = "Lorem ipsum dolor sit amet consectetur. Orci at ultricies pellentesque egestas sollicitudin amet morbi tortor. Mattis odio sagittis ullamcorper maecenas viverra orci at.";
+  const existingNoteContent =
+    "Lorem ipsum dolor sit amet consectetur. Orci at ultricies pellentesque egestas sollicitudin amet morbi tortor. Mattis odio sagittis ullamcorper maecenas viverra orci at.";
 
   const handleAddClick = () => {
     setIsModalOpen(true);
@@ -18,12 +19,12 @@ const Notes = () => {
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
-    setNoteContent('');
+    setNoteContent("");
   };
 
   const handleSaveNote = () => {
     // TODO: Implement save functionality
-    console.log('Saving note:', noteContent);
+    console.log("Saving note:", noteContent);
     handleCloseModal();
   };
 
@@ -34,12 +35,12 @@ const Notes = () => {
 
   const handleCloseEditModal = () => {
     setIsEditModalOpen(false);
-    setEditNoteContent('');
+    setEditNoteContent("");
   };
 
   const handleSaveEditNote = () => {
     // TODO: Implement save edit functionality
-    console.log('Saving edited note:', editNoteContent);
+    console.log("Saving edited note:", editNoteContent);
     handleCloseEditModal();
   };
 
@@ -53,7 +54,7 @@ const Notes = () => {
 
   const handleConfirmDelete = () => {
     // TODO: Implement delete functionality
-    console.log('Deleting note');
+    console.log("Deleting note");
     handleCloseDeleteModal();
   };
 
@@ -61,7 +62,9 @@ const Notes = () => {
     <div>
       {/* search bar */}
       <div className="flex justify-between gap-6">
-        <div className={`w-full bg-[#F5F5F5] p-[6px] shrink rounded-xl flex gap-2 items-center border border-black/10`}>
+        <div
+          className={`w-full bg-[#F5F5F5] p-[6px] shrink rounded-xl flex gap-2 items-center border border-black/10`}
+        >
           <input
             type="text"
             placeholder="Create a new note at 00:01"
@@ -74,12 +77,21 @@ const Notes = () => {
             onClick={handleAddClick}
           >
             <PlusCircle className="size-6 text-black" />
-            <span className='text-base font-bold font-plus-jakarta text-black'>Add</span>
+            <span className="text-base font-bold font-plus-jakarta text-black">
+              Add
+            </span>
           </button>
         </div>
       </div>
       {/* Note Creation Modal */}
-      {isModalOpen && <AddNotes onClose={handleCloseModal} onSave={handleSaveNote} onNoteContentChange={setNoteContent} noteContent={noteContent} />}
+      {isModalOpen && (
+        <AddNotes
+          onClose={handleCloseModal}
+          onSave={handleSaveNote}
+          onNoteContentChange={setNoteContent}
+          noteContent={noteContent}
+        />
+      )}
 
       {/* Edit Note Modal */}
       {isEditModalOpen && (
@@ -143,7 +155,8 @@ const Notes = () => {
             {/* Message */}
             <div className="mb-6">
               <p className="text-gray-700 text-base">
-                Are you sure you want to delete this note? This action cannot be undone.
+                Are you sure you want to delete this note? This action cannot be
+                undone.
               </p>
             </div>
 
@@ -168,13 +181,19 @@ const Notes = () => {
 
       {/* Filter Buttons */}
       <div className="flex justify-start gap-6 my-5">
-        <select title="All Lectures" className="flex items-center gap-2 border border-[#00000026] rounded-2xl py-4 pl-2 bg-white text-base font-bold font-plus-jakarta text-[#2B1508] cursor-pointer">
+        <select
+          title="All Lectures"
+          className="flex items-center gap-2 border border-[#00000026] rounded-2xl py-4 pl-2 bg-white text-base font-bold font-plus-jakarta text-[#2B1508] cursor-pointer"
+        >
           <option value="all">All Lectures</option>
           <option value="current">Current Lecture</option>
           <option value="completed">Completed Lectures</option>
           <option value="upcoming">Upcoming Lectures</option>
         </select>
-        <select title="Sort By recents" className="flex items-center gap-2 border border-[#00000026] rounded-2xl py-4 pl-2 bg-white text-base font-bold font-plus-jakarta text-[#2B1508] cursor-pointer">
+        <select
+          title="Sort By recents"
+          className="flex items-center gap-2 border border-[#00000026] rounded-2xl py-4 pl-2 bg-white text-base font-bold font-plus-jakarta text-[#2B1508] cursor-pointer"
+        >
           <option value="recent">Sort By recents</option>
           <option value="oldest">Sort By oldest</option>
           <option value="alphabetical">Sort By alphabetical</option>
@@ -188,18 +207,24 @@ const Notes = () => {
           <div className="flex justify-between items-start mb-3">
             <div className="flex items-center gap-2 bg-[#0000000D] rounded-lg px-3 py-1">
               <Clock className="size-4 text-white" fill="#000000" />
-              <span className="text-base font-semibold font-plus-jakarta text-black">00:01</span>
+              <span className="text-base font-semibold font-plus-jakarta text-black">
+                00:01
+              </span>
             </div>
 
             {/* Action buttons */}
             <div className="flex gap-2">
-              <button type="button" title="Edit"
+              <button
+                type="button"
+                title="Edit"
                 className="cursor-pointer flex items-center gap-4 hover:text-gray-800 transition-colors border border-[#00000021] rounded-xl p-[11px] shadow-[0px_-3px_3.7px_0px_#0146E721_inset]"
                 onClick={handleEditClick}
               >
                 <Edit className="size-6 text-black" />
               </button>
-              <button type="button" title="Delete"
+              <button
+                type="button"
+                title="Delete"
                 className="cursor-pointer flex items-center gap-4 hover:text-gray-800 transition-colors border border-[#00000021] rounded-xl p-[11px] shadow-[0px_-3px_3.7px_0px_#0146E721_inset]"
                 onClick={handleDeleteClick}
               >
@@ -210,7 +235,9 @@ const Notes = () => {
 
           {/* Content */}
           <div>
-            <h3 className="font-bold text-black text-lg mb-3">Modal 1 | Episode 2</h3>
+            <h3 className="font-bold text-black text-lg mb-3">
+              Modal 1 | Episode 2
+            </h3>
             <p className="text-black text-base font-normal leading-relaxed">
               {existingNoteContent}
             </p>
@@ -219,7 +246,7 @@ const Notes = () => {
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default Notes
+export default Notes;

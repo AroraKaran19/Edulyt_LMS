@@ -17,7 +17,6 @@ import EnquiryForm from "./components/EnquiryForm";
 import { FullScreenLoader } from "@/components/ui/Loader";
 
 const CoursePage = ({ course }: { course: Course }) => {
-  console.log(course);
   const [isPaymentLoading, setIsPaymentLoading] = useState(false);
 
   // Generate presigned URL for preview video if it's an S3 key
@@ -82,10 +81,7 @@ const CoursePage = ({ course }: { course: Course }) => {
             <EnquiryForm course={course} />
           </div>
         </div>
-        <CourseHeader 
-          course={course} 
-          onLoadingChange={setIsPaymentLoading}
-        />
+        <CourseHeader course={course} onLoadingChange={setIsPaymentLoading} />
       </div>
       {course?.scholarship && <ScholarshipBanner course={course} />}
       <TestimonialSection testimonials={course?.testimonials || []} />

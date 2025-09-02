@@ -55,7 +55,7 @@ export const authOptions: AuthOptions = {
             loginData
           );
 
-          console.log(response.data.error);
+          console.error(response.data.error);
 
           if (response.status !== 200) {
             throw new Error(response.data.message || "Login failed");
@@ -115,9 +115,6 @@ export const authOptions: AuthOptions = {
                 profilePicture: user.image || (profile as any)?.picture,
               }),
           };
-          console.log("account", account);
-          console.log("profile", profile);
-          console.log("user", user);
 
           const response = await axios.post(
             `${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/oauth-signin`,

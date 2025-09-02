@@ -16,6 +16,8 @@ export class CourseController {
    * @query page - Page number (default: 1)
    * @query limit - Items per page (default: 10, max: 100)
    * @query filter - Filter by categories (can be used multiple times: "?filter=web&filter=app&filter=ml")
+   * @query category - Filter by categories (comma-separated: "programming,design,business") - alternative to filter
+   * @query audience - Filter by target audience ("college-students" or "professionals")
    * @query search - Search term for title/description
    */
   getAllCourses = async (req: Request, res: Response): Promise<void> => {
@@ -26,12 +28,28 @@ export class CourseController {
 
       // Handle multiple filter parameters
       let filters: string[] = [];
+      
+      // Support both 'filter' and 'category' parameters for backward compatibility
       if (req.query.filter) {
         if (Array.isArray(req.query.filter)) {
           filters = req.query.filter as string[];
         } else {
           filters = [req.query.filter as string];
         }
+      } else if (req.query.category) {
+        // Handle category parameter (can be comma-separated or single value)
+        if (Array.isArray(req.query.category)) {
+          filters = req.query.category as string[];
+        } else {
+          // Split by comma if it's a comma-separated string
+          filters = (req.query.category as string).split(',').map(cat => cat.trim());
+        }
+      }
+
+      // Handle audience parameter for filtering by target audience
+      let audienceFilter: string | undefined;
+      if (req.query.audience) {
+        audienceFilter = req.query.audience as string;
       }
 
       // Validate pagination parameters
@@ -55,7 +73,8 @@ export class CourseController {
         page,
         limit,
         search,
-        filters
+        filters,
+        audienceFilter
       );
 
       if (result.total === 0) {

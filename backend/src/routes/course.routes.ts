@@ -12,10 +12,14 @@ const courseController = new CourseController();
  * @params
  *   - page: Page number (default: 1)
  *   - limit: Items per page (default: 10, max: 100)
- *   - category: Filter by categories (comma-separated: "programming,design,business")
+ *   - filter: Filter by categories (can be used multiple times: "?filter=web&filter=app&filter=ml")
+ *   - category: Filter by categories (comma-separated: "programming,design,business") - alternative to filter
+ *   - audience: Filter by target audience ("college-students" or "professionals")
  *   - search: Search in title, description, or short description (optional)
  * @example
+ *   GET /api/courses?page=1&limit=10&filter=programming&filter=design&search=javascript
  *   GET /api/courses?page=1&limit=10&category=programming,design&search=javascript
+ *   GET /api/courses?page=1&limit=10&audience=college-students&category=programming
  *   GET /api/courses?search=&category=1,2,3
  */
 router.get("/", courseController.getAllCourses);
