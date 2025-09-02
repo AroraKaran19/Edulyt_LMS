@@ -274,6 +274,11 @@ export class PaymentService {
             $pull: { pendingPayments: order._id.toString() },
           });
 
+          // add the order id to the user's enrolledCourses array
+          await UserModel.findByIdAndUpdate(order.userId, {
+            $push: { enrolledCourses: order.courseId.toString() },
+          });
+
           return {
             status: order.paymentStatus,
             orderId: order._id.toString(),
