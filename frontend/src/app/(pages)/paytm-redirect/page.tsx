@@ -66,7 +66,7 @@ const PaymentRedirectContent = () => {
             amount: "1",
           },
           handler: {
-            notifyMerchant: function (eventName: string, data: any) {
+            notifyMerchant: function (eventName: string) {
               
               // Handle APP_CLOSED event
               if (eventName === "APP_CLOSED") {
