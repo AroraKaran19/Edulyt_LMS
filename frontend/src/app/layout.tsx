@@ -4,6 +4,7 @@ import { Plus_Jakarta_Sans } from "next/font/google";
 import LayoutWrapper from "@/components/shared/LayoutWrapper";
 import { cn } from "@/lib/utils";
 import { Metadata } from "next";
+import Head from "next/head";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -14,10 +15,9 @@ export const metadata: Metadata = {
   title: "Edulyt India",
   description: "Educational platform for learning and growth",
   metadataBase: new URL(
-    process.env.NEXT_PUBLIC_APP_URL || 
-    process.env.NODE_ENV === 'production' 
-      ? 'https://www.airkrit.com/' 
-      : 'http://localhost:3000'
+    process.env.NEXT_PUBLIC_APP_URL || process.env.NODE_ENV === "production"
+      ? "https://www.airkrit.com/"
+      : "http://localhost:3000"
   ),
   openGraph: {
     title: "Edulyt India",
@@ -54,6 +54,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
+      <Head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      </Head>
       <body className={cn(plusJakartaSans.className, "antialiased")}>
         <ReduxProvider>
           <LayoutWrapper>{children}</LayoutWrapper>

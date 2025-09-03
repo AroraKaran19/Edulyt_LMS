@@ -44,7 +44,6 @@ const RegisterPage = () => {
       if (res.status === 201) {
         router.push("/auth/login");
       } else {
-        console.log("Register error:", res.data);
         setError(res.data.message);
       }
     } catch (error) {

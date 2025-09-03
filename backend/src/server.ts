@@ -10,7 +10,7 @@ if (!process.env.PORT) {
   throw new Error('PORT is not defined in environment variables');
 }
 
-const PORT = process.env.PORT;
+const PORT = process.env.PORT || 8080;
 
 // Connect to database and start server
 const startServer = async () => {

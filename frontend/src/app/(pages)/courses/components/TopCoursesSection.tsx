@@ -62,7 +62,7 @@ const TopCoursesSection = () => {
         you can Enroll now!
       </h2>
       <div className="top-courses-carousel w-full mt-10 relative">
-        <div className="absolute w-full h-full bg-gradient-to-r from-white/40 via-transparent to-white/40 z-10 pointer-events-none" />
+        <div className="hidden md:absolute w-full h-full bg-gradient-to-r from-white/40 via-transparent to-white/40 z-10 pointer-events-none" />
         {renderContent()}
       </div>
     </section>
