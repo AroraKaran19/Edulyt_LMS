@@ -36,6 +36,8 @@ interface UploadMediaContainerProps {
   uploadContext?: string; // Additional context for folder naming (e.g., courseId, userId)
   showConfirmation?: boolean; // Show upload confirmation dialog
   onConfirmUpload?: (file: File, folderName: string) => Promise<boolean>; // Confirmation callback
+  usePresignedUrl?: boolean; // Use presigned URL upload for large files
+  presignedUrlThreshold?: number; // File size threshold in MB to use presigned URL (default: 100MB)
 }
 
 const UploadMediaContainer: React.FC<UploadMediaContainerProps> = ({
@@ -62,6 +64,8 @@ const UploadMediaContainer: React.FC<UploadMediaContainerProps> = ({
   uploadContext,
   showConfirmation = true,
   onConfirmUpload,
+  usePresignedUrl = false,
+  presignedUrlThreshold = 100, // 100MB default threshold
 }) => {
   const [dragActive, setDragActive] = useState(false);
   const [localError, setLocalError] = useState<string>("");
@@ -74,12 +78,22 @@ const UploadMediaContainer: React.FC<UploadMediaContainerProps> = ({
   const [userChangedTab, setUserChangedTab] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const prevMediaSource = useRef(propMediaSource);
-  
+
   // Use upload hook for file operations
   const { deleteFile } = useUpload();
 
   // Generate final folder name with context if provided
-  const finalFolderName = uploadContext ? `${folderName}/${uploadContext}` : folderName;
+  const finalFolderName = uploadContext
+    ? `${folderName}/${uploadContext}`
+    : folderName;
+
+  // Determine if file should use presigned URL upload
+  const shouldUsePresignedUrl = useCallback(
+    (file: File): boolean => {
+      return usePresignedUrl && file.size > presignedUrlThreshold * 1024 * 1024;
+    },
+    [usePresignedUrl, presignedUrlThreshold]
+  );
 
   // Default accepted formats based on type
   const defaultFormats = {
@@ -98,10 +112,15 @@ const UploadMediaContainer: React.FC<UploadMediaContainerProps> = ({
     // 2. URL input is allowed
     // 3. The media source actually changed (not just re-rendering)
     // 4. User hasn't manually changed tabs recently
-    if (propMediaSource && allowUrlInput && propMediaSource !== prevMediaSource.current && !userChangedTab) {
+    if (
+      propMediaSource &&
+      allowUrlInput &&
+      propMediaSource !== prevMediaSource.current &&
+      !userChangedTab
+    ) {
       setInputMethod(propMediaSource);
     }
-    
+
     // Update the previous media source reference
     prevMediaSource.current = propMediaSource;
   }, [propMediaSource, allowUrlInput, userChangedTab]);
@@ -195,7 +214,7 @@ const UploadMediaContainer: React.FC<UploadMediaContainerProps> = ({
     onUrlSubmit?.(urlInput);
     setUrlInput("");
     setUrlSubmitted(true);
-    
+
     // Reset the success message after 3 seconds
     setTimeout(() => {
       setUrlSubmitted(false);
@@ -261,7 +280,9 @@ const UploadMediaContainer: React.FC<UploadMediaContainerProps> = ({
       setShowConfirmationDialog(false);
       setPendingFile(null);
     } catch (err) {
-      setLocalError(err instanceof Error ? err.message : "Upload confirmation failed");
+      setLocalError(
+        err instanceof Error ? err.message : "Upload confirmation failed"
+      );
       setShowConfirmationDialog(false);
       setPendingFile(null);
     }
@@ -330,7 +351,7 @@ const UploadMediaContainer: React.FC<UploadMediaContainerProps> = ({
         // If we have an s3Key and the media was uploaded (not from URL), delete from bucket
         if (s3Key && propMediaSource === "upload") {
           const result = await deleteFile(s3Key);
-          
+
           if (!result.success) {
             setLocalError(result.error || "Failed to delete file from storage");
             setIsDeleting(false);
@@ -342,7 +363,9 @@ const UploadMediaContainer: React.FC<UploadMediaContainerProps> = ({
         onFileRemove?.();
       } catch (error) {
         console.error("Error deleting file:", error);
-        setLocalError(error instanceof Error ? error.message : "Failed to delete file");
+        setLocalError(
+          error instanceof Error ? error.message : "Failed to delete file"
+        );
       } finally {
         setIsDeleting(false);
       }
@@ -357,7 +380,7 @@ const UploadMediaContainer: React.FC<UploadMediaContainerProps> = ({
     setLocalError("");
     setUrlInput("");
     setUrlSubmitted(false);
-    
+
     // Reset the user changed tab flag after a short delay
     // This allows the next upload/URL submission to auto-switch tabs again
     setTimeout(() => {
@@ -414,14 +437,19 @@ const UploadMediaContainer: React.FC<UploadMediaContainerProps> = ({
       </div>
 
       {/* Folder Info Display (optional) */}
-      {finalFolderName && finalFolderName.trim() !== "" && inputMethod === "upload" && (
-        <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg">
-          <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-          <span className="text-sm text-blue-700">
-            Files will be uploaded to: <code className="bg-blue-100 px-1 rounded">{finalFolderName}</code>
-          </span>
-        </div>
-      )}
+      {finalFolderName &&
+        finalFolderName.trim() !== "" &&
+        inputMethod === "upload" && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+            <span className="text-sm text-blue-700">
+              Files will be uploaded to:{" "}
+              <code className="bg-blue-100 px-1 rounded">
+                {finalFolderName}
+              </code>
+            </span>
+          </div>
+        )}
 
       {/* Method Toggle (only show if URL input is allowed) */}
       {allowUrlInput && (
@@ -572,7 +600,9 @@ const UploadMediaContainer: React.FC<UploadMediaContainerProps> = ({
               ? "opacity-50 cursor-not-allowed bg-gray-50"
               : "cursor-pointer hover:bg-gray-50",
             displayError && "border-red-300 bg-red-50",
-            propMediaSource === "upload" && mediaUrl && "border-green-300 bg-green-50"
+            propMediaSource === "upload" &&
+              mediaUrl &&
+              "border-green-300 bg-green-50"
           )}
           onDragEnter={disabled || isDeleting ? undefined : handleDrag}
           onDragLeave={disabled || isDeleting ? undefined : handleDrag}
@@ -696,19 +726,25 @@ const UploadMediaContainer: React.FC<UploadMediaContainerProps> = ({
             <div className="bg-gray-50 rounded-lg p-4 mb-4">
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-gray-700">File:</span>
+                  <span className="text-sm font-medium text-gray-700">
+                    File:
+                  </span>
                   <span className="text-sm text-gray-900 truncate max-w-48">
                     {pendingFile.name}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-gray-700">Size:</span>
+                  <span className="text-sm font-medium text-gray-700">
+                    Size:
+                  </span>
                   <span className="text-sm text-gray-900">
                     {(pendingFile.size / (1024 * 1024)).toFixed(2)} MB
                   </span>
                 </div>
                 <div className="flex items-start justify-between">
-                  <span className="text-sm font-medium text-gray-700">Destination:</span>
+                  <span className="text-sm font-medium text-gray-700">
+                    Destination:
+                  </span>
                   <code className="text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded max-w-48 truncate">
                     {finalFolderName}
                   </code>
@@ -718,9 +754,13 @@ const UploadMediaContainer: React.FC<UploadMediaContainerProps> = ({
 
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-6">
               <p className="text-sm text-blue-800">
-                <strong>📁 Upload Location:</strong> Your file will be organized in the{" "}
-                <code className="bg-blue-100 px-1 rounded">{finalFolderName}</code> folder.
-                This helps keep all course-related content organized together.
+                <strong>📁 Upload Location:</strong> Your file will be organized
+                in the{" "}
+                <code className="bg-blue-100 px-1 rounded">
+                  {finalFolderName}
+                </code>{" "}
+                folder. This helps keep all course-related content organized
+                together.
               </p>
             </div>
 

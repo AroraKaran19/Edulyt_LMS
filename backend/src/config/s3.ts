@@ -1,5 +1,9 @@
-import { S3Client, S3ClientConfig, HeadBucketCommand } from '@aws-sdk/client-s3';
-import dotenv from 'dotenv';
+import {
+  S3Client,
+  S3ClientConfig,
+  HeadBucketCommand,
+} from "@aws-sdk/client-s3";
+import dotenv from "dotenv";
 
 dotenv.config();
 
@@ -17,7 +21,7 @@ const initializeS3 = async (regionOverride?: string): Promise<S3Client> => {
   try {
     const region = regionOverride || process.env.AWS_REGION;
     if (!region) {
-      throw new Error('AWS_REGION is not defined in environment variables');
+      throw new Error("AWS_REGION is not defined in environment variables");
     }
 
     const config: S3ClientConfig = {
@@ -41,7 +45,7 @@ const initializeS3 = async (regionOverride?: string): Promise<S3Client> => {
     console.log(`🗂️ Bucket: ${bucketName}`);
     return s3Client;
   } catch (error) {
-    console.error('Error initializing AWS S3 client:', error);
+    console.error("Error initializing AWS S3 client:", error);
     throw error;
   }
 };
@@ -52,12 +56,18 @@ const initializeS3 = async (regionOverride?: string): Promise<S3Client> => {
  * @param bucketName Name of the bucket to validate.
  * @throws Error if the bucket is not accessible.
  */
-const validateBucket = async (client: S3Client, bucketName: string): Promise<void> => {
+const validateBucket = async (
+  client: S3Client,
+  bucketName: string
+): Promise<void> => {
   try {
     await client.send(new HeadBucketCommand({ Bucket: bucketName }));
     console.log(`Bucket ${bucketName} is accessible`);
   } catch (error) {
-    console.error(`Bucket ${bucketName} is not accessible or does not exist:`, error);
+    console.error(
+      `Bucket ${bucketName} is not accessible or does not exist:`,
+      error
+    );
     throw error;
   }
 };
@@ -81,7 +91,9 @@ const getS3Client = async (): Promise<S3Client> => {
 const getBucketName = (): string => {
   const bucketName = process.env.AWS_S3_BUCKET_NAME;
   if (!bucketName) {
-    throw new Error('AWS_S3_BUCKET_NAME is not defined in environment variables');
+    throw new Error(
+      "AWS_S3_BUCKET_NAME is not defined in environment variables"
+    );
   }
   return bucketName;
 };

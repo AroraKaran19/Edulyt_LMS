@@ -19,7 +19,7 @@ app.use(cors({
   credentials: true,
 })); // Enable CORS
 app.use(express.json({ limit: '50mb' })); // Parse JSON bodies
-app.use(express.urlencoded({ extended: true })); // Parse URL-encoded bodies
+app.use(express.urlencoded({ extended: true, limit: '100mb' })); // Parse URL-encoded bodies
 
 // Health check endpoint
 app.get('/health', (req, res) => {

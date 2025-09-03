@@ -1112,7 +1112,6 @@ const Screen4 = () => {
             label="Discount Start Date"
             value={state.course.discount?.startDate}
             onChange={(date) => {
-              console.log("🎯 Setting discount start date:", date);
               const currentDiscount = state.course.discount;
               const newDiscount = {
                 ...currentDiscount,
@@ -1132,7 +1131,6 @@ const Screen4 = () => {
             label="Discount End Date"
             value={state.course.discount?.endDate}
             onChange={(date) => {
-              console.log("🎯 Setting discount end date:", date);
               const currentDiscount = state.course.discount;
               const newDiscount = {
                 ...currentDiscount,
@@ -1162,7 +1160,6 @@ const Screen4 = () => {
                 value: currentDiscount?.value || 0,
                 isActive: checked,
               };
-              console.log("🎯 Setting discount isActive:", newDiscount);
               actions.setCourseDiscount(newDiscount);
             }}
           />

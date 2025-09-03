@@ -4,41 +4,7 @@ import { UploadController } from '../controllers';
 const router = Router();
 const uploadController = new UploadController();
 
-/**
- * @route   POST /api/upload
- * @desc    Upload single file to S3 with folder creation
- * @access  Public (should be protected with auth middleware in production)
- * @body    
- *   - file: File to upload (multipart/form-data)
- *   - folderName: Name of the folder to create/use in S3 bucket
- * @example
- *   POST /api/upload
- *   Content-Type: multipart/form-data
- *   Body: { file: [file], folderName: "course-thumbnails" }
- */
-router.post(
-  '/', 
-  UploadController.getSingleUploadMiddleware(), 
-  uploadController.uploadFile.bind(uploadController)
-);
-
-/**
- * @route   POST /api/upload/multiple
- * @desc    Upload multiple files to S3 with folder creation
- * @access  Public (should be protected with auth middleware in production)
- * @body    
- *   - files: Array of files to upload (multipart/form-data)
- *   - folderName: Name of the folder to create/use in S3 bucket
- * @example
- *   POST /api/upload/multiple
- *   Content-Type: multipart/form-data
- *   Body: { files: [file1, file2, file3], folderName: "lesson-materials" }
- */
-router.post(
-  '/multiple', 
-  UploadController.getMultipleUploadMiddleware(), 
-  uploadController.uploadMultipleFiles.bind(uploadController)
-);
+// Multer-based upload routes removed - using only presigned URL uploads
 
 /**
  * @route   POST /api/upload/presigned-url

@@ -73,9 +73,9 @@ const ContentCard: React.FC<ContentCardProps> = ({
       const videoContent = content as VideoContent;
       // For video content: title, video URL, and thumbnail are all required
       return !!(
-        videoContent.sources?.[0]?.videoUrl && 
+        videoContent.sources?.[0]?.videoUrl &&
         videoContent.sources[0].videoUrl.trim() !== "" &&
-        videoContent.thumbnailUrl && 
+        videoContent.thumbnailUrl &&
         videoContent.thumbnailUrl.trim() !== ""
       );
     } else {
@@ -96,12 +96,21 @@ const ContentCard: React.FC<ContentCardProps> = ({
   };
 
   const config = getContentConfig();
-  const { icon: Icon, label, bgColor, borderColor, iconColor, badgeColor } = config;
+  const {
+    icon: Icon,
+    label,
+    bgColor,
+    borderColor,
+    iconColor,
+    badgeColor,
+  } = config;
   const isComplete = isContentComplete();
   const duration = getContentDuration();
 
   return (
-    <div className={`${bgColor} rounded-xl border-2 ${borderColor} overflow-hidden shadow-sm hover:shadow-md transition-all duration-200`}>
+    <div
+      className={`${bgColor} rounded-xl border-2 ${borderColor} overflow-hidden shadow-sm hover:shadow-md transition-all duration-200`}
+    >
       {/* Header */}
       <div className="bg-white/60 backdrop-blur-sm border-b border-gray-200/50">
         <div
@@ -122,7 +131,9 @@ const ContentCard: React.FC<ContentCardProps> = ({
                 <h4 className="font-medium text-gray-800">
                   {content.title || `Untitled ${content.type}`}
                 </h4>
-                <span className={`text-xs px-2 py-1 rounded-full ${badgeColor}`}>
+                <span
+                  className={`text-xs px-2 py-1 rounded-full ${badgeColor}`}
+                >
                   {label}
                 </span>
               </div>
@@ -133,7 +144,7 @@ const ContentCard: React.FC<ContentCardProps> = ({
               )}
             </div>
           </div>
-          
+
           <div className="flex items-center gap-3">
             {/* Status indicators */}
             <div className="flex items-center gap-2">
@@ -149,7 +160,7 @@ const ContentCard: React.FC<ContentCardProps> = ({
                 <AlertCircle className="w-4 h-4 text-amber-500" />
               )}
             </div>
-            
+
             {/* Expand/collapse button */}
             {isExpanded ? (
               <ChevronUp className="w-4 h-4 text-gray-500" />
@@ -174,7 +185,7 @@ const ContentCard: React.FC<ContentCardProps> = ({
                 {isEditing ? "Preview" : "Edit"}
               </button>
             </div>
-            
+
             {onDeleteContent && (
               <button
                 onClick={() => onDeleteContent(contentId)}
@@ -237,19 +248,27 @@ const ContentEditForm: React.FC<ContentEditFormProps> = ({
           <input
             type="text"
             value={content.title}
-            onChange={(e) => onUpdateContent(contentId, { title: e.target.value })}
-            placeholder={`e.g., ${content.type === "video" ? "Introduction Video" : "Knowledge Check Quiz"}`}
+            onChange={(e) =>
+              onUpdateContent(contentId, { title: e.target.value })
+            }
+            placeholder={`e.g., ${
+              content.type === "video"
+                ? "Introduction Video"
+                : "Knowledge Check Quiz"
+            }`}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
-        
+
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Description
           </label>
           <textarea
             value={content.description || ""}
-            onChange={(e) => onUpdateContent(contentId, { description: e.target.value })}
+            onChange={(e) =>
+              onUpdateContent(contentId, { description: e.target.value })
+            }
             placeholder="Describe this content item"
             rows={3}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
@@ -259,9 +278,9 @@ const ContentEditForm: React.FC<ContentEditFormProps> = ({
 
       {/* Type-specific fields */}
       {content.type === "video" ? (
-        <VideoContentForm 
-          content={content} 
-          contentId={contentId} 
+        <VideoContentForm
+          content={content}
+          contentId={contentId}
           onUpdateContent={onUpdateContent}
           courseTitle={courseTitle}
           moduleIndex={moduleIndex}
@@ -269,7 +288,11 @@ const ContentEditForm: React.FC<ContentEditFormProps> = ({
           index={index}
         />
       ) : (
-        <QuizContentForm content={content} contentId={contentId} onUpdateContent={onUpdateContent} />
+        <QuizContentForm
+          content={content}
+          contentId={contentId}
+          onUpdateContent={onUpdateContent}
+        />
       )}
     </div>
   );
@@ -286,7 +309,7 @@ const ContentPreview: React.FC<ContentPreviewProps> = ({ content }) => {
       {content.description && (
         <p className="text-sm text-gray-600">{content.description}</p>
       )}
-      
+
       {content.type === "video" ? (
         <VideoContentPreview content={content as VideoContent} />
       ) : (
@@ -317,43 +340,53 @@ const VideoContentForm: React.FC<VideoContentFormProps> = ({
   index,
 }) => {
   const videoContent = content as VideoContent;
-  const { uploadFile, isUploading, getVideoDuration } = useUpload();
+  const { uploadWithPresignedUrl, isUploading, getVideoDuration } = useUpload();
   const [isExtractingDuration, setIsExtractingDuration] = useState(false);
-  const [durationExtractionMessage, setDurationExtractionMessage] = useState<string>("");
+  const [durationExtractionMessage, setDurationExtractionMessage] =
+    useState<string>("");
 
   // Handle video upload with duration extraction
-  const handleVideoUpload = async (file: File, folderName: string): Promise<string> => {
+  const handleVideoUpload = async (
+    file: File,
+    folderName: string
+  ): Promise<string> => {
     try {
       // Start duration extraction
       setIsExtractingDuration(true);
       setDurationExtractionMessage("Extracting video duration...");
-      
+
       // Extract duration from the uploaded file
       const duration = await getVideoDuration(file);
-      
+
       // Upload the file
-      const result = await uploadFile(file, folderName);
-      
+      const result = await uploadWithPresignedUrl(file, folderName);
+
       if (result.success && result.data) {
         // Update content with URL, duration, and source tracking
         onUpdateContent(contentId, {
           ...videoContent,
-          sources: [{ 
-            quality: "1080p", 
-            videoUrl: result.data.url,
-            videoSource: "upload",
-            videoS3Key: result.data.s3Key || ""
-          }],
-          duration: duration
+          sources: [
+            {
+              quality: "1080p",
+              videoUrl: result.data.url,
+              videoSource: "upload",
+              videoS3Key: result.data.s3Key || "",
+            },
+          ],
+          duration: duration,
         } as VideoContent);
-        
+
         // Show success message
         if (duration > 0) {
           const minutes = Math.floor(duration / 60);
           const seconds = duration % 60;
-          const formattedDuration = `${minutes}:${seconds.toString().padStart(2, "0")}`;
-          setDurationExtractionMessage(`Duration auto-filled: ${formattedDuration}`);
-          
+          const formattedDuration = `${minutes}:${seconds
+            .toString()
+            .padStart(2, "0")}`;
+          setDurationExtractionMessage(
+            `Duration auto-filled: ${formattedDuration}`
+          );
+
           // Clear success message after 3 seconds
           setTimeout(() => {
             setDurationExtractionMessage("");
@@ -363,7 +396,7 @@ const VideoContentForm: React.FC<VideoContentFormProps> = ({
           setDurationExtractionMessage("");
           setIsExtractingDuration(false);
         }
-        
+
         return result.data.url;
       }
       throw new Error(result.error || "Upload failed");
@@ -379,12 +412,14 @@ const VideoContentForm: React.FC<VideoContentFormProps> = ({
   const handleVideoUrlSubmit = (url: string) => {
     onUpdateContent(contentId, {
       ...videoContent,
-      sources: [{ 
-        quality: "1080p", 
-        videoUrl: url,
-        videoSource: "url",
-        videoS3Key: ""
-      }]
+      sources: [
+        {
+          quality: "1080p",
+          videoUrl: url,
+          videoSource: "url",
+          videoS3Key: "",
+        },
+      ],
     } as VideoContent);
   };
 
@@ -392,12 +427,14 @@ const VideoContentForm: React.FC<VideoContentFormProps> = ({
   const handleVideoRemove = () => {
     onUpdateContent(contentId, {
       ...videoContent,
-      sources: [{ 
-        quality: "1080p", 
-        videoUrl: "",
-        videoSource: undefined,
-        videoS3Key: ""
-      }]
+      sources: [
+        {
+          quality: "1080p",
+          videoUrl: "",
+          videoSource: undefined,
+          videoS3Key: "",
+        },
+      ],
     } as VideoContent);
   };
 
@@ -407,7 +444,7 @@ const VideoContentForm: React.FC<VideoContentFormProps> = ({
         <Video className="w-4 h-4" />
         Video Settings
       </h4>
-      
+
       <div className="grid grid-cols-1 gap-3">
         <UploadMediaContainer
           title="Video Content"
@@ -416,20 +453,24 @@ const VideoContentForm: React.FC<VideoContentFormProps> = ({
           mediaUrl={videoContent.sources[0]?.videoUrl}
           mediaSource={videoContent.sources[0]?.videoSource}
           s3Key={videoContent.sources[0]?.videoS3Key}
-          maxSize={15360} // 15GB
+          maxSize={102400} // 100GB
           onFileUpload={handleVideoUpload}
           onFileRemove={handleVideoRemove}
           onUrlSubmit={handleVideoUrlSubmit}
           isUploading={isUploading || isExtractingDuration}
           allowUrlInput={true}
           urlPlaceholder="Enter video URL (YouTube, Vimeo, or direct link)"
-          folderName={`courses/${courseTitle}/modules/module-${(moduleIndex || 0) + 1}/lessons/lesson-${(lessonIndex || 0) + 1}/content`}
+          folderName={`courses/${courseTitle}/modules/module-${
+            (moduleIndex || 0) + 1
+          }/lessons/lesson-${(index || 0) + 1}/content`}
           uploadContext={`video-${(index || 0) + 1}`}
           showConfirmation={true}
           required={true}
           className="w-full"
+          usePresignedUrl={true}
+          presignedUrlThreshold={100}
         />
-        
+
         <UploadMediaContainer
           title="Video Thumbnail"
           description="Upload a thumbnail image for this video (required)"
@@ -440,13 +481,13 @@ const VideoContentForm: React.FC<VideoContentFormProps> = ({
           maxSize={100} // 10MB for images
           onFileUpload={async (file: File, folderName: string) => {
             try {
-              const result = await uploadFile(file, folderName);
+              const result = await uploadWithPresignedUrl(file, folderName);
               if (result.success && result.data) {
                 onUpdateContent(contentId, {
                   ...videoContent,
                   thumbnailUrl: result.data.url,
                   thumbnailSource: "upload",
-                  thumbnailS3Key: result.data.s3Key || ""
+                  thumbnailS3Key: result.data.s3Key || "",
                 } as VideoContent);
                 return result.data.url;
               }
@@ -461,7 +502,7 @@ const VideoContentForm: React.FC<VideoContentFormProps> = ({
               ...videoContent,
               thumbnailUrl: "",
               thumbnailSource: undefined,
-              thumbnailS3Key: ""
+              thumbnailS3Key: "",
             });
           }}
           onUrlSubmit={(url) => {
@@ -469,19 +510,23 @@ const VideoContentForm: React.FC<VideoContentFormProps> = ({
               ...videoContent,
               thumbnailUrl: url,
               thumbnailSource: "url",
-              thumbnailS3Key: ""
+              thumbnailS3Key: "",
             });
           }}
           isUploading={isUploading}
           allowUrlInput={true}
           urlPlaceholder="Enter thumbnail URL"
-          folderName={`courses/${courseTitle}/modules/module-${(moduleIndex || 0) + 1}/lessons/lesson-${(lessonIndex || 0) + 1}/content`}
+          folderName={`courses/${courseTitle}/modules/module-${
+            (moduleIndex || 0) + 1
+          }/lessons/lesson-${(lessonIndex || 0) + 1}/content`}
           uploadContext={`thumbnail-${(index || 0) + 1}`}
           showConfirmation={true}
           required={true}
           className="w-full"
+          usePresignedUrl={true}
+          presignedUrlThreshold={10}
         />
-        
+
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Duration (seconds)
@@ -494,7 +539,7 @@ const VideoContentForm: React.FC<VideoContentFormProps> = ({
               onChange={(e) => {
                 onUpdateContent(contentId, {
                   ...videoContent,
-                  duration: parseInt(e.target.value) || 0
+                  duration: parseInt(e.target.value) || 0,
                 });
               }}
               placeholder="300"
@@ -507,7 +552,7 @@ const VideoContentForm: React.FC<VideoContentFormProps> = ({
               </div>
             )}
           </div>
-          
+
           {/* Duration extraction feedback */}
           {isExtractingDuration && (
             <p className="text-xs text-blue-600 mt-1 flex items-center gap-1">
@@ -527,36 +572,47 @@ const VideoContentForm: React.FC<VideoContentFormProps> = ({
             </p>
           )}
         </div>
-        
+
         <DropDown
           label="Video Quality"
           options={["1080p (Full HD)", "720p (HD)", "480p (SD)", "360p (Low)"]}
           value={
-            videoContent.sources?.[0]?.quality 
+            videoContent.sources?.[0]?.quality
               ? `${videoContent.sources[0].quality} (${
-                  videoContent.sources[0].quality === "1080p" ? "Full HD" :
-                  videoContent.sources[0].quality === "720p" ? "HD" :
-                  videoContent.sources[0].quality === "480p" ? "SD" : "Low"
+                  videoContent.sources[0].quality === "1080p"
+                    ? "Full HD"
+                    : videoContent.sources[0].quality === "720p"
+                    ? "HD"
+                    : videoContent.sources[0].quality === "480p"
+                    ? "SD"
+                    : "Low"
                 })`
               : "1080p (Full HD)"
           }
           onChange={(e) => {
             const valueToQuality = {
               "1080p (Full HD)": "1080p",
-              "720p (HD)": "720p", 
+              "720p (HD)": "720p",
               "480p (SD)": "480p",
-              "360p (Low)": "360p"
+              "360p (Low)": "360p",
             } as const;
-            
-            const newQuality = valueToQuality[e.target.value as keyof typeof valueToQuality] || "1080p";
-            const currentSource = videoContent.sources?.[0] || { quality: "1080p", videoUrl: "" };
-            
+
+            const newQuality =
+              valueToQuality[e.target.value as keyof typeof valueToQuality] ||
+              "1080p";
+            const currentSource = videoContent.sources?.[0] || {
+              quality: "1080p",
+              videoUrl: "",
+            };
+
             onUpdateContent(contentId, {
               ...videoContent,
-              sources: [{
-                ...currentSource,
-                quality: newQuality
-              }]
+              sources: [
+                {
+                  ...currentSource,
+                  quality: newQuality,
+                },
+              ],
             });
           }}
           className="w-full"
@@ -586,7 +642,7 @@ const QuizContentForm: React.FC<QuizContentFormProps> = ({
         <HelpCircle className="w-4 h-4" />
         Quiz Settings
       </h4>
-      
+
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -600,14 +656,14 @@ const QuizContentForm: React.FC<QuizContentFormProps> = ({
             onChange={(e) => {
               onUpdateContent(contentId, {
                 ...quizContent,
-                passingScore: parseInt(e.target.value) || 70
+                passingScore: parseInt(e.target.value) || 70,
               });
             }}
             placeholder="70"
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
           />
         </div>
-        
+
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Max Attempts
@@ -619,7 +675,7 @@ const QuizContentForm: React.FC<QuizContentFormProps> = ({
             onChange={(e) => {
               onUpdateContent(contentId, {
                 ...quizContent,
-                maxAttempts: parseInt(e.target.value) || 3
+                maxAttempts: parseInt(e.target.value) || 3,
               });
             }}
             placeholder="3"
@@ -627,7 +683,7 @@ const QuizContentForm: React.FC<QuizContentFormProps> = ({
           />
         </div>
       </div>
-      
+
       <div className="text-xs text-emerald-700 bg-emerald-100 p-3 rounded-lg">
         <FileText className="w-4 h-4 inline mr-1" />
         Quiz questions can be added after creating the course structure
@@ -641,18 +697,26 @@ interface VideoContentPreviewProps {
   content: VideoContent;
 }
 
-const VideoContentPreview: React.FC<VideoContentPreviewProps> = ({ content }) => {
+const VideoContentPreview: React.FC<VideoContentPreviewProps> = ({
+  content,
+}) => {
   return (
     <div className="p-3 bg-blue-50 rounded-lg">
       <div className="grid grid-cols-2 gap-3 text-sm">
         <div>
           <span className="font-medium text-blue-900">Video URL:</span>
-          <p className="text-blue-700 truncate">{content.sources[0]?.videoUrl || "Not set"}</p>
+          <p className="text-blue-700 truncate">
+            {content.sources[0]?.videoUrl || "Not set"}
+          </p>
         </div>
         <div>
           <span className="font-medium text-blue-900">Duration:</span>
           <p className="text-blue-700">
-            {content.duration ? `${Math.floor(content.duration / 60)}:${(content.duration % 60).toString().padStart(2, "0")}` : "Not set"}
+            {content.duration
+              ? `${Math.floor(content.duration / 60)}:${(content.duration % 60)
+                  .toString()
+                  .padStart(2, "0")}`
+              : "Not set"}
           </p>
         </div>
       </div>

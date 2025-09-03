@@ -31,7 +31,7 @@ import ContentSection from "../../create/components/content/ContentSection";
 
 const Screen7 = () => {
   const { state, actions } = useEditCourseContext();
-  const { uploadFile, isUploading } = useUpload();
+  const { uploadWithPresignedUrl, isUploading } = useUpload();
   const { setActiveScreen } = useEditScreen();
   const [savedModules, setSavedModules] = useState<Set<number>>(new Set());
   const [expandedModules, setExpandedModules] = useState<Set<number>>(
@@ -416,7 +416,7 @@ const Screen7 = () => {
     folderName: string
   ): Promise<string> => {
     try {
-      const uploadResponse = await uploadFile(file, folderName);
+      const uploadResponse = await uploadWithPresignedUrl(file, folderName);
       if (uploadResponse.success && uploadResponse.data?.url) {
         const uploadedUrl = uploadResponse.data.url;
         updateModuleData(moduleId, {

@@ -11,7 +11,7 @@ import { useEditScreen } from "../contexts/EditScreenContext";
 
 const Screen3 = () => {
   const { state, actions } = useEditCourseContext();
-  const { uploadFile, isUploading } = useUpload();
+  const { uploadWithPresignedUrl, isUploading } = useUpload();
   const { setActiveScreen } = useEditScreen();
 
   // Generate folder names based on course title
@@ -22,7 +22,7 @@ const Screen3 = () => {
   // Handle file uploads
   const handleThumbnailUpload = async (file: File, folderName: string): Promise<string> => {
     try {
-      const result = await uploadFile(file, folderName);
+      const result = await uploadWithPresignedUrl(file, folderName);
       if (result.success && result.data) {
         actions.setCourseThumbnail(result.data.url);
         actions.setCourseThumbnailSource("upload");
@@ -38,7 +38,7 @@ const Screen3 = () => {
 
   const handleVideoUpload = async (file: File, folderName: string): Promise<string> => {
     try {
-      const result = await uploadFile(file, folderName);
+      const result = await uploadWithPresignedUrl(file, folderName);
       if (result.success && result.data) {
         actions.setCoursePreviewVideoUrl(result.data.url);
         actions.setCoursePreviewVideoSource("upload");
@@ -110,6 +110,8 @@ const Screen3 = () => {
           allowUrlInput={true}
           urlPlaceholder="Enter thumbnail URL..."
           required={true}
+          usePresignedUrl={true}
+          presignedUrlThreshold={10}
         />
       </FlexBox>
 
@@ -121,7 +123,7 @@ const Screen3 = () => {
           mediaUrl={state.course.previewVideoUrl}
           mediaSource={state.course.previewVideoSource}
           s3Key={state.course.previewVideoS3Key}
-          maxSize={1024}
+          maxSize={102400}
           onFileUpload={handleVideoUpload}
           onFileRemove={handleVideoRemove}
           onUrlSubmit={handleVideoUrlSubmit}
@@ -132,6 +134,8 @@ const Screen3 = () => {
           allowUrlInput={true}
           urlPlaceholder="Enter video URL..."
           required={false}
+          usePresignedUrl={true}
+          presignedUrlThreshold={100}
         />
       </FlexBox>
 
