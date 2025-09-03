@@ -67,7 +67,6 @@ const PaymentRedirectContent = () => {
           },
           handler: {
             notifyMerchant: function (eventName: string, data: any) {
-              console.log("notifyMerchant:", eventName, data);
               
               // Handle APP_CLOSED event
               if (eventName === "APP_CLOSED") {
@@ -84,8 +83,6 @@ const PaymentRedirectContent = () => {
         };
 
         if (window.Paytm && window.Paytm.CheckoutJS) {
-          console.log("window.Paytm", window.Paytm);
-          console.log("window.Paytm.CheckoutJS", window.Paytm.CheckoutJS);
           window.Paytm.CheckoutJS.onLoad(function () {
             window.Paytm?.CheckoutJS?.init(config)
               .then(() => {

@@ -13,6 +13,7 @@ import EnrollmentModal from "./EnrollmentModal";
 import { FullScreenLoader } from "@/components/ui/Loader";
 import axios from "axios";
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -34,6 +35,7 @@ const CourseHeader = ({
     type: "success" | "error";
   } | null>(null);
   const { data: session } = useSession();
+  const router = useRouter();
 
   // Auto-dismiss notification after 5 seconds
   useEffect(() => {
@@ -81,7 +83,9 @@ const CourseHeader = ({
     return null;
   }, [course]);
 
-  const handlePlanSelect = async (planType: "elite" | "essential") => {
+  const handlePlanSelect = async (
+    planType: "elite" | "essential"
+  ): Promise<void> => {
     try {
       setIsPaymentLoading(true);
       onLoadingChange?.(true);
@@ -108,7 +112,7 @@ const CourseHeader = ({
       }
 
       if (generateOrder.data.redirectUrl) {
-        window.location.href = generateOrder.data.redirectUrl;
+        router.push(generateOrder.data.redirectUrl);
       }
     } catch (error: any) {
       console.error(error);

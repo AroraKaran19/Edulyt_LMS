@@ -7,7 +7,7 @@ export async function POST(request: NextRequest) {
     if (!userId || !courseId || !planType) {
       console.error("Missing required fields");
       return NextResponse.json(
-        { message: "Missing required fields" },
+        { success: false, message: "Missing required fields" },
         { status: 400 }
       );
     }
@@ -19,13 +19,14 @@ export async function POST(request: NextRequest) {
     if (!payment.data.success) {
       console.error(payment.data.message);
       return NextResponse.json(
-        { message: payment.data.message },
+        { success: false, message: payment.data.message },
         { status: 400 }
       );
     }
 
     if (payment.data.token) {
       const res = NextResponse.json({
+        success: true,
         status: 200,
         redirectUrl: "/paytm-redirect?orderId=" + payment.data.orderId,
         orderId: payment.data.orderId,
@@ -39,11 +40,15 @@ export async function POST(request: NextRequest) {
       return res;
     }
 
-    return NextResponse.json({ status: 400, message: "Payment failed" });
+    return NextResponse.json({
+      success: false,
+      status: 203,
+      message: "Payment failed",
+    });
   } catch (error) {
     console.error("Error creating payment", error);
     return NextResponse.json(
-      { message: "Error creating payment", error: error },
+      { success: false, message: "Error creating payment", error: error },
       { status: 500 }
     );
   }
