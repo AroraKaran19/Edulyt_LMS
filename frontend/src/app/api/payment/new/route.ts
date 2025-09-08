@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
         orderId: payment.data.orderId,
       });
       res.cookies.set("paymentToken", payment.data.token, {
-        httpOnly: process.env.NODE_ENV === "production",
+        httpOnly: false,
         secure: process.env.NODE_ENV === "production",
         sameSite: "strict",
         path: "/",

@@ -62,23 +62,16 @@ const PaymentRedirectContent = () => {
           if (!paymentToken) {
             console.error("Payment token not found in cookies");
             setPaymentStatus("Payment token not found. Please try again.");
-            // Clear any existing payment token
-            document.cookie =
-              "paymentToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
             return;
           }
 
           if (!orderIdToBeUsed) {
             console.error("Order ID not found");
             setPaymentStatus("Order ID not found. Please try again.");
-            // Clear payment token on error
-            document.cookie =
-              "paymentToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
             return;
           }
 
           const config = {
-            root: "paytm-checkout-container",
             flow: "DEFAULT",
             data: {
               orderId: orderIdToBeUsed,
@@ -89,9 +82,7 @@ const PaymentRedirectContent = () => {
             handler: {
               notifyMerchant: function (eventName: string) {
                 // Clear payment token from cookies on any event
-                document.cookie =
-                  "paymentToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-
+                
                 // Handle APP_CLOSED event
                 if (eventName === "APP_CLOSED") {
                   setPaymentStatus("Redirecting back...");
@@ -106,21 +97,20 @@ const PaymentRedirectContent = () => {
             },
           };
 
-          // Wait for Paytm to be available
+          // Initialize Paytm CheckoutJS
           if (window.Paytm && window.Paytm.CheckoutJS) {
             window.Paytm.CheckoutJS.onLoad(function () {
               window.Paytm?.CheckoutJS?.init(config)
                 .then(() => {
                   window.Paytm?.CheckoutJS?.invoke();
+                  // Clear payment token from cookies after successful initialization
+                  document.cookie = "paymentToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
                 })
                 .catch((error: any) => {
                   console.error("Paytm init error:", error);
                   setPaymentStatus(
                     "Payment initialization failed. Please try again."
                   );
-                  // Clear payment token on error
-                  document.cookie =
-                    "paymentToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
                 });
             });
           } else {
@@ -132,18 +122,12 @@ const PaymentRedirectContent = () => {
         } catch (error) {
           console.error("Error in Paytm script onload:", error);
           setPaymentStatus("Payment error occurred. Please try again.");
-          // Clear payment token on error
-          document.cookie =
-            "paymentToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
         }
       };
 
       script.onerror = () => {
         console.error("Failed to load Paytm script");
         setPaymentStatus("Failed to load payment service. Please try again.");
-        // Clear payment token on script load error
-        document.cookie =
-          "paymentToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
       };
 
       document.body.appendChild(script);
@@ -153,9 +137,6 @@ const PaymentRedirectContent = () => {
   // Cleanup function to clear payment token when component unmounts
   useEffect(() => {
     return () => {
-      // Clear payment token when component unmounts
-      document.cookie =
-        "paymentToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
     };
   }, []);
 
@@ -175,8 +156,7 @@ const PaymentRedirectContent = () => {
             </p>
           </div>
         )}
-        {/* Paytm Checkout Container */}
-        <div id="paytm-checkout-container" className="hidden"></div>
+
       </div>
     </div>
   );
