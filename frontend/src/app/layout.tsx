@@ -5,6 +5,8 @@ import LayoutWrapper from "@/components/shared/LayoutWrapper";
 import { cn } from "@/lib/utils";
 import { Metadata } from "next";
 import Head from "next/head";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -60,6 +62,19 @@ export default function RootLayout({
       <body className={cn(plusJakartaSans.className, "antialiased")}>
         <ReduxProvider>
           <LayoutWrapper>{children}</LayoutWrapper>
+          <ToastContainer
+            position="top-right"
+            autoClose={5000}
+            hideProgressBar={false}
+            newestOnTop={false}
+            closeOnClick
+            rtl={false}
+            pauseOnFocusLoss
+            draggable
+            pauseOnHover
+            theme="light"
+            className="toast-container"
+          />
         </ReduxProvider>
       </body>
     </html>

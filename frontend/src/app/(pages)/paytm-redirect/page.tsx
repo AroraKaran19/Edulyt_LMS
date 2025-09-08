@@ -16,7 +16,9 @@ declare global {
 
 const PaymentRedirectContent = () => {
   const [orderIdToBeUsed, setOrderIdToBeUsed] = useState<string | null>(null);
-  const [paymentStatus, setPaymentStatus] = useState<string>("Continue your payment");
+  const [paymentStatus, setPaymentStatus] = useState<string>(
+    "Continue your payment"
+  );
   const [isRedirecting, setIsRedirecting] = useState<boolean>(false);
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -50,54 +52,112 @@ const PaymentRedirectContent = () => {
       script.type = "application/javascript";
 
       script.onload = async () => {
-        // get token from cookies "paymentToken"
-        const paymentToken = document.cookie
-          .split("; ")
-          .find((row) => row.startsWith("paymentToken="))
-          ?.split("=")[1];
+        try {
+          // get token from cookies "paymentToken"
+          const paymentToken = document.cookie
+            .split("; ")
+            .find((row) => row.startsWith("paymentToken="))
+            ?.split("=")[1];
 
-        const config = {
-          root: "",
-          flow: "DEFAULT",
-          data: {
-            orderId: orderIdToBeUsed || "ORDER_" + new Date().getTime(),
-            token: paymentToken,
-            tokenType: "TXN_TOKEN",
-            amount: "1",
-          },
-          handler: {
-            notifyMerchant: function (eventName: string) {
-              
-              // Handle APP_CLOSED event
-              if (eventName === "APP_CLOSED") {
-                setPaymentStatus("Redirecting back...");
-                setIsRedirecting(true);
-                
-                // Redirect back after a short delay
-                setTimeout(() => {
-                  router.back();
-                }, 2000);
-              }
+          if (!paymentToken) {
+            console.error("Payment token not found in cookies");
+            setPaymentStatus("Payment token not found. Please try again.");
+            // Clear any existing payment token
+            document.cookie =
+              "paymentToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+            return;
+          }
+
+          if (!orderIdToBeUsed) {
+            console.error("Order ID not found");
+            setPaymentStatus("Order ID not found. Please try again.");
+            // Clear payment token on error
+            document.cookie =
+              "paymentToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+            return;
+          }
+
+          const config = {
+            root: "paytm-checkout-container",
+            flow: "DEFAULT",
+            data: {
+              orderId: orderIdToBeUsed,
+              token: paymentToken,
+              tokenType: "TXN_TOKEN",
+              amount: "1",
             },
-          },
-        };
+            handler: {
+              notifyMerchant: function (eventName: string) {
+                // Clear payment token from cookies on any event
+                document.cookie =
+                  "paymentToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
 
-        if (window.Paytm && window.Paytm.CheckoutJS) {
-          window.Paytm.CheckoutJS.onLoad(function () {
-            window.Paytm?.CheckoutJS?.init(config)
-              .then(() => {
-                window.Paytm?.CheckoutJS?.invoke();
-              })
-              .catch((error: any) => {
-                console.error("Paytm init error:", error);
-              });
-          });
+                // Handle APP_CLOSED event
+                if (eventName === "APP_CLOSED") {
+                  setPaymentStatus("Redirecting back...");
+                  setIsRedirecting(true);
+
+                  // Redirect back after a short delay
+                  setTimeout(() => {
+                    router.back();
+                  }, 2000);
+                }
+              },
+            },
+          };
+
+          // Wait for Paytm to be available
+          if (window.Paytm && window.Paytm.CheckoutJS) {
+            window.Paytm.CheckoutJS.onLoad(function () {
+              window.Paytm?.CheckoutJS?.init(config)
+                .then(() => {
+                  window.Paytm?.CheckoutJS?.invoke();
+                })
+                .catch((error: any) => {
+                  console.error("Paytm init error:", error);
+                  setPaymentStatus(
+                    "Payment initialization failed. Please try again."
+                  );
+                  // Clear payment token on error
+                  document.cookie =
+                    "paymentToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+                });
+            });
+          } else {
+            console.error("Paytm CheckoutJS not available");
+            setPaymentStatus(
+              "Payment service not available. Please try again."
+            );
+          }
+        } catch (error) {
+          console.error("Error in Paytm script onload:", error);
+          setPaymentStatus("Payment error occurred. Please try again.");
+          // Clear payment token on error
+          document.cookie =
+            "paymentToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
         }
+      };
+
+      script.onerror = () => {
+        console.error("Failed to load Paytm script");
+        setPaymentStatus("Failed to load payment service. Please try again.");
+        // Clear payment token on script load error
+        document.cookie =
+          "paymentToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
       };
 
       document.body.appendChild(script);
     }
   }, [orderIdToBeUsed, router]);
+
+  // Cleanup function to clear payment token when component unmounts
+  useEffect(() => {
+    return () => {
+      // Clear payment token when component unmounts
+      document.cookie =
+        "paymentToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+    };
+  }, []);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#F3F3F3]">
@@ -115,6 +175,8 @@ const PaymentRedirectContent = () => {
             </p>
           </div>
         )}
+        {/* Paytm Checkout Container */}
+        <div id="paytm-checkout-container" className="hidden"></div>
       </div>
     </div>
   );
@@ -122,18 +184,20 @@ const PaymentRedirectContent = () => {
 
 const PaymentRedirectPage = () => {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-[#F3F3F3]">
-        <div className="text-center bg-white rounded-3xl p-8 shadow-[0_0_20px_4px_rgba(0,0,0,0.1)] border border-gray-200 max-w-md mx-4">
-          <div className="mb-6">
-            <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-[#F77124] mx-auto mb-6"></div>
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-[#F3F3F3]">
+          <div className="text-center bg-white rounded-3xl p-8 shadow-[0_0_20px_4px_rgba(0,0,0,0.1)] border border-gray-200 max-w-md mx-4">
+            <div className="mb-6">
+              <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-[#F77124] mx-auto mb-6"></div>
+            </div>
+            <h1 className="text-2xl font-bold text-[#2B1508] mb-4 font-coolvetica">
+              Loading...
+            </h1>
           </div>
-          <h1 className="text-2xl font-bold text-[#2B1508] mb-4 font-coolvetica">
-            Loading...
-          </h1>
         </div>
-      </div>
-    }>
+      }
+    >
       <PaymentRedirectContent />
     </Suspense>
   );

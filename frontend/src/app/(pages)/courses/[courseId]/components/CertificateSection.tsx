@@ -1,20 +1,32 @@
 "use client";
 import SectionContainer from "@/components/ui/course/SectionContainer";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
-import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import { Course } from "@/types";
-import { Check, Crown, X } from "lucide-react";
+import { Crown } from "lucide-react";
 import Link from "next/link";
 import React from "react";
 import CertificateCarousel from "../../components/CertificateCarousel";
-import { cn } from "@/lib/utils";
+import PlanCard from "./PlanCard";
 
 const CertificateSection = ({ course }: { course: Course }) => {
-  const plans = [];
+  const plans: {
+    type: "essential" | "elite";
+    icon: React.ReactNode;
+    name: string;
+    theme: string;
+    price: number;
+    features: { provided: boolean; title: string }[];
+    discountType?: string;
+    discountValue?: number;
+    discountLabel?: string;
+    discountPrice?: number;
+    isPopular?: boolean;
+  }[] = [];
 
   // Only add Essential plan if it exists
   if (course.plans.essential) {
     plans.push({
+      type: "essential",
       icon: <Crown className="size-5" />,
       name: course.plans.essential.title,
       theme: "bg-[#F68A5C]",
@@ -35,12 +47,14 @@ const CertificateSection = ({ course }: { course: Course }) => {
                 (course.plans.essential.discount?.value || 0)) /
               100)
       ),
+      isPopular: course.plans.essential.isPopular,
     });
   }
 
   // Only add Elite plan if it exists
   if (course.plans.elite) {
     plans.push({
+      type: "elite",
       icon: <Crown className="size-5" />,
       name: course.plans.elite.title,
       theme: "bg-[#8B5CF6]",
@@ -61,6 +75,7 @@ const CertificateSection = ({ course }: { course: Course }) => {
                 (course.plans.elite.discount?.value || 0)) /
               100)
       ),
+      isPopular: course.plans.elite.isPopular,
     });
   }
 
@@ -96,87 +111,10 @@ const CertificateSection = ({ course }: { course: Course }) => {
       <div className="plans-body w-full flex flex-col xl:flex-row gap-10 items-center lg:items-stretch">
         <div className="plans-container w-full md:w-full xl:w-1/2 flex flex-col md:flex-row gap-4">
           {plans.map((plan, index) => (
-            <div
-              key={index}
-              className={cn(
-                "plan-card flex flex-col gap-2 bg-white rounded-2xl",
-                plans.length === 1 && "w-full sm:w-2/4 lg:w-3/4 mx-auto",
-                plans.length === 2 && "w-full md:w-1/2"
-              )}
-            >
-              <div className="flex w-full items-center gap-2 p-3 md:p-4">
-                <div className="plan-icon p-0.5 bg-[#E9E9E9] rounded-md">
-                  <div
-                    className={`icon-background ${plan.theme} rounded-sm p-1 text-white`}
-                  >
-                    {plan.icon}
-                  </div>
-                </div>
-                <div className="plan-name text-text-primary text-xl font-bold">
-                  {plan.name}
-                </div>
-                {plan.discountType && plan.discountLabel && (
-                  <span
-                    className={`plan-discount ml-auto text-white text-xs ${plan.theme} p-1 rounded-md font-bold`}
-                  >
-                    {plan.discountLabel}
-                  </span>
-                )}
-              </div>
-
-              <div className="plan-price-container mt-3 md:mt-7 flex gap-1 bg-black/5 p-3">
-                <div className="plan-price text-2xl text-text-primary font-extrabold flex items-center gap-2">
-                  ₹
-                  {plan.discountType &&
-                  plan.discountPrice &&
-                  plan.discountPrice < plan.price
-                    ? `${plan.discountPrice}`
-                    : `${plan.price}`}
-                  {plan.discountType && plan.discountPrice !== plan.price && (
-                    <span className="text-sm text-gray-500 line-through font-normal">
-                      ₹{plan.price}
-                    </span>
-                  )}
-                </div>
-                <span className="text-sm text-text-primary mt-auto">
-                  / month
-                </span>
-              </div>
-
-              <div className="plan-features w-full flex flex-col gap-2 p-3">
-                {plan.features.map((feature, index) => (
-                  <div
-                    key={index}
-                    className="plan-feature text-sm font-medium text-text-primary flex items-center gap-2"
-                  >
-                    {feature.provided ? (
-                      <Check className="size-4 shrink-0" />
-                    ) : (
-                      <X className="size-4 shrink-0" />
-                    )}
-                    {feature.title}
-                  </div>
-                ))}
-              </div>
-
-              <div className="plan-button-container mt-auto w-full flex justify-center p-3">
-                <WhiteButton
-                  className="w-full"
-                  onClick={() => {
-                    if (typeof window !== "undefined") {
-                      window.dispatchEvent(new Event("openEnrollmentModal"));
-                    }
-                  }}
-                >
-                  <span className="w-full text-center text-text-primary font-extrabold text-sm md:text-base">
-                    Select
-                  </span>
-                </WhiteButton>
-              </div>
-            </div>
+            <PlanCard plan={plan} totalPlans={plans.length} key={index} />
           ))}
         </div>
-        <div className="certificate-preview !h-[400px] md:h-auto w-full sm:w-3/4 md:w-1/2 mx-auto relative">
+        <div className="certificate-preview !h-[400px] md:!h-auto w-full sm:w-3/4 md:w-1/2 mx-auto relative">
           <CertificateCarousel />
         </div>
       </div>

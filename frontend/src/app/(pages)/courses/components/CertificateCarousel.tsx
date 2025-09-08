@@ -27,7 +27,7 @@ const CertificateCarousel = () => {
       }}
       navigation={true}
       modules={[Pagination, Navigation, Autoplay]}
-      className="mySwiper !h-full bg-white pb-2"
+      className="mySwiper !h-full bg-white pb-2 rounded-2xl"
       style={
         {
           "--swiper-navigation-color": "#F77124",
@@ -36,16 +36,18 @@ const CertificateCarousel = () => {
       }
     >
       {certificates.map((certificate, index) => (
-        <SwiperSlide key={index}>
-          <Zoom>
-            <Image
-              src={certificate}
-              alt="Certificate"
-              width={100}
-              height={100}
-              className="w-max mx-auto h-full object-fill object-center select-none max-h-[470px] rounded-2xl bg-white"
-            />
-          </Zoom>
+        <SwiperSlide key={index} className="relative h-full">
+          <div className="absolute inset-0 flex items-center justify-center">
+            <Zoom>
+              <Image
+                src={certificate}
+                alt="Certificate"
+                width={100}
+                height={100}
+                className="w-max mx-auto object-contain select-none max-h-[570px] bg-white"
+              />
+            </Zoom>
+          </div>
         </SwiperSlide>
       ))}
     </Swiper>

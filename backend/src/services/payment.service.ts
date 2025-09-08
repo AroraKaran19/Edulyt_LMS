@@ -66,7 +66,6 @@ export class PaymentService {
 
     await order.updateOne({
       amount: amount,
-      orderId: order._id.toString(),
       token: token,
     });
 

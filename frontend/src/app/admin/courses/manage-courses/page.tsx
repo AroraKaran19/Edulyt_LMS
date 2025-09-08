@@ -18,6 +18,7 @@ import {
   Star,
 } from "lucide-react";
 import { useCourses } from "@/hooks/useCourses";
+import { toast } from "react-toastify";
 import { cn } from "@/lib/utils";
 
 // Status Toggle Component
@@ -200,7 +201,7 @@ const ManageCoursesPage = () => {
 
   const handleBulkAction = async (action: string) => {
     if (selectedCourses.length === 0) {
-      alert("Please select courses first");
+      toast.warning("Please select courses first");
       return;
     }
 

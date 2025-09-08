@@ -14,6 +14,7 @@ import { FullScreenLoader } from "@/components/ui/Loader";
 import axios from "axios";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { toast } from "react-toastify";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -30,22 +31,8 @@ const CourseHeader = ({
   const [isEnquiryModalOpen, setIsEnquiryModalOpen] = useState(false);
   const [isEnrollmentModalOpen, setIsEnrollmentModalOpen] = useState(false);
   const [isPaymentLoading, setIsPaymentLoading] = useState(false);
-  const [notification, setNotification] = useState<{
-    message: string;
-    type: "success" | "error";
-  } | null>(null);
   const { data: session } = useSession();
   const router = useRouter();
-
-  // Auto-dismiss notification after 5 seconds
-  useEffect(() => {
-    if (notification) {
-      const timer = setTimeout(() => {
-        setNotification(null);
-      }, 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [notification]);
 
   // Listen for global event to open Enrollment modal (from CertificateSection "Select")
   useEffect(() => {
@@ -112,15 +99,9 @@ const CourseHeader = ({
         console.error(generateOrder.data.message);
         // Handle specific error cases
         if (generateOrder.data.message?.includes("already enrolled")) {
-          setNotification({
-            message: "You are already enrolled in this course!",
-            type: "error",
-          });
+          toast.error("You are already enrolled in this course!");
         } else {
-          setNotification({
-            message: "Something went wrong. Please try again.",
-            type: "error",
-          });
+          toast.error("Something went wrong. Please try again.");
         }
       }
 
@@ -137,21 +118,12 @@ const CourseHeader = ({
           errorMessage.includes("already exists") ||
           errorMessage.includes("User already enrolled")
         ) {
-          setNotification({
-            message: "You are already enrolled in this course!",
-            type: "error",
-          });
+          toast.error("You are already enrolled in this course!");
         } else {
-          setNotification({
-            message: "Something went wrong. Please try again.",
-            type: "error",
-          });
+          toast.error("Something went wrong. Please try again.");
         }
       } else {
-        setNotification({
-          message: "Something went wrong. Please try again.",
-          type: "error",
-        });
+        toast.error("Something went wrong. Please try again.");
       }
     } finally {
       setIsPaymentLoading(false);
@@ -269,7 +241,7 @@ const CourseHeader = ({
         </div>
       </div>
 
-      {/* Enquiry Form Modal */}
+      {/* Enquiry Form Modal for mobile */}
       <EnquiryFormModal
         isOpen={isEnquiryModalOpen}
         onClose={() => setIsEnquiryModalOpen(false)}
@@ -291,43 +263,6 @@ const CourseHeader = ({
           variant="spinner"
           size="lg"
         />
-      )}
-
-      {/* Notification */}
-      {notification && (
-        <div className="fixed top-4 right-4 z-50 max-w-sm">
-          <div
-            className={cn(
-              "bg-white rounded-2xl shadow-lg border p-4 flex items-center gap-3",
-              notification.type === "error"
-                ? "border-red-200"
-                : "border-green-200"
-            )}
-          >
-            <div
-              className={cn(
-                "w-3 h-3 rounded-full",
-                notification.type === "error" ? "bg-red-500" : "bg-green-500"
-              )}
-            />
-            <p
-              className={cn(
-                "text-sm font-medium",
-                notification.type === "error"
-                  ? "text-red-800"
-                  : "text-green-800"
-              )}
-            >
-              {notification.message}
-            </p>
-            <button
-              onClick={() => setNotification(null)}
-              className="ml-auto text-gray-400 hover:text-gray-600"
-            >
-              ✕
-            </button>
-          </div>
-        </div>
       )}
     </>
   );
