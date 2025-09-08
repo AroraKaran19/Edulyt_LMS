@@ -135,8 +135,18 @@ export const authOptions: AuthOptions = {
 
         // For credentials provider, return true (already handled)
         return true;
-      } catch (error) {
-        console.error("SignIn callback error:", error);
+      } catch (error: any) {
+        // If backend reports the email is already used with another provider, block and redirect
+        const status = error?.response?.status;
+        const message = error?.response?.data?.message || error?.message;
+        if (
+          status === 401 &&
+          typeof message === "string" &&
+          message.toLowerCase().includes("different provider")
+        ) {
+          return "/auth/login?error=EMAIL_IN_USE";
+        }
+        console.error("SignIn callback error:", message);
         return false;
       }
     },

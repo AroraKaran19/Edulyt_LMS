@@ -17,6 +17,27 @@ const TopCourseCard = ({
   style?: React.CSSProperties;
 }) => {
   const router = useRouter();
+  const originalPrice =
+    course.plans.essential?.price || course.plans.elite?.price || 0;
+  const hasActiveDiscount =
+    !!course.discount && course.discount.isActive && course.discount.value > 0;
+  let discountedPrice = originalPrice;
+  if (
+    course.discount &&
+    course.discount.isActive &&
+    course.discount.value > 0
+  ) {
+    if (course.discount.discount === "percentage") {
+      discountedPrice = Math.round(
+        originalPrice - (originalPrice * course.discount.value) / 100
+      );
+    } else if (course.discount.discount === "fixed") {
+      discountedPrice = Math.max(
+        0,
+        Math.round(originalPrice - course.discount.value)
+      );
+    }
+  }
 
   return (
     <div
@@ -33,12 +54,14 @@ const TopCourseCard = ({
           draggable={false}
           loading="lazy"
         />
-        {course.discount && course.discount.isActive && course.discount.value > 0 && (
-          <DiscountBadge
-            discount={course.discount}
-            className="absolute top-2 right-2"
-          />
-        )}
+        {course.discount &&
+          course.discount.isActive &&
+          course.discount.value > 0 && (
+            <DiscountBadge
+              discount={course.discount}
+              className="absolute top-2 right-2"
+            />
+          )}
       </div>
       <BestsellerBadge enrollStudents={course.enrolledCount} className="mt-3" />
       <p
@@ -57,11 +80,13 @@ const TopCourseCard = ({
       <div
         className={cn("instructors mt-2 flex gap-2 items-center select-none")}
       >
-        {course.instructor.map((instructor: CourseInstructor, index: number) => {
-          if (index < 2) {
-            return <InstructorCard key={index} instructor={instructor} />;
+        {course.instructor.map(
+          (instructor: CourseInstructor, index: number) => {
+            if (index < 2) {
+              return <InstructorCard key={index} instructor={instructor} />;
+            }
           }
-        })}
+        )}
         {course.instructor.length > 2 && (
           <div className="instructor flex items-center bg-[#EEEEEE] rounded-full p-1">
             <Plus className="w-3 h-3 text-text-primary" fill="#2B1508" />
@@ -73,24 +98,20 @@ const TopCourseCard = ({
       </div>
       <div className="price mt-auto flex flex-col sm:flex-row gap-2 sm:items-center select-none">
         <div className="pricing flex flex-row lg:flex-col xl:flex-row gap-2 sm:items-center flex-wrap">
-        {course?.discount && course.discount.isActive && course.discount.value > 0 && (
-              <span className="text-xl font-bold text-black"> 
-                ₹
-                {(() => {
-                  const originalPrice = course.plans.essential?.price || course.plans.elite?.price || 0;
-                  if (course.discount.discount === "percentage") {
-                    return Math.round(originalPrice - (originalPrice * course.discount.value / 100));
-                  } else if (course.discount.discount === "fixed") {
-                    return Math.max(0, Math.round(originalPrice - course.discount.value));
-                  }
-                  return originalPrice;
-                })()}
+          {hasActiveDiscount ? (
+            <>
+              <span className="text-xl font-bold text-black">
+                ₹{discountedPrice}
               </span>
-            )}
-            <p className="text-sm font-normal text-black line-through opacity-50">
-              ₹
-              {course.plans.essential?.price || course.plans.elite?.price || 0}
-            </p>
+              <p className="text-sm font-normal text-black line-through opacity-50">
+                ₹{originalPrice}
+              </p>
+            </>
+          ) : (
+            <span className="text-xl font-bold text-black">
+              ₹{originalPrice}
+            </span>
+          )}
           <p className="text-sm font-normal text-black">onwards/-</p>
         </div>
         <OrangeButton

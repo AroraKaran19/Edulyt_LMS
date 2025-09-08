@@ -17,6 +17,27 @@ const CourseCard = ({
   style?: React.CSSProperties;
 }) => {
   const router = useRouter();
+  const originalPrice =
+    course.plans.essential?.price || course.plans.elite?.price || 0;
+  const hasActiveDiscount =
+    !!course.discount && course.discount.isActive && course.discount.value > 0;
+  let discountedPrice = originalPrice;
+  if (
+    course.discount &&
+    course.discount.isActive &&
+    course.discount.value > 0
+  ) {
+    if (course.discount.discount === "percentage") {
+      discountedPrice = Math.round(
+        originalPrice - (originalPrice * course.discount.value) / 100
+      );
+    } else if (course.discount.discount === "fixed") {
+      discountedPrice = Math.max(
+        0,
+        Math.round(originalPrice - course.discount.value)
+      );
+    }
+  }
 
   return (
     <div
@@ -73,25 +94,21 @@ const CourseCard = ({
           )}
         </div>
         <div className="mt-auto flex flex-col sm:flex-row gap-2 sm:items-center select-none">
-          <div className="pricing flex flex-row lg:flex-col xl:flex-row gap-2 sm:items-center flex-wrap">  
-            {course?.discount && course.discount.isActive && course.discount.value > 0 && (
-              <span className="text-xl font-bold text-black"> 
-                ₹
-                {(() => {
-                  const originalPrice = course.plans.essential?.price || course.plans.elite?.price || 0;
-                  if (course.discount.discount === "percentage") {
-                    return Math.round(originalPrice - (originalPrice * course.discount.value / 100));
-                  } else if (course.discount.discount === "fixed") {
-                    return Math.max(0, Math.round(originalPrice - course.discount.value));
-                  }
-                  return originalPrice;
-                })()}
+          <div className="pricing flex flex-row lg:flex-col xl:flex-row gap-2 sm:items-center flex-wrap">
+            {hasActiveDiscount ? (
+              <>
+                <span className="text-xl font-bold text-black">
+                  ₹{discountedPrice}
+                </span>
+                <p className="text-sm font-normal text-black line-through opacity-50">
+                  ₹{originalPrice}
+                </p>
+              </>
+            ) : (
+              <span className="text-xl font-bold text-black">
+                ₹{originalPrice}
               </span>
             )}
-            <p className="text-sm font-normal text-black line-through opacity-50">
-              ₹
-              {course.plans.essential?.price || course.plans.elite?.price || 0}
-            </p>
             <p className="text-sm font-normal text-black">onwards/-</p>
           </div>
           <OrangeButton

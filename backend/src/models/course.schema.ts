@@ -88,7 +88,7 @@ const courseSchema = new mongoose.Schema<Course>(
         message: "Thumbnail must be a valid URL",
       },
     },
-    previewVideoUrl: { type: String, required: true },
+    previewVideoUrl: { type: String, required: false, default: "" },
     isFeatured: { type: Boolean, default: false, required: true },
     isCertified: { type: Boolean, default: false, required: true },
     enrolledCount: {
@@ -117,7 +117,7 @@ const courseSchema = new mongoose.Schema<Course>(
       required: true,
       default: [],
     },
-    features: { type: [String], required: true },
+    features: { type: [String], required: false, default: [] },
     careerPaths: { type: [String], required: true },
     skillLevel: { type: String, required: true },
     whoShouldJoin: { type: String, required: true },
@@ -135,7 +135,8 @@ const courseSchema = new mongoose.Schema<Course>(
     },
     instructor: {
       type: [mongoose.Schema.Types.ObjectId],
-      required: true,
+      required: false,
+      default: [],
       ref: "User",
     },
     plans: {
@@ -168,12 +169,13 @@ const courseSchema = new mongoose.Schema<Course>(
     },
     reviews: {
       type: [mongoose.Schema.Types.ObjectId],
-      required: true,
+      required: false,
+      default: [],
       ref: "Review",
     },
-    testimonials: { type: [testimonialSchema], required: true },
+    testimonials: { type: [testimonialSchema], required: false, default: [] },
 
-    faqs: { type: [faqSchema], required: true },
+    faqs: { type: [faqSchema], required: false, default: [] },
 
     isActive: { type: Boolean, default: true },
     createdBy: {

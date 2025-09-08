@@ -44,7 +44,7 @@ export class CourseService {
         highlights: courseData.highlights || [],
         features: courseData.features || [],
         careerPaths: courseData.careerPaths || [],
-        skillLevel: courseData.skillLevel || "",
+        skillLevel: courseData.skillLevel || "Beginner",
         whoShouldJoin: courseData.whoShouldJoin || "",
         prerequisites: courseData.prerequisites || [],
 
@@ -53,11 +53,14 @@ export class CourseService {
         // Content
         modules: courseData.modules || [],
 
-        // Instructor
-        instructor: courseData.instructor || [],
+        // Instructor - ensure it's an array of ObjectIds or empty array
+        instructor: Array.isArray(courseData.instructor) ? courseData.instructor : [],
 
-        // Pricing Plans
-        plans: courseData.plans || {},
+        // Pricing Plans - ensure it has the correct structure
+        plans: courseData.plans || {
+          elite: undefined,
+          essential: undefined
+        },
 
         // Reviews
         reviews: courseData.reviews || [],
@@ -67,10 +70,10 @@ export class CourseService {
         faqs: courseData.faqs || [],
 
         // Administrative
-        isActive: courseData.isActive || true,
+        isActive: courseData.isActive !== undefined ? courseData.isActive : true,
         createdBy: courseData.createdBy || "Admin",
         tags: courseData.tags || [],
-        audience: courseData.audience || "professionals",
+        audience: courseData.audience || "college-students",
 
         // SEO
         metaTitle: courseData.metaTitle || "",
@@ -78,12 +81,11 @@ export class CourseService {
         keywords: courseData.keywords || [],
 
         // Scholarship
-        scholarship: courseData.scholarship || false,
+        scholarship: courseData.scholarship !== undefined ? courseData.scholarship : false,
         scholarshipDescription: courseData.scholarshipDescription || "",
-        // scholarshipQuiz?: Quiz[];
 
-        // Language
-        language: courseData.language || "English",
+        // Language - ensure it's a valid enum value
+        language: courseData.language || "en",
       };
 
       const savedModuleIds: string[] = [];
@@ -1146,10 +1148,26 @@ export class CourseService {
     // Required fields validation
     if (!courseData.title?.trim()) {
       errors.push("Course title is required");
+    } else if (courseData.title.trim().length < 5) {
+      errors.push("Course title must be at least 5 characters long");
+    } else if (courseData.title.trim().length > 100) {
+      errors.push("Course title cannot exceed 100 characters");
     }
 
     if (!courseData.description?.trim()) {
       errors.push("Course description is required");
+    } else if (courseData.description.trim().length < 25) {
+      errors.push("Course description must be at least 25 characters long");
+    } else if (courseData.description.trim().length > 1000) {
+      errors.push("Course description cannot exceed 1000 characters");
+    }
+
+    if (!courseData.shortDescription?.trim()) {
+      errors.push("Course short description is required");
+    } else if (courseData.shortDescription.trim().length < 10) {
+      errors.push("Course short description must be at least 10 characters long");
+    } else if (courseData.shortDescription.trim().length > 100) {
+      errors.push("Course short description cannot exceed 100 characters");
     }
 
     if (!courseData.category?.trim()) {
@@ -1160,13 +1178,43 @@ export class CourseService {
       errors.push("Course thumbnail is required");
     }
 
-    // if (!courseData.previewVideoUrl?.trim()) {
-    //   errors.push("Preview video URL is required");
-    // }
+    // Preview video URL is optional
 
-    // if (!courseData.createdBy?.trim()) {
-    //   errors.push("Created by field is required");
-    // }
+    if (!courseData.whatYouWillLearn?.trim()) {
+      errors.push("What you will learn is required");
+    }
+
+    if (!courseData.skills || !Array.isArray(courseData.skills) || courseData.skills.length === 0) {
+      errors.push("Skills array is required and must not be empty");
+    }
+
+    if (!courseData.highlights || !Array.isArray(courseData.highlights) || courseData.highlights.length === 0) {
+      errors.push("Highlights array is required and must not be empty");
+    }
+
+    // Features array is optional
+
+    if (!courseData.careerPaths || !Array.isArray(courseData.careerPaths) || courseData.careerPaths.length === 0) {
+      errors.push("Career paths array is required and must not be empty");
+    }
+
+    if (!courseData.skillLevel?.trim()) {
+      errors.push("Skill level is required");
+    } else if (!["Beginner", "Intermediate", "Advanced"].includes(courseData.skillLevel)) {
+      errors.push("Valid skill level is required (Beginner, Intermediate, or Advanced)");
+    }
+
+    if (!courseData.whoShouldJoin?.trim()) {
+      errors.push("Who should join is required");
+    }
+
+    if (!courseData.duration?.trim()) {
+      errors.push("Duration is required");
+    }
+
+    if (!courseData.createdBy?.trim()) {
+      errors.push("Created by field is required");
+    }
 
     if (
       !courseData.audience ||
@@ -1177,17 +1225,20 @@ export class CourseService {
       );
     }
 
-    if (
-      !courseData.skillLevel ||
-      !["Beginner", "Intermediate", "Advanced"].includes(courseData.skillLevel)
-    ) {
-      errors.push(
-        "Valid skill level is required (Beginner, Intermediate, or Advanced)"
-      );
-    }
-
     if (!courseData.language?.trim()) {
       errors.push("Language is required");
+    } else if (!["en", "es", "fr", "de", "pt", "it", "ru", "zh", "ja", "ko", "hi", "ar"].includes(courseData.language)) {
+      errors.push("Language must be a valid language code (en, es, fr, de, pt, it, ru, zh, ja, ko, hi, ar)");
+    }
+
+    // Validate plans structure
+    if (!courseData.plans) {
+      errors.push("Plans are required");
+    } else {
+      const plans = courseData.plans as any;
+      if (!plans.elite && !plans.essential) {
+        errors.push("At least one plan (elite or essential) is required");
+      }
     }
 
     // if (!courseData.createdBy?.trim()) {

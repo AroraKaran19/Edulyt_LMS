@@ -36,7 +36,7 @@ const CoursesSection = () => {
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(search);
-  }, 500); // 500ms delay
+    }, 500); // 500ms delay
 
     return () => clearTimeout(timer);
   }, [search]);

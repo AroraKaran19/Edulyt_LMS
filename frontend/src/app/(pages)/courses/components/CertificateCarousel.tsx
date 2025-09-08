@@ -27,7 +27,7 @@ const CertificateCarousel = () => {
       }}
       navigation={true}
       modules={[Pagination, Navigation, Autoplay]}
-      className="mySwiper !h-full"
+      className="mySwiper !h-full bg-white pb-2"
       style={
         {
           "--swiper-navigation-color": "#F77124",
@@ -43,7 +43,7 @@ const CertificateCarousel = () => {
               alt="Certificate"
               width={100}
               height={100}
-              className="w-max mx-auto h-full object-cover object-center select-none max-h-[470px] rounded-2xl bg-white"
+              className="w-max mx-auto h-full object-fill object-center select-none max-h-[470px] rounded-2xl bg-white"
             />
           </Zoom>
         </SwiperSlide>

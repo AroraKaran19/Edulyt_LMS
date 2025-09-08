@@ -11,10 +11,15 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    const payment = await axios.post(
-      `${process.env.NEXT_PUBLIC_API_BASE_URL}/payment/create-order`,
-      { userId, courseId, planType }
+    const baseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL || "").replace(
+      /\/+$/,
+      ""
     );
+    const endpoint = /\/api$/i.test(baseUrl)
+      ? `${baseUrl}/payment/create-order`
+      : `${baseUrl}/api/payment/create-order`;
+
+    const payment = await axios.post(endpoint, { userId, courseId, planType });
 
     if (!payment.data.success) {
       console.error(payment.data.message);
@@ -45,11 +50,14 @@ export async function POST(request: NextRequest) {
       status: 203,
       message: "Payment failed",
     });
-  } catch (error) {
-    console.error("Error creating payment", error);
+  } catch (error: any) {
+    const status = error?.response?.status || 500;
+    const message =
+      error?.response?.data?.message || error?.message || "Error creating payment";
+    console.error("Error creating payment", message);
     return NextResponse.json(
-      { success: false, message: "Error creating payment", error: error },
-      { status: 500 }
+      { success: false, message },
+      { status }
     );
   }
 }

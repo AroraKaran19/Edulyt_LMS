@@ -47,6 +47,19 @@ const CourseHeader = ({
     }
   }, [notification]);
 
+  // Listen for global event to open Enrollment modal (from CertificateSection "Select")
+  useEffect(() => {
+    const handler = () => setIsEnrollmentModalOpen(true);
+    if (typeof window !== "undefined") {
+      window.addEventListener("openEnrollmentModal", handler);
+    }
+    return () => {
+      if (typeof window !== "undefined") {
+        window.removeEventListener("openEnrollmentModal", handler);
+      }
+    };
+  }, []);
+
   const formattedReviewsCount =
     course?.reviews?.length && course?.reviews?.length >= 1000000
       ? `${(course?.reviews?.length / 1000000).toFixed(1).replace(/\.0$/, "")}M`

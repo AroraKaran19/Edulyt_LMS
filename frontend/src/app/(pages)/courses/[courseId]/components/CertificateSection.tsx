@@ -1,3 +1,4 @@
+"use client";
 import SectionContainer from "@/components/ui/course/SectionContainer";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
@@ -100,7 +101,7 @@ const CertificateSection = ({ course }: { course: Course }) => {
               className={cn(
                 "plan-card flex flex-col gap-2 bg-white rounded-2xl",
                 plans.length === 1 && "w-full sm:w-2/4 lg:w-3/4 mx-auto",
-                plans.length === 2 && "w-1/2"
+                plans.length === 2 && "w-full md:w-1/2"
               )}
             >
               <div className="flex w-full items-center gap-2 p-3 md:p-4">
@@ -149,9 +150,9 @@ const CertificateSection = ({ course }: { course: Course }) => {
                     className="plan-feature text-sm font-medium text-text-primary flex items-center gap-2"
                   >
                     {feature.provided ? (
-                      <Check className="size-4" />
+                      <Check className="size-4 shrink-0" />
                     ) : (
-                      <X className="size-4" />
+                      <X className="size-4 shrink-0" />
                     )}
                     {feature.title}
                   </div>
@@ -159,7 +160,14 @@ const CertificateSection = ({ course }: { course: Course }) => {
               </div>
 
               <div className="plan-button-container mt-auto w-full flex justify-center p-3">
-                <WhiteButton className="w-full">
+                <WhiteButton
+                  className="w-full"
+                  onClick={() => {
+                    if (typeof window !== "undefined") {
+                      window.dispatchEvent(new Event("openEnrollmentModal"));
+                    }
+                  }}
+                >
                   <span className="w-full text-center text-text-primary font-extrabold text-sm md:text-base">
                     Select
                   </span>
