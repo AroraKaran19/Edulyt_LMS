@@ -23,7 +23,11 @@ interface UploadMediaContainerProps {
   acceptedFormats?: string[];
   onFileSelect?: (file: File, folderName: string) => void;
   onFileRemove?: () => void;
-  onFileUpload?: (file: File, folderName: string) => Promise<string>; // Returns URL after upload
+  onFileUpload?: (
+    file: File,
+    folderName: string,
+    options?: { usePresignedUrl?: boolean; presignedUrlThresholdMb?: number }
+  ) => Promise<string>; // Returns URL after upload
   onUrlSubmit?: (url: string) => void; // Handle URL submission
   isUploading?: boolean;
   error?: string;
@@ -252,12 +256,21 @@ const UploadMediaContainer: React.FC<UploadMediaContainerProps> = ({
 
       // Auto-upload if upload handler is provided
       if (onFileUpload) {
-        onFileUpload(file, finalFolderName).catch((err) => {
+        onFileUpload(file, finalFolderName, {
+          usePresignedUrl: shouldUsePresignedUrl(file),
+          presignedUrlThresholdMb: presignedUrlThreshold,
+        }).catch((err) => {
           setLocalError(err.message || "Upload failed");
         });
       }
     },
-    [onFileSelect, onFileUpload, finalFolderName]
+    [
+      onFileSelect,
+      onFileUpload,
+      finalFolderName,
+      shouldUsePresignedUrl,
+      presignedUrlThreshold,
+    ]
   );
 
   // Handle confirmation dialog result
