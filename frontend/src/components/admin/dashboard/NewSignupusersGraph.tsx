@@ -12,28 +12,28 @@ import {
 } from 'recharts'
 
 const NewSignupusersGraph = () => {
-  const [isLoading, setIsLoading] = useState(true);
-  const router = useRouter();
+  // const [isLoading, setIsLoading] = useState(true);
+  // const router = useRouter();
 
-  useEffect(() => {
-    const token = localStorage.getItem('adminToken')
-    if (!token) {
-      router.push('/admin/login')
-      return
-    }
-    setIsLoading(false);
-  }, [router])
+  // useEffect(() => {
+  //   const token = localStorage.getItem('adminToken')
+  //   if (!token) {
+  //     router.push('/admin/login')
+  //     return
+  //   }
+  //   setIsLoading(false);
+  // }, [router])
 
-  if (isLoading) {
-    return (
-      <div className="flex w-full h-full bg-[#F8F8F8] items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 lg:h-12 lg:w-12 border-b-2 border-black mx-auto"></div>
-          <p className="mt-2 lg:mt-4 text-black text-sm lg:text-base">Loading dashboard...</p>
-        </div>
-      </div>
-    )
-  }
+  // if (isLoading) {
+  //   return (
+  //     <div className="flex w-full h-full bg-[#F8F8F8] items-center justify-center">
+  //       <div className="text-center">
+  //         <div className="animate-spin rounded-full h-8 w-8 lg:h-12 lg:w-12 border-b-2 border-black mx-auto"></div>
+  //         <p className="mt-2 lg:mt-4 text-black text-sm lg:text-base">Loading dashboard...</p>
+  //       </div>
+  //     </div>
+  //   )
+  // }
 
   // Chart data matching the image trend
   const chartData = [
