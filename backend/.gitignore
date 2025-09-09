@@ -50,4 +50,6 @@ Thumbs.db
 
 # Temporary files
 *.tmp
-*.temp 
+*.temp
+
+test-50mb-course.ts

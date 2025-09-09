@@ -108,13 +108,13 @@ const CertificateSection = ({ course }: { course: Course }) => {
         </div>
       </div>
 
-      <div className="plans-body w-full flex flex-col xl:flex-row gap-10 items-center lg:items-stretch">
+      <div className="plans-body w-full flex flex-col xl:flex-row gap-10 items-center lg:items-stretch min-h-[600px]">
         <div className="plans-container w-full md:w-full xl:w-1/2 flex flex-col md:flex-row gap-4">
           {plans.map((plan, index) => (
             <PlanCard plan={plan} totalPlans={plans.length} key={index} />
           ))}
         </div>
-        <div className="certificate-preview !h-[400px] md:!h-auto w-full sm:w-3/4 md:w-1/2 mx-auto relative">
+        <div className="certificate-preview !h-[400px] xl:!h-auto w-full sm:w-3/4 md:w-1/2 mx-auto relative">
           <CertificateCarousel />
         </div>
       </div>
