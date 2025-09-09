@@ -9,9 +9,22 @@ export class CourseService {
    * @returns Promise<Course> - Created course
    */
   async createCourse(courseData: Partial<Course>): Promise<Course> {
+    
     try {
       // Fix database indexes if needed
       await this.ensureProperIndexes();
+      
+      // Check if course is too large for current memory constraints
+      const totalContents = this.countTotalContents(courseData.modules || []);
+      console.log("📊 Course size analysis:", {
+        title: courseData.title,
+        moduleCount: courseData.modules?.length || 0,
+        totalContents,
+      });
+      
+      if (totalContents > 500) {
+        console.warn(`⚠️ Large course detected: ${totalContents} contents. Consider breaking into smaller courses.`);
+      }
 
       // Generate unique slug from title if not provided
       const slug =
@@ -90,97 +103,183 @@ export class CourseService {
 
       const savedModuleIds: string[] = [];
       
-      // Process modules sequentially to avoid race conditions
+      // Process modules with batch operations for better memory efficiency
       if (courseToCreate.modules && Array.isArray(courseToCreate.modules) && courseToCreate.modules.length > 0) {
-        for (const module of courseToCreate.modules) {
-          const savedLessonIds: string[] = [];
-          
-          // Process lessons sequentially
+        // Collect all contents first for batch processing
+        const allContents: any[] = [];
+        const contentToLessonMap: Map<number, { moduleIndex: number, lessonIndex: number }> = new Map();
+        let contentIndex = 0;
+        
+        // First pass: collect all contents
+        courseToCreate.modules.forEach((module, moduleIndex) => {
           if (module.lessons && Array.isArray(module.lessons)) {
-            for (const lesson of module.lessons) {
-              const savedContentIds: string[] = [];
-              
-              // Process contents sequentially
+            module.lessons.forEach((lesson, lessonIndex) => {
               if (lesson.contents && Array.isArray(lesson.contents)) {
-                for (const content of lesson.contents) {
+                lesson.contents.forEach((content) => {
+                  // Prepare content data by flattening the nested structure
+                  const contentData = {
+                    title: content.title,
+                    description: content.description,
+                    type: content.type,
+                    readingMaterials: content.readingMaterials || [],
+                    isLocked: content.isLocked || false,
+                    // Handle both nested and direct content structures
+                    ...((content as any).content || {}),
+                    // Also include direct properties for backward compatibility
+                    ...(content.type === 'video' ? {
+                      sources: (content as any).sources,
+                      thumbnailUrl: (content as any).thumbnailUrl,
+                      duration: (content as any).duration
+                    } : {}),
+                    ...(content.type === 'quiz' ? {
+                      questions: (content as any).questions,
+                      passingScore: (content as any).passingScore,
+                      maxAttempts: (content as any).maxAttempts
+                    } : {})
+                  };
+                  
+                  allContents.push({ type: content.type, data: contentData });
+                  contentToLessonMap.set(contentIndex, { moduleIndex, lessonIndex });
+                  contentIndex++;
+                });
+              }
+            });
+          }
+        });
+        
+        // Batch save all contents with error handling and rollback
+        const savedContents: any[] = [];
+        const createdContentIds: string[] = []; // Track for potential rollback
+        
+        if (allContents.length > 0) {
+          try {
+            // Process contents in chunks to avoid memory issues
+            const CHUNK_SIZE = 50; // Process 50 contents at a time
+            for (let i = 0; i < allContents.length; i += CHUNK_SIZE) {
+              const chunk = allContents.slice(i, i + CHUNK_SIZE);
+              
+              try {
+                const chunkPromises = chunk.map(async (contentInfo, chunkIndex) => {
                   try {
                     let savedContent;
-                    
-                    // Prepare content data by flattening the nested structure
-                    const contentData = {
-                      title: content.title,
-                      description: content.description,
-                      type: content.type,
-                      readingMaterials: content.readingMaterials || [],
-                      isLocked: content.isLocked || false,
-                      // Handle both nested and direct content structures
-                      ...((content as any).content || {}),
-                      // Also include direct properties for backward compatibility
-                      ...(content.type === 'video' ? {
-                        sources: (content as any).sources,
-                        thumbnailUrl: (content as any).thumbnailUrl,
-                        duration: (content as any).duration
-                      } : {}),
-                      ...(content.type === 'quiz' ? {
-                        questions: (content as any).questions,
-                        passingScore: (content as any).passingScore,
-                        maxAttempts: (content as any).maxAttempts
-                      } : {})
-                    };
-                    
-                    // Handle different content types using discriminators
-                    if (contentData.type === "video") {
-                      savedContent = new VideoContentModel(contentData);
-                    } else if (contentData.type === "quiz") {
-                      savedContent = new QuizContentModel(contentData);
+                    if (contentInfo.type === "video") {
+                      savedContent = new VideoContentModel(contentInfo.data);
+                    } else if (contentInfo.type === "quiz") {
+                      savedContent = new QuizContentModel(contentInfo.data);
                     } else {
-                      throw new Error(`Invalid content type: ${content.title || 'Untitled'}`);
+                      throw new Error(`Invalid content type: ${contentInfo.data.title || 'Untitled'}`);
                     }
-                    
-                    await savedContent.save();
-                    savedContentIds.push(savedContent._id.toString());
+                    const result = await savedContent.save();
+                    createdContentIds.push(result._id.toString());
+                    return result;
                   } catch (error) {
-                    console.error(`❌ Error saving content ${content.title || 'Untitled'}:`, error);
-                    throw new Error(`Failed to save content: ${content.title || 'Untitled'}`);
+                    console.error(`❌ Error saving content ${contentInfo.data.title || 'Untitled'}:`, error);
+                    throw new Error(`Failed to save content: ${contentInfo.data.title || 'Untitled'}`);
                   }
-                }
-              }
-              
-              // Create lesson with content references
-              try {
-                const lessonData = {
-                  ...lesson,
-                  contentIds: savedContentIds,
-                };
-                // Remove nested contents to avoid schema conflicts
-                delete (lessonData as any).contents;
+                });
                 
-                const savedLesson = new CourseLessonModel(lessonData);
-                await savedLesson.save();
-                savedLessonIds.push(savedLesson._id.toString());
-              } catch (error) {
-                console.error(`❌ Error saving lesson ${lesson.title || 'Untitled'}:`, error);
-                throw new Error(`Failed to save lesson: ${lesson.title || 'Untitled'}`);
+                const chunkResults = await Promise.all(chunkPromises);
+                savedContents.push(...chunkResults);
+                
+                console.log(`✅ Processed chunk ${Math.floor(i/CHUNK_SIZE) + 1}/${Math.ceil(allContents.length/CHUNK_SIZE)} (${chunkResults.length} contents)`);
+                
+                // Force garbage collection hint for large datasets
+                if (global.gc && savedContents.length % 100 === 0) {
+                  global.gc();
+                }
+              } catch (chunkError) {
+                console.error(`❌ Error processing chunk ${Math.floor(i/CHUNK_SIZE) + 1}:`, chunkError);
+                // Rollback: Delete any contents created so far
+                await this.rollbackCreatedContents(createdContentIds);
+                throw new Error(`Failed to process content chunk: ${chunkError instanceof Error ? chunkError.message : 'Unknown error'}`);
               }
             }
+          } catch (contentError) {
+            console.error('❌ Critical error during content creation:', contentError);
+            throw contentError; // Re-throw to be caught by outer try-catch
           }
-          
-          // Create module with lesson references
-          try {
-            const moduleData = {
-              ...module,
-              lessonIds: savedLessonIds,
-            };
-            // Remove nested lessons to avoid schema conflicts
-            delete (moduleData as any).lessons;
+        }
+        
+        // Now process modules and lessons with content references
+        const createdLessonIds: string[] = []; // Track for potential rollback
+        const createdModuleIds: string[] = []; // Track for potential rollback
+        
+        try {
+          for (let moduleIndex = 0; moduleIndex < courseToCreate.modules.length; moduleIndex++) {
+            const module = courseToCreate.modules[moduleIndex];
+            const savedLessonIds: string[] = [];
             
-            const savedModule = new CourseModuleModel(moduleData);
-            await savedModule.save();
-            savedModuleIds.push(savedModule._id.toString());
-          } catch (error) {
-            console.error(`❌ Error saving module ${module.title || 'Untitled'}:`, error);
-            throw new Error(`Failed to save module: ${module.title || 'Untitled'}`);
+            if (module.lessons && Array.isArray(module.lessons)) {
+              try {
+                // Batch process lessons for this module
+                const lessonPromises = module.lessons.map(async (lesson, lessonIndex) => {
+                  // Find content IDs for this lesson
+                  const savedContentIds: string[] = [];
+                  for (let i = 0; i < savedContents.length; i++) {
+                    const mapping = contentToLessonMap.get(i);
+                    if (mapping && mapping.moduleIndex === moduleIndex && mapping.lessonIndex === lessonIndex) {
+                      savedContentIds.push(savedContents[i]._id.toString());
+                    }
+                  }
+                  
+                  try {
+                    const lessonData = {
+                      ...lesson,
+                      contentIds: savedContentIds,
+                    };
+                    // Remove nested contents to avoid schema conflicts
+                    delete (lessonData as any).contents;
+                    
+                    const savedLesson = new CourseLessonModel(lessonData);
+                    const result = await savedLesson.save();
+                    createdLessonIds.push(result._id.toString());
+                    return result;
+                  } catch (error) {
+                    console.error(`❌ Error saving lesson ${lesson.title || 'Untitled'}:`, error);
+                    throw new Error(`Failed to save lesson: ${lesson.title || 'Untitled'}`);
+                  }
+                });
+                
+                const savedLessons = await Promise.all(lessonPromises);
+                savedLessonIds.push(...savedLessons.map(lesson => lesson._id.toString()));
+                
+                console.log(`✅ Created ${savedLessons.length} lessons for module: ${module.title || 'Untitled'}`);
+              } catch (lessonError) {
+                console.error(`❌ Error processing lessons for module ${module.title || 'Untitled'}:`, lessonError);
+                // Rollback created contents and lessons
+                await this.rollbackCreatedContents(createdContentIds);
+                await this.rollbackCreatedLessons(createdLessonIds);
+                throw new Error(`Failed to create lessons for module: ${module.title || 'Untitled'}`);
+              }
+            }
+            
+            // Create module with lesson references
+            try {
+              const moduleData = {
+                ...module,
+                lessonIds: savedLessonIds,
+              };
+              // Remove nested lessons to avoid schema conflicts
+              delete (moduleData as any).lessons;
+              
+              const savedModule = new CourseModuleModel(moduleData);
+              const result = await savedModule.save();
+              savedModuleIds.push(result._id.toString());
+              createdModuleIds.push(result._id.toString());
+              
+              console.log(`✅ Created module: ${module.title || 'Untitled'} with ${savedLessonIds.length} lessons`);
+            } catch (error) {
+              console.error(`❌ Error saving module ${module.title || 'Untitled'}:`, error);
+              // Rollback everything created so far
+              await this.rollbackCreatedContents(createdContentIds);
+              await this.rollbackCreatedLessons(createdLessonIds);
+              await this.rollbackCreatedModules(createdModuleIds);
+              throw new Error(`Failed to save module: ${module.title || 'Untitled'}`);
+            }
           }
+        } catch (moduleError) {
+          console.error('❌ Critical error during module/lesson creation:', moduleError);
+          throw moduleError; // Re-throw to be caught by outer try-catch
         }
       }
 
@@ -195,7 +294,9 @@ export class CourseService {
       const course = new CourseModel(courseToCreate);
       const savedCourse = await course.save();
 
+      // Final memory check
       console.log("✅ Course saved successfully:", savedCourse._id);
+      
       return savedCourse.toObject();
     } catch (error) {
       console.error("Error creating course:", error);
@@ -214,6 +315,83 @@ export class CourseService {
         throw new Error(`Failed to create course: ${error.message}`);
       }
       throw new Error("Failed to create course");
+    }
+  }
+
+  /**
+   * Count total contents in all modules for memory estimation
+   */
+  private countTotalContents(modules: any[]): number {
+    let totalContents = 0;
+    modules.forEach(module => {
+      if (module.lessons && Array.isArray(module.lessons)) {
+        module.lessons.forEach((lesson: any) => {
+          if (lesson.contents && Array.isArray(lesson.contents)) {
+            totalContents += lesson.contents.length;
+          }
+        });
+      }
+    });
+    return totalContents;
+  }
+
+  /**
+   * Rollback created contents in case of failure
+   */
+  private async rollbackCreatedContents(contentIds: string[]): Promise<void> {
+    if (contentIds.length === 0) return;
+    
+    try {
+      console.log(`🔄 Rolling back ${contentIds.length} created contents...`);
+      
+      // Delete video contents
+      const videoDeleteResult = await VideoContentModel.deleteMany({
+        _id: { $in: contentIds }
+      });
+      
+      // Delete quiz contents
+      const quizDeleteResult = await QuizContentModel.deleteMany({
+        _id: { $in: contentIds }
+      });
+      
+      console.log(`✅ Rollback completed: ${videoDeleteResult.deletedCount + quizDeleteResult.deletedCount} contents deleted`);
+    } catch (rollbackError) {
+      console.error('❌ Error during rollback:', rollbackError);
+      // Don't throw here to avoid masking the original error
+    }
+  }
+
+  /**
+   * Rollback created lessons in case of failure
+   */
+  private async rollbackCreatedLessons(lessonIds: string[]): Promise<void> {
+    if (lessonIds.length === 0) return;
+    
+    try {
+      console.log(`🔄 Rolling back ${lessonIds.length} created lessons...`);
+      const deleteResult = await CourseLessonModel.deleteMany({
+        _id: { $in: lessonIds }
+      });
+      console.log(`✅ Rollback completed: ${deleteResult.deletedCount} lessons deleted`);
+    } catch (rollbackError) {
+      console.error('❌ Error during lesson rollback:', rollbackError);
+    }
+  }
+
+  /**
+   * Rollback created modules in case of failure
+   */
+  private async rollbackCreatedModules(moduleIds: string[]): Promise<void> {
+    if (moduleIds.length === 0) return;
+    
+    try {
+      console.log(`🔄 Rolling back ${moduleIds.length} created modules...`);
+      const deleteResult = await CourseModuleModel.deleteMany({
+        _id: { $in: moduleIds }
+      });
+      console.log(`✅ Rollback completed: ${deleteResult.deletedCount} modules deleted`);
+    } catch (rollbackError) {
+      console.error('❌ Error during module rollback:', rollbackError);
     }
   }
 
@@ -1434,27 +1612,6 @@ export class CourseService {
       isValid: errors.length === 0,
       errors,
     };
-  }
-
-  /**
-   * Debug method to get all courses without any filters
-   * @returns Promise<Course[]> - All courses in database
-   */
-  async debugGetAllCourses(): Promise<Course[]> {
-    try {
-      const allCourses = await CourseModel.find({})
-        .select("-__v")
-        .sort({ createdAt: -1 })
-        .lean();
-
-      return allCourses;
-    } catch (error) {
-      console.error("Error fetching all courses (debug):", error);
-      if (error instanceof Error) {
-        throw new Error(`Failed to fetch courses: ${error.message}`);
-      }
-      throw new Error("Failed to fetch courses");
-    }
   }
 
   /**
