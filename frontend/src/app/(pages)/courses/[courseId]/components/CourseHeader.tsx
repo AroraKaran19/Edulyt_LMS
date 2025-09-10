@@ -1,7 +1,7 @@
 "use client";
 import BestsellerBadge from "@/components/ui/course/BestsellerBadge";
 import { Course } from "@/types";
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState } from "react";
 import DiscountCountdown from "../../components/DiscountCountdown";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import { cn } from "@/lib/utils";

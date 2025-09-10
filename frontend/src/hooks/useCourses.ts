@@ -620,14 +620,14 @@ export const useCourses = () => {
 
         // Step 2: Add modules one by one
         if (modules && Array.isArray(modules) && modules.length > 0) {
-          for (const module of modules) {
-            const { lessons, ...moduleData } = module;
+          for (const courseModule of modules) {
+            const { lessons, ...moduleData } = courseModule;
 
             // Add module without lessons first
             const moduleResult = await addCourseModules(courseId, [moduleData]);
             if (!moduleResult.success) {
               throw new Error(
-                `Failed to add module: ${module.title || "Untitled"}`
+                `Failed to add module: ${courseModule.title || "Untitled"}`
               );
             }
 

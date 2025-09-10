@@ -1,6 +1,4 @@
-'use client'
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+"use client";
 import {
   AreaChart,
   Area,
@@ -8,8 +6,8 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  ResponsiveContainer
-} from 'recharts'
+  ResponsiveContainer,
+} from "recharts";
 
 const NewSignupusersGraph = () => {
   // const [isLoading, setIsLoading] = useState(true);
@@ -37,18 +35,18 @@ const NewSignupusersGraph = () => {
 
   // Chart data matching the image trend
   const chartData = [
-    { month: 'JAN', value: 15 },
-    { month: 'FEB', value: 18 },
-    { month: 'MAR', value: 16 },
-    { month: 'APR', value: 24 },
-    { month: 'MAY', value: 28 },
-    { month: 'JUN', value: 32 },
-    { month: 'JUL', value: 35 },
-    { month: 'AUG', value: 30 },
-    { month: 'SEP', value: 25 },
-    { month: 'OCT', value: 20 },
-    { month: 'NOV', value: 22 },
-    { month: 'DEC', value: 18 }
+    { month: "JAN", value: 15 },
+    { month: "FEB", value: 18 },
+    { month: "MAR", value: 16 },
+    { month: "APR", value: 24 },
+    { month: "MAY", value: 28 },
+    { month: "JUN", value: 32 },
+    { month: "JUL", value: 35 },
+    { month: "AUG", value: 30 },
+    { month: "SEP", value: 25 },
+    { month: "OCT", value: 20 },
+    { month: "NOV", value: 22 },
+    { month: "DEC", value: 18 },
   ];
 
   return (
@@ -68,15 +66,28 @@ const NewSignupusersGraph = () => {
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={chartData}>
                         <defs>
-                          <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
+                          <linearGradient
+                            id="areaGradient"
+                            x1="0"
+                            y1="0"
+                            x2="0"
+                            y2="1"
+                          >
                             <stop offset="0%" stopColor="#FF5C00" />
-                            <stop offset="100%" stopColor="rgba(249, 250, 251, 0)" />
+                            <stop
+                              offset="100%"
+                              stopColor="rgba(249, 250, 251, 0)"
+                            />
                           </linearGradient>
                         </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#E5E5EF" horizontal={false} />
+                        <CartesianGrid
+                          strokeDasharray="3 3"
+                          stroke="#E5E5EF"
+                          horizontal={false}
+                        />
                         <XAxis
                           dataKey="month"
-                          tick={{ fontSize: 10, fill: '#6B7280' }}
+                          tick={{ fontSize: 10, fill: "#6B7280" }}
                           axisLine={false}
                           tickLine={false}
                         />
@@ -89,15 +100,17 @@ const NewSignupusersGraph = () => {
                         />
                         <Tooltip
                           cursor={{
-                            stroke: '#9291A5',
+                            stroke: "#9291A5",
                             strokeWidth: 2,
-                            strokeDasharray: '5 5'
+                            strokeDasharray: "5 5",
                           }}
                           content={({ active, payload, label }) => {
                             if (active && payload && payload.length) {
                               return (
                                 <div className="bg-[#1E1B39] p-4 rounded-lg shadow-lg">
-                                  <p className="font-semibold text-white mb-2">{label}</p>
+                                  <p className="font-semibold text-white mb-2">
+                                    {label}
+                                  </p>
                                   <p className="text-sm text-white">
                                     value: {payload[0]?.value}
                                   </p>
@@ -124,7 +137,7 @@ const NewSignupusersGraph = () => {
         </main>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default NewSignupusersGraph
+export default NewSignupusersGraph;
