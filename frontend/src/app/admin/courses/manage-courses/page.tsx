@@ -112,7 +112,8 @@ const ManageCoursesPage = () => {
 
   useEffect(() => {
     const fetchCourses = async () => {
-      const result = await getAllCourses();
+      // Use 'basic' data level for admin listing - includes all needed fields without heavy module/lesson data
+      const result = await getAllCourses(1, 100, "", undefined, "basic");
       if (result.success && result.data) {
         setCourses(result.data.courses);
       }

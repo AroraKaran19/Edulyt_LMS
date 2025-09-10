@@ -1,13 +1,17 @@
+"use client";
 import { WhiteButton } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { Check, TrendingUp, X } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import React from "react";
 
 const PlanCard = ({
   plan,
   totalPlans,
-	className,
-	onClick
+  className,
+  onClick,
+  onEnrollClick,
 }: {
   plan: {
     icon: React.ReactNode;
@@ -22,18 +26,22 @@ const PlanCard = ({
     isPopular?: boolean;
   };
   totalPlans: number;
-	className?: string;
-	onClick?: () => void;
+  className?: string;
+  onClick?: () => void;
+  onEnrollClick?: () => void;
 }) => {
+  const session = useSession();
+  const router = useRouter();
+
   return (
     <div
       className={cn(
         "plan-card flex flex-col gap-2 bg-white rounded-2xl relative",
         totalPlans === 1 && "w-full sm:w-2/4 lg:w-3/4 mx-auto",
         totalPlans === 2 && "w-full md:w-1/2",
-				className
+        className
       )}
-			onClick={onClick}
+      onClick={onClick}
     >
       {plan.isPopular && (
         <div className="absolute -top-4.5 right-0 z-10">
@@ -102,13 +110,18 @@ const PlanCard = ({
         <WhiteButton
           className="w-full hover:bg-[#F77124] hover:!text-white text-text-primary transition-colors duration-200 ease-in-out"
           onClick={() => {
-            if (typeof window !== "undefined") {
-              window.dispatchEvent(new Event("openEnrollmentModal"));
+            if (session.status === "authenticated") {
+              onEnrollClick?.();
+            } else {
+              router.push("/auth/login");
             }
+            onClick?.();
           }}
         >
           <span className="w-full text-center font-extrabold text-sm md:text-base">
-            Select
+            {session.status === "authenticated"
+              ? "Enroll Now"
+              : "Login to Enroll"}
           </span>
         </WhiteButton>
       </div>

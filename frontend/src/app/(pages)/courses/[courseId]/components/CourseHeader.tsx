@@ -24,28 +24,25 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 const CourseHeader = ({
   course,
   onLoadingChange,
+  isEnrollmentModalOpen,
+  setIsEnrollmentModalOpen,
 }: {
   course: Course;
   onLoadingChange?: (loading: boolean) => void;
+  isEnrollmentModalOpen?: boolean;
+  setIsEnrollmentModalOpen?: (open: boolean) => void;
 }) => {
   const [isEnquiryModalOpen, setIsEnquiryModalOpen] = useState(false);
-  const [isEnrollmentModalOpen, setIsEnrollmentModalOpen] = useState(false);
+  const [localIsEnrollmentModalOpen, setLocalIsEnrollmentModalOpen] = useState(false);
   const [isPaymentLoading, setIsPaymentLoading] = useState(false);
+  
+  // Use external state if provided, otherwise use local state
+  const enrollmentModalOpen = isEnrollmentModalOpen ?? localIsEnrollmentModalOpen;
+  const setEnrollmentModalOpen = setIsEnrollmentModalOpen ?? setLocalIsEnrollmentModalOpen;
   const { data: session } = useSession();
   const router = useRouter();
 
-  // Listen for global event to open Enrollment modal (from CertificateSection "Select")
-  useEffect(() => {
-    const handler = () => setIsEnrollmentModalOpen(true);
-    if (typeof window !== "undefined") {
-      window.addEventListener("openEnrollmentModal", handler);
-    }
-    return () => {
-      if (typeof window !== "undefined") {
-        window.removeEventListener("openEnrollmentModal", handler);
-      }
-    };
-  }, []);
+  // Remove window event listener - now using props
 
   const formattedReviewsCount =
     course?.reviews?.length && course?.reviews?.length >= 1000000
@@ -128,7 +125,7 @@ const CourseHeader = ({
     } finally {
       setIsPaymentLoading(false);
       onLoadingChange?.(false);
-      setIsEnrollmentModalOpen(false);
+      setIsEnrollmentModalOpen?.(false);
     }
   };
 
@@ -184,7 +181,7 @@ const CourseHeader = ({
               <div className="flex gap-5">
                 <OrangeButton
                   className="font-bold text-sm md:text-base"
-                  onClick={() => setIsEnrollmentModalOpen(true)}
+                  onClick={() => setIsEnrollmentModalOpen?.(true)}
                 >
                   Enroll Now
                 </OrangeButton>
@@ -250,8 +247,8 @@ const CourseHeader = ({
 
       {/* Enrollment Modal */}
       <EnrollmentModal
-        isOpen={isEnrollmentModalOpen}
-        onClose={() => setIsEnrollmentModalOpen(false)}
+        isOpen={enrollmentModalOpen}
+        onClose={() => setEnrollmentModalOpen?.(false)}
         course={course}
         onPlanSelect={handlePlanSelect}
       />

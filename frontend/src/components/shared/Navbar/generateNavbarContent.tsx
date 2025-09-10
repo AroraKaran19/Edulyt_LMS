@@ -5,7 +5,7 @@ import { ChevronRight, Crown } from "lucide-react";
 import Image from "next/image";
 import React, { useMemo, useState } from "react";
 import Link from "next/link";
-import { useGetCoursesByAudienceQuery } from "@/store/coursesApi"; 
+import { useGetCoursesByAudienceQuery } from "@/store/coursesApi";
 
 const GenerateNavbarContent = ({
   navLink,
@@ -29,15 +29,10 @@ const GenerateNavbarContent = ({
     categories[0].value
   );
 
-  const { data, isLoading, error } = useGetCoursesByAudienceQuery(selectedAudience);
+  const { data, isLoading, error } =
+    useGetCoursesByAudienceQuery(selectedAudience);
 
-  const filteredCourses = useMemo(
-    () =>
-      data?.data?.courses.filter(
-        (course: Course) => course.audience === selectedAudience
-      ),
-    [data, selectedAudience]
-  );
+  const filteredCourses = useMemo(() => data?.data?.courses || [], [data]);
 
   switch (navLink.label) {
     case "Courses":

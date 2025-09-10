@@ -92,7 +92,6 @@ const TestimonialCarousel = ({
         depth: 100,
         modifier: 2.5,
       }}
-      loop={true}
       effect="coverflow"
       modules={[Autoplay]}
       autoplay={{

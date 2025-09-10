@@ -1,13 +1,14 @@
 import { CourseController } from "../controllers/course.controller";
 // import { verifyAdmin } from "../middlewares/admin.middleware";
 import { Router } from "express";
+import { courseOperationTimeout, memoryMonitoringMiddleware } from "../middlewares/timeout.middleware";
 
 const router = Router();
 const courseController = new CourseController();
 
 /**
  * @route   GET /api/courses
- * @desc    Get all courses with pagination and filtering
+ * @desc    Get all courses with pagination, filtering, and optimized data loading
  * @access  Public
  * @params
  *   - page: Page number (default: 1)
@@ -16,11 +17,15 @@ const courseController = new CourseController();
  *   - category: Filter by categories (comma-separated: "programming,design,business") - alternative to filter
  *   - audience: Filter by target audience ("college-students" or "professionals")
  *   - search: Search in title, description, or short description (optional)
+ *   - dataLevel: Data level - 'summary' (minimal), 'basic' (standard), 'full' (complete) (default: 'basic')
+ *   - fields: Specific fields to include (comma-separated, overrides dataLevel)
  * @example
  *   GET /api/courses?page=1&limit=10&filter=programming&filter=design&search=javascript
- *   GET /api/courses?page=1&limit=10&category=programming,design&search=javascript
- *   GET /api/courses?page=1&limit=10&audience=college-students&category=programming
- *   GET /api/courses?search=&category=1,2,3
+ *   GET /api/courses?page=1&limit=10&category=programming,design&search=javascript&dataLevel=summary
+ *   GET /api/courses?page=1&limit=10&audience=college-students&category=programming&dataLevel=full
+ *   GET /api/courses?search=&category=1,2,3&fields=_id,title,thumbnail,enrolledCount
+ *   GET /api/courses?dataLevel=summary (lightweight for course cards)
+ *   GET /api/courses?dataLevel=full (complete data with modules/lessons/content)
  */
 router.get("/", courseController.getAllCourses);
 
@@ -97,12 +102,50 @@ router.get("/:slug", courseController.getCourseBySlug);
 
 /**
  * @route   POST /api/courses
- * @desc    Create a new course
- * @access  Private (should be protected with admin middleware)
- * @body @type {Course}
+ * @desc    Create a new course with async job processing to prevent server freezing
+ * @access  Private (Admin only)
+ * @body @type {Partial<Course>} - Course data including modules, lessons, and content
+ * @returns Job ID for tracking progress
  */
 // router.post("/", verifyAdmin, courseController.createCourse);
-router.post("/", courseController.createCourse)
+router.post("/", courseController.createCourse);
+
+/**
+ * @route   POST /api/courses/chunked/metadata
+ * @desc    Create course metadata (first step of chunked creation)
+ * @access  Private (Admin only)
+ * @body @type {Partial<Course>} - Course metadata without modules
+ */
+router.post("/chunked/metadata", courseController.createCourseMetadata);
+
+/**
+ * @route   POST /api/courses/chunked/:courseId/modules
+ * @desc    Add modules to an existing course (chunked creation)
+ * @access  Private (Admin only)
+ * @params
+ *   - courseId: Course ID (URL parameter)
+ * @body @type {CourseModule[]} - Array of modules to add
+ */
+router.post("/chunked/:courseId/modules", courseController.addCourseModules);
+
+/**
+ * @route   POST /api/courses/chunked/:courseId/lessons
+ * @desc    Add lessons to course modules (chunked creation)
+ * @access  Private (Admin only)
+ * @params
+ *   - courseId: Course ID (URL parameter)
+ * @body @type {Object} - { moduleId: string, lessons: CourseLesson[] }
+ */
+router.post("/chunked/:courseId/lessons", courseController.addCourseLessons);
+
+/**
+ * @route   POST /api/courses/chunked/:courseId/finalize
+ * @desc    Finalize chunked course creation
+ * @access  Private (Admin only)
+ * @params
+ *   - courseId: Course ID (URL parameter)
+ */
+router.post("/chunked/:courseId/finalize", courseController.finalizeCourseCreation);
 
 /**
  * @route   GET /api/courses/admin/id/:courseId

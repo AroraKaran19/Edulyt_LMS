@@ -1,4 +1,5 @@
 import { CourseService } from "../services/course.service";
+import { JobService } from "../services/job.service";
 import { Request, Response } from "express";
 import dotenv from "dotenv";
 import { Course } from "../types/course";
@@ -6,9 +7,11 @@ dotenv.config();
 
 export class CourseController {
   private courseService: CourseService;
+  private jobService: JobService;
 
   constructor() {
     this.courseService = new CourseService();
+    this.jobService = new JobService();
   }
 
   /**
@@ -19,16 +22,28 @@ export class CourseController {
    * @query category - Filter by categories (comma-separated: "programming,design,business") - alternative to filter
    * @query audience - Filter by target audience ("college-students" or "professionals")
    * @query search - Search term for title/description
+   * @query dataLevel - Data level: 'summary' | 'basic' | 'full' (default: 'basic')
+   * @query fields - Specific fields to include (comma-separated)
    */
   getAllCourses = async (req: Request, res: Response): Promise<void> => {
     try {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 10;
       const search = req.query.search as string;
+      const dataLevel =
+        (req.query.dataLevel as "summary" | "basic" | "full") || "basic";
+
+      // Handle fields parameter
+      let fields: string[] | undefined;
+      if (req.query.fields) {
+        fields = (req.query.fields as string)
+          .split(",")
+          .map((field) => field.trim());
+      }
 
       // Handle multiple filter parameters
       let filters: string[] = [];
-      
+
       // Support both 'filter' and 'category' parameters for backward compatibility
       if (req.query.filter) {
         if (Array.isArray(req.query.filter)) {
@@ -42,7 +57,9 @@ export class CourseController {
           filters = req.query.category as string[];
         } else {
           // Split by comma if it's a comma-separated string
-          filters = (req.query.category as string).split(',').map(cat => cat.trim());
+          filters = (req.query.category as string)
+            .split(",")
+            .map((cat) => cat.trim());
         }
       }
 
@@ -69,12 +86,23 @@ export class CourseController {
         return;
       }
 
+      // Validate dataLevel parameter
+      if (!["summary", "basic", "full"].includes(dataLevel)) {
+        res.status(400).json({
+          success: false,
+          message: "dataLevel must be one of: summary, basic, full",
+        });
+        return;
+      }
+
       const result = await this.courseService.getAllCourses(
         page,
         limit,
         search,
         filters,
-        audienceFilter
+        audienceFilter,
+        dataLevel,
+        fields
       );
 
       if (result.total === 0) {
@@ -120,7 +148,7 @@ export class CourseController {
   };
 
   /**
-   * Create a new course
+   * Create a new course (async processing)
    * @param req - Express request object
    * @param res - Express response object
    */
@@ -141,15 +169,17 @@ export class CourseController {
         return;
       }
 
-      // // Create the course
-      const createdCourse = await this.courseService.createCourse(cleanedData);
+      // Start async course creation job
+      const jobId = await this.jobService.createCourseJob(cleanedData);
 
-      // Return success response
-      res.status(201).json({
+      // Return job ID for tracking
+      res.status(202).json({
         success: true,
-        message: "Course created successfully",
+        message: "Course creation started. Use the job ID to track progress.",
         data: {
-          course: createdCourse,
+          jobId: jobId,
+          status: "processing",
+          trackingUrl: `/api/jobs/${jobId}/status`,
         },
       });
     } catch (error: any) {
@@ -408,13 +438,16 @@ export class CourseController {
    * @param res - Express response object
    * @param courseId - Course ID from URL parameters
    */
-  updateCourseStatus = async (req: Request, res: Response): Promise<void> => {  
+  updateCourseStatus = async (req: Request, res: Response): Promise<void> => {
     try {
       const { courseId } = req.params;
       const { isActive } = req.body;
 
       // Update course status
-      const updatedCourse = await this.courseService.updateCourseStatus(courseId, isActive);
+      const updatedCourse = await this.courseService.updateCourseStatus(
+        courseId,
+        isActive
+      );
 
       // Return success response
       res.status(200).json({
@@ -438,7 +471,10 @@ export class CourseController {
    * @param req - Express request object
    * @param res - Express response object
    */
-  updateCourseStatusBulk = async (req: Request, res: Response): Promise<void> => {
+  updateCourseStatusBulk = async (
+    req: Request,
+    res: Response
+  ): Promise<void> => {
     try {
       const courses = req.body.courses;
       const isActive = req.body.isActive;
@@ -545,6 +581,375 @@ export class CourseController {
         error:
           process.env.NODE_ENV === "development"
             ? error
+            : "Something went wrong",
+      });
+    }
+  };
+
+  /**
+   * Create course metadata (first step of chunked creation)
+   * @param req - Express request object
+   * @param res - Express response object
+   */
+  createCourseMetadata = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const courseMetadata: Partial<Course> = req.body;
+
+      // Remove modules from metadata if present
+      const { modules, ...metadataOnly } = courseMetadata;
+
+      const cleanedData = await this.courseService.cleanCourseData(
+        metadataOnly
+      );
+
+      // Validate course metadata
+      const validation = this.courseService.validateCourseMetadata(cleanedData);
+      if (!validation.isValid) {
+        res.status(400).json({
+          success: false,
+          message: "Validation failed",
+          errors: validation.errors,
+        });
+        return;
+      }
+
+      // Create the course with metadata only
+      const createdCourse = await this.courseService.createCourseMetadata(
+        cleanedData
+      );
+
+      // Return success response
+      res.status(201).json({
+        success: true,
+        message: "Course metadata created successfully",
+        data: {
+          courseId: createdCourse._id,
+          course: createdCourse,
+        },
+      });
+    } catch (error: any) {
+      console.error("Error in createCourseMetadata controller:", error);
+
+      // Handle MongoDB duplicate key errors (E11000)
+      if (error.code === 11000) {
+        let field = "data";
+        if (error.message.includes("slug")) {
+          field = "course slug";
+        }
+
+        res.status(409).json({
+          success: false,
+          message: `A course with this ${field} already exists`,
+        });
+        return;
+      }
+
+      // Handle validation errors
+      if (error.name === "ValidationError") {
+        const validationErrors = Object.values(error.errors).map(
+          (err: any) => err.message
+        );
+        res.status(400).json({
+          success: false,
+          message: "Invalid course metadata",
+          errors: validationErrors,
+        });
+        return;
+      }
+
+      // Generic error response
+      res.status(500).json({
+        success: false,
+        message: "Internal server error while creating course metadata",
+        error:
+          process.env.NODE_ENV === "development"
+            ? error.message
+            : "Something went wrong",
+      });
+    }
+  };
+
+  /**
+   * Add modules to an existing course (chunked creation)
+   * @param req - Express request object
+   * @param res - Express response object
+   */
+  addCourseModules = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { courseId } = req.params;
+      const modules = req.body;
+
+      if (!courseId) {
+        res.status(400).json({
+          success: false,
+          message: "Course ID is required",
+        });
+        return;
+      }
+
+      if (!Array.isArray(modules) || modules.length === 0) {
+        res.status(400).json({
+          success: false,
+          message: "Modules array is required and cannot be empty",
+        });
+        return;
+      }
+
+      // Add modules to the course
+      const result = await this.courseService.addModulesToCourse(
+        courseId,
+        modules
+      );
+
+      res.status(200).json({
+        success: true,
+        message: "Modules added successfully",
+        data: {
+          moduleIds: result.moduleIds,
+          addedCount: result.addedCount,
+        },
+      });
+    } catch (error: any) {
+      console.error("Error in addCourseModules controller:", error);
+
+      if (error.message.includes("Course not found")) {
+        res.status(404).json({
+          success: false,
+          message: "Course not found",
+        });
+        return;
+      }
+
+      res.status(500).json({
+        success: false,
+        message: "Internal server error while adding modules",
+        error:
+          process.env.NODE_ENV === "development"
+            ? error.message
+            : "Something went wrong",
+      });
+    }
+  };
+
+  /**
+   * Add lessons to course modules (chunked creation)
+   * @param req - Express request object
+   * @param res - Express response object
+   */
+  addCourseLessons = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { courseId } = req.params;
+      const { moduleId, lessons } = req.body;
+
+      if (!courseId) {
+        res.status(400).json({
+          success: false,
+          message: "Course ID is required",
+        });
+        return;
+      }
+
+      if (!moduleId) {
+        res.status(400).json({
+          success: false,
+          message: "Module ID is required",
+        });
+        return;
+      }
+
+      if (!Array.isArray(lessons) || lessons.length === 0) {
+        res.status(400).json({
+          success: false,
+          message: "Lessons array is required and cannot be empty",
+        });
+        return;
+      }
+
+      // Add lessons to the module
+      const result = await this.courseService.addLessonsToModule(
+        courseId,
+        moduleId,
+        lessons
+      );
+
+      res.status(200).json({
+        success: true,
+        message: "Lessons added successfully",
+        data: {
+          lessonIds: result.lessonIds,
+          addedCount: result.addedCount,
+        },
+      });
+    } catch (error: any) {
+      console.error("Error in addCourseLessons controller:", error);
+
+      if (error.message.includes("Course not found")) {
+        res.status(404).json({
+          success: false,
+          message: "Course not found",
+        });
+        return;
+      }
+
+      if (error.message.includes("Module not found")) {
+        res.status(404).json({
+          success: false,
+          message: "Module not found",
+        });
+        return;
+      }
+
+      res.status(500).json({
+        success: false,
+        message: "Internal server error while adding lessons",
+        error:
+          process.env.NODE_ENV === "development"
+            ? error.message
+            : "Something went wrong",
+      });
+    }
+  };
+
+  /**
+   * Finalize chunked course creation
+   * @param req - Express request object
+   * @param res - Express response object
+   */
+  finalizeCourseCreation = async (
+    req: Request,
+    res: Response
+  ): Promise<void> => {
+    try {
+      const { courseId } = req.params;
+
+      if (!courseId) {
+        res.status(400).json({
+          success: false,
+          message: "Course ID is required",
+        });
+        return;
+      }
+
+      // Finalize the course creation
+      const finalizedCourse = await this.courseService.finalizeCourseCreation(
+        courseId
+      );
+
+      res.status(200).json({
+        success: true,
+        message: "Course creation finalized successfully",
+        data: {
+          course: finalizedCourse,
+        },
+      });
+    } catch (error: any) {
+      console.error("Error in finalizeCourseCreation controller:", error);
+
+      if (error.message.includes("Course not found")) {
+        res.status(404).json({
+          success: false,
+          message: "Course not found",
+        });
+        return;
+      }
+
+      res.status(500).json({
+        success: false,
+        message: "Internal server error while finalizing course creation",
+        error:
+          process.env.NODE_ENV === "development"
+            ? error.message
+            : "Something went wrong",
+      });
+    }
+  };
+
+  /**
+   * Get job status for async operations
+   * @param req - Express request object
+   * @param res - Express response object
+   */
+  getJobStatus = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { jobId } = req.params;
+
+      if (!jobId) {
+        res.status(400).json({
+          success: false,
+          message: "Job ID is required",
+        });
+        return;
+      }
+
+      const jobStatus = this.jobService.getJobStatus(jobId);
+
+      if (!jobStatus) {
+        res.status(404).json({
+          success: false,
+          message: "Job not found",
+        });
+        return;
+      }
+
+      res.status(200).json({
+        success: true,
+        message: "Job status retrieved successfully",
+        data: jobStatus,
+      });
+    } catch (error: any) {
+      console.error("Error in getJobStatus controller:", error);
+
+      res.status(500).json({
+        success: false,
+        message: "Internal server error while retrieving job status",
+        error:
+          process.env.NODE_ENV === "development"
+            ? error.message
+            : "Something went wrong",
+      });
+    }
+  };
+
+  /**
+   * Cancel a running job
+   * @param req - Express request object
+   * @param res - Express response object
+   */
+  cancelJob = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { jobId } = req.params;
+
+      if (!jobId) {
+        res.status(400).json({
+          success: false,
+          message: "Job ID is required",
+        });
+        return;
+      }
+
+      const cancelled = this.jobService.cancelJob(jobId);
+
+      if (!cancelled) {
+        res.status(404).json({
+          success: false,
+          message: "Job not found or cannot be cancelled",
+        });
+        return;
+      }
+
+      res.status(200).json({
+        success: true,
+        message: "Job cancelled successfully",
+      });
+    } catch (error: any) {
+      console.error("Error in cancelJob controller:", error);
+
+      res.status(500).json({
+        success: false,
+        message: "Internal server error while cancelling job",
+        error:
+          process.env.NODE_ENV === "development"
+            ? error.message
             : "Something went wrong",
       });
     }

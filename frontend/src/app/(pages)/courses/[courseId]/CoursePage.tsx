@@ -18,6 +18,7 @@ import { FullScreenLoader } from "@/components/ui/Loader";
 
 const CoursePage = ({ course }: { course: Course }) => {
   const [isPaymentLoading, setIsPaymentLoading] = useState(false);
+  const [isEnrollmentModalOpen, setIsEnrollmentModalOpen] = useState(false);
 
   // Generate presigned URL for preview video if it's an S3 key
   const previewVideoUrl = course?.previewVideoUrl;
@@ -81,13 +82,21 @@ const CoursePage = ({ course }: { course: Course }) => {
             <EnquiryForm course={course} />
           </div>
         </div>
-        <CourseHeader course={course} onLoadingChange={setIsPaymentLoading} />
+        <CourseHeader 
+          course={course} 
+          onLoadingChange={setIsPaymentLoading}
+          isEnrollmentModalOpen={isEnrollmentModalOpen}
+          setIsEnrollmentModalOpen={setIsEnrollmentModalOpen}
+        />
       </div>
       {course?.scholarship && <ScholarshipBanner course={course} />}
       <TestimonialSection testimonials={course?.testimonials || []} />
       <CourseOverviewSection course={course} />
       <CourseInstructorSection course={course} />
-      <CertificateSection course={course} />
+      <CertificateSection 
+        course={course} 
+        onEnrollClick={() => setIsEnrollmentModalOpen(true)}
+      />
       <VerticalCarouselSection />
       <CurriculumSection course={course} />
       <FAQSection course={course} />

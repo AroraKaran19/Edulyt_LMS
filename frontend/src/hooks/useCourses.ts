@@ -5,6 +5,7 @@ export interface CourseResponse {
   success: boolean;
   data?: {
     course: Course;
+    courseId?: string;
   };
   message?: string;
   error?: string;
@@ -30,13 +31,15 @@ export const useCourses = () => {
 
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "";
 
-  // Get all courses
+  // Get all courses with optimization options
   const getAllCourses = useCallback(
     async (
       page: number = 1,
       limit: number = 10,
       search: string = "",
-      category?: string
+      category?: string,
+      dataLevel?: "summary" | "basic" | "full",
+      fields?: string[]
     ): Promise<CourseListResponse> => {
       setIsLoading(true);
       setError("");
@@ -50,6 +53,14 @@ export const useCourses = () => {
 
         if (category) {
           params.append("category", category);
+        }
+
+        if (dataLevel) {
+          params.append("dataLevel", dataLevel);
+        }
+
+        if (fields && fields.length > 0) {
+          params.append("fields", fields.join(","));
         }
 
         const response = await fetch(`${baseUrl}/courses?${params}`);
@@ -254,7 +265,10 @@ export const useCourses = () => {
 
   // Update course status in bulk
   const updateCourseStatusBulk = useCallback(
-    async (courses: Course["_id"][], isActive: boolean): Promise<CourseResponse> => {
+    async (
+      courses: Course["_id"][],
+      isActive: boolean
+    ): Promise<CourseResponse> => {
       setIsLoading(true);
       setError("");
 
@@ -358,6 +372,327 @@ export const useCourses = () => {
     [baseUrl]
   );
 
+  // Chunked course creation functions
+  const createCourseMetadata = useCallback(
+    async (courseMetadata: any): Promise<CourseResponse> => {
+      setIsLoading(true);
+      setError("");
+
+      try {
+        // Create AbortController for timeout handling
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minutes timeout
+
+        const response = await fetch(`${baseUrl}/courses/chunked/metadata`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(courseMetadata),
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        const result = await response.json();
+
+        if (!result.success) {
+          setError(result.error || result.message);
+        }
+
+        return result;
+      } catch (err) {
+        let errorMessage = "Failed to create course metadata";
+
+        if (err instanceof Error) {
+          if (err.name === "AbortError") {
+            errorMessage =
+              "Request timeout - Course metadata creation took too long. Please try again.";
+          } else {
+            errorMessage = err.message;
+          }
+        }
+
+        setError(errorMessage);
+        return {
+          success: false,
+          message: "Failed to create course metadata",
+          error: errorMessage,
+        };
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [baseUrl]
+  );
+
+  const addCourseModules = useCallback(
+    async (courseId: string, modules: any[]): Promise<any> => {
+      setIsLoading(true);
+      setError("");
+
+      try {
+        // Create AbortController for timeout handling
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minutes timeout
+
+        const response = await fetch(
+          `${baseUrl}/courses/chunked/${courseId}/modules`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(modules),
+            signal: controller.signal,
+          }
+        );
+
+        clearTimeout(timeoutId);
+
+        const result = await response.json();
+
+        if (!result.success) {
+          setError(result.error || result.message);
+        }
+
+        return result;
+      } catch (err) {
+        let errorMessage = "Failed to add course modules";
+
+        if (err instanceof Error) {
+          if (err.name === "AbortError") {
+            errorMessage =
+              "Request timeout - Adding course modules took too long. Please try again.";
+          } else {
+            errorMessage = err.message;
+          }
+        }
+
+        setError(errorMessage);
+        return {
+          success: false,
+          message: "Failed to add course modules",
+          error: errorMessage,
+        };
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [baseUrl]
+  );
+
+  const addCourseLessons = useCallback(
+    async (
+      courseId: string,
+      moduleId: string,
+      lessons: any[]
+    ): Promise<any> => {
+      setIsLoading(true);
+      setError("");
+
+      try {
+        // Create AbortController for timeout handling
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minutes timeout
+
+        const response = await fetch(
+          `${baseUrl}/courses/chunked/${courseId}/lessons`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ moduleId, lessons }),
+            signal: controller.signal,
+          }
+        );
+
+        clearTimeout(timeoutId);
+
+        const result = await response.json();
+
+        if (!result.success) {
+          setError(result.error || result.message);
+        }
+
+        return result;
+      } catch (err) {
+        let errorMessage = "Failed to add course lessons";
+
+        if (err instanceof Error) {
+          if (err.name === "AbortError") {
+            errorMessage =
+              "Request timeout - Adding course lessons took too long. Please try again.";
+          } else {
+            errorMessage = err.message;
+          }
+        }
+
+        setError(errorMessage);
+        return {
+          success: false,
+          message: "Failed to add course lessons",
+          error: errorMessage,
+        };
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [baseUrl]
+  );
+
+  const finalizeCourseCreation = useCallback(
+    async (courseId: string): Promise<any> => {
+      setIsLoading(true);
+      setError("");
+
+      try {
+        // Create AbortController for timeout handling
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minutes timeout
+
+        const response = await fetch(
+          `${baseUrl}/courses/chunked/${courseId}/finalize`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            signal: controller.signal,
+          }
+        );
+
+        clearTimeout(timeoutId);
+
+        const result = await response.json();
+
+        if (!result.success) {
+          setError(result.error || result.message);
+        }
+
+        return result;
+      } catch (err) {
+        let errorMessage = "Failed to finalize course creation";
+
+        if (err instanceof Error) {
+          if (err.name === "AbortError") {
+            errorMessage =
+              "Request timeout - Finalizing course creation took too long. Please try again.";
+          } else {
+            errorMessage = err.message;
+          }
+        }
+
+        setError(errorMessage);
+        return {
+          success: false,
+          message: "Failed to finalize course creation",
+          error: errorMessage,
+        };
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [baseUrl]
+  );
+
+  const createCourseChunked = useCallback(
+    async (courseData: any): Promise<CourseResponse> => {
+      setIsLoading(true);
+      setError("");
+
+      try {
+        // Step 1: Create course metadata
+        const { modules, ...metadata } = courseData;
+        const metadataResult = await createCourseMetadata(metadata);
+
+        if (!metadataResult.success) {
+          throw new Error(
+            metadataResult.message || "Failed to create course metadata"
+          );
+        }
+
+        const courseId = metadataResult.data?.courseId;
+        if (!courseId) {
+          throw new Error("Course ID not returned from metadata creation");
+        }
+
+        // Step 2: Add modules one by one
+        if (modules && Array.isArray(modules) && modules.length > 0) {
+          for (const module of modules) {
+            const { lessons, ...moduleData } = module;
+
+            // Add module without lessons first
+            const moduleResult = await addCourseModules(courseId, [moduleData]);
+            if (!moduleResult.success) {
+              throw new Error(
+                `Failed to add module: ${module.title || "Untitled"}`
+              );
+            }
+
+            const moduleIds = moduleResult.data?.moduleIds;
+            if (!moduleIds || moduleIds.length === 0) {
+              throw new Error("Module ID not returned from module creation");
+            }
+
+            const moduleId = moduleIds[0];
+
+            // Step 3: Add lessons in batches (5-10 at a time)
+            if (lessons && Array.isArray(lessons) && lessons.length > 0) {
+              const BATCH_SIZE = 5; // Process 5 lessons at a time
+
+              for (let i = 0; i < lessons.length; i += BATCH_SIZE) {
+                const lessonBatch = lessons.slice(i, i + BATCH_SIZE);
+
+                const lessonResult = await addCourseLessons(
+                  courseId,
+                  moduleId,
+                  lessonBatch
+                );
+                if (!lessonResult.success) {
+                  throw new Error(
+                    `Failed to add lesson batch ${
+                      Math.floor(i / BATCH_SIZE) + 1
+                    }`
+                  );
+                }
+              }
+            }
+          }
+        }
+
+        // Step 4: Finalize course creation
+        const finalResult = await finalizeCourseCreation(courseId);
+        if (!finalResult.success) {
+          throw new Error("Failed to finalize course creation");
+        }
+
+        return finalResult;
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error
+            ? err.message
+            : "Failed to create course with chunked approach";
+        setError(errorMessage);
+        return {
+          success: false,
+          message: "Failed to create course with chunked approach",
+          error: errorMessage,
+        };
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [
+      baseUrl,
+      createCourseMetadata,
+      addCourseModules,
+      addCourseLessons,
+      finalizeCourseCreation,
+    ]
+  );
+
   return {
     // State
     isLoading,
@@ -375,5 +710,11 @@ export const useCourses = () => {
     deleteCourseById,
     // Reset error
     clearError: () => setError(""),
+    // Chunked course creation methods
+    createCourseChunked,
+    createCourseMetadata,
+    addCourseModules,
+    addCourseLessons,
+    finalizeCourseCreation,
   };
 };

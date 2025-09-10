@@ -12,8 +12,14 @@ const connectDB = async (): Promise<void> => {
 
     console.log("🔄 Connecting to MongoDB...");
     const conn = await mongoose.connect(mongoUri, {
-      // Remove deprecated options that are no longer needed in Mongoose 6+
-      // useNewUrlParser and useUnifiedTopology are now default
+      // Connection pool settings for better performance
+      maxPoolSize: 20, // Maximum number of connections in the pool
+      minPoolSize: 5,  // Minimum number of connections in the pool
+      maxIdleTimeMS: 30000, // Close connections after 30 seconds of inactivity
+      serverSelectionTimeoutMS: 10000, // How long to try selecting a server
+      socketTimeoutMS: 600000, // 10 minutes socket timeout for large operations
+      connectTimeoutMS: 10000, // 10 seconds connection timeout
+      bufferCommands: false, // Disable mongoose buffering
     });
 
     console.log(`🔗 MongoDB Connected: ${conn.connection.host}`);

@@ -107,6 +107,7 @@ export class PaymentService {
       }
 
       let amount = plan?.price || 0;
+      console.log(amount)
 
       // Apply course-level discount first (if available and active)
       if (course.discount && course.discount.isActive !== false) {
@@ -276,6 +277,11 @@ export class PaymentService {
           // add the order id to the user's enrolledCourses array
           await UserModel.findByIdAndUpdate(order.userId, {
             $push: { enrolledCourses: order.courseId.toString() },
+          });
+
+          // increase enrollments count
+          await CourseModel.findByIdAndUpdate(order.courseId, {
+            $inc: { enrollments: 1 },
           });
 
           return {

@@ -32,7 +32,7 @@ const Screen8 = () => {
   const { setActiveScreen } = useScreen();
   const router = useRouter();
 
-  const { createCourse } = useCourses();
+  const { createCourseChunked } = useCourses();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string>("");
 
@@ -145,8 +145,8 @@ const Screen8 = () => {
 
       console.log("🚀 Creating course with data:", sanitizedCourse);
 
-      // Create course
-      const result = await createCourse(sanitizedCourse);
+      // Create course using chunked approach
+      const result = await createCourseChunked(sanitizedCourse);
 
       if (result.success) {
         // Clear draft data
