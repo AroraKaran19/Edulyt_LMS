@@ -43,7 +43,7 @@ const Modal: React.FC<ModalProps> = ({
       >
         {/* Header */}
         {(title || showCloseButton) && (
-          <div className="sticky top-0 flex items-center justify-between p-6 border-b border-gray-100 bg-white">
+          <div className="sticky top-0 flex items-center justify-between p-6 border-b border-gray-100 bg-white z-50">
             {title && (
               <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
             )}

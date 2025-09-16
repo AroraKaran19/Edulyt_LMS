@@ -11,7 +11,9 @@ const FRONTEND_ONLY_FIELDS = [
   'thumbnailSource',
   'thumbnailS3Key', 
   'previewVideoSource',
-  'previewVideoS3Key'
+  'previewVideoS3Key',
+  'curriculumSource',
+  'curriculumS3Key'
 ] as const;
 
 /**

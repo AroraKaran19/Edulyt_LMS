@@ -698,8 +698,9 @@ const Screen5 = () => {
 
       <ScreenNavigation
         currentStep={5}
+        totalSteps={8}
         previousScreen="screen4"
-        nextScreen="screen6"
+        nextScreen="screen7"
         setActiveScreen={setActiveScreen}
         isNextDisabled={validationErrors.length > 0}
       />

@@ -46,7 +46,7 @@ const Footer = () => {
       { label: "Courses", href: "/courses" },
       {
         label: "Internships",
-        href: "https://edulyt.com/internships.php",
+        href: "https://airkrit.com/internships.php",
         external: true,
       },
       { label: "Contact Us", href: "/contact" },
@@ -107,8 +107,8 @@ const Footer = () => {
     {
       icon: Mail,
       label: "Email",
-      value: "info@edulyt.com",
-      href: "mailto:info@edulyt.com",
+      value: "info@airkrit.com",
+      href: "mailto:info@airkrit.com",
     },
     {
       icon: Phone,

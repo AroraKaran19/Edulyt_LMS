@@ -24,7 +24,7 @@ interface ScreenNavigationProps {
 
 const ScreenNavigation: React.FC<ScreenNavigationProps> = ({
   currentStep,
-  totalSteps = 8,
+  totalSteps = 9,
   previousScreen,
   nextScreen,
   nextButtonText = "Next Page",

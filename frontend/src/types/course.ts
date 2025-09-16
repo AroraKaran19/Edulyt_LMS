@@ -173,10 +173,6 @@ export interface Course {
   isFeatured?: boolean;
   isCertified?: boolean;
 
-  // Metrics
-  enrolledCount: number;
-  totalRatings: number;
-
   // UI & Learning Info
   whatYouWillLearn: string;
   skills: string[];
@@ -236,6 +232,11 @@ export interface Course {
 
   // Language
   language: string;
+  
+  // Curriculum - optional PDF document URL
+  curriculum?: string;
+  curriculumSource?: "upload" | "url"; // Track whether curriculum came from upload or URL
+  curriculumS3Key?: string; // S3 key for uploaded curriculum (for deletion)
 
   // Analytics
   analytics?: {

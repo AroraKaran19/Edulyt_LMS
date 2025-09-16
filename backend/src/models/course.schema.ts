@@ -1,19 +1,12 @@
 import mongoose from "mongoose";
 import { Course, FAQ, Testimonial } from "../types";
 import plansSchema from "./plans.schema";
-import { validateAudience, validateLinkedinUrl, validatePlans, validateUrl } from "./validators";
-
-// ===================
-// FAQ Schema
-// ===================
-
-const faqSchema = new mongoose.Schema<FAQ>(
-  {
-    question: { type: String, required: true },
-    answer: { type: String, required: true },
-  },
-  { timestamps: true, _id: false }
-);
+import {
+  validateAudience,
+  validateLinkedinUrl,
+  validatePlans,
+  validateUrl,
+} from "./validators";
 
 // ===================
 // Testimonial Schema
@@ -39,6 +32,31 @@ const testimonialSchema = new mongoose.Schema<Testimonial>(
     verified: { type: Boolean, default: false },
   },
   { timestamps: true, _id: false }
+);
+
+// ===================
+// Analytics Schema
+// ===================
+
+const analyticsSchema = new mongoose.Schema(
+  {
+    totalEnrollments: { type: Number, default: 0, required: true },
+    activeEnrollments: { type: Number, default: 0, required: true },
+    completionRate: { type: Number, default: 0, required: true },
+    averageRating: { type: Number, default: 0, required: true },
+    averageCompletionTime: { type: Number, default: 0, required: true },
+    dropoffPoints: {
+      type: [
+        {
+          moduleId: { type: String, required: true },
+          lessonId: { type: String, required: true },
+          dropoffRate: { type: Number, default: 0, required: true },
+        },
+      ],
+      default: [],
+    },
+  },
+  { timestamps: false, _id: false }
 );
 
 // ===================
@@ -91,19 +109,6 @@ const courseSchema = new mongoose.Schema<Course>(
     previewVideoUrl: { type: String, required: false, default: "" },
     isFeatured: { type: Boolean, default: false, required: true },
     isCertified: { type: Boolean, default: false, required: true },
-    enrolledCount: {
-      type: Number,
-      default: 0,
-      required: true,
-      min: [0, "Enrolled count must be positive"],
-    },
-    totalRatings: {
-      type: Number,
-      default: 0,
-      required: true,
-      min: [0, "Total ratings must be positive"],
-      max: [5, "Total ratings must be less than 5"],
-    },
     whatYouWillLearn: { type: String, required: true },
     skills: { type: [String], required: true },
     highlights: {
@@ -117,7 +122,7 @@ const courseSchema = new mongoose.Schema<Course>(
       required: true,
       default: [],
     },
-    features: { type: [String], required: false, default: [] },
+    features: { type: [String], required: false, default: [] }, // need to remove
     careerPaths: { type: [String], required: true },
     skillLevel: { type: String, required: true },
     whoShouldJoin: { type: String, required: true },
@@ -132,6 +137,7 @@ const courseSchema = new mongoose.Schema<Course>(
       type: [mongoose.Schema.Types.ObjectId],
       required: true,
       ref: "CourseModule",
+      default: [],
     },
     instructor: {
       type: [mongoose.Schema.Types.ObjectId],
@@ -175,12 +181,17 @@ const courseSchema = new mongoose.Schema<Course>(
     },
     testimonials: { type: [testimonialSchema], required: false, default: [] },
 
-    faqs: { type: [faqSchema], required: false, default: [] },
+    faqs: {
+      type: [mongoose.Schema.Types.ObjectId],
+      required: false,
+      default: [],
+      ref: "FAQ",
+    },
 
     isActive: { type: Boolean, default: true },
     createdBy: {
       type: String,
-      ref: "User",
+      // ref: "User",
       required: true,
     },
     tags: { type: [String], required: false, default: [] },
@@ -213,6 +224,14 @@ const courseSchema = new mongoose.Schema<Course>(
       default: null,
       ref: "Scholarship",
     },
+    curriculum: {
+      type: String,
+      required: false,
+      validate: {
+        validator: validateUrl,
+        message: "Curriculum must be a valid URL",
+      },
+    },
     language: {
       type: String,
       required: true,
@@ -232,6 +251,11 @@ const courseSchema = new mongoose.Schema<Course>(
       ],
       default: "en",
     },
+    analytics: {
+      type: analyticsSchema,
+      required: false,
+      default: null,
+    },
   },
   { timestamps: true }
 );
@@ -246,15 +270,19 @@ courseSchema.index({ language: 1 }); // For filtering by language
 courseSchema.index({ isFeatured: 1, isActive: 1 }); // For listing featured courses
 courseSchema.index({ createdAt: 1 }); // For listing courses by creation date
 courseSchema.index({ updatedAt: 1 }); // For listing courses by update date
-courseSchema.index({ enrolledCount: 1 }); // For listing courses by enrolled count
+courseSchema.index({ title: "text" }); // For full-text search
+courseSchema.index({ analytics: 1 });
+courseSchema.index({ contentIds: 1 });
+courseSchema.index({ lessonIds: 1 });
+courseSchema.index({ modules: 1 });
+
 
 courseSchema.index({ createdAt: -1 }); // For listing courses by creation date
 courseSchema.index({ updatedAt: -1 }); // For listing courses by update date
-courseSchema.index({ enrolledCount: -1 }); // For listing courses by enrolled count
 
 courseSchema.pre("save", function (next) {
   this.set("updatedAt", new Date());
   next();
 });
 
-export default mongoose.model<Course>("Course", courseSchema);
+export const CourseModel = mongoose.model("Course", courseSchema);

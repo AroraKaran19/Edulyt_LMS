@@ -18,7 +18,7 @@ export const metadata: Metadata = {
     description:
       "Learn about Edulyt's mission to empower students and professionals with industry-relevant skills through comprehensive online courses and internship opportunities.",
     type: "website",
-    url: "https://edulyt.com/about",
+    url: "https://airkrit.com/about",
     siteName: "Edulyt",
     images: [
       {
@@ -48,7 +48,7 @@ export const metadata: Metadata = {
     },
   },
   alternates: {
-    canonical: "https://edulyt.com/about",
+    canonical: "https://airkrit.com/about",
   },
 };
 

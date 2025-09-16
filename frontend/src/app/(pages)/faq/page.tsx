@@ -44,7 +44,7 @@ const FAQPage = () => {
 				},
 				{
 					question: 'What if I have technical issues accessing a course?',
-					answer: 'If you experience technical difficulties, please contact our support team at info@edulyt.com or call us at +91-8929252575. We\'ll help you resolve any access issues promptly.'
+					answer: 'If you experience technical difficulties, please contact our support team at info@airkrit.com or call us at +91-8929252575. We\'ll help you resolve any access issues promptly.'
 				}
 			]
 		},
@@ -80,7 +80,7 @@ const FAQPage = () => {
 				},
 				{
 					question: 'How do I request a refund?',
-					answer: 'To request a refund, contact our support team at info@edulyt.com with your order details and reason for the request. We\'ll review your case and respond within 5-7 business days.'
+					answer: 'To request a refund, contact our support team at info@airkrit.com with your order details and reason for the request. We\'ll review your case and respond within 5-7 business days.'
 				},
 				{
 					question: 'Can I cancel my subscription?',
@@ -120,7 +120,7 @@ const FAQPage = () => {
 				},
 				{
 					question: 'How can I contact support?',
-					answer: 'You can reach us via email at info@edulyt.com, phone at +91-8929252575, or through the contact form on our website. We typically respond to emails within 24 hours.'
+					answer: 'You can reach us via email at info@airkrit.com, phone at +91-8929252575, or through the contact form on our website. We typically respond to emails within 24 hours.'
 				},
 				{
 					question: 'What browsers are supported?',
@@ -260,8 +260,8 @@ const FAQPage = () => {
 										<Mail className="w-6 h-6" />
 									</div>
 									<h3 className="font-semibold mb-2">Email Support</h3>
-									<a href="mailto:info@edulyt.com" className="text-orange-100 hover:text-white transition-colors">
-										info@edulyt.com
+									<a href="mailto:info@airkrit.com" className="text-orange-100 hover:text-white transition-colors">
+										info@airkrit.com
 									</a>
 								</FlexBox>
 								<FlexBox direction="col" className="items-center text-center">

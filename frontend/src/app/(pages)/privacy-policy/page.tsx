@@ -196,8 +196,8 @@ const PrivacyPolicyPage = () => {
 							<div className="bg-orange-50 p-6 rounded-xl">
 								<p className="text-gray-700">
 									To exercise these rights, please contact us at{' '}
-									<a href="mailto:info@edulyt.com" className="text-orange-600 font-semibold hover:underline">
-										info@edulyt.com
+									<a href="mailto:info@airkrit.com" className="text-orange-600 font-semibold hover:underline">
+										info@airkrit.com
 									</a>
 								</p>
 							</div>
@@ -253,8 +253,8 @@ const PrivacyPolicyPage = () => {
 										<Mail className="w-6 h-6" />
 									</div>
 									<h3 className="font-semibold mb-2">Email</h3>
-									<a href="mailto:info@edulyt.com" className="text-orange-100 hover:text-white transition-colors">
-										info@edulyt.com
+									<a href="mailto:info@airkrit.com" className="text-orange-100 hover:text-white transition-colors">
+										info@airkrit.com
 									</a>
 								</FlexBox>
 								<FlexBox direction="col" className="items-center text-center">

@@ -1265,7 +1265,7 @@ const Screen6 = () => {
               </p>
               <p className="text-sm font-mono text-gray-800 break-all">
                 <span className="text-gray-500">
-                  https://www.edulyt.com/courses/
+                  https://www.airkrit.com/courses/
                 </span>
                 <span
                   className={
@@ -1420,8 +1420,9 @@ const Screen6 = () => {
 
       <ScreenNavigation
         currentStep={6}
+        totalSteps={8}
         previousScreen="screen5"
-        nextScreen="screen7"
+        nextScreen="screen7_modules"
         setActiveScreen={setActiveScreen}
         isNextDisabled={
           !state.course.metaTitle ||

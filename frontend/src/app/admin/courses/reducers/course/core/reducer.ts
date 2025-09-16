@@ -222,6 +222,18 @@ export const courseReducer = (
         newState = safeUpdateCourseField(state, "language", action.payload);
         break;
 
+      case CourseActionType.SET_COURSE_CURRICULUM:
+        newState = safeUpdateCourseField(state, "curriculum", action.payload);
+        break;
+
+      case CourseActionType.SET_COURSE_CURRICULUM_SOURCE:
+        newState = safeUpdateCourseField(state, "curriculumSource", action.payload);
+        break;
+
+      case CourseActionType.SET_COURSE_CURRICULUM_S3_KEY:
+        newState = safeUpdateCourseField(state, "curriculumS3Key", action.payload);
+        break;
+
       // ===================
       // Status & Features
       // ===================
@@ -843,16 +855,8 @@ export const courseReducer = (
       // Metrics
       // ===================
 
-      case CourseActionType.SET_COURSE_ENROLLED_COUNT:
-        newState = safeUpdateCourseField(
-          state,
-          "enrolledCount",
-          action.payload
-        );
-        break;
-
-      case CourseActionType.SET_COURSE_TOTAL_RATINGS:
-        newState = safeUpdateCourseField(state, "totalRatings", action.payload);
+      case CourseActionType.SET_COURSE_ANALYTICS:
+        newState = safeUpdateCourseField(state, "analytics", action.payload);
         break;
 
       case CourseActionType.SET_COURSE_TOTAL_LECTURES:

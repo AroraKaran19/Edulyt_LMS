@@ -207,6 +207,30 @@ export const useCourseReducer = () => {
       [enhancedDispatch]
     ),
 
+    setCourseCurriculum: useCallback(
+      (curriculum: string) => {
+        const action = courseActions.setCourseCurriculum(curriculum);
+        return enhancedDispatch(action);
+      },
+      [enhancedDispatch]
+    ),
+
+    setCourseCurriculumSource: useCallback(
+      (curriculumSource: "upload" | "url" | undefined) => {
+        const action = courseActions.setCourseCurriculumSource(curriculumSource);
+        return enhancedDispatch(action);
+      },
+      [enhancedDispatch]
+    ),
+
+    setCourseCurriculumS3Key: useCallback(
+      (curriculumS3Key: string) => {
+        const action = courseActions.setCourseCurriculumS3Key(curriculumS3Key);
+        return enhancedDispatch(action);
+      },
+      [enhancedDispatch]
+    ),
+
     // Status & Features
     setCourseIsFeatured: useCallback(
       (isFeatured: boolean) => {
@@ -719,17 +743,9 @@ export const useCourseReducer = () => {
     ),
 
     // Metrics
-    setCourseEnrolledCount: useCallback(
-      (enrolledCount: number) => {
-        const action = courseActions.setCourseEnrolledCount(enrolledCount);
-        return enhancedDispatch(action);
-      },
-      [enhancedDispatch]
-    ),
-
-    setCourseTotalRatings: useCallback(
-      (totalRatings: number) => {
-        const action = courseActions.setCourseTotalRatings(totalRatings);
+    setCourseAnalytics: useCallback(
+      (analytics: Course['analytics']) => {
+        const action = courseActions.setCourseAnalytics(analytics);
         return enhancedDispatch(action);
       },
       [enhancedDispatch]

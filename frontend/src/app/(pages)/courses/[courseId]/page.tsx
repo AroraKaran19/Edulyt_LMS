@@ -60,14 +60,14 @@ export async function generateMetadata({
       title: course.metaTitle || `${course.title} | Edulyt`,
       description:
         course.metaDescription || `Learn ${course.title} with Edulyt.`,
-      url: `https://edulyt.com/courses/${courseId}`,
+      url: `https://airkrit.com/courses/${courseId}`,
       type: "website",
       siteName: "Edulyt",
       images: [
         {
           url:
             course.thumbnail ||
-            `https://edulyt.com/courses/${courseId}/thumbnail.png`,
+            `https://airkrit.com/courses/${courseId}/thumbnail.png`,
           alt: `${course.title} course image`,
         },
       ],
@@ -106,6 +106,8 @@ const IndividualCoursePage = async ({
       />
     );
   }
+
+  console.log(JSON.stringify(course, null, 2));
 
   return (
     <CoursePage course={course} />

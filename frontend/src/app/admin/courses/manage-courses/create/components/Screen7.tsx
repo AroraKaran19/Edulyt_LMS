@@ -1,906 +1,529 @@
 import Container from "@/app/admin/components/ui/Container";
-import FlexBox from "@/components/ui/FlexBox";
 import { useCourseContext } from "../../../reducers/course/providers/CourseReducerProvider";
-import UploadMediaContainer from "@/components/ui/container/UploadMediaContainer";
 import Input from "@/components/ui/inputs/Input";
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useState } from "react";
 import TextArea from "@/components/ui/inputs/TextArea";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
-import { useUpload } from "@/hooks/useUpload";
 import ScreenNavigation from "./shared/ScreenNavigation";
 import {
-  BookOpen,
   Plus,
   Trash2,
-  Save,
-  ChevronDown,
-  ChevronUp,
-  Play,
-  Edit2,
-  GripVertical,
+  Award,
+  Users,
+  Star,
+  Quote,
+  HelpCircle,
+  UserCheck,
+  MessageSquare,
 } from "lucide-react";
-import {
-  CourseModule,
-  CourseLesson,
-  Content,
-  VideoContent,
-  QuizContent,
-} from "@/types";
-import ContentSection from "./content/ContentSection";
 import { useScreen } from "../contexts/ScreenContext";
+import { Testimonial, FAQ } from "@/types";
+
+// Simple testimonial form interface for the UI
+interface TestimonialForm {
+  name: string;
+  currentRole: string;
+  currentCompany?: string;
+  comment: string;
+  profileImage?: string;
+}
 
 const Screen7 = () => {
   const { state, actions } = useCourseContext();
-  const { uploadWithPresignedUrl, isUploading } = useUpload();
   const { setActiveScreen } = useScreen();
-  const [savedModules, setSavedModules] = useState<Set<number>>(new Set());
-  const [expandedModules, setExpandedModules] = useState<Set<number>>(
-    new Set()
-  );
-  const [expandedLessons, setExpandedLessons] = useState<Set<string>>(
-    new Set()
-  );
-  const [expandedContent, setExpandedContent] = useState<Set<string>>(
-    new Set()
-  );
 
-  // Validation checks
-  const validationErrors = useMemo(() => {
-    const errors: string[] = [];
+  // Local state for forms
+  const [newTestimonial, setNewTestimonial] = useState<TestimonialForm>({
+    name: "",
+    currentRole: "",
+    currentCompany: "",
+    comment: "",
+    profileImage: "",
+  });
 
-    // Check if at least one module exists
-    if (!state.course.modules || state.course.modules.length === 0) {
-      errors.push("At least one module is required");
-      return errors; // Early return if no modules
-    }
+  const [newFAQ, setNewFAQ] = useState<FAQ>({
+    question: "",
+    answer: "",
+  });
 
-    // Validate each module is fully configured
-    state.course.modules.forEach((courseModule, moduleIndex) => {
-      if (!courseModule) {
-        errors.push(`Module ${moduleIndex + 1}: Module data is missing`);
-        return;
-      }
+  // Add testimonial
+  const addTestimonial = () => {
+    if (newTestimonial.name.trim() && newTestimonial.comment.trim()) {
+      const testimonials = state.course.testimonials || [];
+      // Convert form data to Testimonial format
+      const testimonial: any = {
+        name: newTestimonial.name,
+        comment: newTestimonial.comment,
+        rating: 5, // Default rating
+        currentRole: newTestimonial.currentRole,
+        currentCompany: newTestimonial.currentCompany || "",
+        profileImage: newTestimonial.profileImage || "",
+        reviewableType: "Course",
+        reviewableId: state.course._id || "",
+        pastRole: newTestimonial.currentRole,
+        pastCompany: newTestimonial.currentCompany || "",
+        linkedin: "",
+        isActive: true,
+      };
+      testimonials.push(testimonial as Testimonial);
+      actions.updateCourseField("testimonials", testimonials);
 
-      // Check module basic requirements
-      if (!courseModule.title || courseModule.title.trim() === "") {
-        errors.push(`Module ${moduleIndex + 1}: Title is required`);
-      }
-
-      if (!courseModule.description || courseModule.description.trim() === "") {
-        errors.push(`Module ${moduleIndex + 1}: Description is required`);
-      }
-
-      if (
-        !courseModule.thumbnailUrl ||
-        courseModule.thumbnailUrl.trim() === ""
-      ) {
-        errors.push(`Module ${moduleIndex + 1}: Thumbnail is required`);
-      }
-
-      // Check if module has at least one lesson
-      if (!courseModule.lessons || courseModule.lessons.length === 0) {
-        errors.push(
-          `Module ${moduleIndex + 1}: At least one lesson is required`
-        );
-        return; // Skip lesson validation if no lessons
-      }
-
-      // Validate each lesson in the module
-      courseModule.lessons.forEach((lesson, lessonIndex) => {
-        if (!lesson) {
-          errors.push(
-            `Module ${moduleIndex + 1}, Lesson ${
-              lessonIndex + 1
-            }: Lesson data is missing`
-          );
-          return;
-        }
-
-        // Check lesson basic requirements
-        if (!lesson.title || lesson.title.trim() === "") {
-          errors.push(
-            `Module ${moduleIndex + 1}, Lesson ${
-              lessonIndex + 1
-            }: Title is required`
-          );
-        }
-
-        // Check if lesson has at least one content
-        if (!lesson.contents || lesson.contents.length === 0) {
-          errors.push(
-            `Module ${moduleIndex + 1}, Lesson ${
-              lessonIndex + 1
-            }: At least one content item is required`
-          );
-          return; // Skip content validation if no contents
-        }
-
-        // Validate each content in the lesson
-        lesson.contents.forEach((content, contentIndex) => {
-          if (!content) {
-            errors.push(
-              `Module ${moduleIndex + 1}, Lesson ${lessonIndex + 1}, Content ${
-                contentIndex + 1
-              }: Content data is missing`
-            );
-            return;
-          }
-
-          // Title is required for all content
-          if (!content.title || content.title.trim() === "") {
-            errors.push(
-              `Module ${moduleIndex + 1}, Lesson ${lessonIndex + 1}, Content ${
-                contentIndex + 1
-              }: Title is required`
-            );
-          }
-
-          // Video-specific validation
-          if (content.type === "video") {
-            const videoContent = content as VideoContent;
-
-            // Video URL is required
-            if (
-              !videoContent.sources ||
-              !videoContent.sources[0]?.videoUrl ||
-              videoContent.sources[0].videoUrl.trim() === ""
-            ) {
-              errors.push(
-                `Module ${moduleIndex + 1}, Lesson ${
-                  lessonIndex + 1
-                }, Content ${contentIndex + 1}: Video URL is required`
-              );
-            }
-
-            // Video thumbnail is required
-            if (
-              !videoContent.thumbnailUrl ||
-              videoContent.thumbnailUrl.trim() === ""
-            ) {
-              errors.push(
-                `Module ${moduleIndex + 1}, Lesson ${
-                  lessonIndex + 1
-                }, Content ${contentIndex + 1}: Video thumbnail is required`
-              );
-            }
-          }
-
-          // Quiz-specific validation (if needed)
-          if (content.type === "quiz") {
-            const quizContent = content as QuizContent;
-
-            // Check if quiz has at least one question
-            if (!quizContent.questions || quizContent.questions.length === 0) {
-              errors.push(
-                `Module ${moduleIndex + 1}, Lesson ${
-                  lessonIndex + 1
-                }, Content ${
-                  contentIndex + 1
-                }: At least one question is required for quiz`
-              );
-            }
-          }
-        });
+      // Reset form
+      setNewTestimonial({
+        name: "",
+        currentRole: "",
+        currentCompany: "",
+        comment: "",
+        profileImage: "",
       });
-    });
-
-    return errors;
-  }, [state.course]);
-
-  // Initialize saved modules state when modules are loaded
-  useEffect(() => {
-    const modules = state.course.modules || [];
-    const savedIndices = new Set<number>();
-
-    modules.forEach((moduleId, index) => {
-      // Consider a module as saved if it has a title (basic requirement)
-      if (moduleId) {
-        savedIndices.add(index);
-      }
-    });
-
-    setSavedModules(savedIndices);
-  }, [state.course.modules]);
-
-  // Helper function to generate a unique ID
-  const generateId = () =>
-    `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-  // Helper function to add a new module
-  const addModule = () => {
-    const newModule: CourseModule = {
-      _id: generateId(),
-      title: "",
-      description: "",
-      lessons: [], // Now store full lesson objects
-      thumbnailUrl: "",
-      isActive: true,
-    };
-
-    // Use the proper action to add the module with full object
-    actions.addCourseModule(newModule);
-
-    const newIndex = (state.course.modules || []).length;
-    setExpandedModules((prev) => new Set([...prev, newIndex]));
-  };
-
-  // Helper function to add a new lesson to a module
-  const addLesson = (moduleIndex: number) => {
-    const courseModule = state.course.modules?.[moduleIndex];
-    if (!courseModule) return;
-
-    const newLesson: CourseLesson = {
-      _id: generateId(),
-      title: "",
-      description: "",
-      contents: [], // Now store full content objects
-    };
-
-    // Use the proper action to add the lesson
-    actions.addCourseLesson(courseModule._id!, newLesson);
-
-    // Expand the new lesson
-    setExpandedLessons((prev) => new Set([...prev, newLesson._id!]));
-  };
-
-  // Helper function to add content to a lesson
-  const addContent = (lessonId: string, type: "video" | "quiz") => {
-    // Generate a default title that meets the requirement
-    const contentCount =
-      state.course.modules
-        .flatMap((m) => m.lessons || [])
-        .flatMap((l) => l.contents || [])
-        .filter((c) => c.type === type).length + 1;
-
-    const defaultTitle =
-      type === "video"
-        ? `Video Content ${contentCount}`
-        : `Quiz ${contentCount}`;
-
-    const newContent: Content =
-      type === "video"
-        ? ({
-            _id: generateId(),
-            title: defaultTitle,
-            description: "",
-            type: "video",
-            sources: [
-              {
-                quality: "1080p" as const,
-                videoUrl: "",
-                videoSource: undefined,
-                videoS3Key: "",
-              },
-            ],
-            thumbnailUrl: "",
-            thumbnailSource: undefined,
-            thumbnailS3Key: "",
-            duration: 0,
-            readingMaterials: [],
-          } as VideoContent)
-        : ({
-            _id: generateId(),
-            title: defaultTitle,
-            description: "",
-            type: "quiz",
-            questions: [],
-            passingScore: 70,
-            maxAttempts: 3,
-            readingMaterials: [],
-          } as QuizContent);
-
-    // Find the module and lesson to add content to
-    const moduleId = findModuleIdByLessonId(lessonId);
-    if (!moduleId) return;
-
-    // Use the proper action to add the content
-    actions.addCourseContent(moduleId, lessonId, newContent);
-
-    // Expand the new content
-    setExpandedContent((prev) => new Set([...prev, newContent._id!]));
-  };
-
-  // Helper function to find module ID by lesson ID
-  const findModuleIdByLessonId = (lessonId: string): string | undefined => {
-    for (const courseModule of state.course.modules) {
-      if (courseModule.lessons.some((lesson) => lesson._id === lessonId)) {
-        return courseModule._id;
-      }
     }
-    return undefined;
   };
 
-  // Helper function to toggle module expansion
-  const toggleModuleExpansion = (index: number) => {
-    setExpandedModules((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(index)) {
-        newSet.delete(index);
-      } else {
-        newSet.add(index);
-      }
-      return newSet;
-    });
+  // Remove testimonial
+  const removeTestimonial = (index: number) => {
+    const testimonials = state.course.testimonials || [];
+    testimonials.splice(index, 1);
+    actions.updateCourseField("testimonials", testimonials);
   };
 
-  // Helper function to toggle lesson expansion
-  const toggleLessonExpansion = (lessonId: string) => {
-    setExpandedLessons((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(lessonId)) {
-        newSet.delete(lessonId);
-      } else {
-        newSet.add(lessonId);
-      }
-      return newSet;
-    });
+  // Add FAQ
+  const addFAQ = () => {
+    if (newFAQ.question.trim() && newFAQ.answer.trim()) {
+      const faqs = state.course.faqs || [];
+      faqs.push({ ...newFAQ });
+      actions.setCourseFaqs(faqs);
+
+      // Reset form
+      setNewFAQ({
+        question: "",
+        answer: "",
+      });
+    }
   };
 
-  // Helper function to toggle content expansion
-  const toggleContentExpansion = (contentId: string) => {
-    setExpandedContent((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(contentId)) {
-        newSet.delete(contentId);
-      } else {
-        newSet.add(contentId);
-      }
-      return newSet;
-    });
+  // Remove FAQ
+  const removeFAQ = (index: number) => {
+    const faqs = state.course.faqs || [];
+    faqs.splice(index, 1);
+    actions.setCourseFaqs(faqs);
   };
 
-  // Helper function to check if module is complete
-  const isModuleComplete = (courseModule: CourseModule) => {
+  // Render star rating
+  const renderStarRating = (rating: number) => {
     return (
-      courseModule.title &&
-      courseModule.description &&
-      courseModule.thumbnailUrl
+      <div className="flex items-center gap-1">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <Star
+            key={star}
+            className={`w-4 h-4 ${
+              star <= rating ? "text-yellow-400 fill-current" : "text-gray-300"
+            }`}
+          />
+        ))}
+        <span className="ml-2 text-sm text-gray-600">({rating}/5)</span>
+      </div>
     );
   };
 
-  // Helper function to update module data
-  const updateModuleData = (
-    moduleId: string,
-    updates: Partial<CourseModule>
-  ) => {
-    actions.updateCourseModule(moduleId, updates);
-  };
-
-  // Helper function to update lesson data
-  const updateLessonData = (
-    lessonId: string,
-    updates: Partial<CourseLesson>
-  ) => {
-    const moduleId = findModuleIdByLessonId(lessonId);
-    if (moduleId) {
-      actions.updateCourseLesson(moduleId, lessonId, updates);
-    }
-  };
-
-  // Helper function to update content data
-  const updateContentData = (contentId: string, updates: Partial<Content>) => {
-    const location = findContentLocation(contentId);
-    if (!location) return;
-
-    const { moduleId, lessonId } = location;
-    actions.updateCourseContent(moduleId, lessonId, contentId, updates);
-  };
-
-  // Helper function to delete content data
-  const deleteContentData = (contentId: string) => {
-    const location = findContentLocation(contentId);
-    if (!location) return;
-
-    const { moduleId, lessonId } = location;
-    actions.deleteCourseContent(moduleId, lessonId, contentId);
-  };
-
-  // Helper function to find the location of content by content ID
-  const findContentLocation = (
-    contentId: string
-  ): { moduleId: string; lessonId: string } | undefined => {
-    for (const courseModule of state.course.modules) {
-      for (const lesson of courseModule.lessons) {
-        if (lesson.contents.some((content) => content._id === contentId)) {
-          return { moduleId: courseModule._id!, lessonId: lesson._id! };
-        }
-      }
-    }
-    return undefined;
-  };
-
-  // Helper function to handle thumbnail upload
-  const handleThumbnailUpload = async (
-    moduleId: string,
-    file: File,
-    folderName: string
-  ): Promise<string> => {
-    try {
-      const uploadResponse = await uploadWithPresignedUrl(file, folderName);
-      if (uploadResponse.success && uploadResponse.data?.url) {
-        const uploadedUrl = uploadResponse.data.url;
-        updateModuleData(moduleId, {
-          thumbnailUrl: uploadedUrl,
-          thumbnailSource: "upload",
-          thumbnailS3Key: uploadResponse.data.s3Key || "",
-        });
-        return uploadedUrl;
-      } else {
-        throw new Error(uploadResponse.error || "Upload failed");
-      }
-    } catch (error) {
-      console.error("Upload failed:", error);
-      throw error;
-    }
-  };
-
-  // Helper function to handle thumbnail URL submission
-  const handleThumbnailUrlSubmit = (moduleId: string, url: string) => {
-    updateModuleData(moduleId, {
-      thumbnailUrl: url,
-      thumbnailSource: "url",
-      thumbnailS3Key: "",
-    });
-  };
-
-  // Helper function to handle thumbnail removal
-  const handleThumbnailRemove = (moduleId: string) => {
-    updateModuleData(moduleId, {
-      thumbnailUrl: "",
-      thumbnailSource: undefined,
-      thumbnailS3Key: "",
-    });
-  };
-
-  // Helper function to save a module
-  const saveModule = (index: number) => {
-    setSavedModules((prev) => new Set([...prev, index]));
-    setExpandedModules((prev) => {
-      const newSet = new Set(prev);
-      newSet.delete(index);
-      return newSet;
-    });
-  };
-
-  // Helper function to remove a module
-  const removeModule = (index: number) => {
-    const currentModules = state.course.modules || [];
-    const updatedModules = currentModules.filter((_, i) => i !== index);
-    actions.updateCourseField("modules", updatedModules);
-
-    // Update saved and expanded states
-    setSavedModules((prev) => {
-      const newSet = new Set(prev);
-      newSet.delete(index);
-      return newSet;
-    });
-    setExpandedModules((prev) => {
-      const newSet = new Set(prev);
-      newSet.delete(index);
-      return newSet;
-    });
+  // Validation
+  const hasValidationErrors = () => {
+    // Optional sections, no strict validation required
+    return false;
   };
 
   return (
     <Container
-      title="Course Modules & Content"
-      description="Create and organize your course modules, lessons, and content"
+      title="Course Details - Testimonials & FAQs"
+      description="Add social proof and answer common questions"
       className="rounded-b-none h-full w-full max-h-full overflow-y-auto flex flex-col"
       style={{ scrollbarWidth: "thin" }}
     >
-      {/* Validation Feedback */}
-      {validationErrors.length > 0 && (
-        <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <div className="font-medium mb-2 text-blue-800">
-            Please complete the following:
+      {/* Course Requirements & Prerequisites */}
+      <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-6 mb-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
+            <UserCheck className="w-5 h-5 text-white" />
           </div>
-          <ul className="list-disc list-inside space-y-1 text-blue-700">
-            {validationErrors.map((error, index) => (
-              <li key={index} className="text-sm">
-                {error}
-              </li>
-            ))}
-          </ul>
+          <div>
+            <h3 className="text-lg font-semibold text-gray-800">
+              Course Requirements & Prerequisites
+            </h3>
+            <p className="text-sm text-gray-600">
+              What should students know before taking this course?
+            </p>
+          </div>
         </div>
-      )}
 
-      {/* Modules Section */}
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 mb-6 border border-blue-100">
-        <div className="flex items-center justify-between mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <TextArea
+              label="Course Requirements"
+              placeholder="List the requirements for this course (e.g., basic programming knowledge, computer with internet)"
+              value={state.course.prerequisites?.join(", ") || ""}
+              onChange={(e) =>
+                actions.updateCourseField(
+                  "prerequisites",
+                  e.target.value.split(", ").filter((p) => p.trim())
+                )
+              }
+              rows={4}
+              className="w-full"
+            />
+          </div>
+          <div>
+            <Input
+              label="Additional Notes (Optional)"
+              placeholder="Any additional information about prerequisites"
+              value={state.course.shortDescription || ""}
+              onChange={(e) =>
+                actions.updateCourseField("shortDescription", e.target.value)
+              }
+              className="w-full"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Testimonials Section */}
+      <div className="bg-white border border-gray-200 rounded-xl p-6 mb-6">
+        <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-500 rounded-lg">
-              <BookOpen className="w-5 h-5 text-white" />
+            <div className="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center">
+              <Users className="w-5 h-5 text-white" />
             </div>
             <div>
               <h3 className="text-lg font-semibold text-gray-800">
-                Course Modules
+                Student Testimonials
               </h3>
               <p className="text-sm text-gray-600">
-                Organize your course content into structured modules
+                Add reviews from previous students to build trust
               </p>
             </div>
           </div>
-          <OrangeButton
-            onClick={addModule}
-            className="flex items-center gap-2 px-4 py-2"
-          >
+          <div className="text-sm text-gray-500">
+            {state.course.testimonials?.length || 0} testimonials
+          </div>
+        </div>
+
+        {/* Add New Testimonial Form */}
+        <div className="bg-gray-50 rounded-lg p-4 mb-6">
+          <h4 className="font-medium text-gray-800 mb-4 flex items-center gap-2">
             <Plus className="w-4 h-4" />
-            Add Module
-          </OrangeButton>
+            Add New Testimonial
+          </h4>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <Input
+              label="Student Name"
+              placeholder="Enter student name"
+              value={newTestimonial.name}
+              onChange={(e) =>
+                setNewTestimonial({ ...newTestimonial, name: e.target.value })
+              }
+              required
+            />
+            <Input
+              label="Current Role"
+              placeholder="e.g., Software Developer, Student"
+              value={newTestimonial.currentRole}
+              onChange={(e) =>
+                setNewTestimonial({
+                  ...newTestimonial,
+                  currentRole: e.target.value,
+                })
+              }
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <Input
+              label="Company (Optional)"
+              placeholder="e.g., Google, Microsoft"
+              value={newTestimonial.currentCompany}
+              onChange={(e) =>
+                setNewTestimonial({
+                  ...newTestimonial,
+                  currentCompany: e.target.value,
+                })
+              }
+            />
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Rating
+              </label>
+              {renderStarRating(5)}
+            </div>
+          </div>
+
+          <TextArea
+            label="Testimonial Comment"
+            placeholder="What did the student say about your course?"
+            value={newTestimonial.comment}
+            onChange={(e) =>
+              setNewTestimonial({ ...newTestimonial, comment: e.target.value })
+            }
+            rows={3}
+            className="mb-4"
+            required
+          />
+
+          <Input
+            label="Profile Image URL (Optional)"
+            placeholder="https://example.com/profile.jpg"
+            value={newTestimonial.profileImage}
+            onChange={(e) =>
+              setNewTestimonial({
+                ...newTestimonial,
+                profileImage: e.target.value,
+              })
+            }
+          />
+
+          <div className="flex justify-end mt-4">
+            <OrangeButton
+              onClick={addTestimonial}
+              disabled={
+                !newTestimonial.name.trim() || !newTestimonial.comment.trim()
+              }
+              className="flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              Add Testimonial
+            </OrangeButton>
+          </div>
         </div>
 
-        {/* Modules List */}
+        {/* Existing Testimonials */}
         <div className="space-y-4">
-          {(state.course.modules || []).map((courseModule, moduleIndex) => {
-            if (!courseModule) return null;
-            const isSaved = savedModules.has(moduleIndex);
-            const isExpanded = expandedModules.has(moduleIndex);
-            const isComplete = isModuleComplete(courseModule);
-
-            return (
+          {state.course.testimonials && state.course.testimonials.length > 0 ? (
+            state.course.testimonials.map((testimonial, index) => (
               <div
-                key={moduleIndex}
-                className="bg-white rounded-lg border border-blue-200 overflow-hidden"
+                key={index}
+                className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm"
               >
-                {/* Module Header */}
-                <div
-                  className="flex items-center justify-between p-4 cursor-pointer hover:bg-blue-50 transition-colors"
-                  onClick={() => toggleModuleExpansion(moduleIndex)}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2">
-                      <GripVertical className="w-4 h-4 text-gray-400" />
-                      <div
-                        className={`w-3 h-3 rounded-full ${
-                          isComplete ? "bg-green-500" : "bg-yellow-500"
-                        }`}
-                      ></div>
-                    </div>
-                    <h4 className="font-medium text-gray-800">
-                      {courseModule.title || `Module ${moduleIndex + 1}`}
-                    </h4>
-                    {isSaved && (
-                      <span className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded-full">
-                        Saved
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-500">
-                      {courseModule.lessons.length} lessons
-                    </span>
-                    {isExpanded ? (
-                      <ChevronUp className="w-4 h-4 text-gray-500" />
-                    ) : (
-                      <ChevronDown className="w-4 h-4 text-gray-500" />
-                    )}
-                  </div>
-                </div>
-
-                {/* Expanded Module Content */}
-                {isExpanded && (
-                  <div className="p-4 border-t border-blue-100">
-                    <FlexBox className="flex-col gap-4">
-                      {/* Module Basic Info */}
-                      <div className="grid grid-cols-1 gap-4">
-                        <Input
-                          label="Module Title"
-                          placeholder="e.g., Introduction to React"
-                          value={courseModule.title}
-                          onChange={(e) => {
-                            updateModuleData(courseModule._id!, {
-                              title: e.target.value,
-                            });
-                          }}
-                          required
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      {testimonial.profileImage ? (
+                        <img
+                          src={testimonial.profileImage}
+                          alt={testimonial.name}
+                          className="w-10 h-10 rounded-full object-cover"
                         />
-                      </div>
-
-                      <TextArea
-                        label="Module Description"
-                        placeholder="Describe what students will learn in this module"
-                        value={courseModule.description || ""}
-                        onChange={(e) => {
-                          updateModuleData(courseModule._id!, {
-                            description: e.target.value,
-                          });
-                        }}
-                        rows={3}
-                        lockHeight
-                        required
-                      />
-
-                      {/* Module Thumbnail Upload */}
-                      <UploadMediaContainer
-                        title="Module Thumbnail"
-                        description="Upload a thumbnail image for this module (required)"
-                        type="image"
-                        mediaUrl={courseModule.thumbnailUrl}
-                        mediaSource={courseModule.thumbnailSource}
-                        s3Key={courseModule.thumbnailS3Key}
-                        maxSize={10} // 10MB
-                        acceptedFormats={[".jpg", ".jpeg", ".png", ".webp"]}
-                        onFileUpload={(file, folderName) =>
-                          handleThumbnailUpload(
-                            courseModule._id!,
-                            file,
-                            folderName
-                          )
-                        }
-                        onFileRemove={() =>
-                          handleThumbnailRemove(courseModule._id!)
-                        }
-                        onUrlSubmit={(url) =>
-                          handleThumbnailUrlSubmit(courseModule._id!, url)
-                        }
-                        isUploading={isUploading}
-                        required={true}
-                        allowUrlInput={true}
-                        folderName={`courses/${
-                          state.course.title || "untitled"
-                        }/modules`}
-                        uploadContext={`module-${moduleIndex + 1}`}
-                        className="w-full"
-                      />
-
-                      {/* Module Settings */}
-                      <div className="flex items-center gap-4">
-                        <label className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            checked={courseModule.isActive}
-                            onChange={(e) => {
-                              updateModuleData(courseModule._id!, {
-                                isActive: e.target.checked,
-                              });
-                            }}
-                            className="rounded"
-                          />
-                          <span className="text-sm text-gray-700">
-                            Module Active
-                          </span>
-                        </label>
-                      </div>
-
-                      {/* Lessons Section */}
-                      <div className="border-t border-blue-100 pt-4">
-                        <div className="flex items-center justify-between mb-3">
-                          <h5 className="font-medium text-gray-800">Lessons</h5>
-                          <OrangeButton
-                            onClick={() => addLesson(moduleIndex)}
-                            className="flex items-center gap-2 px-3 py-1 text-sm"
-                          >
-                            <Plus className="w-3 h-3" />
-                            Add Lesson
-                          </OrangeButton>
+                      ) : (
+                        <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
+                          <Users className="w-5 h-5 text-gray-600" />
                         </div>
-
-                        {/* Lessons List */}
-                        <div className="space-y-3 pl-4">
-                          {courseModule.lessons.map((lesson, lessonIndex) =>
-                            lesson ? (
-                              <LessonItem
-                                key={lesson._id!}
-                                lessonId={lesson._id!}
-                                lessonData={lesson}
-                                isExpanded={expandedLessons.has(lesson._id!)}
-                                onToggleExpansion={() =>
-                                  toggleLessonExpansion(lesson._id!)
-                                }
-                                onUpdateLesson={updateLessonData}
-                                onAddContent={addContent}
-                                expandedContent={expandedContent}
-                                onToggleContentExpansion={
-                                  toggleContentExpansion
-                                }
-                                onUpdateContent={updateContentData}
-                                onDeleteContent={deleteContentData}
-                                courseTitle={state.course.title || "untitled"}
-                                moduleIndex={moduleIndex}
-                                lessonIndex={lessonIndex}
-                              />
-                            ) : null
-                          )}
-
-                          {courseModule.lessons.length === 0 && (
-                            <div className="text-center py-4 text-gray-500 border-2 border-dashed border-gray-200 rounded-lg">
-                              <BookOpen className="w-8 h-8 mx-auto mb-2 text-gray-300" />
-                              <p className="text-sm">No lessons added yet</p>
-                              <p className="text-xs">
-                                Click &quot;Add Lesson&quot; to get started
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Module Action Buttons */}
-                      <div className="flex items-center justify-between pt-4 border-t border-blue-100">
-                        <button
-                          onClick={() => removeModule(moduleIndex)}
-                          className="flex items-center gap-2 px-3 py-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                          Delete Module
-                        </button>
-
-                        <div className="flex items-center gap-2">
-                          <OrangeButton
-                            onClick={() => saveModule(moduleIndex)}
-                            disabled={!isComplete}
-                            className="flex items-center gap-2 px-4 py-2"
-                          >
-                            <Save className="w-4 h-4" />
-                            Save Module
-                          </OrangeButton>
-                        </div>
-                      </div>
-                    </FlexBox>
-                  </div>
-                )}
-
-                {/* Collapsed Module View */}
-                {!isExpanded && isSaved && (
-                  <div className="p-4 border-t border-blue-100">
-                    <div className="flex items-center justify-between">
+                      )}
                       <div>
-                        <p className="text-sm text-gray-700 mb-1">
-                          {courseModule.description || "No description"}
+                        <h5 className="font-semibold text-gray-800">
+                          {testimonial.name}
+                        </h5>
+                        <p className="text-sm text-gray-600">
+                          {testimonial.currentRole}
+                          {testimonial.currentCompany &&
+                            ` at ${testimonial.currentCompany}`}
                         </p>
-                        <div className="flex items-center gap-4 text-xs text-gray-500">
-                          <span>{courseModule.lessons.length} lessons</span>
-                          <span
-                            className={
-                              courseModule.isActive
-                                ? "text-green-600"
-                                : "text-red-600"
-                            }
-                          >
-                            {courseModule.isActive ? "Active" : "Inactive"}
-                          </span>
-                        </div>
                       </div>
-                      <button
-                        onClick={() => toggleModuleExpansion(moduleIndex)}
-                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
+                    </div>
+
+                    <div className="mb-2">
+                      {renderStarRating((testimonial as any).rating || 5)}
+                    </div>
+
+                    <div className="relative">
+                      <Quote className="absolute -top-1 -left-1 w-4 h-4 text-gray-400" />
+                      <p className="text-gray-700 italic pl-4">
+                        "{(testimonial as any).comment || "No comment"}"
+                      </p>
                     </div>
                   </div>
-                )}
-              </div>
-            );
-          })}
 
-          {(state.course.modules || []).length === 0 && (
-            <div className="text-center py-8 text-gray-500">
-              <BookOpen className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-              <p>No modules added yet</p>
+                  <button
+                    onClick={() => removeTestimonial(index)}
+                    className="p-2 text-red-500 hover:text-red-700 transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="text-center py-8 text-gray-500 border border-dashed border-gray-300 rounded-lg">
+              <MessageSquare className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+              <p>No testimonials added yet</p>
               <p className="text-sm">
-                Click &quot;Add Module&quot; to get started
+                Add student reviews to build trust and credibility
               </p>
             </div>
           )}
         </div>
       </div>
 
-      <ScreenNavigation
-        currentStep={7}
-        previousScreen="screen6"
-        nextScreen="screen8"
-        nextButtonText="Review & Submit"
-        setActiveScreen={setActiveScreen}
-        isNextDisabled={validationErrors.length > 0}
-      />
-    </Container>
-  );
-};
-
-// Lesson Item Component
-interface LessonItemProps {
-  lessonId: string;
-  lessonData: CourseLesson;
-  isExpanded: boolean;
-  onToggleExpansion: () => void;
-  onUpdateLesson: (lessonId: string, updates: Partial<CourseLesson>) => void;
-  onAddContent: (lessonId: string, type: "video" | "quiz") => void;
-  expandedContent: Set<string>;
-  onToggleContentExpansion: (contentId: string) => void;
-  onUpdateContent: (contentId: string, updates: Partial<Content>) => void;
-  onDeleteContent: (contentId: string) => void;
-  courseTitle?: string;
-  moduleIndex?: number;
-  lessonIndex?: number;
-}
-
-const LessonItem: React.FC<LessonItemProps> = ({
-  lessonId,
-  lessonData,
-  isExpanded,
-  onToggleExpansion,
-  onUpdateLesson,
-  onAddContent,
-  expandedContent,
-  onToggleContentExpansion,
-  onUpdateContent,
-  onDeleteContent,
-  courseTitle,
-  moduleIndex,
-  lessonIndex,
-}) => {
-  const lesson = lessonData;
-
-  return (
-    <div className="bg-gray-50 rounded-lg border border-gray-200">
-      {/* Lesson Header */}
-      <div
-        className="flex items-center justify-between p-3 cursor-pointer hover:bg-gray-100 transition-colors"
-        onClick={onToggleExpansion}
-      >
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <GripVertical className="w-3 h-3 text-gray-400" />
-            <Play className="w-4 h-4 text-blue-500" />
+      {/* FAQs Section */}
+      <div className="bg-white border border-gray-200 rounded-xl p-6 mb-6">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center">
+              <HelpCircle className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-800">
+                Frequently Asked Questions
+              </h3>
+              <p className="text-sm text-gray-600">
+                Answer common questions students might have
+              </p>
+            </div>
           </div>
-          <span className="font-medium text-gray-800">
-            {lesson.title || "Untitled Lesson"}
-          </span>
+          <div className="text-sm text-gray-500">
+            {state.course.faqs?.length || 0} FAQs
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-500">
-            {lesson.contents.length} items
-          </span>
-          {isExpanded ? (
-            <ChevronUp className="w-3 h-3 text-gray-500" />
-          ) : (
-            <ChevronDown className="w-3 h-3 text-gray-500" />
-          )}
-        </div>
-      </div>
 
-      {/* Expanded Lesson Content */}
-      {isExpanded && (
-        <div className="p-3 border-t border-gray-200">
-          <div className="space-y-3">
+        {/* Add New FAQ Form */}
+        <div className="bg-gray-50 rounded-lg p-4 mb-6">
+          <h4 className="font-medium text-gray-800 mb-4 flex items-center gap-2">
+            <Plus className="w-4 h-4" />
+            Add New FAQ
+          </h4>
+
+          <div className="space-y-4">
             <Input
-              label="Lesson Title"
-              placeholder="e.g., Getting Started with React"
-              value={lesson.title}
-              onChange={(e) => {
-                onUpdateLesson(lessonId, { title: e.target.value });
-              }}
+              label="Question"
+              placeholder="What question do students frequently ask?"
+              value={newFAQ.question}
+              onChange={(e) =>
+                setNewFAQ({ ...newFAQ, question: e.target.value })
+              }
               required
             />
 
             <TextArea
-              label="Lesson Description"
-              placeholder="Describe what students will learn in this lesson"
-              value={lesson.description || ""}
-              onChange={(e) => {
-                onUpdateLesson(lessonId, { description: e.target.value });
-              }}
-              rows={2}
-              lockHeight
+              label="Answer"
+              placeholder="Provide a clear and helpful answer"
+              value={newFAQ.answer}
+              onChange={(e) => setNewFAQ({ ...newFAQ, answer: e.target.value })}
+              rows={3}
+              required
+            />
+          </div>
+
+          <div className="flex justify-end mt-4">
+            <OrangeButton
+              onClick={addFAQ}
+              disabled={!newFAQ.question.trim() || !newFAQ.answer.trim()}
+              className="flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              Add FAQ
+            </OrangeButton>
+          </div>
+        </div>
+
+        {/* Existing FAQs */}
+        <div className="space-y-4">
+          {state.course.faqs && state.course.faqs.length > 0 ? (
+            state.course.faqs.map((faq, index) => (
+              <div
+                key={index}
+                className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <HelpCircle className="w-4 h-4 text-purple-500" />
+                      <h5 className="font-semibold text-gray-800">
+                        {faq.question}
+                      </h5>
+                    </div>
+                    <p className="text-gray-700 pl-6">{faq.answer}</p>
+                  </div>
+
+                  <button
+                    onClick={() => removeFAQ(index)}
+                    className="p-2 text-red-500 hover:text-red-700 transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="text-center py-8 text-gray-500 border border-dashed border-gray-300 rounded-lg">
+              <HelpCircle className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+              <p>No FAQs added yet</p>
+              <p className="text-sm">
+                Add common questions to help students understand your course
+                better
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Additional Course Information */}
+      <div className="bg-white border border-gray-200 rounded-xl p-6 mb-6">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center">
+            <Award className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-gray-800">
+              Additional Information
+            </h3>
+            <p className="text-sm text-gray-600">
+              Extra details about your course
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-4">
+            <Input
+              label="Course Duration (Optional)"
+              placeholder="e.g., 6 weeks, 20 hours"
+              value={state.course.duration || ""}
+              onChange={(e) =>
+                actions.updateCourseField("duration", e.target.value)
+              }
             />
 
-            {/* Content Section */}
-            <ContentSection
-              lessonId={lessonId}
-              contents={lesson.contents || []}
-              expandedContent={expandedContent}
-              onToggleContentExpansion={onToggleContentExpansion}
-              onUpdateContent={onUpdateContent}
-              onAddContent={onAddContent}
-              onDeleteContent={onDeleteContent}
-              courseTitle={courseTitle}
-              moduleIndex={moduleIndex}
-              lessonIndex={lessonIndex}
+            <Input
+              label="Course Level"
+              placeholder="e.g., Beginner, Intermediate, Advanced"
+              value={state.course.skillLevel || ""}
+              onChange={(e) =>
+                actions.updateCourseField("skillLevel", e.target.value)
+              }
+            />
+          </div>
+
+          <div className="space-y-4">
+            <TextArea
+              label="Course Completion Benefits (Optional)"
+              placeholder="What will students achieve after completing this course?"
+              value={state.course.whatYouWillLearn || ""}
+              onChange={(e) =>
+                actions.updateCourseField("whatYouWillLearn", e.target.value)
+              }
+              rows={3}
             />
           </div>
         </div>
-      )}
-    </div>
+      </div>
+
+      {/* Navigation */}
+      <ScreenNavigation
+        currentStep={6}
+        totalSteps={8}
+        previousScreen="screen5"
+        nextScreen="screen7_modules"
+        nextButtonText="Configure Content"
+        setActiveScreen={setActiveScreen}
+        isNextDisabled={hasValidationErrors()}
+      />
+    </Container>
   );
 };
 

@@ -229,6 +229,7 @@ const Screen2 = () => {
 
       <ScreenNavigation
         currentStep={2}
+        totalSteps={8}
         previousScreen="screen1"
         nextScreen="screen3"
         setActiveScreen={setActiveScreen}

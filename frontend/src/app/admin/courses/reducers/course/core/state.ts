@@ -45,9 +45,15 @@ export const initialCourseState: CourseState = {
     isFeatured: false,
     isCertified: false,
 
-    // Metrics
-    enrolledCount: 0,
-    totalRatings: 0,
+    // Analytics
+    analytics: {
+      totalEnrollments: 0,
+      activeEnrollments: 0,
+      completionRate: 0,
+      averageRating: 0,
+      averageCompletionTime: 0,
+      dropoffPoints: [],
+    },
 
     // UI & Learning Info
     whatYouWillLearn: "",
@@ -109,6 +115,11 @@ export const initialCourseState: CourseState = {
 
     // Language
     language: "",
+    
+    // Curriculum
+    curriculum: "",
+    curriculumSource: undefined,
+    curriculumS3Key: "",
   },
 
   // UI States

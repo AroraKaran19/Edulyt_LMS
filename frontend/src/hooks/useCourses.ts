@@ -38,8 +38,6 @@ export const useCourses = () => {
       limit: number = 10,
       search: string = "",
       category?: string,
-      dataLevel?: "summary" | "basic" | "full",
-      fields?: string[]
     ): Promise<CourseListResponse> => {
       setIsLoading(true);
       setError("");
@@ -53,14 +51,6 @@ export const useCourses = () => {
 
         if (category) {
           params.append("category", category);
-        }
-
-        if (dataLevel) {
-          params.append("dataLevel", dataLevel);
-        }
-
-        if (fields && fields.length > 0) {
-          params.append("fields", fields.join(","));
         }
 
         const response = await fetch(`${baseUrl}/courses?${params}`);
@@ -278,7 +268,7 @@ export const useCourses = () => {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ courses, isActive }),
+          body: JSON.stringify({ courseIds: courses, isActive }),
         });
 
         const result = await response.json();

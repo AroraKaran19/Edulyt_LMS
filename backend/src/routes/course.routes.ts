@@ -1,10 +1,23 @@
-import { CourseController } from "../controllers/course.controller";
+import {
+  getAllCourses,
+  getCourseUsingSlug,
+  getFeaturedCourses,
+  getCoursesUsingAudience,
+  getCoursesUsingCategory,
+  updateCourseMetadata,
+  createCourseMetadata,
+  addCourseModules,
+  addCourseLessons,
+  finalizeCourseCreation,
+  updateCourse,
+  updateCourseStatus,
+  updateCourseStatusBulk,
+  getCourseByIdAdmin,
+} from "../controllers/course.controller";
 // import { verifyAdmin } from "../middlewares/admin.middleware";
 import { Router } from "express";
-import { courseOperationTimeout, memoryMonitoringMiddleware } from "../middlewares/timeout.middleware";
 
 const router = Router();
-const courseController = new CourseController();
 
 /**
  * @route   GET /api/courses
@@ -17,147 +30,211 @@ const courseController = new CourseController();
  *   - category: Filter by categories (comma-separated: "programming,design,business") - alternative to filter
  *   - audience: Filter by target audience ("college-students" or "professionals")
  *   - search: Search in title, description, or short description (optional)
- *   - dataLevel: Data level - 'summary' (minimal), 'basic' (standard), 'full' (complete) (default: 'basic')
- *   - fields: Specific fields to include (comma-separated, overrides dataLevel)
  * @example
  *   GET /api/courses?page=1&limit=10&filter=programming&filter=design&search=javascript
- *   GET /api/courses?page=1&limit=10&category=programming,design&search=javascript&dataLevel=summary
- *   GET /api/courses?page=1&limit=10&audience=college-students&category=programming&dataLevel=full
+ *   GET /api/courses?page=1&limit=10&category=programming,design&search=javascript
+ *   GET /api/courses?page=1&limit=10&audience=college-students&category=programming
  *   GET /api/courses?search=&category=1,2,3&fields=_id,title,thumbnail,enrolledCount
- *   GET /api/courses?dataLevel=summary (lightweight for course cards)
- *   GET /api/courses?dataLevel=full (complete data with modules/lessons/content)
  */
-router.get("/", courseController.getAllCourses);
-
-/**
- * @route   GET /api/courses/featured
- * @desc    Get all featured courses
- * @access  Public
- */
-router.get("/featured", courseController.getFeaturedCourses);
-
-/**
- * @route   GET /api/courses/id/:courseId
- * @desc    Get a course by ID
- * @access  Public
- * @params
- *   - courseId: Course ID (URL parameter)
- * @example
- *   GET /api/courses/id/507f1f77bcf86cd799439011
- *   GET /api/courses/id/64f8a1b2c3d4e5f6a7b8c9d0
- */
-router.get("/id/:courseId", courseController.getCourseById);
-
-/**
- * @route   PUT /api/courses/:courseId
- * @desc    Update a course by ID
- * @access  Private (Admin only)
- * @params
- *   - courseId: Course ID (URL parameter)
- */
-router.put("/:courseId", courseController.updateCourseById);
-
-/**
- * @route   PUT /api/courses/status/:courseId
- * @desc    Update course status
- * @access  Private (Admin only)
- * @params
- *   - courseId: Course ID (URL parameter)
- * @example
- *   PUT /api/courses/status/507f1f77bcf86cd799439011
- *   PUT /api/courses/status/64f8a1b2c3d4e5f6a7b8c9d0
- */
-router.put("/status/:courseId", courseController.updateCourseStatus);
-
-/**
- * @route   PUT /api/courses/status/bulk
- * @desc    Update course status in bulk
- * @access  Private (Admin only)
- * @body @type {Course[]}
- * @example
- *   PUT /api/courses/status/bulk
- */
-router.put("/status/bulk", courseController.updateCourseStatusBulk);
-
-/**
- * @route   DELETE /api/courses/id/:courseId
- * @desc    Delete a course by ID
- * @access  Private (Admin only)
- * @params
- *   - courseId: Course ID (URL parameter)
- */
-router.delete("/:courseId", courseController.deleteCourseById);
+router.get("/", getAllCourses);
 
 /**
  * @route   GET /api/courses/:slug
- * @desc    Get a course by slug
+ * @desc    Get a course using slug
  * @access  Public
  * @params
- *   - slug: Course slug (URL parameter)
+ *   - slug: Unique identifier for the course
  * @example
- *   GET /api/courses/javascript-fundamentals
- *   GET /api/courses/react-advanced-concepts
+ *   GET /api/courses/12345
  */
-router.get("/:slug", courseController.getCourseBySlug);
+router.get("/:slug", getCourseUsingSlug);
 
 /**
- * @route   POST /api/courses
- * @desc    Create a new course with async job processing to prevent server freezing
- * @access  Private (Admin only)
- * @body @type {Partial<Course>} - Course data including modules, lessons, and content
- * @returns Job ID for tracking progress
+ * @route   GET /api/courses/featured
+ * @desc    Get featured courses
+ * @access  Public
+ * @example
+ *   GET /api/courses/featured
  */
-// router.post("/", verifyAdmin, courseController.createCourse);
-router.post("/", courseController.createCourse);
+router.get("/featured", getFeaturedCourses);
+
+/**
+ * @route   GET /api/courses/audience
+ * @desc    Get courses using audience
+ * @access  Public
+ * @params
+ *   - audience: Target audience ("college-students" or "professionals")
+ * @example
+ *   GET /api/courses/audience?audience=college-students
+ */
+router.get("/audience", getCoursesUsingAudience);
+
+/**
+ * @route   GET /api/courses/category
+ * @desc    Get courses using category
+ * @access  Public
+ * @params
+ *   - category: Category name
+ * @example
+ *   GET /api/courses/category?category=programming
+ */
+router.get("/category", getCoursesUsingCategory);
+
+/**
+ * @route   PUT /api/courses/:courseId/metadata
+ * @desc    Update course metadata (basic information)
+ * @access  Admin/Instructor
+ * @params
+ *   - courseId: The ID of the course to update
+ * @body
+ *   - title: Course title (optional)
+ *   - description: Course description (optional)
+ *   - shortDescription: Short description (optional)
+ *   - category: Course category (optional)
+ *   - audience: Target audience ("college-students" or "professionals") (optional)
+ *   - skillLevel: Skill level required (optional)
+ *   - language: Course language (optional)
+ *   - skills: Array of skills covered (optional)
+ *   - tags: Array of tags (optional)
+ *   - isActive: Whether course is active (optional)
+ *   - isFeatured: Whether course is featured (optional)
+ *   - isCertified: Whether course provides certification (optional)
+ *   - And other metadata fields...
+ * @example
+ *   PUT /api/courses/64a1b2c3d4e5f6789012345/metadata
+ *   Body: {
+ *     "title": "Updated Course Title",
+ *     "description": "Updated description",
+ *     "category": "programming",
+ *     "audience": "professionals"
+ *   }
+ */
+router.put("/:courseId/metadata", updateCourseMetadata);
+
+// ===================
+// Chunked Course Creation Routes
+// ===================
 
 /**
  * @route   POST /api/courses/chunked/metadata
- * @desc    Create course metadata (first step of chunked creation)
- * @access  Private (Admin only)
- * @body @type {Partial<Course>} - Course metadata without modules
+ * @desc    Create course metadata (step 1 of chunked course creation)
+ * @access  Admin/Instructor
+ * @body    Course metadata object (without modules)
+ * @example
+ *   POST /api/courses/chunked/metadata
+ *   Body: {
+ *     "title": "New Course",
+ *     "description": "Course description",
+ *     "category": "programming",
+ *     "audience": "professionals"
+ *   }
  */
-router.post("/chunked/metadata", courseController.createCourseMetadata);
+router.post("/chunked/metadata", createCourseMetadata);
 
 /**
  * @route   POST /api/courses/chunked/:courseId/modules
- * @desc    Add modules to an existing course (chunked creation)
- * @access  Private (Admin only)
+ * @desc    Add modules to existing course (step 2 of chunked course creation)
+ * @access  Admin/Instructor
  * @params
- *   - courseId: Course ID (URL parameter)
- * @body @type {CourseModule[]} - Array of modules to add
+ *   - courseId: The ID of the course to add modules to
+ * @body    Array of module objects
+ * @example
+ *   POST /api/courses/chunked/64a1b2c3d4e5f6789012345/modules
+ *   Body: [
+ *     {
+ *       "title": "Module 1",
+ *       "description": "Module description",
+ *       "lessons": [...]
+ *     }
+ *   ]
  */
-router.post("/chunked/:courseId/modules", courseController.addCourseModules);
+router.post("/chunked/:courseId/modules", addCourseModules);
 
 /**
  * @route   POST /api/courses/chunked/:courseId/lessons
- * @desc    Add lessons to course modules (chunked creation)
- * @access  Private (Admin only)
+ * @desc    Add lessons to existing module (step 3 of chunked course creation)
+ * @access  Admin/Instructor
  * @params
- *   - courseId: Course ID (URL parameter)
- * @body @type {Object} - { moduleId: string, lessons: CourseLesson[] }
+ *   - courseId: The ID of the course
+ * @body
+ *   - moduleId: The ID of the module to add lessons to
+ *   - lessons: Array of lesson objects
+ * @example
+ *   POST /api/courses/chunked/64a1b2c3d4e5f6789012345/lessons
+ *   Body: {
+ *     "moduleId": "64a1b2c3d4e5f6789012346",
+ *     "lessons": [...]
+ *   }
  */
-router.post("/chunked/:courseId/lessons", courseController.addCourseLessons);
+router.post("/chunked/:courseId/lessons", addCourseLessons);
 
 /**
  * @route   POST /api/courses/chunked/:courseId/finalize
- * @desc    Finalize chunked course creation
- * @access  Private (Admin only)
+ * @desc    Finalize course creation (step 4 of chunked course creation)
+ * @access  Admin/Instructor
  * @params
- *   - courseId: Course ID (URL parameter)
+ *   - courseId: The ID of the course to finalize
+ * @example
+ *   POST /api/courses/chunked/64a1b2c3d4e5f6789012345/finalize
  */
-router.post("/chunked/:courseId/finalize", courseController.finalizeCourseCreation);
+router.post("/chunked/:courseId/finalize", finalizeCourseCreation);
+
+// ===================
+// Course Update & Admin Routes
+// ===================
+
+/**
+ * @route   PUT /api/courses/:courseId
+ * @desc    Update entire course (what frontend expects)
+ * @access  Admin/Instructor
+ * @params
+ *   - courseId: The ID of the course to update
+ * @body    Complete course data object
+ * @example
+ *   PUT /api/courses/64a1b2c3d4e5f6789012345
+ *   Body: { course data }
+ */
+router.put("/:courseId", updateCourse);
+
+/**
+ * @route   PUT /api/courses/status/:courseId
+ * @desc    Update course status (active/inactive)
+ * @access  Admin/Instructor
+ * @params
+ *   - courseId: The ID of the course to update
+ * @body
+ *   - isActive: Boolean status to set
+ * @example
+ *   PUT /api/courses/status/64a1b2c3d4e5f6789012345
+ *   Body: { "isActive": true }
+ */
+router.put("/status/:courseId", updateCourseStatus);
+
+/**
+ * @route   PUT /api/courses/status/bulk
+ * @desc    Bulk update course status (active/inactive)
+ * @access  Admin/Instructor
+ * @body
+ *   - courseIds: Array of course IDs
+ *   - isActive: Boolean status to set
+ * @example
+ *   PUT /api/courses/status/bulk
+ *   Body: {
+ *     "courseIds": ["64a1b2c3d4e5f6789012345", "64a1b2c3d4e5f6789012346"],
+ *     "isActive": true
+ *   }
+ */
+router.put("/status/bulk", updateCourseStatusBulk);
 
 /**
  * @route   GET /api/courses/admin/id/:courseId
- * @desc    Get a course by ID (Admin version - includes inactive courses)
- * @access  Private (Admin only)
+ * @desc    Get course by ID for admin (includes inactive courses)
+ * @access  Admin
  * @params
- *   - courseId: Course ID (URL parameter)
+ *   - courseId: The ID of the course to retrieve
  * @example
- *   GET /api/courses/admin/id/507f1f77bcf86cd799439011
- *   GET /api/courses/admin/id/64f8a1b2c3d4e5f6a7b8c9d0
+ *   GET /api/courses/admin/id/64a1b2c3d4e5f6789012345
  */
-// router.get("/admin/id/:courseId", verifyAdmin, courseController.getCourseByIdAdmin);
-router.get("/admin/id/:courseId", courseController.getCourseByIdAdmin);
+router.get("/admin/id/:courseId", getCourseByIdAdmin);
 
 export default router;

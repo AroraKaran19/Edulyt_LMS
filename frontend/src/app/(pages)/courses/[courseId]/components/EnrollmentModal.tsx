@@ -1,10 +1,18 @@
 "use client";
-import React from "react";
+import React, { useMemo } from "react";
 import Modal from "@/components/ui/Modal";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import { Course } from "@/types";
 import { Crown } from "lucide-react";
 import PlanCard from "./PlanCard";
+import DiscountCountdown from "../../components/DiscountCountdown";
+import { calculateDiscountTime } from "@/app/admin/courses/reducers/course/utils/calculateDiscountTime";
+import { Plus_Jakarta_Sans } from "next/font/google";
+
+const plusJakartaSans = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+});
 
 interface EnrollmentModalProps {
   isOpen: boolean;
@@ -20,7 +28,7 @@ const EnrollmentModal: React.FC<EnrollmentModalProps> = ({
   onPlanSelect,
 }) => {
   const plans: {
-    type: "essential" | "elite",
+    type: "essential" | "elite";
     icon: React.ReactNode;
     name: string;
     theme: string;
@@ -89,6 +97,11 @@ const EnrollmentModal: React.FC<EnrollmentModalProps> = ({
     });
   }
 
+  const discountCountdown = useMemo(
+    () => calculateDiscountTime(course),
+    [course]
+  );
+
   return (
     <Modal
       isOpen={isOpen}
@@ -105,6 +118,16 @@ const EnrollmentModal: React.FC<EnrollmentModalProps> = ({
           <p className="text-sm text-gray-600">
             Select the plan that best fits your learning goals
           </p>
+          {/* Discount Countdown */}
+          <div className="w-full flex justify-center mt-2">
+            <DiscountCountdown
+              days={discountCountdown?.days || 0}
+              hours={discountCountdown?.hours || 0}
+              minutes={discountCountdown?.minutes || 0}
+              seconds={discountCountdown?.seconds || 0}
+              className={`${plusJakartaSans.className} text-sm md:text-base`}
+            />
+          </div>
         </div>
 
         {/* Plans Grid */}

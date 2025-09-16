@@ -521,6 +521,30 @@ const UploadMediaContainer: React.FC<UploadMediaContainerProps> = ({
                 />
               )}
 
+              {/* Preview for documents */}
+              {type === "document" && (
+                <div className="flex flex-col items-center gap-3 p-4 bg-white border border-gray-200 rounded-lg">
+                  <FileText className="w-12 h-12 text-blue-600" />
+                  <div className="text-center">
+                    <p className="text-sm font-medium text-gray-900">
+                      Document uploaded successfully
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {mediaUrl.split('/').pop() || 'Document'}
+                    </p>
+                  </div>
+                  <a
+                    href={mediaUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors"
+                  >
+                    <FileText className="w-3 h-3" />
+                    View Document
+                  </a>
+                </div>
+              )}
+
               {/* URL info */}
               <div className="flex items-center gap-2">
                 <Link className="w-6 h-6 text-green-600" />
@@ -641,7 +665,7 @@ const UploadMediaContainer: React.FC<UploadMediaContainerProps> = ({
                 {isUploading ? "Uploading..." : "Deleting..."}
               </p>
             </div>
-          ) : propMediaSource === "upload" && mediaUrl ? (
+          ) : (propMediaSource === "upload" || propMediaSource === "url") && mediaUrl ? (
             <div className="flex flex-col items-center gap-3">
               {/* Preview for images */}
               {type === "image" && (
@@ -659,6 +683,30 @@ const UploadMediaContainer: React.FC<UploadMediaContainerProps> = ({
                   className="max-w-full max-h-32 object-contain rounded"
                   controls
                 />
+              )}
+
+              {/* Preview for documents */}
+              {type === "document" && (
+                <div className="flex flex-col items-center gap-3 p-4 bg-white border border-gray-200 rounded-lg">
+                  <FileText className="w-12 h-12 text-blue-600" />
+                  <div className="text-center">
+                    <p className="text-sm font-medium text-gray-900">
+                      Document uploaded successfully
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {mediaUrl.split('/').pop() || 'Document'}
+                    </p>
+                  </div>
+                  <a
+                    href={mediaUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors"
+                  >
+                    <FileText className="w-3 h-3" />
+                    View Document
+                  </a>
+                </div>
               )}
 
               {/* File info */}

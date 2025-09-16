@@ -15,6 +15,7 @@ import axios from "axios";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
+import { calculateDiscountTime } from "@/app/admin/courses/reducers/course/utils/calculateDiscountTime";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -33,12 +34,15 @@ const CourseHeader = ({
   setIsEnrollmentModalOpen?: (open: boolean) => void;
 }) => {
   const [isEnquiryModalOpen, setIsEnquiryModalOpen] = useState(false);
-  const [localIsEnrollmentModalOpen, setLocalIsEnrollmentModalOpen] = useState(false);
+  const [localIsEnrollmentModalOpen, setLocalIsEnrollmentModalOpen] =
+    useState(false);
   const [isPaymentLoading, setIsPaymentLoading] = useState(false);
-  
+
   // Use external state if provided, otherwise use local state
-  const enrollmentModalOpen = isEnrollmentModalOpen ?? localIsEnrollmentModalOpen;
-  const setEnrollmentModalOpen = setIsEnrollmentModalOpen ?? setLocalIsEnrollmentModalOpen;
+  const enrollmentModalOpen =
+    isEnrollmentModalOpen ?? localIsEnrollmentModalOpen;
+  const setEnrollmentModalOpen =
+    setIsEnrollmentModalOpen ?? setLocalIsEnrollmentModalOpen;
   const { data: session } = useSession();
   const router = useRouter();
 
@@ -51,34 +55,10 @@ const CourseHeader = ({
       ? `${(course?.reviews?.length / 1000).toFixed(1).replace(/\.0$/, "")}K`
       : course?.reviews?.length?.toString();
 
-  const discountCountdown = useMemo(() => {
-    if (!course?.discount) return null;
-    const now = new Date();
-    const startDate = new Date(course?.discount?.startDate || "");
-    const endDate = new Date(course?.discount?.endDate || "");
-    if (startDate && endDate && endDate > now) {
-      // Convert string dates to Date objects if they are strings
-      const endDateObj =
-        typeof endDate === "string" ? new Date(endDate) : endDate;
-
-      const diff = endDateObj.getTime() - now.getTime();
-      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-      const hours = Math.floor(
-        (diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
-      );
-      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-
-      // Ensure we don't return negative values
-      return {
-        days: Math.max(0, days),
-        hours: Math.max(0, hours),
-        minutes: Math.max(0, minutes),
-        seconds: Math.max(0, seconds),
-      };
-    }
-    return null;
-  }, [course]);
+  const discountCountdown = useMemo(
+    () => calculateDiscountTime(course),
+    [course]
+  );
 
   const handlePlanSelect = async (
     planType: "elite" | "essential"
@@ -136,7 +116,7 @@ const CourseHeader = ({
           <div className="course-details-content-left w-full lg:w-3/5">
             {course?.isFeatured && (
               <BestsellerBadge
-                enrollStudents={course.enrolledCount}
+                enrollStudents={course.analytics?.totalEnrollments || 0}
                 className="flex-row justify-center items-center md:justify-start"
                 text1ClassName="text-sm"
                 text2ClassName="text-sm"

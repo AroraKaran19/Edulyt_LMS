@@ -1,4 +1,4 @@
-import { CourseInstructor, Discount, Review, User } from ".";
+import { CourseInstructor, Discount, FAQ, Review, User } from ".";
 
 // ===================
 // Video & Note Types
@@ -139,13 +139,8 @@ export interface Plan {
 }
 
 // ===================
-// FAQ & Review Types
+// Review Types
 // ===================
-
-export interface FAQ {
-  question: string;
-  answer: string;
-}
 
 export interface Testimonial
   extends Omit<Review, "_id" | "profileImage" | "rating" | "comment"> {
@@ -172,10 +167,6 @@ export interface Course {
 
   isFeatured?: boolean;
   isCertified?: boolean;
-
-  // Metrics
-  enrolledCount: number;
-  totalRatings: number;
 
   // UI & Learning Info
   whatYouWillLearn: string;
@@ -211,7 +202,7 @@ export interface Course {
   testimonials?: Testimonial[];
 
   // FAQs
-  faqs: FAQ[];
+  faqs: FAQ[] | FAQ["_id"];
 
   // Administrative
   isActive: boolean;
@@ -235,4 +226,21 @@ export interface Course {
 
   // Language
   language: string;
+  
+  // Curriculum - optional PDF document URL
+  curriculum?: string;
+
+  // Analytics
+  analytics?: {
+    totalEnrollments: number;
+    activeEnrollments: number;
+    completionRate: number;
+    averageRating: number;
+    averageCompletionTime: number; // in days
+    dropoffPoints: {
+      moduleId: string;
+      lessonId: string;
+      dropoffRate: number;
+    }[];
+  };
 }

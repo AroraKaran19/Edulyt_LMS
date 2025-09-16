@@ -869,28 +869,61 @@ const Screen4 = () => {
                     <Percent className="w-4 h-4 text-purple-600" />
                     <span className="text-purple-800 font-medium">
                       Discount Preview:{" "}
-                      {state.course.plans?.[activeTab]?.discount?.discount ===
-                      "percentage"
-                        ? `${state.course.plans?.[activeTab]?.discount?.value}% off`
-                        : `$${state.course.plans?.[activeTab]?.discount?.value} off`}
+                      {(() => {
+                        const planDiscount = state.course.plans?.[activeTab]?.discount;
+                        const courseDiscount = state.course.discount;
+                        const discounts = [];
+                        
+                        if (planDiscount?.discount === "percentage") {
+                          discounts.push(`${planDiscount.value}% plan discount`);
+                        } else if (planDiscount?.discount === "fixed") {
+                          discounts.push(`$${planDiscount.value} plan discount`);
+                        }
+                        
+                        if (courseDiscount?.value && courseDiscount.value > 0 && courseDiscount.isActive) {
+                          if (courseDiscount.discount === "percentage") {
+                            discounts.push(`${courseDiscount.value}% course discount`);
+                          } else if (courseDiscount.discount === "fixed") {
+                            discounts.push(`$${courseDiscount.value} course discount`);
+                          }
+                        }
+                        
+                        return discounts.join(" + ");
+                      })()}
                     </span>
                   </div>
                   <div className="text-xs text-purple-600 mt-1">
                     Original Price: ${state.course.plans?.[activeTab]?.price} →
                     Discounted Price: $
-                    {state.course.plans?.[activeTab]?.discount?.discount ===
-                    "percentage"
-                      ? (
-                          state.course.plans?.[activeTab]?.price *
-                          (1 -
-                            state.course.plans?.[activeTab]?.discount?.value /
-                              100)
-                        ).toFixed(2)
-                      : Math.max(
-                          0,
-                          state.course.plans?.[activeTab]?.price -
-                            state.course.plans?.[activeTab]?.discount?.value
-                        ).toFixed(2)}
+                    {(() => {
+                      let amount = state.course.plans?.[activeTab]?.price || 0;
+                      
+                      // Apply course-level discount first (if available and active)
+                      const courseDiscount = state.course.discount;
+                      if (courseDiscount && courseDiscount.value > 0 && courseDiscount.isActive) {
+                        if (courseDiscount.discount === "percentage") {
+                          const discountAmount = (amount * courseDiscount.value) / 100;
+                          amount = amount - discountAmount;
+                        } else if (courseDiscount.discount === "fixed") {
+                          amount = amount - courseDiscount.value;
+                        }
+                        amount = Math.max(amount, 0);
+                      }
+                      
+                      // Apply plan-level discount (if available)
+                      const planDiscount = state.course.plans?.[activeTab]?.discount;
+                      if (planDiscount && planDiscount.value > 0) {
+                        if (planDiscount.discount === "percentage") {
+                          const discountAmount = (amount * planDiscount.value) / 100;
+                          amount = amount - discountAmount;
+                        } else if (planDiscount.discount === "fixed") {
+                          amount = amount - planDiscount.value;
+                        }
+                        amount = Math.max(amount, 0);
+                      }
+                      
+                      return amount.toFixed(2);
+                    })()}
                   </div>
                 </div>
               )}

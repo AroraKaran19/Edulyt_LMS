@@ -257,8 +257,8 @@ const TermsOfUse = () => {
 										<Mail className="w-6 h-6" />
 									</div>
 									<h3 className="font-semibold mb-2">Email</h3>
-									<a href="mailto:info@edulyt.com" className="text-orange-100 hover:text-white transition-colors">
-										info@edulyt.com
+									<a href="mailto:info@airkrit.com" className="text-orange-100 hover:text-white transition-colors">
+										info@airkrit.com
 									</a>
 								</FlexBox>
 								<FlexBox direction="col" className="items-center text-center">

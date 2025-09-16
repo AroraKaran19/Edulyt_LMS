@@ -59,14 +59,14 @@ export async function generateMetadata({
       title: course.metaTitle || `${course.title} | Edulyt`,
       description:
         course.metaDescription || `Learn ${course.title} with Edulyt.`,
-      url: `https://edulyt.com/courses/${courseId}/watch`,
+      url: `https://airkrit.com/courses/${courseId}/watch`,
       type: "website",
       siteName: "Edulyt",
       images: [
         {
           url:
             course.thumbnail ||
-            `https://edulyt.com/courses/${courseId}/watch/thumbnail.png`,
+            `https://airkrit.com/courses/${courseId}/watch/thumbnail.png`,
           alt: `${course.title} course image`,
         },
       ],

@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 		title: 'Frequently Asked Questions - Edulyt',
 		description: 'Find answers to common questions about Edulyt courses, enrollment, payments, and more.',
 		type: 'website',
-		url: 'https://edulyt.com/faq',
+		url: 'https://airkrit.com/faq',
 	},
 	twitter: {
 		card: 'summary_large_image',

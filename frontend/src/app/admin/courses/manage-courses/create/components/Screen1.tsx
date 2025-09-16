@@ -7,12 +7,113 @@ import { useCourseContext } from "../../../reducers/course/providers/CourseReduc
 import TextArea from "@/components/ui/inputs/TextArea";
 import DropDown from "@/components/ui/dropdown/DropDown";
 import ScreenNavigation from "./shared/ScreenNavigation";
+import StepwiseNavigation from "./shared/StepwiseNavigation";
 import AlertBanner from "@/components/ui/AlertBanner";
 import { useScreen } from "../contexts/ScreenContext";
+import { toast } from "react-toastify";
+import UploadMediaContainer from "@/components/ui/container/UploadMediaContainer";
+import { useUpload } from "@/hooks/useUpload";
 
 const Screen1 = () => {
   const { state, actions } = useCourseContext();
   const { setActiveScreen } = useScreen();
+  const { uploadWithPresignedUrl, isUploading } = useUpload();
+
+  // Debug current curriculum state
+  React.useEffect(() => {
+    console.log("📄 Current curriculum state:", {
+      curriculum: state.course.curriculum,
+      curriculumSource: state.course.curriculumSource,
+      curriculumS3Key: state.course.curriculumS3Key,
+      hasActions: {
+        setCourseCurriculum: !!actions.setCourseCurriculum,
+        setCourseCurriculumSource: !!actions.setCourseCurriculumSource,
+        setCourseCurriculumS3Key: !!actions.setCourseCurriculumS3Key
+      }
+    });
+  }, [state.course.curriculum, state.course.curriculumSource, state.course.curriculumS3Key]);
+
+  // Generate folder names based on course title
+  const courseTitle = state.course.title || "untitled-course";
+  const curriculumFolder = `course/curriculum`;
+
+  // Handle curriculum file upload
+  const handleCurriculumUpload = async (
+    file: File,
+    folderName: string
+  ): Promise<string> => {
+    console.log("📄 Starting curriculum upload:", {
+      fileName: file.name,
+      fileSize: file.size,
+      fileType: file.type,
+      folderName
+    });
+
+    try {
+      const result = await uploadWithPresignedUrl(file, folderName);
+      
+      console.log("📄 Curriculum upload result:", result);
+      
+      if (result.success && result.data) {
+        console.log("✅ Curriculum upload successful:", result.data.url);
+        console.log("🔧 Available actions:", Object.keys(actions));
+        
+        actions.setCourseCurriculum(result.data.url);
+        
+        if (actions.setCourseCurriculumSource) {
+          actions.setCourseCurriculumSource("upload");
+          console.log("✅ Set curriculum source: upload");
+        } else {
+          console.error("❌ setCourseCurriculumSource action not available");
+        }
+        
+        if (actions.setCourseCurriculumS3Key) {
+          actions.setCourseCurriculumS3Key(result.data.s3Key || "");
+          console.log("✅ Set curriculum S3 key:", !!result.data.s3Key);
+        } else {
+          console.error("❌ setCourseCurriculumS3Key action not available");
+        }
+        
+        toast.success("Curriculum document uploaded successfully!", {
+          position: "top-right",
+          autoClose: 3000,
+        });
+        return result.data.url;
+      }
+      
+      console.error("❌ Curriculum upload failed:", result.error);
+      const errorMsg = result.error || "Upload failed";
+      toast.error(`Curriculum upload failed: ${errorMsg}`, {
+        position: "top-right",
+        autoClose: 5000,
+      });
+      throw new Error(errorMsg);
+    } catch (error) {
+      console.error("❌ Curriculum upload exception:", error);
+      const errorMsg = error instanceof Error ? error.message : "Unknown error occurred";
+      toast.error(`Curriculum upload error: ${errorMsg}`, {
+        position: "top-right",
+        autoClose: 5000,
+      });
+      throw error;
+    }
+  };
+
+  // Handle curriculum file removal
+  const handleCurriculumRemove = () => {
+    console.log("📄 Removing curriculum");
+    actions.setCourseCurriculum("");
+    
+    if (actions.setCourseCurriculumSource) {
+      actions.setCourseCurriculumSource(undefined);
+      console.log("✅ Cleared curriculum source");
+    }
+    
+    if (actions.setCourseCurriculumS3Key) {
+      actions.setCourseCurriculumS3Key("");
+      console.log("✅ Cleared curriculum S3 key");
+    }
+  };
 
   // Validation checks for minimum character requirements
   const validationErrors = useMemo(() => {
@@ -216,8 +317,59 @@ const Screen1 = () => {
           required
         />
       </FlexBox>
-      <ScreenNavigation
+
+      {/* Curriculum PDF Upload */}
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-gray-700">
+          Curriculum (Optional)
+        </label>
+        <p className="text-xs text-gray-500 mb-2">
+          Upload a PDF document containing the course curriculum
+        </p>
+        <UploadMediaContainer
+          title="Curriculum Document"
+          description="Upload a PDF document containing the course curriculum"
+          type="document"
+          mediaUrl={state.course.curriculum || ""}
+          mediaSource={state.course.curriculumSource}
+          s3Key={state.course.curriculumS3Key}
+          onFileUpload={handleCurriculumUpload}
+          onFileRemove={handleCurriculumRemove}
+          onUrlSubmit={(url) => {
+            console.log("📄 Setting curriculum URL:", url);
+            actions.setCourseCurriculum(url);
+            
+            if (actions.setCourseCurriculumSource) {
+              actions.setCourseCurriculumSource("url");
+              console.log("✅ Set curriculum source: url");
+            }
+            
+            if (actions.setCourseCurriculumS3Key) {
+              actions.setCourseCurriculumS3Key(""); // Clear S3 key for URLs
+              console.log("✅ Cleared curriculum S3 key for URL");
+            }
+          }}
+          acceptedFormats={[".pdf"]}
+          maxSize={10}
+          allowUrlInput={true}
+          urlPlaceholder="Upload curriculum PDF or enter URL"
+          folderName={curriculumFolder}
+          isUploading={isUploading}
+          usePresignedUrl={true}
+          presignedUrlThreshold={5}
+          onFileSelect={(file, folder) => {
+            console.log("📄 File selected for curriculum:", {
+              fileName: file.name,
+              fileSize: file.size,
+              fileType: file.type,
+              folder
+            });
+          }}
+        />
+      </div>
+      <StepwiseNavigation
         currentStep={1}
+        totalSteps={8}
         nextScreen="screen2"
         showPrevious={false}
         isNextDisabled={!isFormValid}

@@ -29,7 +29,16 @@ export const editDraftUtils = {
   getDraft: (): Course | null => {
     try {
       const draft = localStorage.getItem(COURSE_EDIT_DRAFT_KEY);
-      return draft ? JSON.parse(draft) : null;
+      if (draft) {
+        const parsedDraft = JSON.parse(draft);
+        console.log("📄 Restored edit draft from localStorage", {
+          curriculum: !!parsedDraft.curriculum,
+          curriculumSource: parsedDraft.curriculumSource,
+          curriculumS3Key: !!parsedDraft.curriculumS3Key
+        });
+        return parsedDraft;
+      }
+      return null;
     } catch {
       return null;
     }
@@ -57,7 +66,11 @@ export const editDraftUtils = {
   saveDraft: (courseData: Course): void => {
     try {
       localStorage.setItem(COURSE_EDIT_DRAFT_KEY, JSON.stringify(courseData));
-      console.log("Edit draft saved");
+      console.log("📄 Edit draft saved", {
+        curriculum: !!courseData.curriculum,
+        curriculumSource: courseData.curriculumSource,
+        curriculumS3Key: !!courseData.curriculumS3Key
+      });
     } catch (error) {
       console.error("Failed to save edit draft:", error);
     }

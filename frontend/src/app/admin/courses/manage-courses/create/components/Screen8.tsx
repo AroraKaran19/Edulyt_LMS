@@ -466,7 +466,8 @@ const Screen8 = () => {
       {/* Navigation */}
       <ScreenNavigation
         currentStep={8}
-        previousScreen="screen7"
+        totalSteps={8}
+        previousScreen="screen7_modules"
         setActiveScreen={setActiveScreen}
         nextButtonText="Create Course"
         nextButtonIcon={<Send className="w-4 h-4" />}

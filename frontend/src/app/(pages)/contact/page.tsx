@@ -36,8 +36,8 @@ const ContactPage = () => {
 									</div>
 									<h3 className="text-xl font-semibold text-gray-800 mb-2">Email Us</h3>
 									<p className="text-gray-600 mb-3">Send us an email anytime</p>
-									<a href="mailto:info@edulyt.com" className="text-orange-600 font-semibold hover:text-orange-700 transition-colors">
-										info@edulyt.com
+									<a href="mailto:info@airkrit.com" className="text-orange-600 font-semibold hover:text-orange-700 transition-colors">
+										info@airkrit.com
 									</a>
 								</FlexBox>
 								<FlexBox direction="col" className="items-center text-center">

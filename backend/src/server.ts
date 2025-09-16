@@ -2,7 +2,7 @@ import app from './app';
 import { connectDB, disconnectDB } from './config/database';
 import dotenv from 'dotenv';
 import { initializeS3 } from './config/s3';
-import { CronService } from './services/cron.service';
+
 
 dotenv.config();
 
@@ -19,11 +19,7 @@ const startServer = async () => {
     await connectDB();
     await initializeS3();
 
-    // Initialize and start cleanup cron job
-    const cronService = new CronService();
-    const cleanupInterval = process.env.CLEANUP_INTERVAL_MINUTES ? parseInt(process.env.CLEANUP_INTERVAL_MINUTES) : 5;
-    cronService.startCleanupCron(cleanupInterval);
-    console.log(`🧹 Cleanup cron job started with ${cleanupInterval} minute interval`);
+
 
     // Start the server
     const server = app.listen(PORT, () => {

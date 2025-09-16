@@ -10,6 +10,7 @@ import Screen4 from "./components/Screen4";
 import Screen5 from "./components/Screen5";
 import Screen6 from "./components/Screen6";
 import Screen7 from "./components/Screen7";
+import Screen7_ModuleLessons from "./components/Screen7_ModuleLessons";
 import Screen8 from "./components/Screen8";
 import { useScreen } from "./contexts/ScreenContext";
 
@@ -31,6 +32,7 @@ const CreateCoursePage = () => {
         {activeScreen === "screen5" && <Screen5 />}
         {activeScreen === "screen6" && <Screen6 />}
         {activeScreen === "screen7" && <Screen7 />}
+        {activeScreen === "screen7_modules" && <Screen7_ModuleLessons />}
         {activeScreen === "screen8" && <Screen8 />}
       </FlexBox>
     </FlexBox>

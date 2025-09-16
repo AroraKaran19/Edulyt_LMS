@@ -163,8 +163,8 @@ const CancellationRefundPolicy = () => {
 							</h2>
 							<p className="text-gray-700 mb-6 leading-relaxed">
 								To request a cancellation or refund, please contact our customer support team at{' '}
-								<a href="mailto:info@edulyt.com" className="text-orange-600 font-semibold hover:underline">
-									info@edulyt.com
+								<a href="mailto:info@airkrit.com" className="text-orange-600 font-semibold hover:underline">
+									info@airkrit.com
 								</a>{' '}
 								with the following information:
 							</p>
@@ -216,8 +216,8 @@ const CancellationRefundPolicy = () => {
 										<Mail className="w-6 h-6" />
 									</div>
 									<h3 className="font-semibold mb-2">Email</h3>
-									<a href="mailto:info@edulyt.com" className="text-orange-100 hover:text-white transition-colors">
-										info@edulyt.com
+									<a href="mailto:info@airkrit.com" className="text-orange-100 hover:text-white transition-colors">
+										info@airkrit.com
 									</a>
 								</FlexBox>
 								<FlexBox direction="col" className="items-center text-center">

@@ -24,8 +24,6 @@ interface GetCoursesParams {
   search?: string;
   filters?: Filter[];
   page?: number;
-  dataLevel?: 'summary' | 'basic' | 'full';
-  fields?: string[];
 }
 
 // Create the API slice
@@ -42,13 +40,11 @@ export const coursesApi = createApi({
   endpoints: (builder) => ({
     // Get all courses with optional filters and optimization
     getCourses: builder.query<CoursesResponse, GetCoursesParams>({
-      query: ({ category, search = '', filters = [], page = 1, dataLevel, fields }) => {
+      query: ({ category, search = '', filters = [], page = 1 }) => {
         const queryString = buildQueryString(search, filters, page);
         const categoryParam = category ? `category=${category}` : '';
-        const dataLevelParam = dataLevel ? `dataLevel=${dataLevel}` : '';
-        const fieldsParam = fields && fields.length > 0 ? `fields=${fields.join(',')}` : '';
 
-        const finalQuery = [categoryParam, queryString, dataLevelParam, fieldsParam]
+        const finalQuery = [categoryParam, queryString]
           .filter(Boolean)
           .join('&');
 
@@ -67,13 +63,13 @@ export const coursesApi = createApi({
 
     // Get courses by audience for navbar (optimized for lightweight display)
     getCoursesByAudience: builder.query<CoursesResponse, string>({
-      query: (audience) => `/courses?audience=${audience}&dataLevel=summary`,
+      query: (audience) => `/courses?audience=${audience}`,
       providesTags: ['Course'],
     }),
 
     // Get courses by category (optimized for course browsing)
     getCoursesByCategory: builder.query<CoursesResponse, string>({
-      query: (category) => `/courses?category=${category}&dataLevel=basic`,
+      query: (category) => `/courses?category=${category}`,
       providesTags: ['Course'],
     }),
   }),

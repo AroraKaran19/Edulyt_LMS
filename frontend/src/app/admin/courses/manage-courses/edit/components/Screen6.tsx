@@ -1265,7 +1265,7 @@ const Screen6 = () => {
               </p>
               <p className="text-sm font-mono text-gray-800 break-all">
                 <span className="text-gray-500">
-                  https://www.edulyt.com/courses/
+                  https://www.airkrit.com/courses/
                 </span>
                 <span
                   className={

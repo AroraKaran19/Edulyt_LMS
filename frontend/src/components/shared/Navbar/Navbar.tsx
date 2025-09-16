@@ -56,7 +56,7 @@ const Navbar = () => {
     {
       label: "Internships",
       // TODO: change to the actual link when the internship page is ready
-      href: "https://edulyt.com/internships.php",
+      href: "https://airkrit.com/internships.php",
       featureBox: "100+",
     },
   ];
@@ -103,7 +103,7 @@ const Navbar = () => {
       >
         <div className="logo h-[52px] min-h-[24px] flex-none w-1/3 flex items-center lg:w-1/4">
           <Link
-            href="https://edulyt.com"
+            href="https://airkrit.com"
             target="_blank"
             className="h-full cursor-pointer select-none"
             draggable={false}

@@ -24,6 +24,9 @@ export enum CourseActionType {
   SET_COURSE_PREVIEW_VIDEO_S3_KEY = "SET_COURSE_PREVIEW_VIDEO_S3_KEY",
   SET_COURSE_SLUG = "SET_COURSE_SLUG",
   SET_COURSE_LANGUAGE = "SET_COURSE_LANGUAGE",
+  SET_COURSE_CURRICULUM = "SET_COURSE_CURRICULUM",
+  SET_COURSE_CURRICULUM_SOURCE = "SET_COURSE_CURRICULUM_SOURCE",
+  SET_COURSE_CURRICULUM_S3_KEY = "SET_COURSE_CURRICULUM_S3_KEY",
   
   // Status & Features
   SET_COURSE_IS_FEATURED = "SET_COURSE_IS_FEATURED",
@@ -33,8 +36,7 @@ export enum CourseActionType {
   SET_COURSE_SCHOLARSHIP_DESCRIPTION = "SET_COURSE_SCHOLARSHIP_DESCRIPTION",
   
   // Metrics
-  SET_COURSE_ENROLLED_COUNT = "SET_COURSE_ENROLLED_COUNT",
-  SET_COURSE_TOTAL_RATINGS = "SET_COURSE_TOTAL_RATINGS",
+  SET_COURSE_ANALYTICS = "SET_COURSE_ANALYTICS",
   SET_COURSE_TOTAL_LECTURES = "SET_COURSE_TOTAL_LECTURES",
   
   // Learning Information
@@ -218,6 +220,21 @@ export const courseActions = {
   setCourseLanguage: (language: string) => ({
     type: CourseActionType.SET_COURSE_LANGUAGE,
     payload: language,
+  }),
+
+  setCourseCurriculum: (curriculum: string) => ({
+    type: CourseActionType.SET_COURSE_CURRICULUM,
+    payload: curriculum,
+  }),
+
+  setCourseCurriculumSource: (curriculumSource: "upload" | "url" | undefined) => ({
+    type: CourseActionType.SET_COURSE_CURRICULUM_SOURCE,
+    payload: curriculumSource,
+  }),
+
+  setCourseCurriculumS3Key: (curriculumS3Key: string) => ({
+    type: CourseActionType.SET_COURSE_CURRICULUM_S3_KEY,
+    payload: curriculumS3Key,
   }),
   
   // Status & Features
@@ -548,18 +565,13 @@ export const courseActions = {
   }),
   
   // Metrics
-  setCourseEnrolledCount: (enrolledCount: number) => ({
-    type: CourseActionType.SET_COURSE_ENROLLED_COUNT,
-    payload: enrolledCount,
-  }),
-  
-  setCourseTotalRatings: (totalRatings: number) => ({
-    type: CourseActionType.SET_COURSE_TOTAL_RATINGS,
-    payload: totalRatings,
+  setCourseAnalytics: (analytics: Course['analytics']) => ({
+    type: CourseActionType.SET_COURSE_ANALYTICS,
+    payload: analytics,
   }),
   
   setCourseTotalLectures: (totalLectures: number) => ({
     type: CourseActionType.SET_COURSE_TOTAL_LECTURES,
     payload: totalLectures,
   }),
-}; 
+};
