@@ -2,9 +2,9 @@ import { Metadata } from 'next';
 import React from 'react'
 
 export const metadata: Metadata = {
-    title: 'Security Policy | Edulyt',
-    description: 'Security Policy | Edulyt',
-    keywords: ['Security Policy', 'Edulyt'],
+    title: 'Security Policy | Airkrit',
+    description: 'Security Policy | Airkrit',
+    keywords: ['Security Policy', 'Airkrit'],
     robots: 'index, follow',
     icons: {
         icon: '/favicon.ico',

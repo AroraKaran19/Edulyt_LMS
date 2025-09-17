@@ -11,7 +11,7 @@ const ReviewApplicationModal = ({
   if (!application) return null;
 
   return (
-    <div className="fixed inset-0 bg-[#201E1E99] bg-opacity-50 flex justify-center items-center z-50">
+    <div className="fixed inset-0 bg-[#201E1E99]/50 flex justify-center items-center z-50">
       <div className="bg-white rounded-3xl p-4 w-full max-w-2xl gap-5 flex flex-col">
         <div className="flex-1">
           <h4 className="font-normal text-lg sm:text-xl text-black font-coolvetica flex justify-between items-center">

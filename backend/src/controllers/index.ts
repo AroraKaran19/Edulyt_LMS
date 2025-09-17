@@ -1,2 +1,2 @@
-export * from "./course.controller";
+export { CourseController } from "./course.controller";
 export { UploadController } from "./upload.controller";

@@ -1,10 +1,10 @@
 import React from "react";
 
 export const metadata = {
-  title: "Create Your Edulyt Account | Edulyt",
+  title: "Create Your Airkrit Account | Airkrit",
   description:
-    "Create a new Edulyt account to start exploring educational courses",
-  keywords: ["sign up", "edulyt", "education", "courses", "learning"],
+    "Create a new Airkrit account to start exploring educational courses",
+  keywords: ["sign up", "airkrit", "education", "courses", "learning"],
 };
 
 const RegisterLayout = ({ children }: { children: React.ReactNode }) => {

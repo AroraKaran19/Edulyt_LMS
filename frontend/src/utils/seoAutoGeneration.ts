@@ -11,7 +11,7 @@ import { Course } from "@/types";
 
 /**
  * Generate SEO-optimized meta title for a course
- * Format: "{course_name} | Edulyt"
+ * Format: "{course_name} | Airkrit"
  * Max length: 60 characters (Google's recommended limit)
  */
 export const generateMetaTitle = (course: Course): string => {
@@ -19,12 +19,12 @@ export const generateMetaTitle = (course: Course): string => {
   
   if (!title) return "";
 
-  // Base format: "{course_name} | Edulyt"
-  let metaTitle = `${title} | Edulyt`;
+  // Base format: "{course_name} | Airkrit"
+  let metaTitle = `${title} | Airkrit`;
   
   // If the title is too long, truncate it to fit within 60 characters
   if (metaTitle.length > 60) {
-    // Reserve 9 characters for " | Edulyt"
+    // Reserve 9 characters for " | Airkrit"
     const maxTitleLength = 60 - 9;
     const truncatedTitle = title.substring(0, maxTitleLength).trim();
     
@@ -32,7 +32,7 @@ export const generateMetaTitle = (course: Course): string => {
     const lastSpaceIndex = truncatedTitle.lastIndexOf(' ');
     const finalTitle = lastSpaceIndex > 0 ? truncatedTitle.substring(0, lastSpaceIndex) : truncatedTitle;
     
-    metaTitle = `${finalTitle} | Edulyt`;
+    metaTitle = `${finalTitle} | Airkrit`;
   }
   
   return metaTitle;
@@ -282,8 +282,8 @@ export const checkSEOQuality = (course: Course): SEOQuality => {
       titleSuggestions.push("Shorten title to fit Google's display limit");
       titleScore -= 30;
     }
-    if (!metaTitle.includes("Edulyt")) {
-      titleIssues.push("Meta title should include 'Edulyt' brand name");
+    if (!metaTitle.includes("Airkrit")) {
+      titleIssues.push("Meta title should include 'Airkrit' brand name");
       titleScore -= 15;
     }
     if (!metaTitle.includes(course.title?.split(" ")[0] || "")) {

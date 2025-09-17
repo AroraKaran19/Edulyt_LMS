@@ -41,11 +41,6 @@ const planSchema = new mongoose.Schema<Plan>(
       required: false,
     },
     isPopular: { type: Boolean, default: false, required: true },
-    billingPeriod: {
-      type: String,
-      enum: ["monthly", "annually", "lifetime"],
-      required: false,
-    },
     trialDays: {
       type: Number,
       required: false,

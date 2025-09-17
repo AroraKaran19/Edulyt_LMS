@@ -227,7 +227,7 @@ const ContactPage = () => {
 					<section className="mb-12">
 						<FlexBox direction="col" className="bg-gradient-to-r from-orange-600 to-orange-700 text-white rounded-2xl p-8 shadow-lg">
 							<h2 className="text-3xl font-bold mb-8 font-coolvetica text-center">
-								Why Choose Edulyt?
+								Why Choose Airkrit?
 							</h2>
 							<div className="grid md:grid-cols-3 gap-8">
 								<FlexBox direction="col" className="items-center text-center">

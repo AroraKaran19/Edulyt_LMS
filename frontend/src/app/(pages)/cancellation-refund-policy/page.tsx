@@ -37,7 +37,7 @@ const CancellationRefundPolicy = () => {
 								Overview
 							</h2>
 							<p className="text-gray-700 leading-relaxed text-lg">
-								Thank you for choosing Edulyt, operated by Airkrit India Pvt. Ltd. We strive to provide the best possible
+								Thank you for choosing Airkrit, operated by Airkrit India Pvt. Ltd. We strive to provide the best possible
 								experience for our users. This Cancellation & Refund Policy outlines the terms under which cancellations
 								are accepted and clarifies our stance on refunds for our digital products and services.
 							</p>
@@ -57,7 +57,7 @@ const CancellationRefundPolicy = () => {
 							</FlexBox>
 							<div className="bg-yellow-50 p-6 rounded-xl border border-yellow-200">
 								<p className="text-gray-700 leading-relaxed text-lg">
-									All products and services provided by Edulyt are digital. Due to the nature of digital content,
+									All products and services provided by Airkrit are digital. Due to the nature of digital content,
 									once access has been granted or content has been downloaded, we are unable to offer refunds.
 									We encourage you to review the product details and ensure it meets your needs before making a purchase.
 								</p>
@@ -134,7 +134,7 @@ const CancellationRefundPolicy = () => {
 							</FlexBox>
 							<p className="text-gray-700 mb-6 leading-relaxed">
 								While our general policy is to not provide refunds, we understand that exceptional circumstances may arise.
-								Refund requests will be considered on a case-by-case basis and at the sole discretion of Edulyt.
+								Refund requests will be considered on a case-by-case basis and at the sole discretion of Airkrit.
 								Situations that may warrant consideration include:
 							</p>
 							<div className="space-y-4">
@@ -250,7 +250,7 @@ const CancellationRefundPolicy = () => {
 									Thank You for Understanding
 								</h3>
 								<p className="text-orange-700 text-lg">
-									We value your business and strive to ensure a satisfactory experience with Edulyt.
+									We value your business and strive to ensure a satisfactory experience with Airkrit.
 								</p>
 							</div>
 						</FlexBox>

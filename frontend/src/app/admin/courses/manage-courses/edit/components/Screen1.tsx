@@ -191,17 +191,19 @@ const Screen1 = () => {
           rows={2}
           lockHeight
           required
+          maxLength={100}
         />
         <div className="mt-1 text-xs text-gray-500 flex justify-between">
-          <span>Minimum 10 characters required</span>
+          <span>10-100 characters required</span>
           <span
             className={`${
-              (state.course.shortDescription?.length || 0) < 10
+              (state.course.shortDescription?.length || 0) < 10 ||
+              (state.course.shortDescription?.length || 0) > 100
                 ? "text-red-500"
                 : "text-green-600"
             }`}
           >
-            {state.course.shortDescription?.length || 0}/10+
+            {state.course.shortDescription?.length || 0}/100
           </span>
         </div>
       </div>

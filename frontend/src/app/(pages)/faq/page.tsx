@@ -166,7 +166,7 @@ const FAQPage = () => {
 							Frequently Asked Questions
 						</h1>
 						<p className="text-xl text-orange-100 max-w-2xl">
-							Find answers to common questions about Edulyt courses, enrollment, payments, and more.
+							Find answers to common questions about Airkrit courses, enrollment, payments, and more.
 						</p>
 					</FlexBox>
 				</div>

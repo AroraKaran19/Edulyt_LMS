@@ -116,7 +116,7 @@ const CourseHeader = ({
           <div className="course-details-content-left w-full lg:w-3/5">
             {course?.isFeatured && (
               <BestsellerBadge
-                enrollStudents={course.analytics?.totalEnrollments || 0}
+                enrollStudents={course.enrolledCount}
                 className="flex-row justify-center items-center md:justify-start"
                 text1ClassName="text-sm"
                 text2ClassName="text-sm"
@@ -149,6 +149,7 @@ const CourseHeader = ({
                 Date.now() && (
                 <div className="course-discount flex flex-col gap-2">
                   <DiscountCountdown
+                    discount={course.discount?.value}
                     days={discountCountdown?.days || 0}
                     hours={discountCountdown?.hours || 0}
                     minutes={discountCountdown?.minutes || 0}

@@ -3,6 +3,7 @@ import React from "react";
 import FlexBox from "@/components/ui/FlexBox";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface ScreenNavigationProps {
   currentStep: number;
@@ -24,7 +25,7 @@ interface ScreenNavigationProps {
 
 const ScreenNavigation: React.FC<ScreenNavigationProps> = ({
   currentStep,
-  totalSteps = 9,
+  totalSteps = 8,
   previousScreen,
   nextScreen,
   nextButtonText = "Next Page",
@@ -70,64 +71,68 @@ const ScreenNavigation: React.FC<ScreenNavigationProps> = ({
   };
 
   return (
-    <FlexBox
-      className={`w-full gap-4 mt-auto mb-4 justify-between ${className}`}
-    >
-      {/* Previous Button */}
-      {showPrevious ? (
-        <OrangeButton
-          className="w-max px-16 mx-2"
-          onClick={handlePrevious}
-          disabled={isPreviousDisabled || isLoading}
-        >
-          Previous
-        </OrangeButton>
-      ) : (
-        <WhiteButton
-          className="w-max px-16 mx-2"
-          onClick={handleBack}
-          disabled={isPreviousDisabled || isLoading}
-        >
-          Back to Courses
-        </WhiteButton>
-      )}
+    <div className={`border-t border-gray-100 bg-gray-50/50 px-6 py-4 sm:px-8 ${className}`}>
+      <div className="flex flex-col sm:flex-row gap-4 sm:gap-0 sm:items-center sm:justify-between">
+        {/* Previous Button */}
+        <div className="order-2 sm:order-1">
+          {showPrevious ? (
+            <button
+              onClick={handlePrevious}
+              disabled={isPreviousDisabled || isLoading}
+              className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              Previous
+            </button>
+          ) : (
+            <button
+              onClick={handleBack}
+              disabled={isPreviousDisabled || isLoading}
+              className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              Back to Courses
+            </button>
+          )}
+        </div>
 
-      <FlexBox className="gap-4 items-center">
-        {/* Progress indicator */}
-        <div className="hidden md:flex items-center gap-2 text-sm text-gray-600">
-          <span>
+        {/* Mobile Progress indicator */}
+        <div className="flex sm:hidden items-center justify-center gap-3 order-1 py-2">
+          <span className="text-sm text-gray-600 font-medium">
             Step {currentStep} of {totalSteps}
           </span>
-          <div className="w-20 bg-gray-200 rounded-full h-2">
+          <div className="flex-1 max-w-32 bg-gray-200 rounded-full h-2">
             <div
-              className="bg-orange-500 h-2 rounded-full transition-all duration-300"
+              className="bg-gradient-to-r from-orange-500 to-orange-600 h-2 rounded-full transition-all duration-500"
               style={{ width: `${progressPercentage}%` }}
-            ></div>
+            />
           </div>
         </div>
 
         {/* Next Button */}
-        {showNext && (
-          <OrangeButton
-            className="w-max px-16 flex items-center gap-2 mx-2"
-            onClick={handleNext}
-            disabled={isNextDisabled || isLoading}
-          >
-            {isLoading ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                Loading...
-              </>
-            ) : (
-              <>
-                {nextButtonIcon}
-                {nextButtonText}
-              </>
-            )}
-          </OrangeButton>
-        )}
-      </FlexBox>
-    </FlexBox>
+        <div className="order-3">
+          {showNext && (
+            <button
+              onClick={handleNext}
+              disabled={isNextDisabled || isLoading}
+              className="inline-flex items-center gap-2 px-6 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl hover:from-orange-600 hover:to-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow-md"
+            >
+              {isLoading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Loading...
+                </>
+              ) : (
+                <>
+                  {nextButtonText}
+                  {nextButtonIcon || <ChevronRight className="w-4 h-4" />}
+                </>
+              )}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
   );
 };
 

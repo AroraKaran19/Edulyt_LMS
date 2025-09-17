@@ -1,130 +1,94 @@
-import {
-  getAllCategories,
-  getCategoryById,
-  getCategoryBySlug,
-  createCategory,
-  updateCategory,
-  deleteCategory,
-  toggleCategoryStatus,
-  searchCategories,
-  getCategoryStats,
-} from "../controllers/category.controller";
 import { Router } from "express";
+import {
+  getAllCategoriesController,
+  getActiveCategoriesController,
+  createCategoryController,
+  updateCategoryController,
+  deleteCategoryController,
+  getCategoryByIdController,
+} from "../controllers/category.controller";
 
 const router = Router();
 
 /**
  * @route   GET /api/categories
- * @desc    Get all categories with pagination
+ * @desc    Get all categories with pagination and filtering
  * @access  Public
  * @params
  *   - page: Page number (default: 1)
- *   - limit: Items per page (default: 10, max: 100)
- *   - search: Search term for category name
- *   - activeOnly: Filter only active categories (default: true)
+ *   - limit: Items per page (default: 50, max: 100)
+ *   - search: Search in name or description (optional)
+ *   - isActive: Filter by active status (optional)
  * @example
- *   GET /api/categories?page=1&limit=10&search=programming&activeOnly=true
+ *   GET /api/categories?page=1&limit=10&search=programming&isActive=true
  */
-router.get("/", getAllCategories);
+router.get("/", getAllCategoriesController);
 
 /**
- * @route   GET /api/categories/search
- * @desc    Search categories
- * @access  Public
- * @params
- *   - q: Search term (required)
- *   - activeOnly: Filter only active categories (default: true)
- *   - limit: Maximum results (default: 10)
- * @example
- *   GET /api/categories/search?q=web&activeOnly=true&limit=5
- */
-router.get("/search", searchCategories);
-
-/**
- * @route   GET /api/categories/stats
- * @desc    Get category statistics
+ * @route   GET /api/categories/active
+ * @desc    Get active categories only (for dropdowns)
  * @access  Public
  * @example
- *   GET /api/categories/stats
+ *   GET /api/categories/active
  */
-router.get("/stats", getCategoryStats);
-
-/**
- * @route   GET /api/categories/slug/:slug
- * @desc    Get category by slug
- * @access  Public
- * @params
- *   - slug: Category slug
- * @example
- *   GET /api/categories/slug/web-development
- */
-router.get("/slug/:slug", getCategoryBySlug);
+router.get("/active", getActiveCategoriesController);
 
 /**
  * @route   GET /api/categories/:categoryId
  * @desc    Get category by ID
  * @access  Public
  * @params
- *   - categoryId: Category ID
+ *   - categoryId: The ID of the category
  * @example
  *   GET /api/categories/64a1b2c3d4e5f6789012345
  */
-router.get("/:categoryId", getCategoryById);
+router.get("/:categoryId", getCategoryByIdController);
 
 /**
  * @route   POST /api/categories
  * @desc    Create a new category
- * @access  Admin
+ * @access  Admin/Instructor
  * @body
- *   - name: Category name (required, 2-100 chars)
- *   - slug: Category slug (optional, auto-generated from name if not provided)
- *   - isActive: Category status (optional, default: true)
+ *   - name: Category name (required)
+ *   - description: Category description (optional)
  * @example
  *   POST /api/categories
  *   Body: {
- *     "name": "Web Development",
- *     "slug": "web-development",
- *     "isActive": true
+ *     "name": "Programming",
+ *     "description": "Programming and software development courses"
  *   }
  */
-router.post("/", createCategory);
+router.post("/", createCategoryController);
 
 /**
  * @route   PUT /api/categories/:categoryId
- * @desc    Update category
- * @access  Admin
+ * @desc    Update a category
+ * @access  Admin/Instructor
  * @params
- *   - categoryId: Category ID
- * @body    Category update data (name, slug, isActive)
+ *   - categoryId: The ID of the category to update
+ * @body
+ *   - name: Category name (optional)
+ *   - description: Category description (optional)
+ *   - isActive: Whether category is active (optional)
  * @example
  *   PUT /api/categories/64a1b2c3d4e5f6789012345
  *   Body: {
- *     "name": "Advanced Web Development",
+ *     "name": "Updated Programming",
+ *     "description": "Updated description",
  *     "isActive": true
  *   }
  */
-router.put("/:categoryId", updateCategory);
-
-/**
- * @route   PUT /api/categories/:categoryId/toggle-status
- * @desc    Toggle category status (active/inactive)
- * @access  Admin
- * @params
- *   - categoryId: Category ID
- * @example
- *   PUT /api/categories/64a1b2c3d4e5f6789012345/toggle-status
- */
-router.put("/:categoryId/toggle-status", toggleCategoryStatus);
+router.put("/:categoryId", updateCategoryController);
 
 /**
  * @route   DELETE /api/categories/:categoryId
- * @desc    Delete category
- * @access  Admin
+ * @desc    Delete a category
+ * @access  Admin/Instructor
  * @params
- *   - categoryId: Category ID
+ *   - categoryId: The ID of the category to delete
  * @example
  *   DELETE /api/categories/64a1b2c3d4e5f6789012345
  */
-router.delete("/:categoryId", deleteCategory);
+router.delete("/:categoryId", deleteCategoryController);
 
 export default router;

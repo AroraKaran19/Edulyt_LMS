@@ -65,7 +65,7 @@ const CourseCard = ({
       </div>
       <div className="course-content w-full md:w-3/5 flex flex-col justify-between">
         {course?.isFeatured ? (
-          <BestsellerBadge enrollStudents={course?.analytics?.totalEnrollments || 0} />
+          <BestsellerBadge enrollStudents={course?.enrolledCount} />
         ) : (
           <div className="w-full h-4" />
         )}
@@ -74,7 +74,7 @@ const CourseCard = ({
         </p>
         <RatingContainer
           reviewCount={course?.reviews.length}
-          totalRating={course.analytics?.averageRating || 0}
+          totalRating={course.totalRatings}
           className="mt-2 text-xs"
           courseSlug={course?.slug}
         />

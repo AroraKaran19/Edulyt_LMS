@@ -37,7 +37,7 @@ const PrivacyPolicyPage = () => {
 								Introduction
 							</h2>
 							<p className="text-gray-700 leading-relaxed text-lg">
-								Welcome to Edulyt, an edtech platform operated by Airkrit India Pvt. Ltd. (&quot;we,&quot; &quot;our,&quot; or &quot;us&quot;).
+								Welcome to Airkrit, an edtech platform operated by Airkrit India Pvt. Ltd. (&quot;we,&quot; &quot;our,&quot; or &quot;us&quot;).
 								We are committed to protecting your privacy and ensuring the security of your personal information.
 								This Privacy Policy outlines how we collect, use, share, and protect your information when you use
 								our website and services.
@@ -284,7 +284,7 @@ const PrivacyPolicyPage = () => {
 						<FlexBox direction="col" className="bg-white rounded-2xl p-8 shadow-lg border border-orange-100 text-center">
 							<div className="bg-orange-100 p-6 rounded-xl">
 								<h3 className="text-2xl font-bold text-orange-800 mb-4 font-coolvetica">
-									Thank You for Using Edulyt
+									Thank You for Using Airkrit
 								</h3>
 								<p className="text-orange-700 text-lg">
 									Your privacy is important to us. We&apos;re committed to protecting your information and providing

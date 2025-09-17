@@ -92,12 +92,6 @@ const courseSchema = new mongoose.Schema<Course>(
       required: true,
       trim: true,
     },
-    subcategory: {
-      type: String,
-      required: false,
-      default: "",
-      trim: true,
-    },
     thumbnail: {
       type: String,
       required: true,
@@ -115,7 +109,11 @@ const courseSchema = new mongoose.Schema<Course>(
       type: [
         {
           title: { type: String, required: true },
-          description: { type: String, required: true },
+          description: { 
+            type: String, 
+            required: true, 
+            maxlength: 300 // Reasonable limit for highlight description
+          },
           _id: false,
         },
       ],
@@ -179,20 +177,22 @@ const courseSchema = new mongoose.Schema<Course>(
       default: [],
       ref: "Review",
     },
-    testimonials: { type: [testimonialSchema], required: false, default: [] },
+    testimonials: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Testimonial",
+    }],
 
-    faqs: {
-      type: [mongoose.Schema.Types.ObjectId],
-      required: false,
-      default: [],
+    faqs: [{
+      type: mongoose.Schema.Types.ObjectId,
       ref: "FAQ",
-    },
+    }],
 
     isActive: { type: Boolean, default: true },
     createdBy: {
       type: String,
       // ref: "User",
-      required: true,
+      required: false,
+      default: null,
     },
     tags: { type: [String], required: false, default: [] },
     audience: {
@@ -208,16 +208,22 @@ const courseSchema = new mongoose.Schema<Course>(
     metaTitle: {
       type: String,
       required: false,
-      default: "Course | Edulyt India",
+      default: "Course | Airkrit India",
     },
     metaDescription: {
       type: String,
       required: false,
-      default: "Course Edulyt India",
+      default: "Course Airkrit India",
+      maxlength: 160, // SEO best practice for meta descriptions
     },
     keywords: { type: [String], required: false, default: [] },
     scholarship: { type: Boolean, default: false, required: true },
-    scholarshipDescription: { type: String, required: false, default: "" },
+    scholarshipDescription: { 
+      type: String, 
+      required: false, 
+      default: "", 
+      maxlength: 500 // Reasonable limit for scholarship description
+    },
     scholarshipRef: {
       type: mongoose.Schema.Types.ObjectId,
       required: false,
@@ -263,7 +269,7 @@ const courseSchema = new mongoose.Schema<Course>(
 // Indexes
 courseSchema.index({ slug: 1, isActive: 1 }); // For fetching active courses by slug
 courseSchema.index({ category: 1 }); // For browsing by category
-courseSchema.index({ category: 1, subcategory: 1 }); // For browsing by category
+courseSchema.index({ category: 1 }); // For browsing by category
 courseSchema.index({ instructor: 1 }); // For finding courses by instructor
 courseSchema.index({ audience: 1 }); // For filtering by audience
 courseSchema.index({ language: 1 }); // For filtering by language

@@ -191,11 +191,19 @@ export const courseReducer = (
         break;
 
       case CourseActionType.SET_COURSE_THUMBNAIL_SOURCE:
-        newState = safeUpdateCourseField(state, "thumbnailSource", action.payload);
+        newState = safeUpdateCourseField(
+          state,
+          "thumbnailSource",
+          action.payload
+        );
         break;
 
       case CourseActionType.SET_COURSE_THUMBNAIL_S3_KEY:
-        newState = safeUpdateCourseField(state, "thumbnailS3Key", action.payload);
+        newState = safeUpdateCourseField(
+          state,
+          "thumbnailS3Key",
+          action.payload
+        );
         break;
 
       case CourseActionType.SET_COURSE_PREVIEW_VIDEO_URL:
@@ -207,11 +215,19 @@ export const courseReducer = (
         break;
 
       case CourseActionType.SET_COURSE_PREVIEW_VIDEO_SOURCE:
-        newState = safeUpdateCourseField(state, "previewVideoSource", action.payload);
+        newState = safeUpdateCourseField(
+          state,
+          "previewVideoSource",
+          action.payload
+        );
         break;
 
       case CourseActionType.SET_COURSE_PREVIEW_VIDEO_S3_KEY:
-        newState = safeUpdateCourseField(state, "previewVideoS3Key", action.payload);
+        newState = safeUpdateCourseField(
+          state,
+          "previewVideoS3Key",
+          action.payload
+        );
         break;
 
       case CourseActionType.SET_COURSE_SLUG:
@@ -227,11 +243,19 @@ export const courseReducer = (
         break;
 
       case CourseActionType.SET_COURSE_CURRICULUM_SOURCE:
-        newState = safeUpdateCourseField(state, "curriculumSource", action.payload);
+        newState = safeUpdateCourseField(
+          state,
+          "curriculumSource",
+          action.payload
+        );
         break;
 
       case CourseActionType.SET_COURSE_CURRICULUM_S3_KEY:
-        newState = safeUpdateCourseField(state, "curriculumS3Key", action.payload);
+        newState = safeUpdateCourseField(
+          state,
+          "curriculumS3Key",
+          action.payload
+        );
         break;
 
       // ===================
@@ -351,8 +375,8 @@ export const courseReducer = (
           ...state,
           course: {
             ...state.course,
-            modules: state.course.modules.map((module) =>
-              module._id === action.payload.moduleId 
+            modules: (state.course.modules || []).map((module) =>
+              module._id === action.payload.moduleId
                 ? { ...module, ...action.payload.updates }
                 : module
             ),
@@ -368,7 +392,9 @@ export const courseReducer = (
           ...state,
           course: {
             ...state.course,
-            modules: state.course.modules.filter((module) => module._id !== action.payload),
+            modules: state.course.modules.filter(
+              (module) => module._id !== action.payload
+            ),
           },
           isDirty: true,
           hasUnsavedChanges: true,
@@ -389,11 +415,11 @@ export const courseReducer = (
           ...state,
           course: {
             ...state.course,
-            modules: state.course.modules.map((module) =>
+            modules: (state.course.modules || []).map((module) =>
               module._id === action.payload.moduleId
                 ? {
                     ...module,
-                    lessons: [...module.lessons, action.payload.lesson],
+                    lessons: [...(module.lessons || []), action.payload.lesson],
                   }
                 : module
             ),
@@ -408,11 +434,11 @@ export const courseReducer = (
           ...state,
           course: {
             ...state.course,
-            modules: state.course.modules.map((module) =>
+            modules: (state.course.modules || []).map((module) =>
               module._id === action.payload.moduleId
                 ? {
                     ...module,
-                    lessons: module.lessons.map((lesson) =>
+                    lessons: (module.lessons || []).map((lesson) =>
                       lesson._id === action.payload.lessonId
                         ? { ...lesson, ...action.payload.updates }
                         : lesson
@@ -431,11 +457,13 @@ export const courseReducer = (
           ...state,
           course: {
             ...state.course,
-            modules: state.course.modules.map((module) =>
+            modules: (state.course.modules || []).map((module) =>
               module._id === action.payload.moduleId
                 ? {
                     ...module,
-                    lessons: module.lessons.filter((lesson) => lesson._id !== action.payload.lessonId),
+                    lessons: (module.lessons || []).filter(
+                      (lesson) => lesson._id !== action.payload.lessonId
+                    ),
                   }
                 : module
             ),
@@ -450,7 +478,7 @@ export const courseReducer = (
           ...state,
           course: {
             ...state.course,
-            modules: state.course.modules.map((module) =>
+            modules: (state.course.modules || []).map((module) =>
               module._id === action.payload.moduleId
                 ? {
                     ...module,
@@ -473,15 +501,18 @@ export const courseReducer = (
           ...state,
           course: {
             ...state.course,
-            modules: state.course.modules.map((module) =>
+            modules: (state.course.modules || []).map((module) =>
               module._id === action.payload.moduleId
                 ? {
                     ...module,
-                    lessons: module.lessons.map((lesson) =>
+                    lessons: (module.lessons || []).map((lesson) =>
                       lesson._id === action.payload.lessonId
                         ? {
                             ...lesson,
-                            contents: [...lesson.contents, action.payload.content],
+                            contents: [
+                              ...(lesson.contents || []),
+                              action.payload.content,
+                            ],
                           }
                         : lesson
                     ),
@@ -499,15 +530,15 @@ export const courseReducer = (
           ...state,
           course: {
             ...state.course,
-            modules: state.course.modules.map((module) =>
+            modules: (state.course.modules || []).map((module) =>
               module._id === action.payload.moduleId
                 ? {
                     ...module,
-                    lessons: module.lessons.map((lesson) =>
+                    lessons: (module.lessons || []).map((lesson) =>
                       lesson._id === action.payload.lessonId
                         ? {
                             ...lesson,
-                            contents: lesson.contents.map((content) =>
+                            contents: (lesson.contents || []).map((content) =>
                               content._id === action.payload.contentId
                                 ? { ...content, ...action.payload.updates }
                                 : content
@@ -529,15 +560,18 @@ export const courseReducer = (
           ...state,
           course: {
             ...state.course,
-            modules: state.course.modules.map((module) =>
+            modules: (state.course.modules || []).map((module) =>
               module._id === action.payload.moduleId
                 ? {
                     ...module,
-                    lessons: module.lessons.map((lesson) =>
+                    lessons: (module.lessons || []).map((lesson) =>
                       lesson._id === action.payload.lessonId
                         ? {
                             ...lesson,
-                            contents: lesson.contents.filter((content) => content._id !== action.payload.contentId),
+                            contents: (lesson.contents || []).filter(
+                              (content) =>
+                                content._id !== action.payload.contentId
+                            ),
                           }
                         : lesson
                     ),
@@ -555,7 +589,7 @@ export const courseReducer = (
           ...state,
           course: {
             ...state.course,
-            modules: state.course.modules.map((module) =>
+            modules: (state.course.modules || []).map((module) =>
               module._id === action.payload.moduleId
                 ? {
                     ...module,
@@ -680,7 +714,7 @@ export const courseReducer = (
           ...state,
           course: {
             ...state.course,
-            faqs: [...state.course.faqs, action.payload],
+            faqs: [...(state.course.faqs || []), action.payload],
           },
           isDirty: true,
           hasUnsavedChanges: true,
@@ -692,10 +726,10 @@ export const courseReducer = (
           ...state,
           course: {
             ...state.course,
-            faqs: state.course.faqs.map((faq, index) =>
+            faqs: (state.course.faqs || []).map((faqId, index) =>
               index === action.payload.faqIndex
-                ? { ...faq, ...action.payload.updates }
-                : faq
+                ? action.payload.updates
+                : faqId
             ),
           },
           isDirty: true,
@@ -721,6 +755,56 @@ export const courseReducer = (
 
       case CourseActionType.REORDER_COURSE_FAQS:
         newState = safeUpdateCourseField(state, "faqs", action.payload);
+        break;
+
+      // ===================
+      // Testimonials Management
+      // ===================
+
+      case CourseActionType.SET_COURSE_TESTIMONIALS:
+        newState = safeUpdateCourseField(state, "testimonials", action.payload);
+        break;
+
+      case CourseActionType.ADD_COURSE_TESTIMONIAL:
+        newState = {
+          ...state,
+          course: {
+            ...state.course,
+            testimonials: [...(state.course.testimonials || []), action.payload],
+          },
+          isDirty: true,
+          hasUnsavedChanges: true,
+        };
+        break;
+
+      case CourseActionType.UPDATE_COURSE_TESTIMONIAL:
+        newState = {
+          ...state,
+          course: {
+            ...state.course,
+            testimonials: (state.course.testimonials || []).map((testimonialId, index) =>
+              index === action.payload.testimonialIndex
+                ? action.payload.updates
+                : testimonialId
+            ),
+          },
+          isDirty: true,
+          hasUnsavedChanges: true,
+        };
+        break;
+
+      case CourseActionType.DELETE_COURSE_TESTIMONIAL:
+        newState = {
+          ...state,
+          course: {
+            ...state.course,
+            testimonials: (state.course.testimonials || []).filter(
+              (_, index) => index !== action.payload
+            ),
+          },
+          isDirty: true,
+          hasUnsavedChanges: true,
+        };
         break;
 
       // ===================
@@ -855,8 +939,16 @@ export const courseReducer = (
       // Metrics
       // ===================
 
-      case CourseActionType.SET_COURSE_ANALYTICS:
-        newState = safeUpdateCourseField(state, "analytics", action.payload);
+      case CourseActionType.SET_COURSE_ENROLLED_COUNT:
+        newState = safeUpdateCourseField(
+          state,
+          "enrolledCount",
+          action.payload
+        );
+        break;
+
+      case CourseActionType.SET_COURSE_TOTAL_RATINGS:
+        newState = safeUpdateCourseField(state, "totalRatings", action.payload);
         break;
 
       case CourseActionType.SET_COURSE_TOTAL_LECTURES:

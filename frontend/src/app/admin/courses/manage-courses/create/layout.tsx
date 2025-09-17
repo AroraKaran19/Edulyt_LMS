@@ -1,6 +1,5 @@
 import { CourseReducerProvider } from "../../reducers/course/providers/CourseReducerProvider";
 import { ScreenProvider } from "./contexts/ScreenContext";
-import { StepwiseProvider } from "./contexts/StepwiseContext";
 
 export default function CreateCourseLayout({
   children,
@@ -9,11 +8,9 @@ export default function CreateCourseLayout({
 }) {
   return (
     <CourseReducerProvider>
-      <StepwiseProvider>
-        <ScreenProvider>
-          {children}
-        </ScreenProvider>
-      </StepwiseProvider>
+      <ScreenProvider>
+        {children}
+      </ScreenProvider>
     </CourseReducerProvider>
   );
 }

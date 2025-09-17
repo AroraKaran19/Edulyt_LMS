@@ -1,4 +1,5 @@
 import { Course } from "@/types";
+import { extractCourseMetadata } from "@/utils/courseHelpers";
 
 // ===================
 // Course Data Sanitization Utility
@@ -11,9 +12,7 @@ const FRONTEND_ONLY_FIELDS = [
   'thumbnailSource',
   'thumbnailS3Key', 
   'previewVideoSource',
-  'previewVideoS3Key',
-  'curriculumSource',
-  'curriculumS3Key'
+  'previewVideoS3Key'
 ] as const;
 
 /**
@@ -32,8 +31,11 @@ const NESTED_FRONTEND_ONLY_FIELDS = {
  * @returns Clean course object safe for backend submission
  */
 export const sanitizeCourseForBackend = (course: Course): Omit<Course, typeof FRONTEND_ONLY_FIELDS[number]> => {
+  // First extract metadata and ensure testimonials/FAQs are IDs only
+  const courseWithMetadata = extractCourseMetadata(course);
+  
   // Create a copy of the course object
-  const sanitizedCourse = { ...course };
+  const sanitizedCourse = { ...courseWithMetadata };
   
   // Remove frontend-only fields
   FRONTEND_ONLY_FIELDS.forEach(field => {

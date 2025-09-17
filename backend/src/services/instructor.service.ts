@@ -1,6 +1,6 @@
 import { CourseInstructor, User } from "../types";
 import userModel from "../models/user.schema";
-import { CourseModel } from "../models/course.schema";
+import courseModel from "../models/course.schema";
 import bcrypt from "bcryptjs";
 
 export class InstructorService {
@@ -137,7 +137,7 @@ export class InstructorService {
         throw new Error("Instructor not found!");
       }
       // delete instructor from all courses
-      await CourseModel.updateMany(
+      await courseModel.updateMany(
         { instructor: instructorId },
         { $pull: { instructor: instructorId } }
       );

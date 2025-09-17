@@ -6,13 +6,6 @@ import {
   getCoursesUsingCategory,
   updateCourseMetadata,
   createCourseMetadata,
-  addCourseModules,
-  addCourseLessons,
-  finalizeCourseCreation,
-  updateCourse,
-  updateCourseStatus,
-  updateCourseStatusBulk,
-  getCourseByIdAdmin,
 } from "../controllers/course.controller";
 // import { verifyAdmin } from "../middlewares/admin.middleware";
 import { Router } from "express";
@@ -111,130 +104,30 @@ router.get("/category", getCoursesUsingCategory);
  */
 router.put("/:courseId/metadata", updateCourseMetadata);
 
-// ===================
-// Chunked Course Creation Routes
-// ===================
-
 /**
  * @route   POST /api/courses/chunked/metadata
- * @desc    Create course metadata (step 1 of chunked course creation)
+ * @desc    Create course metadata only (for chunked course creation)
  * @access  Admin/Instructor
- * @body    Course metadata object (without modules)
+ * @body
+ *   - title: Course title (required)
+ *   - description: Course description (required)
+ *   - shortDescription: Short description (required)
+ *   - category: Course category (required)
+ *   - audience: Target audience ("college-students" or "professionals") (required)
+ *   - thumbnail: Course thumbnail URL (required)
+ *   - And other metadata fields...
  * @example
  *   POST /api/courses/chunked/metadata
  *   Body: {
- *     "title": "New Course",
- *     "description": "Course description",
+ *     "title": "Complete React Course",
+ *     "description": "Learn React from scratch...",
+ *     "shortDescription": "Master React development",
  *     "category": "programming",
- *     "audience": "professionals"
+ *     "audience": "professionals",
+ *     "thumbnail": "https://example.com/thumb.jpg"
  *   }
  */
 router.post("/chunked/metadata", createCourseMetadata);
 
-/**
- * @route   POST /api/courses/chunked/:courseId/modules
- * @desc    Add modules to existing course (step 2 of chunked course creation)
- * @access  Admin/Instructor
- * @params
- *   - courseId: The ID of the course to add modules to
- * @body    Array of module objects
- * @example
- *   POST /api/courses/chunked/64a1b2c3d4e5f6789012345/modules
- *   Body: [
- *     {
- *       "title": "Module 1",
- *       "description": "Module description",
- *       "lessons": [...]
- *     }
- *   ]
- */
-router.post("/chunked/:courseId/modules", addCourseModules);
-
-/**
- * @route   POST /api/courses/chunked/:courseId/lessons
- * @desc    Add lessons to existing module (step 3 of chunked course creation)
- * @access  Admin/Instructor
- * @params
- *   - courseId: The ID of the course
- * @body
- *   - moduleId: The ID of the module to add lessons to
- *   - lessons: Array of lesson objects
- * @example
- *   POST /api/courses/chunked/64a1b2c3d4e5f6789012345/lessons
- *   Body: {
- *     "moduleId": "64a1b2c3d4e5f6789012346",
- *     "lessons": [...]
- *   }
- */
-router.post("/chunked/:courseId/lessons", addCourseLessons);
-
-/**
- * @route   POST /api/courses/chunked/:courseId/finalize
- * @desc    Finalize course creation (step 4 of chunked course creation)
- * @access  Admin/Instructor
- * @params
- *   - courseId: The ID of the course to finalize
- * @example
- *   POST /api/courses/chunked/64a1b2c3d4e5f6789012345/finalize
- */
-router.post("/chunked/:courseId/finalize", finalizeCourseCreation);
-
-// ===================
-// Course Update & Admin Routes
-// ===================
-
-/**
- * @route   PUT /api/courses/:courseId
- * @desc    Update entire course (what frontend expects)
- * @access  Admin/Instructor
- * @params
- *   - courseId: The ID of the course to update
- * @body    Complete course data object
- * @example
- *   PUT /api/courses/64a1b2c3d4e5f6789012345
- *   Body: { course data }
- */
-router.put("/:courseId", updateCourse);
-
-/**
- * @route   PUT /api/courses/status/:courseId
- * @desc    Update course status (active/inactive)
- * @access  Admin/Instructor
- * @params
- *   - courseId: The ID of the course to update
- * @body
- *   - isActive: Boolean status to set
- * @example
- *   PUT /api/courses/status/64a1b2c3d4e5f6789012345
- *   Body: { "isActive": true }
- */
-router.put("/status/:courseId", updateCourseStatus);
-
-/**
- * @route   PUT /api/courses/status/bulk
- * @desc    Bulk update course status (active/inactive)
- * @access  Admin/Instructor
- * @body
- *   - courseIds: Array of course IDs
- *   - isActive: Boolean status to set
- * @example
- *   PUT /api/courses/status/bulk
- *   Body: {
- *     "courseIds": ["64a1b2c3d4e5f6789012345", "64a1b2c3d4e5f6789012346"],
- *     "isActive": true
- *   }
- */
-router.put("/status/bulk", updateCourseStatusBulk);
-
-/**
- * @route   GET /api/courses/admin/id/:courseId
- * @desc    Get course by ID for admin (includes inactive courses)
- * @access  Admin
- * @params
- *   - courseId: The ID of the course to retrieve
- * @example
- *   GET /api/courses/admin/id/64a1b2c3d4e5f6789012345
- */
-router.get("/admin/id/:courseId", getCourseByIdAdmin);
 
 export default router;

@@ -95,7 +95,7 @@ const Notes = () => {
 
       {/* Edit Note Modal */}
       {isEditModalOpen && (
-        <div className="fixed inset-0 bg-[#201E1E99] bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-[#201E1E99]/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
             {/* Header */}
             <div className="flex justify-between items-center mb-4">
@@ -139,7 +139,7 @@ const Notes = () => {
 
       {/* Delete Confirmation Modal */}
       {isDeleteModalOpen && (
-        <div className="fixed inset-0 bg-[#201E1E99] bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-[#201E1E99]/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
             {/* Header */}
             <div className="flex justify-between items-center mb-4">

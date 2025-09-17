@@ -30,8 +30,17 @@ export const getAllCourses = async (
   total: number;
   page: number;
   totalPages: number;
-} | null> => {
+}> => {
   try {
+    // Input validation
+    if (page < 1 || limit < 1) {
+      throw new AppError("Page and limit must be positive numbers", 400);
+    }
+
+    if (limit > 100) {
+      throw new AppError("Limit cannot exceed 100 items per page", 400);
+    }
+
     // Build query object
     const query: any = { isActive: true };
 
@@ -43,22 +52,23 @@ export const getAllCourses = async (
     }
 
     // Add search filter if provided
-    if (search) {
+    if (search && search.trim()) {
+      const searchTerm = search.trim();
       query.$or = [
-        { title: { $regex: search, $options: "i" } },
-        { description: { $regex: search, $options: "i" } },
-        { shortDescription: { $regex: search, $options: "i" } },
+        { title: { $regex: searchTerm, $options: "i" } },
+        { description: { $regex: searchTerm, $options: "i" } },
+        { shortDescription: { $regex: searchTerm, $options: "i" } },
       ];
     }
 
     // Add audience filter if provided
-    if (audienceFilter) {
-      query.audience = audienceFilter;
+    if (audienceFilter && audienceFilter.trim()) {
+      query.audience = audienceFilter.trim();
     }
 
     // Add category filter if provided
-    if (category) {
-      query.category = category;
+    if (category && category.trim()) {
+      query.category = category.trim();
     }
 
     // Calculate skip value for pagination
@@ -72,7 +82,7 @@ export const getAllCourses = async (
       .skip(skip)
       .limit(limit)
       .select(
-        "title description plans discount thumbnail enrolledCount reviews totalRatings slug category audience"
+        "title description plans discount thumbnail slug category audience"
       )
       .populate("instructor", "fullName profilePicture")
       .lean();
@@ -87,8 +97,17 @@ export const getAllCourses = async (
       totalPages,
     };
   } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
+
     console.error("Database error in getAllCourses:", error);
-    throw new AppError("Failed to fetch courses from database", 500);
+    throw new AppError(
+      `Failed to fetch courses from database: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`,
+      500
+    );
   }
 };
 
@@ -101,49 +120,34 @@ export const getCourseUsingSlug = async (
   slug: string
 ): Promise<Course | null> => {
   try {
-    const course = await CourseModel.findOne({ slug, isActive: true })
-      .populate("instructor", "-__v -refreshToken -_id")
-      .populate("modules", "-__v -_id")
-      .populate("lessonIds", "-__v -_id")
-      .populate("contentIds", "-__v -_id")
-      .lean();
-    return course;
-  } catch (error) {
-    console.error("Database error in getCourseUsingSlug:", error);
-    throw new AppError("Failed to fetch course from database", 500);
-  }
-};
-
-/**
- * Get a course by ID
- * @param courseId - Course ID
- * @param requireActive - Whether to require the course to be active (default: true)
- * @returns Promise<Course | null>
- */
-export const getCourseById = async (
-  courseId: string,
-  requireActive: boolean = true
-): Promise<Course | null> => {
-  try {
-    // Validate courseId format
-    if (!mongoose.Types.ObjectId.isValid(courseId)) {
-      throw new AppError("Invalid course ID format", 400);
+    // Input validation
+    if (!slug || !slug.trim()) {
+      throw new AppError("Slug is required", 400);
     }
 
-    const query: any = { _id: courseId };
-    if (requireActive) {
-      query.isActive = true;
-    }
-
-    const course = await CourseModel.findOne(query)
+    const course = await CourseModel.findOne({
+      slug: slug.trim(),
+      isActive: true,
+    })
       .populate("instructor", "-__v -refreshToken")
-      .populate("modules", "-__v")
+      .populate("modules")
+      .populate("testimonials")
+      .populate("faqs")
       .lean();
-    
+
     return course;
   } catch (error) {
-    console.error("Database error in getCourseById:", error);
-    throw new AppError("Failed to fetch course from database", 500);
+    if (error instanceof AppError) {
+      throw error;
+    }
+
+    console.error("Database error in getCourseUsingSlug:", error);
+    throw new AppError(
+      `Failed to fetch course from database: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`,
+      500
+    );
   }
 };
 
@@ -151,100 +155,119 @@ export const getCoursesUsingCategory = async (
   category: string
 ): Promise<Course[]> => {
   try {
-    if (!category) {
+    if (!category || !category.trim()) {
       throw new AppError("Category is required", 400);
     }
+
+    const trimmedCategory = category.trim();
     const courses = await CourseModel.find({
-      category: { $regex: new RegExp(category, "i") },
+      category: { $regex: new RegExp(trimmedCategory, "i") },
       isActive: true,
     })
-      .select(
-        "title plans discount thumbnail enrolledCount reviews totalRatings slug category"
-      )
+      .select("title plans discount thumbnail slug category")
       .populate("instructor", "fullName profilePicture")
       .lean();
+
     return courses;
   } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
+
     console.error("Database error in getCoursesUsingCategory:", error);
-    throw new AppError("Failed to fetch courses from database", 500);
+    throw new AppError(
+      `Failed to fetch courses from database: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`,
+      500
+    );
   }
 };
 
-export const getFeaturedCourses = async (): Promise<Course[] | null> => {
+export const getFeaturedCourses = async (): Promise<Course[]> => {
   try {
     const courses = await CourseModel.find({
+      isFeatured: true,
       isActive: true,
     })
-      .select(
-        "title plans discount thumbnail enrolledCount reviews totalRatings slug"
-      )
+      .select("title plans discount thumbnail slug")
       .populate("instructor", "fullName profilePicture")
       .lean();
+
     return courses;
   } catch (error) {
     console.error("Database error in getFeaturedCourses:", error);
-    throw new AppError("Failed to fetch courses from database", 500);
+    throw new AppError(
+      `Failed to fetch courses from database: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`,
+      500
+    );
   }
 };
 
 export const getCoursesUsingAudience = async (
   audience: string
-): Promise<Course[] | null> => {
+): Promise<Course[]> => {
   try {
-    if (!audience) {
+    if (!audience || !audience.trim()) {
       throw new AppError("Audience is required", 400);
     }
+
+    const trimmedAudience = audience.trim();
     const courses = await CourseModel.find({
-      audience: { $regex: new RegExp(audience, "i") },
+      audience: { $regex: new RegExp(trimmedAudience, "i") },
       isActive: true,
     })
-      .select(
-        "title plans discount thumbnail enrolledCount reviews totalRatings slug"
-      )
+      .select("title plans discount thumbnail slug")
       .populate("instructor", "fullName profilePicture")
       .lean();
+
     return courses;
   } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
+
     console.error("Database error in getCoursesUsingAudience:", error);
-    throw new AppError("Failed to fetch courses from database", 500);
+    throw new AppError(
+      `Failed to fetch courses from database: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`,
+      500
+    );
   }
 };
 
 export const CreateCourseMetadata = async (course: Partial<Course>) => {
   try {
-    const { modules, reviews, faqs, testimonials, ...courseMetadata } = course;
-
-    // Generate slug from title if not provided
-    let slug = courseMetadata.slug;
-    if (!slug && courseMetadata.title) {
-      slug = courseMetadata.title
-        .toLowerCase()
-        .replace(/[^a-z0-9\s]/g, '') // Remove special characters
-        .replace(/\s+/g, '-') // Replace spaces with hyphens
-        .trim();
-      
-      // Ensure slug is unique
-      let baseSlug = slug;
-      let counter = 1;
-      while (await CourseModel.findOne({ slug })) {
-        slug = `${baseSlug}-${counter}`;
-        counter++;
-      }
+    // Input validation
+    if (!course || Object.keys(course).length === 0) {
+      throw new AppError("Course data is required", 400);
     }
 
-    // Set default values for required fields if not provided
-    const courseData = {
+    if (!course.title || !course.title.trim()) {
+      throw new AppError("Course title is required", 400);
+    }
+
+    const { modules, reviews, faqs, testimonials, ...courseMetadata } = course;
+
+    // Clean up the course metadata - remove empty _id fields and ensure proper structure
+    const cleanedMetadata = {
       ...courseMetadata,
-      slug,
-      moduleIds: [],
-      isActive: true,
-      // Set defaults for required fields
-      createdBy: courseMetadata.createdBy || "admin", // Temporary default
-      audience: courseMetadata.audience || "college-students",
-      language: courseMetadata.language || "en",
+      // Remove any empty _id fields that might cause validation errors
+      _id: undefined,
+      // Ensure arrays are properly initialized
+      modules: [],
+      reviews: [],
+      faqs: [],
+      testimonials: [],
+      // Ensure required fields have defaults
+      isActive: courseMetadata.isActive ?? true,
+      createdBy: courseMetadata.createdBy || null,
     };
 
-    const newCourse = new CourseModel(courseData);
+    const newCourse = new CourseModel(cleanedMetadata);
 
     await newCourse.validate();
     await newCourse.save();
@@ -255,22 +278,21 @@ export const CreateCourseMetadata = async (course: Partial<Course>) => {
       message: "Course metadata created successfully",
     };
   } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
+
+    if (error instanceof mongoose.Error.ValidationError) {
+      throw new AppError(`Validation error: ${error.message}`, 400);
+    }
+
     console.error("Database error in CreateCourseMetadata:", error);
-    
-    // Provide more specific error messages for validation errors
-    if (error instanceof Error && (error as any).name === 'ValidationError') {
-      const validationErrors = Object.keys((error as any).errors).map(field => 
-        `${field}: ${(error as any).errors[field].message}`
-      ).join(', ');
-      throw new AppError(`Validation failed: ${validationErrors}`, 400);
-    }
-    
-    if ((error as any).code === 11000) {
-      const duplicateField = Object.keys((error as any).keyPattern)[0];
-      throw new AppError(`${duplicateField} already exists. Please use a different ${duplicateField}.`, 400);
-    }
-    
-    throw new AppError("Failed to create course metadata", 500);
+    throw new AppError(
+      `Failed to create course metadata: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`,
+      500
+    );
   }
 };
 
@@ -285,7 +307,7 @@ export const UpdateCourseMetadata = async (
   updateData: Partial<Course>
 ): Promise<{ success: boolean; message: string }> => {
   const session = await mongoose.startSession();
-  
+
   try {
     session.startTransaction();
 
@@ -303,7 +325,6 @@ export const UpdateCourseMetadata = async (
     const {
       _id,
       modules,
-      moduleIds,
       reviews,
       faqs,
       testimonials,
@@ -319,7 +340,10 @@ export const UpdateCourseMetadata = async (
     }
 
     // Validate specific fields if provided
-    if (allowedUpdateData.title && typeof allowedUpdateData.title !== 'string') {
+    if (
+      allowedUpdateData.title &&
+      typeof allowedUpdateData.title !== "string"
+    ) {
       throw new AppError("Title must be a string", 400);
     }
 
@@ -327,23 +351,43 @@ export const UpdateCourseMetadata = async (
       throw new AppError("Title must be at least 3 characters long", 400);
     }
 
-    if (allowedUpdateData.description && typeof allowedUpdateData.description !== 'string') {
+    if (
+      allowedUpdateData.description &&
+      typeof allowedUpdateData.description !== "string"
+    ) {
       throw new AppError("Description must be a string", 400);
     }
 
-    if (allowedUpdateData.category && typeof allowedUpdateData.category !== 'string') {
+    if (
+      allowedUpdateData.category &&
+      typeof allowedUpdateData.category !== "string"
+    ) {
       throw new AppError("Category must be a string", 400);
     }
 
-    if (allowedUpdateData.audience && !['college-students', 'professionals'].includes(allowedUpdateData.audience)) {
-      throw new AppError("Audience must be either 'college-students' or 'professionals'", 400);
+    if (
+      allowedUpdateData.audience &&
+      !["college-students", "professionals"].includes(
+        allowedUpdateData.audience
+      )
+    ) {
+      throw new AppError(
+        "Audience must be either 'college-students' or 'professionals'",
+        400
+      );
     }
 
-    if (allowedUpdateData.skillLevel && typeof allowedUpdateData.skillLevel !== 'string') {
+    if (
+      allowedUpdateData.skillLevel &&
+      typeof allowedUpdateData.skillLevel !== "string"
+    ) {
       throw new AppError("Skill level must be a string", 400);
     }
 
-    if (allowedUpdateData.language && typeof allowedUpdateData.language !== 'string') {
+    if (
+      allowedUpdateData.language &&
+      typeof allowedUpdateData.language !== "string"
+    ) {
       throw new AppError("Language must be a string", 400);
     }
 
@@ -355,15 +399,24 @@ export const UpdateCourseMetadata = async (
       throw new AppError("Tags must be an array", 400);
     }
 
-    if (allowedUpdateData.isActive !== undefined && typeof allowedUpdateData.isActive !== 'boolean') {
+    if (
+      allowedUpdateData.isActive !== undefined &&
+      typeof allowedUpdateData.isActive !== "boolean"
+    ) {
       throw new AppError("isActive must be a boolean", 400);
     }
 
-    if (allowedUpdateData.isFeatured !== undefined && typeof allowedUpdateData.isFeatured !== 'boolean') {
+    if (
+      allowedUpdateData.isFeatured !== undefined &&
+      typeof allowedUpdateData.isFeatured !== "boolean"
+    ) {
       throw new AppError("isFeatured must be a boolean", 400);
     }
 
-    if (allowedUpdateData.isCertified !== undefined && typeof allowedUpdateData.isCertified !== 'boolean') {
+    if (
+      allowedUpdateData.isCertified !== undefined &&
+      typeof allowedUpdateData.isCertified !== "boolean"
+    ) {
       throw new AppError("isCertified must be a boolean", 400);
     }
 
@@ -385,20 +438,23 @@ export const UpdateCourseMetadata = async (
 
     // Perform the update with optimistic locking
     const updateResult = await CourseModel.updateOne(
-      { 
+      {
         _id: courseId,
-        updatedAt: existingCourse.updatedAt // Optimistic locking
+        updatedAt: existingCourse.updatedAt, // Optimistic locking
       },
       { $set: updatePayload },
-      { 
+      {
         session,
-        runValidators: true
+        runValidators: true,
       }
     );
 
     // Check if update was successful (document was found and modified)
     if (updateResult.matchedCount === 0) {
-      throw new AppError("Course not found or has been modified by another process", 409);
+      throw new AppError(
+        "Course not found or has been modified by another process",
+        409
+      );
     }
 
     if (updateResult.modifiedCount === 0) {
@@ -413,19 +469,24 @@ export const UpdateCourseMetadata = async (
     };
   } catch (error) {
     await session.abortTransaction();
-    
+
     if (error instanceof AppError) {
       throw error;
     }
-    
+
     console.error("Database error in UpdateCourseMetadata:", error);
-    throw new AppError("Failed to update course metadata", 500);
+    throw new AppError(
+      `Failed to update course metadata: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`,
+      500
+    );
   } finally {
     await session.endSession();
   }
 };
 
-export const CreateCourseModule = async (courseData: {
+export const CreateCourseContent = async (courseData: {
   courseId: string;
   modules: {
     title: string;
@@ -511,6 +572,7 @@ export const CreateCourseModule = async (courseData: {
                 description: content.description || "",
                 type: content.type,
                 readingMaterials: content.readingMaterials || [],
+                isCompleted: false,
                 isLocked: content.isLocked || false,
                 // Add unique identifier to prevent duplicates
                 tempId: `${courseId}-${moduleIndex}-${lessonIndex}-${contentIdx}-${Date.now()}`,
@@ -566,6 +628,7 @@ export const CreateCourseModule = async (courseData: {
               title: lesson.title,
               description: lesson.description || "",
               contentIds,
+              isCompleted: false,
               isLocked: lesson.isLocked || false,
               // Add unique identifier to prevent duplicates
               tempId: `${courseId}-${moduleIndex}-${lessonIdx}-${Date.now()}`,
@@ -597,6 +660,7 @@ export const CreateCourseModule = async (courseData: {
             description: module.description || "",
             thumbnailUrl: module.thumbnailUrl || "",
             lessonIds,
+            isCompleted: false,
             isLocked: module.isLocked || false,
             isActive: module.isActive !== false, // default to true
             // Add unique identifier and ordering to prevent duplicates
@@ -678,7 +742,6 @@ export const CreateCourseModule = async (courseData: {
     return {
       success: true,
       message: "Course modules created successfully",
-      moduleIds: [],
     };
   } catch (error) {
     if (error instanceof mongoose.Error.VersionError) {
@@ -692,7 +755,7 @@ export const CreateCourseModule = async (courseData: {
       throw new AppError(`Validation error: ${error.message}`, 400);
     }
 
-    console.error("Database error in CreateCourseModule:", error);
+    console.error("Database error in CreateCourseContent:", error);
     throw new AppError(
       error instanceof AppError
         ? error.message
@@ -711,7 +774,7 @@ export const CreateCourseModule = async (courseData: {
  * @param courseData - Array of modules with their lessons and content
  * @returns Promise<void>
  */
-export const UpdateCourseModule = async (
+export const UpdateCourseContent = async (
   courseId: string,
   courseData: CourseModule[]
 ): Promise<void> => {
@@ -804,6 +867,7 @@ const processContentItem = (
       description: content.description || "",
       type: content.type,
       readingMaterials: content.readingMaterials || [],
+      isCompleted: false,
       isLocked: content.isLocked || false,
       courseId,
       tempId: `${courseId}-${tempKey}-${Date.now()}`,
@@ -858,15 +922,39 @@ const executeUpdate = async (
 
         const existingModuleIds = courseUpdate.modules || [];
 
-        // Get existing data with lean queries for better memory efficiency
-        const [existingModules, existingLessons, existingContent] =
-          await Promise.all([
-            CourseModuleModel.find({ _id: { $in: existingModuleIds } })
-              .lean()
-              .session(session),
-            CourseLessonModel.find({ courseId }).lean().session(session),
-            ContentModel.find({ courseId }).lean().session(session),
-          ]);
+        // First get existing modules
+        const existingModules = await CourseModuleModel.find({
+          _id: { $in: existingModuleIds },
+        })
+          .lean()
+          .session(session);
+
+        // Then get existing lessons and content sequentially to avoid dependency issues
+        const existingLessonIds = existingModules.flatMap(
+          (m) => m.lessonIds || []
+        );
+
+        const existingLessons =
+          existingLessonIds.length > 0
+            ? await CourseLessonModel.find({
+                _id: { $in: existingLessonIds },
+              })
+                .lean()
+                .session(session)
+            : [];
+
+        const existingContentIds = existingLessons.flatMap(
+          (l) => l.contentIds || []
+        );
+
+        const existingContent =
+          existingContentIds.length > 0
+            ? await ContentModel.find({
+                _id: { $in: existingContentIds },
+              })
+                .lean()
+                .session(session)
+            : [];
 
         // Create maps for quick lookup
         const moduleMap = new Map(
@@ -1015,6 +1103,7 @@ const executeUpdate = async (
                 title: lesson.title,
                 description: lesson.description || "",
                 contentIds,
+                isCompleted: false,
                 isLocked: lesson.isLocked || false,
                 courseId,
                 tempId: `${courseId}-${tempKey}-${Date.now()}`,
@@ -1097,6 +1186,7 @@ const executeUpdate = async (
               description: module.description || "",
               thumbnailUrl: module.thumbnailUrl || "",
               lessonIds,
+              isCompleted: false,
               isLocked: module.isLocked || false,
               isActive: module.isActive !== false,
               courseId,
@@ -1141,32 +1231,29 @@ const executeUpdate = async (
         }
 
         // Delete removed items
-        const deletionPromises = [];
+        const deletionPromises: Promise<any>[] = [];
 
         if (itemsToDelete.contentIds.size > 0) {
           deletionPromises.push(
-            ContentModel.deleteMany(
-              { _id: { $in: Array.from(itemsToDelete.contentIds) } },
-              { session }
-            )
+            ContentModel.deleteMany({
+              _id: { $in: Array.from(itemsToDelete.contentIds) },
+            }).session(session)
           );
         }
 
         if (itemsToDelete.lessonIds.size > 0) {
           deletionPromises.push(
-            CourseLessonModel.deleteMany(
-              { _id: { $in: Array.from(itemsToDelete.lessonIds) } },
-              { session }
-            )
+            CourseLessonModel.deleteMany({
+              _id: { $in: Array.from(itemsToDelete.lessonIds) },
+            }).session(session)
           );
         }
 
         if (itemsToDelete.moduleIds.size > 0) {
           deletionPromises.push(
-            CourseModuleModel.deleteMany(
-              { _id: { $in: Array.from(itemsToDelete.moduleIds) } },
-              { session }
-            )
+            CourseModuleModel.deleteMany({
+              _id: { $in: Array.from(itemsToDelete.moduleIds) },
+            }).session(session)
           );
         }
 

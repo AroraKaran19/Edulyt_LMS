@@ -28,7 +28,7 @@ const InstructorCard = ({
         <div className="instructor-image min-w-[30px] max-h-[50px] lg:max-h-[100px] aspect-square rounded-full flex items-center justify-center shrink-0">
           <Image
             src={instructor.profilePicture || "/courseDefaultTestimonial.png"}
-            alt={instructor.fullName || "Edulyt Instructor"}
+            alt={instructor.fullName || "Airkrit Instructor"}
             width={100}
             height={100}
             draggable={false}

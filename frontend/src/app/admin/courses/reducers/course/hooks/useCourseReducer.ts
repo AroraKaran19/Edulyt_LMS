@@ -216,16 +216,16 @@ export const useCourseReducer = () => {
     ),
 
     setCourseCurriculumSource: useCallback(
-      (curriculumSource: "upload" | "url" | undefined) => {
-        const action = courseActions.setCourseCurriculumSource(curriculumSource);
+      (source: "upload" | "url" | undefined) => {
+        const action = courseActions.setCourseCurriculumSource(source);
         return enhancedDispatch(action);
       },
       [enhancedDispatch]
     ),
 
     setCourseCurriculumS3Key: useCallback(
-      (curriculumS3Key: string) => {
-        const action = courseActions.setCourseCurriculumS3Key(curriculumS3Key);
+      (s3Key: string) => {
+        const action = courseActions.setCourseCurriculumS3Key(s3Key);
         return enhancedDispatch(action);
       },
       [enhancedDispatch]
@@ -424,7 +424,11 @@ export const useCourseReducer = () => {
 
     updateCourseLesson: useCallback(
       (moduleId: string, lessonId: string, updates: any) => {
-        const action = courseActions.updateCourseLesson(moduleId, lessonId, updates);
+        const action = courseActions.updateCourseLesson(
+          moduleId,
+          lessonId,
+          updates
+        );
         return enhancedDispatch(action);
       },
       [enhancedDispatch]
@@ -449,7 +453,11 @@ export const useCourseReducer = () => {
     // Content Management
     addCourseContent: useCallback(
       (moduleId: string, lessonId: string, content: any) => {
-        const action = courseActions.addCourseContent(moduleId, lessonId, content);
+        const action = courseActions.addCourseContent(
+          moduleId,
+          lessonId,
+          content
+        );
         return enhancedDispatch(action);
       },
       [enhancedDispatch]
@@ -457,7 +465,12 @@ export const useCourseReducer = () => {
 
     updateCourseContent: useCallback(
       (moduleId: string, lessonId: string, contentId: string, updates: any) => {
-        const action = courseActions.updateCourseContent(moduleId, lessonId, contentId, updates);
+        const action = courseActions.updateCourseContent(
+          moduleId,
+          lessonId,
+          contentId,
+          updates
+        );
         return enhancedDispatch(action);
       },
       [enhancedDispatch]
@@ -465,7 +478,11 @@ export const useCourseReducer = () => {
 
     deleteCourseContent: useCallback(
       (moduleId: string, lessonId: string, contentId: string) => {
-        const action = courseActions.deleteCourseContent(moduleId, lessonId, contentId);
+        const action = courseActions.deleteCourseContent(
+          moduleId,
+          lessonId,
+          contentId
+        );
         return enhancedDispatch(action);
       },
       [enhancedDispatch]
@@ -473,7 +490,11 @@ export const useCourseReducer = () => {
 
     reorderCourseContent: useCallback(
       (moduleId: string, lessonId: string, contents: any[]) => {
-        const action = courseActions.reorderCourseContent(moduleId, lessonId, contents);
+        const action = courseActions.reorderCourseContent(
+          moduleId,
+          lessonId,
+          contents
+        );
         return enhancedDispatch(action);
       },
       [enhancedDispatch]
@@ -547,7 +568,7 @@ export const useCourseReducer = () => {
 
     // FAQ Management
     setCourseFaqs: useCallback(
-      (faqs: any[]) => {
+      (faqs: string[]) => {
         const action = courseActions.setCourseFaqs(faqs);
         return enhancedDispatch(action);
       },
@@ -555,8 +576,8 @@ export const useCourseReducer = () => {
     ),
 
     addCourseFaq: useCallback(
-      (faq: any) => {
-        const action = courseActions.addCourseFaq(faq);
+      (faqId: string) => {
+        const action = courseActions.addCourseFaq(faqId);
         return enhancedDispatch(action);
       },
       [enhancedDispatch]
@@ -645,7 +666,6 @@ export const useCourseReducer = () => {
     ),
 
     // Pricing & Discount
-
 
     setCourseDiscount: useCallback(
       (discount: Discount | null) => {
@@ -743,9 +763,17 @@ export const useCourseReducer = () => {
     ),
 
     // Metrics
-    setCourseAnalytics: useCallback(
-      (analytics: Course['analytics']) => {
-        const action = courseActions.setCourseAnalytics(analytics);
+    setCourseEnrolledCount: useCallback(
+      (enrolledCount: number) => {
+        const action = courseActions.setCourseEnrolledCount(enrolledCount);
+        return enhancedDispatch(action);
+      },
+      [enhancedDispatch]
+    ),
+
+    setCourseTotalRatings: useCallback(
+      (totalRatings: number) => {
+        const action = courseActions.setCourseTotalRatings(totalRatings);
         return enhancedDispatch(action);
       },
       [enhancedDispatch]
@@ -754,6 +782,39 @@ export const useCourseReducer = () => {
     setCourseTotalLectures: useCallback(
       (totalLectures: number) => {
         const action = courseActions.setCourseTotalLectures(totalLectures);
+        return enhancedDispatch(action);
+      },
+      [enhancedDispatch]
+    ),
+
+    // Testimonials Management
+    setCourseTestimonials: useCallback(
+      (testimonials: string[]) => {
+        const action = courseActions.setCourseTestimonials(testimonials);
+        return enhancedDispatch(action);
+      },
+      [enhancedDispatch]
+    ),
+
+    addCourseTestimonial: useCallback(
+      (testimonialId: string) => {
+        const action = courseActions.addCourseTestimonial(testimonialId);
+        return enhancedDispatch(action);
+      },
+      [enhancedDispatch]
+    ),
+
+    updateCourseTestimonial: useCallback(
+      (testimonialIndex: number, updates: any) => {
+        const action = courseActions.updateCourseTestimonial(testimonialIndex, updates);
+        return enhancedDispatch(action);
+      },
+      [enhancedDispatch]
+    ),
+
+    deleteCourseTestimonial: useCallback(
+      (testimonialIndex: number) => {
+        const action = courseActions.deleteCourseTestimonial(testimonialIndex);
         return enhancedDispatch(action);
       },
       [enhancedDispatch]

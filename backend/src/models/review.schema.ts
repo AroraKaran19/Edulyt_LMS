@@ -62,5 +62,4 @@ reviewSchema.index({ comment: 1 }); // For searching reviews by comment
 reviewSchema.index({ createdAt: -1 }); // For listing reviews by creation date
 reviewSchema.index({ updatedAt: -1 }); // For listing reviews by update date
 
-export const ReviewModel = mongoose.model<Review>("Review", reviewSchema);
 export default reviewSchema;

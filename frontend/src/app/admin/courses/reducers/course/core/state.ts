@@ -45,16 +45,6 @@ export const initialCourseState: CourseState = {
     isFeatured: false,
     isCertified: false,
 
-    // Analytics
-    analytics: {
-      totalEnrollments: 0,
-      activeEnrollments: 0,
-      completionRate: 0,
-      averageRating: 0,
-      averageCompletionTime: 0,
-      dropoffPoints: [],
-    },
-
     // UI & Learning Info
     whatYouWillLearn: "",
     skills: [],
@@ -71,7 +61,7 @@ export const initialCourseState: CourseState = {
     prerequisites: [],
 
     duration: "", // like: 3 months, 1 year, 2 years, etc. (will not be accurate)
-    
+
     // Discount settings
     discount: undefined,
 
@@ -115,7 +105,7 @@ export const initialCourseState: CourseState = {
 
     // Language
     language: "",
-    
+
     // Curriculum
     curriculum: "",
     curriculumSource: undefined,

@@ -8,10 +8,10 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Courses | Edulyt India",
+  title: "Courses | Airkrit India",
   description:
     "Explore our wide range of courses and find the perfect one for you.",
-  keywords: ["course", "edulyt", "learn", "education"],
+  keywords: ["course", "airkrit", "learn", "education"],
 };
 
 const CoursesLayout = ({ children }: { children: React.ReactNode }) => {

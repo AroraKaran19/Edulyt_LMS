@@ -110,7 +110,7 @@ const Navbar = () => {
           >
             <Image
               src="/logo.svg"
-              alt="Edulyt Logo"
+              alt="Airkrit Logo"
               width={100}
               height={100}
               quality={100}

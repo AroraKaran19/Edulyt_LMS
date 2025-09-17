@@ -1,6 +1,6 @@
 # Deployment Guide
 
-This document provides instructions for deploying the Edulyt backend to various platforms.
+This document provides instructions for deploying the Airkrit backend to various platforms.
 
 ## Large Payload Support
 

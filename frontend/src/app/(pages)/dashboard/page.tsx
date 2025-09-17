@@ -4,9 +4,9 @@ import DashboardPage from "./DashboardPage";
 
 export const generateMetadata = () => {
   return {
-    title: "Dashboard | Edulyt",
-    description: "Dashboard | Edulyt",
-    keywords: ["Dashboard", "Edulyt", "Dashboard | Edulyt"],
+    title: "Dashboard | Airkrit",
+    description: "Dashboard | Airkrit",
+    keywords: ["Dashboard", "Airkrit", "Dashboard | Airkrit"],
   };
 };
 

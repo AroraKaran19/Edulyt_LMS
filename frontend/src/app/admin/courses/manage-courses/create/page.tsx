@@ -10,8 +10,10 @@ import Screen4 from "./components/Screen4";
 import Screen5 from "./components/Screen5";
 import Screen6 from "./components/Screen6";
 import Screen7 from "./components/Screen7";
-import Screen7_ModuleLessons from "./components/Screen7_ModuleLessons";
-import Screen8 from "./components/Screen8";
+import Screen9 from "./components/Screen9";
+import Screen11 from "./components/Screen11";
+import Screen12 from "./components/Screen12";
+import Screen13 from "./components/Screen13";
 import { useScreen } from "./contexts/ScreenContext";
 
 const CreateCoursePage = () => {
@@ -32,8 +34,10 @@ const CreateCoursePage = () => {
         {activeScreen === "screen5" && <Screen5 />}
         {activeScreen === "screen6" && <Screen6 />}
         {activeScreen === "screen7" && <Screen7 />}
-        {activeScreen === "screen7_modules" && <Screen7_ModuleLessons />}
-        {activeScreen === "screen8" && <Screen8 />}
+        {activeScreen === "screen9" && <Screen9 />}
+        {activeScreen === "screen11" && <Screen11 />}
+        {activeScreen === "screen12" && <Screen12 />}
+        {activeScreen === "screen13" && <Screen13 />}
       </FlexBox>
     </FlexBox>
   );

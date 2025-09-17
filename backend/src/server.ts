@@ -23,8 +23,8 @@ const startServer = async () => {
 
     // Start the server
     const server = app.listen(PORT, () => {
-      console.log(`🚀 Edulyt Backend Server is running on port ${PORT}`);
-      console.log(`🌐 Health check available at: http://localhost:${PORT}/health`);
+      console.log(`🚀 Airkrit Backend Server is running on port ${PORT}`);
+      console.log(`🌐 Health check available at: http://localhost:${PORT}/`);
     });
 
     // Configure server timeouts to prevent 504 errors

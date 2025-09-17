@@ -1,4 +1,4 @@
-// Types - Data types for Edulyt platform
+// Types - Data types for Airkrit platform
 
 export interface Discount {
     discount: "percentage" | "fixed";

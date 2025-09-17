@@ -1,39 +1,39 @@
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "About Us | Edulyt",
+  title: "About Us | Airkrit",
   description:
-    "Learn about Edulyt's mission to empower students and professionals with industry-relevant skills through comprehensive online courses and internship opportunities.",
+    "Learn about Airkrit's mission to empower students and professionals with industry-relevant skills through comprehensive online courses and internship opportunities.",
   keywords: [
-    "About Edulyt",
-    "Edulyt India",
+    "About Airkrit",
+    "Airkrit India",
     "Online Learning",
     "Skill Development",
-    "Edulyt Mission",
-    "Edulyt Values",
-    "Edulyt Team",
+    "Airkrit Mission",
+    "Airkrit Values",
+    "Airkrit Team",
   ],
   openGraph: {
-    title: "About Us | Edulyt",
+    title: "About Us | Airkrit",
     description:
-      "Learn about Edulyt's mission to empower students and professionals with industry-relevant skills through comprehensive online courses and internship opportunities.",
+      "Learn about Airkrit's mission to empower students and professionals with industry-relevant skills through comprehensive online courses and internship opportunities.",
     type: "website",
     url: "https://airkrit.com/about",
-    siteName: "Edulyt",
+    siteName: "Airkrit",
     images: [
       {
         url: "/logo.png",
         width: 1200,
         height: 630,
-        alt: "Edulyt - About Us",
+        alt: "Airkrit - About Us",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "About Us | Edulyt",
+    title: "About Us | Airkrit",
     description:
-      "Learn about Edulyt's mission to empower students and professionals with industry-relevant skills through comprehensive online courses and internship opportunities.",
+      "Learn about Airkrit's mission to empower students and professionals with industry-relevant skills through comprehensive online courses and internship opportunities.",
     images: ["/logo.png"],
   },
   robots: {

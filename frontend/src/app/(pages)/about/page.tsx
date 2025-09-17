@@ -108,7 +108,7 @@ const AboutPage = () => {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-6">
-              About <span className="text-[#F77124]">Edulyt</span>
+              About <span className="text-[#F77124]">Airkrit</span>
             </h1>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
               Empowering students and professionals with industry-relevant
@@ -148,7 +148,7 @@ const AboutPage = () => {
                 Our Mission
               </h2>
               <p className="text-lg text-gray-600 mb-6 leading-relaxed">
-                At Edulyt, we believe that quality education should be
+                At Airkrit, we believe that quality education should be
                 accessible to everyone. Our mission is to bridge the gap between
                 traditional education and industry requirements by providing
                 practical, skill-based learning experiences.
@@ -172,7 +172,7 @@ const AboutPage = () => {
                 <div className="bg-white rounded-2xl p-6 shadow-lg">
                   <GraduationCap className="w-12 h-12 text-[#F77124] mb-4" />
                   <h3 className="text-xl font-bold text-gray-900 mb-3">
-                    Why Choose Edulyt?
+                    Why Choose Airkrit?
                   </h3>
                   <ul className="space-y-3">
                     {achievements.map((achievement, index) => (
@@ -197,7 +197,7 @@ const AboutPage = () => {
               Our Values
             </h2>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              The principles that guide everything we do at Edulyt
+              The principles that guide everything we do at Airkrit
             </p>
           </div>
 
@@ -228,7 +228,7 @@ const AboutPage = () => {
               Meet Our Team
             </h2>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              The passionate individuals behind Edulyt&apos;s success
+              The passionate individuals behind Airkrit&apos;s success
             </p>
           </div>
 
@@ -270,7 +270,7 @@ const AboutPage = () => {
           </h2>
           <p className="text-xl text-orange-100 mb-8 leading-relaxed">
             Join thousands of students who have already transformed their
-            careers with Edulyt
+            careers with Airkrit
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link

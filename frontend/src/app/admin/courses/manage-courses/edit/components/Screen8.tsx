@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from "react";
+import Image from "next/image";
 import { useEditCourseContext } from "../../../reducers/course/providers/EditCourseReducerProvider";
 import Container from "@/app/admin/components/ui/Container";
 import { sanitizeCourseForBackend } from "../../../reducers/course/utils/sanitization";
@@ -42,16 +43,25 @@ const Screen8 = () => {
       {
         id: "title",
         label: "Course Title",
-        isValid: !!(state.course.title && state.course.title.trim().length >= 5),
-        details: state.course.title ? `${state.course.title.length} characters` : "Missing",
+        isValid: !!(
+          state.course.title && state.course.title.trim().length >= 5
+        ),
+        details: state.course.title
+          ? `${state.course.title.length} characters`
+          : "Missing",
         icon: FileText,
         color: "orange",
       },
       {
         id: "description",
         label: "Course Description",
-        isValid: !!(state.course.description && state.course.description.trim().length >= 25),
-        details: state.course.description ? `${state.course.description.length} characters` : "Missing",
+        isValid: !!(
+          state.course.description &&
+          state.course.description.trim().length >= 25
+        ),
+        details: state.course.description
+          ? `${state.course.description.length} characters`
+          : "Missing",
         icon: BookOpen,
         color: "blue",
       },
@@ -83,9 +93,14 @@ const Screen8 = () => {
         id: "plans",
         label: "Pricing Plans",
         isValid: !!(state.course.plans?.essential || state.course.plans?.elite),
-        details: state.course.plans?.essential && state.course.plans?.elite ? "Both plans" : 
-                state.course.plans?.essential ? "Essential only" :
-                state.course.plans?.elite ? "Elite only" : "Missing",
+        details:
+          state.course.plans?.essential && state.course.plans?.elite
+            ? "Both plans"
+            : state.course.plans?.essential
+            ? "Essential only"
+            : state.course.plans?.elite
+            ? "Elite only"
+            : "Missing",
         icon: TrendingUp,
         color: "blue",
       },
@@ -100,8 +115,17 @@ const Screen8 = () => {
       {
         id: "seo",
         label: "SEO Information",
-        isValid: !!(state.course.metaTitle && state.course.metaDescription && state.course.keywords),
-        details: state.course.metaTitle && state.course.metaDescription && state.course.keywords ? "Complete" : "Incomplete",
+        isValid: !!(
+          state.course.metaTitle &&
+          state.course.metaDescription &&
+          state.course.keywords
+        ),
+        details:
+          state.course.metaTitle &&
+          state.course.metaDescription &&
+          state.course.keywords
+            ? "Complete"
+            : "Incomplete",
         icon: Zap,
         color: "blue",
       },
@@ -110,9 +134,9 @@ const Screen8 = () => {
     return checks;
   }, [state.course]);
 
-  const allValid = validationChecks.every(check => check.isValid);
-  const invalidChecks = validationChecks.filter(check => !check.isValid);
-  const validChecks = validationChecks.filter(check => check.isValid);
+  const allValid = validationChecks.every((check) => check.isValid);
+  const invalidChecks = validationChecks.filter((check) => !check.isValid);
+  const validChecks = validationChecks.filter((check) => check.isValid);
 
   // Course statistics
   const courseStats = useMemo(() => {
@@ -127,7 +151,9 @@ const Screen8 = () => {
 
   const handleSubmitCourse = async () => {
     if (!allValid) {
-      setSubmitError("Please complete all required fields before updating the course.");
+      setSubmitError(
+        "Please complete all required fields before updating the course."
+      );
       return;
     }
 
@@ -137,7 +163,7 @@ const Screen8 = () => {
     try {
       // Sanitize course data for backend
       const sanitizedCourse = sanitizeCourseForBackend(state.course);
-      
+
       // Validate sanitized data
       if (!validateSanitizedCourse(sanitizedCourse)) {
         throw new Error("Course data validation failed");
@@ -146,12 +172,15 @@ const Screen8 = () => {
       console.log("🚀 Updating course with data:", sanitizedCourse);
 
       // Update course
-      const result = await updateCourse(state.course._id || "", sanitizedCourse);
+      const result = await updateCourse(
+        state.course._id || "",
+        sanitizedCourse
+      );
 
       if (result.success) {
         // Clear draft data
         editDraftUtils.clearAll();
-        
+
         // Navigate to manage courses page
         router.push("/admin/courses/manage-courses");
       } else {
@@ -159,7 +188,9 @@ const Screen8 = () => {
       }
     } catch (error) {
       console.error("Error updating course:", error);
-      setSubmitError(error instanceof Error ? error.message : "Failed to update course");
+      setSubmitError(
+        error instanceof Error ? error.message : "Failed to update course"
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -200,7 +231,8 @@ const Screen8 = () => {
                 🎉 Course Ready for Update!
               </h3>
               <p className="text-orange-700">
-                All required fields are completed. Your course is ready to be updated and published.
+                All required fields are completed. Your course is ready to be
+                updated and published.
               </p>
             </div>
             <OrangeButton
@@ -213,7 +245,7 @@ const Screen8 = () => {
               ) : (
                 <Send className="w-5 h-5" />
               )}
-              {isSubmitting ? "Updating..." : "Update Course"} 
+              {isSubmitting ? "Updating..." : "Update Course"}
             </OrangeButton>
           </div>
         </div>
@@ -222,9 +254,12 @@ const Screen8 = () => {
       {/* Validation Summary */}
       <Container
         title="Course Validation"
-        description={`${allValid 
-          ? "All requirements met - Course is ready!" 
-          : `${invalidChecks.length} validation issue${invalidChecks.length !== 1 ? 's' : ''} found - Please fix before updating`
+        description={`${
+          allValid
+            ? "All requirements met - Course is ready!"
+            : `${invalidChecks.length} validation issue${
+                invalidChecks.length !== 1 ? "s" : ""
+              } found - Please fix before updating`
         }`}
         icon={Award}
         className="mb-6"
@@ -237,15 +272,21 @@ const Screen8 = () => {
             <div className="text-sm text-gray-600">Completed</div>
           </div>
         </div>
-        
+
         {/* Progress Bar */}
         <div className="mb-6">
           <div className="w-full bg-gray-200 rounded-full h-3">
-            <div 
+            <div
               className={`h-3 rounded-full transition-all duration-500 ${
-                allValid ? 'bg-gradient-to-r from-orange-500 to-orange-600' : 'bg-gradient-to-r from-orange-500 to-orange-500'
+                allValid
+                  ? "bg-gradient-to-r from-orange-500 to-orange-600"
+                  : "bg-gradient-to-r from-orange-500 to-orange-500"
               }`}
-              style={{ width: `${(validChecks.length / validationChecks.length) * 100}%` }}
+              style={{
+                width: `${
+                  (validChecks.length / validationChecks.length) * 100
+                }%`,
+              }}
             ></div>
           </div>
         </div>
@@ -265,12 +306,26 @@ const Screen8 = () => {
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 ${getColorClasses(check.color, check.isValid)} rounded-lg flex items-center justify-center`}>
-                      <IconComponent className={`w-5 h-5 ${getIconColor(check.color, check.isValid)}`} />
+                    <div
+                      className={`w-10 h-10 ${getColorClasses(
+                        check.color,
+                        check.isValid
+                      )} rounded-lg flex items-center justify-center`}
+                    >
+                      <IconComponent
+                        className={`w-5 h-5 ${getIconColor(
+                          check.color,
+                          check.isValid
+                        )}`}
+                      />
                     </div>
                     <div>
-                      <span className="font-semibold text-gray-800">{check.label}</span>
-                      <div className="text-sm text-gray-600">{check.details}</div>
+                      <span className="font-semibold text-gray-800">
+                        {check.label}
+                      </span>
+                      <div className="text-sm text-gray-600">
+                        {check.details}
+                      </div>
                     </div>
                   </div>
                   {check.isValid ? (
@@ -291,12 +346,10 @@ const Screen8 = () => {
                 <AlertCircle className="w-6 h-6 text-yellow-600" />
               </div>
               <div>
-                <span className="font-semibold text-lg">
-                  Action Required
-                </span>
+                <span className="font-semibold text-lg">Action Required</span>
                 <div className="text-sm mt-1">
-                  Please complete all required fields above before updating your course. 
-                  Each section marked with a red icon needs attention.
+                  Please complete all required fields above before updating your
+                  course. Each section marked with a red icon needs attention.
                 </div>
               </div>
             </div>
@@ -321,16 +374,18 @@ const Screen8 = () => {
               <p className="text-gray-600 text-sm leading-relaxed mb-4">
                 {state.course.description || "No description provided"}
               </p>
-              
+
               <div className="space-y-3">
                 <div className="flex items-center gap-3 text-sm">
                   <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
                     <Tag className="w-4 h-4 text-orange-600" />
                   </div>
                   <span className="text-gray-700 font-medium">Category:</span>
-                  <span className="text-gray-800">{state.course.category || "Not set"}</span>
+                  <span className="text-gray-800">
+                    {state.course.category || "Not set"}
+                  </span>
                 </div>
-                
+
                 <div className="flex items-center gap-3 text-sm">
                   <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
                     <TrendingUp className="w-4 h-4 text-orange-600" />
@@ -338,10 +393,14 @@ const Screen8 = () => {
                   <span className="text-gray-700 font-medium">Pricing:</span>
                   <span className="text-gray-800">
                     {(() => {
-                      const essentialPrice = state.course.plans?.essential?.price;
+                      const essentialPrice =
+                        state.course.plans?.essential?.price;
                       const elitePrice = state.course.plans?.elite?.price;
-                      
-                      if (essentialPrice !== undefined && elitePrice !== undefined) {
+
+                      if (
+                        essentialPrice !== undefined &&
+                        elitePrice !== undefined
+                      ) {
                         return `Essential: $${essentialPrice} | Elite: $${elitePrice}`;
                       } else if (essentialPrice !== undefined) {
                         return `Essential: $${essentialPrice}`;
@@ -359,11 +418,13 @@ const Screen8 = () => {
                     <Target className="w-4 h-4 text-orange-600" />
                   </div>
                   <span className="text-gray-700 font-medium">Audience:</span>
-                  <span className="text-gray-800">{
-                    state.course.audience === "college-students" ? "College Students" :
-                    state.course.audience === "professionals" ? "Professionals" :
-                    "Not set"
-                  }</span>
+                  <span className="text-gray-800">
+                    {state.course.audience === "college-students"
+                      ? "College Students"
+                      : state.course.audience === "professionals"
+                      ? "Professionals"
+                      : "Not set"}
+                  </span>
                 </div>
 
                 <div className="flex items-center gap-3 text-sm">
@@ -371,17 +432,23 @@ const Screen8 = () => {
                     <Clock className="w-4 h-4 text-orange-600" />
                   </div>
                   <span className="text-gray-700 font-medium">Duration:</span>
-                  <span className="text-gray-800">{state.course.duration || "Not set"}</span>
+                  <span className="text-gray-800">
+                    {state.course.duration || "Not set"}
+                  </span>
                 </div>
               </div>
             </div>
 
             {state.course.thumbnail && (
               <div className="bg-white border border-gray-200 rounded-xl p-4">
-                <h4 className="font-semibold text-gray-800 mb-3">Course Thumbnail</h4>
-                <img
+                <h4 className="font-semibold text-gray-800 mb-3">
+                  Course Thumbnail
+                </h4>
+                <Image
                   src={state.course.thumbnail}
                   alt="Course thumbnail"
+                  width={400}
+                  height={192}
                   className="w-full h-48 object-cover rounded-lg border border-gray-200"
                 />
               </div>
@@ -400,30 +467,46 @@ const Screen8 = () => {
                 <div className="bg-white rounded-lg p-3 border border-orange-200">
                   <div className="flex items-center gap-2 mb-1">
                     <BookOpen className="w-4 h-4 text-orange-500" />
-                    <span className="text-sm font-medium text-gray-600">Modules</span>
+                    <span className="text-sm font-medium text-gray-600">
+                      Modules
+                    </span>
                   </div>
-                  <div className="text-2xl font-bold text-orange-600">{courseStats.moduleCount}</div>
+                  <div className="text-2xl font-bold text-orange-600">
+                    {courseStats.moduleCount}
+                  </div>
                 </div>
                 <div className="bg-white rounded-lg p-3 border border-blue-200">
                   <div className="flex items-center gap-2 mb-1">
                     <Tag className="w-4 h-4 text-orange-500" />
-                    <span className="text-sm font-medium text-gray-600">Skills</span>
+                    <span className="text-sm font-medium text-gray-600">
+                      Skills
+                    </span>
                   </div>
-                  <div className="text-2xl font-bold text-orange-600">{courseStats.skillsCount}</div>
+                  <div className="text-2xl font-bold text-orange-600">
+                    {courseStats.skillsCount}
+                  </div>
                 </div>
                 <div className="bg-white rounded-lg p-3 border border-orange-200">
                   <div className="flex items-center gap-2 mb-1">
                     <TrendingUp className="w-4 h-4 text-orange-500" />
-                    <span className="text-sm font-medium text-gray-600">Career Paths</span>
+                    <span className="text-sm font-medium text-gray-600">
+                      Career Paths
+                    </span>
                   </div>
-                  <div className="text-2xl font-bold text-orange-600">{courseStats.careerPathsCount}</div>
+                  <div className="text-2xl font-bold text-orange-600">
+                    {courseStats.careerPathsCount}
+                  </div>
                 </div>
                 <div className="bg-white rounded-lg p-3 border border-blue-200">
                   <div className="flex items-center gap-2 mb-1">
                     <Globe className="w-4 h-4 text-orange-500" />
-                    <span className="text-sm font-medium text-gray-600">Language</span>
+                    <span className="text-sm font-medium text-gray-600">
+                      Language
+                    </span>
                   </div>
-                  <div className="text-lg font-bold text-orange-600">{state.course.language || "Not set"}</div>
+                  <div className="text-lg font-bold text-orange-600">
+                    {state.course.language || "Not set"}
+                  </div>
                 </div>
               </div>
             </Container>
@@ -437,15 +520,21 @@ const Screen8 = () => {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-600">FAQs</span>
-                  <span className="font-semibold text-gray-800">{courseStats.faqsCount}</span>
+                  <span className="font-semibold text-gray-800">
+                    {courseStats.faqsCount}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-600">Testimonials</span>
-                  <span className="font-semibold text-gray-800">{courseStats.testimonialsCount}</span>
+                  <span className="font-semibold text-gray-800">
+                    {courseStats.testimonialsCount}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-600">Instructors</span>
-                  <span className="font-semibold text-gray-800">{state.course.instructor?.length || 0}</span>
+                  <span className="font-semibold text-gray-800">
+                    {state.course.instructor?.length || 0}
+                  </span>
                 </div>
               </div>
             </Container>

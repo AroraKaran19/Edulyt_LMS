@@ -61,10 +61,10 @@ const LoginPage = () => {
       <>
         <div className="header flex flex-col gap-2 mb-2">
           <h1 className="text-3xl lg:text-4xl font-regular font-coolvetica text-center lg:text-start text-text-primary">
-            Sign up for Free at Edulyt!
+            Sign up for Free at Airkrit!
           </h1>
           <p className="text-base font-regular text-center lg:text-start text-text-primary">
-            Welcome back! Enter your details to continue using Edulyt
+            Welcome back! Enter your details to continue using Airkrit
           </p>
         </div>
         <div className="form w-full max-w-lg flex flex-col gap-4 lg:max-w-full">
@@ -148,10 +148,10 @@ const LoginPage = () => {
     <>
       <div className="header flex flex-col gap-2 mb-2">
         <h1 className="text-3xl lg:text-4xl font-regular font-coolvetica text-center lg:text-start text-text-primary">
-          Sign up for Free at Edulyt!
+          Sign up for Free at Airkrit!
         </h1>
         <p className="text-base font-regular text-center lg:text-start text-text-primary">
-          Welcome back! Enter your details to continue using Edulyt
+          Welcome back! Enter your details to continue using Airkrit
         </p>
       </div>
       <form

@@ -7,8 +7,8 @@ export const generateMetadata = async ({
 }) => {
   const { orderId } = await params;
   return {
-    title: `Payment Status Order ID: ${orderId} | Edulyt`,
-    description: `Payment Status Order ID: ${orderId} | Edulyt`,
+    title: `Payment Status Order ID: ${orderId} | Airkrit`,
+    description: `Payment Status Order ID: ${orderId} | Airkrit`,
   };
 };
 

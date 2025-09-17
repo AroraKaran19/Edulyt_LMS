@@ -67,7 +67,7 @@ const TextArea = ({
         required={required}
         {...props}
         className={cn(
-          "w-full px-4 py-3.5 border border-gray-300 rounded-xl",
+          "w-full px-4 py-3.5 border border-gray-300 rounded-xl bg-white text-black",
           "focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500",
           "hover:border-orange-400 hover:shadow-sm",
           "transition-all duration-200 ease-in-out outline-none",

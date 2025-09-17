@@ -46,7 +46,7 @@ const OverviewSection = ({ course }: { course: Course }) => {
             <Star className="size-4 md:size-5 text-[#F7AD24]" fill="#F7AD24" />
             <span className="text-base md:text-2xl font-normal text-text-primary font-coolvetica tracking-wide">
               {/* TODO: Add rating */}
-              {course?.analytics?.averageRating || 0}
+              {course?.totalRatings}
             </span>
             <span className="text-sm md:text-base font-normal text-text-primary">
               (

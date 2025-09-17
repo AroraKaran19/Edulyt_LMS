@@ -2,9 +2,9 @@ import { Metadata } from 'next';
 import React from 'react'
 
 export const metadata: Metadata = {
-    title: 'Cancellation & Refund Policy | Edulyt',
-    description: 'Cancellation & Refund Policy | Edulyt',
-    keywords: ['Cancellation & Refund Policy', 'Edulyt'],
+    title: 'Cancellation & Refund Policy | Airkrit',
+    description: 'Cancellation & Refund Policy | Airkrit',
+    keywords: ['Cancellation & Refund Policy', 'Airkrit'],
     robots: 'index, follow',
     icons: {
         icon: '/favicon.ico',

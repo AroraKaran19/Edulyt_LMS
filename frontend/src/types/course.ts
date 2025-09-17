@@ -1,6 +1,17 @@
-import { Discount, User } from ".";
-import { CourseInstructor } from "./instructor";
-import { Review } from "./review";
+import { CourseInstructor, Discount, FAQ, Review, User } from ".";
+
+// ===================
+// Video & Note Types
+// ===================
+
+export interface Video {
+  sources: {
+    quality: "1080p" | "720p" | "480p" | "360p";
+    videoUrl: string;
+  }[];
+  thumbnailUrl?: string;
+  duration?: number; // in seconds
+}
 
 // ===================
 // Quiz Types
@@ -33,34 +44,32 @@ export interface ReadingMaterial {
   downloadUrl?: string;
 }
 
-// API Content interfaces (flattened structure for backend compatibility)
+// Base Content interface
 export interface BaseContent {
   _id?: string;
   title: string;
   description?: string;
   type: "video" | "quiz";
   readingMaterials?: ReadingMaterial[];
-  isCompleted?: boolean;
+  isCompleted: boolean;
   completedAt?: Date;
   isLocked?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 }
 
+// Video Content interface (extends BaseContent + Video fields)
 export interface VideoContent extends BaseContent {
   type: "video";
   sources: {
     quality: "1080p" | "720p" | "480p" | "360p";
     videoUrl: string;
-    videoSource?: "upload" | "url"; // Track whether video came from upload or URL
-    videoS3Key?: string; // S3 key for uploaded videos (for deletion)
   }[];
   thumbnailUrl?: string;
-  thumbnailSource?: "upload" | "url"; // Track whether thumbnail came from upload or URL
-  thumbnailS3Key?: string; // S3 key for uploaded thumbnails (for deletion)
-  duration?: number;
+  duration?: number; // in seconds
 }
 
+// Quiz Content interface (extends BaseContent + Quiz fields)
 export interface QuizContent extends BaseContent {
   type: "quiz";
   questions: QuizQuestion[];
@@ -68,7 +77,7 @@ export interface QuizContent extends BaseContent {
   maxAttempts?: number;
 }
 
-// Union type for API Content
+// Union type for Content (discriminated union)
 export type Content = VideoContent | QuizContent;
 
 // ===================
@@ -79,10 +88,8 @@ export interface CourseLesson {
   _id?: string;
   title: string;
   description?: string;
-  // For frontend: store full content objects instead of just IDs
-  contents: Content[];
-  // Keep the original for backend compatibility when needed
-  contentIds?: Content["_id"][];
+  contentIds: Content["_id"][];
+  contents?: Content[];
   isCompleted?: boolean;
   completedAt?: Date;
   isLocked?: boolean;
@@ -97,15 +104,12 @@ export interface CourseLesson {
 export interface CourseModule {
   _id?: string;
   title: string;
-  thumbnailUrl?: string;
-  thumbnailSource?: "upload" | "url"; // Track whether thumbnail came from upload or URL
-  thumbnailS3Key?: string; // S3 key for uploaded thumbnails (for deletion)
-  // For frontend: store full lesson objects instead of just IDs
-  lessons: CourseLesson[];
-  // Keep the original for backend compatibility when needed
-  lessonIds?: CourseLesson["_id"][];
+  thumbnailUrl: string; // Required in schema
+  lessonIds: CourseLesson["_id"][];
+  lessons?: CourseLesson[];
   description?: string;
-  isCompleted?: boolean;
+  isCompleted: boolean;
+  completedAt?: Date;
   isActive?: boolean;
   isLocked?: boolean; // if the module is locked, the user cannot access the lessons
   createdAt?: Date;
@@ -128,7 +132,6 @@ export interface Plan {
   features: PlanFeatures[];
   discount?: Discount;
   isPopular?: boolean;
-  billingPeriod?: "monthly" | "annually" | "lifetime";
   trialDays?: number;
   isActive?: boolean;
   createdAt?: Date;
@@ -136,17 +139,14 @@ export interface Plan {
 }
 
 // ===================
-// FAQ & Review Types
+// Review Types
 // ===================
 
-export interface FAQ {
-  question: string;
-  answer: string;
-}
-
-export interface Testimonial extends Omit<Review, "_id" | "profileImage" | "rating" | "comment"> {
+export interface Testimonial
+  extends Omit<Review, "profileImage" | "rating" | "comment" | "reviewableId" | "reviewableType"> {
   pastRole: string;
   pastCompany: string;
+  college: string;
   verified?: boolean;
   profileImage: string;
 }
@@ -156,24 +156,18 @@ export interface Testimonial extends Omit<Review, "_id" | "profileImage" | "rati
 // ===================
 
 export interface Course {
-  // Basic Information
   _id?: string;
   title: string;
   description: string;
-  shortDescription?: string;
+  shortDescription: string; // Required in schema
   category: string;
-  subcategory?: string;
   thumbnail: string;
-  thumbnailSource?: "upload" | "url"; // Track whether thumbnail came from upload or URL
-  thumbnailS3Key?: string; // S3 key for uploaded thumbnails (for deletion)
   previewVideoUrl?: string;
-  previewVideoSource?: "upload" | "url"; // Track whether preview video came from upload or URL
-  previewVideoS3Key?: string; // S3 key for uploaded preview videos (for deletion)
 
   isFeatured?: boolean;
   isCertified?: boolean;
 
-  // UI & Learning Info
+  // Course Content
   whatYouWillLearn: string;
   skills: string[];
   highlights: {
@@ -188,13 +182,12 @@ export interface Course {
 
   duration: string; // like: 3 months, 1 year, 2 years, etc. (will not be accurate)
 
-  // Content - For frontend: store full module objects instead of just IDs
-  modules: CourseModule[];
-  // Keep the original for backend compatibility when needed
-  moduleIds?: CourseModule["_id"][];
+  // Content
+  moduleIds: CourseModule["_id"][];
+  modules?: CourseModule[];
 
   // Instructor
-  instructor: CourseInstructor[]; // can be multiple instructors
+  instructor: CourseInstructor["_id"][]; // can be multiple instructors
 
   // Pricing Plans
   plans: {
@@ -205,16 +198,16 @@ export interface Course {
 
   // Reviews
   reviews: Review["_id"][];
-  testimonials?: Testimonial[];
+  testimonials: Testimonial[] | Testimonial["_id"][];
 
   // FAQs
-  faqs: FAQ[];
+  faqs: FAQ[] | FAQ["_id"][];
 
   // Administrative
   isActive: boolean;
   createdAt?: Date;
   updatedAt?: Date;
-  createdBy: User["_id"];
+  createdBy?: User["_id"];
   tags?: string[];
   audience: "college-students" | "professionals";
 
@@ -235,8 +228,8 @@ export interface Course {
   
   // Curriculum - optional PDF document URL
   curriculum?: string;
-  curriculumSource?: "upload" | "url"; // Track whether curriculum came from upload or URL
-  curriculumS3Key?: string; // S3 key for uploaded curriculum (for deletion)
+  curriculumSource?: "upload" | "url";
+  curriculumS3Key?: string;
 
   // Analytics
   analytics?: {

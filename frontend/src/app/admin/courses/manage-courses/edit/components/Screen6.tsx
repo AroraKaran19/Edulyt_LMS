@@ -430,7 +430,7 @@ const SEOQualityIndicator = ({
               </div>
               <div className="flex items-start gap-2">
                 <div className="w-1.5 h-1.5 bg-orange-500 rounded-full mt-2 flex-shrink-0"></div>
-                <span>Title will be formatted as &quot;Course Title | Edulyt&quot;</span>
+                <span>Title will be formatted as &quot;Course Title | Airkrit&quot;</span>
               </div>
               <div className="flex items-start gap-2">
                 <div className="w-1.5 h-1.5 bg-orange-500 rounded-full mt-2 flex-shrink-0"></div>
@@ -1194,14 +1194,14 @@ const Screen6 = () => {
         <input
           type="text"
           name="metaTitle"
-          placeholder="Enter course title (will be formatted as 'Title | Edulyt')"
+          placeholder="Enter course title (will be formatted as 'Title | Airkrit')"
           value={state.course.metaTitle || ""}
           onChange={(e) => actions.setCourseMetaTitle(e.target.value)}
           maxLength={60}
           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-colors text-sm"
         />
         <div className="mt-2 flex justify-between text-sm text-gray-500">
-          <span>Format: &quot;Course Title | Edulyt&quot; (max 60 characters)</span>
+          <span>Format: &quot;Course Title | Airkrit&quot; (max 60 characters)</span>
           <span
             className={
               (state.course.metaTitle?.length || 0) > 60

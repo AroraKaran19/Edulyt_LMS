@@ -268,7 +268,7 @@ export const useCourses = () => {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ courseIds: courses, isActive }),
+          body: JSON.stringify({ courses, isActive }),
         });
 
         const result = await response.json();

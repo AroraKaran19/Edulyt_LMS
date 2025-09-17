@@ -14,7 +14,7 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Edulyt India",
+  title: "Airkrit India",
   description: "Educational platform for learning and growth",
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_APP_URL || process.env.NODE_ENV === "production"
@@ -22,10 +22,10 @@ export const metadata: Metadata = {
       : "http://localhost:3000"
   ),
   openGraph: {
-    title: "Edulyt India",
+    title: "Airkrit India",
     description: "Educational platform for learning and growth",
     url: "https://www.airkrit.com/",
-    siteName: "Edulyt India",
+    siteName: "Airkrit India",
     type: "website",
     images: [
       {
@@ -37,7 +37,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Edulyt India",
+    title: "Airkrit India",
     description: "Educational platform for learning and growth",
     images: [
       {

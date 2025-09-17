@@ -4,15 +4,12 @@ import dotenv from "dotenv";
 import favicon from "serve-favicon";
 import path from "path";
 import courseRoutes from "./routes/course.routes";
-import courseStepRoutes from "./routes/courseStep.routes";
 import uploadRoutes from "./routes/upload.routes";
 import authRoutes from "./routes/auth.routes";
 import paymentRoutes from "./routes/payment.routes";
-import reviewRoutes from "./routes/review.routes";
 import faqRoutes from "./routes/faq.routes";
+import testimonialRoutes from "./routes/testimonial.routes";
 import categoryRoutes from "./routes/category.routes";
-import moduleRoutes from "./routes/module.routes";
-import lessonRoutes from "./routes/lesson.routes";
 
 import { errorHandler, notFoundHandler } from "./middlewares/error.middleware";
 
@@ -64,25 +61,22 @@ app.use(express.json({ limit: "100mb" })); // Parse JSON bodies
 app.use(express.urlencoded({ extended: true, limit: "100mb" })); // Parse URL-encoded bodies
 
 // Health check endpoint
-app.get("/health", (req, res) => {
+app.get("/", (req, res) => {
   res.json({
     status: "OK",
-    message: "Edulyt Backend Server is running",
+    message: "Airkrit Backend Server is running",
     timestamp: new Date().toISOString(),
   });
 });
 
 // Routes
 app.use("/api/courses", courseRoutes);
-app.use("/api/courses/step", courseStepRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/payment", paymentRoutes);
-app.use("/api/reviews", reviewRoutes);
 app.use("/api/faqs", faqRoutes);
+app.use("/api/testimonials", testimonialRoutes);
 app.use("/api/categories", categoryRoutes);
-app.use("/api/modules", moduleRoutes);
-app.use("/api/lessons", lessonRoutes);
 
 // Error handling middleware (must be after all routes)
 app.use(notFoundHandler); // Handle 404 errors

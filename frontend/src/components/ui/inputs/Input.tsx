@@ -70,13 +70,13 @@ const Input = ({
         max={max}
         {...props}
         className={cn(
-          "w-full px-4 py-3.5 border border-gray-300 rounded-xl",
+          "w-full px-4 py-3.5 border border-gray-300 rounded-xl bg-white text-black",
           "focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500",
           "hover:border-orange-400 hover:shadow-sm",
           "transition-all duration-200 ease-in-out outline-none",
           "disabled:opacity-50 disabled:cursor-not-allowed",
           "shadow-sm hover:shadow-md",
-          variant === "small" && "text-xs py-2 px-3",
+          variant === "small" && "text-xs py-2 px-3"
         )}
         required={required}
         onChange={handleChange}

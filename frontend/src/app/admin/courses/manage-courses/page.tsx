@@ -190,31 +190,10 @@ const ManageCoursesPage = () => {
               : course
           )
         );
-        
-        // Show success toast
-        toast.success(
-          `Course ${newStatus ? 'activated' : 'deactivated'} successfully`,
-          {
-            position: "top-right",
-            autoClose: 3000,
-          }
-        );
       } else {
-        // Show error toast with specific message
-        const errorMsg = result.error || result.message || "Failed to update course status";
-        toast.error(errorMsg, {
-          position: "top-right",
-          autoClose: 5000,
-        });
-        console.error("Failed to update course status:", result);
+        console.error("Failed to update course status:", result.error);
       }
     } catch (error) {
-      // Show generic error toast
-      const errorMsg = error instanceof Error ? error.message : "An unexpected error occurred";
-      toast.error(`Error updating course status: ${errorMsg}`, {
-        position: "top-right",
-        autoClose: 5000,
-      });
       console.error("Error updating course status:", error);
     } finally {
       setLoadingStates((prev) => ({ ...prev, [courseId]: false }));
@@ -519,11 +498,11 @@ const ManageCoursesPage = () => {
                   <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
                     <span className="flex items-center gap-1">
                       <Users className="w-4 h-4" />
-                      {(course.analytics?.totalEnrollments || 0).toLocaleString()}
+                      {course.enrolledCount.toLocaleString()}
                     </span>
                     <span className="flex items-center gap-1">
                       <Star className="w-4 h-4" />
-                      {course.analytics?.averageRating || 0}
+                      {course.totalRatings || 0}
                     </span>
                     <span className="font-semibold text-orange-600">
                       {formatPrice(course)}
@@ -656,7 +635,7 @@ const ManageCoursesPage = () => {
                         {course.category}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {(course.analytics?.totalEnrollments || 0).toLocaleString()}
+                        {course.enrolledCount.toLocaleString()}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
                         {formatPrice(course)}

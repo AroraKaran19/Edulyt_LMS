@@ -1,126 +1,103 @@
-import {
-  getAllFAQs,
-  getFAQById,
-  createFAQ,
-  updateFAQ,
-  deleteFAQ,
-  searchFAQs,
-  bulkCreateFAQs,
-  getFAQStats,
-} from "../controllers/faq.controller";
 import { Router } from "express";
+import {
+  getAllFAQsController,
+  getFAQByIdController,
+  createFAQController,
+  updateFAQController,
+  deleteFAQController,
+  getFAQsByIdsController
+} from "../controllers/faq.controller";
+// import { verifyAdmin } from "../middlewares/admin.middleware";
 
 const router = Router();
 
 /**
  * @route   GET /api/faqs
- * @desc    Get all FAQs with pagination
+ * @desc    Get all FAQs with pagination and search
  * @access  Public
  * @params
  *   - page: Page number (default: 1)
  *   - limit: Items per page (default: 10, max: 100)
- *   - search: Search term for question/answer
+ *   - search: Search term for question and answer (optional)
  * @example
- *   GET /api/faqs?page=1&limit=10&search=payment
+ *   GET /api/faqs?page=1&limit=10&search=access
  */
-router.get("/", getAllFAQs);
+router.get("/", getAllFAQsController);
 
 /**
- * @route   GET /api/faqs/search
- * @desc    Search FAQs
+ * @route   GET /api/faqs/:id
+ * @desc    Get a FAQ by ID
  * @access  Public
  * @params
- *   - q: Search term (required)
- *   - limit: Maximum results (default: 10)
+ *   - id: FAQ ID
  * @example
- *   GET /api/faqs/search?q=payment&limit=5
+ *   GET /api/faqs/60f7b3b3b3b3b3b3b3b3b3b3
  */
-router.get("/search", searchFAQs);
-
-/**
- * @route   GET /api/faqs/stats
- * @desc    Get FAQ statistics
- * @access  Public
- * @example
- *   GET /api/faqs/stats
- */
-router.get("/stats", getFAQStats);
-
-/**
- * @route   GET /api/faqs/:faqId
- * @desc    Get FAQ by ID
- * @access  Public
- * @params
- *   - faqId: FAQ ID
- * @example
- *   GET /api/faqs/64a1b2c3d4e5f6789012345
- */
-router.get("/:faqId", getFAQById);
+router.get("/:id", getFAQByIdController);
 
 /**
  * @route   POST /api/faqs
  * @desc    Create a new FAQ
  * @access  Admin
  * @body
- *   - question: FAQ question (required, min 5 chars)
- *   - answer: FAQ answer (required, min 10 chars)
+ *   - question: FAQ question (required)
+ *   - answer: FAQ answer (required)
  * @example
  *   POST /api/faqs
- *   Body: {
- *     "question": "How do I enroll in a course?",
- *     "answer": "To enroll in a course, click the 'Enroll Now' button on the course page and follow the payment process."
+ *   {
+ *     "question": "How long do I have access to the course?",
+ *     "answer": "You have lifetime access to the course content."
  *   }
  */
-router.post("/", createFAQ);
+router.post("/", createFAQController);
+// For production, uncomment the line below to require admin authentication:
+// router.post("/", verifyAdmin, createFAQController);
 
 /**
- * @route   POST /api/faqs/bulk
- * @desc    Bulk create FAQs
- * @access  Admin
- * @body
- *   - faqs: Array of FAQ objects
- * @example
- *   POST /api/faqs/bulk
- *   Body: {
- *     "faqs": [
- *       {
- *         "question": "Question 1",
- *         "answer": "Answer 1"
- *       },
- *       {
- *         "question": "Question 2", 
- *         "answer": "Answer 2"
- *       }
- *     ]
- *   }
- */
-router.post("/bulk", bulkCreateFAQs);
-
-/**
- * @route   PUT /api/faqs/:faqId
- * @desc    Update FAQ
+ * @route   PUT /api/faqs/:id
+ * @desc    Update an existing FAQ
  * @access  Admin
  * @params
- *   - faqId: FAQ ID
- * @body    FAQ update data (question, answer)
+ *   - id: FAQ ID
+ * @body
+ *   - question: Updated FAQ question (optional)
+ *   - answer: Updated FAQ answer (optional)
  * @example
- *   PUT /api/faqs/64a1b2c3d4e5f6789012345
- *   Body: {
+ *   PUT /api/faqs/60f7b3b3b3b3b3b3b3b3b3b3
+ *   {
  *     "question": "Updated question",
  *     "answer": "Updated answer"
  *   }
  */
-router.put("/:faqId", updateFAQ);
+router.put("/:id", updateFAQController);
+// For production, uncomment the line below to require admin authentication:
+// router.put("/:id", verifyAdmin, updateFAQController);
 
 /**
- * @route   DELETE /api/faqs/:faqId
- * @desc    Delete FAQ
+ * @route   DELETE /api/faqs/:id
+ * @desc    Delete an FAQ
  * @access  Admin
  * @params
- *   - faqId: FAQ ID
+ *   - id: FAQ ID
  * @example
- *   DELETE /api/faqs/64a1b2c3d4e5f6789012345
+ *   DELETE /api/faqs/60f7b3b3b3b3b3b3b3b3b3b3
  */
-router.delete("/:faqId", deleteFAQ);
+router.delete("/:id", deleteFAQController);
+// For production, uncomment the line below to require admin authentication:
+// router.delete("/:id", verifyAdmin, deleteFAQController);
+
+/**
+ * @route   POST /api/faqs/by-ids
+ * @desc    Get FAQs by array of IDs
+ * @access  Public
+ * @body
+ *   - ids: Array of FAQ IDs
+ * @example
+ *   POST /api/faqs/by-ids
+ *   {
+ *     "ids": ["60f7b3b3b3b3b3b3b3b3b3b3", "60f7b3b3b3b3b3b3b3b3b3b4"]
+ *   }
+ */
+router.post("/by-ids", getFAQsByIdsController);
 
 export default router;

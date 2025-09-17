@@ -40,28 +40,28 @@ export async function generateMetadata({
 
   if (!course) {
     return {
-      title: "Module Not Found | Edulyt",
+      title: "Module Not Found | Airkrit",
       description: "The module you are looking for does not exist.",
     };
   }
 
   return {
-    title: `Course: ${course.title} | Edulyt`,
+    title: `Course: ${course.title} | Airkrit`,
     description: course.metaDescription || `Learn ${course.title}`,
     keywords: [
       "course",
-      "edulyt",
+      "airkrit",
       "learn",
       "education",
       ...(course.keywords || []),
     ],
     openGraph: {
-      title: course.metaTitle || `${course.title} | Edulyt`,
+      title: course.metaTitle || `${course.title} | Airkrit`,
       description:
-        course.metaDescription || `Learn ${course.title} with Edulyt.`,
+        course.metaDescription || `Learn ${course.title} with Airkrit.`,
       url: `https://airkrit.com/courses/${courseId}/watch`,
       type: "website",
-      siteName: "Edulyt",
+      siteName: "Airkrit",
       images: [
         {
           url:

@@ -665,7 +665,7 @@ const UploadMediaContainer: React.FC<UploadMediaContainerProps> = ({
                 {isUploading ? "Uploading..." : "Deleting..."}
               </p>
             </div>
-          ) : (propMediaSource === "upload" || propMediaSource === "url") && mediaUrl ? (
+          ) : propMediaSource === "upload" && mediaUrl ? (
             <div className="flex flex-col items-center gap-3">
               {/* Preview for images */}
               {type === "image" && (

@@ -37,7 +37,7 @@ const SecurityPolicy = () => {
 								Introduction
 							</h2>
 							<p className="text-gray-700 leading-relaxed text-lg">
-								At Edulyt, operated by Airkrit India Pvt. Ltd., we take the security of your personal information very seriously.
+								At Airkrit, operated by Airkrit India Pvt. Ltd., we take the security of your personal information very seriously.
 								This Security Policy outlines the measures we have implemented to protect your data and ensure the integrity of our platform.
 							</p>
 						</FlexBox>
@@ -263,7 +263,7 @@ const SecurityPolicy = () => {
 									Your Security is Our Priority
 								</h3>
 								<p className="text-orange-700 text-lg">
-									Thank you for trusting Edulyt with your personal information.
+									Thank you for trusting Airkrit with your personal information.
 								</p>
 							</div>
 						</FlexBox>

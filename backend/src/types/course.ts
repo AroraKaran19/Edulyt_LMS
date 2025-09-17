@@ -51,7 +51,7 @@ export interface BaseContent {
   description?: string;
   type: "video" | "quiz";
   readingMaterials?: ReadingMaterial[];
-  isCompleted?: boolean;
+  isCompleted: boolean;
   completedAt?: Date;
   isLocked?: boolean;
   createdAt?: Date;
@@ -104,11 +104,12 @@ export interface CourseLesson {
 export interface CourseModule {
   _id?: string;
   title: string;
-  thumbnailUrl?: string;
+  thumbnailUrl: string; // Required in schema
   lessonIds: CourseLesson["_id"][];
   lessons?: CourseLesson[];
   description?: string;
-  isCompleted?: boolean;
+  isCompleted: boolean;
+  completedAt?: Date;
   isActive?: boolean;
   isLocked?: boolean; // if the module is locked, the user cannot access the lessons
   createdAt?: Date;
@@ -131,7 +132,6 @@ export interface Plan {
   features: PlanFeatures[];
   discount?: Discount;
   isPopular?: boolean;
-  billingPeriod?: "monthly" | "annually" | "lifetime";
   trialDays?: number;
   isActive?: boolean;
   createdAt?: Date;
@@ -143,9 +143,10 @@ export interface Plan {
 // ===================
 
 export interface Testimonial
-  extends Omit<Review, "_id" | "profileImage" | "rating" | "comment"> {
+  extends Omit<Review, "profileImage" | "rating" | "comment" | "reviewableId" | "reviewableType"> {
   pastRole: string;
   pastCompany: string;
+  college: string;
   verified?: boolean;
   profileImage: string;
 }
@@ -155,20 +156,18 @@ export interface Testimonial
 // ===================
 
 export interface Course {
-  // Basic Information
   _id?: string;
   title: string;
   description: string;
-  shortDescription?: string;
+  shortDescription: string; // Required in schema
   category: string;
-  subcategory?: string;
   thumbnail: string;
   previewVideoUrl?: string;
 
   isFeatured?: boolean;
   isCertified?: boolean;
 
-  // UI & Learning Info
+  // Course Content
   whatYouWillLearn: string;
   skills: string[];
   highlights: {
@@ -199,7 +198,7 @@ export interface Course {
 
   // Reviews
   reviews: Review["_id"][];
-  testimonials?: Testimonial[];
+  testimonials: Testimonial[];
 
   // FAQs
   faqs: FAQ[] | FAQ["_id"];

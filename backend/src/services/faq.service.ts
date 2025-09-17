@@ -1,298 +1,250 @@
 import { FAQModel } from "../models/faq.schema";
-import { FAQ } from "../types";
+import { FAQ } from "../types/faq";
 import { AppError } from "../middlewares/error.middleware";
-import mongoose from "mongoose";
 
 /**
- * Get all FAQs with pagination
- * @param page - Page number
- * @param limit - Items per page
- * @param search - Search term for question/answer
- * @returns Promise<{faqs: FAQ[], total: number, page: number, totalPages: number}>
+ * Get all FAQs with pagination and search
+ * @param page - Page number (default: 1)
+ * @param limit - Items per page (default: 10)
+ * @param search - Search term for question and answer
+ * @returns Object with FAQs array and pagination info
  */
 export const getAllFAQs = async (
   page: number = 1,
   limit: number = 10,
-  search?: string
-): Promise<{
-  faqs: FAQ[];
-  total: number;
-  page: number;
-  totalPages: number;
-}> => {
+  search: string = ""
+) => {
   try {
-    // Build query object
-    const query: any = {};
+    // Validate pagination parameters
+    const validatedPage = Math.max(1, page);
+    const validatedLimit = Math.min(Math.max(1, limit), 100); // Max 100 items per page
+    const skip = (validatedPage - 1) * validatedLimit;
 
-    // Add search filter if provided
-    if (search) {
-      query.$or = [
-        { question: { $regex: search, $options: "i" } },
-        { answer: { $regex: search, $options: "i" } },
-      ];
+    // Build search query
+    let searchQuery = {};
+    if (search && search.trim()) {
+      const searchRegex = new RegExp(search.trim(), "i");
+      searchQuery = {
+        $or: [
+          { question: { $regex: searchRegex } },
+          { answer: { $regex: searchRegex } }
+        ]
+      };
     }
 
-    // Calculate skip value for pagination
-    const skip = (page - 1) * limit;
-
-    // Get total count for pagination
-    const total = await FAQModel.countDocuments(query);
-
-    const faqs = await FAQModel.find(query)
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .lean();
-
-    // Calculate total pages
-    const totalPages = Math.ceil(total / limit);
+    // Execute queries in parallel
+    const [faqs, total] = await Promise.all([
+      FAQModel.find(searchQuery)
+        .sort({ createdAt: -1 }) // Most recent first
+        .skip(skip)
+        .limit(validatedLimit)
+        .lean(),
+      FAQModel.countDocuments(searchQuery)
+    ]);
 
     return {
       faqs,
-      total,
-      page,
-      totalPages,
+      pagination: {
+        currentPage: validatedPage,
+        totalPages: Math.ceil(total / validatedLimit),
+        totalItems: total,
+        itemsPerPage: validatedLimit,
+        hasNext: validatedPage * validatedLimit < total,
+        hasPrev: validatedPage > 1
+      }
     };
   } catch (error) {
-    console.error("Database error in getAllFAQs:", error);
-    throw new AppError("Failed to fetch FAQs from database", 500);
+    console.error("Error in getAllFAQs:", error);
+    throw new AppError("Failed to fetch FAQs", 500);
   }
 };
 
 /**
  * Get FAQ by ID
- * @param faqId - FAQ ID
- * @returns Promise<FAQ | null>
+ * @param id - FAQ ID
+ * @returns FAQ object
  */
-export const getFAQById = async (faqId: string): Promise<FAQ | null> => {
+export const getFAQById = async (id: string): Promise<FAQ> => {
   try {
-    // Validate faqId format
-    if (!mongoose.Types.ObjectId.isValid(faqId)) {
-      throw new AppError("Invalid FAQ ID format", 400);
+    if (!id) {
+      throw new AppError("FAQ ID is required", 400);
     }
 
-    const faq = await FAQModel.findById(faqId).lean();
+    const faq = await FAQModel.findById(id).lean();
+
+    if (!faq) {
+      throw new AppError("FAQ not found", 404);
+    }
+
     return faq;
   } catch (error) {
-    console.error("Database error in getFAQById:", error);
-    throw new AppError("Failed to fetch FAQ from database", 500);
+    if (error instanceof AppError) {
+      throw error;
+    }
+    console.error("Error in getFAQById:", error);
+    throw new AppError("Failed to fetch FAQ", 500);
   }
 };
 
 /**
  * Create a new FAQ
- * @param faqData - FAQ data
- * @returns Promise<{success: boolean, faqId: string, message: string}>
+ * @param faqData - FAQ data (question and answer)
+ * @returns Created FAQ object
  */
-export const createFAQ = async (faqData: Partial<FAQ>) => {
+export const createFAQ = async (faqData: {
+  question: string;
+  answer: string;
+}): Promise<FAQ> => {
   try {
+    const { question, answer } = faqData;
+
     // Validate required fields
-    if (!faqData.question || !faqData.answer) {
-      throw new AppError("Missing required fields: question and answer", 400);
+    if (!question || !question.trim()) {
+      throw new AppError("Question is required", 400);
     }
 
-    // Validate field lengths
-    if (faqData.question.trim().length < 5) {
-      throw new AppError("Question must be at least 5 characters long", 400);
+    if (!answer || !answer.trim()) {
+      throw new AppError("Answer is required", 400);
     }
 
-    if (faqData.answer.trim().length < 10) {
-      throw new AppError("Answer must be at least 10 characters long", 400);
-    }
-
-    const newFAQ = new FAQModel({
-      question: faqData.question.trim(),
-      answer: faqData.answer.trim(),
+    // Check for duplicate questions (case-insensitive)
+    const existingFAQ = await FAQModel.findOne({
+      question: { $regex: new RegExp(`^${question.trim()}$`, "i") }
     });
 
-    await newFAQ.validate();
-    await newFAQ.save();
-
-    return {
-      success: true,
-      faqId: newFAQ._id,
-      message: "FAQ created successfully",
-    };
-  } catch (error) {
-    console.error("Database error in createFAQ:", error);
-    
-    if (error.name === 'ValidationError') {
-      const validationErrors = Object.keys(error.errors).map(field => 
-        `${field}: ${error.errors[field].message}`
-      ).join(', ');
-      throw new AppError(`Validation failed: ${validationErrors}`, 400);
+    if (existingFAQ) {
+      throw new AppError("FAQ with this question already exists", 409);
     }
-    
+
+    // Create new FAQ
+    const newFAQ = new FAQModel({
+      question: question.trim(),
+      answer: answer.trim()
+    });
+
+    const savedFAQ = await newFAQ.save();
+    return savedFAQ.toObject();
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
+    console.error("Error in createFAQ:", error);
     throw new AppError("Failed to create FAQ", 500);
   }
 };
 
 /**
- * Update FAQ
- * @param faqId - FAQ ID
- * @param updateData - FAQ update data
- * @returns Promise<{success: boolean, message: string}>
+ * Update an existing FAQ
+ * @param id - FAQ ID
+ * @param updateData - Updated FAQ data
+ * @returns Updated FAQ object
  */
 export const updateFAQ = async (
-  faqId: string,
-  updateData: Partial<FAQ>
-): Promise<{success: boolean, message: string}> => {
+  id: string,
+  updateData: {
+    question?: string;
+    answer?: string;
+  }
+): Promise<FAQ> => {
   try {
-    // Validate faqId format
-    if (!mongoose.Types.ObjectId.isValid(faqId)) {
-      throw new AppError("Invalid FAQ ID format", 400);
+    if (!id) {
+      throw new AppError("FAQ ID is required", 400);
     }
 
-    // Remove fields that shouldn't be updated
-    const { _id, createdAt, ...allowedUpdateData } = updateData;
+    const { question, answer } = updateData;
 
-    if (Object.keys(allowedUpdateData).length === 0) {
-      throw new AppError("No valid fields provided for update", 400);
+    // Validate at least one field is provided
+    if (!question && !answer) {
+      throw new AppError("At least one field (question or answer) is required", 400);
     }
 
-    // Validate field lengths if provided
-    if (allowedUpdateData.question && allowedUpdateData.question.trim().length < 5) {
-      throw new AppError("Question must be at least 5 characters long", 400);
+    // Build update object
+    const updateFields: any = {};
+    if (question && question.trim()) {
+      updateFields.question = question.trim();
+    }
+    if (answer && answer.trim()) {
+      updateFields.answer = answer.trim();
     }
 
-    if (allowedUpdateData.answer && allowedUpdateData.answer.trim().length < 10) {
-      throw new AppError("Answer must be at least 10 characters long", 400);
-    }
+    // Check for duplicate questions if updating question
+    if (updateFields.question) {
+      const existingFAQ = await FAQModel.findOne({
+        _id: { $ne: id },
+        question: { $regex: new RegExp(`^${updateFields.question}$`, "i") }
+      });
 
-    // Trim strings if provided
-    if (allowedUpdateData.question) {
-      allowedUpdateData.question = allowedUpdateData.question.trim();
-    }
-    if (allowedUpdateData.answer) {
-      allowedUpdateData.answer = allowedUpdateData.answer.trim();
-    }
-
-    const updateResult = await FAQModel.findByIdAndUpdate(
-      faqId,
-      {
-        ...allowedUpdateData,
-        updatedAt: new Date(),
-      },
-      {
-        new: true,
-        runValidators: true,
+      if (existingFAQ) {
+        throw new AppError("FAQ with this question already exists", 409);
       }
-    );
+    }
 
-    if (!updateResult) {
+    // Update FAQ
+    const updatedFAQ = await FAQModel.findByIdAndUpdate(
+      id,
+      updateFields,
+      { new: true, runValidators: true }
+    ).lean();
+
+    if (!updatedFAQ) {
       throw new AppError("FAQ not found", 404);
     }
 
-    return {
-      success: true,
-      message: "FAQ updated successfully",
-    };
+    return updatedFAQ;
   } catch (error) {
-    console.error("Database error in updateFAQ:", error);
-    
-    if (error.name === 'ValidationError') {
-      const validationErrors = Object.keys(error.errors).map(field => 
-        `${field}: ${error.errors[field].message}`
-      ).join(', ');
-      throw new AppError(`Validation failed: ${validationErrors}`, 400);
+    if (error instanceof AppError) {
+      throw error;
     }
-    
+    console.error("Error in updateFAQ:", error);
     throw new AppError("Failed to update FAQ", 500);
   }
 };
 
 /**
- * Delete FAQ
- * @param faqId - FAQ ID
- * @returns Promise<{success: boolean, message: string}>
+ * Delete an FAQ
+ * @param id - FAQ ID
+ * @returns Success message
  */
-export const deleteFAQ = async (faqId: string): Promise<{success: boolean, message: string}> => {
+export const deleteFAQ = async (id: string): Promise<{ message: string }> => {
   try {
-    // Validate faqId format
-    if (!mongoose.Types.ObjectId.isValid(faqId)) {
-      throw new AppError("Invalid FAQ ID format", 400);
+    if (!id) {
+      throw new AppError("FAQ ID is required", 400);
     }
 
-    const deleteResult = await FAQModel.findByIdAndDelete(faqId);
+    const deletedFAQ = await FAQModel.findByIdAndDelete(id);
 
-    if (!deleteResult) {
+    if (!deletedFAQ) {
       throw new AppError("FAQ not found", 404);
     }
 
-    return {
-      success: true,
-      message: "FAQ deleted successfully",
-    };
+    return { message: "FAQ deleted successfully" };
   } catch (error) {
-    console.error("Database error in deleteFAQ:", error);
+    if (error instanceof AppError) {
+      throw error;
+    }
+    console.error("Error in deleteFAQ:", error);
     throw new AppError("Failed to delete FAQ", 500);
   }
 };
 
 /**
- * Search FAQs
- * @param searchTerm - Search term
- * @param limit - Maximum results to return
- * @returns Promise<FAQ[]>
+ * Get FAQs by IDs (for course FAQ selection)
+ * @param ids - Array of FAQ IDs
+ * @returns Array of FAQ objects
  */
-export const searchFAQs = async (
-  searchTerm: string,
-  limit: number = 10
-): Promise<FAQ[]> => {
+export const getFAQsByIds = async (ids: string[]): Promise<FAQ[]> => {
   try {
-    if (!searchTerm || searchTerm.trim().length < 2) {
-      throw new AppError("Search term must be at least 2 characters long", 400);
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return [];
     }
 
     const faqs = await FAQModel.find({
-      $or: [
-        { question: { $regex: searchTerm.trim(), $options: "i" } },
-        { answer: { $regex: searchTerm.trim(), $options: "i" } },
-      ]
-    })
-    .limit(limit)
-    .sort({ createdAt: -1 })
-    .lean();
+      _id: { $in: ids }
+    }).lean();
 
     return faqs;
   } catch (error) {
-    console.error("Database error in searchFAQs:", error);
-    throw new AppError("Failed to search FAQs", 500);
-  }
-};
-
-/**
- * Bulk create FAQs
- * @param faqsData - Array of FAQ data
- * @returns Promise<{success: boolean, createdCount: number, errors: string[]}>
- */
-export const bulkCreateFAQs = async (
-  faqsData: Partial<FAQ>[]
-): Promise<{success: boolean, createdCount: number, errors: string[]}> => {
-  try {
-    if (!Array.isArray(faqsData) || faqsData.length === 0) {
-      throw new AppError("FAQs array is required and cannot be empty", 400);
-    }
-
-    let createdCount = 0;
-    const errors: string[] = [];
-
-    for (let i = 0; i < faqsData.length; i++) {
-      try {
-        await createFAQ(faqsData[i]);
-        createdCount++;
-      } catch (error) {
-        errors.push(`FAQ ${i + 1}: ${error.message}`);
-      }
-    }
-
-    return {
-      success: true,
-      createdCount,
-      errors,
-    };
-  } catch (error) {
-    console.error("Database error in bulkCreateFAQs:", error);
-    throw new AppError("Failed to bulk create FAQs", 500);
+    console.error("Error in getFAQsByIds:", error);
+    throw new AppError("Failed to fetch FAQs by IDs", 500);
   }
 };

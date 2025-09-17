@@ -15,7 +15,7 @@ const DashboardBanner = () => {
         <h2 className="text-xl sm:text-2xl font-bold">
           {timeMessage}, {user?.name ? user.name.charAt(0).toUpperCase() + user.name.slice(1) : ""}
         </h2>
-        <p className="text-sm font-semibold">Welcome to Edulyt!</p>
+        <p className="text-sm font-semibold">Welcome to Airkrit!</p>
       </FlexBox>
       <FlexBox className="w-full items-center justify-center lg:justify-start gap-2 sm:gap-4 lg:gap-6 flex-wrap">
         <Card title="Courses" count={10} icon={<Image src="/CourseBannerIcon.svg" width={24} height={24} alt="courses" draggable={false} />} />

@@ -1,10 +1,10 @@
 import React from "react";
 
 export const metadata = {
-  title: "Sign In to Your Account | Edulyt",
+  title: "Sign In to Your Account | Airkrit",
   description:
-    "Sign in to your Edulyt account to get access to educational courses",
-  keywords: ["sign in", "edulyt", "education", "courses", "learning"],
+    "Sign in to your Airkrit account to get access to educational courses",
+  keywords: ["sign in", "airkrit", "education", "courses", "learning"],
 };
 
 const LoginLayout = ({ children }: { children: React.ReactNode }) => {

@@ -51,11 +51,7 @@ export const CourseReducerProvider = ({
           ...parsedDraft
         };
         courseReducer.actions.setCourse(mergedCourse);
-        console.log("📄 Restored course draft from localStorage with merged initial state", {
-          curriculum: !!mergedCourse.curriculum,
-          curriculumSource: mergedCourse.curriculumSource,
-          curriculumS3Key: !!mergedCourse.curriculumS3Key
-        });
+        console.log("Restored course draft from localStorage with merged initial state");
       } else {
         // Ensure we start with a complete initial state
         courseReducer.actions.setCourse(initialCourseState.course);
@@ -79,17 +75,12 @@ export const CourseReducerProvider = ({
       const hasData = 
         courseReducer.state.course.title ||
         courseReducer.state.course.description ||
-        courseReducer.state.course.curriculum ||
         (courseReducer.state.course.skills && courseReducer.state.course.skills.length > 0) ||
         (courseReducer.state.course.careerPaths && courseReducer.state.course.careerPaths.length > 0);
 
       if (hasData) {
         localStorage.setItem(COURSE_DRAFT_KEY, JSON.stringify(courseReducer.state.course));
-        console.log("📄 Saved course draft to localStorage", {
-          curriculum: !!courseReducer.state.course.curriculum,
-          curriculumSource: courseReducer.state.course.curriculumSource,
-          curriculumS3Key: !!courseReducer.state.course.curriculumS3Key
-        });
+        console.log("Saved course draft to localStorage");
       }
     } catch (error) {
       console.error("Failed to save course draft to localStorage:", error);

@@ -1,13 +1,11 @@
 import { Request, Response } from "express";
 import {
-  getAllCategories as getAllCategoriesService,
-  getCategoryById as getCategoryByIdService,
-  getCategoryBySlug as getCategoryBySlugService,
-  createCategory as createCategoryService,
-  updateCategory as updateCategoryService,
-  deleteCategory as deleteCategoryService,
-  toggleCategoryStatus as toggleCategoryStatusService,
-  searchCategories as searchCategoriesService,
+  getAllCategories,
+  getActiveCategories,
+  createCategory,
+  updateCategory,
+  deleteCategory,
+  getCategoryById,
 } from "../services/category.service";
 import {
   AppError,
@@ -16,101 +14,62 @@ import {
 } from "../middlewares/error.middleware";
 
 /**
- * Get all categories with pagination
+ * Get all categories with pagination and filtering
  */
-export const getAllCategories = asyncHandler(
+export const getAllCategoriesController = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
-    const { 
-      page = 1, 
-      limit = 10, 
-      search, 
-      activeOnly = 'true' 
+    const {
+      page = 1,
+      limit = 50,
+      search = "",
+      isActive,
     } = req.query;
 
-    const categories = await getAllCategoriesService(
+    const result = await getAllCategories(
       Number(page),
       Number(limit),
       search as string,
-      activeOnly === 'true'
+      isActive !== undefined ? isActive === "true" : undefined
     );
 
-    sendSuccessResponse(res, categories, "Categories retrieved successfully", 200);
+    sendSuccessResponse(res, result.data, result.message, 200);
   }
 );
 
 /**
- * Get category by ID
+ * Get active categories only (for dropdowns)
  */
-export const getCategoryById = asyncHandler(
+export const getActiveCategoriesController = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
-    const { categoryId } = req.params;
-
-    if (!categoryId) {
-      throw new AppError("Category ID is required", 400);
-    }
-
-    const category = await getCategoryByIdService(categoryId);
-
-    if (!category) {
-      throw new AppError("Category not found", 404);
-    }
-
-    sendSuccessResponse(res, { category }, "Category retrieved successfully", 200);
-  }
-);
-
-/**
- * Get category by slug
- */
-export const getCategoryBySlug = asyncHandler(
-  async (req: Request, res: Response): Promise<void> => {
-    const { slug } = req.params;
-
-    if (!slug) {
-      throw new AppError("Category slug is required", 400);
-    }
-
-    const category = await getCategoryBySlugService(slug);
-
-    if (!category) {
-      throw new AppError("Category not found", 404);
-    }
-
-    sendSuccessResponse(res, { category }, "Category retrieved successfully", 200);
+    const result = await getActiveCategories();
+    sendSuccessResponse(res, result.data, result.message, 200);
   }
 );
 
 /**
  * Create a new category
  */
-export const createCategory = asyncHandler(
+export const createCategoryController = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
-    const categoryData = req.body;
+    const { name, description } = req.body;
 
-    if (!categoryData) {
-      throw new AppError("Category data is required", 400);
+    if (!name || !name.trim()) {
+      throw new AppError("Category name is required", 400);
     }
 
-    console.log("📝 Creating category:", {
-      name: categoryData.name,
-      slug: categoryData.slug || 'auto-generated'
+    const result = await createCategory({
+      name: name.trim(),
+      description: description?.trim(),
     });
 
-    const result = await createCategoryService(categoryData);
-
-    sendSuccessResponse(
-      res,
-      { categoryId: result.categoryId },
-      result.message,
-      201
-    );
+    sendSuccessResponse(res, result.data, result.message, 201);
   }
 );
 
 /**
- * Update category
+ * Update a category
  */
-export const updateCategory = asyncHandler(
+export const updateCategoryController = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const { categoryId } = req.params;
     const updateData = req.body;
@@ -119,27 +78,21 @@ export const updateCategory = asyncHandler(
       throw new AppError("Category ID is required", 400);
     }
 
-    if (!updateData || Object.keys(updateData).length === 0) {
-      throw new AppError("Update data is required", 400);
-    }
+    // Clean up the update data
+    const cleanedData: any = {};
+    if (updateData.name) cleanedData.name = updateData.name.trim();
+    if (updateData.description !== undefined) cleanedData.description = updateData.description?.trim();
+    if (updateData.isActive !== undefined) cleanedData.isActive = updateData.isActive;
 
-    console.log("📝 Updating category:", categoryId);
-
-    const result = await updateCategoryService(categoryId, updateData);
-
-    sendSuccessResponse(
-      res,
-      { categoryId, updated: true },
-      result.message,
-      200
-    );
+    const result = await updateCategory(categoryId, cleanedData);
+    sendSuccessResponse(res, result.data, result.message, 200);
   }
 );
 
 /**
- * Delete category
+ * Delete a category
  */
-export const deleteCategory = asyncHandler(
+export const deleteCategoryController = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const { categoryId } = req.params;
 
@@ -147,23 +100,15 @@ export const deleteCategory = asyncHandler(
       throw new AppError("Category ID is required", 400);
     }
 
-    console.log("🗑️ Deleting category:", categoryId);
-
-    const result = await deleteCategoryService(categoryId);
-
-    sendSuccessResponse(
-      res,
-      { categoryId, deleted: true },
-      result.message,
-      200
-    );
+    const result = await deleteCategory(categoryId);
+    sendSuccessResponse(res, null, result.message, 200);
   }
 );
 
 /**
- * Toggle category status (active/inactive)
+ * Get category by ID
  */
-export const toggleCategoryStatus = asyncHandler(
+export const getCategoryByIdController = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const { categoryId } = req.params;
 
@@ -171,74 +116,7 @@ export const toggleCategoryStatus = asyncHandler(
       throw new AppError("Category ID is required", 400);
     }
 
-    console.log("🔄 Toggling category status:", categoryId);
-
-    const result = await toggleCategoryStatusService(categoryId);
-
-    sendSuccessResponse(
-      res,
-      { 
-        categoryId, 
-        isActive: result.isActive,
-        statusChanged: true 
-      },
-      result.message,
-      200
-    );
-  }
-);
-
-/**
- * Search categories
- */
-export const searchCategories = asyncHandler(
-  async (req: Request, res: Response): Promise<void> => {
-    const { 
-      q: searchTerm, 
-      activeOnly = 'true', 
-      limit = 10 
-    } = req.query;
-
-    if (!searchTerm) {
-      throw new AppError("Search term (q) is required", 400);
-    }
-
-    console.log("🔍 Searching categories for:", searchTerm);
-
-    const categories = await searchCategoriesService(
-      searchTerm as string,
-      activeOnly === 'true',
-      Number(limit)
-    );
-
-    sendSuccessResponse(
-      res,
-      { categories, total: categories.length },
-      "Categories search completed successfully",
-      200
-    );
-  }
-);
-
-/**
- * Get category statistics
- */
-export const getCategoryStats = asyncHandler(
-  async (req: Request, res: Response): Promise<void> => {
-    const [activeCategories, totalCategories] = await Promise.all([
-      getAllCategoriesService(1, 1, undefined, true),
-      getAllCategoriesService(1, 1, undefined, false)
-    ]);
-
-    sendSuccessResponse(
-      res,
-      {
-        totalCategories: totalCategories.total,
-        activeCategories: activeCategories.total,
-        inactiveCategories: totalCategories.total - activeCategories.total
-      },
-      "Category statistics retrieved successfully",
-      200
-    );
+    const result = await getCategoryById(categoryId);
+    sendSuccessResponse(res, result.data, result.message, 200);
   }
 );

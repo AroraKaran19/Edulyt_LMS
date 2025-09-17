@@ -109,9 +109,14 @@ const videoSchema = new mongoose.Schema<Video>(
 const contentSchema = new mongoose.Schema<Content>(
   {
     title: { type: String, required: true },
-    description: { type: String },
+    description: { 
+      type: String, 
+      maxlength: 500 // Reasonable limit for content description
+    },
     type: { type: String, required: true, enum: ["video", "quiz"] },
     readingMaterials: [readingMaterialSchema],
+    isCompleted: { type: Boolean, default: false, required: true },
+    completedAt: { type: Date },
     isLocked: { type: Boolean, default: false, required: true },
   },
   { timestamps: true, discriminatorKey: "type" }
@@ -124,10 +129,15 @@ const contentSchema = new mongoose.Schema<Content>(
 const courseLessonSchema = new mongoose.Schema<CourseLesson>(
   {
     title: { type: String, required: true },
-    description: { type: String },
+    description: { 
+      type: String, 
+      maxlength: 500 // Reasonable limit for lesson description
+    },
     contentIds: [
       { type: mongoose.Schema.Types.ObjectId, ref: "Content", required: true },
     ],
+    isCompleted: { type: Boolean, default: false, required: true },
+    completedAt: { type: Date },
     isLocked: { type: Boolean, default: false, required: true },
   },
   { timestamps: true }
@@ -155,7 +165,12 @@ const courseModuleSchema = new mongoose.Schema<CourseModule>(
         required: true,
       },
     ],
-    description: { type: String },
+    description: { 
+      type: String, 
+      maxlength: 500 // Reasonable limit for module description
+    },
+    isCompleted: { type: Boolean, default: false, required: true },
+    completedAt: { type: Date },
     isLocked: { type: Boolean, default: false, required: true },
     isActive: { type: Boolean, default: true, required: true },
   },
@@ -203,5 +218,8 @@ export const ContentModel = mongoose.model<Content>("Content", contentSchema);
 // Discriminators
 // ===================
 
-export const VideoContentModel = ContentModel.discriminator("video", videoSchema);
+export const VideoContentModel = ContentModel.discriminator(
+  "video",
+  videoSchema
+);
 export const QuizContentModel = ContentModel.discriminator("quiz", quizSchema);

@@ -1,13 +1,11 @@
 import React, { useState, useMemo } from "react";
 import { useCourseContext } from "../../../reducers/course/providers/CourseReducerProvider";
 import Container from "@/app/admin/components/ui/Container";
-import { sanitizeCourseForBackend } from "../../../reducers/course/utils/sanitization";
-import { draftUtils } from "../../create/utils/draftUtils";
-import { useRouter } from "next/navigation";
-import { useCourses } from "@/hooks/useCourses";
-import { validateSanitizedCourse } from "../../../reducers/course/utils/sanitization";
 import ScreenNavigation from "./shared/ScreenNavigation";
 import { useScreen } from "../contexts/ScreenContext";
+import { useCourses } from "@/hooks/useCourses";
+import { sanitizeCourseForBackend } from "../../../reducers/course/utils/sanitization";
+import { validateSanitizedCourse } from "../../../reducers/course/utils/sanitization";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import {
   CheckCircle,
@@ -25,16 +23,19 @@ import {
   Zap,
   Eye,
   CheckSquare,
+  ArrowLeft,
 } from "lucide-react";
 
-const Screen8 = () => {
+const Screen11 = () => {
   const { state } = useCourseContext();
   const { setActiveScreen } = useScreen();
-  const router = useRouter();
+  const { createCourseMetadata } = useCourses();
+  
+  const [isCreating, setIsCreating] = useState(false);
+  const [createError, setCreateError] = useState<string>("");
+  const [courseCreated, setCourseCreated] = useState(false);
+  const [createdCourseId, setCreatedCourseId] = useState<string>("");
 
-  const { createCourseChunked } = useCourses();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string>("");
 
   // Comprehensive validation
   const validationChecks = useMemo(() => {
@@ -70,14 +71,6 @@ const Screen8 = () => {
         details: state.course.thumbnail ? "Uploaded" : "Missing",
         icon: Eye,
         color: "blue",
-      },
-      {
-        id: "modules",
-        label: "Course Modules",
-        isValid: !!(state.course.modules && state.course.modules.length > 0),
-        details: `${state.course.modules?.length || 0} modules`,
-        icon: BookOpen,
-        color: "orange",
       },
       {
         id: "plans",
@@ -117,7 +110,6 @@ const Screen8 = () => {
   // Course statistics
   const courseStats = useMemo(() => {
     return {
-      moduleCount: state.course.modules?.length || 0,
       skillsCount: state.course.skills?.length || 0,
       careerPathsCount: state.course.careerPaths?.length || 0,
       faqsCount: state.course.faqs?.length || 0,
@@ -125,17 +117,17 @@ const Screen8 = () => {
     };
   }, [state.course]);
 
-  const handleSubmitCourse = async () => {
+  const handleCreateCourseMetadata = async () => {
     if (!allValid) {
-      setSubmitError("Please complete all required fields before creating the course.");
+      setCreateError("Please complete all required fields before creating the course.");
       return;
     }
 
-    setIsSubmitting(true);
-    setSubmitError("");
+    setIsCreating(true);
+    setCreateError("");
 
     try {
-      // Sanitize course data for backend
+      // Sanitize course data for backend (excluding modules)
       const sanitizedCourse = sanitizeCourseForBackend(state.course);
       
       // Validate sanitized data
@@ -143,26 +135,35 @@ const Screen8 = () => {
         throw new Error("Course data validation failed");
       }
 
-      console.log("🚀 Creating course with data:", sanitizedCourse);
+      console.log("🚀 Creating course metadata with data:", sanitizedCourse);
 
-      // Create course using chunked approach
-      const result = await createCourseChunked(sanitizedCourse);
+      // Extract modules for later creation and create metadata only
+      const { modules, ...courseMetadata } = sanitizedCourse;
 
-      if (result.success) {
-        // Clear draft data
-        draftUtils.clearAll();
+      // Create course metadata only
+      const result = await createCourseMetadata(courseMetadata);
+
+      if (result.success && result.data?.courseId) {
+        setCreatedCourseId(result.data.courseId);
+        setCourseCreated(true);
         
-        // Navigate to manage courses page
-        router.push("/admin/courses/manage-courses");
+        // Store course ID and modules in localStorage for module management
+        localStorage.setItem("current_course_id", result.data.courseId);
+        localStorage.setItem("course_modules_draft", JSON.stringify(modules || []));
       } else {
-        setSubmitError(result.error || "Failed to create course");
+        setCreateError(result.error || "Failed to create course metadata");
       }
     } catch (error) {
-      console.error("Error creating course:", error);
-      setSubmitError(error instanceof Error ? error.message : "Failed to create course");
+      console.error("Error creating course metadata:", error);
+      setCreateError(error instanceof Error ? error.message : "Failed to create course metadata");
     } finally {
-      setIsSubmitting(false);
+      setIsCreating(false);
     }
+  };
+
+  const handleProceedToModules = () => {
+    // Navigate to module management screen
+    setActiveScreen("screen12");
   };
 
   const getColorClasses = (color: string, isValid: boolean) => {
@@ -183,38 +184,46 @@ const Screen8 = () => {
 
   return (
     <Container
-      title="Review & Create Course"
-      description="Review all course information before creating. Make sure everything looks correct."
+      title="Review & Create Course Metadata"
+      description="Review all course information before creating the course metadata. Modules can be added later."
       className="rounded-b-none h-full w-full max-h-full overflow-y-auto flex flex-col"
       style={{ scrollbarWidth: "thin" }}
     >
-      {/* Success Banner */}
-      {allValid && (
-        <div className="bg-gradient-to-r from-orange-50 to-blue-50 border-2 border-orange-200 rounded-xl p-6 mb-6 shadow-lg">
+      {/* Success Banner - Course Created */}
+      {courseCreated && (
+        <div className="bg-gradient-to-r from-green-50 to-blue-50 border-2 border-green-200 rounded-xl p-6 mb-6 shadow-lg">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl flex items-center justify-center shadow-lg">
+            <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg">
               <CheckSquare className="w-7 h-7 text-white" />
             </div>
             <div className="flex-1">
-              <h3 className="text-xl font-bold text-orange-800 mb-1">
-                🎉 Course Ready for Creation!
+              <h3 className="text-xl font-bold text-green-800 mb-1">
+                🎉 Course Metadata Created Successfully!
               </h3>
-              <p className="text-orange-700">
-                All required fields are completed. Your course is ready to be created and published.
+              <p className="text-green-700 mb-3">
+                Your course has been created with ID: <span className="font-mono font-bold">{createdCourseId}</span>
+              </p>
+              <p className="text-green-600 text-sm">
+                You can now add modules to your course or proceed to manage it.
               </p>
             </div>
             <OrangeButton
-              onClick={handleSubmitCourse}
-              disabled={isSubmitting}
+              onClick={handleProceedToModules}
               className="flex items-center gap-2 shadow-lg px-6 py-3"
             >
-              {isSubmitting ? (
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-              ) : (
-                <Send className="w-5 h-5" />
-              )}
-              {isSubmitting ? "Creating..." : "Create Course"}
+              <BookOpen className="w-5 h-5" />
+              Add Modules
             </OrangeButton>
+          </div>
+        </div>
+      )}
+
+      {/* Error Message */}
+      {createError && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-5 h-5 text-red-600" />
+            <p className="text-red-700">{createError}</p>
           </div>
         </div>
       )}
@@ -397,13 +406,6 @@ const Screen8 = () => {
               className="mb-6"
             >
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-white rounded-lg p-3 border border-orange-200">
-                  <div className="flex items-center gap-2 mb-1">
-                    <BookOpen className="w-4 h-4 text-orange-500" />
-                    <span className="text-sm font-medium text-gray-600">Modules</span>
-                  </div>
-                  <div className="text-2xl font-bold text-orange-600">{courseStats.moduleCount}</div>
-                </div>
                 <div className="bg-white rounded-lg p-3 border border-blue-200">
                   <div className="flex items-center gap-2 mb-1">
                     <Tag className="w-4 h-4 text-orange-500" />
@@ -424,6 +426,13 @@ const Screen8 = () => {
                     <span className="text-sm font-medium text-gray-600">Language</span>
                   </div>
                   <div className="text-lg font-bold text-orange-600">{state.course.language || "Not set"}</div>
+                </div>
+                <div className="bg-white rounded-lg p-3 border border-orange-200">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Clock className="w-4 h-4 text-orange-500" />
+                    <span className="text-sm font-medium text-gray-600">Duration</span>
+                  </div>
+                  <div className="text-lg font-bold text-orange-600">{state.course.duration || "Not set"}</div>
                 </div>
               </div>
             </Container>
@@ -453,31 +462,44 @@ const Screen8 = () => {
         </div>
       </Container>
 
-      {/* Error Message */}
-      {submitError && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-          <div className="flex items-center gap-2">
-            <AlertCircle className="w-5 h-5 text-red-600" />
-            <p className="text-red-700">{submitError}</p>
-          </div>
-        </div>
-      )}
 
       {/* Navigation */}
-      <ScreenNavigation
-        currentStep={8}
-        totalSteps={8}
-        previousScreen="screen7_modules"
-        setActiveScreen={setActiveScreen}
-        nextButtonText="Create Course"
-        nextButtonIcon={<Send className="w-4 h-4" />}
-        onNext={handleSubmitCourse}
-        isNextDisabled={!allValid || isSubmitting}
-        isPreviousDisabled={isSubmitting}
-        isLoading={isSubmitting}
-      />
+      {!courseCreated ? (
+        <div className="flex-shrink-0 bg-white border-t border-gray-200 p-6">
+          <div className="flex justify-between items-center">
+            <button
+              onClick={() => setActiveScreen("screen9")}
+              className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back to SEO
+            </button>
+            
+            <OrangeButton
+              onClick={handleCreateCourseMetadata}
+              disabled={!allValid || isCreating}
+              className="flex items-center gap-2 px-6 py-3"
+            >
+              {isCreating ? (
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+              ) : (
+                <Send className="w-5 h-5" />
+              )}
+              {isCreating ? "Creating Course..." : "Create Course Metadata"}
+            </OrangeButton>
+          </div>
+        </div>
+      ) : (
+        <ScreenNavigation
+          currentStep={11}
+          previousScreen="screen9"
+          nextScreen="screen12"
+          setActiveScreen={setActiveScreen}
+          isNextDisabled={false}
+        />
+      )}
     </Container>
   );
 };
 
-export default Screen8;
+export default Screen11;

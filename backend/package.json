@@ -1,7 +1,7 @@
 {
-  "name": "edulyt-backend",
+  "name": "airkrit-backend",
   "version": "1.0.0",
-  "description": "Backend API for Edulyt platform",
+  "description": "Backend API for Airkrit platform",
   "main": "dist/server.js",
   "scripts": {
     "build": "tsc",
@@ -10,7 +10,7 @@
     "dev:watch": "nodemon --exec ts-node src/server.ts"
   },
   "keywords": [
-    "edulyt",
+    "airkrit",
     "backend",
     "api",
     "typescript",

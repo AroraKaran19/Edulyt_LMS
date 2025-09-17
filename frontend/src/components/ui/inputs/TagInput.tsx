@@ -19,6 +19,7 @@ interface TagInputProps {
   disabled?: boolean;
   maxTags?: number;
   duplicate?: boolean;
+  countLabel?: string; // Custom label for tag count
   [key: string]: any; // For other HTML attributes
 }
 
@@ -33,6 +34,7 @@ const TagInput = ({
   disabled = false,
   maxTags = 10,
   duplicate = false,
+  countLabel = "tags",
   ...props
 }: TagInputProps) => {
   const [inputValue, setInputValue] = useState("");
@@ -189,8 +191,8 @@ const TagInput = ({
           tags.length >= maxTags ? "text-orange-600" : "text-gray-500"
         )}>
           {tags.length >= maxTags 
-            ? `Maximum ${maxTags} tags allowed (${tags.length}/${maxTags})`
-            : `${tags.length}/${maxTags} tags`
+            ? `Maximum ${maxTags} ${countLabel} allowed (${tags.length}/${maxTags})`
+            : `${tags.length}/${maxTags} ${countLabel}`
           }
         </p>
       )}

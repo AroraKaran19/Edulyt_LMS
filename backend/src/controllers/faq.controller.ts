@@ -1,207 +1,150 @@
 import { Request, Response } from "express";
+import { asyncHandler, sendSuccessResponse } from "../middlewares/error.middleware";
 import {
-  getAllFAQs as getAllFAQsService,
-  getFAQById as getFAQByIdService,
-  createFAQ as createFAQService,
-  updateFAQ as updateFAQService,
-  deleteFAQ as deleteFAQService,
-  searchFAQs as searchFAQsService,
-  bulkCreateFAQs as bulkCreateFAQsService,
+  getAllFAQs,
+  getFAQById,
+  createFAQ,
+  updateFAQ,
+  deleteFAQ,
+  getFAQsByIds
 } from "../services/faq.service";
-import {
-  AppError,
-  asyncHandler,
-  sendSuccessResponse,
-} from "../middlewares/error.middleware";
 
 /**
- * Get all FAQs with pagination
+ * Get all FAQs with pagination and search
+ * @route GET /api/faqs
+ * @access Public
+ * @param req Request object
+ * @param res Response object
  */
-export const getAllFAQs = asyncHandler(
-  async (req: Request, res: Response): Promise<void> => {
-    const { page = 1, limit = 10, search } = req.query;
+export const getAllFAQsController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const {
+      page = 1,
+      limit = 10,
+      search = ""
+    } = req.query;
 
-    const faqs = await getAllFAQsService(
+    const result = await getAllFAQs(
       Number(page),
       Number(limit),
-      search as string
+      String(search)
     );
 
-    sendSuccessResponse(res, faqs, "FAQs retrieved successfully", 200);
+    sendSuccessResponse(
+      res,
+      result,
+      "FAQs fetched successfully"
+    );
   }
 );
 
 /**
  * Get FAQ by ID
+ * @route GET /api/faqs/:id
+ * @access Public
+ * @param req Request object
+ * @param res Response object
  */
-export const getFAQById = asyncHandler(
-  async (req: Request, res: Response): Promise<void> => {
-    const { faqId } = req.params;
+export const getFAQByIdController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const faq = await getFAQById(id);
 
-    if (!faqId) {
-      throw new AppError("FAQ ID is required", 400);
-    }
-
-    const faq = await getFAQByIdService(faqId);
-
-    if (!faq) {
-      throw new AppError("FAQ not found", 404);
-    }
-
-    sendSuccessResponse(res, { faq }, "FAQ retrieved successfully", 200);
+    sendSuccessResponse(
+      res,
+      faq,
+      "FAQ fetched successfully"
+    );
   }
 );
 
 /**
  * Create a new FAQ
+ * @route POST /api/faqs
+ * @access Admin
+ * @param req Request object
+ * @param res Response object
  */
-export const createFAQ = asyncHandler(
-  async (req: Request, res: Response): Promise<void> => {
-    const faqData = req.body;
+export const createFAQController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { question, answer } = req.body;
 
-    if (!faqData) {
-      throw new AppError("FAQ data is required", 400);
-    }
-
-    console.log("📝 Creating FAQ:", {
-      question: faqData.question?.substring(0, 50) + "...",
-      answerLength: faqData.answer?.length
+    const newFAQ = await createFAQ({
+      question,
+      answer
     });
 
-    const result = await createFAQService(faqData);
-
     sendSuccessResponse(
       res,
-      { faqId: result.faqId },
-      result.message,
+      newFAQ,
+      "FAQ created successfully",
       201
     );
   }
 );
 
 /**
- * Update FAQ
+ * Update an existing FAQ
+ * @route PUT /api/faqs/:id
+ * @access Admin
+ * @param req Request object
+ * @param res Response object
  */
-export const updateFAQ = asyncHandler(
-  async (req: Request, res: Response): Promise<void> => {
-    const { faqId } = req.params;
-    const updateData = req.body;
+export const updateFAQController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const { question, answer } = req.body;
 
-    if (!faqId) {
-      throw new AppError("FAQ ID is required", 400);
-    }
-
-    if (!updateData || Object.keys(updateData).length === 0) {
-      throw new AppError("Update data is required", 400);
-    }
-
-    console.log("📝 Updating FAQ:", faqId);
-
-    const result = await updateFAQService(faqId, updateData);
+    const updatedFAQ = await updateFAQ(id, {
+      question,
+      answer
+    });
 
     sendSuccessResponse(
       res,
-      { faqId, updated: true },
-      result.message,
-      200
+      updatedFAQ,
+      "FAQ updated successfully"
     );
   }
 );
 
 /**
- * Delete FAQ
+ * Delete an FAQ
+ * @route DELETE /api/faqs/:id
+ * @access Admin
+ * @param req Request object
+ * @param res Response object
  */
-export const deleteFAQ = asyncHandler(
-  async (req: Request, res: Response): Promise<void> => {
-    const { faqId } = req.params;
-
-    if (!faqId) {
-      throw new AppError("FAQ ID is required", 400);
-    }
-
-    console.log("🗑️ Deleting FAQ:", faqId);
-
-    const result = await deleteFAQService(faqId);
+export const deleteFAQController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const result = await deleteFAQ(id);
 
     sendSuccessResponse(
       res,
-      { faqId, deleted: true },
-      result.message,
-      200
+      result,
+      "FAQ deleted successfully"
     );
   }
 );
 
 /**
- * Search FAQs
+ * Get FAQs by IDs (for course FAQ selection)
+ * @route POST /api/faqs/by-ids
+ * @access Public
+ * @param req Request object
+ * @param res Response object
  */
-export const searchFAQs = asyncHandler(
-  async (req: Request, res: Response): Promise<void> => {
-    const { q: searchTerm, limit = 10 } = req.query;
+export const getFAQsByIdsController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { ids } = req.body;
 
-    if (!searchTerm) {
-      throw new AppError("Search term (q) is required", 400);
-    }
-
-    console.log("🔍 Searching FAQs for:", searchTerm);
-
-    const faqs = await searchFAQsService(
-      searchTerm as string,
-      Number(limit)
-    );
+    const faqs = await getFAQsByIds(ids);
 
     sendSuccessResponse(
       res,
-      { faqs, total: faqs.length },
-      "FAQs search completed successfully",
-      200
-    );
-  }
-);
-
-/**
- * Bulk create FAQs
- */
-export const bulkCreateFAQs = asyncHandler(
-  async (req: Request, res: Response): Promise<void> => {
-    const { faqs } = req.body;
-
-    if (!faqs || !Array.isArray(faqs)) {
-      throw new AppError("FAQs array is required", 400);
-    }
-
-    console.log(`📝 Bulk creating ${faqs.length} FAQs`);
-
-    const result = await bulkCreateFAQsService(faqs);
-
-    sendSuccessResponse(
-      res,
-      {
-        createdCount: result.createdCount,
-        totalRequested: faqs.length,
-        errors: result.errors.length > 0 ? result.errors : undefined
-      },
-      `Successfully created ${result.createdCount} out of ${faqs.length} FAQs`,
-      201
-    );
-  }
-);
-
-/**
- * Get FAQ statistics
- */
-export const getFAQStats = asyncHandler(
-  async (req: Request, res: Response): Promise<void> => {
-    const totalFAQs = await getAllFAQsService(1, 1);
-    
-    sendSuccessResponse(
-      res,
-      {
-        totalFAQs: totalFAQs.total,
-        totalPages: totalFAQs.totalPages
-      },
-      "FAQ statistics retrieved successfully",
-      200
+      faqs,
+      "FAQs fetched successfully"
     );
   }
 );

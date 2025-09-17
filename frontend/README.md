@@ -1,4 +1,4 @@
-# Edulyt Frontend
+# Airkrit Frontend
 
 A modern educational platform built with Next.js and React.
 
