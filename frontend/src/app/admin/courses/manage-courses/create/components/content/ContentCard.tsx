@@ -476,8 +476,7 @@ const VideoContentForm: React.FC<VideoContentFormProps> = ({
           description="Upload a thumbnail image for this video (required)"
           type="image"
           mediaUrl={videoContent.thumbnailUrl}
-          mediaSource={videoContent.thumbnailSource}
-          s3Key={videoContent.thumbnailS3Key}
+          mediaSource={videoContent.thumbnailUrl ? "upload" : undefined}
           maxSize={100} // 10MB for images
           onFileUpload={async (file: File, folderName: string) => {
             try {
@@ -486,8 +485,6 @@ const VideoContentForm: React.FC<VideoContentFormProps> = ({
                 onUpdateContent(contentId, {
                   ...videoContent,
                   thumbnailUrl: result.data.url,
-                  thumbnailSource: "upload",
-                  thumbnailS3Key: result.data.s3Key || "",
                 } as VideoContent);
                 return result.data.url;
               }
@@ -501,16 +498,12 @@ const VideoContentForm: React.FC<VideoContentFormProps> = ({
             onUpdateContent(contentId, {
               ...videoContent,
               thumbnailUrl: "",
-              thumbnailSource: undefined,
-              thumbnailS3Key: "",
             });
           }}
           onUrlSubmit={(url) => {
             onUpdateContent(contentId, {
               ...videoContent,
               thumbnailUrl: url,
-              thumbnailSource: "url",
-              thumbnailS3Key: "",
             });
           }}
           isUploading={isUploading}

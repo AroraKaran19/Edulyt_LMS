@@ -6,16 +6,18 @@ import { Course, FAQ, Testimonial } from "@/types";
 export const isTestimonialsPopulated = (
   testimonials: Testimonial[] | Testimonial["_id"][]
 ): testimonials is Testimonial[] => {
-  return testimonials.length > 0 && typeof testimonials[0] === 'object' && '_id' in testimonials[0];
+  return (
+    testimonials.length > 0 &&
+    typeof testimonials[0] === "object" &&
+    "_id" in testimonials[0]
+  );
 };
 
 /**
  * Type guard to check if FAQs are populated objects
  */
-export const isFAQsPopulated = (
-  faqs: FAQ[] | FAQ["_id"][]
-): faqs is FAQ[] => {
-  return faqs.length > 0 && typeof faqs[0] === 'object' && '_id' in faqs[0];
+export const isFAQsPopulated = (faqs: FAQ[] | FAQ["_id"][]): faqs is FAQ[] => {
+  return faqs.length > 0 && typeof faqs[0] === "object" && "_id" in faqs[0];
 };
 
 /**
@@ -25,21 +27,21 @@ export const getTestimonialIds = (
   testimonials: Testimonial[] | Testimonial["_id"][]
 ): Testimonial["_id"][] => {
   if (isTestimonialsPopulated(testimonials)) {
-    return testimonials.map(testimonial => testimonial._id);
+    return testimonials
+      .map((testimonial) => testimonial._id)
+      .filter((id) => id && id.trim() !== "");
   }
-  return testimonials;
+  return testimonials.filter((id) => id && id.trim() !== "");
 };
 
 /**
  * Get FAQ IDs from either populated or non-populated FAQs
  */
-export const getFAQIds = (
-  faqs: FAQ[] | FAQ["_id"][]
-): FAQ["_id"][] => {
+export const getFAQIds = (faqs: FAQ[] | FAQ["_id"][]): FAQ["_id"][] => {
   if (isFAQsPopulated(faqs)) {
-    return faqs.map(faq => faq._id);
+    return faqs.map((faq) => faq._id).filter((id) => id && id.trim() !== "");
   }
-  return faqs;
+  return faqs.filter((id) => id && id.trim() !== "");
 };
 
 /**
@@ -47,8 +49,7 @@ export const getFAQIds = (
  */
 export const isCoursePopulated = (course: Course): boolean => {
   return (
-    isTestimonialsPopulated(course.testimonials) &&
-    isFAQsPopulated(course.faqs)
+    isTestimonialsPopulated(course.testimonials) && isFAQsPopulated(course.faqs)
   );
 };
 

@@ -1,26 +1,27 @@
 import Container from "@/app/admin/components/ui/Container";
-import FlexBox from "@/components/ui/FlexBox";
 import React from "react";
 import { useEditCourseContext } from "../../../reducers/course/providers/EditCourseReducerProvider";
-import TextArea from "@/components/ui/inputs/TextArea";
-import CheckBoxContainer from "@/components/ui/inputs/CheckBoxContainer";
 import UploadMediaContainer from "@/components/ui/container/UploadMediaContainer";
 import { useUpload } from "@/hooks/useUpload";
 import ScreenNavigation from "./shared/ScreenNavigation";
-import { useEditScreen } from "../contexts/EditScreenContext";
+import { useScreen } from "../contexts/ScreenContext";
+import { Image, Video } from "lucide-react";
 
 const Screen3 = () => {
   const { state, actions } = useEditCourseContext();
   const { uploadWithPresignedUrl, isUploading } = useUpload();
-  const { setActiveScreen } = useEditScreen();
+  const { setActiveScreen } = useScreen();
 
   // Generate folder names based on course title
   const courseTitle = state.course.title || "untitled-course";
   const thumbnailFolder = `courses/${courseTitle}/thumbnail`;
   const videoFolder = `courses/${courseTitle}/previewVideo`;
 
-  // Handle file uploads
-  const handleThumbnailUpload = async (file: File, folderName: string): Promise<string> => {
+  // Handle thumbnail uploads
+  const handleThumbnailUpload = async (
+    file: File,
+    folderName: string
+  ): Promise<string> => {
     try {
       const result = await uploadWithPresignedUrl(file, folderName);
       if (result.success && result.data) {
@@ -36,7 +37,10 @@ const Screen3 = () => {
     }
   };
 
-  const handleVideoUpload = async (file: File, folderName: string): Promise<string> => {
+  const handleVideoUpload = async (
+    file: File,
+    folderName: string
+  ): Promise<string> => {
     try {
       const result = await uploadWithPresignedUrl(file, folderName);
       if (result.success && result.data) {
@@ -87,11 +91,23 @@ const Screen3 = () => {
 
   return (
     <Container
-      title="Preview Video & Thumbnail"
+      title="Course Media"
+      description="Upload visual content to showcase your course"
       className="rounded-b-none h-full w-full max-h-full overflow-y-auto flex flex-col"
       style={{ scrollbarWidth: "thin" }}
     >
-      <FlexBox className="w-full gap-8 flex-col md:flex-row">
+      {/* Course Thumbnail Section */}
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-6 mb-6 border border-blue-100">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="p-2 bg-blue-500 rounded-lg">
+            <Image className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-gray-800">Course Thumbnail</h3>
+            <p className="text-sm text-gray-600">Upload an attractive thumbnail image for your course</p>
+          </div>
+        </div>
+
         <UploadMediaContainer
           title="Course Thumbnail"
           description={`Upload the thumbnail image for "${courseTitle}"`}
@@ -99,7 +115,7 @@ const Screen3 = () => {
           mediaUrl={state.course.thumbnail}
           mediaSource={state.course.thumbnailSource}
           s3Key={state.course.thumbnailS3Key}
-          maxSize={50}
+          maxSize={10}
           onFileUpload={handleThumbnailUpload}
           onFileRemove={handleThumbnailRemove}
           onUrlSubmit={handleThumbnailUrlSubmit}
@@ -111,19 +127,30 @@ const Screen3 = () => {
           urlPlaceholder="Enter thumbnail URL..."
           required={true}
           usePresignedUrl={true}
-          presignedUrlThreshold={10}
+          presignedUrlThreshold={5}
         />
-      </FlexBox>
+      </div>
 
-      <FlexBox className="w-full gap-8 flex-col md:flex-row">
+      {/* Preview Video Section */}
+      <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-6 mb-6 border border-purple-100">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="p-2 bg-purple-500 rounded-lg">
+            <Video className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-gray-800">Preview Video</h3>
+            <p className="text-sm text-gray-600">Upload a preview video to give students a taste of your course content (optional)</p>
+          </div>
+        </div>
+
         <UploadMediaContainer
           title="Course Preview Video"
-          description={`Upload the preview video for "${courseTitle}"`}
+          description={`Upload a preview video for "${courseTitle}"`}
           type="video"
           mediaUrl={state.course.previewVideoUrl}
           mediaSource={state.course.previewVideoSource}
           s3Key={state.course.previewVideoS3Key}
-          maxSize={102400}
+          maxSize={100000} // 100MB
           onFileUpload={handleVideoUpload}
           onFileRemove={handleVideoRemove}
           onUrlSubmit={handleVideoUrlSubmit}
@@ -135,66 +162,19 @@ const Screen3 = () => {
           urlPlaceholder="Enter video URL..."
           required={false}
           usePresignedUrl={true}
-          presignedUrlThreshold={100}
+          presignedUrlThreshold={50}
         />
-      </FlexBox>
-
-      <FlexBox className="w-full gap-8 flex-col md:flex-row">
-        <CheckBoxContainer
-          label="Featured Course"
-          checked={state.course.isFeatured}
-          onChange={(checked) => actions.setCourseIsFeatured(checked)}
-          className="w-full"
-        />
-        <CheckBoxContainer
-          label="Certified Course"
-          checked={state.course.isCertified}
-          onChange={(checked) => actions.setCourseIsCertified(checked)}
-          className="w-full"
-        />
-      </FlexBox>
-
-      <FlexBox className="w-full gap-8 flex-col md:flex-row">
-        <CheckBoxContainer
-          label="Active Course"
-          checked={state.course.isActive}
-          onChange={(checked) => actions.setCourseIsActive(checked)}
-          className="w-full"
-        />
-        <CheckBoxContainer
-          label="Scholarship Available"
-          checked={state.course.scholarship}
-          onChange={(checked) => actions.setCourseScholarship(checked)}
-          className="w-full"
-        />
-      </FlexBox>
-
-      {state.course.scholarship && (
-        <TextArea
-          label="Scholarship Description"
-          name="scholarshipDescription"
-          placeholder="Describe the scholarship program"
-          value={state.course.scholarshipDescription}
-          onChange={(e) => actions.setCourseScholarshipDescription(e.target.value)}
-          className="w-full"
-          rows={3}
-          lockHeight
-          required
-        />
-      )}
+      </div>
 
       <ScreenNavigation
         currentStep={3}
         previousScreen="screen2"
         nextScreen="screen4"
         setActiveScreen={setActiveScreen}
-        isNextDisabled={
-          !state.course.thumbnail ||
-          (state.course.scholarship && !state.course.scholarshipDescription)
-        }
+        isNextDisabled={!state.course.thumbnail} // Only thumbnail is required
       />
     </Container>
   );
 };
 
-export default Screen3; 
+export default Screen3;

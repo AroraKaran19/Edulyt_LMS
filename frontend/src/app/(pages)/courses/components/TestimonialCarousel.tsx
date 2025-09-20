@@ -14,73 +14,6 @@ const TestimonialCarousel = ({
   className?: string;
   style?: React.CSSProperties;
 }) => {
-    const fallbackTestimonials: Testimonial[] = [
-    {
-      name: "Priya Sharma",
-      profileImage: "/courseDefaultTestimonial.png",
-      currentRole: "Senior Full Stack Developer",
-      pastRole: "Junior Developer",
-      pastCompany: "StartupTech Solutions",
-      currentCompany: "Microsoft",
-      linkedin: "https://www.linkedin.com/",
-      verified: true,
-      reviewableType: "Course",
-      reviewableId: "123",
-      isActive: true,
-    },
-    {
-      name: "Rahul Gupta",
-      profileImage: "/courseDefaultTestimonial.png",
-      pastRole: "Business Analyst",
-      pastCompany: "Local Consulting Firm",
-      currentRole: "Senior Data Scientist",
-      currentCompany: "Amazon",
-      linkedin: "https://www.linkedin.com/",
-      verified: true,
-      reviewableType: "Course",
-      reviewableId: "123",
-      isActive: true,
-    },
-    {
-      name: "Sneha Patel",
-      profileImage: "/courseDefaultTestimonial.png",
-      pastRole: "Graphic Designer",
-      pastCompany: "Creative Agency",
-      currentRole: "Lead UX Designer",
-      currentCompany: "Adobe",
-      linkedin: "https://www.linkedin.com/",
-      verified: true,
-      reviewableType: "Course",
-      reviewableId: "123",
-      isActive: true,
-    },
-    {
-      name: "Arjun Singh",
-      profileImage: "/courseDefaultTestimonial.png",
-      pastRole: "System Administrator",
-      pastCompany: "IT Services Company",
-      currentRole: "Cloud Solutions Architect",
-      currentCompany: "Google Cloud",
-      linkedin: "https://www.linkedin.com/",
-      verified: true,
-      reviewableType: "Course",
-      reviewableId: "123",
-      isActive: true,
-    }, 
-    {
-      name: "Vikram Joshi",
-      profileImage: "/courseDefaultTestimonial.png",
-      pastRole: "IT Support Specialist",
-      pastCompany: "Regional Bank",
-      currentRole: "Security Engineer",
-      currentCompany: "Cisco",
-      linkedin: "https://www.linkedin.com/",
-      verified: true,
-      reviewableType: "Course",
-      reviewableId: "123",
-      isActive: true,
-    },
-  ];
 
   return (
     <Swiper
@@ -121,7 +54,7 @@ const TestimonialCarousel = ({
         props.className
       )}
     >
-      {(testimonials ?? fallbackTestimonials).map((testimonial, index) => (
+      {testimonials.map((testimonial, index) => (
         <SwiperSlide key={index}>
           {({ isActive }) => (
             <TestimonialCard

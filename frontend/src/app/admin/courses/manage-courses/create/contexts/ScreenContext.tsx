@@ -34,6 +34,22 @@ export const ScreenProvider = ({ children }: { children: React.ReactNode }) => {
   // Enhanced setActiveScreen that also saves to localStorage
   const handleSetActiveScreen = (screen: string) => {
     try {
+      // Check if course metadata has been created
+      const courseId = localStorage.getItem("current_course_id");
+      const isCourseCreated = !!courseId;
+      
+      // If course is created, only allow forward navigation (higher screen numbers)
+      if (isCourseCreated) {
+        const currentScreenNumber = parseInt(activeScreen.replace('screen', ''));
+        const targetScreenNumber = parseInt(screen.replace('screen', ''));
+        
+        // Only allow navigation to screens 11, 12, 13 (metadata creation and beyond)
+        if (targetScreenNumber < 11) {
+          console.warn("Cannot navigate back to previous screens after course metadata is created");
+          return;
+        }
+      }
+      
       setActiveScreen(screen);
       localStorage.setItem(CURRENT_SCREEN_KEY, screen);
       console.log("Saved current screen to localStorage:", screen);

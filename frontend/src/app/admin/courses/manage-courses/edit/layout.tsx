@@ -1,21 +1,16 @@
-"use client";
-import React from "react";
 import { EditCourseReducerProvider } from "../../reducers/course/providers/EditCourseReducerProvider";
-import { EditScreenProvider } from "./contexts/EditScreenContext";
-import { useParams } from "next/navigation";
+import { ScreenProvider } from "./contexts/ScreenContext";
 
 export default function EditCourseLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { courseId } = useParams();
-
   return (
-    <EditCourseReducerProvider courseId={courseId as string}>
-      <EditScreenProvider>
+    <EditCourseReducerProvider>
+      <ScreenProvider>
         {children}
-      </EditScreenProvider>
+      </ScreenProvider>
     </EditCourseReducerProvider>
   );
 }

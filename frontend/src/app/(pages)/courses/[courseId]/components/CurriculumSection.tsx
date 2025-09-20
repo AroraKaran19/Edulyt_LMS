@@ -5,9 +5,8 @@ import { Course } from "@/types";
 import React from "react";
 
 const CurriculumSection = ({ course }: { course: Course }) => {
-
   const totalLessons = course.modules?.reduce(
-    (acc, module) => acc + module.lessons.length,
+    (acc, module) => acc + (module?.lessons?.length ?? 0),
     0
   );
 
@@ -58,15 +57,12 @@ const CurriculumSection = ({ course }: { course: Course }) => {
           </div>
         ))}
       </div>
-      <p className="text-sm md:text-base text-center">
-        {course.description}
-      </p>
-      <OrangeButton
-        glow={false}
-        className="w-fit self-center font-bold"
-      >
-        Download Curriculum
-      </OrangeButton>
+      <p className="text-sm md:text-base text-center">{course.description}</p>
+      {course.curriculum && course.curriculum !== "" && (
+        <OrangeButton glow={false} className="w-fit self-center font-bold">
+          Download Curriculum
+        </OrangeButton>
+      )}
     </SectionContainer>
   );
 };

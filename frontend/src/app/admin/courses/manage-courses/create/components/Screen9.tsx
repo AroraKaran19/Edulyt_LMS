@@ -1,5 +1,4 @@
 import Container from "@/app/admin/components/ui/Container";
-import FlexBox from "@/components/ui/FlexBox";
 import Input from "@/components/ui/inputs/Input";
 import React, { useMemo, useState } from "react";
 import { useCourseContext } from "../../../reducers/course/providers/CourseReducerProvider";
@@ -8,8 +7,7 @@ import TagInput from "@/components/ui/inputs/TagInput";
 import ScreenNavigation from "./shared/ScreenNavigation";
 import { useScreen } from "../contexts/ScreenContext";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
-import WhiteButton from "@/components/ui/buttons/WhiteButton";
-import { Search, Zap, Globe, Tag, FileText, Sparkles } from "lucide-react";
+import { Search, Globe, Tag, FileText, Sparkles } from "lucide-react";
 
 const Screen9 = () => {
   const { state, actions } = useCourseContext();
@@ -372,7 +370,7 @@ const Screen9 = () => {
       <ScreenNavigation
         currentStep={9}
         previousScreen="screen7"
-        nextScreen="screen11"
+        nextScreen="screen10"
         setActiveScreen={setActiveScreen}
         isNextDisabled={!isFormValid}
       />

@@ -135,14 +135,6 @@ export const useCourseReducer = () => {
       [enhancedDispatch]
     ),
 
-    setCourseSubcategory: useCallback(
-      (subcategory: string) => {
-        const action = courseActions.setCourseSubcategory(subcategory);
-        return enhancedDispatch(action);
-      },
-      [enhancedDispatch]
-    ),
-
     setCourseThumbnail: useCallback(
       (thumbnail: string) => {
         const action = courseActions.setCourseThumbnail(thumbnail);

@@ -50,7 +50,7 @@ const CourseCard = ({
     >
       <div className="course-image w-full md:w-2/5 rounded-2xl overflow-hidden relative flex-shrink-0">
         <img
-          src={course?.thumbnail || "/CourseCardDemo.jpg"}
+          src={course.thumbnail}
           alt={course?.title}
           className="rounded-2xl w-full h-full object-fill max-h-[150px] md:max-h-full opacity-90"
           draggable={false}
@@ -65,7 +65,7 @@ const CourseCard = ({
       </div>
       <div className="course-content w-full md:w-3/5 flex flex-col justify-between">
         {course?.isFeatured ? (
-          <BestsellerBadge enrollStudents={course?.enrolledCount} />
+          <BestsellerBadge enrollStudents={course?.analytics?.totalEnrollments || 0} />
         ) : (
           <div className="w-full h-4" />
         )}
@@ -74,7 +74,7 @@ const CourseCard = ({
         </p>
         <RatingContainer
           reviewCount={course?.reviews.length}
-          totalRating={course.totalRatings}
+          totalRating={course.analytics?.totalRatings || 0}
           className="mt-2 text-xs"
           courseSlug={course?.slug}
         />

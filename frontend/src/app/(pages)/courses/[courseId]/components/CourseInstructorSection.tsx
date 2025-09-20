@@ -5,9 +5,9 @@ import React from "react";
 import InstructorCarousel from "../../components/InstructorCarousel";
 
 const CourseInstructorSection = ({ course }: { course: Course }) => {
-	const instructors = course?.instructor || [];
 
-	if (instructors.length === 0) return null;
+	if (course?.instructor?.length === 0) return null;
+  const instructors = course.instructor;
 
   return (
     <SectionContainer id="course-instructor">

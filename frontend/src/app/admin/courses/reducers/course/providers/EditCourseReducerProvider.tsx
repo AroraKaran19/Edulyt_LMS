@@ -1,3 +1,4 @@
+"use client";
 import React, { createContext, useContext, ReactNode } from "react";
 import { useEditCourseReducer } from "../hooks/useEditCourseReducer";
 import { CourseState } from "../core/state";

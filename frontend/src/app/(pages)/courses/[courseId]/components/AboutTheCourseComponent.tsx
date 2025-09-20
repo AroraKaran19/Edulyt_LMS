@@ -108,7 +108,7 @@ const AboutTheCourseComponent = ({ course }: { course: Course }) => {
         className="career-growth w-full flex flex-col lg:mt-5 gap-6"
       >
         <CourseTitle
-          title={`Careers in ${course?.subcategory || course?.category || ""}`}
+          title={`Careers in ${course?.category || ""}`}
         />
         {course?.careerPaths.length > 0 && (
           <div className="career-list flex gap-4 flex-wrap">

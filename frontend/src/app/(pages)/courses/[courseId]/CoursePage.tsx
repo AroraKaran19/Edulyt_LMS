@@ -90,7 +90,7 @@ const CoursePage = ({ course }: { course: Course }) => {
         />
       </div>
       {course?.scholarship && <ScholarshipBanner course={course} />}
-      <TestimonialSection testimonials={course?.testimonials || []} />
+      <TestimonialSection testimonials={course.testimonials} />
       <CourseOverviewSection course={course} />
       <CourseInstructorSection course={course} />
       <CertificateSection 

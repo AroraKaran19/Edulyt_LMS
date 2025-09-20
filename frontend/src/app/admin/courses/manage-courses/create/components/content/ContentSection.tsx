@@ -1,8 +1,9 @@
 import React from "react";
-import { Plus, Video, HelpCircle, FileText, Sparkles } from "lucide-react";
+import { Video, HelpCircle, FileText, Sparkles, Save } from "lucide-react";
 import { Content } from "@/types/course";
 import ContentCard from "./ContentCard";
 import ContentAddButton from "./ContentAddButton";
+import { InlineLoader } from "@/components/ui/Loader";
 
 interface ContentSectionProps {
   lessonId: string;
@@ -12,9 +13,13 @@ interface ContentSectionProps {
   onUpdateContent: (contentId: string, updates: Partial<Content>) => void;
   onAddContent: (lessonId: string, type: "video" | "quiz") => void;
   onDeleteContent?: (contentId: string) => void;
+  onSaveContent?: (lessonId: string, contentId: string) => void;
   courseTitle?: string;
   moduleIndex?: number;
   lessonIndex?: number;
+  // Sequential flow props
+  isLessonSaved?: boolean;
+  isSavingContent?: boolean;
 }
 
 const ContentSection: React.FC<ContentSectionProps> = ({
@@ -25,9 +30,12 @@ const ContentSection: React.FC<ContentSectionProps> = ({
   onUpdateContent,
   onAddContent,
   onDeleteContent,
+  onSaveContent,
   courseTitle,
   moduleIndex,
   lessonIndex,
+  isLessonSaved = false,
+  isSavingContent = false,
 }) => {
   const hasContent = contents.length > 0;
 
@@ -43,8 +51,42 @@ const ContentSection: React.FC<ContentSectionProps> = ({
           </div>
         </div>
         
-        {/* Add Content Dropdown */}
-        <AddContentDropdown onAddContent={onAddContent} lessonId={lessonId} />
+        {/* Add Content Buttons */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => onAddContent(lessonId, "video")}
+            disabled={!isLessonSaved || isSavingContent}
+            className={`flex items-center gap-2 px-3 py-2 text-sm font-medium border rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors ${
+              !isLessonSaved || isSavingContent
+                ? "text-gray-400 bg-gray-100 border-gray-200 cursor-not-allowed"
+                : "text-white bg-blue-600 border-blue-600 hover:bg-blue-700 focus:ring-blue-500"
+            }`}
+          >
+            {isSavingContent ? (
+              <InlineLoader size="sm" variant="spinner" />
+            ) : (
+              <Video className="w-4 h-4" />
+            )}
+            {isSavingContent ? "Adding..." : !isLessonSaved ? "Save Lesson First" : "Video"}
+          </button>
+          
+          <button
+            onClick={() => onAddContent(lessonId, "quiz")}
+            disabled={!isLessonSaved || isSavingContent}
+            className={`flex items-center gap-2 px-3 py-2 text-sm font-medium border rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors ${
+              !isLessonSaved || isSavingContent
+                ? "text-gray-400 bg-gray-100 border-gray-200 cursor-not-allowed"
+                : "text-white bg-emerald-600 border-emerald-600 hover:bg-emerald-700 focus:ring-emerald-500"
+            }`}
+          >
+            {isSavingContent ? (
+              <InlineLoader size="sm" variant="spinner" />
+            ) : (
+              <HelpCircle className="w-4 h-4" />
+            )}
+            {isSavingContent ? "Adding..." : !isLessonSaved ? "Save Lesson First" : "Quiz"}
+          </button>
+        </div>
       </div>
 
       {/* Content List */}
@@ -52,19 +94,39 @@ const ContentSection: React.FC<ContentSectionProps> = ({
         <div className="space-y-3">
           {contents.map((content, index) => 
             content && content._id ? (
-              <ContentCard
-                key={content._id}
-                contentId={content._id}
-                contentData={content}
-                isExpanded={expandedContent.has(content._id)}
-                onToggleExpansion={() => onToggleContentExpansion(content._id!)}
-                onUpdateContent={onUpdateContent}
-                onDeleteContent={onDeleteContent}
-                index={index}
-                courseTitle={courseTitle}
-                moduleIndex={moduleIndex}
-                lessonIndex={lessonIndex}
-              />
+              <div key={content._id} className="space-y-2">
+                <ContentCard
+                  contentId={content._id}
+                  contentData={content}
+                  isExpanded={expandedContent.has(content._id)}
+                  onToggleExpansion={() => onToggleContentExpansion(content._id!)}
+                  onUpdateContent={onUpdateContent}
+                  onDeleteContent={onDeleteContent}
+                  index={index}
+                  courseTitle={courseTitle}
+                  moduleIndex={moduleIndex}
+                  lessonIndex={lessonIndex}
+                />
+                {/* Save Content Button */}
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => onSaveContent?.(lessonId, content._id!)}
+                    disabled={!content.title || isSavingContent}
+                    className={`flex items-center gap-2 px-3 py-1 text-sm rounded-lg ${
+                      !content.title || isSavingContent
+                        ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                        : "bg-orange-100 text-orange-700 hover:bg-orange-200"
+                    }`}
+                  >
+                    {isSavingContent ? (
+                      <InlineLoader size="sm" variant="spinner" />
+                    ) : (
+                      <Save className="w-3 h-3" />
+                    )}
+                    {isSavingContent ? "Saving..." : "Save Content"}
+                  </button>
+                </div>
+              </div>
             ) : null
           )}
         </div>
@@ -75,76 +137,6 @@ const ContentSection: React.FC<ContentSectionProps> = ({
   );
 };
 
-// Add Content Dropdown Component
-interface AddContentDropdownProps {
-  onAddContent: (lessonId: string, type: "video" | "quiz") => void;
-  lessonId: string;
-}
-
-const AddContentDropdown: React.FC<AddContentDropdownProps> = ({
-  onAddContent,
-  lessonId,
-}) => {
-  const [isOpen, setIsOpen] = React.useState(false);
-
-  const handleAddContent = (type: "video" | "quiz") => {
-    onAddContent(lessonId, type);
-    setIsOpen(false);
-  };
-
-  return (
-    <div className="relative">
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-      >
-        <Plus className="w-4 h-4" />
-        Add Content
-      </button>
-
-      {isOpen && (
-        <>
-          {/* Backdrop */}
-          <div 
-            className="fixed inset-0 z-10" 
-            onClick={() => setIsOpen(false)}
-          />
-          
-          {/* Dropdown */}
-          <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-20">
-            <div className="p-2">
-              <button
-                onClick={() => handleAddContent("video")}
-                className="w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 rounded-lg transition-colors"
-              >
-                <div className="p-1 bg-blue-100 rounded">
-                  <Video className="w-4 h-4 text-blue-600" />
-                </div>
-                <div className="text-left">
-                  <div className="font-medium">Video Lesson</div>
-                  <div className="text-xs text-gray-500">Add educational video content</div>
-                </div>
-              </button>
-              
-              <button
-                onClick={() => handleAddContent("quiz")}
-                className="w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 rounded-lg transition-colors"
-              >
-                <div className="p-1 bg-emerald-100 rounded">
-                  <HelpCircle className="w-4 h-4 text-emerald-600" />
-                </div>
-                <div className="text-left">
-                  <div className="font-medium">Knowledge Quiz</div>
-                  <div className="text-xs text-gray-500">Test student understanding</div>
-                </div>
-              </button>
-            </div>
-          </div>
-        </>
-      )}
-    </div>
-  );
-};
 
 // Empty Content State Component
 interface EmptyContentStateProps {

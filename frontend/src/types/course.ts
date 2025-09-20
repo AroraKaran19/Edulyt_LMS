@@ -105,12 +105,13 @@ export interface CourseModule {
   _id?: string;
   title: string;
   thumbnailUrl: string; // Required in schema
+  thumbnailSource?: "upload" | "url"; // Track whether thumbnail came from upload or URL
   lessonIds: CourseLesson["_id"][];
   lessons?: CourseLesson[];
   description?: string;
   isCompleted: boolean;
   completedAt?: Date;
-  isActive?: boolean;
+  isActive: boolean;
   isLocked?: boolean; // if the module is locked, the user cannot access the lessons
   createdAt?: Date;
   updatedAt?: Date;
@@ -143,7 +144,10 @@ export interface Plan {
 // ===================
 
 export interface Testimonial
-  extends Omit<Review, "profileImage" | "rating" | "comment" | "reviewableId" | "reviewableType"> {
+  extends Omit<
+    Review,
+    "profileImage" | "rating" | "comment" | "reviewableId" | "reviewableType"
+  > {
   pastRole: string;
   pastCompany: string;
   college: string;
@@ -187,7 +191,7 @@ export interface Course {
   modules?: CourseModule[];
 
   // Instructor
-  instructor: CourseInstructor["_id"][]; // can be multiple instructors
+  instructor: CourseInstructor[]; // can be multiple instructors
 
   // Pricing Plans
   plans: {
@@ -197,17 +201,17 @@ export interface Course {
   discount?: Discount;
 
   // Reviews
-  reviews: Review["_id"][];
-  testimonials: Testimonial[] | Testimonial["_id"][];
+  reviews: Review[];
+  testimonials: Testimonial[];
 
   // FAQs
-  faqs: FAQ[] | FAQ["_id"][];
+  faqs: FAQ[];
 
   // Administrative
   isActive: boolean;
   createdAt?: Date;
   updatedAt?: Date;
-  createdBy?: User["_id"];
+  createdBy?: User;
   tags?: string[];
   audience: "college-students" | "professionals";
 
@@ -225,7 +229,7 @@ export interface Course {
 
   // Language
   language: string;
-  
+
   // Curriculum - optional PDF document URL
   curriculum?: string;
   curriculumSource?: "upload" | "url";
@@ -233,6 +237,7 @@ export interface Course {
 
   // Analytics
   analytics?: {
+    totalRatings: number;
     totalEnrollments: number;
     activeEnrollments: number;
     completionRate: number;

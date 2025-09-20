@@ -6,6 +6,19 @@ import {
   getCoursesUsingCategory,
   updateCourseMetadata,
   createCourseMetadata,
+  updateCourseStatus,
+  getCoursesForAdmin,
+  getCourseByIdAdmin,
+  addSingleCourseModule,
+  updateSingleCourseModule,
+  deleteSingleCourseModule,
+  addSingleCourseLesson,
+  updateSingleCourseLesson,
+  deleteSingleCourseLesson,
+  addSingleCourseContent,
+  updateSingleCourseContent,
+  deleteSingleCourseContent,
+  finalizeCourseCreation,
 } from "../controllers/course.controller";
 // import { verifyAdmin } from "../middlewares/admin.middleware";
 import { Router } from "express";
@@ -128,6 +141,197 @@ router.put("/:courseId/metadata", updateCourseMetadata);
  *   }
  */
 router.post("/chunked/metadata", createCourseMetadata);
+
+
+/**
+ * @route   POST /api/courses/:courseId/modules
+ * @desc    Add a single module to a course (real-time)
+ * @access  Admin/Instructor
+ * @params
+ *   - courseId: The ID of the course
+ * @body
+ *   - Module object with title, description, thumbnailUrl, lessons, etc.
+ * @example
+ *   POST /api/courses/64a1b2c3d4e5f6789012345/modules
+ */
+router.post("/:courseId/modules", addSingleCourseModule);
+
+/**
+ * @route   PUT /api/courses/:courseId/modules/:moduleId
+ * @desc    Update a single module in a course (real-time)
+ * @access  Admin/Instructor
+ * @params
+ *   - courseId: The ID of the course
+ *   - moduleId: The ID of the module to update
+ * @body
+ *   - Updated module object
+ * @example
+ *   PUT /api/courses/64a1b2c3d4e5f6789012345/modules/64a1b2c3d4e5f6789012346
+ */
+router.put("/:courseId/modules/:moduleId", updateSingleCourseModule);
+
+/**
+ * @route   DELETE /api/courses/:courseId/modules/:moduleId
+ * @desc    Delete a single module from a course (real-time)
+ * @access  Admin/Instructor
+ * @params
+ *   - courseId: The ID of the course
+ *   - moduleId: The ID of the module to delete
+ * @example
+ *   DELETE /api/courses/64a1b2c3d4e5f6789012345/modules/64a1b2c3d4e5f6789012346
+ */
+router.delete("/:courseId/modules/:moduleId", deleteSingleCourseModule);
+
+// ===================
+// LESSON ROUTES
+// ===================
+
+/**
+ * @route   POST /api/courses/:courseId/modules/:moduleId/lessons
+ * @desc    Add a single lesson to a module (real-time)
+ * @access  Admin/Instructor
+ * @params
+ *   - courseId: The ID of the course
+ *   - moduleId: The ID of the module
+ * @body
+ *   - Lesson object with title, description, etc.
+ * @example
+ *   POST /api/courses/64a1b2c3d4e5f6789012345/modules/64a1b2c3d4e5f6789012346/lessons
+ */
+router.post("/:courseId/modules/:moduleId/lessons", addSingleCourseLesson);
+
+/**
+ * @route   PUT /api/courses/:courseId/modules/:moduleId/lessons/:lessonId
+ * @desc    Update a single lesson in a module (real-time)
+ * @access  Admin/Instructor
+ * @params
+ *   - courseId: The ID of the course
+ *   - moduleId: The ID of the module
+ *   - lessonId: The ID of the lesson to update
+ * @body
+ *   - Updated lesson object
+ * @example
+ *   PUT /api/courses/64a1b2c3d4e5f6789012345/modules/64a1b2c3d4e5f6789012346/lessons/64a1b2c3d4e5f6789012347
+ */
+router.put("/:courseId/modules/:moduleId/lessons/:lessonId", updateSingleCourseLesson);
+
+/**
+ * @route   DELETE /api/courses/:courseId/modules/:moduleId/lessons/:lessonId
+ * @desc    Delete a single lesson from a module (real-time)
+ * @access  Admin/Instructor
+ * @params
+ *   - courseId: The ID of the course
+ *   - moduleId: The ID of the module
+ *   - lessonId: The ID of the lesson to delete
+ * @example
+ *   DELETE /api/courses/64a1b2c3d4e5f6789012345/modules/64a1b2c3d4e5f6789012346/lessons/64a1b2c3d4e5f6789012347
+ */
+router.delete("/:courseId/modules/:moduleId/lessons/:lessonId", deleteSingleCourseLesson);
+
+// ===================
+// CONTENT ROUTES
+// ===================
+
+/**
+ * @route   POST /api/courses/:courseId/modules/:moduleId/lessons/:lessonId/contents
+ * @desc    Add a single content to a lesson (real-time)
+ * @access  Admin/Instructor
+ * @params
+ *   - courseId: The ID of the course
+ *   - moduleId: The ID of the module
+ *   - lessonId: The ID of the lesson
+ * @body
+ *   - Content object with type, title, description, etc.
+ * @example
+ *   POST /api/courses/64a1b2c3d4e5f6789012345/modules/64a1b2c3d4e5f6789012346/lessons/64a1b2c3d4e5f6789012347/contents
+ */
+router.post("/:courseId/modules/:moduleId/lessons/:lessonId/contents", addSingleCourseContent);
+
+/**
+ * @route   PUT /api/courses/:courseId/modules/:moduleId/lessons/:lessonId/contents/:contentId
+ * @desc    Update a single content in a lesson (real-time)
+ * @access  Admin/Instructor
+ * @params
+ *   - courseId: The ID of the course
+ *   - moduleId: The ID of the module
+ *   - lessonId: The ID of the lesson
+ *   - contentId: The ID of the content to update
+ * @body
+ *   - Updated content object
+ * @example
+ *   PUT /api/courses/64a1b2c3d4e5f6789012345/modules/64a1b2c3d4e5f6789012346/lessons/64a1b2c3d4e5f6789012347/contents/64a1b2c3d4e5f6789012348
+ */
+router.put("/:courseId/modules/:moduleId/lessons/:lessonId/contents/:contentId", updateSingleCourseContent);
+
+/**
+ * @route   DELETE /api/courses/:courseId/modules/:moduleId/lessons/:lessonId/contents/:contentId
+ * @desc    Delete a single content from a lesson (real-time)
+ * @access  Admin/Instructor
+ * @params
+ *   - courseId: The ID of the course
+ *   - moduleId: The ID of the module
+ *   - lessonId: The ID of the lesson
+ *   - contentId: The ID of the content to delete
+ * @example
+ *   DELETE /api/courses/64a1b2c3d4e5f6789012345/modules/64a1b2c3d4e5f6789012346/lessons/64a1b2c3d4e5f6789012347/contents/64a1b2c3d4e5f6789012348
+ */
+router.delete("/:courseId/modules/:moduleId/lessons/:lessonId/contents/:contentId", deleteSingleCourseContent);
+
+/**
+ * @route   POST /api/courses/:courseId/finalize
+ * @desc    Finalize course creation (mark as complete and ready)
+ * @access  Admin/Instructor
+ * @params
+ *   - courseId: The ID of the course to finalize
+ * @example
+ *   POST /api/courses/64a1b2c3d4e5f6789012345/finalize
+ */
+router.post("/:courseId/finalize", finalizeCourseCreation);
+
+/**
+ * @route   PUT /api/courses/status/:courseId
+ * @desc    Update course status
+ * @access  Admin/Instructor
+ * @params
+ *   - courseId: The ID of the course to update
+ * @body
+ *   - isActive: The status of the course
+ * @example
+ *   PUT /api/courses/status/:courseId
+ */
+router.put("/status/:courseId", updateCourseStatus);
+
+/**
+ * @route   GET /api/courses/admin
+ * @desc    Get all courses for admin
+ * @access  Admin
+ * @example
+ *   GET /api/courses/admin
+ */
+router.get("/admin", getCoursesForAdmin);
+
+/**
+ * @route   GET /api/courses/admin/id/:courseId
+ * @desc    Get a specific course by ID for admin (includes inactive courses)
+ * @access  Admin
+ * @params
+ *   - courseId: The ID of the course to retrieve
+ * @example
+ *   GET /api/courses/admin/id/64a1b2c3d4e5f6789012345
+ */
+router.get("/admin/id/:courseId", getCourseByIdAdmin);
+
+/**
+ * @route   POST /api/courses/admin/duplicate/:courseId
+ * @desc    Duplicate a course
+ * @access  Admin
+ * @params
+ *   - courseId: The ID of the course to duplicate
+ * @example
+ *   POST /api/courses/admin/duplicate/:courseId
+ */
+// router.post("/admin/duplicate/:courseId", duplicateCourse);
+
 
 
 export default router;

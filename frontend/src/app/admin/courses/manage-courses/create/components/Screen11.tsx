@@ -1,504 +1,1077 @@
-import React, { useState, useMemo } from "react";
-import { useCourseContext } from "../../../reducers/course/providers/CourseReducerProvider";
 import Container from "@/app/admin/components/ui/Container";
-import ScreenNavigation from "./shared/ScreenNavigation";
-import { useScreen } from "../contexts/ScreenContext";
-import { useCourses } from "@/hooks/useCourses";
-import { sanitizeCourseForBackend } from "../../../reducers/course/utils/sanitization";
-import { validateSanitizedCourse } from "../../../reducers/course/utils/sanitization";
+import FlexBox from "@/components/ui/FlexBox";
+import { useCourseContext } from "../../../reducers/course/providers/CourseReducerProvider";
+import UploadMediaContainer from "@/components/ui/container/UploadMediaContainer";
+import Input from "@/components/ui/inputs/Input";
+import React, { useMemo, useState, useEffect } from "react";
+import TextArea from "@/components/ui/inputs/TextArea";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
+import { useUpload } from "@/hooks/useUpload";
+import ScreenNavigation from "./shared/ScreenNavigation";
 import {
-  CheckCircle,
-  AlertCircle,
   BookOpen,
-  Send,
-  Tag,
-  Globe,
-  Target,
-  TrendingUp,
-  FileText,
-  Award,
-  Clock,
-  Star,
-  Zap,
-  Eye,
-  CheckSquare,
-  ArrowLeft,
+  Plus,
+  Trash2,
+  Save,
+  ChevronDown,
+  ChevronUp,
+  Play,
+  Edit2,
+  GripVertical,
+  Lock,
 } from "lucide-react";
+import {
+  CourseModule,
+  CourseLesson,
+  Content,
+  VideoContent,
+  QuizContent,
+} from "@/types";
+import { useScreen } from "../contexts/ScreenContext";
+import ContentSection from "../../create/components/content/ContentSection";
+import { useCourses } from "@/hooks/useCourses";
+import { InlineLoader } from "@/components/ui/Loader";
 
 const Screen11 = () => {
-  const { state } = useCourseContext();
+  const { state, actions } = useCourseContext();
+  const { uploadWithPresignedUrl, isUploading } = useUpload();
   const { setActiveScreen } = useScreen();
-  const { createCourseMetadata } = useCourses();
+  const { addSingleCourseModule, updateSingleCourseModule, isLoading: isApiLoading } = useCourses();
   
-  const [isCreating, setIsCreating] = useState(false);
-  const [createError, setCreateError] = useState<string>("");
-  const [courseCreated, setCourseCreated] = useState(false);
-  const [createdCourseId, setCreatedCourseId] = useState<string>("");
+  // Local state for managing modules
+  const [localModules, setLocalModules] = useState<CourseModule[]>([]);
+  const [savedModules, setSavedModules] = useState<Set<string>>(new Set());
+  const [expandedModules, setExpandedModules] = useState<Set<number>>(new Set());
+  const [expandedLessons, setExpandedLessons] = useState<Set<string>>(new Set());
+  const [expandedContent, setExpandedContent] = useState<Set<string>>(new Set());
+  const [savingModule, setSavingModule] = useState<Set<string>>(new Set());
 
+  // Validation checks
+  const validationErrors = useMemo(() => {
+    const errors: string[] = [];
 
-  // Comprehensive validation
-  const validationChecks = useMemo(() => {
-    const checks = [
-      {
-        id: "title",
-        label: "Course Title",
-        isValid: !!(state.course.title && state.course.title.trim().length >= 5),
-        details: state.course.title ? `${state.course.title.length} characters` : "Missing",
-        icon: FileText,
-        color: "orange",
-      },
-      {
-        id: "description",
-        label: "Course Description",
-        isValid: !!(state.course.description && state.course.description.trim().length >= 25),
-        details: state.course.description ? `${state.course.description.length} characters` : "Missing",
-        icon: BookOpen,
-        color: "blue",
-      },
-      {
-        id: "category",
-        label: "Course Category",
-        isValid: !!state.course.category,
-        details: state.course.category || "Missing",
-        icon: Tag,
-        color: "orange",
-      },
-      {
-        id: "thumbnail",
-        label: "Course Thumbnail",
-        isValid: !!state.course.thumbnail,
-        details: state.course.thumbnail ? "Uploaded" : "Missing",
-        icon: Eye,
-        color: "blue",
-      },
-      {
-        id: "plans",
-        label: "Pricing Plans",
-        isValid: !!(state.course.plans?.essential || state.course.plans?.elite),
-        details: state.course.plans?.essential && state.course.plans?.elite ? "Both plans" : 
-                state.course.plans?.essential ? "Essential only" :
-                state.course.plans?.elite ? "Elite only" : "Missing",
-        icon: TrendingUp,
-        color: "blue",
-      },
-      // {
-      //   id: "instructor",
-      //   label: "Instructor",
-      //   isValid: !!(state.course.instructor && state.course.instructor.length > 0),
-      //   details: `${state.course.instructor?.length || 0} instructor(s)`,
-      //   icon: Users,
-      //   color: "orange",
-      // },
-      {
-        id: "seo",
-        label: "SEO Information",
-        isValid: !!(state.course.metaTitle && state.course.metaDescription && state.course.keywords),
-        details: state.course.metaTitle && state.course.metaDescription && state.course.keywords ? "Complete" : "Incomplete",
-        icon: Zap,
-        color: "blue",
-      },
-    ];
+    // Check if at least one module exists
+    if (!localModules || localModules.length === 0) {
+      errors.push("At least one module is required");
+      return errors; // Early return if no modules
+    }
 
-    return checks;
-  }, [state.course]);
+    // Validate each module is fully configured
+    localModules.forEach((courseModule, moduleIndex) => {
+      if (!courseModule) {
+        errors.push(`Module ${moduleIndex + 1}: Module data is missing`);
+        return;
+      }
 
-  const allValid = validationChecks.every(check => check.isValid);
-  const invalidChecks = validationChecks.filter(check => !check.isValid);
-  const validChecks = validationChecks.filter(check => check.isValid);
+      // Check module basic requirements
+      if (!courseModule.title || courseModule.title.trim() === "") {
+        errors.push(`Module ${moduleIndex + 1}: Title is required`);
+      }
 
-  // Course statistics
-  const courseStats = useMemo(() => {
-    return {
-      skillsCount: state.course.skills?.length || 0,
-      careerPathsCount: state.course.careerPaths?.length || 0,
-      faqsCount: state.course.faqs?.length || 0,
-      testimonialsCount: state.course.testimonials?.length || 0,
+      if (!courseModule.description || courseModule.description.trim() === "") {
+        errors.push(`Module ${moduleIndex + 1}: Description is required`);
+      }
+
+      if (!courseModule.thumbnailUrl || courseModule.thumbnailUrl.trim() === "") {
+        errors.push(`Module ${moduleIndex + 1}: Thumbnail is required`);
+      }
+
+      // Check if module has at least one lesson
+      if (!courseModule.lessons || courseModule.lessons.length === 0) {
+        errors.push(
+          `Module ${moduleIndex + 1}: At least one lesson is required`
+        );
+        return; // Skip lesson validation if no lessons
+      }
+
+      // Validate each lesson in the module
+      courseModule.lessons.forEach((lesson, lessonIndex) => {
+        if (!lesson) {
+          errors.push(
+            `Module ${moduleIndex + 1}, Lesson ${
+              lessonIndex + 1
+            }: Lesson data is missing`
+          );
+          return;
+        }
+
+        // Check lesson basic requirements
+        if (!lesson.title || lesson.title.trim() === "") {
+          errors.push(
+            `Module ${moduleIndex + 1}, Lesson ${
+              lessonIndex + 1
+            }: Title is required`
+          );
+        }
+
+        // Check if lesson has at least one content
+        if (!lesson.contents || lesson.contents.length === 0) {
+          errors.push(
+            `Module ${moduleIndex + 1}, Lesson ${
+              lessonIndex + 1
+            }: At least one content item is required`
+          );
+          return; // Skip content validation if no contents
+        }
+
+        // Validate each content in the lesson
+        lesson.contents.forEach((content, contentIndex) => {
+          if (!content) {
+            errors.push(
+              `Module ${moduleIndex + 1}, Lesson ${lessonIndex + 1}, Content ${
+                contentIndex + 1
+              }: Content data is missing`
+            );
+            return;
+          }
+
+          // Title is required for all content
+          if (!content.title || content.title.trim() === "") {
+            errors.push(
+              `Module ${moduleIndex + 1}, Lesson ${lessonIndex + 1}, Content ${
+                contentIndex + 1
+              }: Title is required`
+            );
+          }
+
+          // Video-specific validation
+          if (content.type === "video") {
+            const videoContent = content as VideoContent;
+
+            // Video URL is required
+            if (
+              !videoContent.sources ||
+              !videoContent.sources[0]?.videoUrl ||
+              videoContent.sources[0].videoUrl.trim() === ""
+            ) {
+              errors.push(
+                `Module ${moduleIndex + 1}, Lesson ${
+                  lessonIndex + 1
+                }, Content ${contentIndex + 1}: Video URL is required`
+              );
+            }
+
+            // Video thumbnail is required
+            if (
+              !videoContent.thumbnailUrl ||
+              videoContent.thumbnailUrl.trim() === ""
+            ) {
+              errors.push(
+                `Module ${moduleIndex + 1}, Lesson ${
+                  lessonIndex + 1
+                }, Content ${contentIndex + 1}: Video thumbnail is required`
+              );
+            }
+          }
+
+          // Quiz-specific validation (if needed)
+          if (content.type === "quiz") {
+            const quizContent = content as QuizContent;
+
+            // Check if quiz has at least one question
+            if (!quizContent.questions || quizContent.questions.length === 0) {
+              errors.push(
+                `Module ${moduleIndex + 1}, Lesson ${
+                  lessonIndex + 1
+                }, Content ${
+                  contentIndex + 1
+                }: At least one question is required for quiz`
+              );
+            }
+          }
+        });
+      });
+    });
+
+    return errors;
+  }, [localModules]);
+
+  // Initialize local modules from course state
+  useEffect(() => {
+    if (state.course.modules && state.course.modules.length > 0) {
+      setLocalModules(state.course.modules);
+      // Mark existing modules as saved
+      const savedIds = new Set<string>();
+      state.course.modules.forEach((module) => {
+        if (module._id && !module._id.startsWith('temp_')) {
+          savedIds.add(module._id);
+        }
+      });
+      setSavedModules(savedIds);
+    }
+  }, [state.course.modules]);
+
+  // Debug: Log course state
+  useEffect(() => {
+    console.log("Course state:", {
+      courseId: state.course._id,
+      modules: state.course.modules?.length || 0,
+      localModules: localModules.length,
+      validationErrors: validationErrors.length
+    });
+  }, [state.course._id, state.course.modules, localModules.length, validationErrors.length]);
+
+  // Helper function to generate a unique ID
+  const generateId = () =>
+    `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+  // Helper function to add a new module locally
+  const addModule = () => {
+    const newModule: CourseModule = {
+      _id: generateId(),
+      title: "",
+      description: "",
+      lessons: [],
+      thumbnailUrl: "",
+      isActive: true,
+      isCompleted: false,
+      lessonIds: [],
     };
-  }, [state.course]);
 
-  const handleCreateCourseMetadata = async () => {
-    if (!allValid) {
-      setCreateError("Please complete all required fields before creating the course.");
+    // Add the new module to the array
+    setLocalModules((prev) => {
+      const updatedModules = [...prev, newModule];
+      // Get the index of the newly added module
+      const newIndex = updatedModules.length - 1;
+      // Expand the new module for editing
+      setExpandedModules((prev) => new Set([...prev, newIndex]));
+      return updatedModules;
+    });
+  };
+
+  // Helper function to save module to API
+  const saveModuleToAPI = async (moduleIndex: number) => {
+    const module = localModules[moduleIndex];
+    if (!module) return;
+
+    // Check if course ID exists, if not, we need to create the course first
+    if (!state.course._id) {
+      console.error("Course ID not found. Please create the course first.");
+      // You might want to show a toast notification here
       return;
     }
 
-    setIsCreating(true);
-    setCreateError("");
+    setSavingModule((prev) => new Set([...prev, module._id!]));
 
     try {
-      // Sanitize course data for backend (excluding modules)
-      const sanitizedCourse = sanitizeCourseForBackend(state.course);
+      // Prepare module data for API (remove temp ID)
+      const { _id, ...moduleData } = module;
       
-      // Validate sanitized data
-      if (!validateSanitizedCourse(sanitizedCourse)) {
-        throw new Error("Course data validation failed");
-      }
-
-      console.log("🚀 Creating course metadata with data:", sanitizedCourse);
-
-      // Extract modules for later creation and create metadata only
-      const { modules, ...courseMetadata } = sanitizedCourse;
-
-      // Create course metadata only
-      const result = await createCourseMetadata(courseMetadata);
-
-      if (result.success && result.data?.courseId) {
-        setCreatedCourseId(result.data.courseId);
-        setCourseCreated(true);
+      const response = await addSingleCourseModule(state.course._id, moduleData);
+      
+      if (response.success && response.module) {
+        // Update local module with real ID from API
+        const updatedModule = {
+          ...module,
+          _id: response.module._id,
+        };
         
-        // Store course ID and modules in localStorage for module management
-        localStorage.setItem("current_course_id", result.data.courseId);
-        localStorage.setItem("course_modules_draft", JSON.stringify(modules || []));
-      } else {
-        setCreateError(result.error || "Failed to create course metadata");
+        setLocalModules((prev) => 
+          prev.map((m, index) => index === moduleIndex ? updatedModule : m)
+        );
+        
+        setSavedModules((prev) => new Set([...prev, response.module._id]));
+        
+        // Update course state
+        actions.updateCourseModule(module._id!, updatedModule);
+        
+        // Collapse the module after saving
+        setExpandedModules((prev) => {
+          const newSet = new Set(prev);
+          newSet.delete(moduleIndex);
+          return newSet;
+        });
       }
     } catch (error) {
-      console.error("Error creating course metadata:", error);
-      setCreateError(error instanceof Error ? error.message : "Failed to create course metadata");
+      console.error("Failed to save module:", error);
+      // You might want to show a toast notification here
     } finally {
-      setIsCreating(false);
+      setSavingModule((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(module._id!);
+        return newSet;
+      });
     }
   };
 
-  const handleProceedToModules = () => {
-    // Navigate to module management screen
-    setActiveScreen("screen12");
+  // Helper function to add a new lesson to a module
+  const addLesson = (moduleIndex: number) => {
+    const courseModule = localModules[moduleIndex];
+    if (!courseModule) return;
+
+    const newLesson: CourseLesson = {
+      _id: generateId(),
+      title: "",
+      description: "",
+      contentIds: [],
+      contents: [],
+    };
+
+    const updatedModule = {
+      ...courseModule,
+      lessons: [...(courseModule.lessons || []), newLesson],
+    };
+
+    setLocalModules((prev) => 
+      prev.map((m, index) => index === moduleIndex ? updatedModule : m)
+    );
+
+    // Expand the new lesson
+    setExpandedLessons((prev) => new Set([...prev, newLesson._id!]));
   };
 
-  const getColorClasses = (color: string, isValid: boolean) => {
-    const colorMap = {
-      orange: isValid ? "bg-orange-500" : "bg-orange-100",
-      blue: isValid ? "bg-orange-500" : "bg-orange-100",
+  // Helper function to add content to a lesson
+  const addContent = (lessonId: string, type: "video" | "quiz") => {
+    // Generate a default title that meets the requirement
+    const contentCount =
+      localModules
+        .flatMap((m) => m.lessons || [])
+        .flatMap((l) => l.contents || [])
+        .filter((c) => c.type === type).length + 1;
+
+    const defaultTitle =
+      type === "video"
+        ? `Video Content ${contentCount}`
+        : `Quiz ${contentCount}`;
+
+    const newContent: Content = type === "video"
+      ? {
+          _id: generateId(),
+          title: defaultTitle,
+          description: "",
+          type: "video",
+          isCompleted: false,
+          sources: [
+            {
+              quality: "1080p" as const,
+              videoUrl: "",
+            },
+          ],
+          thumbnailUrl: "",
+          duration: 0,
+          readingMaterials: [],
+        }
+      : {
+          _id: generateId(),
+          title: defaultTitle,
+          description: "",
+          type: "quiz",
+          isCompleted: false,
+          questions: [],
+          passingScore: 70,
+          maxAttempts: 3,
+          readingMaterials: [],
+        };
+
+    // Find the module and lesson to add content to
+    const moduleIndex = findModuleIndexByLessonId(lessonId);
+    if (moduleIndex === -1) return;
+
+    const module = localModules[moduleIndex];
+    const updatedLessons: CourseLesson[] = (module.lessons || []).map((lesson) =>
+      lesson._id === lessonId
+        ? { ...lesson, contents: [...(lesson.contents || []), newContent] }
+        : lesson
+    );
+
+    const updatedModule = {
+      ...module,
+      lessons: updatedLessons,
     };
-    return colorMap[color as keyof typeof colorMap] || "bg-gray-500";
+
+    setLocalModules((prev) => 
+      prev.map((m, index) => index === moduleIndex ? updatedModule : m)
+    );
+
+    // Expand the new content
+    setExpandedContent((prev) => new Set([...prev, newContent._id!]));
   };
 
-  const getIconColor = (color: string, isValid: boolean) => {
-    const colorMap = {
-      orange: isValid ? "text-white" : "text-orange-600",
-      blue: isValid ? "text-white" : "text-orange-600",
+  // Helper function to find module index by lesson ID
+  const findModuleIndexByLessonId = (lessonId: string): number => {
+    for (let i = 0; i < localModules.length; i++) {
+      const module = localModules[i];
+      if ((module.lessons || []).some((lesson) => lesson._id === lessonId)) {
+        return i;
+      }
+    }
+    return -1;
+  };
+
+  // Helper function to toggle module expansion
+  const toggleModuleExpansion = (index: number) => {
+    setExpandedModules((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(index)) {
+        newSet.delete(index);
+      } else {
+        newSet.add(index);
+      }
+      return newSet;
+    });
+  };
+
+  // Helper function to toggle lesson expansion
+  const toggleLessonExpansion = (lessonId: string) => {
+    setExpandedLessons((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(lessonId)) {
+        newSet.delete(lessonId);
+      } else {
+        newSet.add(lessonId);
+      }
+      return newSet;
+    });
+  };
+
+  // Helper function to toggle content expansion
+  const toggleContentExpansion = (contentId: string) => {
+    setExpandedContent((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(contentId)) {
+        newSet.delete(contentId);
+      } else {
+        newSet.add(contentId);
+      }
+      return newSet;
+    });
+  };
+
+  // Helper function to check if module is complete
+  const isModuleComplete = (courseModule: CourseModule) => {
+    return (
+      courseModule.title &&
+      courseModule.description &&
+      courseModule.thumbnailUrl
+    );
+  };
+
+  // Helper function to update module data
+  const updateModuleData = (moduleIndex: number, updates: Partial<CourseModule>) => {
+    setLocalModules((prev) => 
+      prev.map((m, index) => 
+        index === moduleIndex ? { ...m, ...updates } : m
+      )
+    );
+  };
+
+  // Helper function to update lesson data
+  const updateLessonData = (lessonId: string, updates: Partial<CourseLesson>) => {
+    const moduleIndex = findModuleIndexByLessonId(lessonId);
+    if (moduleIndex === -1) return;
+
+    const module = localModules[moduleIndex];
+    const updatedLessons: CourseLesson[] = (module.lessons || []).map((lesson) =>
+      lesson._id === lessonId ? { ...lesson, ...updates } : lesson
+    );
+
+    const updatedModule = {
+      ...module,
+      lessons: updatedLessons,
     };
-    return colorMap[color as keyof typeof colorMap] || "text-gray-600";
+
+    setLocalModules((prev) => 
+      prev.map((m, index) => index === moduleIndex ? updatedModule : m)
+    );
+  };
+
+  // Helper function to update content data
+  const updateContentData = (contentId: string, updates: Partial<Content>) => {
+    const location = findContentLocation(contentId);
+    if (!location) return;
+
+    const { moduleIndex, lessonId } = location;
+    const module = localModules[moduleIndex];
+    const updatedLessons: CourseLesson[] = (module.lessons || []).map((lesson) =>
+      lesson._id === lessonId
+        ? {
+            ...lesson,
+            contents: (lesson.contents || []).map((content) =>
+              content._id === contentId ? { ...content, ...updates } as Content : content
+            ),
+          }
+        : lesson
+    );
+
+    const updatedModule = {
+      ...module,
+      lessons: updatedLessons,
+    };
+
+    setLocalModules((prev) => 
+      prev.map((m, index) => index === moduleIndex ? updatedModule : m)
+    );
+  };
+
+  // Helper function to delete content data
+  const deleteContentData = (contentId: string) => {
+    const location = findContentLocation(contentId);
+    if (!location) return;
+
+    const { moduleIndex, lessonId } = location;
+    const module = localModules[moduleIndex];
+    const updatedLessons: CourseLesson[] = (module.lessons || []).map((lesson) =>
+      lesson._id === lessonId
+        ? {
+            ...lesson,
+            contents: (lesson.contents || []).filter((content) => content._id !== contentId),
+          }
+        : lesson
+    );
+
+    const updatedModule = {
+      ...module,
+      lessons: updatedLessons,
+    };
+
+    setLocalModules((prev) => 
+      prev.map((m, index) => index === moduleIndex ? updatedModule : m)
+    );
+  };
+
+  // Helper function to find the location of content by content ID
+  const findContentLocation = (
+    contentId: string
+  ): { moduleIndex: number; lessonId: string } | undefined => {
+    for (let i = 0; i < localModules.length; i++) {
+      const module = localModules[i];
+      for (const lesson of module.lessons || []) {
+        if ((lesson.contents || []).some((content) => content._id === contentId)) {
+          return { moduleIndex: i, lessonId: lesson._id! };
+        }
+      }
+    }
+    return undefined;
+  };
+
+  // Helper function to handle thumbnail upload
+  const handleThumbnailUpload = async (
+    moduleIndex: number,
+    file: File,
+    folderName: string
+  ): Promise<string> => {
+    try {
+      const uploadResponse = await uploadWithPresignedUrl(file, folderName);
+      if (uploadResponse.success && uploadResponse.data?.url) {
+        const uploadedUrl = uploadResponse.data.url;
+        updateModuleData(moduleIndex, {
+          thumbnailUrl: uploadedUrl,
+          thumbnailSource: "upload",
+        });
+        return uploadedUrl;
+      } else {
+        throw new Error(uploadResponse.error || "Upload failed");
+      }
+    } catch (error) {
+      console.error("Upload failed:", error);
+      throw error;
+    }
+  };
+
+  // Helper function to handle thumbnail URL submission
+  const handleThumbnailUrlSubmit = (moduleIndex: number, url: string) => {
+    updateModuleData(moduleIndex, {
+      thumbnailUrl: url,
+      thumbnailSource: "url",
+    });
+  };
+
+  // Helper function to handle thumbnail removal
+  const handleThumbnailRemove = (moduleIndex: number) => {
+    updateModuleData(moduleIndex, {
+      thumbnailUrl: "",
+      thumbnailSource: undefined,
+    });
+  };
+
+  // Helper function to remove a module
+  const removeModule = (index: number) => {
+    setLocalModules((prev) => prev.filter((_, i) => i !== index));
+    
+    // Update saved and expanded states
+    setSavedModules((prev) => {
+      const newSet = new Set(prev);
+      const module = localModules[index];
+      if (module._id) {
+        newSet.delete(module._id);
+      }
+      return newSet;
+    });
+    setExpandedModules((prev) => {
+      const newSet = new Set(prev);
+      newSet.delete(index);
+      return newSet;
+    });
   };
 
   return (
     <Container
-      title="Review & Create Course Metadata"
-      description="Review all course information before creating the course metadata. Modules can be added later."
+      title="Course Modules & Content"
+      description="Create and organize your course modules, lessons, and content"
       className="rounded-b-none h-full w-full max-h-full overflow-y-auto flex flex-col"
       style={{ scrollbarWidth: "thin" }}
     >
-      {/* Success Banner - Course Created */}
-      {courseCreated && (
-        <div className="bg-gradient-to-r from-green-50 to-blue-50 border-2 border-green-200 rounded-xl p-6 mb-6 shadow-lg">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg">
-              <CheckSquare className="w-7 h-7 text-white" />
+      {/* Course ID Warning */}
+      {!state.course._id && (
+        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <div className="font-medium mb-2 text-red-800">
+            Course Not Created Yet
+          </div>
+          <p className="text-sm text-red-700">
+            Please complete the previous steps to create the course before adding modules.
+          </p>
+        </div>
+      )}
+
+      {/* Validation Feedback */}
+      {validationErrors.length > 0 && (
+        <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="font-medium mb-2 text-blue-800">
+            Please complete the following:
+          </div>
+          <ul className="list-disc list-inside space-y-1 text-blue-700">
+            {validationErrors.map((error, index) => (
+              <li key={index} className="text-sm">
+                {error}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Modules Section */}
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 mb-6 border border-blue-100">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-500 rounded-lg">
+              <BookOpen className="w-5 h-5 text-white" />
             </div>
-            <div className="flex-1">
-              <h3 className="text-xl font-bold text-green-800 mb-1">
-                🎉 Course Metadata Created Successfully!
+            <div>
+              <h3 className="text-lg font-semibold text-gray-800">
+                Course Modules
               </h3>
-              <p className="text-green-700 mb-3">
-                Your course has been created with ID: <span className="font-mono font-bold">{createdCourseId}</span>
-              </p>
-              <p className="text-green-600 text-sm">
-                You can now add modules to your course or proceed to manage it.
+              <p className="text-sm text-gray-600">
+                Organize your course content into structured modules
               </p>
             </div>
-            <OrangeButton
-              onClick={handleProceedToModules}
-              className="flex items-center gap-2 shadow-lg px-6 py-3"
-            >
-              <BookOpen className="w-5 h-5" />
-              Add Modules
-            </OrangeButton>
           </div>
-        </div>
-      )}
-
-      {/* Error Message */}
-      {createError && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-          <div className="flex items-center gap-2">
-            <AlertCircle className="w-5 h-5 text-red-600" />
-            <p className="text-red-700">{createError}</p>
-          </div>
-        </div>
-      )}
-
-      {/* Validation Summary */}
-      <Container
-        title="Course Validation"
-        description={`${allValid 
-          ? "All requirements met - Course is ready!" 
-          : `${invalidChecks.length} validation issue${invalidChecks.length !== 1 ? 's' : ''} found - Please fix before creating`
-        }`}
-        icon={Award}
-        className="mb-6"
-      >
-        <div className="flex items-center justify-between mb-6">
-          <div className="text-right">
-            <div className="text-3xl font-bold text-orange-600">
-              {validChecks.length}/{validationChecks.length}
-            </div>
-            <div className="text-sm text-gray-600">Completed</div>
-          </div>
-        </div>
-        
-        {/* Progress Bar */}
-        <div className="mb-6">
-          <div className="w-full bg-gray-200 rounded-full h-3">
-            <div 
-              className={`h-3 rounded-full transition-all duration-500 ${
-                allValid ? 'bg-gradient-to-r from-orange-500 to-orange-600' : 'bg-gradient-to-r from-orange-500 to-orange-500'
-              }`}
-              style={{ width: `${(validChecks.length / validationChecks.length) * 100}%` }}
-            ></div>
-          </div>
+          <OrangeButton
+            onClick={addModule}
+            className="flex items-center gap-2 px-4 py-2"
+          >
+            <Plus className="w-4 h-4" />
+            Add Module
+          </OrangeButton>
         </div>
 
-        {/* Validation Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {validationChecks.map((check) => {
-            const IconComponent = check.icon;
+        {/* Modules List */}
+        <div className="space-y-4">
+          {localModules.map((courseModule, moduleIndex) => {
+            if (!courseModule) return null;
+            const isSaved = savedModules.has(courseModule._id!);
+            const isExpanded = expandedModules.has(moduleIndex);
+            const isComplete = isModuleComplete(courseModule);
+            const isSaving = savingModule.has(courseModule._id!);
+
             return (
               <div
-                key={check.id}
-                className={`p-4 rounded-xl border-2 transition-all duration-300 hover:shadow-md ${
-                  check.isValid
-                    ? "border-orange-200 bg-orange-50 hover:bg-orange-100"
-                    : "border-red-200 bg-red-50 hover:bg-red-100"
-                }`}
+                key={moduleIndex}
+                className="bg-white rounded-lg border border-blue-200 overflow-hidden"
               >
-                <div className="flex items-center justify-between">
+                {/* Module Header */}
+                <div
+                  className="flex items-center justify-between p-4 cursor-pointer hover:bg-blue-50 transition-colors"
+                  onClick={() => toggleModuleExpansion(moduleIndex)}
+                >
                   <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 ${getColorClasses(check.color, check.isValid)} rounded-lg flex items-center justify-center`}>
-                      <IconComponent className={`w-5 h-5 ${getIconColor(check.color, check.isValid)}`} />
+                    <div className="flex items-center gap-2">
+                      <GripVertical className="w-4 h-4 text-gray-400" />
+                      <div
+                        className={`w-3 h-3 rounded-full ${
+                          isComplete ? "bg-green-500" : "bg-yellow-500"
+                        }`}
+                      ></div>
                     </div>
-                    <div>
-                      <span className="font-semibold text-gray-800">{check.label}</span>
-                      <div className="text-sm text-gray-600">{check.details}</div>
+                    <h4 className="font-medium text-gray-800">
+                      {courseModule.title || `Module ${moduleIndex + 1}`}
+                    </h4>
+                    {!isSaved && !courseModule.title && (
+                      <span className="px-2 py-1 text-xs bg-amber-100 text-amber-700 rounded-full">
+                        New - Ready to Edit
+                      </span>
+                    )}
+                    {isSaved && (
+                      <span className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded-full">
+                        Saved
+                      </span>
+                    )}
+                    {isSaving && (
+                      <span className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-full flex items-center gap-1">
+                        <InlineLoader size="sm" variant="spinner" />
+                        Saving...
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-500">
+                      {(courseModule.lessons || []).length} lessons
+                    </span>
+                    {isExpanded ? (
+                      <ChevronUp className="w-4 h-4 text-gray-500" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4 text-gray-500" />
+                    )}
+                  </div>
+                </div>
+
+                {/* Expanded Module Content */}
+                {isExpanded && (
+                  <div className="p-4 border-t border-blue-100">
+                    <FlexBox className="flex-col gap-4">
+                      {/* Module Basic Info */}
+                      <div className="grid grid-cols-1 gap-4">
+                        <Input
+                          label="Module Title"
+                          placeholder="e.g., Introduction to React"
+                          value={courseModule.title}
+                          onChange={(e) => {
+                            updateModuleData(moduleIndex, {
+                              title: e.target.value,
+                            });
+                          }}
+                          required
+                        />
+                      </div>
+
+                      <TextArea
+                        label="Module Description"
+                        placeholder="Describe what students will learn in this module"
+                        value={courseModule.description || ""}
+                        onChange={(e) => {
+                          updateModuleData(moduleIndex, {
+                            description: e.target.value,
+                          });
+                        }}
+                        rows={3}
+                        lockHeight
+                        required
+                      />
+
+                      {/* Module Thumbnail Upload */}
+                      <UploadMediaContainer
+                        title="Module Thumbnail"
+                        description="Upload a thumbnail image for this module (required)"
+                        type="image"
+                        mediaUrl={courseModule.thumbnailUrl}
+                        mediaSource={courseModule.thumbnailSource}
+                        maxSize={10} // 10MB
+                        acceptedFormats={[".jpg", ".jpeg", ".png", ".webp"]}
+                        onFileUpload={(file, folderName) =>
+                          handleThumbnailUpload(
+                            moduleIndex,
+                            file,
+                            folderName
+                          )
+                        }
+                        onFileRemove={() =>
+                          handleThumbnailRemove(moduleIndex)
+                        }
+                        onUrlSubmit={(url) =>
+                          handleThumbnailUrlSubmit(moduleIndex, url)
+                        }
+                        isUploading={isUploading}
+                        required={true}
+                        allowUrlInput={true}
+                        folderName={`courses/${
+                          state.course.title || "untitled"
+                        }/modules`}
+                        uploadContext={`module-${moduleIndex + 1}`}
+                        className="w-full"
+                      />
+
+                      {/* Module Settings */}
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={courseModule.isActive}
+                            onChange={(e) => {
+                              updateModuleData(moduleIndex, {
+                                isActive: e.target.checked,
+                              });
+                            }}
+                            className="rounded"
+                          />
+                          <span className="text-sm text-gray-700">
+                            Module Active
+                          </span>
+                        </label>
+                      </div>
+
+                      {/* Lessons Section */}
+                      <div className="border-t border-blue-100 pt-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <h5 className="font-medium text-gray-800">Lessons</h5>
+                          <div className="flex items-center gap-2">
+                            {!isSaved && (
+                              <div className="flex items-center gap-1 text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded">
+                                <Lock className="w-3 h-3" />
+                                Save module first
+                              </div>
+                            )}
+                            <OrangeButton
+                              onClick={() => addLesson(moduleIndex)}
+                              disabled={!isSaved || isSaving}
+                              className="flex items-center gap-2 px-3 py-1 text-sm"
+                            >
+                              <Plus className="w-3 h-3" />
+                              Add Lesson
+                            </OrangeButton>
+                          </div>
+                        </div>
+
+                        {/* Lessons List */}
+                        <div className="space-y-3 pl-4">
+                          {(courseModule.lessons || []).map((lesson, lessonIndex) =>
+                            lesson ? (
+                              <LessonItem
+                                key={lesson._id!}
+                                lessonId={lesson._id!}
+                                lessonData={lesson}
+                                isExpanded={expandedLessons.has(lesson._id!)}
+                                onToggleExpansion={() =>
+                                  toggleLessonExpansion(lesson._id!)
+                                }
+                                onUpdateLesson={updateLessonData}
+                                onAddContent={addContent}
+                                expandedContent={expandedContent}
+                                onToggleContentExpansion={
+                                  toggleContentExpansion
+                                }
+                                onUpdateContent={updateContentData}
+                                onDeleteContent={deleteContentData}
+                                courseTitle={state.course.title || "untitled"}
+                                moduleIndex={moduleIndex}
+                                lessonIndex={lessonIndex}
+                                isModuleSaved={isSaved}
+                              />
+                            ) : null
+                          )}
+
+                          {(courseModule.lessons || []).length === 0 && (
+                            <div className="text-center py-4 text-gray-500 border-2 border-dashed border-gray-200 rounded-lg">
+                              <BookOpen className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+                              <p className="text-sm">No lessons added yet</p>
+                              <p className="text-xs">
+                                {!isSaved 
+                                  ? "Save the module first to add lessons"
+                                  : "Click \"Add Lesson\" to get started"
+                                }
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Module Action Buttons */}
+                      <div className="flex items-center justify-between pt-4 border-t border-blue-100">
+                        <button
+                          onClick={() => removeModule(moduleIndex)}
+                          className="flex items-center gap-2 px-3 py-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          Delete Module
+                        </button>
+
+                        <div className="flex items-center gap-2">
+                          <OrangeButton
+                            onClick={() => saveModuleToAPI(moduleIndex)}
+                            disabled={!isComplete || isSaving || !state.course._id}
+                            className="flex items-center gap-2 px-4 py-2"
+                          >
+                            {isSaving ? (
+                              <InlineLoader size="sm" variant="spinner" />
+                            ) : (
+                              <Save className="w-4 h-4" />
+                            )}
+                            {isSaving 
+                              ? "Saving..." 
+                              : !state.course._id 
+                                ? "Course Not Created" 
+                                : "Save Module"
+                            }
+                          </OrangeButton>
+                        </div>
+                      </div>
+                    </FlexBox>
+                  </div>
+                )}
+
+                {/* Collapsed Module View */}
+                {!isExpanded && isSaved && (
+                  <div className="p-4 border-t border-blue-100">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-gray-700 mb-1">
+                          {courseModule.description || "No description"}
+                        </p>
+                        <div className="flex items-center gap-4 text-xs text-gray-500">
+                          <span>{(courseModule.lessons || []).length} lessons</span>
+                          <span
+                            className={
+                              courseModule.isActive
+                                ? "text-green-600"
+                                : "text-red-600"
+                            }
+                          >
+                            {courseModule.isActive ? "Active" : "Inactive"}
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => toggleModuleExpansion(moduleIndex)}
+                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
                     </div>
                   </div>
-                  {check.isValid ? (
-                    <CheckCircle className="w-6 h-6 text-orange-600" />
-                  ) : (
-                    <AlertCircle className="w-6 h-6 text-red-600" />
-                  )}
-                </div>
+                )}
               </div>
             );
           })}
-        </div>
 
-        {!allValid && (
-          <div className="mt-6 p-4 bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-yellow-200 rounded-xl shadow-md">
-            <div className="flex items-center gap-3 text-yellow-800">
-              <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
-                <AlertCircle className="w-6 h-6 text-yellow-600" />
-              </div>
-              <div>
-                <span className="font-semibold text-lg">
-                  Action Required
-                </span>
-                <div className="text-sm mt-1">
-                  Please complete all required fields above before creating your course. 
-                  Each section marked with a red icon needs attention.
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </Container>
-
-      {/* Course Preview */}
-      <Container
-        title="Course Preview"
-        description="Preview of your course information and statistics"
-        icon={Eye}
-        className="mb-6"
-      >
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Course Details */}
-          <div className="space-y-6">
-            <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-5">
-              <h4 className="text-xl font-bold text-gray-800 mb-3">
-                {state.course.title || "Untitled Course"}
-              </h4>
-              <p className="text-gray-600 text-sm leading-relaxed mb-4">
-                {state.course.description || "No description provided"}
+          {localModules.length === 0 && (
+            <div className="text-center py-8 text-gray-500">
+              <BookOpen className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+              <p>No modules added yet</p>
+              <p className="text-sm">
+                Click &quot;Add Module&quot; to get started
               </p>
-              
-              <div className="space-y-3">
-                <div className="flex items-center gap-3 text-sm">
-                  <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
-                    <Tag className="w-4 h-4 text-orange-600" />
-                  </div>
-                  <span className="text-gray-700 font-medium">Category:</span>
-                  <span className="text-gray-800">{state.course.category || "Not set"}</span>
-                </div>
-                
-                <div className="flex items-center gap-3 text-sm">
-                  <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
-                    <TrendingUp className="w-4 h-4 text-orange-600" />
-                  </div>
-                  <span className="text-gray-700 font-medium">Pricing:</span>
-                  <span className="text-gray-800">
-                    {(() => {
-                      const essentialPrice = state.course.plans?.essential?.price;
-                      const elitePrice = state.course.plans?.elite?.price;
-                      
-                      if (essentialPrice !== undefined && elitePrice !== undefined) {
-                        return `Essential: $${essentialPrice} | Elite: $${elitePrice}`;
-                      } else if (essentialPrice !== undefined) {
-                        return `Essential: $${essentialPrice}`;
-                      } else if (elitePrice !== undefined) {
-                        return `Elite: $${elitePrice}`;
-                      } else {
-                        return "Price Not Set";
-                      }
-                    })()}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-3 text-sm">
-                  <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
-                    <Target className="w-4 h-4 text-orange-600" />
-                  </div>
-                  <span className="text-gray-700 font-medium">Audience:</span>
-                  <span className="text-gray-800">{
-                    state.course.audience === "college-students" ? "College Students" :
-                    state.course.audience === "professionals" ? "Professionals" :
-                    "Not set"
-                  }</span>
-                </div>
-
-                <div className="flex items-center gap-3 text-sm">
-                  <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
-                    <Clock className="w-4 h-4 text-orange-600" />
-                  </div>
-                  <span className="text-gray-700 font-medium">Duration:</span>
-                  <span className="text-gray-800">{state.course.duration || "Not set"}</span>
-                </div>
-              </div>
             </div>
-
-            {state.course.thumbnail && (
-              <div className="bg-white border border-gray-200 rounded-xl p-4">
-                <h4 className="font-semibold text-gray-800 mb-3">Course Thumbnail</h4>
-                <img
-                  src={state.course.thumbnail}
-                  alt="Course thumbnail"
-                  className="w-full h-48 object-cover rounded-lg border border-gray-200"
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Course Statistics */}
-          <div className="space-y-6">
-            <Container
-              title="Course Statistics"
-              description="Overview of your course content and metrics"
-              icon={Star}
-              className="mb-6"
-            >
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-white rounded-lg p-3 border border-blue-200">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Tag className="w-4 h-4 text-orange-500" />
-                    <span className="text-sm font-medium text-gray-600">Skills</span>
-                  </div>
-                  <div className="text-2xl font-bold text-orange-600">{courseStats.skillsCount}</div>
-                </div>
-                <div className="bg-white rounded-lg p-3 border border-orange-200">
-                  <div className="flex items-center gap-2 mb-1">
-                    <TrendingUp className="w-4 h-4 text-orange-500" />
-                    <span className="text-sm font-medium text-gray-600">Career Paths</span>
-                  </div>
-                  <div className="text-2xl font-bold text-orange-600">{courseStats.careerPathsCount}</div>
-                </div>
-                <div className="bg-white rounded-lg p-3 border border-blue-200">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Globe className="w-4 h-4 text-orange-500" />
-                    <span className="text-sm font-medium text-gray-600">Language</span>
-                  </div>
-                  <div className="text-lg font-bold text-orange-600">{state.course.language || "Not set"}</div>
-                </div>
-                <div className="bg-white rounded-lg p-3 border border-orange-200">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Clock className="w-4 h-4 text-orange-500" />
-                    <span className="text-sm font-medium text-gray-600">Duration</span>
-                  </div>
-                  <div className="text-lg font-bold text-orange-600">{state.course.duration || "Not set"}</div>
-                </div>
-              </div>
-            </Container>
-
-            <Container
-              title="Additional Content"
-              description="Overview of supplementary course materials"
-              icon={CheckCircle}
-              className="mb-6"
-            >
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">FAQs</span>
-                  <span className="font-semibold text-gray-800">{courseStats.faqsCount}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Testimonials</span>
-                  <span className="font-semibold text-gray-800">{courseStats.testimonialsCount}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Instructors</span>
-                  <span className="font-semibold text-gray-800">{state.course.instructor?.length || 0}</span>
-                </div>
-              </div>
-            </Container>
-          </div>
+          )}
         </div>
-      </Container>
+      </div>
 
-
-      {/* Navigation */}
-      {!courseCreated ? (
-        <div className="flex-shrink-0 bg-white border-t border-gray-200 p-6">
-          <div className="flex justify-between items-center">
-            <button
-              onClick={() => setActiveScreen("screen9")}
-              className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back to SEO
-            </button>
-            
-            <OrangeButton
-              onClick={handleCreateCourseMetadata}
-              disabled={!allValid || isCreating}
-              className="flex items-center gap-2 px-6 py-3"
-            >
-              {isCreating ? (
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-              ) : (
-                <Send className="w-5 h-5" />
-              )}
-              {isCreating ? "Creating Course..." : "Create Course Metadata"}
-            </OrangeButton>
-          </div>
-        </div>
-      ) : (
-        <ScreenNavigation
-          currentStep={11}
-          previousScreen="screen9"
-          nextScreen="screen12"
-          setActiveScreen={setActiveScreen}
-          isNextDisabled={false}
-        />
-      )}
+      <ScreenNavigation
+        currentStep={11}
+        previousScreen="screen10"
+        nextScreen="screen12"
+        nextButtonText="Review & Submit"
+        setActiveScreen={setActiveScreen}
+        isNextDisabled={validationErrors.length > 0}
+      />
     </Container>
+  );
+};
+
+// Lesson Item Component
+interface LessonItemProps {
+  lessonId: string;
+  lessonData: CourseLesson;
+  isExpanded: boolean;
+  onToggleExpansion: () => void;
+  onUpdateLesson: (lessonId: string, updates: Partial<CourseLesson>) => void;
+  onAddContent: (lessonId: string, type: "video" | "quiz") => void;
+  expandedContent: Set<string>;
+  onToggleContentExpansion: (contentId: string) => void;
+  onUpdateContent: (contentId: string, updates: Partial<Content>) => void;
+  onDeleteContent: (contentId: string) => void;
+  courseTitle?: string;
+  moduleIndex?: number;
+  lessonIndex?: number;
+  isModuleSaved: boolean;
+}
+
+const LessonItem: React.FC<LessonItemProps> = ({
+  lessonId,
+  lessonData,
+  isExpanded,
+  onToggleExpansion,
+  onUpdateLesson,
+  onAddContent,
+  expandedContent,
+  onToggleContentExpansion,
+  onUpdateContent,
+  onDeleteContent,
+  courseTitle,
+  moduleIndex,
+  lessonIndex,
+  isModuleSaved,
+}) => {
+  const lesson = lessonData;
+
+  return (
+    <div className="bg-gray-50 rounded-lg border border-gray-200">
+      {/* Lesson Header */}
+      <div
+        className="flex items-center justify-between p-3 cursor-pointer hover:bg-gray-100 transition-colors"
+        onClick={onToggleExpansion}
+      >
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <GripVertical className="w-3 h-3 text-gray-400" />
+            <Play className="w-4 h-4 text-blue-500" />
+          </div>
+          <span className="font-medium text-gray-800">
+            {lesson.title || "Untitled Lesson"}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gray-500">
+            {(lesson.contents || []).length} items
+          </span>
+          {isExpanded ? (
+            <ChevronUp className="w-3 h-3 text-gray-500" />
+          ) : (
+            <ChevronDown className="w-3 h-3 text-gray-500" />
+          )}
+        </div>
+      </div>
+
+      {/* Expanded Lesson Content */}
+      {isExpanded && (
+        <div className="p-3 border-t border-gray-200">
+          <div className="space-y-3">
+            <Input
+              label="Lesson Title"
+              placeholder="e.g., Getting Started with React"
+              value={lesson.title}
+              onChange={(e) => {
+                onUpdateLesson(lessonId, { title: e.target.value });
+              }}
+              required
+            />
+
+            <TextArea
+              label="Lesson Description"
+              placeholder="Describe what students will learn in this lesson"
+              value={lesson.description || ""}
+              onChange={(e) => {
+                onUpdateLesson(lessonId, { description: e.target.value });
+              }}
+              rows={2}
+              lockHeight
+            />
+
+            {/* Content Section */}
+            <ContentSection
+              lessonId={lessonId}
+              contents={lesson.contents || []}
+              expandedContent={expandedContent}
+              onToggleContentExpansion={onToggleContentExpansion}
+              onUpdateContent={onUpdateContent}
+              onAddContent={onAddContent}
+              onDeleteContent={onDeleteContent}
+              courseTitle={courseTitle}
+              moduleIndex={moduleIndex}
+              lessonIndex={lessonIndex}
+              isLessonSaved={isModuleSaved}
+            />
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 

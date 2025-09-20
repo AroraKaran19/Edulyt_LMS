@@ -63,7 +63,7 @@ const TopCourseCard = ({
             />
           )}
       </div>
-      <BestsellerBadge enrollStudents={course.enrolledCount} className="mt-3" />
+      <BestsellerBadge enrollStudents={course.analytics?.totalEnrollments || 0} className="mt-3" />
       <p
         className={cn(
           "text-2xl font-bold mt-2 font-coolvetica select-none text-balance"
@@ -73,7 +73,7 @@ const TopCourseCard = ({
       </p>
       <RatingContainer
         reviewCount={course.reviews.length}
-        totalRating={course.totalRatings}
+        totalRating={course.analytics?.totalRatings || 0}
         className="mt-2"
         courseSlug={course.slug}
       />

@@ -1,37 +1,25 @@
 import mongoose from "mongoose";
-import { Course, FAQ, Testimonial } from "../types";
+import { Course } from "../types";
 import plansSchema from "./plans.schema";
 import {
   validateAudience,
-  validateLinkedinUrl,
   validatePlans,
   validateUrl,
 } from "./validators";
 
 // ===================
-// Testimonial Schema
+// Highlights Schema
 // ===================
 
-const testimonialSchema = new mongoose.Schema<Testimonial>(
+const highlightSchema = new mongoose.Schema(
   {
-    name: { type: String, required: true },
-    profileImage: { type: String, required: true },
-    currentRole: { type: String, required: true },
-    pastRole: { type: String, required: true },
-    pastCompany: { type: String, required: true },
-    currentCompany: { type: String, required: true },
-    linkedin: {
-      type: String,
-      required: true,
-      validate: {
-        validator: validateLinkedinUrl,
-        message: "LinkedIn must be a valid URL",
-      },
+    title: { type: String, required: true },
+    description: { 
+      type: String, 
+      required: true, 
     },
-    isActive: { type: Boolean, default: true, required: true },
-    verified: { type: Boolean, default: false },
   },
-  { timestamps: true, _id: false }
+  { _id: false }
 );
 
 // ===================
@@ -40,6 +28,7 @@ const testimonialSchema = new mongoose.Schema<Testimonial>(
 
 const analyticsSchema = new mongoose.Schema(
   {
+    totalRatings: { type: Number, default: 0, required: true },
     totalEnrollments: { type: Number, default: 0, required: true },
     activeEnrollments: { type: Number, default: 0, required: true },
     completionRate: { type: Number, default: 0, required: true },
@@ -71,7 +60,6 @@ const courseSchema = new mongoose.Schema<Course>(
       trim: true,
       minlength: 5,
       maxlength: 100,
-      unique: true,
     },
     description: {
       type: String,
@@ -106,17 +94,7 @@ const courseSchema = new mongoose.Schema<Course>(
     whatYouWillLearn: { type: String, required: true },
     skills: { type: [String], required: true },
     highlights: {
-      type: [
-        {
-          title: { type: String, required: true },
-          description: { 
-            type: String, 
-            required: true, 
-            maxlength: 300 // Reasonable limit for highlight description
-          },
-          _id: false,
-        },
-      ],
+      type: [highlightSchema],
       required: true,
       default: [],
     },
@@ -268,7 +246,6 @@ const courseSchema = new mongoose.Schema<Course>(
 
 // Indexes
 courseSchema.index({ slug: 1, isActive: 1 }); // For fetching active courses by slug
-courseSchema.index({ category: 1 }); // For browsing by category
 courseSchema.index({ category: 1 }); // For browsing by category
 courseSchema.index({ instructor: 1 }); // For finding courses by instructor
 courseSchema.index({ audience: 1 }); // For filtering by audience

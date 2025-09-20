@@ -41,8 +41,8 @@ const TestimonialCard = ({
       <div className="testimonial-image size-16 md:size-20 rounded-full mb-3 md:mb-4 overflow-hidden">
         {!imageError ? (
           <Image
-            src={testimonial.profileImage}
-            alt={testimonial.name}
+            src={testimonial.profileImage || "/courseDefaultTestimonial.png"}
+            alt={testimonial.name || "Testimonial"}
             width={100}
             height={100}
             className="w-full h-full object-cover"
@@ -87,11 +87,11 @@ const TestimonialCard = ({
         </div>
         <div
           className={cn(
-            "testimonial-role text-xs md:text-base font-normal",
+            "testimonial-college text-xs md:text-base font-normal",
             plusJakartaSans.className
           )}
         >
-          {testimonial.currentRole}
+          {testimonial.college}
         </div>
       </div>
       <div className="testimonial-transition-container flex flex-col items-center justify-center gap-1 flex-grow">

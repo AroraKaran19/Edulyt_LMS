@@ -27,7 +27,6 @@ export enum CourseActionType {
   SET_COURSE_DESCRIPTION = "SET_COURSE_DESCRIPTION",
   SET_COURSE_SHORT_DESCRIPTION = "SET_COURSE_SHORT_DESCRIPTION",
   SET_COURSE_CATEGORY = "SET_COURSE_CATEGORY",
-  SET_COURSE_SUBCATEGORY = "SET_COURSE_SUBCATEGORY",
   SET_COURSE_THUMBNAIL = "SET_COURSE_THUMBNAIL",
   SET_COURSE_THUMBNAIL_SOURCE = "SET_COURSE_THUMBNAIL_SOURCE",
   SET_COURSE_THUMBNAIL_S3_KEY = "SET_COURSE_THUMBNAIL_S3_KEY",
@@ -194,11 +193,6 @@ export const courseActions = {
   setCourseCategory: (category: string) => ({
     type: CourseActionType.SET_COURSE_CATEGORY,
     payload: category,
-  }),
-
-  setCourseSubcategory: (subcategory: string) => ({
-    type: CourseActionType.SET_COURSE_SUBCATEGORY,
-    payload: subcategory,
   }),
 
   setCourseThumbnail: (thumbnail: string) => ({

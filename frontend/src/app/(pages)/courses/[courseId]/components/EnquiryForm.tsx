@@ -243,8 +243,8 @@ const EnquiryForm = ({ course }: { course: Course }) => {
   return isMounted ? (
     <Container
       icon={MessageSquare}
-      title="Course Enquiry Form"
-      description={`Enquire about: ${course.title}`}
+      title="Need Professional Guidance?"
+      description="Fill it and our expert will help you!"
       className="max-w-full mx-auto"
       classNameBody="overflow-visible"
     >

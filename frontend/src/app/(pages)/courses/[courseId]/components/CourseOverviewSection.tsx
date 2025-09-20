@@ -27,7 +27,7 @@ const CourseOverviewSection = ({ course }: { course: Course }) => {
               />
             ),
             component: <VideoShowcase modules={course?.modules || []} />,
-            ...(course?.modules?.length > 0 && {
+            ...(course?.modules?.length && course?.modules?.length > 0 && {
               showCount: course?.modules?.length,
             }),
           },

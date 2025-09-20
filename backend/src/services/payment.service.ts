@@ -1,4 +1,4 @@
-import CourseModel from "../models/course.schema";
+import { CourseModel } from "../models/course.schema";
 import { OrderModel } from "../models/order.schema";
 import dotenv from "dotenv";
 import UserModel from "../models/user.schema";

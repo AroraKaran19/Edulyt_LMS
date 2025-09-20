@@ -2,6 +2,8 @@ import {
   CourseModuleModel,
   CourseLessonModel,
   ContentModel,
+  VideoContentModel,
+  QuizContentModel,
 } from "../models/course-module.schema";
 import { AppError } from "../middlewares/error.middleware";
 import { CourseModel } from "../models/course.schema";
@@ -51,47 +53,44 @@ export const getAllCourses = async (
       };
     }
 
-    // Add search filter if provided
-    if (search && search.trim()) {
-      const searchTerm = search.trim();
-      query.$or = [
-        { title: { $regex: searchTerm, $options: "i" } },
-        { description: { $regex: searchTerm, $options: "i" } },
-        { shortDescription: { $regex: searchTerm, $options: "i" } },
-      ];
-    }
-
     // Add audience filter if provided
-    if (audienceFilter && audienceFilter.trim()) {
-      query.audience = audienceFilter.trim();
+    if (audienceFilter) {
+      query.audience = new RegExp(audienceFilter, "i");
     }
 
     // Add category filter if provided
-    if (category && category.trim()) {
-      query.category = category.trim();
+    if (category) {
+      query.category = new RegExp(category, "i");
+    }
+
+    // Add search functionality
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: "i" } },
+        { description: { $regex: search, $options: "i" } },
+        { shortDescription: { $regex: search, $options: "i" } },
+      ];
     }
 
     // Calculate skip value for pagination
     const skip = (page - 1) * limit;
 
-    // Get total count for pagination
-    const total = await CourseModel.countDocuments(query);
-
+    // Execute query with pagination
     const courses = await CourseModel.find(query)
+      .select("-__v")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
-      .select(
-        "title description plans discount thumbnail slug category audience"
-      )
-      .populate("instructor", "fullName profilePicture")
       .lean();
+
+    // Get total count for pagination
+    const total = await CourseModel.countDocuments(query);
 
     // Calculate total pages
     const totalPages = Math.ceil(total / limit);
 
     return {
-      courses,
+      courses: courses as Course[],
       total,
       page,
       totalPages,
@@ -100,10 +99,9 @@ export const getAllCourses = async (
     if (error instanceof AppError) {
       throw error;
     }
-
     console.error("Database error in getAllCourses:", error);
     throw new AppError(
-      `Failed to fetch courses from database: ${
+      `Failed to retrieve courses: ${
         error instanceof Error ? error.message : "Unknown error"
       }`,
       500
@@ -112,38 +110,25 @@ export const getAllCourses = async (
 };
 
 /**
- * Get a course using slug
- * @param slug - Unique identifier for the course
- * @returns Promise<{course: Course}>
+ * Get a course by slug
+ * @param slug - The course slug
+ * @returns Promise<Course | null>
  */
-export const getCourseUsingSlug = async (
-  slug: string
-): Promise<Course | null> => {
+export const getCourseUsingSlug = async (slug: string): Promise<Course | null> => {
   try {
-    // Input validation
-    if (!slug || !slug.trim()) {
-      throw new AppError("Slug is required", 400);
-    }
-
-    const course = await CourseModel.findOne({
-      slug: slug.trim(),
-      isActive: true,
-    })
-      .populate("instructor", "-__v -refreshToken")
-      .populate("modules")
+    const course = await CourseModel.findOne({ slug, isActive: true })
+      .select("-__v")
+      .populate("instructor")
       .populate("testimonials")
       .populate("faqs")
+      .populate("modules")
       .lean();
 
-    return course;
+    return course as Course | null;
   } catch (error) {
-    if (error instanceof AppError) {
-      throw error;
-    }
-
     console.error("Database error in getCourseUsingSlug:", error);
     throw new AppError(
-      `Failed to fetch course from database: ${
+      `Failed to retrieve course: ${
         error instanceof Error ? error.message : "Unknown error"
       }`,
       500
@@ -151,144 +136,24 @@ export const getCourseUsingSlug = async (
   }
 };
 
-export const getCoursesUsingCategory = async (
-  category: string
-): Promise<Course[]> => {
+/**
+ * Get featured courses
+ * @param limit - Number of courses to return (default: 10)
+ * @returns Promise<Course[]>
+ */
+export const getFeaturedCourses = async (limit: number = 10): Promise<Course[]> => {
   try {
-    if (!category || !category.trim()) {
-      throw new AppError("Category is required", 400);
-    }
-
-    const trimmedCategory = category.trim();
-    const courses = await CourseModel.find({
-      category: { $regex: new RegExp(trimmedCategory, "i") },
-      isActive: true,
-    })
-      .select("title plans discount thumbnail slug category")
-      .populate("instructor", "fullName profilePicture")
+    const courses = await CourseModel.find({ isFeatured: true, isActive: true })
+      .select("-__v")
+      .sort({ createdAt: -1 })
+      .limit(limit)
       .lean();
 
-    return courses;
-  } catch (error) {
-    if (error instanceof AppError) {
-      throw error;
-    }
-
-    console.error("Database error in getCoursesUsingCategory:", error);
-    throw new AppError(
-      `Failed to fetch courses from database: ${
-        error instanceof Error ? error.message : "Unknown error"
-      }`,
-      500
-    );
-  }
-};
-
-export const getFeaturedCourses = async (): Promise<Course[]> => {
-  try {
-    const courses = await CourseModel.find({
-      isFeatured: true,
-      isActive: true,
-    })
-      .select("title plans discount thumbnail slug")
-      .populate("instructor", "fullName profilePicture")
-      .lean();
-
-    return courses;
+    return courses as Course[];
   } catch (error) {
     console.error("Database error in getFeaturedCourses:", error);
     throw new AppError(
-      `Failed to fetch courses from database: ${
-        error instanceof Error ? error.message : "Unknown error"
-      }`,
-      500
-    );
-  }
-};
-
-export const getCoursesUsingAudience = async (
-  audience: string
-): Promise<Course[]> => {
-  try {
-    if (!audience || !audience.trim()) {
-      throw new AppError("Audience is required", 400);
-    }
-
-    const trimmedAudience = audience.trim();
-    const courses = await CourseModel.find({
-      audience: { $regex: new RegExp(trimmedAudience, "i") },
-      isActive: true,
-    })
-      .select("title plans discount thumbnail slug")
-      .populate("instructor", "fullName profilePicture")
-      .lean();
-
-    return courses;
-  } catch (error) {
-    if (error instanceof AppError) {
-      throw error;
-    }
-
-    console.error("Database error in getCoursesUsingAudience:", error);
-    throw new AppError(
-      `Failed to fetch courses from database: ${
-        error instanceof Error ? error.message : "Unknown error"
-      }`,
-      500
-    );
-  }
-};
-
-export const CreateCourseMetadata = async (course: Partial<Course>) => {
-  try {
-    // Input validation
-    if (!course || Object.keys(course).length === 0) {
-      throw new AppError("Course data is required", 400);
-    }
-
-    if (!course.title || !course.title.trim()) {
-      throw new AppError("Course title is required", 400);
-    }
-
-    const { modules, reviews, faqs, testimonials, ...courseMetadata } = course;
-
-    // Clean up the course metadata - remove empty _id fields and ensure proper structure
-    const cleanedMetadata = {
-      ...courseMetadata,
-      // Remove any empty _id fields that might cause validation errors
-      _id: undefined,
-      // Ensure arrays are properly initialized
-      modules: [],
-      reviews: [],
-      faqs: [],
-      testimonials: [],
-      // Ensure required fields have defaults
-      isActive: courseMetadata.isActive ?? true,
-      createdBy: courseMetadata.createdBy || null,
-    };
-
-    const newCourse = new CourseModel(cleanedMetadata);
-
-    await newCourse.validate();
-    await newCourse.save();
-
-    return {
-      success: true,
-      courseId: newCourse._id,
-      message: "Course metadata created successfully",
-    };
-  } catch (error) {
-    if (error instanceof AppError) {
-      throw error;
-    }
-
-    if (error instanceof mongoose.Error.ValidationError) {
-      throw new AppError(`Validation error: ${error.message}`, 400);
-    }
-
-    console.error("Database error in CreateCourseMetadata:", error);
-    throw new AppError(
-      `Failed to create course metadata: ${
+      `Failed to retrieve featured courses: ${
         error instanceof Error ? error.message : "Unknown error"
       }`,
       500
@@ -297,1033 +162,1009 @@ export const CreateCourseMetadata = async (course: Partial<Course>) => {
 };
 
 /**
- * Updates course metadata (basic information) excluding modules, reviews, and complex nested data
+ * Get courses by target audience
+ * @param audience - The target audience
+ * @param limit - Number of courses to return (default: 10)
+ * @returns Promise<Course[]>
+ */
+export const getCoursesUsingAudience = async (
+  audience: string,
+  limit: number = 10
+): Promise<Course[]> => {
+  try {
+    const courses = await CourseModel.find({
+      audience: { $regex: audience, $options: "i" },
+      isActive: true,
+    })
+      .select("-__v")
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .lean();
+
+    return courses as Course[];
+  } catch (error) {
+    console.error("Database error in getCoursesUsingAudience:", error);
+    throw new AppError(
+      `Failed to retrieve courses by audience: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`,
+      500
+    );
+  }
+};
+
+/**
+ * Get courses by category
+ * @param category - The category
+ * @param limit - Number of courses to return (default: 10)
+ * @returns Promise<Course[]>
+ */
+export const getCoursesUsingCategory = async (
+  category: string,
+  limit: number = 10
+): Promise<Course[]> => {
+  try {
+    const courses = await CourseModel.find({
+      category: { $regex: category, $options: "i" },
+      isActive: true,
+    })
+      .select("-__v")
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .lean();
+
+    return courses as Course[];
+  } catch (error) {
+    console.error("Database error in getCoursesUsingCategory:", error);
+    throw new AppError(
+      `Failed to retrieve courses by category: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`,
+      500
+    );
+  }
+};
+
+/**
+ * Update course metadata
  * @param courseId - The ID of the course to update
- * @param updateData - Partial course data to update
- * @returns Promise<{success: boolean, message: string}>
+ * @param courseData - The updated course data
+ * @returns Promise<Course>
  */
 export const UpdateCourseMetadata = async (
   courseId: string,
-  updateData: Partial<Course>
-): Promise<{ success: boolean; message: string }> => {
-  const session = await mongoose.startSession();
-
+  courseData: any
+): Promise<Course> => {
   try {
-    session.startTransaction();
+    const course = await CourseModel.findByIdAndUpdate(
+      courseId,
+      { ...courseData, updatedAt: new Date() },
+      { new: true, runValidators: true }
+    ).select("-__v");
 
-    // Validate courseId
-    if (!mongoose.Types.ObjectId.isValid(courseId)) {
-      throw new AppError("Invalid course ID format", 400);
-    }
-
-    // Validate input data
-    if (!updateData || Object.keys(updateData).length === 0) {
-      throw new AppError("No update data provided", 400);
-    }
-
-    // Exclude fields that shouldn't be updated via metadata update
-    const {
-      _id,
-      modules,
-      reviews,
-      faqs,
-      testimonials,
-      createdAt,
-      createdBy,
-      analytics,
-      ...allowedUpdateData
-    } = updateData;
-
-    // Validate that we have at least one field to update after exclusions
-    if (Object.keys(allowedUpdateData).length === 0) {
-      throw new AppError("No valid fields provided for update", 400);
-    }
-
-    // Validate specific fields if provided
-    if (
-      allowedUpdateData.title &&
-      typeof allowedUpdateData.title !== "string"
-    ) {
-      throw new AppError("Title must be a string", 400);
-    }
-
-    if (allowedUpdateData.title && allowedUpdateData.title.trim().length < 3) {
-      throw new AppError("Title must be at least 3 characters long", 400);
-    }
-
-    if (
-      allowedUpdateData.description &&
-      typeof allowedUpdateData.description !== "string"
-    ) {
-      throw new AppError("Description must be a string", 400);
-    }
-
-    if (
-      allowedUpdateData.category &&
-      typeof allowedUpdateData.category !== "string"
-    ) {
-      throw new AppError("Category must be a string", 400);
-    }
-
-    if (
-      allowedUpdateData.audience &&
-      !["college-students", "professionals"].includes(
-        allowedUpdateData.audience
-      )
-    ) {
-      throw new AppError(
-        "Audience must be either 'college-students' or 'professionals'",
-        400
-      );
-    }
-
-    if (
-      allowedUpdateData.skillLevel &&
-      typeof allowedUpdateData.skillLevel !== "string"
-    ) {
-      throw new AppError("Skill level must be a string", 400);
-    }
-
-    if (
-      allowedUpdateData.language &&
-      typeof allowedUpdateData.language !== "string"
-    ) {
-      throw new AppError("Language must be a string", 400);
-    }
-
-    if (allowedUpdateData.skills && !Array.isArray(allowedUpdateData.skills)) {
-      throw new AppError("Skills must be an array", 400);
-    }
-
-    if (allowedUpdateData.tags && !Array.isArray(allowedUpdateData.tags)) {
-      throw new AppError("Tags must be an array", 400);
-    }
-
-    if (
-      allowedUpdateData.isActive !== undefined &&
-      typeof allowedUpdateData.isActive !== "boolean"
-    ) {
-      throw new AppError("isActive must be a boolean", 400);
-    }
-
-    if (
-      allowedUpdateData.isFeatured !== undefined &&
-      typeof allowedUpdateData.isFeatured !== "boolean"
-    ) {
-      throw new AppError("isFeatured must be a boolean", 400);
-    }
-
-    if (
-      allowedUpdateData.isCertified !== undefined &&
-      typeof allowedUpdateData.isCertified !== "boolean"
-    ) {
-      throw new AppError("isCertified must be a boolean", 400);
-    }
-
-    // Check if course exists and get current version for optimistic locking
-    const existingCourse = await CourseModel.findById(courseId)
-      .select("_id updatedAt")
-      .session(session)
-      .lean();
-
-    if (!existingCourse) {
+    if (!course) {
       throw new AppError("Course not found", 404);
     }
 
-    // Prepare update data with timestamp
-    const updatePayload = {
-      ...allowedUpdateData,
-      updatedAt: new Date(),
-    };
-
-    // Perform the update with optimistic locking
-    const updateResult = await CourseModel.updateOne(
-      {
-        _id: courseId,
-        updatedAt: existingCourse.updatedAt, // Optimistic locking
-      },
-      { $set: updatePayload },
-      {
-        session,
-        runValidators: true,
-      }
-    );
-
-    // Check if update was successful (document was found and modified)
-    if (updateResult.matchedCount === 0) {
-      throw new AppError(
-        "Course not found or has been modified by another process",
-        409
-      );
-    }
-
-    if (updateResult.modifiedCount === 0) {
-      throw new AppError("No changes were made to the course", 400);
-    }
-
-    await session.commitTransaction();
-
-    return {
-      success: true,
-      message: "Course metadata updated successfully",
-    };
+    return course as Course;
   } catch (error) {
-    await session.abortTransaction();
-
     if (error instanceof AppError) {
       throw error;
     }
-
     console.error("Database error in UpdateCourseMetadata:", error);
     throw new AppError(
-      `Failed to update course metadata: ${
+      `Failed to update course: ${
         error instanceof Error ? error.message : "Unknown error"
       }`,
       500
     );
-  } finally {
-    await session.endSession();
-  }
-};
-
-export const CreateCourseContent = async (courseData: {
-  courseId: string;
-  modules: {
-    title: string;
-    description?: string;
-    thumbnailUrl?: string;
-    lessons: {
-      title: string;
-      description?: string;
-      contents: {
-        title: string;
-        description?: string;
-        type: "video" | "quiz";
-        // Video content fields
-        sources?: {
-          quality: "1080p" | "720p" | "480p" | "360p";
-          videoUrl: string;
-        }[];
-        thumbnailUrl?: string;
-        duration?: number;
-        // Quiz content fields
-        questions?: {
-          question: string;
-          options: string[];
-          correctAnswer: string[];
-          timeLimit?: number;
-        }[];
-        passingScore?: number;
-        maxAttempts?: number;
-        // Common fields
-        readingMaterials?: {
-          content: "pdf" | "docx";
-          estimatedReadTime: number;
-          downloadUrl?: string;
-        }[];
-        isLocked?: boolean;
-      }[];
-      isLocked?: boolean;
-    }[];
-    isLocked?: boolean;
-    isActive?: boolean;
-  }[];
-}) => {
-  const session = await mongoose.startSession();
-
-  try {
-    await session.withTransaction(
-      async () => {
-        const { courseId, modules } = courseData;
-
-        // Atomically validate course exists and get current module count with proper locking
-        const courseUpdate = await CourseModel.findOneAndUpdate(
-          { _id: courseId },
-          { $setOnInsert: { modules: [] } }, // Ensure modules array exists
-          {
-            session,
-            upsert: false, // Don't create if not exists
-            new: false, // Return original document to get current state
-            select: "_id modules",
-            runValidators: true,
-          }
-        );
-
-        if (!courseUpdate) {
-          throw new AppError("Course not found", 404);
-        }
-
-        // Get current module count from the locked document
-        const currentModuleCount = courseUpdate.modules?.length || 0;
-
-        // Step 1: Batch create all lesson contents first
-        const allContents: any[] = [];
-        const contentIndexMap = new Map<string, number>();
-        let contentIndex = 0;
-
-        modules.forEach((module, moduleIndex) => {
-          module.lessons.forEach((lesson, lessonIndex) => {
-            lesson.contents.forEach((content, contentIdx) => {
-              const contentKey = `${moduleIndex}-${lessonIndex}-${contentIdx}`;
-              contentIndexMap.set(contentKey, contentIndex++);
-
-              const baseContent = {
-                title: content.title,
-                description: content.description || "",
-                type: content.type,
-                readingMaterials: content.readingMaterials || [],
-                isCompleted: false,
-                isLocked: content.isLocked || false,
-                // Add unique identifier to prevent duplicates
-                tempId: `${courseId}-${moduleIndex}-${lessonIndex}-${contentIdx}-${Date.now()}`,
-              };
-
-              if (content.type === "video") {
-                allContents.push({
-                  ...baseContent,
-                  sources: content.sources || [],
-                  thumbnailUrl: content.thumbnailUrl,
-                  duration: content.duration || 0,
-                });
-              } else if (content.type === "quiz") {
-                allContents.push({
-                  ...baseContent,
-                  questions: content.questions || [],
-                  passingScore: content.passingScore || 70,
-                  maxAttempts: content.maxAttempts || 3,
-                });
-              }
-            });
-          });
-        });
-
-        // Use ordered: false for better performance and partial success handling
-        const createdContents =
-          allContents.length > 0
-            ? await ContentModel.insertMany(allContents, {
-                session,
-                ordered: false,
-              })
-            : [];
-        console.log(`✅ Created ${createdContents.length} lesson contents`);
-
-        // Step 2: Batch create all lessons with content IDs
-        const allLessons: any[] = [];
-        const lessonIndexMap = new Map<string, number>();
-        let lessonIndex = 0;
-
-        modules.forEach((module, moduleIndex) => {
-          module.lessons.forEach((lesson, lessonIdx) => {
-            const lessonKey = `${moduleIndex}-${lessonIdx}`;
-            lessonIndexMap.set(lessonKey, lessonIndex++);
-
-            // Get content IDs for this lesson
-            const contentIds = lesson.contents.map((_, contentIdx) => {
-              const contentKey = `${moduleIndex}-${lessonIdx}-${contentIdx}`;
-              const contentIndex = contentIndexMap.get(contentKey)!;
-              return createdContents[contentIndex]._id;
-            });
-
-            allLessons.push({
-              title: lesson.title,
-              description: lesson.description || "",
-              contentIds,
-              isCompleted: false,
-              isLocked: lesson.isLocked || false,
-              // Add unique identifier to prevent duplicates
-              tempId: `${courseId}-${moduleIndex}-${lessonIdx}-${Date.now()}`,
-            });
-          });
-        });
-
-        // Batch insert all lessons
-        const createdLessons =
-          allLessons.length > 0
-            ? await CourseLessonModel.insertMany(allLessons, {
-                session,
-                ordered: false,
-              })
-            : [];
-        console.log(`✅ Created ${createdLessons.length} lessons`);
-
-        // Step 3: Batch create all modules with lesson IDs
-        const allModules = modules.map((module, moduleIndex) => {
-          // Get lesson IDs for this module
-          const lessonIds = module.lessons.map((_, lessonIdx) => {
-            const lessonKey = `${moduleIndex}-${lessonIdx}`;
-            const lessonIndex = lessonIndexMap.get(lessonKey)!;
-            return createdLessons[lessonIndex]._id;
-          });
-
-          return {
-            title: module.title,
-            description: module.description || "",
-            thumbnailUrl: module.thumbnailUrl || "",
-            lessonIds,
-            isCompleted: false,
-            isLocked: module.isLocked || false,
-            isActive: module.isActive !== false, // default to true
-            // Add unique identifier and ordering to prevent duplicates
-            tempId: `${courseId}-${moduleIndex}-${Date.now()}`,
-            order: currentModuleCount + moduleIndex,
-          };
-        });
-
-        // Batch insert all modules
-        const createdModules =
-          allModules.length > 0
-            ? await CourseModuleModel.insertMany(allModules, {
-                session,
-                ordered: false,
-              })
-            : [];
-        console.log(`✅ Created ${createdModules.length} modules`);
-
-        // Step 4: Atomically update course with new module IDs using proper locking
-        const moduleIds = createdModules.map((module) => module._id);
-
-        if (moduleIds.length > 0) {
-          const updateResult = await CourseModel.findOneAndUpdate(
-            {
-              _id: courseId,
-              // Ensure we're updating the same document state we locked earlier
-              $expr: {
-                $eq: [
-                  { $size: { $ifNull: ["$modules", []] } },
-                  currentModuleCount,
-                ],
-              },
-            },
-            {
-              $push: {
-                modules: {
-                  $each: moduleIds,
-                  $position: currentModuleCount, // Maintain order consistency
-                },
-              },
-              $set: { updatedAt: new Date() },
-            },
-            {
-              session,
-              new: true,
-              runValidators: true,
-            }
-          );
-
-          if (!updateResult) {
-            throw new AppError(
-              "Failed to update course - concurrent modification detected. Please retry.",
-              409
-            );
-          }
-        }
-        console.log(`✅ Updated course with ${moduleIds.length} new modules`);
-
-        return {
-          success: true,
-          message: `Successfully created ${createdModules.length} modules with ${createdLessons.length} lessons and ${createdContents.length} contents`,
-          data: {
-            moduleIds,
-            modules: createdModules,
-            totalContents: createdContents.length,
-            totalLessons: createdLessons.length,
-            totalModules: createdModules.length,
-          },
-        };
-      },
-      {
-        // Transaction options for better isolation
-        readConcern: { level: "majority" },
-        writeConcern: { w: "majority", j: true },
-        maxCommitTimeMS: 30000, // 30 second timeout
-      }
-    );
-
-    return {
-      success: true,
-      message: "Course modules created successfully",
-    };
-  } catch (error) {
-    if (error instanceof mongoose.Error.VersionError) {
-      throw new AppError(
-        "Course was modified by another process. Please retry.",
-        409
-      );
-    }
-
-    if (error instanceof mongoose.Error.ValidationError) {
-      throw new AppError(`Validation error: ${error.message}`, 400);
-    }
-
-    console.error("Database error in CreateCourseContent:", error);
-    throw new AppError(
-      error instanceof AppError
-        ? error.message
-        : "Failed to create course modules",
-      error instanceof AppError ? error.statusCode : 500
-    );
-  } finally {
-    await session.endSession();
   }
 };
 
 /**
- * Updates existing course modules, lessons, and content
- * Handles creation of new items, updates to existing items, and deletion of removed items
- * @param courseId - The course ID to update
- * @param courseData - Array of modules with their lessons and content
- * @returns Promise<void>
+ * Create course metadata
+ * @param courseData - The course data to create
+ * @returns Promise<{course: Course, courseId: string}>
  */
-export const UpdateCourseContent = async (
-  courseId: string,
-  courseData: CourseModule[]
-): Promise<void> => {
-  // Input validation
-  if (!courseId || !mongoose.Types.ObjectId.isValid(courseId)) {
-    throw new AppError("Invalid course ID", 400);
-  }
-  if (!Array.isArray(courseData) || courseData.length === 0) {
-    throw new AppError("Course data must be a non-empty array", 400);
-  }
-
-  const MAX_RETRIES = 3;
-  const BASE_DELAY = 100; // ms
-
-  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-    const session = await mongoose.startSession();
-
-    try {
-      await executeUpdate(courseId, courseData, session);
-      return; // Success, exit retry loop
-    } catch (error) {
-      await session.endSession();
-
-      // Check if it's a retryable error (race condition)
-      const isRetryable =
-        error instanceof mongoose.Error.VersionError ||
-        (error instanceof AppError && error.statusCode === 409);
-
-      if (!isRetryable || attempt === MAX_RETRIES) {
-        throw error; // Not retryable or max retries reached
-      }
-
-      // Exponential backoff with jitter
-      const delay = BASE_DELAY * Math.pow(2, attempt - 1) + Math.random() * 50;
-      await new Promise((resolve) => setTimeout(resolve, delay));
-
-      console.log(
-        `⚠️ Retry attempt ${attempt}/${MAX_RETRIES} for course ${courseId}`
-      );
-    }
-  }
-};
-
-// Helper function to process individual content items
-const processContentItem = (
-  content: any,
-  tempKey: string,
-  contentMap: Map<string, any>,
-  contentIdMapping: Map<string, string>,
-  updateItems: any[],
-  createItems: any[],
-  deleteIds: Set<string>,
-  courseId: string
-): void => {
-  if (content._id && contentMap.has(content._id)) {
-    // Existing content - update
-    const updateData: any = {
-      title: content.title,
-      description: content.description || "",
-      type: content.type,
-      readingMaterials: content.readingMaterials || [],
-      isLocked: content.isLocked || false,
-    };
-
-    // Add type-specific fields
-    if (content.type === "video") {
-      Object.assign(updateData, {
-        sources: content.sources || [],
-        thumbnailUrl: content.thumbnailUrl,
-        duration: content.duration || 0,
-      });
-    } else if (content.type === "quiz") {
-      Object.assign(updateData, {
-        questions: content.questions || [],
-        passingScore: content.passingScore || 70,
-        maxAttempts: content.maxAttempts || 3,
-      });
-    }
-
-    updateItems.push({
-      filter: { _id: content._id },
-      update: updateData,
-    });
-    contentIdMapping.set(tempKey, content._id);
-    deleteIds.delete(content._id);
-  } else {
-    // New content - create
-    const newContent: any = {
-      title: content.title,
-      description: content.description || "",
-      type: content.type,
-      readingMaterials: content.readingMaterials || [],
-      isCompleted: false,
-      isLocked: content.isLocked || false,
-      courseId,
-      tempId: `${courseId}-${tempKey}-${Date.now()}`,
-      tempKey,
-    };
-
-    // Add type-specific fields
-    if (content.type === "video") {
-      Object.assign(newContent, {
-        sources: content.sources || [],
-        thumbnailUrl: content.thumbnailUrl,
-        duration: content.duration || 0,
-      });
-    } else if (content.type === "quiz") {
-      Object.assign(newContent, {
-        questions: content.questions || [],
-        passingScore: content.passingScore || 70,
-        maxAttempts: content.maxAttempts || 3,
-      });
-    }
-
-    createItems.push(newContent);
-  }
-};
-
-const executeUpdate = async (
-  courseId: string,
-  courseData: CourseModule[],
-  session: mongoose.ClientSession
-): Promise<void> => {
+export const CreateCourseMetadata = async (
+  courseData: any
+): Promise<{course: Course, courseId: string}> => {
   try {
-    await session.withTransaction(
-      async () => {
-        // Atomically validate course exists and get current state with version for optimistic locking
-        const courseUpdate = await CourseModel.findOneAndUpdate(
-          { _id: courseId },
-          { $setOnInsert: { modules: [] } },
-          {
-            session,
-            upsert: false,
-            new: false,
-            select: "_id modules __v",
-            runValidators: true,
-          }
-        );
+    // Clean the course data - remove frontend-only fields
+    const cleanedCourseData = { ...courseData };
+    
+    // Remove frontend-only fields that shouldn't be saved to database
+    delete cleanedCourseData.thumbnailSource;
+    delete cleanedCourseData.thumbnailS3Key;
+    delete cleanedCourseData.previewVideoSource;
+    delete cleanedCourseData.previewVideoS3Key;
+    delete cleanedCourseData.curriculumSource;
+    delete cleanedCourseData.curriculumS3Key;
+    delete cleanedCourseData.moduleIds;
+    
+    // Remove _id field to let MongoDB auto-generate it
+    delete cleanedCourseData._id;
 
-        const currentVersion = courseUpdate?.__v || 0;
+    // Convert empty curriculum string to undefined to pass URL validation
+    if (cleanedCourseData.curriculum === "") {
+      cleanedCourseData.curriculum = undefined;
+    }
 
-        if (!courseUpdate) {
-          throw new AppError("Course not found", 404);
-        }
-
-        const existingModuleIds = courseUpdate.modules || [];
-
-        // First get existing modules
-        const existingModules = await CourseModuleModel.find({
-          _id: { $in: existingModuleIds },
-        })
-          .lean()
-          .session(session);
-
-        // Then get existing lessons and content sequentially to avoid dependency issues
-        const existingLessonIds = existingModules.flatMap(
-          (m) => m.lessonIds || []
-        );
-
-        const existingLessons =
-          existingLessonIds.length > 0
-            ? await CourseLessonModel.find({
-                _id: { $in: existingLessonIds },
-              })
-                .lean()
-                .session(session)
-            : [];
-
-        const existingContentIds = existingLessons.flatMap(
-          (l) => l.contentIds || []
-        );
-
-        const existingContent =
-          existingContentIds.length > 0
-            ? await ContentModel.find({
-                _id: { $in: existingContentIds },
-              })
-                .lean()
-                .session(session)
-            : [];
-
-        // Create maps for quick lookup
-        const moduleMap = new Map(
-          existingModules.map((m) => [m._id.toString(), m])
-        );
-        const lessonMap = new Map(
-          existingLessons.map((l) => [l._id.toString(), l])
-        );
-        const contentMap = new Map(
-          existingContent.map((c) => [c._id.toString(), c])
-        );
-
-        // Track items for operations
-        const itemsToCreate = {
-          contents: [] as any[],
-          lessons: [] as any[],
-          modules: [] as any[],
-        };
-        const itemsToUpdate = {
-          contents: [] as any[],
-          lessons: [] as any[],
-          modules: [] as any[],
-        };
-        const itemsToDelete = {
-          contentIds: new Set(existingContent.map((c) => c._id.toString())),
-          lessonIds: new Set(existingLessons.map((l) => l._id.toString())),
-          moduleIds: new Set(existingModules.map((m) => m._id.toString())),
-        };
-
-        // Process content in batches to reduce memory usage
-        const contentIdMapping = new Map<string, string>(); // temp key -> actual _id
-        const BATCH_SIZE = 50; // Process in smaller batches
-
-        // Flatten all content for batch processing
-        const allContentItems: Array<{
-          content: any;
-          tempKey: string;
-          moduleIndex: number;
-          lessonIndex: number;
-          contentIndex: number;
-        }> = [];
-
-        courseData.forEach((module: CourseModule, moduleIndex) => {
-          if (!module.lessons) return;
-          module.lessons.forEach((lesson, lessonIndex) => {
-            if (!lesson.contents) return;
-            lesson.contents.forEach((content, contentIndex) => {
-              allContentItems.push({
-                content,
-                tempKey: `${moduleIndex}-${lessonIndex}-${contentIndex}`,
-                moduleIndex,
-                lessonIndex,
-                contentIndex,
-              });
-            });
-          });
-        });
-
-        // Process content in batches using helper function
-        for (let i = 0; i < allContentItems.length; i += BATCH_SIZE) {
-          const batch = allContentItems.slice(i, i + BATCH_SIZE);
-
-          batch.forEach(({ content, tempKey }) => {
-            processContentItem(
-              content,
-              tempKey,
-              contentMap,
-              contentIdMapping,
-              itemsToUpdate.contents,
-              itemsToCreate.contents,
-              itemsToDelete.contentIds,
-              courseId
-            );
-          });
-        }
-
-        // Batch create new content in chunks to manage memory
-        let createdContents: any[] = [];
-        if (itemsToCreate.contents.length > 0) {
-          for (let i = 0; i < itemsToCreate.contents.length; i += BATCH_SIZE) {
-            const chunk = itemsToCreate.contents.slice(i, i + BATCH_SIZE);
-            const chunkResults = await ContentModel.insertMany(chunk, {
-              session,
-              ordered: false,
-            });
-            createdContents.push(...chunkResults);
-
-            // Map created content IDs immediately to free memory
-            chunkResults.forEach((content: any) => {
-              if (content.tempKey) {
-                contentIdMapping.set(content.tempKey, content._id.toString());
-              }
-            });
-          }
-        }
-
-        // Batch update existing content using bulkWrite
-        if (itemsToUpdate.contents.length > 0) {
-          const contentBulkOps = itemsToUpdate.contents.map(
-            ({ filter, update }) => ({
-              updateOne: {
-                filter,
-                update: { $set: update },
-                upsert: false,
-              },
-            })
-          );
-          await ContentModel.bulkWrite(contentBulkOps, {
-            session,
-            ordered: false,
-          });
-        }
-
-        // Process lessons
-        const lessonIdMapping = new Map<string, string>();
-
-        courseData.forEach((module, moduleIndex) => {
-          if (!module.lessons) return;
-          module.lessons.forEach((lesson, lessonIndex) => {
-            const tempKey = `${moduleIndex}-${lessonIndex}`;
-
-            // Get content IDs for this lesson
-            const contentIds = (lesson.contents || [])
-              .map((_, contentIndex) => {
-                const contentTempKey = `${moduleIndex}-${lessonIndex}-${contentIndex}`;
-                return contentIdMapping.get(contentTempKey);
-              })
-              .filter(Boolean);
-
-            if (lesson._id && lessonMap.has(lesson._id)) {
-              // Existing lesson - update
-              itemsToUpdate.lessons.push({
-                filter: { _id: lesson._id },
-                update: {
-                  title: lesson.title,
-                  description: lesson.description || "",
-                  contentIds,
-                  isLocked: lesson.isLocked || false,
-                },
-              });
-              lessonIdMapping.set(tempKey, lesson._id);
-              itemsToDelete.lessonIds.delete(lesson._id);
-            } else {
-              // New lesson - create
-              itemsToCreate.lessons.push({
-                title: lesson.title,
-                description: lesson.description || "",
-                contentIds,
-                isCompleted: false,
-                isLocked: lesson.isLocked || false,
-                courseId,
-                tempId: `${courseId}-${tempKey}-${Date.now()}`,
-                tempKey,
-              });
-            }
-          });
-        });
-
-        // Batch create new lessons
-        let createdLessons: any[] = [];
-        if (itemsToCreate.lessons.length > 0) {
-          createdLessons = await CourseLessonModel.insertMany(
-            itemsToCreate.lessons,
-            {
-              session,
-              ordered: false,
-            }
-          );
-
-          // Map created lesson IDs
-          createdLessons.forEach((lesson: any) => {
-            if (lesson.tempKey) {
-              lessonIdMapping.set(lesson.tempKey, lesson._id.toString());
-            }
-          });
-        }
-
-        // Batch update existing lessons using bulkWrite
-        if (itemsToUpdate.lessons.length > 0) {
-          const lessonBulkOps = itemsToUpdate.lessons.map(
-            ({ filter, update }) => ({
-              updateOne: {
-                filter,
-                update: { $set: update },
-                upsert: false,
-              },
-            })
-          );
-          await CourseLessonModel.bulkWrite(lessonBulkOps, {
-            session,
-            ordered: false,
-          });
-        }
-
-        // Process modules
-        const finalModuleIds: string[] = [];
-
-        courseData.forEach((module, moduleIndex) => {
-          const tempKey = `${moduleIndex}`;
-
-          // Get lesson IDs for this module
-          const lessonIds = (module.lessons || [])
-            .map((_, lessonIndex) => {
-              const lessonTempKey = `${moduleIndex}-${lessonIndex}`;
-              return lessonIdMapping.get(lessonTempKey);
-            })
-            .filter(Boolean);
-
-          if (module._id && moduleMap.has(module._id)) {
-            // Existing module - update
-            itemsToUpdate.modules.push({
-              filter: { _id: module._id },
-              update: {
-                title: module.title,
-                description: module.description || "",
-                thumbnailUrl: module.thumbnailUrl || "",
-                lessonIds,
-                isLocked: module.isLocked || false,
-                isActive: module.isActive !== false,
-                order: moduleIndex,
-              },
-            });
-            finalModuleIds.push(module._id);
-            itemsToDelete.moduleIds.delete(module._id);
-          } else {
-            // New module - create
-            itemsToCreate.modules.push({
-              title: module.title,
-              description: module.description || "",
-              thumbnailUrl: module.thumbnailUrl || "",
-              lessonIds,
-              isCompleted: false,
-              isLocked: module.isLocked || false,
-              isActive: module.isActive !== false,
-              courseId,
-              tempId: `${courseId}-${tempKey}-${Date.now()}`,
-              order: moduleIndex,
-            });
-          }
-        });
-
-        // Batch create new modules
-        let createdModules: any[] = [];
-        if (itemsToCreate.modules.length > 0) {
-          createdModules = await CourseModuleModel.insertMany(
-            itemsToCreate.modules,
-            {
-              session,
-              ordered: false,
-            }
-          );
-
-          // Add new module IDs to final list
-          createdModules.forEach((module: any) => {
-            finalModuleIds.push(module._id.toString());
-          });
-        }
-
-        // Batch update existing modules using bulkWrite
-        if (itemsToUpdate.modules.length > 0) {
-          const moduleBulkOps = itemsToUpdate.modules.map(
-            ({ filter, update }) => ({
-              updateOne: {
-                filter,
-                update: { $set: update },
-                upsert: false,
-              },
-            })
-          );
-          await CourseModuleModel.bulkWrite(moduleBulkOps, {
-            session,
-            ordered: false,
-          });
-        }
-
-        // Delete removed items
-        const deletionPromises: Promise<any>[] = [];
-
-        if (itemsToDelete.contentIds.size > 0) {
-          deletionPromises.push(
-            ContentModel.deleteMany({
-              _id: { $in: Array.from(itemsToDelete.contentIds) },
-            }).session(session)
-          );
-        }
-
-        if (itemsToDelete.lessonIds.size > 0) {
-          deletionPromises.push(
-            CourseLessonModel.deleteMany({
-              _id: { $in: Array.from(itemsToDelete.lessonIds) },
-            }).session(session)
-          );
-        }
-
-        if (itemsToDelete.moduleIds.size > 0) {
-          deletionPromises.push(
-            CourseModuleModel.deleteMany({
-              _id: { $in: Array.from(itemsToDelete.moduleIds) },
-            }).session(session)
-          );
-        }
-
-        if (deletionPromises.length > 0) {
-          await Promise.all(deletionPromises);
-        }
-
-        // Update course with final module IDs using optimistic locking
-        const updateResult = await CourseModel.findOneAndUpdate(
-          {
-            _id: courseId,
-            __v: currentVersion, // Optimistic locking check
-          },
-          {
-            $set: {
-              modules: finalModuleIds,
-              updatedAt: new Date(),
-            },
-            $inc: { __v: 1 }, // Increment version
-          },
-          {
-            session,
-            new: true,
-            runValidators: true,
-          }
-        );
-
-        if (!updateResult) {
-          throw new AppError(
-            "Failed to update course - concurrent modification detected. Please retry.",
-            409
-          );
-        }
-
-        console.log(`✅ Updated course with ${finalModuleIds.length} modules`);
-        console.log(
-          `✅ Created: ${createdModules.length} modules, ${createdLessons.length} lessons, ${createdContents.length} contents`
-        );
-        console.log(
-          `✅ Updated: ${itemsToUpdate.modules.length} modules, ${itemsToUpdate.lessons.length} lessons, ${itemsToUpdate.contents.length} contents`
-        );
-        console.log(
-          `✅ Deleted: ${itemsToDelete.moduleIds.size} modules, ${itemsToDelete.lessonIds.size} lessons, ${itemsToDelete.contentIds.size} contents`
-        );
-      },
-      {
-        readConcern: { level: "majority" },
-        writeConcern: { w: "majority", j: true },
-        maxCommitTimeMS: 30000,
-      }
-    );
-  } catch (error) {
-    if (error instanceof mongoose.Error.VersionError) {
-      throw new AppError(
-        "Course was modified by another process. Please retry.",
-        409
+    // Clean testimonials and FAQs - only keep valid ObjectIds
+    if (cleanedCourseData.testimonials) {
+      cleanedCourseData.testimonials = cleanedCourseData.testimonials.filter((id: string) => 
+        id && id.trim() !== "" && mongoose.Types.ObjectId.isValid(id)
       );
     }
 
-    if (error instanceof mongoose.Error.ValidationError) {
-      throw new AppError(`Validation error: ${error.message}`, 400);
+    if (cleanedCourseData.faqs) {
+      cleanedCourseData.faqs = cleanedCourseData.faqs.filter((id: string) => 
+        id && id.trim() !== "" && mongoose.Types.ObjectId.isValid(id)
+      );
     }
 
+    console.log("Original course data:", courseData);
+    console.log("Cleaned course data:", cleanedCourseData);
+    console.log("Cleaned testimonials:", cleanedCourseData.testimonials);
+    console.log("Cleaned faqs:", cleanedCourseData.faqs);
+
+    const course = new CourseModel(cleanedCourseData);
+    const savedCourse = await course.save();
+
+    return {
+      course: savedCourse as Course,
+      courseId: savedCourse._id.toString(),
+    };
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
+    console.error("Database error in CreateCourseMetadata:", error);
     throw new AppError(
-      `Failed to update course modules: ${
+      `Failed to create course: ${
         error instanceof Error ? error.message : "Unknown error"
       }`,
       500
     );
-  } finally {
-    await session.endSession();
+  }
+};
+
+/**
+ * Update course status
+ * @param courseId - The ID of the course to update
+ * @param status - The new status
+ * @returns Promise<Course>
+ */
+export const updateCourseStatusService = async (
+  courseId: string,
+  status: string
+): Promise<Course> => {
+  try {
+    const course = await CourseModel.findByIdAndUpdate(
+      courseId,
+      { status, updatedAt: new Date() },
+      { new: true, runValidators: true }
+    ).select("-__v");
+
+    if (!course) {
+      throw new AppError("Course not found", 404);
+    }
+
+    return course as Course;
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
+    console.error("Database error in updateCourseStatusService:", error);
+    throw new AppError(
+      `Failed to update course status: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`,
+      500
+    );
+  }
+};
+
+/**
+ * Get courses for admin
+ * @param page - Page number
+ * @param limit - Items per page
+ * @param search - Search term
+ * @param category - Category filter
+ * @param status - Status filter
+ * @returns Promise<{courses: Course[], total: number, page: number, totalPages: number}>
+ */
+export const getCoursesForAdminService = async (
+  page: number,
+  limit: number,
+  search?: string,
+  category?: string,
+  status?: string
+): Promise<{
+  courses: Course[];
+  total: number;
+  page: number;
+  totalPages: number;
+}> => {
+  try {
+    // Input validation
+    if (page < 1 || limit < 1) {
+      throw new AppError("Page and limit must be positive numbers", 400);
+    }
+
+    if (limit > 100) {
+      throw new AppError("Limit cannot exceed 100 items per page", 400);
+    }
+
+    // Build query object
+    const query: any = {};
+
+    // Add search functionality
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: "i" } },
+        { description: { $regex: search, $options: "i" } },
+        { shortDescription: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    // Add category filter
+    if (category && category !== "all") {
+      query.category = new RegExp(category, "i");
+    }
+
+    // Add status filter
+    if (status && status !== "all") {
+      query.isActive = status === "active";
+    }
+
+    // Calculate skip value for pagination
+    const skip = (page - 1) * limit;
+
+    // Execute query with pagination
+    const courses = await CourseModel.find(query)
+      .select("-__v")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean();
+
+    // Get total count for pagination
+    const total = await CourseModel.countDocuments(query);
+
+    // Calculate total pages
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      courses: courses as Course[],
+      total,
+      page,
+      totalPages,
+    };
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
+    console.error("Database error in getCoursesForAdminService:", error);
+    throw new AppError(
+      `Failed to retrieve courses for admin: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`,
+      500
+    );
+  }
+};
+
+/**
+ * Get a course by ID for admin (includes inactive courses)
+ * @param courseId - The ID of the course to retrieve
+ * @returns Promise<Course | null>
+ */
+export const getCourseByIdAdminService = async (courseId: string): Promise<Course | null> => {
+  try {
+    const course = await CourseModel.findById(courseId)
+      .populate({
+        path: 'modules',
+        populate: {
+          path: 'lessons',
+          populate: {
+            path: 'contents'
+          }
+        }
+      })
+      .select("-__v")
+      .lean();
+
+    return course as Course | null;
+  } catch (error) {
+    console.error("Database error in getCourseByIdAdminService:", error);
+    throw new AppError(
+      `Failed to retrieve course: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`,
+      500
+    );
+  }
+};
+
+/**
+ * Duplicate a course
+ * @param courseId - The ID of the course to duplicate
+ * @returns Promise<Course>
+ */
+export const duplicateCourseService = async (courseId: string): Promise<Course> => {
+  try {
+    const originalCourse = await CourseModel.findById(courseId).select("-__v");
+    
+    if (!originalCourse) {
+      throw new AppError("Course not found", 404);
+    }
+
+    // Create a copy of the course data
+    const courseData = originalCourse.toObject();
+    delete (courseData as any)._id;
+    delete (courseData as any).createdAt;
+    delete (courseData as any).updatedAt;
+    
+    // Modify title to indicate it's a copy
+    courseData.title = `${courseData.title} (Copy)`;
+    courseData.isActive = false; // Set as inactive by default
+    courseData.isFeatured = false; // Remove featured status
+
+    const duplicatedCourse = new CourseModel(courseData);
+    const savedCourse = await duplicatedCourse.save();
+
+    return savedCourse as Course;
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
+    console.error("Database error in duplicateCourseService:", error);
+    throw new AppError(
+      `Failed to duplicate course: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`,
+      500
+    );
+  }
+};
+
+/**
+ * Add a single module to a course (real-time)
+ * @param courseId - The ID of the course
+ * @param moduleData - The module data to add
+ * @returns Promise<{success: boolean, module: any}>
+ */
+export const AddSingleCourseModule = async (
+  courseId: string,
+  moduleData: any
+): Promise<{success: boolean, module: any}> => {
+  try {
+    // Validate course exists
+    const course = await CourseModel.findById(courseId);
+    if (!course) {
+      throw new AppError("Course not found", 404);
+    }
+
+    // Remove _id to let MongoDB generate a proper ObjectId
+    const { _id, ...moduleDataWithoutId } = moduleData;
+    
+    // Create the module
+    const module = new CourseModuleModel({
+      ...moduleDataWithoutId,
+      courseId: courseId,
+      isActive: moduleData.isActive !== undefined ? moduleData.isActive : true,
+      isCompleted: moduleData.isCompleted !== undefined ? moduleData.isCompleted : false,
+    });
+
+    const savedModule = await module.save();
+
+    // Update course with new module ID
+    await CourseModel.findByIdAndUpdate(
+      courseId,
+      { 
+        $push: { moduleIds: savedModule._id },
+        updatedAt: new Date()
+      }
+    );
+
+    console.log(`Module added successfully to course ${courseId}:`, savedModule._id);
+    
+    return {
+      success: true,
+      module: savedModule
+    };
+
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
+    console.error("Database error in AddSingleCourseModule:", error);
+    throw new AppError(
+      `Failed to add module: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`,
+      500
+    );
+  }
+};
+
+/**
+ * Update a single module in a course (real-time)
+ * @param courseId - The ID of the course
+ * @param moduleId - The ID of the module to update
+ * @param moduleData - The updated module data
+ * @returns Promise<{success: boolean, module: any}>
+ */
+export const UpdateSingleCourseModule = async (
+  courseId: string,
+  moduleId: string,
+  moduleData: any
+): Promise<{success: boolean, module: any}> => {
+  try {
+    // Validate course exists
+    const course = await CourseModel.findById(courseId);
+    if (!course) {
+      throw new AppError("Course not found", 404);
+    }
+
+    // Remove _id from update data to avoid conflicts
+    const { _id, ...updateData } = moduleData;
+    
+    // Update the module
+    const updatedModule = await CourseModuleModel.findOneAndUpdate(
+      { _id: moduleId, courseId: courseId },
+      { ...updateData, updatedAt: new Date() },
+      { new: true }
+    );
+
+    if (!updatedModule) {
+      throw new AppError("Module not found", 404);
+    }
+
+    console.log(`Module updated successfully in course ${courseId}:`, moduleId);
+    
+    return {
+      success: true,
+      module: updatedModule
+    };
+
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
+    console.error("Database error in UpdateSingleCourseModule:", error);
+    throw new AppError(
+      `Failed to update module: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`,
+      500
+    );
+  }
+};
+
+/**
+ * Delete a single module from a course (real-time)
+ * @param courseId - The ID of the course
+ * @param moduleId - The ID of the module to delete
+ * @returns Promise<{success: boolean, message: string}>
+ */
+export const DeleteSingleCourseModule = async (
+  courseId: string,
+  moduleId: string
+): Promise<{success: boolean, message: string}> => {
+  try {
+    // Validate course exists
+    const course = await CourseModel.findById(courseId);
+    if (!course) {
+      throw new AppError("Course not found", 404);
+    }
+
+    // Delete the module and all its lessons and content
+    const deletedModule = await CourseModuleModel.findOneAndDelete({
+      _id: moduleId,
+      courseId: courseId
+    });
+
+    if (!deletedModule) {
+      throw new AppError("Module not found", 404);
+    }
+
+    // Delete all lessons for this module
+    await CourseLessonModel.deleteMany({ moduleId: moduleId });
+
+    // Delete all content for this module
+    await ContentModel.deleteMany({ moduleId: moduleId });
+
+    // Remove module ID from course's moduleIds array
+    await CourseModel.findByIdAndUpdate(
+      courseId,
+      { 
+        $pull: { moduleIds: moduleId },
+        updatedAt: new Date()
+      }
+    );
+
+    console.log(`Module deleted successfully from course ${courseId}:`, moduleId);
+    
+    return {
+      success: true,
+      message: "Module deleted successfully"
+    };
+
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
+    console.error("Database error in DeleteSingleCourseModule:", error);
+    throw new AppError(
+      `Failed to delete module: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`,
+      500
+    );
+  }
+};
+
+/**
+ * Finalize course creation (mark as complete and ready)
+ * @param courseId - The ID of the course to finalize
+ * @returns Promise<{success: boolean, message: string}>
+ */
+export const FinalizeCourseCreation = async (
+  courseId: string
+): Promise<{success: boolean, message: string}> => {
+  try {
+    const course = await CourseModel.findById(courseId);
+    if (!course) {
+      throw new AppError("Course not found", 404);
+    }
+
+    await CourseModel.findByIdAndUpdate(
+      courseId,
+      { 
+        isActive: true,
+        updatedAt: new Date(),
+      }
+    );
+
+    console.log(`Course ${courseId} finalized successfully`);
+    
+    return {
+      success: true,
+      message: "Course creation finalized successfully"
+    };
+
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
+    console.error("Database error in FinalizeCourseCreation:", error);
+    throw new AppError(
+      `Failed to finalize course: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`,
+      500
+    );
+  }
+};
+
+/**
+ * Add a single lesson to a module (real-time)
+ * @param courseId - The ID of the course
+ * @param moduleId - The ID of the module
+ * @param lessonData - The lesson data
+ * @returns Promise<{success: boolean, lesson: any}>
+ */
+export const AddSingleCourseLesson = async (
+  courseId: string,
+  moduleId: string,
+  lessonData: any
+): Promise<{success: boolean, lesson: any}> => {
+  try {
+    // Validate course exists
+    const course = await CourseModel.findById(courseId);
+    if (!course) {
+      throw new AppError("Course not found", 404);
+    }
+
+    // Validate module exists
+    const module = await CourseModuleModel.findOne({ _id: moduleId, courseId: courseId });
+    if (!module) {
+      throw new AppError("Module not found", 404);
+    }
+
+    // Remove _id to let MongoDB generate a proper ObjectId
+    const { _id, ...lessonDataWithoutId } = lessonData;
+    
+    // Create the lesson
+    const lesson = new CourseLessonModel({
+      ...lessonDataWithoutId,
+      moduleId: moduleId,
+    });
+
+    await lesson.save();
+
+    // Update module with new lesson ID
+    await CourseModuleModel.findByIdAndUpdate(
+      moduleId,
+      { 
+        $push: { lessonIds: lesson._id },
+        updatedAt: new Date()
+      }
+    );
+
+    console.log(`Lesson added successfully to module ${moduleId} in course ${courseId}:`, lesson._id);
+    
+    return {
+      success: true,
+      lesson: lesson
+    };
+
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
+    console.error("Database error in AddSingleCourseLesson:", error);
+    throw new AppError(
+      `Failed to add lesson: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`,
+      500
+    );
+  }
+};
+
+/**
+ * Update a single lesson in a module (real-time)
+ * @param courseId - The ID of the course
+ * @param moduleId - The ID of the module
+ * @param lessonId - The ID of the lesson to update
+ * @param lessonData - The updated lesson data
+ * @returns Promise<{success: boolean, lesson: any}>
+ */
+export const UpdateSingleCourseLesson = async (
+  courseId: string,
+  moduleId: string,
+  lessonId: string,
+  lessonData: any
+): Promise<{success: boolean, lesson: any}> => {
+  try {
+    // Validate course exists
+    const course = await CourseModel.findById(courseId);
+    if (!course) {
+      throw new AppError("Course not found", 404);
+    }
+
+    // Validate module exists
+    const module = await CourseModuleModel.findOne({ _id: moduleId, courseId: courseId });
+    if (!module) {
+      throw new AppError("Module not found", 404);
+    }
+
+    // Remove _id from update data to avoid conflicts
+    const { _id, ...updateData } = lessonData;
+    
+    // Update the lesson
+    const updatedLesson = await CourseLessonModel.findOneAndUpdate(
+      { _id: lessonId, moduleId: moduleId },
+      { ...updateData, updatedAt: new Date() },
+      { new: true }
+    );
+
+    if (!updatedLesson) {
+      throw new AppError("Lesson not found", 404);
+    }
+
+    console.log(`Lesson updated successfully in module ${moduleId} in course ${courseId}:`, lessonId);
+    
+    return {
+      success: true,
+      lesson: updatedLesson
+    };
+
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
+    console.error("Database error in UpdateSingleCourseLesson:", error);
+    throw new AppError(
+      `Failed to update lesson: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`,
+      500
+    );
+  }
+};
+
+/**
+ * Delete a single lesson from a module (real-time)
+ * @param courseId - The ID of the course
+ * @param moduleId - The ID of the module
+ * @param lessonId - The ID of the lesson to delete
+ * @returns Promise<{success: boolean, message: string}>
+ */
+export const DeleteSingleCourseLesson = async (
+  courseId: string,
+  moduleId: string,
+  lessonId: string
+): Promise<{success: boolean, message: string}> => {
+  try {
+    // Validate course exists
+    const course = await CourseModel.findById(courseId);
+    if (!course) {
+      throw new AppError("Course not found", 404);
+    }
+
+    // Validate module exists
+    const module = await CourseModuleModel.findOne({ _id: moduleId, courseId: courseId });
+    if (!module) {
+      throw new AppError("Module not found", 404);
+    }
+
+    // Delete the lesson
+    const deletedLesson = await CourseLessonModel.findOneAndDelete({
+      _id: lessonId,
+      moduleId: moduleId
+    });
+
+    if (!deletedLesson) {
+      throw new AppError("Lesson not found", 404);
+    }
+
+    // Remove lesson ID from module
+    await CourseModuleModel.findByIdAndUpdate(
+      moduleId,
+      { 
+        $pull: { lessonIds: lessonId },
+        updatedAt: new Date()
+      }
+    );
+
+    console.log(`Lesson deleted successfully from module ${moduleId} in course ${courseId}:`, lessonId);
+    
+    return {
+      success: true,
+      message: "Lesson deleted successfully"
+    };
+
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
+    console.error("Database error in DeleteSingleCourseLesson:", error);
+    throw new AppError(
+      `Failed to delete lesson: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`,
+      500
+    );
+  }
+};
+
+/**
+ * Add a single content to a lesson (real-time)
+ * @param courseId - The ID of the course
+ * @param moduleId - The ID of the module
+ * @param lessonId - The ID of the lesson
+ * @param contentData - The content data
+ * @returns Promise<{success: boolean, content: any}>
+ */
+export const AddSingleCourseContent = async (
+  courseId: string,
+  moduleId: string,
+  lessonId: string,
+  contentData: any
+): Promise<{success: boolean, content: any}> => {
+  try {
+    // Validate course exists
+    const course = await CourseModel.findById(courseId);
+    if (!course) {
+      throw new AppError("Course not found", 404);
+    }
+
+    // Validate module exists
+    const module = await CourseModuleModel.findOne({ _id: moduleId, courseId: courseId });
+    if (!module) {
+      throw new AppError("Module not found", 404);
+    }
+
+    // Validate lesson exists
+    const lesson = await CourseLessonModel.findOne({ _id: lessonId, moduleId: moduleId });
+    if (!lesson) {
+      throw new AppError("Lesson not found", 404);
+    }
+
+    // Remove _id to let MongoDB generate a proper ObjectId
+    const { _id, ...contentDataWithoutId } = contentData;
+    
+    // Create the content based on type
+    let content;
+    if (contentData.type === "video") {
+      content = new VideoContentModel({
+        ...contentDataWithoutId,
+        lessonId: lessonId,
+      });
+    } else if (contentData.type === "quiz") {
+      content = new QuizContentModel({
+        ...contentDataWithoutId,
+        lessonId: lessonId,
+      });
+    } else {
+      throw new AppError("Invalid content type", 400);
+    }
+
+    await content.save();
+
+    // Update lesson with new content ID
+    await CourseLessonModel.findByIdAndUpdate(
+      lessonId,
+      { 
+        $push: { contentIds: content._id },
+        updatedAt: new Date()
+      }
+    );
+
+    console.log(`Content added successfully to lesson ${lessonId} in module ${moduleId} in course ${courseId}:`, content._id);
+    
+    return {
+      success: true,
+      content: content
+    };
+
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
+    console.error("Database error in AddSingleCourseContent:", error);
+    throw new AppError(
+      `Failed to add content: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`,
+      500
+    );
+  }
+};
+
+/**
+ * Update a single content in a lesson (real-time)
+ * @param courseId - The ID of the course
+ * @param moduleId - The ID of the module
+ * @param lessonId - The ID of the lesson
+ * @param contentId - The ID of the content to update
+ * @param contentData - The updated content data
+ * @returns Promise<{success: boolean, content: any}>
+ */
+export const UpdateSingleCourseContent = async (
+  courseId: string,
+  moduleId: string,
+  lessonId: string,
+  contentId: string,
+  contentData: any
+): Promise<{success: boolean, content: any}> => {
+  try {
+    // Validate course exists
+    const course = await CourseModel.findById(courseId);
+    if (!course) {
+      throw new AppError("Course not found", 404);
+    }
+
+    // Validate module exists
+    const module = await CourseModuleModel.findOne({ _id: moduleId, courseId: courseId });
+    if (!module) {
+      throw new AppError("Module not found", 404);
+    }
+
+    // Validate lesson exists
+    const lesson = await CourseLessonModel.findOne({ _id: lessonId, moduleId: moduleId });
+    if (!lesson) {
+      throw new AppError("Lesson not found", 404);
+    }
+
+    // Remove _id from update data to avoid conflicts
+    const { _id, ...updateData } = contentData;
+    
+    // Update the content
+    const updatedContent = await ContentModel.findOneAndUpdate(
+      { _id: contentId, lessonId: lessonId },
+      { ...updateData, updatedAt: new Date() },
+      { new: true }
+    );
+
+    if (!updatedContent) {
+      throw new AppError("Content not found", 404);
+    }
+
+    console.log(`Content updated successfully in lesson ${lessonId} in module ${moduleId} in course ${courseId}:`, contentId);
+    
+    return {
+      success: true,
+      content: updatedContent
+    };
+
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
+    console.error("Database error in UpdateSingleCourseContent:", error);
+    throw new AppError(
+      `Failed to update content: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`,
+      500
+    );
+  }
+};
+
+/**
+ * Delete a single content from a lesson (real-time)
+ * @param courseId - The ID of the course
+ * @param moduleId - The ID of the module
+ * @param lessonId - The ID of the lesson
+ * @param contentId - The ID of the content to delete
+ * @returns Promise<{success: boolean, message: string}>
+ */
+export const DeleteSingleCourseContent = async (
+  courseId: string,
+  moduleId: string,
+  lessonId: string,
+  contentId: string
+): Promise<{success: boolean, message: string}> => {
+  try {
+    // Validate course exists
+    const course = await CourseModel.findById(courseId);
+    if (!course) {
+      throw new AppError("Course not found", 404);
+    }
+
+    // Validate module exists
+    const module = await CourseModuleModel.findOne({ _id: moduleId, courseId: courseId });
+    if (!module) {
+      throw new AppError("Module not found", 404);
+    }
+
+    // Validate lesson exists
+    const lesson = await CourseLessonModel.findOne({ _id: lessonId, moduleId: moduleId });
+    if (!lesson) {
+      throw new AppError("Lesson not found", 404);
+    }
+
+    // Delete the content
+    const deletedContent = await ContentModel.findOneAndDelete({
+      _id: contentId,
+      lessonId: lessonId
+    });
+
+    if (!deletedContent) {
+      throw new AppError("Content not found", 404);
+    }
+
+    // Remove content ID from lesson
+    await CourseLessonModel.findByIdAndUpdate(
+      lessonId,
+      { 
+        $pull: { contentIds: contentId },
+        updatedAt: new Date()
+      }
+    );
+
+    console.log(`Content deleted successfully from lesson ${lessonId} in module ${moduleId} in course ${courseId}:`, contentId);
+    
+    return {
+      success: true,
+      message: "Content deleted successfully"
+    };
+
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
+    console.error("Database error in DeleteSingleCourseContent:", error);
+    throw new AppError(
+      `Failed to delete content: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`,
+      500
+    );
   }
 };

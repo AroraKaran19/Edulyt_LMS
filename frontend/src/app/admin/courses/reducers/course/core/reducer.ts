@@ -182,10 +182,6 @@ export const courseReducer = (
         newState = safeUpdateCourseField(state, "category", action.payload);
         break;
 
-      case CourseActionType.SET_COURSE_SUBCATEGORY:
-        newState = safeUpdateCourseField(state, "subcategory", action.payload);
-        break;
-
       case CourseActionType.SET_COURSE_THUMBNAIL:
         newState = safeUpdateCourseField(state, "thumbnail", action.payload);
         break;
@@ -363,7 +359,7 @@ export const courseReducer = (
           ...state,
           course: {
             ...state.course,
-            modules: [...state.course.modules, action.payload],
+            modules: [...(state.course.modules || []), action.payload],
           },
           isDirty: true,
           hasUnsavedChanges: true,
@@ -392,7 +388,7 @@ export const courseReducer = (
           ...state,
           course: {
             ...state.course,
-            modules: state.course.modules.filter(
+            modules: state.course.modules?.filter(
               (module) => module._id !== action.payload
             ),
           },
@@ -593,7 +589,7 @@ export const courseReducer = (
               module._id === action.payload.moduleId
                 ? {
                     ...module,
-                    lessons: module.lessons.map((lesson) =>
+                    lessons: module.lessons?.map((lesson) =>
                       lesson._id === action.payload.lessonId
                         ? {
                             ...lesson,

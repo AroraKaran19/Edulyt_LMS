@@ -15,6 +15,8 @@ const TestimonialSection = ({
 }: {
   testimonials: Testimonial[];
 }) => {
+
+  if (testimonials.length === 0) return null;
   const howItHelped = [
     {
       title: "50%",

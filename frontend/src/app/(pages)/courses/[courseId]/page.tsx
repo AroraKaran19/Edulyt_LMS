@@ -15,7 +15,7 @@ async function fetchCourse(
     const response = await fetcher(`${ENDPOINTS.courses.slug}/${courseId}`);
     return {
       status: response?.status,
-      course: response?.data?.course || null,
+      course: response?.data || null,
     };
   } catch (error) {
     if (error instanceof AxiosError) {
@@ -55,6 +55,7 @@ export async function generateMetadata({
       "learn",
       "education",
       ...(course.keywords || []),
+      ...(course.tags || []),
     ],
     openGraph: {
       title: course.metaTitle || `${course.title} | Airkrit`,
@@ -107,7 +108,7 @@ const IndividualCoursePage = async ({
     );
   }
 
-  console.log(JSON.stringify(course, null, 2));
+  console.log(course);
 
   return (
     <CoursePage course={course} />

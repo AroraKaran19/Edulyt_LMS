@@ -52,7 +52,7 @@ const CheckBoxContainer = ({
     )}>
       {/* Container for checkbox and label */}
       <div className={cn(
-        "w-full flex items-center gap-3 p-3 border border-gray-200 rounded-xl",
+        "w-full flex items-center gap-3 p-3 border border-gray-200 rounded-xl bg-white",
         "hover:border-orange-200 hover:shadow-sm",
         "transition-all duration-200 ease-in-out",
         isFocused && "border-orange-300 ring-1 ring-orange-500/20",

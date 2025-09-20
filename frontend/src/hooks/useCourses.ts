@@ -416,61 +416,6 @@ export const useCourses = () => {
     [baseUrl]
   );
 
-  const addCourseModules = useCallback(
-    async (courseId: string, modules: any[]): Promise<any> => {
-      setIsLoading(true);
-      setError("");
-
-      try {
-        // Create AbortController for timeout handling
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minutes timeout
-
-        const response = await fetch(
-          `${baseUrl}/courses/chunked/${courseId}/modules`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(modules),
-            signal: controller.signal,
-          }
-        );
-
-        clearTimeout(timeoutId);
-
-        const result = await response.json();
-
-        if (!result.success) {
-          setError(result.error || result.message);
-        }
-
-        return result;
-      } catch (err) {
-        let errorMessage = "Failed to add course modules";
-
-        if (err instanceof Error) {
-          if (err.name === "AbortError") {
-            errorMessage =
-              "Request timeout - Adding course modules took too long. Please try again.";
-          } else {
-            errorMessage = err.message;
-          }
-        }
-
-        setError(errorMessage);
-        return {
-          success: false,
-          message: "Failed to add course modules",
-          error: errorMessage,
-        };
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [baseUrl]
-  );
 
   const addCourseLessons = useCallback(
     async (
@@ -587,100 +532,305 @@ export const useCourses = () => {
     [baseUrl]
   );
 
-  const createCourseChunked = useCallback(
-    async (courseData: any): Promise<CourseResponse> => {
+
+  // Individual module operations (real-time)
+  const addSingleCourseModule = useCallback(
+    async (courseId: string, moduleData: any): Promise<any> => {
       setIsLoading(true);
       setError("");
 
       try {
-        // Step 1: Create course metadata
-        const { modules, ...metadata } = courseData;
-        const metadataResult = await createCourseMetadata(metadata);
+        const response = await fetch(`${baseUrl}/courses/${courseId}/modules`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(moduleData),
+        });
 
-        if (!metadataResult.success) {
-          throw new Error(
-            metadataResult.message || "Failed to create course metadata"
-          );
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || result.message || "Failed to add module");
         }
 
-        const courseId = metadataResult.data?.courseId;
-        if (!courseId) {
-          throw new Error("Course ID not returned from metadata creation");
-        }
-
-        // Step 2: Add modules one by one
-        if (modules && Array.isArray(modules) && modules.length > 0) {
-          for (const courseModule of modules) {
-            const { lessons, ...moduleData } = courseModule;
-
-            // Add module without lessons first
-            const moduleResult = await addCourseModules(courseId, [moduleData]);
-            if (!moduleResult.success) {
-              throw new Error(
-                `Failed to add module: ${courseModule.title || "Untitled"}`
-              );
-            }
-
-            const moduleIds = moduleResult.data?.moduleIds;
-            if (!moduleIds || moduleIds.length === 0) {
-              throw new Error("Module ID not returned from module creation");
-            }
-
-            const moduleId = moduleIds[0];
-
-            // Step 3: Add lessons in batches (5-10 at a time)
-            if (lessons && Array.isArray(lessons) && lessons.length > 0) {
-              const BATCH_SIZE = 5; // Process 5 lessons at a time
-
-              for (let i = 0; i < lessons.length; i += BATCH_SIZE) {
-                const lessonBatch = lessons.slice(i, i + BATCH_SIZE);
-
-                const lessonResult = await addCourseLessons(
-                  courseId,
-                  moduleId,
-                  lessonBatch
-                );
-                if (!lessonResult.success) {
-                  throw new Error(
-                    `Failed to add lesson batch ${
-                      Math.floor(i / BATCH_SIZE) + 1
-                    }`
-                  );
-                }
-              }
-            }
-          }
-        }
-
-        // Step 4: Finalize course creation
-        const finalResult = await finalizeCourseCreation(courseId);
-        if (!finalResult.success) {
-          throw new Error("Failed to finalize course creation");
-        }
-
-        return finalResult;
-      } catch (err) {
-        const errorMessage =
-          err instanceof Error
-            ? err.message
-            : "Failed to create course with chunked approach";
+        return result;
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Failed to add module";
         setError(errorMessage);
-        return {
-          success: false,
-          message: "Failed to create course with chunked approach",
-          error: errorMessage,
-        };
+        throw error;
       } finally {
         setIsLoading(false);
       }
     },
-    [
-      baseUrl,
-      createCourseMetadata,
-      addCourseModules,
-      addCourseLessons,
-      finalizeCourseCreation,
-    ]
+    [baseUrl]
+  );
+
+  const updateSingleCourseModule = useCallback(
+    async (courseId: string, moduleId: string, moduleData: any): Promise<any> => {
+      setIsLoading(true);
+      setError("");
+
+      try {
+        const response = await fetch(`${baseUrl}/courses/${courseId}/modules/${moduleId}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(moduleData),
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || result.message || "Failed to update module");
+        }
+
+        return result;
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Failed to update module";
+        setError(errorMessage);
+        throw error;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [baseUrl]
+  );
+
+  const deleteSingleCourseModule = useCallback(
+    async (courseId: string, moduleId: string): Promise<any> => {
+      setIsLoading(true);
+      setError("");
+
+      try {
+        const response = await fetch(`${baseUrl}/courses/${courseId}/modules/${moduleId}`, {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || result.message || "Failed to delete module");
+        }
+
+        return result;
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Failed to delete module";
+        setError(errorMessage);
+        throw error;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [baseUrl]
+  );
+
+  // ===================
+  // LESSON CRUD OPERATIONS
+  // ===================
+
+  // Add a single lesson to module (real-time)
+  const addSingleCourseLesson = useCallback(
+    async (courseId: string, moduleId: string, lessonData: any): Promise<any> => {
+      setIsLoading(true);
+      setError("");
+
+      try {
+        const response = await fetch(`${baseUrl}/courses/${courseId}/modules/${moduleId}/lessons`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(lessonData),
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || result.message || "Failed to add lesson");
+        }
+
+        return result;
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Failed to add lesson";
+        setError(errorMessage);
+        throw error;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [baseUrl]
+  );
+
+  // Update a single lesson in module (real-time)
+  const updateSingleCourseLesson = useCallback(
+    async (courseId: string, moduleId: string, lessonId: string, lessonData: any): Promise<any> => {
+      setIsLoading(true);
+      setError("");
+
+      try {
+        const response = await fetch(`${baseUrl}/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(lessonData),
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || result.message || "Failed to update lesson");
+        }
+
+        return result;
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Failed to update lesson";
+        setError(errorMessage);
+        throw error;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [baseUrl]
+  );
+
+  // Delete a single lesson from module (real-time)
+  const deleteSingleCourseLesson = useCallback(
+    async (courseId: string, moduleId: string, lessonId: string): Promise<any> => {
+      setIsLoading(true);
+      setError("");
+
+      try {
+        const response = await fetch(`${baseUrl}/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}`, {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || result.message || "Failed to delete lesson");
+        }
+
+        return result;
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Failed to delete lesson";
+        setError(errorMessage);
+        throw error;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [baseUrl]
+  );
+
+  // ===================
+  // CONTENT CRUD OPERATIONS
+  // ===================
+
+  // Add a single content to lesson (real-time)
+  const addSingleCourseContent = useCallback(
+    async (courseId: string, moduleId: string, lessonId: string, contentData: any): Promise<any> => {
+      setIsLoading(true);
+      setError("");
+
+      try {
+        const response = await fetch(`${baseUrl}/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}/contents`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(contentData),
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || result.message || "Failed to add content");
+        }
+
+        return result;
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Failed to add content";
+        setError(errorMessage);
+        throw error;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [baseUrl]
+  );
+
+  // Update a single content in lesson (real-time)
+  const updateSingleCourseContent = useCallback(
+    async (courseId: string, moduleId: string, lessonId: string, contentId: string, contentData: any): Promise<any> => {
+      setIsLoading(true);
+      setError("");
+
+      try {
+        const response = await fetch(`${baseUrl}/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}/contents/${contentId}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(contentData),
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || result.message || "Failed to update content");
+        }
+
+        return result;
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Failed to update content";
+        setError(errorMessage);
+        throw error;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [baseUrl]
+  );
+
+  // Delete a single content from lesson (real-time)
+  const deleteSingleCourseContent = useCallback(
+    async (courseId: string, moduleId: string, lessonId: string, contentId: string): Promise<any> => {
+      setIsLoading(true);
+      setError("");
+
+      try {
+        const response = await fetch(`${baseUrl}/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}/contents/${contentId}`, {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || result.message || "Failed to delete content");
+        }
+
+        return result;
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Failed to delete content";
+        setError(errorMessage);
+        throw error;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [baseUrl]
   );
 
   return {
@@ -700,11 +850,21 @@ export const useCourses = () => {
     deleteCourseById,
     // Reset error
     clearError: () => setError(""),
-    // Chunked course creation methods
-    createCourseChunked,
+    // Course creation methods
     createCourseMetadata,
-    addCourseModules,
     addCourseLessons,
     finalizeCourseCreation,
+    // Individual module operations (real-time)
+    addSingleCourseModule,
+    updateSingleCourseModule,
+    deleteSingleCourseModule,
+    // Individual lesson operations (real-time)
+    addSingleCourseLesson,
+    updateSingleCourseLesson,
+    deleteSingleCourseLesson,
+    // Individual content operations (real-time)
+    addSingleCourseContent,
+    updateSingleCourseContent,
+    deleteSingleCourseContent,
   };
 };

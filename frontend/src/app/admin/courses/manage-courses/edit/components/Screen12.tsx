@@ -4,8 +4,11 @@ import Container from "@/app/admin/components/ui/Container";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import { useCourses } from "@/hooks/useCourses";
+import { useEditCourse } from "@/hooks/useEditCourse";
+import { useEditCourseContext } from "../../../reducers/course/providers/EditCourseReducerProvider";
 import { draftUtils } from "../utils/draftUtils";
 import { useScreen } from "../contexts/ScreenContext";
+import { CourseModule } from "@/types/course";
 import {
   BookOpen,
   Plus,
@@ -19,21 +22,75 @@ import {
   Target,
 } from "lucide-react";
 
-const Screen13 = () => {
+const Screen12 = () => {
   const router = useRouter();
   const { setActiveScreen } = useScreen();
-  const { addCourseModules, finalizeCourseCreation } = useCourses();
+  const { state } = useEditCourseContext();
+  // Remove finalizeCourseCreation as we're using finalizeCourseEditing
+  const { finalizeCourseEditing } = useEditCourse();
   
   const [courseId, setCourseId] = useState<string>("");
-  const [modules, setModules] = useState<any[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string>("");
   const [currentStep, setCurrentStep] = useState<"review" | "submit" | "complete">("review");
+  
+  // Get modules from course state or localStorage as fallback
+  const [modules, setModules] = useState<CourseModule[]>([]);
+  
+  // Load modules from state or localStorage
+  useEffect(() => {
+    console.log("Screen12 - Loading modules from state:", state.course.modules);
+    const stateModules = state.course.modules || [];
+    console.log("Screen12 - State modules length:", stateModules.length);
+    
+    if (stateModules.length > 0) {
+      console.log("Screen12 - Using modules from state");
+      setModules(stateModules);
+    } else {
+      console.log("Screen12 - No modules in state, checking localStorage");
+      // Fallback to localStorage
+      const storedModules = localStorage.getItem("course_modules_draft");
+      console.log("Screen12 - Stored modules from localStorage:", storedModules);
+      
+      if (storedModules) {
+        try {
+          const parsedModules = JSON.parse(storedModules);
+          console.log("Screen12 - Parsed modules from localStorage:", parsedModules);
+          setModules(parsedModules);
+        } catch (error) {
+          console.error("Error parsing stored modules:", error);
+          setModules([]);
+        }
+      } else {
+        console.log("Screen12 - No modules found in localStorage either");
+        setModules([]);
+      }
+    }
+  }, [state.course.modules]);
+  
+  // Debug logging
+  useEffect(() => {
+    console.log("Screen12 - Course state:", state.course);
+    console.log("Screen12 - Modules from state:", state.course.modules);
+    console.log("Screen12 - Modules from local state:", modules);
+    console.log("Screen12 - Modules count:", modules.length);
+    console.log("Screen12 - Course ID:", courseId);
+    
+    // Also check localStorage for modules
+    const storedModules = localStorage.getItem("course_modules_draft");
+    if (storedModules) {
+      try {
+        const parsedModules = JSON.parse(storedModules);
+        console.log("Screen12 - Modules from localStorage:", parsedModules);
+      } catch (error) {
+        console.error("Screen12 - Error parsing localStorage modules:", error);
+      }
+    }
+  }, [state.course.modules, modules, courseId]);
 
-  // Load course ID and modules from localStorage
+  // Load course ID from localStorage
   useEffect(() => {
     const storedCourseId = localStorage.getItem("current_course_id");
-    const storedModules = localStorage.getItem("course_modules_draft");
     
     if (!storedCourseId) {
       // No course ID found, redirect back to course creation
@@ -42,21 +99,11 @@ const Screen13 = () => {
     }
     
     setCourseId(storedCourseId);
-    
-    if (storedModules) {
-      try {
-        const parsedModules = JSON.parse(storedModules);
-        setModules(parsedModules);
-      } catch (error) {
-        console.error("Error parsing stored modules:", error);
-        setModules([]);
-      }
-    }
   }, [router]);
 
   const handleSubmitModules = async () => {
     if (!courseId) {
-      setSubmitError("Course ID not found. Please restart course creation.");
+      setSubmitError("Course ID not found. Please restart course editing.");
       return;
     }
 
@@ -65,26 +112,24 @@ const Screen13 = () => {
     setCurrentStep("submit");
 
     try {
-      console.log("🚀 Adding modules to course:", courseId, modules);
+      console.log("🚀 Finalizing course editing:", courseId);
+      console.log("Modules in course:", modules);
+      console.log("Modules count:", modules.length);
 
-      // Step 2: Add modules to the course
-      if (modules && modules.length > 0) {
-        const moduleResult = await addCourseModules(courseId, modules);
-        
-        if (!moduleResult.success) {
-          throw new Error(moduleResult.error || "Failed to add modules");
-        }
-      }
+      // Modules are already saved in real-time, so we just need to finalize
+      console.log(`Course has ${modules.length} modules (saved in real-time)`);
 
-      // Step 3: Finalize course creation
-      const finalizeResult = await finalizeCourseCreation(courseId);
+      // Finalize course editing
+      console.log("Finalizing course editing for course ID:", courseId);
+      const finalizeResult = await finalizeCourseEditing(courseId);
       
       if (finalizeResult.success) {
+        console.log("Course finalized successfully:", finalizeResult);
         setCurrentStep("complete");
         
         // Clear all stored data
         localStorage.removeItem("current_course_id");
-        localStorage.removeItem("course_modules_draft");
+        sessionStorage.removeItem('course_metadata_updated');
         draftUtils.clearAll();
         
         // Auto-redirect after a delay
@@ -92,11 +137,12 @@ const Screen13 = () => {
           router.push("/admin/courses/manage-courses");
         }, 3000);
       } else {
+        console.error("Course finalization failed:", finalizeResult.error);
         throw new Error(finalizeResult.error || "Failed to finalize course");
       }
     } catch (error) {
-      console.error("Error creating course:", error);
-      setSubmitError(error instanceof Error ? error.message : "Failed to create course");
+      console.error("Error finalizing course:", error);
+      setSubmitError(error instanceof Error ? error.message : "Failed to finalize course");
       setCurrentStep("review");
     } finally {
       setIsSubmitting(false);
@@ -110,7 +156,7 @@ const Screen13 = () => {
 
   const handleSkipModules = async () => {
     if (!courseId) {
-      setSubmitError("Course ID not found. Please restart course creation.");
+      setSubmitError("Course ID not found. Please restart course editing.");
       return;
     }
 
@@ -119,17 +165,17 @@ const Screen13 = () => {
     setCurrentStep("submit");
 
     try {
-      console.log("🚀 Skipping modules, finalizing course:", courseId);
+      console.log("🚀 Finalizing course editing without additional modules:", courseId);
 
-      // Step 3: Finalize course creation without modules
-      const finalizeResult = await finalizeCourseCreation(courseId);
+      // Finalize course editing without additional modules
+      const finalizeResult = await finalizeCourseEditing(courseId);
       
       if (finalizeResult.success) {
         setCurrentStep("complete");
         
         // Clear all stored data
         localStorage.removeItem("current_course_id");
-        localStorage.removeItem("course_modules_draft");
+        sessionStorage.removeItem('course_metadata_updated');
         draftUtils.clearAll();
         
         // Auto-redirect after a delay
@@ -159,11 +205,11 @@ const Screen13 = () => {
               </div>
               
               <h1 className="text-3xl font-bold text-gray-900 mb-4">
-                🎉 Course Created Successfully!
+                🎉 Course Updated Successfully!
               </h1>
               
               <p className="text-lg text-gray-600 mb-6">
-                Your course has been created and is ready for students. You'll be redirected to the course management page shortly.
+                Your course has been updated and is ready for students. You'll be redirected to the course management page shortly.
               </p>
               
               <div className="flex justify-center gap-4">
@@ -176,11 +222,11 @@ const Screen13 = () => {
                 </OrangeButton>
                 
                 <WhiteButton
-                  onClick={() => router.push("/admin/courses/manage-courses/create")}
+                  onClick={() => router.push("/admin/courses/manage-courses")}
                   className="flex items-center gap-2"
                 >
-                  <Plus className="w-5 h-5" />
-                  Create Another Course
+                  <BookOpen className="w-5 h-5" />
+                  View All Courses
                 </WhiteButton>
               </div>
             </div>
@@ -201,25 +247,25 @@ const Screen13 = () => {
               </div>
               
               <h1 className="text-2xl font-bold text-gray-900 mb-4">
-                Creating Your Course...
+                Updating Your Course...
               </h1>
               
               <p className="text-gray-600 mb-6">
-                Please wait while we finalize your course creation. This may take a few moments.
+                Please wait while we finalize your course updates. This may take a few moments.
               </p>
               
               <div className="space-y-2 text-left max-w-md mx-auto">
                 <div className="flex items-center gap-3 text-green-600">
                   <CheckCircle className="w-5 h-5" />
-                  <span>Course metadata created</span>
+                  <span>Course metadata updated</span>
+                </div>
+                <div className="flex items-center gap-3 text-green-600">
+                  <CheckCircle className="w-5 h-5" />
+                  <span>Course modules updated</span>
                 </div>
                 <div className="flex items-center gap-3 text-blue-600">
                   <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                  <span>Adding course modules...</span>
-                </div>
-                <div className="flex items-center gap-3 text-gray-400">
-                  <Clock className="w-5 h-5" />
-                  <span>Finalizing course</span>
+                  <span>Finalizing course updates...</span>
                 </div>
               </div>
             </div>
@@ -238,9 +284,9 @@ const Screen13 = () => {
             <BookOpen className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Add Course Modules</h2>
+            <h2 className="text-2xl font-bold text-gray-900">Manage Course Modules</h2>
             <p className="text-gray-600">
-              Add modules to your course or skip to finalize the course creation
+              Review and manage your course modules or finalize the course updates
             </p>
           </div>
         </div>
@@ -263,12 +309,12 @@ const Screen13 = () => {
         <div className="flex items-center gap-3 mb-4">
           <CheckCircle className="w-6 h-6 text-green-600" />
           <div>
-            <h3 className="text-lg font-semibold text-green-800">Course Metadata Created</h3>
+            <h3 className="text-lg font-semibold text-green-800">Course Loaded for Editing</h3>
             <p className="text-green-700 text-sm">Course ID: {courseId}</p>
           </div>
         </div>
         <p className="text-green-700">
-          Your course metadata has been successfully created. Now you can add modules or skip to finalize the course.
+          Your course has been loaded for editing. You can manage modules or finalize the course updates.
         </p>
       </div>
 
@@ -304,7 +350,7 @@ const Screen13 = () => {
                         <FileText className="w-4 h-4" />
                         <span>
                           {module.lessons?.reduce((total: number, lesson: any) => 
-                            total + (lesson.content?.length || 0), 0) || 0} content items
+                            total + (lesson.contents?.length || 0), 0) || 0} content items
                         </span>
                       </div>
                     </div>
@@ -324,7 +370,7 @@ const Screen13 = () => {
             <BookOpen className="w-12 h-12 mx-auto text-gray-300 mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">No Modules Found</h3>
             <p className="text-gray-500 mb-6">
-              You can create a course without modules and add them later through the course management interface.
+              This course doesn't have any modules yet. You can add modules through the course management interface.
             </p>
           </div>
         )}
@@ -349,12 +395,12 @@ const Screen13 = () => {
               className="flex items-center gap-2"
             >
               <Target className="w-4 h-4" />
-              Skip Modules
+              Finalize Without Changes
             </WhiteButton>
 
             <OrangeButton
               onClick={handleSubmitModules}
-              disabled={isSubmitting || modules.length === 0}
+              disabled={isSubmitting}
               className="flex items-center gap-2"
             >
               {isSubmitting ? (
@@ -362,7 +408,7 @@ const Screen13 = () => {
               ) : (
                 <Upload className="w-4 h-4" />
               )}
-              {isSubmitting ? "Creating..." : `Add ${modules.length} Module${modules.length !== 1 ? 's' : ''}`}
+              {isSubmitting ? "Finalizing..." : `Finalize Course Updates`}
             </OrangeButton>
           </div>
         </div>
@@ -371,4 +417,5 @@ const Screen13 = () => {
   );
 };
 
-export default Screen13;
+export default Screen12;
+

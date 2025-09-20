@@ -1,15 +1,13 @@
-import React, { useState, useMemo } from "react";
-import Image from "next/image";
-import { useEditCourseContext } from "../../../reducers/course/providers/EditCourseReducerProvider";
+import React, { useState, useMemo, useEffect } from "react";
+import { useCourseContext } from "../../../reducers/course/providers/CourseReducerProvider";
 import Container from "@/app/admin/components/ui/Container";
-import { sanitizeCourseForBackend } from "../../../reducers/course/utils/sanitization";
-import { editDraftUtils } from "../utils/editDraftUtils";
-import { useRouter } from "next/navigation";
-import { useCourses } from "@/hooks/useCourses";
-import { validateSanitizedCourse } from "../../../reducers/course/utils/sanitization";
 import ScreenNavigation from "./shared/ScreenNavigation";
-import { useEditScreen } from "../contexts/EditScreenContext";
+import { useScreen } from "../contexts/ScreenContext";
+import { useCourses } from "@/hooks/useCourses";
+import { sanitizeCourseForBackend } from "../../../reducers/course/utils/sanitization";
+import { validateSanitizedCourse } from "../../../reducers/course/utils/sanitization";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
+import { toast } from "react-toastify";
 import {
   CheckCircle,
   AlertCircle,
@@ -26,16 +24,29 @@ import {
   Zap,
   Eye,
   CheckSquare,
+  ArrowLeft,
+  X,
 } from "lucide-react";
 
-const Screen8 = () => {
-  const { state } = useEditCourseContext();
-  const { setActiveScreen } = useEditScreen();
-  const router = useRouter();
+const Screen10 = () => {
+  const { state } = useCourseContext();
+  const { setActiveScreen } = useScreen();
+  const { createCourseMetadata } = useCourses();
 
-  const { updateCourse } = useCourses();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string>("");
+  const [isCreating, setIsCreating] = useState(false);
+  const [createError, setCreateError] = useState<string>("");
+  const [courseCreated, setCourseCreated] = useState(false);
+  const [createdCourseId, setCreatedCourseId] = useState<string>("");
+
+  // Clear any existing error messages when component mounts
+  useEffect(() => {
+    setCreateError("");
+  }, []);
+
+  // Clear error when user starts creating again
+  const clearError = () => {
+    setCreateError("");
+  };
 
   // Comprehensive validation
   const validationChecks = useMemo(() => {
@@ -80,14 +91,6 @@ const Screen8 = () => {
         details: state.course.thumbnail ? "Uploaded" : "Missing",
         icon: Eye,
         color: "blue",
-      },
-      {
-        id: "modules",
-        label: "Course Modules",
-        isValid: !!(state.course.modules && state.course.modules.length > 0),
-        details: `${state.course.modules?.length || 0} modules`,
-        icon: BookOpen,
-        color: "orange",
       },
       {
         id: "plans",
@@ -141,7 +144,6 @@ const Screen8 = () => {
   // Course statistics
   const courseStats = useMemo(() => {
     return {
-      moduleCount: state.course.modules?.length || 0,
       skillsCount: state.course.skills?.length || 0,
       careerPathsCount: state.course.careerPaths?.length || 0,
       faqsCount: state.course.faqs?.length || 0,
@@ -149,51 +151,110 @@ const Screen8 = () => {
     };
   }, [state.course]);
 
-  const handleSubmitCourse = async () => {
+  const handleCreateCourseMetadata = async () => {
     if (!allValid) {
-      setSubmitError(
-        "Please complete all required fields before updating the course."
-      );
+      const errorMessage =
+        "Please complete all required fields before creating the course.";
+      setCreateError(errorMessage);
+      toast.error(errorMessage);
       return;
     }
 
-    setIsSubmitting(true);
-    setSubmitError("");
+    setIsCreating(true);
+    setCreateError("");
 
     try {
-      // Sanitize course data for backend
+      // Sanitize course data for backend (excluding modules)
       const sanitizedCourse = sanitizeCourseForBackend(state.course);
 
       // Validate sanitized data
       if (!validateSanitizedCourse(sanitizedCourse)) {
-        throw new Error("Course data validation failed");
+        const errorMessage =
+          "Course data validation failed. Please check your input and try again.";
+        setCreateError(errorMessage);
+        toast.error(errorMessage);
+        return;
       }
 
-      console.log("🚀 Updating course with data:", sanitizedCourse);
+      console.log("🚀 Creating course metadata with data:", sanitizedCourse);
 
-      // Update course
-      const result = await updateCourse(
-        state.course._id || "",
-        sanitizedCourse
-      );
+      // Extract modules for later creation and create metadata only
+      const { modules, ...courseMetadata } = sanitizedCourse;
 
-      if (result.success) {
-        // Clear draft data
-        editDraftUtils.clearAll();
+      // Create course metadata only with timeout
+      const result = (await Promise.race([
+        createCourseMetadata(courseMetadata),
+        new Promise((_, reject) =>
+          setTimeout(
+            () => reject(new Error("Request timeout after 30 seconds")),
+            30000
+          )
+        ),
+      ])) as any;
 
-        // Navigate to manage courses page
-        router.push("/admin/courses/manage-courses");
+      if (result.success && result.data?.courseId) {
+        setCreatedCourseId(result.data.courseId);
+        setCourseCreated(true);
+
+        // Store course ID and modules in localStorage for module management
+        localStorage.setItem("current_course_id", result.data.courseId);
+        localStorage.setItem(
+          "course_modules_draft",
+          JSON.stringify(modules || [])
+        );
+
+        // Show success toast
+        toast.success(
+          "Course metadata created successfully! You can now add modules."
+        );
       } else {
-        setSubmitError(result.error || "Failed to update course");
+        const errorMessage =
+          result.error || "Failed to create course metadata. Please try again.";
+        setCreateError(errorMessage);
+        toast.error(errorMessage);
       }
     } catch (error) {
-      console.error("Error updating course:", error);
-      setSubmitError(
-        error instanceof Error ? error.message : "Failed to update course"
-      );
+      console.error("Error creating course metadata:", error);
+
+      // Handle different types of errors
+      let errorMessage = "Failed to create course metadata. Please try again.";
+
+      if (error instanceof Error) {
+        // Network errors, API errors, etc.
+        if (
+          error.message.includes("Network Error") ||
+          error.message.includes("fetch")
+        ) {
+          errorMessage =
+            "Network error. Please check your connection and try again.";
+        } else if (error.message.includes("timeout")) {
+          errorMessage = "Request timed out. Please try again.";
+        } else if (error.message.includes("400")) {
+          errorMessage =
+            "Invalid course data. Please check your input and try again.";
+        } else if (error.message.includes("401")) {
+          errorMessage = "Authentication failed. Please log in again.";
+        } else if (error.message.includes("403")) {
+          errorMessage = "You don't have permission to create courses.";
+        } else if (error.message.includes("500")) {
+          errorMessage = "Server error. Please try again later.";
+        } else {
+          errorMessage = error.message;
+        }
+      } else if (typeof error === "string") {
+        errorMessage = error;
+      }
+
+      setCreateError(errorMessage);
+      toast.error(errorMessage);
     } finally {
-      setIsSubmitting(false);
+      setIsCreating(false);
     }
+  };
+
+  const handleProceedToModules = () => {
+    // Navigate to module management screen
+    setActiveScreen("screen12");
   };
 
   const getColorClasses = (color: string, isValid: boolean) => {
@@ -214,39 +275,65 @@ const Screen8 = () => {
 
   return (
     <Container
-      title="Review & Update Course"
-      description="Review all course information before updating. Make sure everything looks correct."
+      title="Review & Create Course Metadata"
+      description="Review all course information before creating the course metadata. Modules can be added later."
       className="rounded-b-none h-full w-full max-h-full overflow-y-auto flex flex-col"
       style={{ scrollbarWidth: "thin" }}
     >
-      {/* Success Banner */}
-      {allValid && (
-        <div className="bg-gradient-to-r from-orange-50 to-blue-50 border-2 border-orange-200 rounded-xl p-6 mb-6 shadow-lg">
+      {/* Success Banner - Course Created */}
+      {courseCreated && (
+        <div className="bg-gradient-to-r from-green-50 to-blue-50 border-2 border-green-200 rounded-xl p-6 mb-6 shadow-lg">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl flex items-center justify-center shadow-lg">
+            <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg">
               <CheckSquare className="w-7 h-7 text-white" />
             </div>
             <div className="flex-1">
-              <h3 className="text-xl font-bold text-orange-800 mb-1">
-                🎉 Course Ready for Update!
+              <h3 className="text-xl font-bold text-green-800 mb-1">
+                🎉 Course Metadata Created Successfully!
               </h3>
-              <p className="text-orange-700">
-                All required fields are completed. Your course is ready to be
-                updated and published.
+              <p className="text-green-700 mb-3">
+                Your course has been created with ID:{" "}
+                <span className="font-mono font-bold">{createdCourseId}</span>
               </p>
+              <p className="text-green-600 text-sm mb-2">
+                You can now add modules to your course or proceed to manage it.
+              </p>
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mt-3">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-amber-600" />
+                  <p className="text-amber-700 text-sm font-medium">
+                    Note: You can no longer go back to previous screens after
+                    course metadata creation.
+                  </p>
+                </div>
+              </div>
             </div>
             <OrangeButton
-              onClick={handleSubmitCourse}
-              disabled={isSubmitting}
+              onClick={handleProceedToModules}
               className="flex items-center gap-2 shadow-lg px-6 py-3"
             >
-              {isSubmitting ? (
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-              ) : (
-                <Send className="w-5 h-5" />
-              )}
-              {isSubmitting ? "Updating..." : "Update Course"}
+              <BookOpen className="w-5 h-5" />
+              Add Modules
             </OrangeButton>
+          </div>
+        </div>
+      )}
+
+      {/* Error Message */}
+      {createError && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-red-600" />
+              <p className="text-red-700">{createError}</p>
+            </div>
+            <button
+              onClick={clearError}
+              className="text-red-600 hover:text-red-800 transition-colors"
+              title="Dismiss error"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
         </div>
       )}
@@ -259,7 +346,7 @@ const Screen8 = () => {
             ? "All requirements met - Course is ready!"
             : `${invalidChecks.length} validation issue${
                 invalidChecks.length !== 1 ? "s" : ""
-              } found - Please fix before updating`
+              } found - Please fix before creating`
         }`}
         icon={Award}
         className="mb-6"
@@ -348,7 +435,7 @@ const Screen8 = () => {
               <div>
                 <span className="font-semibold text-lg">Action Required</span>
                 <div className="text-sm mt-1">
-                  Please complete all required fields above before updating your
+                  Please complete all required fields above before creating your
                   course. Each section marked with a red icon needs attention.
                 </div>
               </div>
@@ -444,11 +531,9 @@ const Screen8 = () => {
                 <h4 className="font-semibold text-gray-800 mb-3">
                   Course Thumbnail
                 </h4>
-                <Image
+                <img
                   src={state.course.thumbnail}
                   alt="Course thumbnail"
-                  width={400}
-                  height={192}
                   className="w-full h-48 object-cover rounded-lg border border-gray-200"
                 />
               </div>
@@ -464,17 +549,6 @@ const Screen8 = () => {
               className="mb-6"
             >
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-white rounded-lg p-3 border border-orange-200">
-                  <div className="flex items-center gap-2 mb-1">
-                    <BookOpen className="w-4 h-4 text-orange-500" />
-                    <span className="text-sm font-medium text-gray-600">
-                      Modules
-                    </span>
-                  </div>
-                  <div className="text-2xl font-bold text-orange-600">
-                    {courseStats.moduleCount}
-                  </div>
-                </div>
                 <div className="bg-white rounded-lg p-3 border border-blue-200">
                   <div className="flex items-center gap-2 mb-1">
                     <Tag className="w-4 h-4 text-orange-500" />
@@ -506,6 +580,17 @@ const Screen8 = () => {
                   </div>
                   <div className="text-lg font-bold text-orange-600">
                     {state.course.language || "Not set"}
+                  </div>
+                </div>
+                <div className="bg-white rounded-lg p-3 border border-orange-200">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Clock className="w-4 h-4 text-orange-500" />
+                    <span className="text-sm font-medium text-gray-600">
+                      Duration
+                    </span>
+                  </div>
+                  <div className="text-lg font-bold text-orange-600">
+                    {state.course.duration || "Not set"}
                   </div>
                 </div>
               </div>
@@ -542,30 +627,49 @@ const Screen8 = () => {
         </div>
       </Container>
 
-      {/* Error Message */}
-      {submitError && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-          <div className="flex items-center gap-2">
-            <AlertCircle className="w-5 h-5 text-red-600" />
-            <p className="text-red-700">{submitError}</p>
+      {/* Navigation */}
+      {!courseCreated ? (
+        <div className="flex-shrink-0 bg-white border-t border-gray-200 p-6">
+          <div className="flex justify-between items-center">
+            <button
+              onClick={() => setActiveScreen("screen9")}
+              className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back to SEO
+            </button>
+
+            <OrangeButton
+              onClick={handleCreateCourseMetadata}
+              disabled={!allValid || isCreating}
+              className="flex items-center gap-2 px-6 py-3"
+            >
+              {isCreating ? (
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+              ) : createError ? (
+                <Send className="w-5 h-5" />
+              ) : (
+                <Send className="w-5 h-5" />
+              )}
+              {isCreating
+                ? "Creating Course..."
+                : createError
+                ? "Retry Creating Course"
+                : "Create Course Metadata"}
+            </OrangeButton>
           </div>
         </div>
+      ) : (
+        <ScreenNavigation
+          currentStep={10}
+          previousScreen="screen9"
+          nextScreen="screen11"
+          setActiveScreen={setActiveScreen}
+          isNextDisabled={false}
+        />
       )}
-
-      {/* Navigation */}
-      <ScreenNavigation
-        currentStep={8}
-        previousScreen="screen7"
-        setActiveScreen={setActiveScreen}
-        nextButtonText="Update Course"
-        nextButtonIcon={<Send className="w-4 h-4" />}
-        onNext={handleSubmitCourse}
-        isNextDisabled={!allValid || isSubmitting}
-        isPreviousDisabled={isSubmitting}
-        isLoading={isSubmitting}
-      />
     </Container>
   );
 };
 
-export default Screen8;
+export default Screen10;

@@ -1,8 +1,9 @@
+"use client";
 import { useReducer, useCallback, useRef, useEffect } from "react";
 import { ReducerResult, ReducerError, courseReducer } from "../core/reducer";
 import { initialCourseState, CourseState } from "../core/state";
 import { CourseAction, courseActions } from "../core/actions";
-import { editDraftUtils } from "../../../manage-courses/edit/utils/editDraftUtils";
+import { draftUtils } from "../../../manage-courses/edit/utils/draftUtils";
 import { Discount } from "@/types";
 
 // This hook is used to manage the state of the course edit reducer
@@ -79,10 +80,10 @@ export const useEditCourseReducer = (courseId?: string) => {
   useEffect(() => {
     if (courseId && state.isDirty) {
       // Save course ID if not already saved
-      editDraftUtils.saveEditCourseId(courseId);
+      draftUtils.saveEditCourseId(courseId);
       
       // Save draft data
-      editDraftUtils.saveDraft(state.course);
+      draftUtils.saveDraft(state.course);
       
     }
   }, [state.course, state.isDirty, courseId]);
@@ -187,8 +188,8 @@ export const useEditCourseReducer = (courseId?: string) => {
     loadEditDraft: useCallback(
       (courseId: string) => {
         // Check if there's a draft for this specific course
-        if (editDraftUtils.hasDraft() && editDraftUtils.isDraftForCourse(courseId)) {
-          const draft = editDraftUtils.getDraft();
+        if (draftUtils.hasDraft() && draftUtils.isDraftForCourse(courseId)) {
+          const draft = draftUtils.getDraft();
           if (draft) {
             console.log("Loading edit draft for course:", courseId);
             // Transform draft data for edit mode
@@ -204,19 +205,19 @@ export const useEditCourseReducer = (courseId?: string) => {
 
     // Clear edit draft
     clearEditDraft: useCallback(() => {
-      editDraftUtils.clearAll();
+      draftUtils.clearAll();
       console.log("Edit draft cleared");
       return { state, error: undefined, warnings: ["Edit draft cleared"] };
     }, [state]),
 
     // Get edit draft info
     getEditDraftInfo: useCallback(() => {
-      return editDraftUtils.getDraftInfo();
+      return draftUtils.getDraftInfo();
     }, []),
 
     // Check if there's an edit draft for current course
     hasEditDraft: useCallback((courseId: string) => {
-      return editDraftUtils.hasDraft() && editDraftUtils.isDraftForCourse(courseId);
+      return draftUtils.hasDraft() && draftUtils.isDraftForCourse(courseId);
     }, []),
 
     // All other actions from the original reducer
@@ -247,14 +248,6 @@ export const useEditCourseReducer = (courseId?: string) => {
     setCourseCategory: useCallback(
       (category: string) => {
         const action = courseActions.setCourseCategory(category);
-        return enhancedDispatch(action);
-      },
-      [enhancedDispatch]
-    ),
-
-    setCourseSubcategory: useCallback(
-      (subcategory: string) => {
-        const action = courseActions.setCourseSubcategory(subcategory);
         return enhancedDispatch(action);
       },
       [enhancedDispatch]
@@ -811,6 +804,31 @@ export const useEditCourseReducer = (courseId?: string) => {
       const action = courseActions.clearCourseValidationErrors();
       return enhancedDispatch(action);
     }, [enhancedDispatch]),
+
+    // Testimonials Management
+    setCourseTestimonials: useCallback(
+      (testimonials: any[]) => {
+        const action = courseActions.setCourseTestimonials(testimonials);
+        return enhancedDispatch(action);
+      },
+      [enhancedDispatch]
+    ),
+
+    addCourseTestimonial: useCallback(
+      (testimonialId: string) => {
+        const action = courseActions.addCourseTestimonial(testimonialId);
+        return enhancedDispatch(action);
+      },
+      [enhancedDispatch]
+    ),
+
+    removeCourseTestimonial: useCallback(
+      (testimonialId: string) => {
+        const action = courseActions.removeCourseTestimonial(testimonialId);
+        return enhancedDispatch(action);
+      },
+      [enhancedDispatch]
+    ),
 
     // Timestamps
     setCourseCreatedAt: useCallback(

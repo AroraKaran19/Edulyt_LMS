@@ -1,8 +1,5 @@
 import { useRouter } from "next/navigation";
-import React from "react";
-import FlexBox from "@/components/ui/FlexBox";
-import OrangeButton from "@/components/ui/buttons/OrangeButton";
-import WhiteButton from "@/components/ui/buttons/WhiteButton";
+import React, { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface ScreenNavigationProps {
@@ -40,6 +37,24 @@ const ScreenNavigation: React.FC<ScreenNavigationProps> = ({
   className = "",
   setActiveScreen,
 }) => {
+  const [isCourseCreated, setIsCourseCreated] = useState(false);
+
+  // Check if course metadata has been created
+  useEffect(() => {
+    const checkCourseCreated = () => {
+      const courseId = localStorage.getItem("current_course_id");
+      setIsCourseCreated(!!courseId);
+    };
+
+    checkCourseCreated();
+
+    // Listen for storage changes (in case course is created in another tab)
+    window.addEventListener("storage", checkCourseCreated);
+
+    return () => {
+      window.removeEventListener("storage", checkCourseCreated);
+    };
+  }, []);
 
   // Calculate progress percentage
   const progressPercentage = (currentStep / totalSteps) * 100;
@@ -47,6 +62,11 @@ const ScreenNavigation: React.FC<ScreenNavigationProps> = ({
 
   // Handle previous button click
   const handlePrevious = () => {
+    // Don't allow going back if course metadata has been created
+    if (isCourseCreated) {
+      return;
+    }
+
     if (onPrevious) {
       onPrevious();
     } else if (previousScreen) {
@@ -71,14 +91,21 @@ const ScreenNavigation: React.FC<ScreenNavigationProps> = ({
   };
 
   return (
-    <div className={`border-t border-gray-100 bg-gray-50/50 px-6 py-4 sm:px-8 ${className}`}>
+    <div
+      className={`border-t border-gray-100 bg-gray-50/50 px-6 py-4 sm:px-8 ${className}`}
+    >
       <div className="flex flex-col sm:flex-row gap-4 sm:gap-0 sm:items-center sm:justify-between">
         {/* Previous Button */}
         <div className="order-2 sm:order-1">
           {showPrevious ? (
             <button
               onClick={handlePrevious}
-              disabled={isPreviousDisabled || isLoading}
+              disabled={isPreviousDisabled || isLoading || isCourseCreated}
+              title={
+                isCourseCreated
+                  ? "Cannot go back after course metadata is created"
+                  : ""
+              }
               className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm"
             >
               <ChevronLeft className="w-4 h-4" />

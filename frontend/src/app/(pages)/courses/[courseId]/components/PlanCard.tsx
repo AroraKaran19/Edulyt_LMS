@@ -36,7 +36,7 @@ const PlanCard = ({
   return (
     <div
       className={cn(
-        "plan-card flex flex-col gap-2 bg-white rounded-2xl relative",
+        "plan-card max-w-xl flex flex-col gap-2 bg-white rounded-2xl relative min-h-[450px]",
         totalPlans === 1 && "w-full sm:w-2/4 lg:w-3/4 mx-auto",
         totalPlans === 2 && "w-full md:w-1/2",
         className

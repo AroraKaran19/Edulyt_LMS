@@ -7,6 +7,20 @@ import {
   getCoursesUsingCategory as getCoursesUsingCategoryService,
   UpdateCourseMetadata as UpdateCourseMetadataService,
   CreateCourseMetadata as CreateCourseMetadataService,
+  updateCourseStatusService,
+  getCoursesForAdminService,
+  getCourseByIdAdminService,
+  duplicateCourseService,
+  AddSingleCourseModule as AddSingleCourseModuleService,
+  UpdateSingleCourseModule as UpdateSingleCourseModuleService,
+  DeleteSingleCourseModule as DeleteSingleCourseModuleService,
+  AddSingleCourseLesson as AddSingleCourseLessonService,
+  UpdateSingleCourseLesson as UpdateSingleCourseLessonService,
+  DeleteSingleCourseLesson as DeleteSingleCourseLessonService,
+  AddSingleCourseContent as AddSingleCourseContentService,
+  UpdateSingleCourseContent as UpdateSingleCourseContentService,
+  DeleteSingleCourseContent as DeleteSingleCourseContentService,
+  FinalizeCourseCreation as FinalizeCourseCreationService,
 } from "../services/course.service";
 import dotenv from "dotenv";
 import {
@@ -107,6 +121,15 @@ export const getCoursesUsingCategory = asyncHandler(
   }
 );
 
+export const updateCourseStatus = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    const { courseId } = req.params;
+    const { isActive } = req.body;
+    const result = await updateCourseStatusService(courseId, isActive);
+    sendSuccessResponse(res, result, "Course status updated successfully", 200);
+  }
+);
+
 export const updateCourseMetadata = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const { courseId } = req.params;
@@ -118,7 +141,7 @@ export const updateCourseMetadata = asyncHandler(
 
     const result = await UpdateCourseMetadataService(courseId, updateData);
 
-    sendSuccessResponse(res, { courseId, updated: true }, result.message, 200);
+    sendSuccessResponse(res, { courseId, updated: true }, "Course metadata updated successfully", 200);
   }
 );
 
@@ -135,8 +158,239 @@ export const createCourseMetadata = asyncHandler(
     sendSuccessResponse(
       res,
       { courseId: result.courseId },
-      result.message,
+      "Course metadata created successfully",
       201
     );
+  }
+);
+
+export const getCoursesForAdmin = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      filters,
+      audienceFilter,
+      category,
+    } = req.query;
+    const courses = await getCoursesForAdminService(
+      Number(page),
+      Number(limit),
+      search as string,
+      category as string,
+      audienceFilter as string
+    );
+    if (!courses || courses.courses.length === 0) {
+      sendSuccessResponse(res, [], "No courses found", 200);
+      return;
+    }
+    sendSuccessResponse(res, courses, "Courses retrieved successfully", 200);
+  }
+);
+
+export const getCourseByIdAdmin = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    const { courseId } = req.params;
+
+    if (!courseId) {
+      throw new AppError("Course ID is required", 400);
+    }
+
+    const course = await getCourseByIdAdminService(courseId);
+
+    if (!course) {
+      throw new AppError("Course not found", 404);
+    }
+
+    sendSuccessResponse(res, { course }, "Course retrieved successfully", 200);
+  }
+);
+
+export const duplicateCourse = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    const { courseId } = req.params;
+    const result = await duplicateCourseService(courseId);
+    if (!result) {
+      throw new AppError("Failed to duplicate course", 500);
+    }
+    sendSuccessResponse(res, result, "Course duplicated successfully", 200);
+  }
+);
+
+
+export const finalizeCourseCreation = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    const { courseId } = req.params;
+
+    console.log("Backend - Finalizing course creation for courseId:", courseId);
+
+    const result = await FinalizeCourseCreationService(courseId);
+    sendSuccessResponse(res, result, result.message, 200);
+  }
+);
+
+export const addSingleCourseModule = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    const { courseId } = req.params;
+    const moduleData = req.body;
+
+    console.log("Backend - Adding single module to courseId:", courseId);
+    console.log("Backend - Module data:", moduleData);
+
+    if (!moduleData) {
+      throw new AppError("Module data is required", 400);
+    }
+
+    // Only validate that the module data structure is present
+
+    const result = await AddSingleCourseModuleService(courseId, moduleData);
+    sendSuccessResponse(res, result, "Module added successfully", 201);
+  }
+);
+
+export const updateSingleCourseModule = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    const { courseId, moduleId } = req.params;
+    const moduleData = req.body;
+
+    console.log("Backend - Updating module:", moduleId, "in course:", courseId);
+    console.log("Backend - Module data:", moduleData);
+
+    if (!moduleId) {
+      throw new AppError("Module ID is required", 400);
+    }
+
+    const result = await UpdateSingleCourseModuleService(courseId, moduleId, moduleData);
+    sendSuccessResponse(res, result, "Module updated successfully", 200);
+  }
+);
+
+export const deleteSingleCourseModule = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    const { courseId, moduleId } = req.params;
+
+    console.log("Backend - Deleting module:", moduleId, "from course:", courseId);
+
+    if (!moduleId) {
+      throw new AppError("Module ID is required", 400);
+    }
+
+    const result = await DeleteSingleCourseModuleService(courseId, moduleId);
+    sendSuccessResponse(res, result, "Module deleted successfully", 200);
+  }
+);
+
+// ===================
+// LESSON CONTROLLERS
+// ===================
+
+export const addSingleCourseLesson = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    const { courseId, moduleId } = req.params;
+    const lessonData = req.body;
+
+    console.log("Backend - Adding lesson to module:", moduleId, "in course:", courseId);
+    console.log("Backend - Lesson data:", lessonData);
+
+    if (!moduleId) {
+      throw new AppError("Module ID is required", 400);
+    }
+
+    if (!lessonData) {
+      throw new AppError("Lesson data is required", 400);
+    }
+
+    const result = await AddSingleCourseLessonService(courseId, moduleId, lessonData);
+    sendSuccessResponse(res, result, "Lesson added successfully", 201);
+  }
+);
+
+export const updateSingleCourseLesson = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    const { courseId, moduleId, lessonId } = req.params;
+    const lessonData = req.body;
+
+    console.log("Backend - Updating lesson:", lessonId, "in module:", moduleId, "in course:", courseId);
+    console.log("Backend - Lesson data:", lessonData);
+
+    if (!moduleId || !lessonId) {
+      throw new AppError("Module ID and Lesson ID are required", 400);
+    }
+
+    const result = await UpdateSingleCourseLessonService(courseId, moduleId, lessonId, lessonData);
+    sendSuccessResponse(res, result, "Lesson updated successfully", 200);
+  }
+);
+
+export const deleteSingleCourseLesson = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    const { courseId, moduleId, lessonId } = req.params;
+
+    console.log("Backend - Deleting lesson:", lessonId, "from module:", moduleId, "in course:", courseId);
+
+    if (!moduleId || !lessonId) {
+      throw new AppError("Module ID and Lesson ID are required", 400);
+    }
+
+    const result = await DeleteSingleCourseLessonService(courseId, moduleId, lessonId);
+    sendSuccessResponse(res, result, "Lesson deleted successfully", 200);
+  }
+);
+
+// ===================
+// CONTENT CONTROLLERS
+// ===================
+
+export const addSingleCourseContent = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    const { courseId, moduleId, lessonId } = req.params;
+    const contentData = req.body;
+
+    console.log("Backend - Adding content to lesson:", lessonId, "in module:", moduleId, "in course:", courseId);
+    console.log("Backend - Content data:", contentData);
+
+    if (!moduleId || !lessonId) {
+      throw new AppError("Module ID and Lesson ID are required", 400);
+    }
+
+    if (!contentData) {
+      throw new AppError("Content data is required", 400);
+    }
+
+    const result = await AddSingleCourseContentService(courseId, moduleId, lessonId, contentData);
+    sendSuccessResponse(res, result, "Content added successfully", 201);
+  }
+);
+
+export const updateSingleCourseContent = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    const { courseId, moduleId, lessonId, contentId } = req.params;
+    const contentData = req.body;
+
+    console.log("Backend - Updating content:", contentId, "in lesson:", lessonId, "in module:", moduleId, "in course:", courseId);
+    console.log("Backend - Content data:", contentData);
+
+    if (!moduleId || !lessonId || !contentId) {
+      throw new AppError("Module ID, Lesson ID, and Content ID are required", 400);
+    }
+
+    const result = await UpdateSingleCourseContentService(courseId, moduleId, lessonId, contentId, contentData);
+    sendSuccessResponse(res, result, "Content updated successfully", 200);
+  }
+);
+
+export const deleteSingleCourseContent = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    const { courseId, moduleId, lessonId, contentId } = req.params;
+
+    console.log("Backend - Deleting content:", contentId, "from lesson:", lessonId, "in module:", moduleId, "in course:", courseId);
+
+    if (!moduleId || !lessonId || !contentId) {
+      throw new AppError("Module ID, Lesson ID, and Content ID are required", 400);
+    }
+
+    const result = await DeleteSingleCourseContentService(courseId, moduleId, lessonId, contentId);
+    sendSuccessResponse(res, result, "Content deleted successfully", 200);
   }
 );

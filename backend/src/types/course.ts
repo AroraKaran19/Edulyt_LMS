@@ -159,7 +159,7 @@ export interface Course {
   _id?: string;
   title: string;
   description: string;
-  shortDescription: string; // Required in schema
+  shortDescription: string;
   category: string;
   thumbnail: string;
   previewVideoUrl?: string;
@@ -198,7 +198,7 @@ export interface Course {
 
   // Reviews
   reviews: Review["_id"][];
-  testimonials: Testimonial[];
+  testimonials: Testimonial["_id"][];
 
   // FAQs
   faqs: FAQ[] | FAQ["_id"];
@@ -226,11 +226,12 @@ export interface Course {
   // Language
   language: string;
   
-  // Curriculum - optional PDF document URL
+  // Curriculum
   curriculum?: string;
 
   // Analytics
   analytics?: {
+    totalRatings: number;
     totalEnrollments: number;
     activeEnrollments: number;
     completionRate: number;

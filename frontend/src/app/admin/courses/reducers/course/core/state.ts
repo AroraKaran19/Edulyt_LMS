@@ -1,12 +1,27 @@
 import { Course } from "@/types";
 
 // ===================
+// Frontend-Only Course Interface
+// ===================
+
+// Frontend-only fields that should not be sent to backend
+interface FrontendOnlyFields {
+  thumbnailSource?: "upload" | "url";
+  thumbnailS3Key?: string;
+  previewVideoSource?: "upload" | "url";
+  previewVideoS3Key?: string;
+}
+
+// Extended course interface for frontend state management
+export interface FrontendCourse extends Course, FrontendOnlyFields {}
+
+// ===================
 // State Interface
 // ===================
 
 export interface CourseState {
   // Course Data
-  course: Course;
+  course: FrontendCourse;
 
   // UI States
   isLoading: boolean;
@@ -34,7 +49,6 @@ export const initialCourseState: CourseState = {
     description: "",
     shortDescription: "",
     category: "",
-    subcategory: "",
     thumbnail: "",
     thumbnailSource: undefined,
     thumbnailS3Key: "",
@@ -62,11 +76,12 @@ export const initialCourseState: CourseState = {
 
     duration: "", // like: 3 months, 1 year, 2 years, etc. (will not be accurate)
 
+    // Content
+    moduleIds: [],
+    modules: [],
+
     // Discount settings
     discount: undefined,
-
-    // Content - Store full module objects for frontend
-    modules: [],
 
     // Instructor
     instructor: [], // can be multiple instructors
@@ -88,7 +103,6 @@ export const initialCourseState: CourseState = {
     isActive: true,
     createdAt: new Date(),
     updatedAt: new Date(),
-    createdBy: "",
     tags: [],
     audience: "college-students" as "college-students" | "professionals",
 

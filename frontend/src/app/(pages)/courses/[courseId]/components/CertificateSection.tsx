@@ -8,10 +8,10 @@ import React from "react";
 import CertificateCarousel from "../../components/CertificateCarousel";
 import PlanCard from "./PlanCard";
 
-const CertificateSection = ({ 
-  course, 
-  onEnrollClick 
-}: { 
+const CertificateSection = ({
+  course,
+  onEnrollClick,
+}: {
   course: Course;
   onEnrollClick?: () => void;
 }) => {
@@ -87,8 +87,8 @@ const CertificateSection = ({
 
   return (
     <SectionContainer id="plans" className="bg-text-primary xl:!px-20">
-      <div className="plans-header w-full flex flex-col md:flex-row items-center gap-4">
-        <div className="header-left w-full md:w-1/2 flex flex-col gap-2">
+      <div className="plans-header w-full flex flex-col md:flex-row items-center justify-stretch gap-4">
+        <div className="header-left w-full md:w-2/3 flex flex-col gap-2">
           <h2 className="font-normal font-coolvetica text-white text-2xl md:text-4xl text-center md:text-left">
             This Course is ideal for{" "}
             <span>
@@ -98,24 +98,14 @@ const CertificateSection = ({
             </span>
             .
           </h2>
-          <p className="text-white text-sm md:text-base font-extrabold italic text-center md:text-left">
-            {course.shortDescription}
+          <p className="text-white text-sm md:text-base font-extrabold italic text-center md:text-left text-wrap break-words">
+            {course.whoShouldJoin}
           </p>
-        </div>
-        <div className="header-right w-full md:w-1/2 flex items-center justify-center md:justify-end">
-          <OrangeButton glow>
-            <Link
-              href={`/courses/${course.slug}`}
-              className="text-white font-bold text-sm md:text-base"
-            >
-              Get Curriculum
-            </Link>
-          </OrangeButton>
         </div>
       </div>
 
       <div className="plans-body w-full flex flex-col xl:flex-row gap-10 items-center lg:items-stretch min-h-[600px]">
-        <div className="plans-container w-full md:w-full xl:w-1/2 flex flex-col md:flex-row gap-4">
+        <div className="plans-container w-full md:w-full xl:w-3/4 flex flex-col md:flex-row gap-4">
           {plans.map((plan, index) => (
             <PlanCard
               plan={plan}
@@ -125,7 +115,7 @@ const CertificateSection = ({
             />
           ))}
         </div>
-        <div className="certificate-preview !h-[400px] xl:!h-auto w-full sm:w-3/4 md:w-1/2 mx-auto relative">
+        <div className="certificate-preview !h-[400px] xl:!h-auto w-full sm:w-3/4 md:w-1/4 mx-auto relative">
           <CertificateCarousel />
         </div>
       </div>

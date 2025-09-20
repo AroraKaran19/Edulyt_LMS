@@ -1,906 +1,960 @@
-import Container from "@/app/admin/components/ui/Container";
-import FlexBox from "@/components/ui/FlexBox";
-import { useEditCourseContext } from "../../../reducers/course/providers/EditCourseReducerProvider";
-import UploadMediaContainer from "@/components/ui/container/UploadMediaContainer";
 import Input from "@/components/ui/inputs/Input";
-import React, { useMemo, useState, useEffect } from "react";
-import TextArea from "@/components/ui/inputs/TextArea";
-import OrangeButton from "@/components/ui/buttons/OrangeButton";
-import { useUpload } from "@/hooks/useUpload";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useEditCourseContext } from "../../../reducers/course/providers/EditCourseReducerProvider";
 import ScreenNavigation from "./shared/ScreenNavigation";
+import { useScreen } from "../contexts/ScreenContext";
+import OrangeButton from "@/components/ui/buttons/OrangeButton";
+import WhiteButton from "@/components/ui/buttons/WhiteButton";
+import Container from "@/app/admin/components/ui/Container";
 import {
-  BookOpen,
   Plus,
+  Search,
+  Users,
+  Check,
+  X,
+  Edit3,
   Trash2,
-  Save,
   ChevronDown,
   ChevronUp,
-  Play,
-  Edit2,
-  GripVertical,
+  Building,
+  GraduationCap,
+  Linkedin,
+  ShieldCheck,
+  User,
 } from "lucide-react";
-import {
-  CourseModule,
-  CourseLesson,
-  Content,
-  VideoContent,
-  QuizContent,
-} from "@/types";
-import { useEditScreen } from "../contexts/EditScreenContext";
-import ContentSection from "../../create/components/content/ContentSection";
+import { Testimonial } from "@/types";
+import { useTestimonial } from "@/hooks/useTestimonial";
+
+// ProfileImage component for handling image load errors
+interface ProfileImageProps {
+  src: string;
+  name: string;
+  className: string;
+}
+
+const ProfileImage: React.FC<ProfileImageProps> = ({ src, name, className }) => {
+  const [imageError, setImageError] = useState(false);
+  const [imageLoading, setImageLoading] = useState(true);
+
+  // Function to get initials from name
+  const getInitials = (fullName: string) => {
+    return fullName
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase())
+      .slice(0, 2) // Take only first 2 initials
+      .join('');
+  };
+
+  // Reset states when src changes
+  useEffect(() => {
+    if (src) {
+      setImageError(false);
+      setImageLoading(true);
+    } else {
+      setImageError(true);
+      setImageLoading(false);
+    }
+  }, [src]);
+
+  const handleImageLoad = () => {
+    setImageLoading(false);
+    setImageError(false);
+  };
+
+  const handleImageError = () => {
+    setImageLoading(false);
+    setImageError(true);
+  };
+
+  // If no src or image failed to load, show initials
+  if (!src || imageError) {
+    return (
+      <div className={`${className} bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm`}>
+        {getInitials(name)}
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative">
+      {imageLoading && (
+        <div className={`${className} bg-gray-200 animate-pulse flex items-center justify-center`}>
+          <User className="w-6 h-6 text-gray-400" />
+        </div>
+      )}
+      <img
+        src={src}
+        alt={name}
+        className={`${className} ${imageLoading ? 'opacity-0 absolute' : 'opacity-100'}`}
+        onLoad={handleImageLoad}
+        onError={handleImageError}
+      />
+    </div>
+  );
+};
 
 const Screen7 = () => {
   const { state, actions } = useEditCourseContext();
-  const { uploadWithPresignedUrl, isUploading } = useUpload();
-  const { setActiveScreen } = useEditScreen();
-  const [savedModules, setSavedModules] = useState<Set<number>>(new Set());
-  const [expandedModules, setExpandedModules] = useState<Set<number>>(
-    new Set()
+  const { setActiveScreen } = useScreen();
+
+  // Testimonial hook
+  const {
+    fetchTestimonials,
+    createTestimonialSimple,
+    updateTestimonial,
+    deleteTestimonial,
+    isLoading,
+    error: hookError,
+    clearError,
+  } = useTestimonial();
+
+  // Testimonial state management
+  const [testimonials, setTestimonials] = useState<(Testimonial & { _id: string })[]>([]);
+  const [hasMore, setHasMore] = useState(true);
+  const [page, setPage] = useState(1);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searchDebounced, setSearchDebounced] = useState("");
+
+  // Create testimonial modal state
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [newTestimonial, setNewTestimonial] = useState({
+    name: "",
+    currentRole: "",
+    currentCompany: "",
+    linkedin: "",
+    pastRole: "",
+    pastCompany: "",
+    college: "",
+    profileImage: "",
+    verified: false,
+  });
+
+  // Edit testimonial modal state
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingTestimonial, setEditingTestimonial] = useState<(Testimonial & { _id: string }) | null>(null);
+  const [updating, setUpdating] = useState(false);
+
+  // Delete testimonial state
+  const [deletingTestimonialId, setDeletingTestimonialId] = useState<string | null>(null);
+
+  // Selected testimonials for the course
+  const [selectedTestimonialIds, setSelectedTestimonialIds] = useState<string[]>(
+    state.course.testimonials?.map((testimonial) =>
+      typeof testimonial === "string" ? testimonial : (testimonial?._id || "")
+    ) || []
   );
-  const [expandedLessons, setExpandedLessons] = useState<Set<string>>(
-    new Set()
+
+  // Expanded testimonial state for preview
+  const [expandedTestimonials, setExpandedTestimonials] = useState<Set<string>>(new Set());
+
+  // Debounce search term
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchDebounced(searchTerm);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Load testimonials when search changes
+  useEffect(() => {
+    setTestimonials([]);
+    setPage(1);
+    setHasMore(true);
+    clearError();
+    loadTestimonials(1, true);
+  }, [searchDebounced]);
+
+  // Load testimonials function
+  const loadTestimonials = useCallback(
+    async (pageNum: number, reset: boolean = false) => {
+      if (isLoading) return;
+
+      try {
+        const result = await fetchTestimonials(pageNum, 10, searchDebounced);
+
+        if (reset) {
+          setTestimonials(result.testimonials);
+        } else {
+          setTestimonials((prev) => [...prev, ...result.testimonials]);
+        }
+
+        setHasMore(
+          result.testimonials.length === 10 &&
+            testimonials.length + result.testimonials.length < result.total
+        );
+        setPage(pageNum + 1);
+      } catch (error) {
+        console.error("Error loading testimonials:", error);
+        // Error is already handled by the hook
+      }
+    },
+    [isLoading, searchDebounced, fetchTestimonials, clearError]
   );
-  const [expandedContent, setExpandedContent] = useState<Set<string>>(
-    new Set()
-  );
 
-  // Validation checks
-  const validationErrors = useMemo(() => {
-    const errors: string[] = [];
-
-    // Check if at least one module exists
-    if (!state.course.modules || state.course.modules.length === 0) {
-      errors.push("At least one module is required");
-      return errors; // Early return if no modules
-    }
-
-    // Validate each module is fully configured
-    state.course.modules.forEach((courseModule, moduleIndex) => {
-      if (!courseModule) {
-        errors.push(`Module ${moduleIndex + 1}: Module data is missing`);
-        return;
-      }
-
-      // Check module basic requirements
-      if (!courseModule.title || courseModule.title.trim() === "") {
-        errors.push(`Module ${moduleIndex + 1}: Title is required`);
-      }
-
-      if (!courseModule.description || courseModule.description.trim() === "") {
-        errors.push(`Module ${moduleIndex + 1}: Description is required`);
-      }
+  // Infinite scroll handler
+  const handleScroll = useCallback(
+    (e: React.UIEvent<HTMLDivElement>) => {
+      const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
 
       if (
-        !courseModule.thumbnailUrl ||
-        courseModule.thumbnailUrl.trim() === ""
+        scrollHeight - scrollTop <= clientHeight + 100 &&
+        hasMore &&
+        !isLoading
       ) {
-        errors.push(`Module ${moduleIndex + 1}: Thumbnail is required`);
+        loadTestimonials(page);
       }
+    },
+    [hasMore, isLoading, page, loadTestimonials]
+  );
 
-      // Check if module has at least one lesson
-      if (!courseModule.lessons || courseModule.lessons.length === 0) {
-        errors.push(
-          `Module ${moduleIndex + 1}: At least one lesson is required`
-        );
-        return; // Skip lesson validation if no lessons
-      }
-
-      // Validate each lesson in the module
-      courseModule.lessons.forEach((lesson, lessonIndex) => {
-        if (!lesson) {
-          errors.push(
-            `Module ${moduleIndex + 1}, Lesson ${
-              lessonIndex + 1
-            }: Lesson data is missing`
-          );
-          return;
-        }
-
-        // Check lesson basic requirements
-        if (!lesson.title || lesson.title.trim() === "") {
-          errors.push(
-            `Module ${moduleIndex + 1}, Lesson ${
-              lessonIndex + 1
-            }: Title is required`
-          );
-        }
-
-        // Check if lesson has at least one content
-        if (!lesson.contents || lesson.contents.length === 0) {
-          errors.push(
-            `Module ${moduleIndex + 1}, Lesson ${
-              lessonIndex + 1
-            }: At least one content item is required`
-          );
-          return; // Skip content validation if no contents
-        }
-
-        // Validate each content in the lesson
-        lesson.contents.forEach((content, contentIndex) => {
-          if (!content) {
-            errors.push(
-              `Module ${moduleIndex + 1}, Lesson ${lessonIndex + 1}, Content ${
-                contentIndex + 1
-              }: Content data is missing`
-            );
-            return;
-          }
-
-          // Title is required for all content
-          if (!content.title || content.title.trim() === "") {
-            errors.push(
-              `Module ${moduleIndex + 1}, Lesson ${lessonIndex + 1}, Content ${
-                contentIndex + 1
-              }: Title is required`
-            );
-          }
-
-          // Video-specific validation
-          if (content.type === "video") {
-            const videoContent = content as VideoContent;
-
-            // Video URL is required
-            if (
-              !videoContent.sources ||
-              !videoContent.sources[0]?.videoUrl ||
-              videoContent.sources[0].videoUrl.trim() === ""
-            ) {
-              errors.push(
-                `Module ${moduleIndex + 1}, Lesson ${
-                  lessonIndex + 1
-                }, Content ${contentIndex + 1}: Video URL is required`
-              );
-            }
-
-            // Video thumbnail is required
-            if (
-              !videoContent.thumbnailUrl ||
-              videoContent.thumbnailUrl.trim() === ""
-            ) {
-              errors.push(
-                `Module ${moduleIndex + 1}, Lesson ${
-                  lessonIndex + 1
-                }, Content ${contentIndex + 1}: Video thumbnail is required`
-              );
-            }
-          }
-
-          // Quiz-specific validation (if needed)
-          if (content.type === "quiz") {
-            const quizContent = content as QuizContent;
-
-            // Check if quiz has at least one question
-            if (!quizContent.questions || quizContent.questions.length === 0) {
-              errors.push(
-                `Module ${moduleIndex + 1}, Lesson ${
-                  lessonIndex + 1
-                }, Content ${
-                  contentIndex + 1
-                }: At least one question is required for quiz`
-              );
-            }
-          }
-        });
-      });
-    });
-
-    return errors;
-  }, [state.course]);
-
-  // Initialize saved modules state when modules are loaded
+  // Load initial testimonials
   useEffect(() => {
-    const modules = state.course.modules || [];
-    const savedIndices = new Set<number>();
+    loadTestimonials(1, true);
+  }, []);
 
-    modules.forEach((moduleId, index) => {
-      // Consider a module as saved if it has a title (basic requirement)
-      if (moduleId) {
-        savedIndices.add(index);
-      }
-    });
+  // Sync local selectedTestimonialIds with course state
+  useEffect(() => {
+    const courseTestimonialIds = state.course.testimonials?.map((testimonial) =>
+      typeof testimonial === "string" ? testimonial : testimonial?._id || ""
+    ) || [];
+    setSelectedTestimonialIds(courseTestimonialIds);
+  }, [state.course.testimonials]);
 
-    setSavedModules(savedIndices);
-  }, [state.course.modules]);
+  // Handle testimonial selection
+  const handleTestimonialToggle = (testimonialId: string) => {
+    const newSelected = selectedTestimonialIds.includes(testimonialId)
+      ? selectedTestimonialIds.filter((id: string) => id !== testimonialId)
+      : [...selectedTestimonialIds, testimonialId];
 
-  // Helper function to generate a unique ID
-  const generateId = () =>
-    `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    setSelectedTestimonialIds(newSelected);
 
-  // Helper function to add a new module
-  const addModule = () => {
-    const newModule: CourseModule = {
-      _id: generateId(),
-      title: "",
-      description: "",
-      lessons: [], // Now store full lesson objects
-      thumbnailUrl: "",
-      isActive: true,
-    };
-
-    // Use the proper action to add the module with full object
-    actions.addCourseModule(newModule);
-
-    const newIndex = (state.course.modules || []).length;
-    setExpandedModules((prev) => new Set([...prev, newIndex]));
-  };
-
-  // Helper function to add a new lesson to a module
-  const addLesson = (moduleIndex: number) => {
-    const courseModule = state.course.modules?.[moduleIndex];
-    if (!courseModule) return;
-
-    const newLesson: CourseLesson = {
-      _id: generateId(),
-      title: "",
-      description: "",
-      contents: [], // Now store full content objects
-    };
-
-    // Use the proper action to add the lesson
-    actions.addCourseLesson(courseModule._id!, newLesson);
-
-    // Expand the new lesson
-    setExpandedLessons((prev) => new Set([...prev, newLesson._id!]));
-  };
-
-  // Helper function to add content to a lesson
-  const addContent = (lessonId: string, type: "video" | "quiz") => {
-    // Generate a default title that meets the requirement
-    const contentCount =
-      state.course.modules
-        .flatMap((m) => m.lessons || [])
-        .flatMap((l) => l.contents || [])
-        .filter((c) => c.type === type).length + 1;
-
-    const defaultTitle =
-      type === "video"
-        ? `Video Content ${contentCount}`
-        : `Quiz ${contentCount}`;
-
-    const newContent: Content =
-      type === "video"
-        ? ({
-            _id: generateId(),
-            title: defaultTitle,
-            description: "",
-            type: "video",
-            sources: [
-              {
-                quality: "1080p" as const,
-                videoUrl: "",
-                videoSource: undefined,
-                videoS3Key: "",
-              },
-            ],
-            thumbnailUrl: "",
-            thumbnailSource: undefined,
-            thumbnailS3Key: "",
-            duration: 0,
-            readingMaterials: [],
-          } as VideoContent)
-        : ({
-            _id: generateId(),
-            title: defaultTitle,
-            description: "",
-            type: "quiz",
-            questions: [],
-            passingScore: 70,
-            maxAttempts: 3,
-            readingMaterials: [],
-          } as QuizContent);
-
-    // Find the module and lesson to add content to
-    const moduleId = findModuleIdByLessonId(lessonId);
-    if (!moduleId) return;
-
-    // Use the proper action to add the content
-    actions.addCourseContent(moduleId, lessonId, newContent);
-
-    // Expand the new content
-    setExpandedContent((prev) => new Set([...prev, newContent._id!]));
-  };
-
-  // Helper function to find module ID by lesson ID
-  const findModuleIdByLessonId = (lessonId: string): string | undefined => {
-    for (const courseModule of state.course.modules) {
-      if (courseModule.lessons.some((lesson) => lesson._id === lessonId)) {
-        return courseModule._id;
-      }
-    }
-    return undefined;
-  };
-
-  // Helper function to toggle module expansion
-  const toggleModuleExpansion = (index: number) => {
-    setExpandedModules((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(index)) {
-        newSet.delete(index);
-      } else {
-        newSet.add(index);
-      }
-      return newSet;
+     // Update course state asynchronously to avoid render cycle issues
+     // Pass only the IDs, not the full objects
+    // Use requestAnimationFrame to defer the update to the next frame
+    requestAnimationFrame(() => {
+      console.log("Setting course testimonials to:", newSelected);
+      actions.setCourseTestimonials(newSelected);
+      console.log("Course state testimonials after update:", state.course.testimonials);
     });
   };
 
-  // Helper function to toggle lesson expansion
-  const toggleLessonExpansion = (lessonId: string) => {
-    setExpandedLessons((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(lessonId)) {
-        newSet.delete(lessonId);
-      } else {
-        newSet.add(lessonId);
-      }
-      return newSet;
-    });
-  };
+  // Handle create new testimonial
+  const handleCreateTestimonial = async () => {
+    if (!newTestimonial.name.trim() || !newTestimonial.currentRole.trim() || !newTestimonial.currentCompany.trim()) return;
 
-  // Helper function to toggle content expansion
-  const toggleContentExpansion = (contentId: string) => {
-    setExpandedContent((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(contentId)) {
-        newSet.delete(contentId);
-      } else {
-        newSet.add(contentId);
-      }
-      return newSet;
-    });
-  };
-
-  // Helper function to check if module is complete
-  const isModuleComplete = (courseModule: CourseModule) => {
-    return (
-      courseModule.title &&
-      courseModule.description &&
-      courseModule.thumbnailUrl
-    );
-  };
-
-  // Helper function to update module data
-  const updateModuleData = (
-    moduleId: string,
-    updates: Partial<CourseModule>
-  ) => {
-    actions.updateCourseModule(moduleId, updates);
-  };
-
-  // Helper function to update lesson data
-  const updateLessonData = (
-    lessonId: string,
-    updates: Partial<CourseLesson>
-  ) => {
-    const moduleId = findModuleIdByLessonId(lessonId);
-    if (moduleId) {
-      actions.updateCourseLesson(moduleId, lessonId, updates);
-    }
-  };
-
-  // Helper function to update content data
-  const updateContentData = (contentId: string, updates: Partial<Content>) => {
-    const location = findContentLocation(contentId);
-    if (!location) return;
-
-    const { moduleId, lessonId } = location;
-    actions.updateCourseContent(moduleId, lessonId, contentId, updates);
-  };
-
-  // Helper function to delete content data
-  const deleteContentData = (contentId: string) => {
-    const location = findContentLocation(contentId);
-    if (!location) return;
-
-    const { moduleId, lessonId } = location;
-    actions.deleteCourseContent(moduleId, lessonId, contentId);
-  };
-
-  // Helper function to find the location of content by content ID
-  const findContentLocation = (
-    contentId: string
-  ): { moduleId: string; lessonId: string } | undefined => {
-    for (const courseModule of state.course.modules) {
-      for (const lesson of courseModule.lessons) {
-        if (lesson.contents.some((content) => content._id === contentId)) {
-          return { moduleId: courseModule._id!, lessonId: lesson._id! };
-        }
-      }
-    }
-    return undefined;
-  };
-
-  // Helper function to handle thumbnail upload
-  const handleThumbnailUpload = async (
-    moduleId: string,
-    file: File,
-    folderName: string
-  ): Promise<string> => {
+    setCreating(true);
     try {
-      const uploadResponse = await uploadWithPresignedUrl(file, folderName);
-      if (uploadResponse.success && uploadResponse.data?.url) {
-        const uploadedUrl = uploadResponse.data.url;
-        updateModuleData(moduleId, {
-          thumbnailUrl: uploadedUrl,
-          thumbnailSource: "upload",
-          thumbnailS3Key: uploadResponse.data.s3Key || "",
-        });
-        return uploadedUrl;
-      } else {
-        throw new Error(uploadResponse.error || "Upload failed");
+      const createdTestimonial = await createTestimonialSimple(newTestimonial);
+      setTestimonials((prev) => [createdTestimonial, ...prev]);
+      setNewTestimonial({
+        name: "",
+        currentRole: "",
+        currentCompany: "",
+        linkedin: "",
+        pastRole: "",
+        pastCompany: "",
+        college: "",
+        profileImage: "",
+        verified: false,
+      });
+      setShowCreateModal(false);
+      clearError();
+    } catch (error) {
+      console.error("Error creating testimonial:", error);
+      // Error is already handled by the hook
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  // Handle edit testimonial
+  const handleEditTestimonial = (testimonial: Testimonial & { _id: string }) => {
+    setEditingTestimonial(testimonial);
+    setShowEditModal(true);
+  };
+
+  // Handle update testimonial
+  const handleUpdateTestimonial = async () => {
+    if (!editingTestimonial || !editingTestimonial.name.trim() || !editingTestimonial.currentRole.trim()) return;
+
+    setUpdating(true);
+    try {
+      const result = await updateTestimonial(editingTestimonial._id, {
+        name: editingTestimonial.name,
+        currentRole: editingTestimonial.currentRole,
+        currentCompany: editingTestimonial.currentCompany,
+        linkedin: editingTestimonial.linkedin,
+        pastRole: editingTestimonial.pastRole,
+        pastCompany: editingTestimonial.pastCompany,
+        college: editingTestimonial.college,
+        profileImage: editingTestimonial.profileImage,
+        verified: editingTestimonial.verified,
+      });
+
+      if (result.success && result.data) {
+        // Update the testimonial in the local state
+        setTestimonials((prev) =>
+          prev.map((testimonial) =>
+            testimonial._id === editingTestimonial._id ? { ...result.data! } : testimonial
+          )
+        );
+        setShowEditModal(false);
+        setEditingTestimonial(null);
+        clearError();
       }
     } catch (error) {
-      console.error("Upload failed:", error);
-      throw error;
+      console.error("Error updating testimonial:", error);
+      // Error is already handled by the hook
+    } finally {
+      setUpdating(false);
     }
   };
 
-  // Helper function to handle thumbnail URL submission
-  const handleThumbnailUrlSubmit = (moduleId: string, url: string) => {
-    updateModuleData(moduleId, {
-      thumbnailUrl: url,
-      thumbnailSource: "url",
-      thumbnailS3Key: "",
+  // Handle delete testimonial
+  const handleDeleteTestimonial = async (testimonialId: string) => {
+    if (!confirm("Are you sure you want to delete this testimonial? This action cannot be undone.")) {
+      return;
+    }
+
+    setDeletingTestimonialId(testimonialId);
+    try {
+      const result = await deleteTestimonial(testimonialId);
+
+      if (result.success) {
+        // Remove the testimonial from local state
+        setTestimonials((prev) => prev.filter((testimonial) => testimonial._id !== testimonialId));
+        
+        // Remove from selected testimonials if it was selected
+        setSelectedTestimonialIds((prev) => {
+          const newSelected = prev.filter((id) => id !== testimonialId);
+          
+          // Update course state - pass only IDs
+          requestAnimationFrame(() => {
+            actions.setCourseTestimonials(newSelected);
+          });
+          
+          return newSelected;
+        });
+        
+        clearError();
+      }
+    } catch (error) {
+      console.error("Error deleting testimonial:", error);
+      // Error is already handled by the hook
+    } finally {
+      setDeletingTestimonialId(null);
+    }
+  };
+
+  // Toggle testimonial expansion
+  const toggleTestimonialExpansion = (testimonialId: string) => {
+    setExpandedTestimonials((prev) => {
+      const newExpanded = new Set(prev);
+      if (newExpanded.has(testimonialId)) {
+        newExpanded.delete(testimonialId);
+      } else {
+        newExpanded.add(testimonialId);
+      }
+      return newExpanded;
     });
   };
 
-  // Helper function to handle thumbnail removal
-  const handleThumbnailRemove = (moduleId: string) => {
-    updateModuleData(moduleId, {
-      thumbnailUrl: "",
-      thumbnailSource: undefined,
-      thumbnailS3Key: "",
-    });
-  };
-
-  // Helper function to save a module
-  const saveModule = (index: number) => {
-    setSavedModules((prev) => new Set([...prev, index]));
-    setExpandedModules((prev) => {
-      const newSet = new Set(prev);
-      newSet.delete(index);
-      return newSet;
-    });
-  };
-
-  // Helper function to remove a module
-  const removeModule = (index: number) => {
-    const currentModules = state.course.modules || [];
-    const updatedModules = currentModules.filter((_, i) => i !== index);
-    actions.updateCourseField("modules", updatedModules);
-
-    // Update saved and expanded states
-    setSavedModules((prev) => {
-      const newSet = new Set(prev);
-      newSet.delete(index);
-      return newSet;
-    });
-    setExpandedModules((prev) => {
-      const newSet = new Set(prev);
-      newSet.delete(index);
-      return newSet;
-    });
-  };
+  // Form validation
+  const isFormValid = useMemo(() => {
+    return selectedTestimonialIds.length > 0;
+  }, [selectedTestimonialIds]);
 
   return (
     <Container
-      title="Course Modules & Content"
-      description="Create and organize your course modules, lessons, and content"
+      title="Course Testimonials"
+      description={`Select existing testimonials for your course (${selectedTestimonialIds.length} selected)`}
+      icon={Users}
       className="rounded-b-none h-full w-full max-h-full overflow-y-auto flex flex-col"
       style={{ scrollbarWidth: "thin" }}
     >
-      {/* Validation Feedback */}
-      {validationErrors.length > 0 && (
-        <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <div className="font-medium mb-2 text-blue-800">
-            Please complete the following:
+      {/* Search and Create Section */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex-1 max-w-md">
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="h-5 w-5 text-gray-400" />
+            </div>
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition-all"
+              placeholder="Search testimonials by name, role, or company..."
+            />
           </div>
-          <ul className="list-disc list-inside space-y-1 text-blue-700">
-            {validationErrors.map((error, index) => (
-              <li key={index} className="text-sm">
-                {error}
-              </li>
-            ))}
-          </ul>
+        </div>
+        <OrangeButton
+          onClick={() => setShowCreateModal(true)}
+          className="flex items-center gap-2 ml-4"
+          glow={false}
+        >
+          <Plus className="w-4 h-4" />
+          Create Testimonial
+        </OrangeButton>
+      </div>
+
+      {/* Create Testimonial Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-semibold text-gray-800">
+                  Create New Testimonial
+                </h3>
+                <button
+                  onClick={() => setShowCreateModal(false)}
+                  className="text-gray-500 hover:text-gray-700 p-1"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Input
+                  label="Name"
+                  value={newTestimonial.name}
+                  onChange={(e) =>
+                    setNewTestimonial((prev) => ({ ...prev, name: e.target.value }))
+                  }
+                  placeholder="Enter full name"
+                  required
+                />
+
+                <Input
+                  label="Profile Image URL"
+                  value={newTestimonial.profileImage}
+                  onChange={(e) =>
+                    setNewTestimonial((prev) => ({ ...prev, profileImage: e.target.value }))
+                  }
+                  placeholder="https://example.com/profile.jpg"
+                  required
+                />
+
+                <Input
+                  label="Current Role"
+                  value={newTestimonial.currentRole}
+                  onChange={(e) =>
+                    setNewTestimonial((prev) => ({ ...prev, currentRole: e.target.value }))
+                  }
+                  placeholder="e.g., Senior Software Engineer"
+                  required
+                />
+
+                <Input
+                  label="Current Company"
+                  value={newTestimonial.currentCompany}
+                  onChange={(e) =>
+                    setNewTestimonial((prev) => ({ ...prev, currentCompany: e.target.value }))
+                  }
+                  placeholder="e.g., Google"
+                  required
+                />
+
+                <Input
+                  label="Past Role"
+                  value={newTestimonial.pastRole}
+                  onChange={(e) =>
+                    setNewTestimonial((prev) => ({ ...prev, pastRole: e.target.value }))
+                  }
+                  placeholder="e.g., Junior Developer"
+                  required
+                />
+
+                <Input
+                  label="Past Company"
+                  value={newTestimonial.pastCompany}
+                  onChange={(e) =>
+                    setNewTestimonial((prev) => ({ ...prev, pastCompany: e.target.value }))
+                  }
+                  placeholder="e.g., Startup Inc."
+                  required
+                />
+
+                <Input
+                  label="College"
+                  value={newTestimonial.college}
+                  onChange={(e) =>
+                    setNewTestimonial((prev) => ({ ...prev, college: e.target.value }))
+                  }
+                  placeholder="e.g., Stanford University"
+                  required
+                />
+
+                <Input
+                  label="LinkedIn Profile"
+                  value={newTestimonial.linkedin}
+                  onChange={(e) =>
+                    setNewTestimonial((prev) => ({ ...prev, linkedin: e.target.value }))
+                  }
+                  placeholder="https://linkedin.com/in/username"
+                  required
+                />
+              </div>
+
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="verified"
+                  checked={newTestimonial.verified}
+                  onChange={(e) =>
+                    setNewTestimonial((prev) => ({ ...prev, verified: e.target.checked }))
+                  }
+                  className="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500 focus:ring-2"
+                />
+                <label htmlFor="verified" className="text-sm font-medium text-gray-700">
+                  Mark as verified testimonial
+                </label>
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
+              <WhiteButton
+                onClick={() => setShowCreateModal(false)}
+                disabled={creating}
+              >
+                Cancel
+              </WhiteButton>
+              <OrangeButton
+                onClick={handleCreateTestimonial}
+                disabled={
+                  !newTestimonial.name.trim() || 
+                  !newTestimonial.currentRole.trim() || 
+                  !newTestimonial.currentCompany.trim() || 
+                  creating
+                }
+                className="flex items-center gap-2"
+              >
+                {creating ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="w-4 h-4" />
+                    Create Testimonial
+                  </>
+                )}
+              </OrangeButton>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Modules Section */}
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 mb-6 border border-blue-100">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-500 rounded-lg">
-              <BookOpen className="w-5 h-5 text-white" />
+      {/* Edit Testimonial Modal */}
+      {showEditModal && editingTestimonial && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-semibold text-gray-800">
+                  Edit Testimonial
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowEditModal(false);
+                    setEditingTestimonial(null);
+                  }}
+                  className="text-gray-500 hover:text-gray-700 p-1"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
-            <div>
-              <h3 className="text-lg font-semibold text-gray-800">
-                Course Modules
-              </h3>
-              <p className="text-sm text-gray-600">
-                Organize your course content into structured modules
-              </p>
+
+            <div className="p-6 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Input
+                  label="Name"
+                  value={editingTestimonial.name}
+                  onChange={(e) =>
+                    setEditingTestimonial((prev) => 
+                      prev ? { ...prev, name: e.target.value } : null
+                    )
+                  }
+                  placeholder="Enter full name"
+                  required
+                />
+
+                <Input
+                  label="Profile Image URL"
+                  value={editingTestimonial.profileImage}
+                  onChange={(e) =>
+                    setEditingTestimonial((prev) => 
+                      prev ? { ...prev, profileImage: e.target.value } : null
+                    )
+                  }
+                  placeholder="https://example.com/profile.jpg"
+                  required
+                />
+
+                <Input
+                  label="Current Role"
+                  value={editingTestimonial.currentRole}
+                  onChange={(e) =>
+                    setEditingTestimonial((prev) => 
+                      prev ? { ...prev, currentRole: e.target.value } : null
+                    )
+                  }
+                  placeholder="e.g., Senior Software Engineer"
+                  required
+                />
+
+                <Input
+                  label="Current Company"
+                  value={editingTestimonial.currentCompany}
+                  onChange={(e) =>
+                    setEditingTestimonial((prev) => 
+                      prev ? { ...prev, currentCompany: e.target.value } : null
+                    )
+                  }
+                  placeholder="e.g., Google"
+                  required
+                />
+
+                <Input
+                  label="Past Role"
+                  value={editingTestimonial.pastRole}
+                  onChange={(e) =>
+                    setEditingTestimonial((prev) => 
+                      prev ? { ...prev, pastRole: e.target.value } : null
+                    )
+                  }
+                  placeholder="e.g., Junior Developer"
+                  required
+                />
+
+                <Input
+                  label="Past Company"
+                  value={editingTestimonial.pastCompany}
+                  onChange={(e) =>
+                    setEditingTestimonial((prev) => 
+                      prev ? { ...prev, pastCompany: e.target.value } : null
+                    )
+                  }
+                  placeholder="e.g., Startup Inc."
+                  required
+                />
+
+                <Input
+                  label="College"
+                  value={editingTestimonial.college}
+                  onChange={(e) =>
+                    setEditingTestimonial((prev) => 
+                      prev ? { ...prev, college: e.target.value } : null
+                    )
+                  }
+                  placeholder="e.g., Stanford University"
+                  required
+                />
+
+                <Input
+                  label="LinkedIn Profile"
+                  value={editingTestimonial.linkedin}
+                  onChange={(e) =>
+                    setEditingTestimonial((prev) => 
+                      prev ? { ...prev, linkedin: e.target.value } : null
+                    )
+                  }
+                  placeholder="https://linkedin.com/in/username"
+                  required
+                />
+              </div>
+
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="edit-verified"
+                  checked={editingTestimonial.verified || false}
+                  onChange={(e) =>
+                    setEditingTestimonial((prev) => 
+                      prev ? { ...prev, verified: e.target.checked } : null
+                    )
+                  }
+                  className="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500 focus:ring-2"
+                />
+                <label htmlFor="edit-verified" className="text-sm font-medium text-gray-700">
+                  Mark as verified testimonial
+                </label>
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
+              <WhiteButton
+                onClick={() => {
+                  setShowEditModal(false);
+                  setEditingTestimonial(null);
+                }}
+                disabled={updating}
+              >
+                Cancel
+              </WhiteButton>
+              <OrangeButton
+                onClick={handleUpdateTestimonial}
+                disabled={
+                  !editingTestimonial?.name.trim() || 
+                  !editingTestimonial?.currentRole.trim() || 
+                  updating
+                }
+                className="flex items-center gap-2"
+              >
+                {updating ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Updating...
+                  </>
+                ) : (
+                  <>
+                    <Edit3 className="w-4 h-4" />
+                    Update Testimonial
+                  </>
+                )}
+              </OrangeButton>
             </div>
           </div>
-          <OrangeButton
-            onClick={addModule}
-            className="flex items-center gap-2 px-4 py-2"
-          >
-            <Plus className="w-4 h-4" />
-            Add Module
-          </OrangeButton>
         </div>
+      )}
 
-        {/* Modules List */}
-        <div className="space-y-4">
-          {(state.course.modules || []).map((courseModule, moduleIndex) => {
-            if (!courseModule) return null;
-            const isSaved = savedModules.has(moduleIndex);
-            const isExpanded = expandedModules.has(moduleIndex);
-            const isComplete = isModuleComplete(courseModule);
+      {/* Error Display */}
+      {hookError && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-5 h-5 rounded-full bg-red-500 flex items-center justify-center">
+              <span className="text-white text-xs font-bold">!</span>
+            </div>
+            <div>
+              <h4 className="text-red-800 font-semibold">Error</h4>
+              <p className="text-red-700 text-sm">{hookError}</p>
+            </div>
+            <button
+              onClick={clearError}
+              className="ml-auto text-red-500 hover:text-red-700 p-1"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
-            return (
-              <div
-                key={moduleIndex}
-                className="bg-white rounded-lg border border-blue-200 overflow-hidden"
-              >
-                {/* Module Header */}
-                <div
-                  className="flex items-center justify-between p-4 cursor-pointer hover:bg-blue-50 transition-colors"
-                  onClick={() => toggleModuleExpansion(moduleIndex)}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2">
-                      <GripVertical className="w-4 h-4 text-gray-400" />
-                      <div
-                        className={`w-3 h-3 rounded-full ${
-                          isComplete ? "bg-green-500" : "bg-yellow-500"
-                        }`}
-                      ></div>
-                    </div>
-                    <h4 className="font-medium text-gray-800">
-                      {courseModule.title || `Module ${moduleIndex + 1}`}
-                    </h4>
-                    {isSaved && (
-                      <span className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded-full">
-                        Saved
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-500">
-                      {courseModule.lessons.length} lessons
-                    </span>
-                    {isExpanded ? (
-                      <ChevronUp className="w-4 h-4 text-gray-500" />
-                    ) : (
-                      <ChevronDown className="w-4 h-4 text-gray-500" />
-                    )}
-                  </div>
+      {/* Testimonials List */}
+      <div
+        className="flex-1 overflow-y-auto space-y-4 pr-2"
+        onScroll={handleScroll}
+        style={{ scrollbarWidth: "thin" }}
+      >
+        {testimonials.map((testimonial) => {
+          const isSelected = selectedTestimonialIds.includes(testimonial._id);
+          const isExpanded = expandedTestimonials.has(testimonial._id);
+
+          return (
+            <div
+              key={testimonial._id}
+              className={`border rounded-xl p-6 transition-all ${
+                isSelected
+                  ? "border-purple-500 bg-purple-50 shadow-md"
+                  : "border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm"
+              }`}
+            >
+              <div className="flex items-start gap-4">
+                {/* Checkbox */}
+                <div className="flex items-center mt-1">
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => handleTestimonialToggle(testimonial._id)}
+                    className="w-4 h-4 text-purple-600 bg-gray-100 border-gray-300 rounded focus:ring-purple-500 focus:ring-2"
+                  />
                 </div>
 
-                {/* Expanded Module Content */}
-                {isExpanded && (
-                  <div className="p-4 border-t border-blue-100">
-                    <FlexBox className="flex-col gap-4">
-                      {/* Module Basic Info */}
-                      <div className="grid grid-cols-1 gap-4">
-                        <Input
-                          label="Module Title"
-                          placeholder="e.g., Introduction to React"
-                          value={courseModule.title}
-                          onChange={(e) => {
-                            updateModuleData(courseModule._id!, {
-                              title: e.target.value,
-                            });
-                          }}
-                          required
-                        />
+                 {/* Profile Image */}
+                 <div className="flex-shrink-0">
+                   <ProfileImage 
+                     src={testimonial.profileImage}
+                     name={testimonial.name}
+                     className="w-12 h-12 rounded-full object-cover border-2 border-gray-200"
+                   />
+                 </div>
+
+                {/* Testimonial Content */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h4 className="text-lg font-semibold text-gray-900">
+                          {testimonial.name}
+                        </h4>
+                         {testimonial.verified && (
+                           <div title="Verified">
+                             <ShieldCheck className="w-4 h-4 text-green-500" />
+                           </div>
+                         )}
                       </div>
 
-                      <TextArea
-                        label="Module Description"
-                        placeholder="Describe what students will learn in this module"
-                        value={courseModule.description || ""}
-                        onChange={(e) => {
-                          updateModuleData(courseModule._id!, {
-                            description: e.target.value,
-                          });
-                        }}
-                        rows={3}
-                        lockHeight
-                        required
-                      />
-
-                      {/* Module Thumbnail Upload */}
-                      <UploadMediaContainer
-                        title="Module Thumbnail"
-                        description="Upload a thumbnail image for this module (required)"
-                        type="image"
-                        mediaUrl={courseModule.thumbnailUrl}
-                        mediaSource={courseModule.thumbnailSource}
-                        s3Key={courseModule.thumbnailS3Key}
-                        maxSize={10} // 10MB
-                        acceptedFormats={[".jpg", ".jpeg", ".png", ".webp"]}
-                        onFileUpload={(file, folderName) =>
-                          handleThumbnailUpload(
-                            courseModule._id!,
-                            file,
-                            folderName
-                          )
-                        }
-                        onFileRemove={() =>
-                          handleThumbnailRemove(courseModule._id!)
-                        }
-                        onUrlSubmit={(url) =>
-                          handleThumbnailUrlSubmit(courseModule._id!, url)
-                        }
-                        isUploading={isUploading}
-                        required={true}
-                        allowUrlInput={true}
-                        folderName={`courses/${
-                          state.course.title || "untitled"
-                        }/modules`}
-                        uploadContext={`module-${moduleIndex + 1}`}
-                        className="w-full"
-                      />
-
-                      {/* Module Settings */}
-                      <div className="flex items-center gap-4">
-                        <label className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            checked={courseModule.isActive}
-                            onChange={(e) => {
-                              updateModuleData(courseModule._id!, {
-                                isActive: e.target.checked,
-                              });
-                            }}
-                            className="rounded"
-                          />
-                          <span className="text-sm text-gray-700">
-                            Module Active
-                          </span>
-                        </label>
-                      </div>
-
-                      {/* Lessons Section */}
-                      <div className="border-t border-blue-100 pt-4">
-                        <div className="flex items-center justify-between mb-3">
-                          <h5 className="font-medium text-gray-800">Lessons</h5>
-                          <OrangeButton
-                            onClick={() => addLesson(moduleIndex)}
-                            className="flex items-center gap-2 px-3 py-1 text-sm"
-                          >
-                            <Plus className="w-3 h-3" />
-                            Add Lesson
-                          </OrangeButton>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <Building className="w-4 h-4" />
+                            <span>{testimonial.currentRole} at {testimonial.currentCompany}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <GraduationCap className="w-4 h-4" />
+                            <span>{testimonial.college}</span>
+                          </div>
                         </div>
 
-                        {/* Lessons List */}
-                        <div className="space-y-3 pl-4">
-                          {courseModule.lessons.map((lesson, lessonIndex) =>
-                            lesson ? (
-                              <LessonItem
-                                key={lesson._id!}
-                                lessonId={lesson._id!}
-                                lessonData={lesson}
-                                isExpanded={expandedLessons.has(lesson._id!)}
-                                onToggleExpansion={() =>
-                                  toggleLessonExpansion(lesson._id!)
-                                }
-                                onUpdateLesson={updateLessonData}
-                                onAddContent={addContent}
-                                expandedContent={expandedContent}
-                                onToggleContentExpansion={
-                                  toggleContentExpansion
-                                }
-                                onUpdateContent={updateContentData}
-                                onDeleteContent={deleteContentData}
-                                courseTitle={state.course.title || "untitled"}
-                                moduleIndex={moduleIndex}
-                                lessonIndex={lessonIndex}
-                              />
-                            ) : null
-                          )}
-
-                          {courseModule.lessons.length === 0 && (
-                            <div className="text-center py-4 text-gray-500 border-2 border-dashed border-gray-200 rounded-lg">
-                              <BookOpen className="w-8 h-8 mx-auto mb-2 text-gray-300" />
-                              <p className="text-sm">No lessons added yet</p>
-                              <p className="text-xs">
-                                Click &quot;Add Lesson&quot; to get started
-                              </p>
+                        {isExpanded && (
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2 text-sm text-gray-600">
+                              <User className="w-4 h-4" />
+                              <span>Previously: {testimonial.pastRole} at {testimonial.pastCompany}</span>
                             </div>
-                          )}
-                        </div>
+                            <div className="flex items-center gap-2 text-sm text-gray-600">
+                              <Linkedin className="w-4 h-4" />
+                              <a 
+                                href={testimonial.linkedin} 
+                                target="_blank" 
+                                rel="noopener noreferrer" 
+                                className="text-blue-600 hover:text-blue-800"
+                              >
+                                LinkedIn Profile
+                              </a>
+                            </div>
+                          </div>
+                        )}
                       </div>
 
-                      {/* Module Action Buttons */}
-                      <div className="flex items-center justify-between pt-4 border-t border-blue-100">
-                        <button
-                          onClick={() => removeModule(moduleIndex)}
-                          className="flex items-center gap-2 px-3 py-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                          Delete Module
-                        </button>
-
-                        <div className="flex items-center gap-2">
-                          <OrangeButton
-                            onClick={() => saveModule(moduleIndex)}
-                            disabled={!isComplete}
-                            className="flex items-center gap-2 px-4 py-2"
-                          >
-                            <Save className="w-4 h-4" />
-                            Save Module
-                          </OrangeButton>
-                        </div>
-                      </div>
-                    </FlexBox>
-                  </div>
-                )}
-
-                {/* Collapsed Module View */}
-                {!isExpanded && isSaved && (
-                  <div className="p-4 border-t border-blue-100">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-gray-700 mb-1">
-                          {courseModule.description || "No description"}
-                        </p>
-                        <div className="flex items-center gap-4 text-xs text-gray-500">
-                          <span>{courseModule.lessons.length} lessons</span>
-                          <span
-                            className={
-                              courseModule.isActive
-                                ? "text-green-600"
-                                : "text-red-600"
-                            }
-                          >
-                            {courseModule.isActive ? "Active" : "Inactive"}
+                      <div className="flex items-center gap-4 text-xs text-gray-500">
+                        <span>
+                          Created: {new Date(testimonial.createdAt!).toLocaleDateString()}
+                        </span>
+                        {testimonial.updatedAt && (
+                          <span>
+                            Updated: {new Date(testimonial.updatedAt).toLocaleDateString()}
                           </span>
-                        </div>
+                        )}
                       </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex items-center gap-1">
+                      {/* Edit Button */}
                       <button
-                        onClick={() => toggleModuleExpansion(moduleIndex)}
-                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEditTestimonial(testimonial);
+                        }}
+                        className="text-gray-400 hover:text-blue-600 p-1 rounded-lg hover:bg-blue-50 transition-colors"
+                        title="Edit Testimonial"
                       >
-                        <Edit2 className="w-4 h-4" />
+                        <Edit3 className="w-4 h-4" />
+                      </button>
+
+                      {/* Delete Button */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteTestimonial(testimonial._id);
+                        }}
+                        disabled={deletingTestimonialId === testimonial._id}
+                        className="text-gray-400 hover:text-red-600 p-1 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50"
+                        title="Delete Testimonial"
+                      >
+                        {deletingTestimonialId === testimonial._id ? (
+                          <div className="w-4 h-4 border-2 border-red-300 border-t-red-600 rounded-full animate-spin" />
+                        ) : (
+                          <Trash2 className="w-4 h-4" />
+                        )}
+                      </button>
+
+                      {/* Expand/Collapse Button */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleTestimonialExpansion(testimonial._id);
+                        }}
+                        className="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100 transition-colors"
+                        title={isExpanded ? "Collapse" : "Expand"}
+                      >
+                        {isExpanded ? (
+                          <ChevronUp className="w-4 h-4" />
+                        ) : (
+                          <ChevronDown className="w-4 h-4" />
+                        )}
                       </button>
                     </div>
                   </div>
-                )}
-              </div>
-            );
-          })}
 
-          {(state.course.modules || []).length === 0 && (
-            <div className="text-center py-8 text-gray-500">
-              <BookOpen className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-              <p>No modules added yet</p>
-              <p className="text-sm">
-                Click &quot;Add Module&quot; to get started
-              </p>
+                  {/* Selected Indicator */}
+                  {isSelected && (
+                    <div className="flex items-center gap-2 mt-3 text-purple-600 text-sm font-medium">
+                      <Check className="w-4 h-4" />
+                      Selected for this course
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
-          )}
-        </div>
+          );
+        })}
+
+        {/* Loading Indicator */}
+        {isLoading && (
+          <div className="flex justify-center py-8">
+            <div className="flex items-center gap-3 text-gray-500">
+              <div className="w-5 h-5 border-2 border-gray-300 border-t-purple-500 rounded-full animate-spin" />
+              Loading testimonials...
+            </div>
+          </div>
+        )}
+
+        {/* No More Testimonials */}
+        {!hasMore && testimonials.length > 0 && (
+          <div className="text-center py-6 text-gray-500 text-sm">
+            No more testimonials to load
+          </div>
+        )}
+
+        {/* No Testimonials Found */}
+        {testimonials.length === 0 && !isLoading && (
+          <div className="text-center py-12">
+            <Users className="w-12 h-12 mx-auto text-gray-300 mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              {searchTerm ? "No testimonials found" : "No testimonials available"}
+            </h3>
+            <p className="text-gray-500 mb-6">
+              {searchTerm
+                ? "Try adjusting your search terms"
+                : "Create your first testimonial to get started"}
+            </p>
+            <OrangeButton
+              onClick={() => setShowCreateModal(true)}
+              className="flex items-center gap-2 mx-auto"
+              glow={false}
+            >
+              <Plus className="w-4 h-4" />
+              Create First Testimonial
+            </OrangeButton>
+          </div>
+        )}
       </div>
 
       <ScreenNavigation
         currentStep={7}
         previousScreen="screen6"
-        nextScreen="screen8"
-        nextButtonText="Review & Submit"
+        nextScreen="screen9"
         setActiveScreen={setActiveScreen}
-        isNextDisabled={validationErrors.length > 0}
+        isNextDisabled={!isFormValid}
       />
     </Container>
-  );
-};
-
-// Lesson Item Component
-interface LessonItemProps {
-  lessonId: string;
-  lessonData: CourseLesson;
-  isExpanded: boolean;
-  onToggleExpansion: () => void;
-  onUpdateLesson: (lessonId: string, updates: Partial<CourseLesson>) => void;
-  onAddContent: (lessonId: string, type: "video" | "quiz") => void;
-  expandedContent: Set<string>;
-  onToggleContentExpansion: (contentId: string) => void;
-  onUpdateContent: (contentId: string, updates: Partial<Content>) => void;
-  onDeleteContent: (contentId: string) => void;
-  courseTitle?: string;
-  moduleIndex?: number;
-  lessonIndex?: number;
-}
-
-const LessonItem: React.FC<LessonItemProps> = ({
-  lessonId,
-  lessonData,
-  isExpanded,
-  onToggleExpansion,
-  onUpdateLesson,
-  onAddContent,
-  expandedContent,
-  onToggleContentExpansion,
-  onUpdateContent,
-  onDeleteContent,
-  courseTitle,
-  moduleIndex,
-  lessonIndex,
-}) => {
-  const lesson = lessonData;
-
-  return (
-    <div className="bg-gray-50 rounded-lg border border-gray-200">
-      {/* Lesson Header */}
-      <div
-        className="flex items-center justify-between p-3 cursor-pointer hover:bg-gray-100 transition-colors"
-        onClick={onToggleExpansion}
-      >
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <GripVertical className="w-3 h-3 text-gray-400" />
-            <Play className="w-4 h-4 text-blue-500" />
-          </div>
-          <span className="font-medium text-gray-800">
-            {lesson.title || "Untitled Lesson"}
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-500">
-            {lesson.contents.length} items
-          </span>
-          {isExpanded ? (
-            <ChevronUp className="w-3 h-3 text-gray-500" />
-          ) : (
-            <ChevronDown className="w-3 h-3 text-gray-500" />
-          )}
-        </div>
-      </div>
-
-      {/* Expanded Lesson Content */}
-      {isExpanded && (
-        <div className="p-3 border-t border-gray-200">
-          <div className="space-y-3">
-            <Input
-              label="Lesson Title"
-              placeholder="e.g., Getting Started with React"
-              value={lesson.title}
-              onChange={(e) => {
-                onUpdateLesson(lessonId, { title: e.target.value });
-              }}
-              required
-            />
-
-            <TextArea
-              label="Lesson Description"
-              placeholder="Describe what students will learn in this lesson"
-              value={lesson.description || ""}
-              onChange={(e) => {
-                onUpdateLesson(lessonId, { description: e.target.value });
-              }}
-              rows={2}
-              lockHeight
-            />
-
-            {/* Content Section */}
-            <ContentSection
-              lessonId={lessonId}
-              contents={lesson.contents || []}
-              expandedContent={expandedContent}
-              onToggleContentExpansion={onToggleContentExpansion}
-              onUpdateContent={onUpdateContent}
-              onAddContent={onAddContent}
-              onDeleteContent={onDeleteContent}
-              courseTitle={courseTitle}
-              moduleIndex={moduleIndex}
-              lessonIndex={lessonIndex}
-            />
-          </div>
-        </div>
-      )}
-    </div>
   );
 };
 

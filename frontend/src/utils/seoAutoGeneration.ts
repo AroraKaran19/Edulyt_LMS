@@ -155,7 +155,7 @@ export const generateMetaDescription = (course: Course): string => {
  * Max: 10 keywords for optimal SEO
  */
 export const generateSEOKeywords = (course: Course): string[] => {
-  const { title, category, subcategory, skills, tags, skillLevel, audience } = course;
+  const { title, category, skills, tags, skillLevel, audience } = course;
   
   const keywords = new Set<string>();
   
@@ -166,15 +166,6 @@ export const generateSEOKeywords = (course: Course): string[] => {
       .split(/[\s\-_]+/)
       .filter(word => word.length > 2 && !['the', 'and', 'for', 'with', 'course'].includes(word));
     titleWords.forEach(word => keywords.add(word));
-  }
-  
-  // Add category and subcategory
-  if (category) {
-    keywords.add(category.toLowerCase());
-    keywords.add(`${category.toLowerCase()} course`);
-  }
-  if (subcategory) {
-    keywords.add(subcategory.toLowerCase());
   }
   
   // Add skills
