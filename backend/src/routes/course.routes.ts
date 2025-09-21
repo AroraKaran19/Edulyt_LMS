@@ -18,6 +18,7 @@ import {
   addSingleCourseContent,
   updateSingleCourseContent,
   deleteSingleCourseContent,
+  updateCourseModuleReferences,
   finalizeCourseCreation,
 } from "../controllers/course.controller";
 // import { verifyAdmin } from "../middlewares/admin.middleware";
@@ -276,6 +277,22 @@ router.put("/:courseId/modules/:moduleId/lessons/:lessonId/contents/:contentId",
  *   DELETE /api/courses/64a1b2c3d4e5f6789012345/modules/64a1b2c3d4e5f6789012346/lessons/64a1b2c3d4e5f6789012347/contents/64a1b2c3d4e5f6789012348
  */
 router.delete("/:courseId/modules/:moduleId/lessons/:lessonId/contents/:contentId", deleteSingleCourseContent);
+
+/**
+ * @route   PUT /api/courses/:courseId/modules/references
+ * @desc    Update course module references (moduleIds array)
+ * @access  Admin/Instructor
+ * @params
+ *   - courseId: The ID of the course
+ * @body
+ *   - moduleIds: Array of module IDs to reference
+ * @example
+ *   PUT /api/courses/64a1b2c3d4e5f6789012345/modules/references
+ *   Body: {
+ *     "moduleIds": ["64a1b2c3d4e5f6789012346", "64a1b2c3d4e5f6789012347"]
+ *   }
+ */
+router.put("/:courseId/modules/references", updateCourseModuleReferences);
 
 /**
  * @route   POST /api/courses/:courseId/finalize

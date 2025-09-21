@@ -50,12 +50,18 @@ export interface BaseContent {
   title: string;
   description?: string;
   type: "video" | "quiz";
+  lessonId?: string; // Reference to parent lesson
   readingMaterials?: ReadingMaterial[];
   isCompleted: boolean;
   completedAt?: Date;
   isLocked?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
+  // Upload tracking fields
+  videoS3Key?: string;
+  videoSource?: "upload" | "url";
+  thumbnailS3Key?: string;
+  thumbnailSource?: "upload" | "url";
 }
 
 // Video Content interface (extends BaseContent + Video fields)
@@ -90,6 +96,7 @@ export interface CourseLesson {
   description?: string;
   contentIds: Content["_id"][];
   contents?: Content[];
+  moduleId?: string; // Reference to parent module
   isCompleted?: boolean;
   completedAt?: Date;
   isLocked?: boolean;
@@ -106,6 +113,7 @@ export interface CourseModule {
   title: string;
   thumbnailUrl: string; // Required in schema
   thumbnailSource?: "upload" | "url"; // Track whether thumbnail came from upload or URL
+  thumbnailS3Key?: string; // S3 key for uploaded thumbnails
   lessonIds: CourseLesson["_id"][];
   lessons?: CourseLesson[];
   description?: string;

@@ -51,9 +51,6 @@ const EditCoursePageWithData = () => {
       // Save to draft
       draftUtils.saveDraft(transformedCourse);
       draftUtils.saveEditCourseId(courseId as string);
-      
-      // Store course ID in localStorage for edit operations
-      localStorage.setItem("current_course_id", courseId as string);
       } else {
         setError(result.error || "Failed to load course");
       }

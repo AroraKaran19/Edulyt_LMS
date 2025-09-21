@@ -4,13 +4,11 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 interface ScreenContextType {
   activeScreen: string;
   setActiveScreen: (screen: string) => void;
-  clearScreenHistory: () => void;
 }
 
 const ScreenContext = createContext<ScreenContextType>({
   activeScreen: "screen1",
   setActiveScreen: () => {},
-  clearScreenHistory: () => {},
 });
 
 const CURRENT_SCREEN_KEY = "course_creation_current_screen";
@@ -40,7 +38,6 @@ export const ScreenProvider = ({ children }: { children: React.ReactNode }) => {
       
       // If course is created, only allow forward navigation (higher screen numbers)
       if (isCourseCreated) {
-        const currentScreenNumber = parseInt(activeScreen.replace('screen', ''));
         const targetScreenNumber = parseInt(screen.replace('screen', ''));
         
         // Only allow navigation to screens 11, 12, 13 (metadata creation and beyond)
@@ -60,22 +57,10 @@ export const ScreenProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  // Clear screen history from localStorage
-  const clearScreenHistory = () => {
-    try {
-      localStorage.removeItem(CURRENT_SCREEN_KEY);
-      setActiveScreen("screen1");
-      console.log("Cleared screen history from localStorage");
-    } catch (error) {
-      console.error("Failed to clear screen history:", error);
-    }
-  };
-
   return (
     <ScreenContext.Provider value={{ 
       activeScreen, 
-      setActiveScreen: handleSetActiveScreen,
-      clearScreenHistory 
+      setActiveScreen: handleSetActiveScreen
     }}>
       {children}
     </ScreenContext.Provider>

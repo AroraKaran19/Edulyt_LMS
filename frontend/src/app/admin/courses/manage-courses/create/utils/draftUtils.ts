@@ -1,6 +1,7 @@
 // Utility functions for managing course creation drafts
 
 import { Course } from "@/types";
+import { clearCourseCreationStorage } from "@/utils/courseStorage";
 
 const COURSE_DRAFT_KEY = "course_creation_draft";
 const CURRENT_SCREEN_KEY = "course_creation_current_screen";
@@ -46,11 +47,11 @@ export const draftUtils = {
   // Clear all draft data
   clearAll: (): void => {
     try {
-      localStorage.removeItem(COURSE_DRAFT_KEY);
-      localStorage.removeItem(CURRENT_SCREEN_KEY);
-      console.log("All draft data cleared");
+      // Use the comprehensive course storage clearing function
+      clearCourseCreationStorage();
+      console.log("All course creation data cleared");
     } catch (error) {
-      console.error("Failed to clear draft data:", error);
+      console.error("Failed to clear course creation data:", error);
     }
   },
 

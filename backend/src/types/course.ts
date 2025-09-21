@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { CourseInstructor, Discount, FAQ, Review, User } from ".";
 
 // ===================
@@ -47,6 +48,8 @@ export interface ReadingMaterial {
 // Base Content interface
 export interface BaseContent {
   _id?: string;
+  lessonId?: string; // Reference to parent lesson
+  moduleId?: string; // Reference to parent module
   title: string;
   description?: string;
   type: "video" | "quiz";
@@ -86,6 +89,7 @@ export type Content = VideoContent | QuizContent;
 
 export interface CourseLesson {
   _id?: string;
+  moduleId?: string; // Reference to the module this lesson belongs to
   title: string;
   description?: string;
   contentIds: Content["_id"][];
@@ -103,6 +107,7 @@ export interface CourseLesson {
 
 export interface CourseModule {
   _id?: string;
+  courseId: mongoose.Schema.Types.ObjectId; // Reference to the course this module belongs to
   title: string;
   thumbnailUrl: string; // Required in schema
   lessonIds: CourseLesson["_id"][];

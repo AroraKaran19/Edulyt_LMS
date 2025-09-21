@@ -42,7 +42,7 @@ const ScreenNavigation: React.FC<ScreenNavigationProps> = ({
   // Check if course metadata has been created
   useEffect(() => {
     const checkCourseCreated = () => {
-      const courseId = localStorage.getItem("current_course_id");
+      const courseId = localStorage.getItem("course_edit_course_id");
       setIsCourseCreated(!!courseId);
     };
 

@@ -20,7 +20,8 @@ import {
 import { useCourses } from "@/hooks/useCourses";
 import { toast } from "react-toastify";
 import { cn } from "@/lib/utils";
-import Loader, { FullScreenLoader } from "@/components/ui/Loader";
+import Loader from "@/components/ui/Loader";
+import { clearAllCourseStorage } from "@/utils/courseStorage";
 
 // Status Toggle Component
 const StatusToggle = ({
@@ -163,6 +164,9 @@ const ManageCoursesPage = () => {
 
   // Handlers
   const handleCreateCourse = () => {
+    // Clear all course-related localStorage keys to start fresh
+    clearAllCourseStorage();
+    
     router.push("/admin/courses/manage-courses/create");
   };
 

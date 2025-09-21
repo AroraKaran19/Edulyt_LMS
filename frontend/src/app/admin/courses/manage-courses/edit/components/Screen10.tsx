@@ -38,7 +38,7 @@ const Screen10 = () => {
 
   // Load course ID from localStorage and check if course was already updated
   useEffect(() => {
-    const storedCourseId = localStorage.getItem("current_course_id");
+    const storedCourseId = localStorage.getItem("course_edit_course_id");
     if (storedCourseId) {
       setCourseId(storedCourseId);
     }

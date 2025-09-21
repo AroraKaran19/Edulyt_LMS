@@ -371,11 +371,13 @@ export const courseReducer = (
           ...state,
           course: {
             ...state.course,
-            modules: (state.course.modules || []).map((module) =>
-              module._id === action.payload.moduleId
-                ? { ...module, ...action.payload.updates }
-                : module
-            ),
+            modules: (state.course.modules || []).map((module) => {
+              if (module._id === action.payload.moduleId) {
+                const updatedModule = { ...module, ...action.payload.updates };
+                return updatedModule;
+              }
+              return module;
+            }),
           },
           isDirty: true,
           hasUnsavedChanges: true,

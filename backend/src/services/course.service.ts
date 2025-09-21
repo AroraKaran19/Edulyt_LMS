@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import {
   CourseModuleModel,
   CourseLessonModel,
@@ -8,7 +9,6 @@ import {
 import { AppError } from "../middlewares/error.middleware";
 import { CourseModel } from "../models/course.schema";
 import { Course, CourseModule } from "../types/course";
-import mongoose from "mongoose";
 
 /**
  * Retrieves paginated course list with search and filtering
@@ -612,11 +612,20 @@ export const UpdateSingleCourseModule = async (
     const { _id, ...updateData } = moduleData;
     
     // Update the module
-    const updatedModule = await CourseModuleModel.findOneAndUpdate(
+    // First try with courseId (for new modules), then without (for backward compatibility)
+    let updatedModule = await CourseModuleModel.findOneAndUpdate(
       { _id: moduleId, courseId: courseId },
       { ...updateData, updatedAt: new Date() },
       { new: true }
     );
+
+    if (!updatedModule) {
+      updatedModule = await CourseModuleModel.findOneAndUpdate(
+        { _id: moduleId },
+        { ...updateData, updatedAt: new Date() },
+        { new: true }
+      );
+    }
 
     if (!updatedModule) {
       throw new AppError("Module not found", 404);
@@ -661,20 +670,39 @@ export const DeleteSingleCourseModule = async (
     }
 
     // Delete the module and all its lessons and content
-    const deletedModule = await CourseModuleModel.findOneAndDelete({
+    // First try with courseId (for new modules), then without (for backward compatibility)
+    let deletedModule = await CourseModuleModel.findOneAndDelete({
       _id: moduleId,
       courseId: courseId
     });
+
+    // If not found with courseId, try without courseId for backward compatibility
+    if (!deletedModule) {
+      deletedModule = await CourseModuleModel.findOneAndDelete({
+        _id: moduleId
+      });
+    }
 
     if (!deletedModule) {
       throw new AppError("Module not found", 404);
     }
 
-    // Delete all lessons for this module
-    await CourseLessonModel.deleteMany({ moduleId: moduleId });
+    // First, get all lessons for this module to get their IDs
+    const lessons = await CourseLessonModel.find({ moduleId: moduleId });
+    const lessonIds = lessons.map(lesson => lesson._id);
 
-    // Delete all content for this module
-    await ContentModel.deleteMany({ moduleId: moduleId });
+    console.log(`Found ${lessons.length} lessons in module ${moduleId} to delete`);
+
+    // Delete all content for all lessons in this module
+    let contentDeleteResult = { deletedCount: 0 };
+    if (lessonIds.length > 0) {
+      contentDeleteResult = await ContentModel.deleteMany({ lessonId: { $in: lessonIds } });
+      console.log(`Deleted ${contentDeleteResult.deletedCount} content items from module ${moduleId}`);
+    }
+
+    // Delete all lessons for this module
+    const lessonDeleteResult = await CourseLessonModel.deleteMany({ moduleId: moduleId });
+    console.log(`Deleted ${lessonDeleteResult.deletedCount} lessons from module ${moduleId}`);
 
     // Remove module ID from course's moduleIds array
     await CourseModel.findByIdAndUpdate(
@@ -686,10 +714,11 @@ export const DeleteSingleCourseModule = async (
     );
 
     console.log(`Module deleted successfully from course ${courseId}:`, moduleId);
+    console.log(`Cascade deletion completed: Module + ${lessonDeleteResult.deletedCount} lessons + ${contentDeleteResult.deletedCount} content items`);
     
     return {
       success: true,
-      message: "Module deleted successfully"
+      message: "Module and all associated lessons and content deleted successfully"
     };
 
   } catch (error) {
@@ -699,6 +728,66 @@ export const DeleteSingleCourseModule = async (
     console.error("Database error in DeleteSingleCourseModule:", error);
     throw new AppError(
       `Failed to delete module: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`,
+      500
+    );
+  }
+};
+
+/**
+ * Update course module references (modules array)
+ * @param courseId - The ID of the course
+ * @param moduleIds - Array of module IDs to reference
+ * @returns Promise<{success: boolean, message: string}>
+ */
+export const UpdateCourseModuleReferences = async (
+  courseId: string,
+  moduleIds: string[]
+): Promise<{success: boolean, message: string}> => {
+  try {
+    // Validate that all moduleIds are valid ObjectIds
+    const validModuleIds = moduleIds.filter(id => {
+      try {
+        return mongoose.Types.ObjectId.isValid(id);
+      } catch {
+        return false;
+      }
+    });
+
+    if (validModuleIds.length !== moduleIds.length) {
+      throw new AppError("Invalid module IDs provided", 400);
+    }
+
+    // Check if course exists
+    const course = await CourseModel.findById(courseId);
+    if (!course) {
+      throw new AppError("Course not found", 404);
+    }
+
+    // Update the course with new module references
+    await CourseModel.findByIdAndUpdate(
+      courseId,
+      { 
+        modules: validModuleIds,
+        updatedAt: new Date(),
+      }
+    );
+
+    console.log(`Course ${courseId} module references updated:`, validModuleIds);
+    
+    return {
+      success: true,
+      message: `Course module references updated successfully with ${validModuleIds.length} modules`
+    };
+
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
+    console.error("Database error in UpdateCourseModuleReferences:", error);
+    throw new AppError(
+      `Failed to update course module references: ${
         error instanceof Error ? error.message : "Unknown error"
       }`,
       500
@@ -762,6 +851,14 @@ export const AddSingleCourseLesson = async (
   lessonData: any
 ): Promise<{success: boolean, lesson: any}> => {
   try {
+    // Validate ObjectId format
+    if (!mongoose.Types.ObjectId.isValid(courseId)) {
+      throw new AppError("Invalid course ID format", 400);
+    }
+    if (!mongoose.Types.ObjectId.isValid(moduleId)) {
+      throw new AppError("Invalid module ID format", 400);
+    }
+
     // Validate course exists
     const course = await CourseModel.findById(courseId);
     if (!course) {
@@ -769,7 +866,11 @@ export const AddSingleCourseLesson = async (
     }
 
     // Validate module exists
-    const module = await CourseModuleModel.findOne({ _id: moduleId, courseId: courseId });
+    // First try with courseId (for new modules), then without (for backward compatibility)
+    let module = await CourseModuleModel.findOne({ _id: moduleId, courseId: courseId });
+    if (!module) {
+      module = await CourseModuleModel.findOne({ _id: moduleId });
+    }
     if (!module) {
       throw new AppError("Module not found", 404);
     }
@@ -786,13 +887,24 @@ export const AddSingleCourseLesson = async (
     await lesson.save();
 
     // Update module with new lesson ID
-    await CourseModuleModel.findByIdAndUpdate(
-      moduleId,
+    // First try with courseId (for new modules), then without (for backward compatibility)
+    let updateResult = await CourseModuleModel.findOneAndUpdate(
+      { _id: moduleId, courseId: courseId },
       { 
         $push: { lessonIds: lesson._id },
         updatedAt: new Date()
       }
     );
+
+    if (!updateResult) {
+      await CourseModuleModel.findOneAndUpdate(
+        { _id: moduleId },
+        { 
+          $push: { lessonIds: lesson._id },
+          updatedAt: new Date()
+        }
+      );
+    }
 
     console.log(`Lesson added successfully to module ${moduleId} in course ${courseId}:`, lesson._id);
     
@@ -837,7 +949,11 @@ export const UpdateSingleCourseLesson = async (
     }
 
     // Validate module exists
-    const module = await CourseModuleModel.findOne({ _id: moduleId, courseId: courseId });
+    // First try with courseId (for new modules), then without (for backward compatibility)
+    let module = await CourseModuleModel.findOne({ _id: moduleId, courseId: courseId });
+    if (!module) {
+      module = await CourseModuleModel.findOne({ _id: moduleId });
+    }
     if (!module) {
       throw new AppError("Module not found", 404);
     }
@@ -897,10 +1013,18 @@ export const DeleteSingleCourseLesson = async (
     }
 
     // Validate module exists
-    const module = await CourseModuleModel.findOne({ _id: moduleId, courseId: courseId });
+    // First try with courseId (for new modules), then without (for backward compatibility)
+    let module = await CourseModuleModel.findOne({ _id: moduleId, courseId: courseId });
+    if (!module) {
+      module = await CourseModuleModel.findOne({ _id: moduleId });
+    }
     if (!module) {
       throw new AppError("Module not found", 404);
     }
+
+    // First, delete all content for this lesson
+    const contentDeleteResult = await ContentModel.deleteMany({ lessonId: lessonId });
+    console.log(`Deleted ${contentDeleteResult.deletedCount} content items from lesson ${lessonId}`);
 
     // Delete the lesson
     const deletedLesson = await CourseLessonModel.findOneAndDelete({
@@ -913,19 +1037,31 @@ export const DeleteSingleCourseLesson = async (
     }
 
     // Remove lesson ID from module
-    await CourseModuleModel.findByIdAndUpdate(
-      moduleId,
+    // First try with courseId (for new modules), then without (for backward compatibility)
+    let updateResult = await CourseModuleModel.findOneAndUpdate(
+      { _id: moduleId, courseId: courseId },
       { 
         $pull: { lessonIds: lessonId },
         updatedAt: new Date()
       }
     );
 
+    if (!updateResult) {
+      await CourseModuleModel.findOneAndUpdate(
+        { _id: moduleId },
+        { 
+          $pull: { lessonIds: lessonId },
+          updatedAt: new Date()
+        }
+      );
+    }
+
     console.log(`Lesson deleted successfully from module ${moduleId} in course ${courseId}:`, lessonId);
+    console.log(`Cascade deletion completed: Lesson + ${contentDeleteResult.deletedCount} content items`);
     
     return {
       success: true,
-      message: "Lesson deleted successfully"
+      message: "Lesson and all associated content deleted successfully"
     };
 
   } catch (error) {
@@ -964,7 +1100,11 @@ export const AddSingleCourseContent = async (
     }
 
     // Validate module exists
-    const module = await CourseModuleModel.findOne({ _id: moduleId, courseId: courseId });
+    // First try with courseId (for new modules), then without (for backward compatibility)
+    let module = await CourseModuleModel.findOne({ _id: moduleId, courseId: courseId });
+    if (!module) {
+      module = await CourseModuleModel.findOne({ _id: moduleId });
+    }
     if (!module) {
       throw new AppError("Module not found", 404);
     }
@@ -984,11 +1124,13 @@ export const AddSingleCourseContent = async (
       content = new VideoContentModel({
         ...contentDataWithoutId,
         lessonId: lessonId,
+        moduleId: moduleId,
       });
     } else if (contentData.type === "quiz") {
       content = new QuizContentModel({
         ...contentDataWithoutId,
         lessonId: lessonId,
+        moduleId: moduleId,
       });
     } else {
       throw new AppError("Invalid content type", 400);
@@ -1050,7 +1192,11 @@ export const UpdateSingleCourseContent = async (
     }
 
     // Validate module exists
-    const module = await CourseModuleModel.findOne({ _id: moduleId, courseId: courseId });
+    // First try with courseId (for new modules), then without (for backward compatibility)
+    let module = await CourseModuleModel.findOne({ _id: moduleId, courseId: courseId });
+    if (!module) {
+      module = await CourseModuleModel.findOne({ _id: moduleId });
+    }
     if (!module) {
       throw new AppError("Module not found", 404);
     }
@@ -1066,7 +1212,7 @@ export const UpdateSingleCourseContent = async (
     
     // Update the content
     const updatedContent = await ContentModel.findOneAndUpdate(
-      { _id: contentId, lessonId: lessonId },
+      { _id: contentId, lessonId: lessonId, moduleId: moduleId },
       { ...updateData, updatedAt: new Date() },
       { new: true }
     );
@@ -1118,7 +1264,11 @@ export const DeleteSingleCourseContent = async (
     }
 
     // Validate module exists
-    const module = await CourseModuleModel.findOne({ _id: moduleId, courseId: courseId });
+    // First try with courseId (for new modules), then without (for backward compatibility)
+    let module = await CourseModuleModel.findOne({ _id: moduleId, courseId: courseId });
+    if (!module) {
+      module = await CourseModuleModel.findOne({ _id: moduleId });
+    }
     if (!module) {
       throw new AppError("Module not found", 404);
     }
@@ -1132,7 +1282,8 @@ export const DeleteSingleCourseContent = async (
     // Delete the content
     const deletedContent = await ContentModel.findOneAndDelete({
       _id: contentId,
-      lessonId: lessonId
+      lessonId: lessonId,
+      moduleId: moduleId
     });
 
     if (!deletedContent) {

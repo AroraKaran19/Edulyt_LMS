@@ -108,6 +108,16 @@ const videoSchema = new mongoose.Schema<Video>(
 
 const contentSchema = new mongoose.Schema<Content>(
   {
+    lessonId: { 
+      type: mongoose.Schema.Types.ObjectId, 
+      ref: "CourseLesson", 
+      required: true 
+    },
+    moduleId: { 
+      type: mongoose.Schema.Types.ObjectId, 
+      ref: "CourseModule", 
+      required: true 
+    },
     title: { type: String, required: true },
     description: { 
       type: String, 
@@ -128,6 +138,11 @@ const contentSchema = new mongoose.Schema<Content>(
 
 const courseLessonSchema = new mongoose.Schema<CourseLesson>(
   {
+    moduleId: { 
+      type: mongoose.Schema.Types.ObjectId, 
+      ref: "CourseModule", 
+      required: true 
+    },
     title: { type: String, required: true },
     description: { 
       type: String, 
@@ -149,6 +164,11 @@ const courseLessonSchema = new mongoose.Schema<CourseLesson>(
 
 const courseModuleSchema = new mongoose.Schema<CourseModule>(
   {
+    courseId: { 
+      type: mongoose.Schema.Types.ObjectId, 
+      ref: "Course", 
+      required: true 
+    },
     title: { type: String, required: true },
     thumbnailUrl: {
       type: String,
@@ -183,6 +203,8 @@ const courseModuleSchema = new mongoose.Schema<CourseModule>(
 
 // Indexes
 
+courseModuleSchema.index({ courseId: 1 }); // For finding modules by course
+courseModuleSchema.index({ courseId: 1, title: 1 }); // For searching modules by course and title
 courseModuleSchema.index({ title: 1, lessonIds: 1 }); // For searching modules by title and lesson IDs
 courseModuleSchema.index({ isActive: 1 }); // For filtering active modules
 courseLessonSchema.index({ moduleId: 1, title: 1 }); // For searching lessons by module ID and title

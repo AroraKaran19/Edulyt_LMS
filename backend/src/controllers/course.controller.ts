@@ -20,6 +20,7 @@ import {
   AddSingleCourseContent as AddSingleCourseContentService,
   UpdateSingleCourseContent as UpdateSingleCourseContentService,
   DeleteSingleCourseContent as DeleteSingleCourseContentService,
+  UpdateCourseModuleReferences as UpdateCourseModuleReferencesService,
   FinalizeCourseCreation as FinalizeCourseCreationService,
 } from "../services/course.service";
 import dotenv from "dotenv";
@@ -219,11 +220,27 @@ export const duplicateCourse = asyncHandler(
 );
 
 
+export const updateCourseModuleReferences = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    const { courseId } = req.params;
+    const { moduleIds } = req.body;
+
+    if (!courseId) {
+      throw new AppError("Course ID is required", 400);
+    }
+
+    if (!Array.isArray(moduleIds)) {
+      throw new AppError("moduleIds must be an array", 400);
+    }
+
+    const result = await UpdateCourseModuleReferencesService(courseId, moduleIds);
+    sendSuccessResponse(res, result, "Course module references updated successfully", 200);
+  }
+);
+
 export const finalizeCourseCreation = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const { courseId } = req.params;
-
-    console.log("Backend - Finalizing course creation for courseId:", courseId);
 
     const result = await FinalizeCourseCreationService(courseId);
     sendSuccessResponse(res, result, result.message, 200);
@@ -234,9 +251,6 @@ export const addSingleCourseModule = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const { courseId } = req.params;
     const moduleData = req.body;
-
-    console.log("Backend - Adding single module to courseId:", courseId);
-    console.log("Backend - Module data:", moduleData);
 
     if (!moduleData) {
       throw new AppError("Module data is required", 400);
@@ -254,9 +268,6 @@ export const updateSingleCourseModule = asyncHandler(
     const { courseId, moduleId } = req.params;
     const moduleData = req.body;
 
-    console.log("Backend - Updating module:", moduleId, "in course:", courseId);
-    console.log("Backend - Module data:", moduleData);
-
     if (!moduleId) {
       throw new AppError("Module ID is required", 400);
     }
@@ -269,8 +280,6 @@ export const updateSingleCourseModule = asyncHandler(
 export const deleteSingleCourseModule = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const { courseId, moduleId } = req.params;
-
-    console.log("Backend - Deleting module:", moduleId, "from course:", courseId);
 
     if (!moduleId) {
       throw new AppError("Module ID is required", 400);
@@ -290,9 +299,6 @@ export const addSingleCourseLesson = asyncHandler(
     const { courseId, moduleId } = req.params;
     const lessonData = req.body;
 
-    console.log("Backend - Adding lesson to module:", moduleId, "in course:", courseId);
-    console.log("Backend - Lesson data:", lessonData);
-
     if (!moduleId) {
       throw new AppError("Module ID is required", 400);
     }
@@ -311,9 +317,6 @@ export const updateSingleCourseLesson = asyncHandler(
     const { courseId, moduleId, lessonId } = req.params;
     const lessonData = req.body;
 
-    console.log("Backend - Updating lesson:", lessonId, "in module:", moduleId, "in course:", courseId);
-    console.log("Backend - Lesson data:", lessonData);
-
     if (!moduleId || !lessonId) {
       throw new AppError("Module ID and Lesson ID are required", 400);
     }
@@ -326,8 +329,6 @@ export const updateSingleCourseLesson = asyncHandler(
 export const deleteSingleCourseLesson = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const { courseId, moduleId, lessonId } = req.params;
-
-    console.log("Backend - Deleting lesson:", lessonId, "from module:", moduleId, "in course:", courseId);
 
     if (!moduleId || !lessonId) {
       throw new AppError("Module ID and Lesson ID are required", 400);
@@ -347,9 +348,6 @@ export const addSingleCourseContent = asyncHandler(
     const { courseId, moduleId, lessonId } = req.params;
     const contentData = req.body;
 
-    console.log("Backend - Adding content to lesson:", lessonId, "in module:", moduleId, "in course:", courseId);
-    console.log("Backend - Content data:", contentData);
-
     if (!moduleId || !lessonId) {
       throw new AppError("Module ID and Lesson ID are required", 400);
     }
@@ -368,9 +366,6 @@ export const updateSingleCourseContent = asyncHandler(
     const { courseId, moduleId, lessonId, contentId } = req.params;
     const contentData = req.body;
 
-    console.log("Backend - Updating content:", contentId, "in lesson:", lessonId, "in module:", moduleId, "in course:", courseId);
-    console.log("Backend - Content data:", contentData);
-
     if (!moduleId || !lessonId || !contentId) {
       throw new AppError("Module ID, Lesson ID, and Content ID are required", 400);
     }
@@ -383,8 +378,6 @@ export const updateSingleCourseContent = asyncHandler(
 export const deleteSingleCourseContent = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const { courseId, moduleId, lessonId, contentId } = req.params;
-
-    console.log("Backend - Deleting content:", contentId, "from lesson:", lessonId, "in module:", moduleId, "in course:", courseId);
 
     if (!moduleId || !lessonId || !contentId) {
       throw new AppError("Module ID, Lesson ID, and Content ID are required", 400);

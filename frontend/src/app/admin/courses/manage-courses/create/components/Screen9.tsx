@@ -1,18 +1,75 @@
 import Container from "@/app/admin/components/ui/Container";
 import Input from "@/components/ui/inputs/Input";
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect, useCallback } from "react";
 import { useCourseContext } from "../../../reducers/course/providers/CourseReducerProvider";
 import TextArea from "@/components/ui/inputs/TextArea";
 import TagInput from "@/components/ui/inputs/TagInput";
 import ScreenNavigation from "./shared/ScreenNavigation";
 import { useScreen } from "../contexts/ScreenContext";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
-import { Search, Globe, Tag, FileText, Sparkles } from "lucide-react";
+import { Search, Globe, Tag, FileText, Sparkles, CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { checkSlugAvailability } from "./api/slugApi";
 
 const Screen9 = () => {
   const { state, actions } = useCourseContext();
   const { setActiveScreen } = useScreen();
   const [isGenerating, setIsGenerating] = useState(false);
+  
+  // Slug validation state
+  const [slugValidation, setSlugValidation] = useState<{
+    isChecking: boolean;
+    isAvailable: boolean | null;
+    message: string;
+  }>({
+    isChecking: false,
+    isAvailable: null,
+    message: ""
+  });
+
+  // Debounced slug validation
+  const validateSlug = useCallback(async (slug: string) => {
+    if (!slug || slug.trim().length === 0) {
+      setSlugValidation({
+        isChecking: false,
+        isAvailable: null,
+        message: ""
+      });
+      return;
+    }
+
+    setSlugValidation(prev => ({
+      ...prev,
+      isChecking: true,
+      message: "Checking availability..."
+    }));
+
+    try {
+      const result = await checkSlugAvailability(slug);
+      setSlugValidation({
+        isChecking: false,
+        isAvailable: result.available,
+        message: result.message
+      });
+    } catch (error) {
+      console.error("Error validating slug:", error);
+      setSlugValidation({
+        isChecking: false,
+        isAvailable: false,
+        message: "Error checking slug availability"
+      });
+    }
+  }, []);
+
+  // Debounce slug validation
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (state.course.slug) {
+        validateSlug(state.course.slug);
+      }
+    }, 500); // 500ms delay
+
+    return () => clearTimeout(timeoutId);
+  }, [state.course.slug, validateSlug]);
 
   // Auto-generate SEO content
   const handleAutoGenerate = async () => {
@@ -66,6 +123,9 @@ const Screen9 = () => {
       actions.setCourseMetaDescription(metaDescription);
       actions.setCourseKeywords(allKeywords);
       
+      // Validate the generated slug
+      await validateSlug(slug);
+      
       // Also add keywords as tags
       if (state.course.tags && state.course.tags.length > 0) {
         const existingTags = state.course.tags || [];
@@ -92,18 +152,27 @@ const Screen9 = () => {
       state.course.metaDescription &&
       state.course.metaDescription.trim().length > 0 &&
       state.course.keywords &&
-      state.course.keywords.length > 0
+      state.course.keywords.length > 0 &&
+      slugValidation.isAvailable === true && // Slug must be available
+      !slugValidation.isChecking // Not currently checking
     );
   }, [
     state.course.slug,
     state.course.metaTitle,
     state.course.metaDescription,
     state.course.keywords,
+    slugValidation.isAvailable,
+    slugValidation.isChecking,
   ]);
 
   // Character count validation
   const validationErrors = useMemo(() => {
     const errors = [];
+
+    // Check slug availability
+    if (state.course.slug && state.course.slug.trim().length > 0 && slugValidation.isAvailable === false) {
+      errors.push("The selected slug is already taken. Please choose a different one.");
+    }
 
     // Check meta title length
     if (state.course.metaTitle && state.course.metaTitle.length > 60) {
@@ -116,7 +185,7 @@ const Screen9 = () => {
     }
 
     return errors;
-  }, [state.course.metaTitle, state.course.metaDescription]);
+  }, [state.course.metaTitle, state.course.metaDescription, state.course.slug, slugValidation.isAvailable]);
 
   return (
     <Container
@@ -189,18 +258,65 @@ const Screen9 = () => {
           </div>
 
           <div className="space-y-4">
-            <Input
-              label="URL Slug"
-              name="slug"
-              placeholder="course-url-slug"
-              value={state.course.slug || ""}
-              onChange={(e) => actions.setCourseSlug(e.target.value)}
-              className="w-full"
-              required
-            />
+            <div className="relative">
+              <Input
+                label="URL Slug"
+                name="slug"
+                placeholder="course-url-slug"
+                value={state.course.slug || ""}
+                onChange={(e) => actions.setCourseSlug(e.target.value)}
+                className={`w-full ${
+                  slugValidation.isAvailable === false 
+                    ? "border-red-300 focus:border-red-500 focus:ring-red-500" 
+                    : slugValidation.isAvailable === true 
+                    ? "border-green-300 focus:border-green-500 focus:ring-green-500"
+                    : ""
+                }`}
+                required
+              />
+              {/* Validation Icon */}
+              {state.course.slug && state.course.slug.trim().length > 0 && (
+                <div className="absolute right-3 top-9 flex items-center">
+                  {slugValidation.isChecking ? (
+                    <Loader2 className="w-4 h-4 text-gray-400 animate-spin" />
+                  ) : slugValidation.isAvailable === true ? (
+                    <CheckCircle className="w-4 h-4 text-green-500" />
+                  ) : slugValidation.isAvailable === false ? (
+                    <XCircle className="w-4 h-4 text-red-500" />
+                  ) : null}
+                </div>
+              )}
+            </div>
+            
+            {/* Validation Message */}
+            {state.course.slug && state.course.slug.trim().length > 0 && slugValidation.message && (
+              <div className={`text-xs flex items-center gap-2 ${
+                slugValidation.isAvailable === true 
+                  ? "text-green-600" 
+                  : slugValidation.isAvailable === false 
+                  ? "text-red-600"
+                  : "text-gray-500"
+              }`}>
+                {slugValidation.isChecking ? (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                ) : slugValidation.isAvailable === true ? (
+                  <CheckCircle className="w-3 h-3" />
+                ) : slugValidation.isAvailable === false ? (
+                  <XCircle className="w-3 h-3" />
+                ) : null}
+                <span>{slugValidation.message}</span>
+              </div>
+            )}
+            
             <div className="flex justify-between items-center text-xs text-gray-500">
               <span>URL: https://airkrit.com/courses/</span>
-              <span className="font-mono text-green-600">
+              <span className={`font-mono ${
+                slugValidation.isAvailable === true 
+                  ? "text-green-600" 
+                  : slugValidation.isAvailable === false 
+                  ? "text-red-600"
+                  : "text-gray-500"
+              }`}>
                 {state.course.slug || "your-course-slug"}
               </span>
             </div>

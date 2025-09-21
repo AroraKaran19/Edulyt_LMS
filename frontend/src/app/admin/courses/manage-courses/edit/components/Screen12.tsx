@@ -90,7 +90,7 @@ const Screen12 = () => {
 
   // Load course ID from localStorage
   useEffect(() => {
-    const storedCourseId = localStorage.getItem("current_course_id");
+    const storedCourseId = localStorage.getItem("course_edit_course_id");
     
     if (!storedCourseId) {
       // No course ID found, redirect back to course creation
@@ -128,7 +128,7 @@ const Screen12 = () => {
         setCurrentStep("complete");
         
         // Clear all stored data
-        localStorage.removeItem("current_course_id");
+        localStorage.removeItem("course_edit_course_id");
         sessionStorage.removeItem('course_metadata_updated');
         draftUtils.clearAll();
         
@@ -174,7 +174,7 @@ const Screen12 = () => {
         setCurrentStep("complete");
         
         // Clear all stored data
-        localStorage.removeItem("current_course_id");
+        localStorage.removeItem("course_edit_course_id");
         sessionStorage.removeItem('course_metadata_updated');
         draftUtils.clearAll();
         
