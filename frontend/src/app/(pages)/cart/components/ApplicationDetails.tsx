@@ -96,7 +96,7 @@ const ApplicationDetails = () => {
             </OrangeButton>
 
             {/* Enrollment section */}
-            <EnrollmentDetails />
+            {/* <EnrollmentDetails /> */}
         </div>
     )
 }
