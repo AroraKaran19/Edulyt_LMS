@@ -42,7 +42,7 @@ const EnrollmentModal: React.FC<EnrollmentModalProps> = ({
   }[] = [];
 
   // Only add Essential plan if it exists
-  if (course.plans.essential) {
+  if (course.plans?.essential) {
     plans.push({
       type: "essential",
       icon: <Crown className="size-5" />,
@@ -70,7 +70,7 @@ const EnrollmentModal: React.FC<EnrollmentModalProps> = ({
   }
 
   // Only add Elite plan if it exists
-  if (course.plans.elite) {
+  if (course.plans?.elite) {
     plans.push({
       type: "elite",
       icon: <Crown className="size-5" />,

@@ -114,14 +114,24 @@ export const getAllCourses = async (
  * @param slug - The course slug
  * @returns Promise<Course | null>
  */
-export const getCourseUsingSlug = async (slug: string): Promise<Course | null> => {
+export const getCourseUsingSlug = async (
+  slug: string
+): Promise<Course | null> => {
   try {
     const course = await CourseModel.findOne({ slug, isActive: true })
       .select("-__v")
       .populate("instructor")
       .populate("testimonials")
       .populate("faqs")
-      .populate("modules")
+      .populate({
+        path: "modules",
+        populate: {
+          path: "lessons",
+          populate: {
+            path: "contents",
+          },
+        },
+      })
       .lean();
 
     return course as Course | null;
@@ -141,7 +151,9 @@ export const getCourseUsingSlug = async (slug: string): Promise<Course | null> =
  * @param limit - Number of courses to return (default: 10)
  * @returns Promise<Course[]>
  */
-export const getFeaturedCourses = async (limit: number = 10): Promise<Course[]> => {
+export const getFeaturedCourses = async (
+  limit: number = 10
+): Promise<Course[]> => {
   try {
     const courses = await CourseModel.find({ isFeatured: true, isActive: true })
       .select("-__v")
@@ -268,11 +280,11 @@ export const UpdateCourseMetadata = async (
  */
 export const CreateCourseMetadata = async (
   courseData: any
-): Promise<{course: Course, courseId: string}> => {
+): Promise<{ course: Course; courseId: string }> => {
   try {
     // Clean the course data - remove frontend-only fields
     const cleanedCourseData = { ...courseData };
-    
+
     // Remove frontend-only fields that shouldn't be saved to database
     delete cleanedCourseData.thumbnailSource;
     delete cleanedCourseData.thumbnailS3Key;
@@ -281,7 +293,7 @@ export const CreateCourseMetadata = async (
     delete cleanedCourseData.curriculumSource;
     delete cleanedCourseData.curriculumS3Key;
     delete cleanedCourseData.moduleIds;
-    
+
     // Remove _id field to let MongoDB auto-generate it
     delete cleanedCourseData._id;
 
@@ -292,14 +304,16 @@ export const CreateCourseMetadata = async (
 
     // Clean testimonials and FAQs - only keep valid ObjectIds
     if (cleanedCourseData.testimonials) {
-      cleanedCourseData.testimonials = cleanedCourseData.testimonials.filter((id: string) => 
-        id && id.trim() !== "" && mongoose.Types.ObjectId.isValid(id)
+      cleanedCourseData.testimonials = cleanedCourseData.testimonials.filter(
+        (id: string) =>
+          id && id.trim() !== "" && mongoose.Types.ObjectId.isValid(id)
       );
     }
 
     if (cleanedCourseData.faqs) {
-      cleanedCourseData.faqs = cleanedCourseData.faqs.filter((id: string) => 
-        id && id.trim() !== "" && mongoose.Types.ObjectId.isValid(id)
+      cleanedCourseData.faqs = cleanedCourseData.faqs.filter(
+        (id: string) =>
+          id && id.trim() !== "" && mongoose.Types.ObjectId.isValid(id)
       );
     }
 
@@ -460,17 +474,19 @@ export const getCoursesForAdminService = async (
  * @param courseId - The ID of the course to retrieve
  * @returns Promise<Course | null>
  */
-export const getCourseByIdAdminService = async (courseId: string): Promise<Course | null> => {
+export const getCourseByIdAdminService = async (
+  courseId: string
+): Promise<Course | null> => {
   try {
     const course = await CourseModel.findById(courseId)
       .populate({
-        path: 'modules',
+        path: "modules",
         populate: {
-          path: 'lessons',
+          path: "lessons",
           populate: {
-            path: 'contents'
-          }
-        }
+            path: "contents",
+          },
+        },
       })
       .select("-__v")
       .lean();
@@ -492,10 +508,12 @@ export const getCourseByIdAdminService = async (courseId: string): Promise<Cours
  * @param courseId - The ID of the course to duplicate
  * @returns Promise<Course>
  */
-export const duplicateCourseService = async (courseId: string): Promise<Course> => {
+export const duplicateCourseService = async (
+  courseId: string
+): Promise<Course> => {
   try {
     const originalCourse = await CourseModel.findById(courseId).select("-__v");
-    
+
     if (!originalCourse) {
       throw new AppError("Course not found", 404);
     }
@@ -505,7 +523,7 @@ export const duplicateCourseService = async (courseId: string): Promise<Course> 
     delete (courseData as any)._id;
     delete (courseData as any).createdAt;
     delete (courseData as any).updatedAt;
-    
+
     // Modify title to indicate it's a copy
     courseData.title = `${courseData.title} (Copy)`;
     courseData.isActive = false; // Set as inactive by default
@@ -538,7 +556,7 @@ export const duplicateCourseService = async (courseId: string): Promise<Course> 
 export const AddSingleCourseModule = async (
   courseId: string,
   moduleData: any
-): Promise<{success: boolean, module: any}> => {
+): Promise<{ success: boolean; module: any }> => {
   try {
     // Validate course exists
     const course = await CourseModel.findById(courseId);
@@ -548,33 +566,33 @@ export const AddSingleCourseModule = async (
 
     // Remove _id to let MongoDB generate a proper ObjectId
     const { _id, ...moduleDataWithoutId } = moduleData;
-    
+
     // Create the module
     const module = new CourseModuleModel({
       ...moduleDataWithoutId,
       courseId: courseId,
       isActive: moduleData.isActive !== undefined ? moduleData.isActive : true,
-      isCompleted: moduleData.isCompleted !== undefined ? moduleData.isCompleted : false,
+      isCompleted:
+        moduleData.isCompleted !== undefined ? moduleData.isCompleted : false,
     });
 
     const savedModule = await module.save();
 
     // Update course with new module ID
-    await CourseModel.findByIdAndUpdate(
-      courseId,
-      { 
-        $push: { moduleIds: savedModule._id },
-        updatedAt: new Date()
-      }
+    await CourseModel.findByIdAndUpdate(courseId, {
+      $push: { moduleIds: savedModule._id },
+      updatedAt: new Date(),
+    });
+
+    console.log(
+      `Module added successfully to course ${courseId}:`,
+      savedModule._id
     );
 
-    console.log(`Module added successfully to course ${courseId}:`, savedModule._id);
-    
     return {
       success: true,
-      module: savedModule
+      module: savedModule,
     };
-
   } catch (error) {
     if (error instanceof AppError) {
       throw error;
@@ -600,7 +618,7 @@ export const UpdateSingleCourseModule = async (
   courseId: string,
   moduleId: string,
   moduleData: any
-): Promise<{success: boolean, module: any}> => {
+): Promise<{ success: boolean; module: any }> => {
   try {
     // Validate course exists
     const course = await CourseModel.findById(courseId);
@@ -610,7 +628,7 @@ export const UpdateSingleCourseModule = async (
 
     // Remove _id from update data to avoid conflicts
     const { _id, ...updateData } = moduleData;
-    
+
     // Update the module
     // First try with courseId (for new modules), then without (for backward compatibility)
     let updatedModule = await CourseModuleModel.findOneAndUpdate(
@@ -632,12 +650,11 @@ export const UpdateSingleCourseModule = async (
     }
 
     console.log(`Module updated successfully in course ${courseId}:`, moduleId);
-    
+
     return {
       success: true,
-      module: updatedModule
+      module: updatedModule,
     };
-
   } catch (error) {
     if (error instanceof AppError) {
       throw error;
@@ -661,7 +678,7 @@ export const UpdateSingleCourseModule = async (
 export const DeleteSingleCourseModule = async (
   courseId: string,
   moduleId: string
-): Promise<{success: boolean, message: string}> => {
+): Promise<{ success: boolean; message: string }> => {
   try {
     // Validate course exists
     const course = await CourseModel.findById(courseId);
@@ -673,13 +690,13 @@ export const DeleteSingleCourseModule = async (
     // First try with courseId (for new modules), then without (for backward compatibility)
     let deletedModule = await CourseModuleModel.findOneAndDelete({
       _id: moduleId,
-      courseId: courseId
+      courseId: courseId,
     });
 
     // If not found with courseId, try without courseId for backward compatibility
     if (!deletedModule) {
       deletedModule = await CourseModuleModel.findOneAndDelete({
-        _id: moduleId
+        _id: moduleId,
       });
     }
 
@@ -689,38 +706,50 @@ export const DeleteSingleCourseModule = async (
 
     // First, get all lessons for this module to get their IDs
     const lessons = await CourseLessonModel.find({ moduleId: moduleId });
-    const lessonIds = lessons.map(lesson => lesson._id);
+    const lessonIds = lessons.map((lesson) => lesson._id);
 
-    console.log(`Found ${lessons.length} lessons in module ${moduleId} to delete`);
+    console.log(
+      `Found ${lessons.length} lessons in module ${moduleId} to delete`
+    );
 
     // Delete all content for all lessons in this module
     let contentDeleteResult = { deletedCount: 0 };
     if (lessonIds.length > 0) {
-      contentDeleteResult = await ContentModel.deleteMany({ lessonId: { $in: lessonIds } });
-      console.log(`Deleted ${contentDeleteResult.deletedCount} content items from module ${moduleId}`);
+      contentDeleteResult = await ContentModel.deleteMany({
+        lessonId: { $in: lessonIds },
+      });
+      console.log(
+        `Deleted ${contentDeleteResult.deletedCount} content items from module ${moduleId}`
+      );
     }
 
     // Delete all lessons for this module
-    const lessonDeleteResult = await CourseLessonModel.deleteMany({ moduleId: moduleId });
-    console.log(`Deleted ${lessonDeleteResult.deletedCount} lessons from module ${moduleId}`);
-
-    // Remove module ID from course's moduleIds array
-    await CourseModel.findByIdAndUpdate(
-      courseId,
-      { 
-        $pull: { moduleIds: moduleId },
-        updatedAt: new Date()
-      }
+    const lessonDeleteResult = await CourseLessonModel.deleteMany({
+      moduleId: moduleId,
+    });
+    console.log(
+      `Deleted ${lessonDeleteResult.deletedCount} lessons from module ${moduleId}`
     );
 
-    console.log(`Module deleted successfully from course ${courseId}:`, moduleId);
-    console.log(`Cascade deletion completed: Module + ${lessonDeleteResult.deletedCount} lessons + ${contentDeleteResult.deletedCount} content items`);
-    
+    // Remove module ID from course's moduleIds array
+    await CourseModel.findByIdAndUpdate(courseId, {
+      $pull: { moduleIds: moduleId },
+      updatedAt: new Date(),
+    });
+
+    console.log(
+      `Module deleted successfully from course ${courseId}:`,
+      moduleId
+    );
+    console.log(
+      `Cascade deletion completed: Module + ${lessonDeleteResult.deletedCount} lessons + ${contentDeleteResult.deletedCount} content items`
+    );
+
     return {
       success: true,
-      message: "Module and all associated lessons and content deleted successfully"
+      message:
+        "Module and all associated lessons and content deleted successfully",
     };
-
   } catch (error) {
     if (error instanceof AppError) {
       throw error;
@@ -744,16 +773,18 @@ export const DeleteSingleCourseModule = async (
 export const UpdateCourseModuleReferences = async (
   courseId: string,
   moduleIds: string[]
-): Promise<{success: boolean, message: string}> => {
+): Promise<{ success: boolean; message: string }> => {
   try {
-    // Validate that all moduleIds are valid ObjectIds
-    const validModuleIds = moduleIds.filter(id => {
-      try {
-        return mongoose.Types.ObjectId.isValid(id);
-      } catch {
-        return false;
-      }
-    });
+    // Validate that all moduleIds are valid ObjectIds and convert them
+    const validModuleIds = moduleIds
+      .filter((id) => {
+        try {
+          return mongoose.Types.ObjectId.isValid(id);
+        } catch {
+          return false;
+        }
+      })
+      .map((id) => new mongoose.Types.ObjectId(id));
 
     if (validModuleIds.length !== moduleIds.length) {
       throw new AppError("Invalid module IDs provided", 400);
@@ -766,21 +797,20 @@ export const UpdateCourseModuleReferences = async (
     }
 
     // Update the course with new module references
-    await CourseModel.findByIdAndUpdate(
-      courseId,
-      { 
-        modules: validModuleIds,
-        updatedAt: new Date(),
-      }
+    await CourseModel.findByIdAndUpdate(courseId, {
+      modules: validModuleIds,
+      updatedAt: new Date(),
+    });
+
+    console.log(
+      `Course ${courseId} module references updated:`,
+      validModuleIds
     );
 
-    console.log(`Course ${courseId} module references updated:`, validModuleIds);
-    
     return {
       success: true,
-      message: `Course module references updated successfully with ${validModuleIds.length} modules`
+      message: `Course module references updated successfully with ${validModuleIds.length} modules`,
     };
-
   } catch (error) {
     if (error instanceof AppError) {
       throw error;
@@ -802,28 +832,24 @@ export const UpdateCourseModuleReferences = async (
  */
 export const FinalizeCourseCreation = async (
   courseId: string
-): Promise<{success: boolean, message: string}> => {
+): Promise<{ success: boolean; message: string }> => {
   try {
     const course = await CourseModel.findById(courseId);
     if (!course) {
       throw new AppError("Course not found", 404);
     }
 
-    await CourseModel.findByIdAndUpdate(
-      courseId,
-      { 
-        isActive: true,
-        updatedAt: new Date(),
-      }
-    );
+    await CourseModel.findByIdAndUpdate(courseId, {
+      isActive: true,
+      updatedAt: new Date(),
+    });
 
     console.log(`Course ${courseId} finalized successfully`);
-    
+
     return {
       success: true,
-      message: "Course creation finalized successfully"
+      message: "Course creation finalized successfully",
     };
-
   } catch (error) {
     if (error instanceof AppError) {
       throw error;
@@ -849,7 +875,7 @@ export const AddSingleCourseLesson = async (
   courseId: string,
   moduleId: string,
   lessonData: any
-): Promise<{success: boolean, lesson: any}> => {
+): Promise<{ success: boolean; lesson: any }> => {
   try {
     // Validate ObjectId format
     if (!mongoose.Types.ObjectId.isValid(courseId)) {
@@ -867,7 +893,10 @@ export const AddSingleCourseLesson = async (
 
     // Validate module exists
     // First try with courseId (for new modules), then without (for backward compatibility)
-    let module = await CourseModuleModel.findOne({ _id: moduleId, courseId: courseId });
+    let module = await CourseModuleModel.findOne({
+      _id: moduleId,
+      courseId: courseId,
+    });
     if (!module) {
       module = await CourseModuleModel.findOne({ _id: moduleId });
     }
@@ -877,7 +906,7 @@ export const AddSingleCourseLesson = async (
 
     // Remove _id to let MongoDB generate a proper ObjectId
     const { _id, ...lessonDataWithoutId } = lessonData;
-    
+
     // Create the lesson
     const lesson = new CourseLessonModel({
       ...lessonDataWithoutId,
@@ -890,29 +919,31 @@ export const AddSingleCourseLesson = async (
     // First try with courseId (for new modules), then without (for backward compatibility)
     let updateResult = await CourseModuleModel.findOneAndUpdate(
       { _id: moduleId, courseId: courseId },
-      { 
+      {
         $push: { lessonIds: lesson._id },
-        updatedAt: new Date()
+        updatedAt: new Date(),
       }
     );
 
     if (!updateResult) {
       await CourseModuleModel.findOneAndUpdate(
         { _id: moduleId },
-        { 
+        {
           $push: { lessonIds: lesson._id },
-          updatedAt: new Date()
+          updatedAt: new Date(),
         }
       );
     }
 
-    console.log(`Lesson added successfully to module ${moduleId} in course ${courseId}:`, lesson._id);
-    
+    console.log(
+      `Lesson added successfully to module ${moduleId} in course ${courseId}:`,
+      lesson._id
+    );
+
     return {
       success: true,
-      lesson: lesson
+      lesson: lesson,
     };
-
   } catch (error) {
     if (error instanceof AppError) {
       throw error;
@@ -940,7 +971,7 @@ export const UpdateSingleCourseLesson = async (
   moduleId: string,
   lessonId: string,
   lessonData: any
-): Promise<{success: boolean, lesson: any}> => {
+): Promise<{ success: boolean; lesson: any }> => {
   try {
     // Validate course exists
     const course = await CourseModel.findById(courseId);
@@ -950,7 +981,10 @@ export const UpdateSingleCourseLesson = async (
 
     // Validate module exists
     // First try with courseId (for new modules), then without (for backward compatibility)
-    let module = await CourseModuleModel.findOne({ _id: moduleId, courseId: courseId });
+    let module = await CourseModuleModel.findOne({
+      _id: moduleId,
+      courseId: courseId,
+    });
     if (!module) {
       module = await CourseModuleModel.findOne({ _id: moduleId });
     }
@@ -960,7 +994,7 @@ export const UpdateSingleCourseLesson = async (
 
     // Remove _id from update data to avoid conflicts
     const { _id, ...updateData } = lessonData;
-    
+
     // Update the lesson
     const updatedLesson = await CourseLessonModel.findOneAndUpdate(
       { _id: lessonId, moduleId: moduleId },
@@ -972,13 +1006,15 @@ export const UpdateSingleCourseLesson = async (
       throw new AppError("Lesson not found", 404);
     }
 
-    console.log(`Lesson updated successfully in module ${moduleId} in course ${courseId}:`, lessonId);
-    
+    console.log(
+      `Lesson updated successfully in module ${moduleId} in course ${courseId}:`,
+      lessonId
+    );
+
     return {
       success: true,
-      lesson: updatedLesson
+      lesson: updatedLesson,
     };
-
   } catch (error) {
     if (error instanceof AppError) {
       throw error;
@@ -1004,7 +1040,7 @@ export const DeleteSingleCourseLesson = async (
   courseId: string,
   moduleId: string,
   lessonId: string
-): Promise<{success: boolean, message: string}> => {
+): Promise<{ success: boolean; message: string }> => {
   try {
     // Validate course exists
     const course = await CourseModel.findById(courseId);
@@ -1014,7 +1050,10 @@ export const DeleteSingleCourseLesson = async (
 
     // Validate module exists
     // First try with courseId (for new modules), then without (for backward compatibility)
-    let module = await CourseModuleModel.findOne({ _id: moduleId, courseId: courseId });
+    let module = await CourseModuleModel.findOne({
+      _id: moduleId,
+      courseId: courseId,
+    });
     if (!module) {
       module = await CourseModuleModel.findOne({ _id: moduleId });
     }
@@ -1023,13 +1062,17 @@ export const DeleteSingleCourseLesson = async (
     }
 
     // First, delete all content for this lesson
-    const contentDeleteResult = await ContentModel.deleteMany({ lessonId: lessonId });
-    console.log(`Deleted ${contentDeleteResult.deletedCount} content items from lesson ${lessonId}`);
+    const contentDeleteResult = await ContentModel.deleteMany({
+      lessonId: lessonId,
+    });
+    console.log(
+      `Deleted ${contentDeleteResult.deletedCount} content items from lesson ${lessonId}`
+    );
 
     // Delete the lesson
     const deletedLesson = await CourseLessonModel.findOneAndDelete({
       _id: lessonId,
-      moduleId: moduleId
+      moduleId: moduleId,
     });
 
     if (!deletedLesson) {
@@ -1040,30 +1083,34 @@ export const DeleteSingleCourseLesson = async (
     // First try with courseId (for new modules), then without (for backward compatibility)
     let updateResult = await CourseModuleModel.findOneAndUpdate(
       { _id: moduleId, courseId: courseId },
-      { 
+      {
         $pull: { lessonIds: lessonId },
-        updatedAt: new Date()
+        updatedAt: new Date(),
       }
     );
 
     if (!updateResult) {
       await CourseModuleModel.findOneAndUpdate(
         { _id: moduleId },
-        { 
+        {
           $pull: { lessonIds: lessonId },
-          updatedAt: new Date()
+          updatedAt: new Date(),
         }
       );
     }
 
-    console.log(`Lesson deleted successfully from module ${moduleId} in course ${courseId}:`, lessonId);
-    console.log(`Cascade deletion completed: Lesson + ${contentDeleteResult.deletedCount} content items`);
-    
+    console.log(
+      `Lesson deleted successfully from module ${moduleId} in course ${courseId}:`,
+      lessonId
+    );
+    console.log(
+      `Cascade deletion completed: Lesson + ${contentDeleteResult.deletedCount} content items`
+    );
+
     return {
       success: true,
-      message: "Lesson and all associated content deleted successfully"
+      message: "Lesson and all associated content deleted successfully",
     };
-
   } catch (error) {
     if (error instanceof AppError) {
       throw error;
@@ -1091,7 +1138,7 @@ export const AddSingleCourseContent = async (
   moduleId: string,
   lessonId: string,
   contentData: any
-): Promise<{success: boolean, content: any}> => {
+): Promise<{ success: boolean; content: any }> => {
   try {
     // Validate course exists
     const course = await CourseModel.findById(courseId);
@@ -1101,7 +1148,10 @@ export const AddSingleCourseContent = async (
 
     // Validate module exists
     // First try with courseId (for new modules), then without (for backward compatibility)
-    let module = await CourseModuleModel.findOne({ _id: moduleId, courseId: courseId });
+    let module = await CourseModuleModel.findOne({
+      _id: moduleId,
+      courseId: courseId,
+    });
     if (!module) {
       module = await CourseModuleModel.findOne({ _id: moduleId });
     }
@@ -1110,14 +1160,17 @@ export const AddSingleCourseContent = async (
     }
 
     // Validate lesson exists
-    const lesson = await CourseLessonModel.findOne({ _id: lessonId, moduleId: moduleId });
+    const lesson = await CourseLessonModel.findOne({
+      _id: lessonId,
+      moduleId: moduleId,
+    });
     if (!lesson) {
       throw new AppError("Lesson not found", 404);
     }
 
     // Remove _id to let MongoDB generate a proper ObjectId
     const { _id, ...contentDataWithoutId } = contentData;
-    
+
     // Create the content based on type
     let content;
     if (contentData.type === "video") {
@@ -1139,21 +1192,20 @@ export const AddSingleCourseContent = async (
     await content.save();
 
     // Update lesson with new content ID
-    await CourseLessonModel.findByIdAndUpdate(
-      lessonId,
-      { 
-        $push: { contentIds: content._id },
-        updatedAt: new Date()
-      }
+    await CourseLessonModel.findByIdAndUpdate(lessonId, {
+      $push: { contentIds: content._id },
+      updatedAt: new Date(),
+    });
+
+    console.log(
+      `Content added successfully to lesson ${lessonId} in module ${moduleId} in course ${courseId}:`,
+      content._id
     );
 
-    console.log(`Content added successfully to lesson ${lessonId} in module ${moduleId} in course ${courseId}:`, content._id);
-    
     return {
       success: true,
-      content: content
+      content: content,
     };
-
   } catch (error) {
     if (error instanceof AppError) {
       throw error;
@@ -1183,7 +1235,7 @@ export const UpdateSingleCourseContent = async (
   lessonId: string,
   contentId: string,
   contentData: any
-): Promise<{success: boolean, content: any}> => {
+): Promise<{ success: boolean; content: any }> => {
   try {
     // Validate course exists
     const course = await CourseModel.findById(courseId);
@@ -1193,7 +1245,10 @@ export const UpdateSingleCourseContent = async (
 
     // Validate module exists
     // First try with courseId (for new modules), then without (for backward compatibility)
-    let module = await CourseModuleModel.findOne({ _id: moduleId, courseId: courseId });
+    let module = await CourseModuleModel.findOne({
+      _id: moduleId,
+      courseId: courseId,
+    });
     if (!module) {
       module = await CourseModuleModel.findOne({ _id: moduleId });
     }
@@ -1202,14 +1257,17 @@ export const UpdateSingleCourseContent = async (
     }
 
     // Validate lesson exists
-    const lesson = await CourseLessonModel.findOne({ _id: lessonId, moduleId: moduleId });
+    const lesson = await CourseLessonModel.findOne({
+      _id: lessonId,
+      moduleId: moduleId,
+    });
     if (!lesson) {
       throw new AppError("Lesson not found", 404);
     }
 
     // Remove _id from update data to avoid conflicts
     const { _id, ...updateData } = contentData;
-    
+
     // Update the content
     const updatedContent = await ContentModel.findOneAndUpdate(
       { _id: contentId, lessonId: lessonId, moduleId: moduleId },
@@ -1221,13 +1279,15 @@ export const UpdateSingleCourseContent = async (
       throw new AppError("Content not found", 404);
     }
 
-    console.log(`Content updated successfully in lesson ${lessonId} in module ${moduleId} in course ${courseId}:`, contentId);
-    
+    console.log(
+      `Content updated successfully in lesson ${lessonId} in module ${moduleId} in course ${courseId}:`,
+      contentId
+    );
+
     return {
       success: true,
-      content: updatedContent
+      content: updatedContent,
     };
-
   } catch (error) {
     if (error instanceof AppError) {
       throw error;
@@ -1255,7 +1315,7 @@ export const DeleteSingleCourseContent = async (
   moduleId: string,
   lessonId: string,
   contentId: string
-): Promise<{success: boolean, message: string}> => {
+): Promise<{ success: boolean; message: string }> => {
   try {
     // Validate course exists
     const course = await CourseModel.findById(courseId);
@@ -1265,7 +1325,10 @@ export const DeleteSingleCourseContent = async (
 
     // Validate module exists
     // First try with courseId (for new modules), then without (for backward compatibility)
-    let module = await CourseModuleModel.findOne({ _id: moduleId, courseId: courseId });
+    let module = await CourseModuleModel.findOne({
+      _id: moduleId,
+      courseId: courseId,
+    });
     if (!module) {
       module = await CourseModuleModel.findOne({ _id: moduleId });
     }
@@ -1274,7 +1337,10 @@ export const DeleteSingleCourseContent = async (
     }
 
     // Validate lesson exists
-    const lesson = await CourseLessonModel.findOne({ _id: lessonId, moduleId: moduleId });
+    const lesson = await CourseLessonModel.findOne({
+      _id: lessonId,
+      moduleId: moduleId,
+    });
     if (!lesson) {
       throw new AppError("Lesson not found", 404);
     }
@@ -1283,7 +1349,7 @@ export const DeleteSingleCourseContent = async (
     const deletedContent = await ContentModel.findOneAndDelete({
       _id: contentId,
       lessonId: lessonId,
-      moduleId: moduleId
+      moduleId: moduleId,
     });
 
     if (!deletedContent) {
@@ -1291,21 +1357,20 @@ export const DeleteSingleCourseContent = async (
     }
 
     // Remove content ID from lesson
-    await CourseLessonModel.findByIdAndUpdate(
-      lessonId,
-      { 
-        $pull: { contentIds: contentId },
-        updatedAt: new Date()
-      }
+    await CourseLessonModel.findByIdAndUpdate(lessonId, {
+      $pull: { contentIds: contentId },
+      updatedAt: new Date(),
+    });
+
+    console.log(
+      `Content deleted successfully from lesson ${lessonId} in module ${moduleId} in course ${courseId}:`,
+      contentId
     );
 
-    console.log(`Content deleted successfully from lesson ${lessonId} in module ${moduleId} in course ${courseId}:`, contentId);
-    
     return {
       success: true,
-      message: "Content deleted successfully"
+      message: "Content deleted successfully",
     };
-
   } catch (error) {
     if (error instanceof AppError) {
       throw error;

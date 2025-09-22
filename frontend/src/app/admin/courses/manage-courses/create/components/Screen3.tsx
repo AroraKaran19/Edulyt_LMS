@@ -1,5 +1,4 @@
 import Container from "@/app/admin/components/ui/Container";
-import FlexBox from "@/components/ui/FlexBox";
 import React from "react";
 import { useCourseContext } from "../../../reducers/course/providers/CourseReducerProvider";
 import UploadMediaContainer from "@/components/ui/container/UploadMediaContainer";

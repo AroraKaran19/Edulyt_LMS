@@ -7,6 +7,7 @@ import VideoShowcase from "./VideoShowcase";
 import { Course } from "@/types";
 
 const CourseOverviewSection = ({ course }: { course: Course }) => {
+
   return (
     <SectionContainer id="course-overview">
       <TabSwitcher

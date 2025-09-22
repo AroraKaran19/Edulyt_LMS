@@ -18,7 +18,7 @@ const CourseCard = ({
 }) => {
   const router = useRouter();
   const originalPrice =
-    course.plans.essential?.price || course.plans.elite?.price || 0;
+    course.plans?.essential?.price || course.plans?.elite?.price || 0;
   const hasActiveDiscount =
     !!course.discount && course.discount.isActive && course.discount.value > 0;
   let discountedPrice = originalPrice;
@@ -73,22 +73,22 @@ const CourseCard = ({
           {course?.title}
         </p>
         <RatingContainer
-          reviewCount={course?.reviews.length}
+          reviewCount={course?.analytics?.totalReviews || 0}
           totalRating={course.analytics?.totalRatings || 0}
           className="mt-2 text-xs"
           courseSlug={course?.slug}
         />
         <div className="instructors mt-2 flex gap-2 select-none mb-2 flex-col sm:flex-row items-start sm:items-center">
-          {course?.instructor.map((instructor, index) => {
+          {course?.instructor?.map((instructor, index) => {
             if (index < 2) {
               return <InstructorCard key={index} instructor={instructor} />;
             }
           })}
-          {course?.instructor.length > 2 && (
+          {course?.instructor?.length > 2 && (
             <div className="instructor-count flex gap-0.25 items-center bg-[#EEEEEE] rounded-full p-1">
               <Plus className="w-3 h-3 text-text-primary" fill="#2B1508" />
               <p className="text-xs font-bold text-text-primary">
-                {course?.instructor.length - 2}
+                {course?.instructor?.length - 2}
               </p>
             </div>
           )}

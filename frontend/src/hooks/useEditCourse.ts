@@ -1,5 +1,4 @@
 import { useState, useCallback } from "react";
-import { Course } from "@/types/course";
 
 export interface EditCourseResponse {
   success: boolean;

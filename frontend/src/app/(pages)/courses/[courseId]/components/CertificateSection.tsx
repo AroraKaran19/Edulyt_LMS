@@ -1,9 +1,7 @@
 "use client";
 import SectionContainer from "@/components/ui/course/SectionContainer";
-import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import { Course } from "@/types";
 import { Crown } from "lucide-react";
-import Link from "next/link";
 import React from "react";
 import CertificateCarousel from "../../components/CertificateCarousel";
 import PlanCard from "./PlanCard";
@@ -30,7 +28,7 @@ const CertificateSection = ({
   }[] = [];
 
   // Only add Essential plan if it exists
-  if (course.plans.essential) {
+  if (course.plans?.essential) {
     plans.push({
       type: "essential",
       icon: <Crown className="size-5" />,
@@ -58,7 +56,7 @@ const CertificateSection = ({
   }
 
   // Only add Elite plan if it exists
-  if (course.plans.elite) {
+  if (course.plans?.elite) {
     plans.push({
       type: "elite",
       icon: <Crown className="size-5" />,

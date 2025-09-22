@@ -20,7 +20,7 @@ interface EmptyLessonsStateProps {
   isModuleSaved?: boolean;
 }
 
-export const EmptyLessonsState: React.FC<EmptyLessonsStateProps> = ({
+export const EmptyLessonsState: React.FC<EmptyLessonsStateProps> = ({ 
   isModuleSaved = true 
 }) => {
   return (

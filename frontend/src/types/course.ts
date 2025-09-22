@@ -70,6 +70,8 @@ export interface VideoContent extends BaseContent {
   sources: {
     quality: "1080p" | "720p" | "480p" | "360p";
     videoUrl: string;
+    videoSource?: "upload" | "url";
+    videoS3Key?: string;
   }[];
   thumbnailUrl?: string;
   duration?: number; // in seconds
@@ -246,6 +248,7 @@ export interface Course {
   // Analytics
   analytics?: {
     totalRatings: number;
+    totalReviews: number;
     totalEnrollments: number;
     activeEnrollments: number;
     completionRate: number;

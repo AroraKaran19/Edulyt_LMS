@@ -7,17 +7,15 @@ import { AxiosError } from "axios";
 import React from "react";
 import PreviewCourse from "./PreviewCourse";
 
-async function fetchCourse(
-  courseSlug: string,
-): Promise<{
+async function fetchCourse(courseId: string): Promise<{
   status: number;
   course: Course | null;
 }> {
   try {
-    const response = await fetcher(`${ENDPOINTS.courses.slug}/${courseSlug}`);
+    const response = await fetcher(`${ENDPOINTS.courses.slug}/${courseId}`);
     return {
       status: response?.status,
-      course: response?.data?.course || null
+      course: response?.data || null,
     };
   } catch (error) {
     if (error instanceof AxiosError) {

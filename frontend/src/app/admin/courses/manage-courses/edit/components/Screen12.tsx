@@ -3,7 +3,6 @@ import { useRouter } from "next/navigation";
 import Container from "@/app/admin/components/ui/Container";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
-import { useCourses } from "@/hooks/useCourses";
 import { useEditCourse } from "@/hooks/useEditCourse";
 import { useEditCourseContext } from "../../../reducers/course/providers/EditCourseReducerProvider";
 import { draftUtils } from "../utils/draftUtils";
@@ -11,14 +10,12 @@ import { useScreen } from "../contexts/ScreenContext";
 import { CourseModule } from "@/types/course";
 import {
   BookOpen,
-  Plus,
   CheckCircle,
   AlertCircle,
   ArrowLeft,
   Upload,
   FileText,
   Video,
-  Clock,
   Target,
 } from "lucide-react";
 
@@ -209,7 +206,7 @@ const Screen12 = () => {
               </h1>
               
               <p className="text-lg text-gray-600 mb-6">
-                Your course has been updated and is ready for students. You'll be redirected to the course management page shortly.
+                Your course has been updated and is ready for students. You&apos;ll be redirected to the course management page shortly.
               </p>
               
               <div className="flex justify-center gap-4">
@@ -370,7 +367,7 @@ const Screen12 = () => {
             <BookOpen className="w-12 h-12 mx-auto text-gray-300 mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">No Modules Found</h3>
             <p className="text-gray-500 mb-6">
-              This course doesn't have any modules yet. You can add modules through the course management interface.
+              This course doesn&apos;t have any modules yet. You can add modules through the course management interface.
             </p>
           </div>
         )}

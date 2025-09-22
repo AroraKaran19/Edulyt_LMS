@@ -6,7 +6,7 @@ import InstructorCarousel from "../../../components/InstructorCarousel";
 
 const OverviewSection = ({ course }: { course: Course }) => {
   const totalDuration = useMemo(() => {
-    return formatDuration(course.modules.reduce((acc, module) => acc + module.lessons.reduce((lessonAcc, lesson) => lessonAcc + lesson.contents.reduce((contentAcc, content) => {
+    return formatDuration((course.modules || []).reduce((acc, module) => acc + (module.lessons || []).reduce((lessonAcc, lesson) => lessonAcc + (lesson.contents || []).reduce((contentAcc, content) => {
       if (content.type === 'video' && content.duration) {
         return contentAcc + content.duration;
       }
@@ -16,15 +16,15 @@ const OverviewSection = ({ course }: { course: Course }) => {
 
   const formattedReviewsCount = useMemo(
     () =>
-      course?.reviews?.length && course?.reviews?.length >= 1000000
-        ? `${(course?.reviews?.length / 1000000)
+      course?.analytics?.totalReviews && course?.analytics?.totalReviews >= 1000000
+        ? `${(course?.analytics?.totalReviews / 1000000)
             .toFixed(1)
             .replace(/\.0$/, "")}M`
-        : course?.reviews?.length && course?.reviews?.length >= 1000
-        ? `${(course?.reviews?.length / 1000)
+        : course?.analytics?.totalReviews && course?.analytics?.totalReviews >= 1000
+        ? `${(course?.analytics?.totalReviews / 1000)
             .toFixed(1)
             .replace(/\.0$/, "")}K`
-        : course?.reviews?.length?.toString(),
+        : course?.analytics?.totalReviews?.toString(),
     [course]
   );
 
@@ -45,13 +45,12 @@ const OverviewSection = ({ course }: { course: Course }) => {
           <div className="course-rating w-full flex flex-wrap gap-1 md:gap-2 items-center justify-center md:justify-start">
             <Star className="size-4 md:size-5 text-[#F7AD24]" fill="#F7AD24" />
             <span className="text-base md:text-2xl font-normal text-text-primary font-coolvetica tracking-wide">
-              {/* TODO: Add rating */}
-              {course?.totalRatings}
+              {course?.analytics?.averageRating}
             </span>
             <span className="text-sm md:text-base font-normal text-text-primary">
               (
-                {course?.reviews?.length &&
-              course?.reviews?.length > 100
+                {course?.analytics?.totalReviews &&
+              course?.analytics?.totalReviews > 100
                 ? `(more than ${formattedReviewsCount} reviews)`
                 : formattedReviewsCount === "1"
                 ? `${formattedReviewsCount} review`

@@ -113,6 +113,7 @@ export enum CourseActionType {
   ADD_COURSE_TESTIMONIAL = "ADD_COURSE_TESTIMONIAL",
   UPDATE_COURSE_TESTIMONIAL = "UPDATE_COURSE_TESTIMONIAL",
   DELETE_COURSE_TESTIMONIAL = "DELETE_COURSE_TESTIMONIAL",
+  REMOVE_COURSE_TESTIMONIAL = "REMOVE_COURSE_TESTIMONIAL",
   REORDER_COURSE_FAQS = "REORDER_COURSE_FAQS",
 
   // Quiz Management
@@ -513,6 +514,11 @@ export const courseActions = {
   deleteCourseTestimonial: (testimonialIndex: number) => ({
     type: CourseActionType.DELETE_COURSE_TESTIMONIAL,
     payload: testimonialIndex,
+  }),
+
+  removeCourseTestimonial: (testimonialId: Testimonial["_id"]) => ({
+    type: CourseActionType.REMOVE_COURSE_TESTIMONIAL,
+    payload: testimonialId,
   }),
 
   // Quiz Management

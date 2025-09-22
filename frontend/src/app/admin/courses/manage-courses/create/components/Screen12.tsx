@@ -3,7 +3,6 @@ import { useRouter } from "next/navigation";
 import Container from "@/app/admin/components/ui/Container";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
-import { useCourseContext } from "../../../reducers/course/providers/CourseReducerProvider";
 import { draftUtils } from "../utils/draftUtils";
 import { useScreen } from "../contexts/ScreenContext";
 import { useCourseModules } from "./modules/hooks/useCourseModules";
@@ -119,7 +118,7 @@ const Screen12 = () => {
               </h1>
 
               <p className="text-lg text-gray-600 mb-6">
-                Your course has been created and is ready for students. You'll
+                Your course has been created and is ready for students. You&apos;ll
                 be redirected to the course management page shortly.
               </p>
 

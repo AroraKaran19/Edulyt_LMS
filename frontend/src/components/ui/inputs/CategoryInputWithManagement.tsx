@@ -4,7 +4,6 @@ import { Plus, X, Edit3, Trash2, Check, AlertCircle } from "lucide-react";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import Input from "@/components/ui/inputs/Input";
-import TextArea from "@/components/ui/inputs/TextArea";
 
 interface CategoryInputWithManagementProps {
   label: string;
@@ -17,7 +16,7 @@ interface CategoryInputWithManagementProps {
 
 const CategoryInputWithManagement: React.FC<
   CategoryInputWithManagementProps
-> = ({ label, name, value, setChange, className = "", required = false }) => {
+> = ({ label, value, setChange, className = "", required = false }) => {
   const {
     getActiveCategories,
     createCategory,
