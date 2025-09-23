@@ -32,7 +32,8 @@ const EnrollmentDetails = () => {
         },
     ]
     return (
-        <div className="mb-6">
+        // <div className="mb-6">
+        <div className="flex-6 bg-white rounded-3xl p-6">
             <h3 className="text-xl font-normal font-coolvetica text-[#2B1508] mb-2">Enrolment</h3>
             <p className="text-base text-[#2B1508] font-plus-jakarta font-normal mb-8">Select your enrolment preferences.</p>
 
