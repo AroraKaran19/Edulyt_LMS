@@ -1,10 +1,12 @@
 import { OrangeButton } from '@/components/ui'
 import Image from 'next/image'
 import React from 'react'
-import EnrollmentDetails from './EnrollmentDetails'
 
-const ApplicationDetails = () => {
+interface ApplicationDetailsProps {
+    onNext: () => void;
+  }
 
+  const ApplicationDetails = ({ onNext }: ApplicationDetailsProps) => {
     return (
         <div className="flex-6 bg-white rounded-3xl p-6">
             {/* Enter Your Details Section */}
@@ -91,13 +93,15 @@ const ApplicationDetails = () => {
             </div>
 
             {/* Enroll Now Button */}
-            <OrangeButton className="w-full text-base font-bold py-3 px-6 font-plus-jakarta" glow>
+            <OrangeButton 
+            className="w-full text-base font-bold py-3 px-6 font-plus-jakarta" 
+            glow
+            onClick={onNext}
+            >
                 Enroll now!
             </OrangeButton>
-
-            {/* Enrollment section */}
-            {/* <EnrollmentDetails /> */}
         </div>
+        
     )
 }
 
