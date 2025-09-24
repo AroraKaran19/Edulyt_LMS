@@ -1,12 +1,50 @@
+"use client";
 import { OrangeButton } from '@/components/ui'
 import Image from 'next/image'
-import React from 'react'
+import React, { useState } from 'react'
 
 interface ApplicationDetailsProps {
     onNext: () => void;
-  }
+}
 
-  const ApplicationDetails = ({ onNext }: ApplicationDetailsProps) => {
+const ApplicationDetails = ({ onNext }: ApplicationDetailsProps) => {
+    const [formData, setFormData] = useState<{ [key: string]: string }>({
+        fullName: '',
+        email: '',
+        phone: '',
+        collegeName: '',
+        degreeName: '',
+        fatherOccupation: '',
+    });
+    const [errors, setErrors] = useState<{ [key: string]: string }>({});
+
+    const handleChange = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
+        let value = e.target.value;
+        if (field === 'phone') {
+            value = value.replace(/\D/g, '').slice(0, 10);
+        }
+        setFormData(prev => ({ ...prev, [field]: value }));
+    };
+
+    const handleSubmit = () => {
+        const nextErrors: { [key: string]: string } = {};
+        if (!formData.fullName.trim()) nextErrors.fullName = 'Full name is required.';
+        if (!formData.email.trim()) {
+            nextErrors.email = 'Email is required.';
+        } else if (!/^\S+@\S+\.\S+$/.test(formData.email)) {
+            nextErrors.email = 'Enter a valid email address.';
+        }
+        if (formData.phone.length !== 10) nextErrors.phone = 'Phone number must be 10 digits.';
+        if (!formData.collegeName.trim()) nextErrors.collegeName = 'College name is required.';
+        if (!formData.degreeName.trim()) nextErrors.degreeName = 'Degree name is required.';
+        if (!formData.fatherOccupation.trim()) nextErrors.fatherOccupation = 'Father occupation is required.';
+
+        setErrors(nextErrors);
+        if (Object.keys(nextErrors).length === 0) {
+            onNext();
+        }
+    };
+
     return (
         <div className="flex-6 bg-white rounded-3xl p-6">
             {/* Enter Your Details Section */}
@@ -21,8 +59,12 @@ interface ApplicationDetailsProps {
                         <input
                             type="text"
                             placeholder="Enter your name here"
+                            value={formData.fullName}
+                            onChange={handleChange('fullName')}
                             className="w-full px-4 py-3 bg-[#F5F5F5] rounded-xl border border-[#00000026]  shadow-[0px_4px_10.7px_0px_#00000012_inset] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            aria-invalid={!!errors.fullName}
                         />
+                        {errors.fullName && <p className="text-red-600 text-xs mt-1">{errors.fullName}</p>}
                     </div>
 
                     {/* Email Address */}
@@ -31,8 +73,12 @@ interface ApplicationDetailsProps {
                         <input
                             type="email"
                             placeholder="Enter your email here"
+                            value={formData.email}
+                            onChange={handleChange('email')}
                             className="w-full px-4 py-3 bg-[#F5F5F5] rounded-xl border border-[#00000026]  shadow-[0px_4px_10.7px_0px_#00000012_inset] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            aria-invalid={!!errors.email}
                         />
+                        {errors.email && <p className="text-red-600 text-xs mt-1">{errors.email}</p>}
                     </div>
 
                     {/* Phone Number */}
@@ -44,10 +90,17 @@ interface ApplicationDetailsProps {
                             </div>
                             <input
                                 type="tel"
+                                inputMode="numeric"
+                                pattern="[0-9]{10}"
+                                maxLength={10}
+                                value={formData.phone}
+                                onChange={handleChange('phone')}
                                 placeholder="Enter your number here"
                                 className="flex-1 px-4 py-3 bg-[#F5F5F5] rounded-xl border border-[#00000026]  shadow-[0px_4px_10.7px_0px_#00000012_inset] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                aria-invalid={!!errors.phone}
                             />
                         </div>
+                        {errors.phone && <p className="text-red-600 text-xs mt-1">{errors.phone}</p>}
                     </div>
                 </div>
             </div>
@@ -66,8 +119,12 @@ interface ApplicationDetailsProps {
                         <input
                             type="text"
                             placeholder="Enter your college name here"
+                            value={formData.collegeName}
+                            onChange={handleChange('collegeName')}
                             className="w-full px-4 py-3 bg-[#F5F5F5] rounded-xl border border-[#00000026]  shadow-[0px_4px_10.7px_0px_#00000012_inset] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            aria-invalid={!!errors.collegeName}
                         />
+                        {errors.collegeName && <p className="text-red-600 text-xs mt-1">{errors.collegeName}</p>}
                     </div>
 
                     {/* Degree Name */}
@@ -76,8 +133,12 @@ interface ApplicationDetailsProps {
                         <input
                             type="email"
                             placeholder="Enter your degree name here"
+                            value={formData.degreeName}
+                            onChange={handleChange('degreeName')}
                             className="w-full px-4 py-3 bg-[#F5F5F5] rounded-xl border border-[#00000026]  shadow-[0px_4px_10.7px_0px_#00000012_inset] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            aria-invalid={!!errors.degreeName}
                         />
+                        {errors.degreeName && <p className="text-red-600 text-xs mt-1">{errors.degreeName}</p>}
                     </div>
 
                     {/* Father Occupation */}
@@ -86,22 +147,26 @@ interface ApplicationDetailsProps {
                         <input
                             type="email"
                             placeholder="Enter your father occupation here"
+                            value={formData.fatherOccupation}
+                            onChange={handleChange('fatherOccupation')}
                             className="w-full px-4 py-3 bg-[#F5F5F5] rounded-xl border border-[#00000026]  shadow-[0px_4px_10.7px_0px_#00000012_inset] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            aria-invalid={!!errors.fatherOccupation}
                         />
+                        {errors.fatherOccupation && <p className="text-red-600 text-xs mt-1">{errors.fatherOccupation}</p>}
                     </div>
                 </div>
             </div>
 
             {/* Enroll Now Button */}
-            <OrangeButton 
-            className="w-full text-base font-bold py-3 px-6 font-plus-jakarta" 
-            glow
-            onClick={onNext}
+            <OrangeButton
+                className="w-full text-base font-bold py-3 px-6 font-plus-jakarta"
+                glow
+                onClick={handleSubmit}
             >
                 Enroll now!
             </OrangeButton>
         </div>
-        
+
     )
 }
 
