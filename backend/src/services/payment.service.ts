@@ -107,7 +107,6 @@ export class PaymentService {
       }
 
       let amount = plan?.price || 0;
-      console.log(amount)
 
       // Apply course-level discount first (if available and active)
       if (course.discount && course.discount.isActive !== false) {

@@ -37,7 +37,10 @@ export const useFAQ = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>("");
 
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  if (!baseUrl) {
+    throw new Error("NEXT_PUBLIC_API_BASE_URL is not defined");
+  }
 
   /**
    * Get all FAQs with pagination and search

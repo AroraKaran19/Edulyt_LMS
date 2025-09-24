@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from "express";
+import { Request, Response, NextFunction, response } from "express";
 import { MongoError } from "mongodb";
 import { Error as MongooseError } from "mongoose";
 
@@ -226,10 +226,13 @@ export const sendSuccessResponse = (
   message: string = "Success",
   statusCode: number = 200
 ) => {
+  // If data is an object and has a 'data' property, spread it to avoid nesting
+  const responseData = data && typeof data === 'object' && 'data' in data ? data.data : data;
+  
   res.status(statusCode).json({
     success: true,
     message,
-    data,
+    data: responseData,
     timestamp: new Date().toISOString(),
   });
 };

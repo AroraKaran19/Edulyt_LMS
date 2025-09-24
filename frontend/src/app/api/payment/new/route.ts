@@ -11,15 +11,8 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    const baseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL || "").replace(
-      /\/+$/,
-      ""
-    );
-    const endpoint = /\/api$/i.test(baseUrl)
-      ? `${baseUrl}/payment/create-order`
-      : `${baseUrl}/api/payment/create-order`;
 
-    const payment = await axios.post(endpoint, { userId, courseId, planType });
+    const payment = await axios.post(`${process.env.NEXT_PUBLIC_API_BASE_URL}/payment/create-order`, { userId, courseId, planType });
 
     if (!payment.data.success) {
       console.error(payment.data.message);
@@ -29,14 +22,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (payment.data.token) {
+    if (payment.data.data.token) {
       const res = NextResponse.json({
         success: true,
         status: 200,
-        redirectUrl: "/paytm-redirect?orderId=" + payment.data.orderId,
-        orderId: payment.data.orderId,
+        redirectUrl: "/paytm-redirect?orderId=" + payment.data.data.orderId,
+        orderId: payment.data.data.orderId,
       });
-      res.cookies.set("paymentToken", payment.data.token, {
+      res.cookies.set("paymentToken", payment.data.data.token, {
         httpOnly: false,
         secure: process.env.NODE_ENV === "production",
         sameSite: "strict",
@@ -51,7 +44,7 @@ export async function POST(request: NextRequest) {
       message: "Payment failed",
     });
   } catch (error: any) {
-    const status = error?.response?.status || 500;
+    const status = error?.response?.data?.status || error?.response?.status || 500;
     const message =
       error?.response?.data?.message || error?.message || "Error creating payment";
     console.error("Error creating payment", message);

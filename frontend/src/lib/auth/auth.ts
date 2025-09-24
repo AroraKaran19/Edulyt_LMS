@@ -116,18 +116,18 @@ export const authOptions: AuthOptions = {
               }),
           };
 
-          let response = await axios.post(
+          const response = await axios.post(
             `${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/oauth-signin`,
             oauthData
           );
 
           if (response.status === 200 || response.status === 201) {
             // Check if response.data and response.data.user exist before accessing properties
-            if (response.data.data && response.data.data.user && response.data.data.user._id) {
-              user.id = response.data.data.user._id;
-              user.accessToken = response.data.data.accessToken;
-              user.refreshToken = response.data.data.refreshToken;
-              user.username = response.data.data.user.username;
+            if (response.data && response.data.user && response.data.user._id) {
+              user.id = response.data.user._id;
+              user.accessToken = response.data.accessToken;
+              user.refreshToken = response.data.refreshToken;
+              user.username = response.data.user.username;
               return true;
             } else {
               console.error("Invalid response structure from backend:", response.data);
