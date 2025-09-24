@@ -102,13 +102,11 @@ export class AuthController {
           profilePicture
         );
       
-      const data = {
+      sendSuccessResponse(res, {
         user,
         accessToken,
         refreshToken,
-      };
-      
-      sendSuccessResponse(res, data, "User created successfully");
+      }, "User created successfully");
       return;
     }
     
@@ -117,13 +115,11 @@ export class AuthController {
       const { accessToken, refreshToken } =
         await this.authService.oauthSignIn(email, fullName, provider);
       
-      const data = {
+      sendSuccessResponse(res, {
         user,
         accessToken,
         refreshToken,
-      };
-      
-      sendSuccessResponse(res, data, "Login successful");
+      }, "Login successful");
     } else {
       // return error
       throw new AppError("User already registered with different provider!", 401);
