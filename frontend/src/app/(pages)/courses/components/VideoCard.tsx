@@ -19,17 +19,17 @@ const VideoCard = ({
 }) => {
   const [showLessons, setShowLessons] = useState(false);
 
-  const totalDuration = module.lessons.reduce(
+  const totalDuration = module.lessons?.reduce(
     (moduleAcc, lesson) =>
       moduleAcc +
-      lesson.contents.reduce((lessonAcc, content) => {
+      (lesson.contents?.reduce((lessonAcc, content) => {
         if (content.type === "video" && content.duration) {
           return lessonAcc + (content.duration || 0);
         }
         return lessonAcc;
-      }, 0),
+      }, 0) || 0),
     0
-  );
+  ) || 0;
 
   return (
     <div
@@ -51,7 +51,7 @@ const VideoCard = ({
           />
           <div className="video-play-button absolute top-3 left-3 bg-white/80 rounded-lg p-1 flex items-center justify-center">
             <span className="text-sm md:text-base font-bold text-black">
-              {module.lessons.length} Lessons
+              {module.lessons?.length ?? 0} Lessons
             </span>
           </div>
         </div>
@@ -96,7 +96,7 @@ const VideoCard = ({
         className="flex items-center justify-between w-full p-2 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
       >
         <span className="text-sm font-medium text-gray-700">
-          {showLessons ? "Hide" : "Show"} Lessons ({module.lessons.length})
+          {showLessons ? "Hide" : "Show"} Lessons ({module.lessons?.length ?? 0})
         </span>
         {showLessons ? (
           <ChevronUp className="w-4 h-4 text-gray-500" />
@@ -108,13 +108,13 @@ const VideoCard = ({
       {/* Lessons List */}
       {showLessons && (
         <div className="lessons-list space-y-2 pl-4 border-l-2 border-orange-200">
-          {module.lessons.map((lesson, lessonIndex) => {
-            const lessonDuration = lesson.contents.reduce((acc, content) => {
+          {module.lessons?.map((lesson, lessonIndex) => {
+            const lessonDuration = lesson.contents?.reduce((acc, content) => {
               if (content.type === "video" && content.duration) {
                 return acc + content.duration;
               }
               return acc;
-            }, 0);
+            }, 0) || 0;
 
             return (
               <div

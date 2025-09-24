@@ -7,7 +7,7 @@ import DropDown from "@/components/ui/dropdown/DropDown";
 import TagInput from "@/components/ui/inputs/TagInput";
 import ScreenNavigation from "./shared/ScreenNavigation";
 import { useScreen } from "../contexts/ScreenContext";
-import { Target, BookOpen, Users, Globe } from "lucide-react";
+import { Target, BookOpen, Users } from "lucide-react";
 
 const Screen2 = () => {
   const { state, actions } = useCourseContext();

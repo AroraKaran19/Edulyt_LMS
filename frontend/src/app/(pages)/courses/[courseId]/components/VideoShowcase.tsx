@@ -1,9 +1,10 @@
 import VideoCard from "@/app/(pages)/courses/components/VideoCard";
 import { CourseModule } from "@/types";
 import React from "react";
-import { BookOpen, Lock } from "lucide-react";
+import { BookOpen } from "lucide-react";
 
 const VideoShowcase = ({ modules }: { modules: CourseModule[] | [] }) => {
+  console.log(modules);
   return (
     <div className="video-showcase w-full flex flex-col gap-6">
       {modules.length > 0 ? (

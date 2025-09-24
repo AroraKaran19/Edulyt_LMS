@@ -30,6 +30,7 @@ const CoursePage = ({ course }: { course: Course }) => {
   );
 
   if (!course) return null;
+
   return (
     <div
       className={cn(

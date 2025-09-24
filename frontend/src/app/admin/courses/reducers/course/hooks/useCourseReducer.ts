@@ -811,6 +811,14 @@ export const useCourseReducer = () => {
       },
       [enhancedDispatch]
     ),
+
+    removeCourseTestimonial: useCallback(
+      (testimonialId: string) => {
+        const action = courseActions.removeCourseTestimonial(testimonialId);
+        return enhancedDispatch(action);
+      },
+      [enhancedDispatch]
+    ),
   };
 
   // Utility functions

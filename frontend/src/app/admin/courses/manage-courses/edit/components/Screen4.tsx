@@ -1,5 +1,4 @@
 import Container from "@/app/admin/components/ui/Container";
-import FlexBox from "@/components/ui/FlexBox";
 import Input from "@/components/ui/inputs/Input";
 import React, { useMemo } from "react";
 import { useEditCourseContext } from "../../../reducers/course/providers/EditCourseReducerProvider";

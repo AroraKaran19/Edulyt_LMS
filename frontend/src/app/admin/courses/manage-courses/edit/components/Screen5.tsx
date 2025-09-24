@@ -454,7 +454,7 @@ const Screen5 = () => {
                         Plan Features <span className="text-red-500">*</span>
                       </h5>
                       <p className="text-xs text-gray-600">
-                        Define what's included in this plan
+                        Define what&apos;s included in this plan
                       </p>
                     </div>
                     <OrangeButton
@@ -474,7 +474,8 @@ const Screen5 = () => {
                         No features added yet
                       </p>
                       <p className="text-xs text-gray-400">
-                        Click "Add Feature" to define what's included
+                        Click &quot;Add Feature&quot; to define what&apos;s
+                        included
                       </p>
                     </div>
                   ) : (
@@ -643,7 +644,7 @@ const Screen5 = () => {
                         Plan Features <span className="text-red-500">*</span>
                       </h5>
                       <p className="text-xs text-gray-600">
-                        Define what's included in this plan
+                        Define what&apos;s included in this plan
                       </p>
                     </div>
                     <OrangeButton
@@ -663,7 +664,7 @@ const Screen5 = () => {
                         No features added yet
                       </p>
                       <p className="text-xs text-gray-400">
-                        Click "Add Feature" to define what's included
+                        Click &quot;Add Feature&quot; to define what&apos;s included
                       </p>
                     </div>
                   ) : (

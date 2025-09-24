@@ -155,7 +155,7 @@ export const generateMetaDescription = (course: Course): string => {
  * Max: 10 keywords for optimal SEO
  */
 export const generateSEOKeywords = (course: Course): string[] => {
-  const { title, category, skills, tags, skillLevel, audience } = course;
+  const { title, skills, tags, skillLevel, audience } = course;
   
   const keywords = new Set<string>();
   

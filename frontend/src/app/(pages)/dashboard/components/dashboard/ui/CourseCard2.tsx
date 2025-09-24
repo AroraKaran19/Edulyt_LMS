@@ -11,11 +11,11 @@ const CourseCard2 = ({ course }: { course: Course }) => {
 
   const router = useRouter();
 
-  const totalLessons = course.modules.reduce(
-    (acc, module) => acc + module.lessons.length,
+  const totalLessons = (course?.modules || []).reduce(
+    (acc, module) => acc + (module.lessons || []).length,
     0
   );
-  const totalModules = course.modules.length;
+  const totalModules = (course?.modules || []).length;
 
   return (
     <FlexBox

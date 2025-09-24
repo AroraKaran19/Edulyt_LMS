@@ -186,7 +186,7 @@ const CourseHeader = ({
                 fill="#F7AD24"
               />
               <span className="text-base md:text-2xl font-normal text-text-primary font-coolvetica tracking-wide">
-                0 {/* TODO: Add rating */}
+                {course?.analytics?.averageRating || 0}
               </span>
               <span className="text-sm md:text-base font-normal text-text-primary">
                 (

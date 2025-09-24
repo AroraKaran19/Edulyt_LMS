@@ -5,12 +5,12 @@ interface EmptyModulesStateProps {
   onAddModule: () => void;
 }
 
-export const EmptyModulesState: React.FC<EmptyModulesStateProps> = ({ onAddModule }) => {
+export const EmptyModulesState: React.FC<EmptyModulesStateProps> = () => {
   return (
     <div className="text-center py-8 text-gray-500">
       <BookOpen className="w-12 h-12 mx-auto mb-3 text-gray-300" />
       <p>No modules added yet</p>
-      <p className="text-sm">Click "Add Module" to get started</p>
+      <p className="text-sm">Click &quot;Add Module&quot; to get started</p>
     </div>
   );
 };
@@ -20,8 +20,7 @@ interface EmptyLessonsStateProps {
   isModuleSaved?: boolean;
 }
 
-export const EmptyLessonsState: React.FC<EmptyLessonsStateProps> = ({ 
-  onAddLesson, 
+export const EmptyLessonsState: React.FC<EmptyLessonsStateProps> = ({
   isModuleSaved = true 
 }) => {
   return (
@@ -29,7 +28,7 @@ export const EmptyLessonsState: React.FC<EmptyLessonsStateProps> = ({
       <BookOpen className="w-8 h-8 mx-auto mb-2 text-gray-300" />
       <p className="text-sm">No lessons added yet</p>
       {isModuleSaved ? (
-        <p className="text-xs">Click "Add Lesson" to get started</p>
+        <p className="text-xs">Click &quot;Add Lesson&quot; to get started</p>
       ) : (
         <p className="text-xs text-amber-600">Save the module first to add lessons</p>
       )}

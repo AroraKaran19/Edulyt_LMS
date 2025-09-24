@@ -155,8 +155,19 @@ const courseLessonSchema = new mongoose.Schema<CourseLesson>(
     completedAt: { type: Date },
     isLocked: { type: Boolean, default: false, required: true },
   },
-  { timestamps: true }
+  { 
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true }
+  }
 );
+
+// Virtual field for contents
+courseLessonSchema.virtual('contents', {
+  ref: 'Content',
+  localField: 'contentIds',
+  foreignField: '_id'
+});
 
 // ===================
 // Course Module Schema
@@ -194,8 +205,23 @@ const courseModuleSchema = new mongoose.Schema<CourseModule>(
     isLocked: { type: Boolean, default: false, required: true },
     isActive: { type: Boolean, default: true, required: true },
   },
-  { timestamps: true }
+  { 
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true }
+  }
 );
+
+// ===================
+// Virtual Fields
+// ===================
+
+// Virtual field for lessons
+courseModuleSchema.virtual('lessons', {
+  ref: 'CourseLesson',
+  localField: 'lessonIds',
+  foreignField: '_id'
+});
 
 // ===================
 // Indexes

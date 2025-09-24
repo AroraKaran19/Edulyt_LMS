@@ -18,12 +18,17 @@ const OverviewSection = ({ course }: { course: Course }) => {
     () =>
       course?.analytics?.totalReviews && course?.analytics?.totalReviews >= 1000000
         ? `${(course?.analytics?.totalReviews / 1000000)
+      course?.analytics?.totalReviews && course?.analytics?.totalReviews >= 1000000
+        ? `${(course?.analytics?.totalReviews / 1000000)
             .toFixed(1)
             .replace(/\.0$/, "")}M`
         : course?.analytics?.totalReviews && course?.analytics?.totalReviews >= 1000
         ? `${(course?.analytics?.totalReviews / 1000)
+        : course?.analytics?.totalReviews && course?.analytics?.totalReviews >= 1000
+        ? `${(course?.analytics?.totalReviews / 1000)
             .toFixed(1)
             .replace(/\.0$/, "")}K`
+        : course?.analytics?.totalReviews?.toString(),
         : course?.analytics?.totalReviews?.toString(),
     [course]
   );
@@ -49,6 +54,8 @@ const OverviewSection = ({ course }: { course: Course }) => {
             </span>
             <span className="text-sm md:text-base font-normal text-text-primary">
               (
+                {course?.analytics?.totalReviews &&
+              course?.analytics?.totalReviews > 100
                 {course?.analytics?.totalReviews &&
               course?.analytics?.totalReviews > 100
                 ? `(more than ${formattedReviewsCount} reviews)`

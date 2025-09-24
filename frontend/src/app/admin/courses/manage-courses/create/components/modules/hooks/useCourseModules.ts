@@ -97,7 +97,7 @@ export const useCourseModules = () => {
           // Extract module IDs for course reference
           const moduleIds = modules
             .filter(module => module._id && !module._id.startsWith("temp_"))
-            .map(module => module._id!);
+            .map(currentModule => currentModule._id!);
           
           setCourse(prev => ({
             ...prev,
@@ -500,7 +500,7 @@ export const useCourseModules = () => {
       });
 
       // Update moduleIds array
-      let updatedModuleIds = [...course.moduleIds];
+      const updatedModuleIds = [...course.moduleIds];
       if (isNewModule && updatedModule._id) {
         // Add new module ID if not already present
         if (!updatedModuleIds.includes(updatedModule._id)) {
@@ -597,8 +597,8 @@ export const useCourseModules = () => {
     let lessonIndex: number = -1;
 
     for (let i = 0; i < course.modules.length; i++) {
-      const module = course.modules[i];
-      const lesson = module.lessons?.find((l, idx) => {
+      const currentModule = course.modules[i];
+      const lesson = currentModule.lessons?.find((l, idx) => {
         if (l._id === lessonId) {
           lessonIndex = idx;
           return true;
@@ -607,7 +607,7 @@ export const useCourseModules = () => {
       });
       if (lesson) {
         targetLesson = lesson;
-        moduleId = module._id!;
+        moduleId = currentModule._id!;
         moduleIndex = i;
         break;
       }
@@ -627,7 +627,7 @@ export const useCourseModules = () => {
       setLessonSaveError(null);
 
       try {
-        const response = await deleteLessonApi(courseId, moduleId, targetLesson._id!);
+        await deleteLessonApi(courseId, moduleId, targetLesson._id!);
 
         console.log("Lesson deleted successfully from backend:", targetLesson._id);
       } catch (error) {
@@ -699,11 +699,11 @@ export const useCourseModules = () => {
     let moduleIndex: number = -1;
 
     for (let i = 0; i < course.modules.length; i++) {
-      const module = course.modules[i];
-      const lesson = module.lessons?.find(l => l._id === lessonId);
+      const currentModule = course.modules[i];
+      const lesson = currentModule.lessons?.find(l => l._id === lessonId);
       if (lesson) {
         targetLesson = lesson;
-        moduleId = module._id!;
+        moduleId = currentModule._id!;
         moduleIndex = i;
         break;
       }
@@ -950,9 +950,9 @@ export const useCourseModules = () => {
     let contentIndex: number = -1;
 
     for (let i = 0; i < course.modules.length; i++) {
-      const module = course.modules[i];
-      for (let j = 0; j < (module.lessons || []).length; j++) {
-        const lesson = module.lessons![j];
+      const currentModule = course.modules[i];
+      for (let j = 0; j < (currentModule.lessons || []).length; j++) {
+        const lesson = currentModule.lessons![j];
         const content = lesson.contents?.find((c, idx) => {
           if (c._id === contentId) {
             contentIndex = idx;
@@ -962,7 +962,7 @@ export const useCourseModules = () => {
         });
         if (content) {
           targetContent = content;
-          moduleId = module._id!;
+          moduleId = currentModule._id!;
           lessonId = lesson._id!;
           moduleIndex = i;
           lessonIndex = j;
@@ -1159,9 +1159,9 @@ export const useCourseModules = () => {
     let contentIndex: number = -1;
 
     for (let i = 0; i < course.modules.length; i++) {
-      const module = course.modules[i];
-      for (let j = 0; j < (module.lessons || []).length; j++) {
-        const lesson = module.lessons![j];
+      const currentModule = course.modules[i];
+      for (let j = 0; j < (currentModule.lessons || []).length; j++) {
+        const lesson = currentModule.lessons![j];
         const content = lesson.contents?.find((c, idx) => {
           if (c._id === contentId) {
             contentIndex = idx;
@@ -1171,7 +1171,7 @@ export const useCourseModules = () => {
         });
         if (content) {
           targetContent = content;
-          moduleId = module._id!;
+          moduleId = currentModule._id!;
           lessonId = lesson._id!;
           moduleIndex = i;
           lessonIndex = j;
@@ -1195,7 +1195,7 @@ export const useCourseModules = () => {
       setContentSaveError(null);
 
       try {
-        const response = await deleteContentApi(courseId, moduleId, lessonId, targetContent._id!);
+        await deleteContentApi(courseId, moduleId, lessonId, targetContent._id!);
 
         console.log("Content deleted successfully from backend:", targetContent._id);
       } catch (error) {
@@ -1357,15 +1357,15 @@ export const useCourseModules = () => {
   };
 
   const handleThumbnailRemove = async (moduleId: string) => {
-    const module = course.modules.find((m) => m._id === moduleId);
+    const currentModule = course.modules.find((m) => m._id === moduleId);
 
     // If it's an uploaded file, delete from S3
-    if (module?.thumbnailS3Key && module.thumbnailSource === "upload") {
+    if (currentModule?.thumbnailS3Key && currentModule.thumbnailSource === "upload") {
       try {
-        console.log("Deleting thumbnail from S3:", module.thumbnailS3Key);
+        console.log("Deleting thumbnail from S3:", currentModule.thumbnailS3Key);
         // Note: The deleteFile function from useUpload would be used here
         // For now, we'll just log it since we don't have the deleteFile function available
-        // await deleteFile(module.thumbnailS3Key);
+        // await deleteFile(currentModule.thumbnailS3Key);
       } catch (error) {
         console.error("Failed to delete thumbnail from S3:", error);
         // Continue with local removal even if S3 deletion fails
@@ -1411,7 +1411,7 @@ export const useCourseModules = () => {
         throw new Error("Content not found");
       }
 
-      const { moduleId, lessonId } = contentLocation;
+      // Content location found, proceed with update
       
       // Update the content with the new video URL
       updateContentData(contentId, {
@@ -1563,10 +1563,10 @@ export const useCourseModules = () => {
     let targetModule: CourseModule | null = null;
 
     for (let i = 0; i < course.modules.length; i++) {
-      const module = course.modules[i];
-      if (module.lessons?.some(lesson => lesson._id === lessonId)) {
+      const currentModule = course.modules[i];
+      if (currentModule.lessons?.some(lesson => lesson._id === lessonId)) {
         targetModuleIndex = i;
-        targetModule = module;
+        targetModule = currentModule;
         break;
       }
     }
@@ -1622,9 +1622,9 @@ export const useCourseModules = () => {
     let targetLesson: CourseLesson | null = null;
 
     for (let i = 0; i < course.modules.length; i++) {
-      const module = course.modules[i];
-      for (let j = 0; j < (module.lessons || []).length; j++) {
-        const lesson = module.lessons![j];
+      const currentModule = course.modules[i];
+      for (let j = 0; j < (currentModule.lessons || []).length; j++) {
+        const lesson = currentModule.lessons![j];
         if (lesson.contents?.some(content => content._id === contentId)) {
           targetModuleIndex = i;
           targetLessonIndex = j;

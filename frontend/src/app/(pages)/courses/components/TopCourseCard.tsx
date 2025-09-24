@@ -18,7 +18,7 @@ const TopCourseCard = ({
 }) => {
   const router = useRouter();
   const originalPrice =
-    course.plans.essential?.price || course.plans.elite?.price || 0;
+    course.plans?.essential?.price || course.plans?.elite?.price || 0;
   const hasActiveDiscount =
     !!course.discount && course.discount.isActive && course.discount.value > 0;
   let discountedPrice = originalPrice;

@@ -805,6 +805,20 @@ export const courseReducer = (
         };
         break;
 
+      case CourseActionType.REMOVE_COURSE_TESTIMONIAL:
+        newState = {
+          ...state,
+          course: {
+            ...state.course,
+            testimonials: (state.course.testimonials || []).filter(
+              (testimonialId) => testimonialId !== action.payload
+            ),
+          },
+          isDirty: true,
+          hasUnsavedChanges: true,
+        };
+        break;
+
       // ===================
       // Quiz Management
       // ===================

@@ -177,10 +177,10 @@ const CourseContentSection = ({
 }) => {
   // Calculate total duration for a module
   const getModuleDuration = (module: CourseModule) => {
-    return module.lessons.reduce(
+    return module.lessons?.reduce(
       (moduleAcc, lesson) =>
         moduleAcc +
-        lesson.contents.reduce((lessonAcc, content) => {
+        (lesson.contents || []).reduce((lessonAcc, content) => {
           if (content.type === "video" && content.duration) {
             return lessonAcc + (content.duration || 0);
           }
@@ -192,7 +192,7 @@ const CourseContentSection = ({
 
   // Calculate total duration for a lesson
   const getLessonDuration = (lesson: CourseLesson) => {
-    return lesson.contents.reduce((lessonAcc, content) => {
+    return lesson.contents?.reduce((lessonAcc, content) => {
       if (content.type === "video" && content.duration) {
         return lessonAcc + (content.duration || 0);
       }
@@ -210,9 +210,9 @@ const CourseContentSection = ({
 
   return (
     <div className="w-full space-y-3">
-      {course.modules.map((module, moduleIndex) => (
+      {course.modules?.map((module, moduleIndex) => (
         <div
-          className={`w-full border border-gray-200 rounded-lg ${moduleIndex !== course.modules.length - 1 ? "mb-3" : ""
+          className={`w-full border border-gray-200 rounded-lg ${moduleIndex !== course.modules?.length || 0 - 1 ? "mb-3" : ""
             }`}
           key={module._id}
         >
@@ -231,10 +231,10 @@ const CourseContentSection = ({
               <div className="flex items-center gap-2">
                 <Clock3 className="size-4 text-gray-400" />
                 <span className="text-xs text-gray-500">
-                  {formatDuration(getModuleDuration(module))}
+                  {formatDuration(getModuleDuration(module) || 0)}
                 </span>
                 <span className="text-xs text-gray-500">
-                  ({module.lessons.length} lessons)
+                  ({module.lessons?.length || 0} lessons)
                 </span>
               </div>
             </div>
@@ -243,7 +243,7 @@ const CourseContentSection = ({
           {/* Lessons: only shown if module is selected */}
           {selectedModule?._id === module._id && (
             <div className="border-t border-gray-200">
-              {module.lessons.map((lesson, lessonIndex) => (
+              {module.lessons?.map((lesson, lessonIndex) => (
                 <div key={lesson._id} className="border-b border-gray-100 last:border-b-0">
                   {/* Lesson Header */}
                   <div
@@ -261,10 +261,10 @@ const CourseContentSection = ({
                     <div className="flex items-center gap-2">
                       <Clock3 className="size-3 text-gray-400" />
                       <span className="text-xs text-gray-500">
-                        {formatDuration(getLessonDuration(lesson))}
+                        {formatDuration(getLessonDuration(lesson) || 0)}
                       </span>
                       <span className="text-xs text-gray-500">
-                        ({lesson.contents.length} items)
+                        ({lesson.contents?.length || 0} items)
                       </span>
                     </div>
                   </div>
@@ -272,7 +272,7 @@ const CourseContentSection = ({
                   {/* Content: only shown if lesson is selected */}
                   {selectedLesson?._id === lesson._id && (
                     <div className="bg-gray-50">
-                      {lesson.contents.map((content) => (
+                      {lesson.contents?.map((content) => (
                         <div
                           key={content._id}
                           onClick={() => navigateToContent(content._id || "")}
@@ -372,7 +372,7 @@ const PreviewCourse = (props: { course: Course }) => {
               navigateToContent={navigateToContent}
             />
           ),
-          showCount: course.modules.length,
+          showCount: course.modules?.length || 0,
         },
       ]
       : []),
@@ -424,7 +424,7 @@ const PreviewCourse = (props: { course: Course }) => {
               <span className="flex items-center gap-2">
                 <span className="text-base font-bold">Course Content</span>
                 <span className="bg-black font-semibold text-[10px] text-white px-2 py-0.5 rounded-full">
-                  {course.modules.length}
+                  {course.modules?.length || 0}
                 </span>
               </span>
             </WhiteButton>

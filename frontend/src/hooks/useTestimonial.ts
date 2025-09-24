@@ -37,7 +37,7 @@ export const useTestimonial = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>("");
 
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
 
   /**
    * Get all testimonials with pagination and search

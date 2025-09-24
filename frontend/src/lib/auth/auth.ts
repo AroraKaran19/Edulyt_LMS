@@ -122,11 +122,17 @@ export const authOptions: AuthOptions = {
           );
 
           if (response.status === 200 || response.status === 201) {
-            user.id = response.data.user._id;
-            user.accessToken = response.data.accessToken;
-            user.refreshToken = response.data.refreshToken;
-            user.username = response.data.user.username;
-            return true;
+            // Check if response.data and response.data.user exist before accessing properties
+            if (response.data && response.data.user && response.data.user._id) {
+              user.id = response.data.user._id;
+              user.accessToken = response.data.accessToken;
+              user.refreshToken = response.data.refreshToken;
+              user.username = response.data.user.username;
+              return true;
+            } else {
+              console.error("Invalid response structure from backend:", response.data);
+              return false;
+            }
           } else {
             console.error("Failed to create user in backend:", response.data);
             return false;

@@ -329,9 +329,9 @@ const Screen7 = () => {
         setSelectedTestimonialIds((prev) => {
           const newSelected = prev.filter((id) => id !== testimonialId);
           
-          // Update course state - pass only IDs
+          // Update course state - remove testimonial by ID
           requestAnimationFrame(() => {
-            actions.setCourseTestimonials(newSelected);
+            actions.removeCourseTestimonial(testimonialId);
           });
           
           return newSelected;

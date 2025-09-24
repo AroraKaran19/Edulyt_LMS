@@ -237,6 +237,7 @@ export interface Course {
   // Analytics
   analytics?: {
     totalRatings: number;
+    totalReviews: number;
     totalEnrollments: number;
     activeEnrollments: number;
     completionRate: number;
