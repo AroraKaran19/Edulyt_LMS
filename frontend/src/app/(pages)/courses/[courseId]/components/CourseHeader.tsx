@@ -49,11 +49,11 @@ const CourseHeader = ({
   // Remove window event listener - now using props
 
   const formattedReviewsCount =
-    course?.reviews?.length && course?.reviews?.length >= 1000000
-      ? `${(course?.reviews?.length / 1000000).toFixed(1).replace(/\.0$/, "")}M`
-      : course?.reviews?.length && course?.reviews?.length >= 1000
-      ? `${(course?.reviews?.length / 1000).toFixed(1).replace(/\.0$/, "")}K`
-      : course?.reviews?.length?.toString();
+    course?.analytics?.totalReviews && course?.analytics?.totalReviews >= 1000000
+      ? `${(course?.analytics?.totalReviews / 1000000).toFixed(1).replace(/\.0$/, "")}M`
+      : course?.analytics?.totalReviews && course?.analytics?.totalReviews >= 1000
+      ? `${(course?.analytics?.totalReviews / 1000).toFixed(1).replace(/\.0$/, "")}K`
+      : course?.analytics?.totalReviews?.toString();
 
   const discountCountdown = useMemo(
     () => calculateDiscountTime(course),
@@ -190,7 +190,7 @@ const CourseHeader = ({
               </span>
               <span className="text-sm md:text-base font-normal text-text-primary">
                 (
-                {course?.reviews?.length && course?.reviews?.length > 100
+                {course?.analytics?.totalReviews && course?.analytics?.totalReviews > 100
                   ? `(more than ${formattedReviewsCount} reviews)`
                   : formattedReviewsCount === "1"
                   ? `${formattedReviewsCount} review`

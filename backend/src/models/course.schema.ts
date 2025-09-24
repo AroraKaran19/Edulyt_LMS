@@ -29,6 +29,7 @@ const highlightSchema = new mongoose.Schema(
 const analyticsSchema = new mongoose.Schema(
   {
     totalRatings: { type: Number, default: 0, required: true },
+    totalReviews: { type: Number, default: 0, required: true },
     totalEnrollments: { type: Number, default: 0, required: true },
     activeEnrollments: { type: Number, default: 0, required: true },
     completionRate: { type: Number, default: 0, required: true },

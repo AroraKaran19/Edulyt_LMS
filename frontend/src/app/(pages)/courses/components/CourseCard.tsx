@@ -73,7 +73,7 @@ const CourseCard = ({
           {course?.title}
         </p>
         <RatingContainer
-          reviewCount={course?.reviews.length}
+          reviewCount={course?.analytics?.totalReviews || 0}
           totalRating={course.analytics?.totalRatings || 0}
           className="mt-2 text-xs"
           courseSlug={course?.slug}
