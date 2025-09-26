@@ -138,7 +138,7 @@ const TagInput = ({
             onClick={handleAddTag}
             disabled={disabled || !inputValue.trim() || (maxTags !== 0 && tags.length >= maxTags)}
             className={cn(
-              "p-2 rounded-lg flex items-center justify-center",
+              "p-2 rounded-lg flex items-center justify-center cursor-pointer",
               "transition-all duration-200 ease-in-out",
               "focus:outline-none focus:ring-2 focus:ring-orange-500/20",
               "disabled:opacity-50 disabled:cursor-not-allowed",
@@ -171,7 +171,7 @@ const TagInput = ({
                 onClick={() => handleRemoveTag(tag)}
                 disabled={disabled}
                 className={cn(
-                  "w-4 h-4 rounded-full flex items-center justify-center",
+                  "w-4 h-4 rounded-full flex items-center justify-center cursor-pointer",
                   "hover:bg-orange-300 transition-colors duration-200",
                   "focus:outline-none focus:ring-1 focus:ring-orange-500",
                   "disabled:opacity-50 disabled:cursor-not-allowed"

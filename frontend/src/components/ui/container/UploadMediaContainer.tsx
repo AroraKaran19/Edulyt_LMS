@@ -13,8 +13,8 @@ import { cn } from "@/lib/utils";
 import { useUpload } from "@/hooks/useUpload";
 
 interface UploadMediaContainerProps {
-  title: string;
-  description: string;
+  title?: string;
+  description?: string;
   type: "image" | "video" | "document";
   mediaUrl?: string;
   mediaSource?: "upload" | "url"; // Track whether current media came from upload or URL

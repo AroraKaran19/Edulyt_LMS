@@ -74,6 +74,7 @@ export default function RootLayout({
             pauseOnHover
             theme="light"
             className="toast-container"
+            limit={2}
           />
         </ReduxProvider>
       </body>

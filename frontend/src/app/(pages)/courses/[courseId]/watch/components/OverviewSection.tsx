@@ -14,24 +14,21 @@ const OverviewSection = ({ course }: { course: Course }) => {
     }, 0), 0), 0));
   }, [course]);
 
-  const formattedReviewsCount = useMemo(
-    () =>
-      course?.analytics?.totalReviews && course?.analytics?.totalReviews >= 1000000
-        ? `${(course?.analytics?.totalReviews / 1000000)
-      course?.analytics?.totalReviews && course?.analytics?.totalReviews >= 1000000
-        ? `${(course?.analytics?.totalReviews / 1000000)
-            .toFixed(1)
-            .replace(/\.0$/, "")}M`
-        : course?.analytics?.totalReviews && course?.analytics?.totalReviews >= 1000
-        ? `${(course?.analytics?.totalReviews / 1000)
-        : course?.analytics?.totalReviews && course?.analytics?.totalReviews >= 1000
-        ? `${(course?.analytics?.totalReviews / 1000)
-            .toFixed(1)
-            .replace(/\.0$/, "")}K`
-        : course?.analytics?.totalReviews?.toString(),
-        : course?.analytics?.totalReviews?.toString(),
-    [course]
-  );
+  const formattedReviewsCount = useMemo(() => {
+    const totalReviews = course?.analytics?.totalReviews;
+    
+    if (!totalReviews || totalReviews === 0) {
+      return "0";
+    }
+    
+    if (totalReviews >= 1000000) {
+      return `${(totalReviews / 1000000).toFixed(1).replace(/\.0$/, "")}M`;
+    } else if (totalReviews >= 1000) {
+      return `${(totalReviews / 1000).toFixed(1).replace(/\.0$/, "")}K`;
+    } else {
+      return totalReviews.toString();
+    }
+  }, [course?.analytics?.totalReviews]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -54,14 +51,16 @@ const OverviewSection = ({ course }: { course: Course }) => {
             </span>
             <span className="text-sm md:text-base font-normal text-text-primary">
               (
-                {course?.analytics?.totalReviews &&
-              course?.analytics?.totalReviews > 100
-                {course?.analytics?.totalReviews &&
-              course?.analytics?.totalReviews > 100
-                ? `(more than ${formattedReviewsCount} reviews)`
-                : formattedReviewsCount === "1"
-                ? `${formattedReviewsCount} review`
-                : `${formattedReviewsCount} reviews`}
+              {(() => {
+                const totalReviews = course?.analytics?.totalReviews || 0;
+                if (totalReviews > 100) {
+                  return `more than ${formattedReviewsCount} reviews`;
+                } else if (totalReviews === 1) {
+                  return `${formattedReviewsCount} review`;
+                } else {
+                  return `${formattedReviewsCount} reviews`;
+                }
+              })()}
               )
             </span>
           </div>

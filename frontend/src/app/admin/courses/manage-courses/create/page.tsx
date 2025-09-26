@@ -1,45 +1,109 @@
 "use client";
+import React, { useState } from "react";
 import Container from "@/app/admin/components/ui/Container";
-import FlexBox from "@/components/ui/FlexBox";
-import { BookOpenIcon } from "lucide-react";
-import React from "react";
-import Screen1 from "./components/Screen1";
-import Screen2 from "./components/Screen2";
-import Screen3 from "./components/Screen3";
-import Screen4 from "./components/Screen4";
-import Screen5 from "./components/Screen5";
-import Screen6 from "./components/Screen6";
-import Screen7 from "./components/Screen7";
-import Screen9 from "./components/Screen9";
-import Screen10 from "./components/Screen10";
-import Screen11 from "./components/Screen11";
-import Screen12 from "./components/Screen12";
-import { useScreen } from "./contexts/ScreenContext";
+import { ArrowLeftIcon, ArrowRightIcon, BookOpenIcon } from "lucide-react";
+import { FlexBox, WhiteButton } from "@/components/ui";
+import { useRouter } from "next/navigation";
+import { CourseFormProvider, useCourseFormContext } from "@/contexts/CourseFormContext";
+import Screen1 from "../components/shared/Screen1";
+import Screen2 from "../components/shared/Screen2";
+import Screen3 from "../components/shared/Screen3";
+import Screen4 from "../components/shared/Screen4";
+import Screen5 from "../components/shared/Screen5";
+import Screen6 from "../components/shared/Screen6";
+import Screen7 from "../components/shared/Screen7";
+import Screen8 from "../components/shared/Screen8";
+import Screen9 from "../components/shared/Screen9";
+import Screen10 from "../components/shared/Screen10";
+import Screen11 from "../components/shared/Screen11";
+import StorageIndicator from "@/components/courseForm/StorageIndicator";
 
-const CreateCoursePage = () => {
-  const { activeScreen } = useScreen();
+const CreateCoursePageContent = () => {
+  const router = useRouter();
+  const { currentScreen, nextScreen, prevScreen, canGoNext, createCourse, isCreating } = useCourseFormContext();
+
+  const handleNext = async () => {
+    if (currentScreen === 9) {
+      // On Screen9, create the course metadata instead of navigating
+      try {
+        await createCourse();
+        // Navigation will be handled by createCourse after successful creation
+      } catch (error) {
+        console.error("Failed to create course:", error);
+        // Error handling is done in Screen9
+      }
+    } else if (currentScreen === 10) {
+      // On Screen10, navigate to Screen11 for modules and content
+      nextScreen();
+    } else {
+      nextScreen();
+    }
+  };
+
+  const handlePrevious = () => {
+    if (currentScreen === 1) {
+      router.push("/admin/courses/manage-courses");
+    } else {
+      prevScreen();
+    }
+  };
 
   return (
-    <FlexBox className="w-full h-full flex-col gap-8 px-8 relative">
+    <FlexBox className="w-full h-full flex-col px-8 relative">
       <Container
         title="Create Course"
         icon={BookOpenIcon}
-        className="rounded-t-none flex-shrink-0"
+        className="rounded-t-none flex-shrink-0 h-fit mb-8"
       />
-      <FlexBox className="w-full flex-1 min-h-0 flex-col">
-        {activeScreen === "screen1" && <Screen1 />}
-        {activeScreen === "screen2" && <Screen2 />}
-        {activeScreen === "screen3" && <Screen3 />}
-        {activeScreen === "screen4" && <Screen4 />}
-        {activeScreen === "screen5" && <Screen5 />}
-        {activeScreen === "screen6" && <Screen6 />}
-        {activeScreen === "screen7" && <Screen7 />}
-        {activeScreen === "screen9" && <Screen9 />}
-        {activeScreen === "screen10" && <Screen10 />}
-        {activeScreen === "screen11" && <Screen11 />}
-        {activeScreen === "screen12" && <Screen12 />}
-      </FlexBox>
+      <div className="flex-1 min-h-0 max-h-full">
+        {currentScreen === 1 && <Screen1 />}
+        {currentScreen === 2 && <Screen2 />}
+        {currentScreen === 3 && <Screen3 />}
+        {currentScreen === 4 && <Screen4 />}
+        {currentScreen === 5 && <Screen5 />}
+        {currentScreen === 6 && <Screen6 />}
+        {currentScreen === 7 && <Screen7 />}
+        {currentScreen === 8 && <Screen8 />}
+        {currentScreen === 9 && <Screen9 />}
+        {currentScreen === 10 && <Screen10 />}
+        {currentScreen === 11 && <Screen11 />}
+      </div>
+      <div className="flex justify-between items-center h-fit p-4">
+        <WhiteButton
+          className="flex gap-2 items-center"
+          onClick={handlePrevious}
+          disabled={isCreating}
+        >
+          <ArrowLeftIcon className="size-4" /> {currentScreen === 1 ? "Back to Courses" : "Previous"}
+        </WhiteButton>
+        <WhiteButton 
+          className="flex gap-2 items-center" 
+          onClick={handleNext}
+          disabled={!canGoNext || isCreating}
+        >
+          {isCreating ? (
+            <>
+              <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin" />
+              Creating Course...
+            </>
+          ) : (
+            <>
+              {currentScreen === 9 ? "Create Course Metadata" : currentScreen === 10 ? "Next Page" : "Next"} 
+              <ArrowRightIcon className="size-4" />
+            </>
+          )}
+        </WhiteButton>
+      </div>
+      <StorageIndicator mode="create" />
     </FlexBox>
+  );
+};
+
+const CreateCoursePage = () => {
+  return (
+    <CourseFormProvider options={{ mode: 'create', autoSave: true }}>
+      <CreateCoursePageContent />
+    </CourseFormProvider>
   );
 };
 

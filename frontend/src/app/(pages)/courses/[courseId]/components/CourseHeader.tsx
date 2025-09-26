@@ -4,7 +4,7 @@ import { Course } from "@/types";
 import React, { useMemo, useState } from "react";
 import DiscountCountdown from "../../components/DiscountCountdown";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
-import { cn } from "@/lib/utils";
+import { calculateDiscountTime, cn } from "@/lib/utils";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { Star } from "lucide-react";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
@@ -15,7 +15,6 @@ import axios from "axios";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
-import { calculateDiscountTime } from "@/app/admin/courses/reducers/course/utils/calculateDiscountTime";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -46,14 +45,21 @@ const CourseHeader = ({
   const { data: session } = useSession();
   const router = useRouter();
 
-  // Remove window event listener - now using props
-
-  const formattedReviewsCount =
-    course?.analytics?.totalReviews && course?.analytics?.totalReviews >= 1000000
-      ? `${(course?.analytics?.totalReviews / 1000000).toFixed(1).replace(/\.0$/, "")}M`
-      : course?.analytics?.totalReviews && course?.analytics?.totalReviews >= 1000
-      ? `${(course?.analytics?.totalReviews / 1000).toFixed(1).replace(/\.0$/, "")}K`
-      : course?.analytics?.totalReviews?.toString();
+  const formattedReviewsCount = useMemo(() => {
+    const totalReviews = course?.analytics?.totalReviews;
+    
+    if (!totalReviews || totalReviews === 0) {
+      return "0";
+    }
+    
+    if (totalReviews >= 1000000) {
+      return `${(totalReviews / 1000000).toFixed(1).replace(/\.0$/, "")}M`;
+    } else if (totalReviews >= 1000) {
+      return `${(totalReviews / 1000).toFixed(1).replace(/\.0$/, "")}K`;
+    } else {
+      return totalReviews.toString();
+    }
+  }, [course?.analytics?.totalReviews]);
 
   const discountCountdown = useMemo(
     () => calculateDiscountTime(course),
@@ -74,7 +80,6 @@ const CourseHeader = ({
       });
       if (!generateOrder.data.success) {
         console.error(generateOrder.data.message);
-        // Handle specific error cases
         if (generateOrder.data.message?.includes("already enrolled")) {
           toast.error("You are already enrolled in this course!");
         } else {
@@ -190,11 +195,16 @@ const CourseHeader = ({
               </span>
               <span className="text-sm md:text-base font-normal text-text-primary">
                 (
-                {course?.analytics?.totalReviews && course?.analytics?.totalReviews > 100
-                  ? `(more than ${formattedReviewsCount} reviews)`
-                  : formattedReviewsCount === "1"
-                  ? `${formattedReviewsCount} review`
-                  : `${formattedReviewsCount} reviews`}
+                {(() => {
+                  const totalReviews = course?.analytics?.totalReviews || 0;
+                  if (totalReviews > 100) {
+                    return `more than ${formattedReviewsCount} reviews`;
+                  } else if (totalReviews === 1) {
+                    return `${formattedReviewsCount} review`;
+                  } else {
+                    return `${formattedReviewsCount} reviews`;
+                  }
+                })()}
                 )
               </span>
             </div>

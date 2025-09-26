@@ -6,8 +6,8 @@ import { Course } from "@/types";
 import { Crown } from "lucide-react";
 import PlanCard from "./PlanCard";
 import DiscountCountdown from "../../components/DiscountCountdown";
-import { calculateDiscountTime } from "@/app/admin/courses/reducers/course/utils/calculateDiscountTime";
 import { Plus_Jakarta_Sans } from "next/font/google";
+import { calculateDiscountTime } from "@/lib/utils";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],

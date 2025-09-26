@@ -29,7 +29,11 @@ export const useCourses = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>("");
 
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "";
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+
+  if (!baseUrl) {
+    throw new Error("NEXT_PUBLIC_API_BASE_URL is not set");
+  }
 
   // Get all courses with optimization options
   const getAllCourses = useCallback(
@@ -85,37 +89,6 @@ export const useCourses = () => {
 
       try {
         const response = await fetch(`${baseUrl}/courses/${slug}`);
-        const result = await response.json();
-
-        if (!result.success) {
-          setError(result.error || result.message);
-        }
-
-        return result;
-      } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : "Failed to fetch course";
-        setError(errorMessage);
-        return {
-          success: false,
-          message: "Failed to fetch course",
-          error: errorMessage,
-        };
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [baseUrl]
-  );
-
-  // Get course by ID
-  const getCourseById = useCallback(
-    async (courseId: string): Promise<CourseResponse> => {
-      setIsLoading(true);
-      setError("");
-
-      try {
-        const response = await fetch(`${baseUrl}/courses/id/${courseId}`);
         const result = await response.json();
 
         if (!result.success) {
@@ -206,6 +179,44 @@ export const useCourses = () => {
         return {
           success: false,
           message: "Failed to update course",
+          error: errorMessage,
+        };
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [baseUrl]
+  );
+
+  // Update course metadata
+  const updateCourseMetadata = useCallback(
+    async (courseId: string, courseData: any): Promise<CourseResponse> => {
+      setIsLoading(true);
+      setError("");
+
+      try {
+        const response = await fetch(`${baseUrl}/courses/${courseId}/metadata`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(courseData),
+        });
+
+        const result = await response.json();
+
+        if (!result.success) {
+          setError(result.error || result.message);
+        }
+
+        return result;
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error ? err.message : "Failed to update course metadata";
+        setError(errorMessage);
+        return {
+          success: false,
+          message: "Failed to update course metadata",
           error: errorMessage,
         };
       } finally {
@@ -841,10 +852,10 @@ export const useCourses = () => {
     // Methods
     getAllCourses,
     getCourseBySlug,
-    getCourseById,
     getCourseByIdAdmin,
     createCourse,
     updateCourse,
+    updateCourseMetadata,
     updateCourseStatus,
     updateCourseStatusBulk,
     deleteCourseById,

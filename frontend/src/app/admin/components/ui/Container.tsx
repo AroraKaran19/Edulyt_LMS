@@ -21,12 +21,12 @@ const Container = ({
   return (
     <section
       className={cn(
-        "w-full h-max bg-white border border-gray-300 rounded-2xl p-6 shadow-[0_0_10px_2px_rgba(0,0,0,0.1)]",
+        "w-full h-full bg-white border border-gray-300 rounded-2xl p-6 shadow-[0_0_10px_2px_rgba(0,0,0,0.1)] flex flex-col",
         className
       )}
       {...props}
     >
-      <FlexBox className="container-header w-full gap-4 items-center mb-4">
+      <FlexBox className="container-header h-fit w-full gap-4 items-center mb-4">
         {icon && (
           <FlexBox className="container-header-icon p-3 shrink-0 bg-orange-500 text-white rounded-lg">
             {React.createElement(icon, { className: "size-6" })}
@@ -39,7 +39,7 @@ const Container = ({
       </FlexBox>
       <FlexBox
         className={cn(
-          "container-body w-full h-full flex-col gap-4 max-h-full overflow-y-auto",
+          "container-body w-full flex-1 gap-4 overflow-y-auto",
           classNameBody
         )}
         style={{ scrollbarWidth: "thin" }}

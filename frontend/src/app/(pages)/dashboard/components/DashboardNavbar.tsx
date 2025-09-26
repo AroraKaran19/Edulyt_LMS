@@ -24,9 +24,6 @@ const DashboardNavbar = () => {
   const { data: session } = useSession();
   const user = session?.user;
 
-  // Remove console.log in production
-  console.log("user session data:", user);
-
   const [search, setSearch] = useState("");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);

@@ -36,7 +36,7 @@ const InstructorCarousel = ({ instructors }: { instructors: CourseInstructor[] }
       }}
       className="w-full h-full px-4 !py-4 sm:px-0 [&_.swiper-slide]:!h-auto [&_.swiper-slide]:!flex [&_.swiper-slide]:!flex-col"
     >
-      {instructors.length > 0 &&
+      {instructors?.length > 0 &&
         instructors.map((instructor, index) => (
           <SwiperSlide key={index}>
             <InstructorCard instructor={instructor} />

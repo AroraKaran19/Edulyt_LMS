@@ -1,108 +1,118 @@
 "use client";
+import React from "react";
+import Container from "@/app/admin/components/ui/Container";
+import { ArrowLeftIcon, ArrowRightIcon, BookOpenIcon } from "lucide-react";
+import { FlexBox, WhiteButton } from "@/components/ui";
+import { useParams, useRouter } from "next/navigation";
+import { CourseFormProvider, useCourseFormContext } from "@/contexts/CourseFormContext";
+import Screen1 from "../../components/shared/Screen1";
+import Screen2 from "../../components/shared/Screen2";
+import Screen3 from "../../components/shared/Screen3";
+import Screen4 from "../../components/shared/Screen4";
+import Screen5 from "../../components/shared/Screen5";
+import Screen6 from "../../components/shared/Screen6";
+import Screen7 from "../../components/shared/Screen7";
+import Screen8 from "../../components/shared/Screen8";
+import Screen9 from "../../components/shared/Screen9";
+import Screen10 from "../../components/shared/Screen10";
+import Screen11 from "../../components/shared/Screen11";
+import StorageIndicator from "@/components/courseForm/StorageIndicator";
 
-import React, { useEffect, useState, useCallback, useRef } from "react";
-import { useParams } from "next/navigation";
-import { useCourses } from "@/hooks/useCourses";
-import { useEditCourseContext } from "../../../reducers/course/providers/EditCourseReducerProvider";
-import { sanitizeCourseForFrontend } from "../../../reducers/course/utils/sanitization";
-import { draftUtils } from "../utils/draftUtils";
-import EditCoursePage from "../page";
+const EditCoursePageContent = ({ courseId }: { courseId: string }) => {
+  const router = useRouter();
+  const { currentScreen, nextScreen, prevScreen, canGoNext, updateCourseMetadata, isUpdating } = useCourseFormContext();
 
-const EditCoursePageWithData = () => {
-  const { courseId } = useParams();
-  const { getCourseByIdAdmin } = useCourses();
-  const { actions } = useEditCourseContext();
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  
-  // Use ref to access current actions without causing re-renders
-  const actionsRef = useRef(actions);
-  actionsRef.current = actions;
-
-  const loadCourseData = useCallback(async () => {
-    if (!courseId) return;
-
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      // Check if we have a draft for this course
-      const hasDraft = draftUtils.hasDraft();
-      const draftInfo = draftUtils.getDraftInfo();
-
-      if (hasDraft && draftInfo && draftUtils.isDraftForCourse(courseId as string)) {
-        // Load from draft
-        const draft = draftUtils.getDraft();
-        if (draft) {
-          actionsRef.current.setCourse(draft);
-          setIsLoading(false);
-          return;
-        }
+  const handleNext = async () => {
+    if (currentScreen === 9) {
+      // On Screen9, update the course metadata instead of navigating
+      try {
+        await updateCourseMetadata();
+        // Navigation will be handled by updateCourseMetadata after successful update
+      } catch (error) {
+        console.error("Failed to update course metadata:", error);
+        // Error handling is done in Screen9
       }
-
-      // Fetch fresh data from server
-      const result = await getCourseByIdAdmin(courseId as string);
-      
-      if (result.success && result.data) {
-        // Transform course data for frontend
-        const transformedCourse = sanitizeCourseForFrontend(result.data.course);
-        actionsRef.current.setCourse(transformedCourse);
-        
-      // Save to draft
-      draftUtils.saveDraft(transformedCourse);
-      draftUtils.saveEditCourseId(courseId as string);
-      } else {
-        setError(result.error || "Failed to load course");
-      }
-    } catch (err) {
-      console.error("Error loading course:", err);
-      setError("Failed to load course data");
-    } finally {
-      setIsLoading(false);
+    } else if (currentScreen === 10) {
+      // On Screen10, navigate to Screen11 for modules and content
+      nextScreen();
+    } else {
+      nextScreen();
     }
-  }, [courseId, getCourseByIdAdmin]);
+  };
 
-  useEffect(() => {
-    loadCourseData();
-  }, [loadCourseData]);
+  const handlePrevious = () => {
+    if (currentScreen === 1) {
+      router.push("/admin/courses/manage-courses");
+    } else {
+      prevScreen();
+    }
+  };
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      // Clear success flag if it exists
-      if (sessionStorage.getItem('course_edit_success') === 'true') {
-        sessionStorage.removeItem('course_edit_success');
-        draftUtils.clearAll();
-      }
-    };
-  }, []);
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto"></div>
+  return (
+    <FlexBox className="w-full h-full flex-col px-8 relative">
+      <Container
+        title="Edit Course"
+        icon={BookOpenIcon}
+        className="rounded-t-none flex-shrink-0 h-fit mb-8"
+      />
+      <div className="flex-1 min-h-0 max-h-full">
+        {currentScreen === 1 && <Screen1 />}
+        {currentScreen === 2 && <Screen2 />}
+        {currentScreen === 3 && <Screen3 />}
+        {currentScreen === 4 && <Screen4 />}
+        {currentScreen === 5 && <Screen5 />}
+        {currentScreen === 6 && <Screen6 />}
+        {currentScreen === 7 && <Screen7 />}
+        {currentScreen === 8 && <Screen8 />}
+        {currentScreen === 9 && <Screen9 />}
+        {currentScreen === 10 && <Screen10 />}
+        {currentScreen === 11 && <Screen11 />}
       </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">Error Loading Course</h2>
-          <p className="text-gray-600 mb-4">{error}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600"
-          >
-            Try Again
-          </button>
-        </div>
+      <div className="flex justify-between items-center h-fit p-4">
+        <WhiteButton
+          className="flex gap-2 items-center"
+          onClick={handlePrevious}
+          disabled={isUpdating}
+        >
+          <ArrowLeftIcon className="size-4" /> {currentScreen === 1 ? "Back to Courses" : "Previous"}
+        </WhiteButton>
+        <WhiteButton 
+          className="flex gap-2 items-center" 
+          onClick={handleNext}
+          disabled={!canGoNext || isUpdating}
+        >
+          {isUpdating ? (
+            <>
+              <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin" />
+              Updating Course...
+            </>
+          ) : (
+            <>
+              {currentScreen === 9 ? "Update Course Metadata" : currentScreen === 10 ? "Next Page" : "Next"} 
+              <ArrowRightIcon className="size-4" />
+            </>
+          )}
+        </WhiteButton>
       </div>
-    );
-  }
-
-  return <EditCoursePage />;
+      <StorageIndicator mode="edit" courseId={courseId} />
+    </FlexBox>
+  );
 };
 
-export default EditCoursePageWithData;
+const EditCoursePage = () => {
+  const { courseId } = useParams();
+
+  return (
+    <CourseFormProvider 
+      options={{ 
+        mode: 'edit', 
+        courseId: courseId as string, 
+        autoSave: true 
+      }}
+    >
+      <EditCoursePageContent courseId={courseId as string} />
+    </CourseFormProvider>
+  );
+};
+
+export default EditCoursePage;

@@ -142,7 +142,12 @@ export const updateCourseMetadata = asyncHandler(
 
     const result = await UpdateCourseMetadataService(courseId, updateData);
 
-    sendSuccessResponse(res, { courseId, updated: true }, "Course metadata updated successfully", 200);
+    sendSuccessResponse(
+      res,
+      { courseId, updated: true },
+      "Course metadata updated successfully",
+      200
+    );
   }
 );
 
@@ -219,7 +224,6 @@ export const duplicateCourse = asyncHandler(
   }
 );
 
-
 export const updateCourseModuleReferences = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const { courseId } = req.params;
@@ -233,8 +237,16 @@ export const updateCourseModuleReferences = asyncHandler(
       throw new AppError("moduleIds must be an array", 400);
     }
 
-    const result = await UpdateCourseModuleReferencesService(courseId, moduleIds);
-    sendSuccessResponse(res, result, "Course module references updated successfully", 200);
+    const result = await UpdateCourseModuleReferencesService(
+      courseId,
+      moduleIds
+    );
+    sendSuccessResponse(
+      res,
+      result,
+      "Course module references updated successfully",
+      200
+    );
   }
 );
 
@@ -259,7 +271,7 @@ export const addSingleCourseModule = asyncHandler(
     // Only validate that the module data structure is present
 
     const result = await AddSingleCourseModuleService(courseId, moduleData);
-    sendSuccessResponse(res, result, "Module added successfully", 201);
+    sendSuccessResponse(res, result.module, "Module added successfully", 201);
   }
 );
 
@@ -272,7 +284,11 @@ export const updateSingleCourseModule = asyncHandler(
       throw new AppError("Module ID is required", 400);
     }
 
-    const result = await UpdateSingleCourseModuleService(courseId, moduleId, moduleData);
+    const result = await UpdateSingleCourseModuleService(
+      courseId,
+      moduleId,
+      moduleData
+    );
     sendSuccessResponse(res, result, "Module updated successfully", 200);
   }
 );
@@ -307,7 +323,11 @@ export const addSingleCourseLesson = asyncHandler(
       throw new AppError("Lesson data is required", 400);
     }
 
-    const result = await AddSingleCourseLessonService(courseId, moduleId, lessonData);
+    const result = await AddSingleCourseLessonService(
+      courseId,
+      moduleId,
+      lessonData
+    );
     sendSuccessResponse(res, result, "Lesson added successfully", 201);
   }
 );
@@ -321,7 +341,12 @@ export const updateSingleCourseLesson = asyncHandler(
       throw new AppError("Module ID and Lesson ID are required", 400);
     }
 
-    const result = await UpdateSingleCourseLessonService(courseId, moduleId, lessonId, lessonData);
+    const result = await UpdateSingleCourseLessonService(
+      courseId,
+      moduleId,
+      lessonId,
+      lessonData
+    );
     sendSuccessResponse(res, result, "Lesson updated successfully", 200);
   }
 );
@@ -334,7 +359,11 @@ export const deleteSingleCourseLesson = asyncHandler(
       throw new AppError("Module ID and Lesson ID are required", 400);
     }
 
-    const result = await DeleteSingleCourseLessonService(courseId, moduleId, lessonId);
+    const result = await DeleteSingleCourseLessonService(
+      courseId,
+      moduleId,
+      lessonId
+    );
     sendSuccessResponse(res, result, "Lesson deleted successfully", 200);
   }
 );
@@ -356,7 +385,12 @@ export const addSingleCourseContent = asyncHandler(
       throw new AppError("Content data is required", 400);
     }
 
-    const result = await AddSingleCourseContentService(courseId, moduleId, lessonId, contentData);
+    const result = await AddSingleCourseContentService(
+      courseId,
+      moduleId,
+      lessonId,
+      contentData
+    );
     sendSuccessResponse(res, result, "Content added successfully", 201);
   }
 );
@@ -367,10 +401,19 @@ export const updateSingleCourseContent = asyncHandler(
     const contentData = req.body;
 
     if (!moduleId || !lessonId || !contentId) {
-      throw new AppError("Module ID, Lesson ID, and Content ID are required", 400);
+      throw new AppError(
+        "Module ID, Lesson ID, and Content ID are required",
+        400
+      );
     }
 
-    const result = await UpdateSingleCourseContentService(courseId, moduleId, lessonId, contentId, contentData);
+    const result = await UpdateSingleCourseContentService(
+      courseId,
+      moduleId,
+      lessonId,
+      contentId,
+      contentData
+    );
     sendSuccessResponse(res, result, "Content updated successfully", 200);
   }
 );
@@ -380,10 +423,59 @@ export const deleteSingleCourseContent = asyncHandler(
     const { courseId, moduleId, lessonId, contentId } = req.params;
 
     if (!moduleId || !lessonId || !contentId) {
-      throw new AppError("Module ID, Lesson ID, and Content ID are required", 400);
+      throw new AppError(
+        "Module ID, Lesson ID, and Content ID are required",
+        400
+      );
     }
 
-    const result = await DeleteSingleCourseContentService(courseId, moduleId, lessonId, contentId);
+    const result = await DeleteSingleCourseContentService(
+      courseId,
+      moduleId,
+      lessonId,
+      contentId
+    );
     sendSuccessResponse(res, result, "Content deleted successfully", 200);
+  }
+);
+
+export const checkSlugAvailability = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    const { slug } = req.params;
+
+    try {
+      const course = await getCourseUsingSlugService(slug);
+
+      if (course) {
+        // Course exists, slug is taken
+        sendSuccessResponse(
+          res,
+          {
+            available: false,
+            message: "Slug is already taken",
+          },
+          "Slug availability checked"
+        );
+      } else {
+        // Course doesn't exist, slug is available
+        sendSuccessResponse(
+          res,
+          {
+            available: true,
+            message: "Slug is available",
+          },
+          "Slug availability checked"
+        );
+      }
+    } catch (error) {
+      sendSuccessResponse(
+        res,
+        {
+          available: true,
+          message: "Slug is available",
+        },
+        "Slug availability checked"
+      );
+    }
   }
 );

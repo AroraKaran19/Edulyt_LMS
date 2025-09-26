@@ -5,10 +5,11 @@ import {
   ContentModel,
   VideoContentModel,
   QuizContentModel,
+  DocumentContentModel,
 } from "../models/course-module.schema";
 import { AppError } from "../middlewares/error.middleware";
 import { CourseModel } from "../models/course.schema";
-import { Course, CourseModule } from "../types/course";
+import { Course } from "../types/course";
 
 /**
  * Retrieves paginated course list with search and filtering
@@ -1181,6 +1182,12 @@ export const AddSingleCourseContent = async (
       });
     } else if (contentData.type === "quiz") {
       content = new QuizContentModel({
+        ...contentDataWithoutId,
+        lessonId: lessonId,
+        moduleId: moduleId,
+      });
+    } else if (contentData.type === "document") {
+      content = new DocumentContentModel({
         ...contentDataWithoutId,
         lessonId: lessonId,
         moduleId: moduleId,

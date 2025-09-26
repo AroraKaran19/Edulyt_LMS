@@ -74,7 +74,7 @@ const courseSchema = new mongoose.Schema<Course>(
       required: true,
       trim: true,
       minlength: 10,
-      maxlength: 100,
+      maxlength: 160,
     },
     category: {
       type: String,
@@ -213,8 +213,22 @@ const courseSchema = new mongoose.Schema<Course>(
       type: String,
       required: false,
       validate: {
-        validator: validateUrl,
+        validator: function(value: string) {
+          // Allow empty strings or valid URLs
+          return !value || validateUrl(value);
+        },
         message: "Curriculum must be a valid URL",
+      },
+    },
+    brochure: {
+      type: String,
+      required: false,
+      validate: {
+        validator: function(value: string) {
+          // Allow empty strings or valid URLs
+          return !value || validateUrl(value);
+        },
+        message: "Brochure must be a valid URL",
       },
     },
     language: {

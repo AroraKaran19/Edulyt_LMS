@@ -3,6 +3,7 @@ import {
   Content,
   CourseLesson,
   CourseModule,
+  Document,
   Quiz,
   ReadingMaterial,
   Video,
@@ -103,6 +104,17 @@ const videoSchema = new mongoose.Schema<Video>(
 );
 
 // ===================
+// Document Schema
+// ===================
+
+const documentSchema = new mongoose.Schema<Document>(
+  {
+    documentUrl: { type: String, required: true, validate: { validator: validateUrl, message: "Document URL must be a valid URL" } },
+  },
+  { timestamps: true }
+);
+
+// ===================
 // Content Schema
 // ===================
 
@@ -123,7 +135,7 @@ const contentSchema = new mongoose.Schema<Content>(
       type: String, 
       maxlength: 500 // Reasonable limit for content description
     },
-    type: { type: String, required: true, enum: ["video", "quiz"] },
+    type: { type: String, required: true, enum: ["video", "quiz", "document"] },
     readingMaterials: [readingMaterialSchema],
     isCompleted: { type: Boolean, default: false, required: true },
     completedAt: { type: Date },
@@ -271,3 +283,4 @@ export const VideoContentModel = ContentModel.discriminator(
   videoSchema
 );
 export const QuizContentModel = ContentModel.discriminator("quiz", quizSchema);
+export const DocumentContentModel = ContentModel.discriminator("document", documentSchema);

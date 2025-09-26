@@ -2,6 +2,14 @@ import mongoose from "mongoose";
 import { CourseInstructor, Discount, FAQ, Review, User } from ".";
 
 // ===================
+// Document Types
+// ===================
+export interface Document {
+  _id?: string;
+  documentUrl: string;
+}
+
+// ===================
 // Video & Note Types
 // ===================
 
@@ -52,7 +60,7 @@ export interface BaseContent {
   moduleId?: string; // Reference to parent module
   title: string;
   description?: string;
-  type: "video" | "quiz";
+  type: "video" | "quiz" | "document";
   readingMaterials?: ReadingMaterial[];
   isCompleted: boolean;
   completedAt?: Date;
@@ -80,8 +88,14 @@ export interface QuizContent extends BaseContent {
   maxAttempts?: number;
 }
 
+// Document Content interface (extends BaseContent + Document fields)
+export interface DocumentContent extends BaseContent {
+  type: "document";
+  documentUrl: string;
+}
+
 // Union type for Content (discriminated union)
-export type Content = VideoContent | QuizContent;
+export type Content = VideoContent | QuizContent | DocumentContent;
 
 // ===================
 // Course Lesson Types
@@ -233,6 +247,7 @@ export interface Course {
   
   // Curriculum
   curriculum?: string;
+  brochure?: string;
 
   // Analytics
   analytics?: {

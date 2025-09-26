@@ -20,6 +20,7 @@ import {
   deleteSingleCourseContent,
   updateCourseModuleReferences,
   finalizeCourseCreation,
+  checkSlugAvailability,
 } from "../controllers/course.controller";
 // import { verifyAdmin } from "../middlewares/admin.middleware";
 import { Router } from "express";
@@ -44,6 +45,17 @@ const router = Router();
  *   GET /api/courses?search=&category=1,2,3&fields=_id,title,thumbnail,enrolledCount
  */
 router.get("/", getAllCourses);
+
+/**
+ * @route   GET /api/courses/check-slug/:slug
+ * @desc    Check if a course slug is available
+ * @access  Public
+ * @params
+ *   - slug: The slug to check for availability
+ * @example
+ *   GET /api/courses/check-slug/my-course-slug
+ */
+router.get("/check-slug/:slug", checkSlugAvailability);
 
 /**
  * @route   GET /api/courses/:slug
@@ -143,7 +155,6 @@ router.put("/:courseId/metadata", updateCourseMetadata);
  */
 router.post("/chunked/metadata", createCourseMetadata);
 
-
 /**
  * @route   POST /api/courses/:courseId/modules
  * @desc    Add a single module to a course (real-time)
@@ -230,7 +241,10 @@ router.post("/:courseId/modules/:moduleId/lessons", addSingleCourseLesson);
  * @example
  *   PUT /api/courses/64a1b2c3d4e5f6789012345/modules/64a1b2c3d4e5f6789012346/lessons/64a1b2c3d4e5f6789012347
  */
-router.put("/:courseId/modules/:moduleId/lessons/:lessonId", updateSingleCourseLesson);
+router.put(
+  "/:courseId/modules/:moduleId/lessons/:lessonId",
+  updateSingleCourseLesson
+);
 
 /**
  * @route   DELETE /api/courses/:courseId/modules/:moduleId/lessons/:lessonId
@@ -243,7 +257,10 @@ router.put("/:courseId/modules/:moduleId/lessons/:lessonId", updateSingleCourseL
  * @example
  *   DELETE /api/courses/64a1b2c3d4e5f6789012345/modules/64a1b2c3d4e5f6789012346/lessons/64a1b2c3d4e5f6789012347
  */
-router.delete("/:courseId/modules/:moduleId/lessons/:lessonId", deleteSingleCourseLesson);
+router.delete(
+  "/:courseId/modules/:moduleId/lessons/:lessonId",
+  deleteSingleCourseLesson
+);
 
 // ===================
 // CONTENT ROUTES
@@ -262,7 +279,10 @@ router.delete("/:courseId/modules/:moduleId/lessons/:lessonId", deleteSingleCour
  * @example
  *   POST /api/courses/64a1b2c3d4e5f6789012345/modules/64a1b2c3d4e5f6789012346/lessons/64a1b2c3d4e5f6789012347/contents
  */
-router.post("/:courseId/modules/:moduleId/lessons/:lessonId/contents", addSingleCourseContent);
+router.post(
+  "/:courseId/modules/:moduleId/lessons/:lessonId/contents",
+  addSingleCourseContent
+);
 
 /**
  * @route   PUT /api/courses/:courseId/modules/:moduleId/lessons/:lessonId/contents/:contentId
@@ -278,7 +298,10 @@ router.post("/:courseId/modules/:moduleId/lessons/:lessonId/contents", addSingle
  * @example
  *   PUT /api/courses/64a1b2c3d4e5f6789012345/modules/64a1b2c3d4e5f6789012346/lessons/64a1b2c3d4e5f6789012347/contents/64a1b2c3d4e5f6789012348
  */
-router.put("/:courseId/modules/:moduleId/lessons/:lessonId/contents/:contentId", updateSingleCourseContent);
+router.put(
+  "/:courseId/modules/:moduleId/lessons/:lessonId/contents/:contentId",
+  updateSingleCourseContent
+);
 
 /**
  * @route   DELETE /api/courses/:courseId/modules/:moduleId/lessons/:lessonId/contents/:contentId
@@ -292,7 +315,10 @@ router.put("/:courseId/modules/:moduleId/lessons/:lessonId/contents/:contentId",
  * @example
  *   DELETE /api/courses/64a1b2c3d4e5f6789012345/modules/64a1b2c3d4e5f6789012346/lessons/64a1b2c3d4e5f6789012347/contents/64a1b2c3d4e5f6789012348
  */
-router.delete("/:courseId/modules/:moduleId/lessons/:lessonId/contents/:contentId", deleteSingleCourseContent);
+router.delete(
+  "/:courseId/modules/:moduleId/lessons/:lessonId/contents/:contentId",
+  deleteSingleCourseContent
+);
 
 /**
  * @route   POST /api/courses/:courseId/finalize
@@ -348,7 +374,5 @@ router.get("/admin/id/:courseId", getCourseByIdAdmin);
  *   POST /api/courses/admin/duplicate/:courseId
  */
 // router.post("/admin/duplicate/:courseId", duplicateCourse);
-
-
 
 export default router;

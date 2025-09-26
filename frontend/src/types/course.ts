@@ -1,6 +1,14 @@
 import { CourseInstructor, Discount, FAQ, Review, User } from ".";
 
 // ===================
+// Document Types
+// ===================
+export interface Document {
+  _id?: string;
+  documentUrl: string;
+}
+
+// ===================
 // Video & Note Types
 // ===================
 
@@ -49,7 +57,7 @@ export interface BaseContent {
   _id?: string;
   title: string;
   description?: string;
-  type: "video" | "quiz";
+  type: "video" | "quiz" | "document";
   lessonId?: string; // Reference to parent lesson
   readingMaterials?: ReadingMaterial[];
   isCompleted: boolean;
@@ -85,8 +93,14 @@ export interface QuizContent extends BaseContent {
   maxAttempts?: number;
 }
 
+// Document Content interface (extends BaseContent + Document fields)
+export interface DocumentContent extends BaseContent {
+  type: "document";
+  documentUrl: string;
+}
+
 // Union type for Content (discriminated union)
-export type Content = VideoContent | QuizContent;
+export type Content = VideoContent | QuizContent | DocumentContent;
 
 // ===================
 // Course Lesson Types
@@ -100,6 +114,7 @@ export interface CourseLesson {
   contents?: Content[];
   moduleId?: string; // Reference to parent module
   isCompleted?: boolean;
+  isActive?: boolean;
   completedAt?: Date;
   isLocked?: boolean;
   createdAt?: Date;
@@ -242,8 +257,9 @@ export interface Course {
 
   // Curriculum - optional PDF document URL
   curriculum?: string;
-  curriculumSource?: "upload" | "url";
-  curriculumS3Key?: string;
+
+  // brochure - optional PDF document URL
+  brochure?: string;
 
   // Analytics
   analytics?: {
