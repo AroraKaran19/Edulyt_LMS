@@ -58,22 +58,21 @@ export const authOptions: AuthOptions = {
           );
 
           if (response.status !== 200) {
-            toast.error(response.data.message || "Login failed");
             throw new Error(response.data.message || "Login failed");
           }
 
           return {  
-            id: response.data.user._id,
-            email: response.data.user.email,
-            name: response.data.user.fullName || response.data.user.email,
-            username: response.data.user.username,
-            refreshToken: response.data.refreshToken,
-            accessToken: response.data.accessToken,
+            id: response.data.data.user._id,
+            email: response.data.data.user.email,
+            name: response.data.data.user.fullName || response.data.data.user.email,
+            username: response.data.data.user.username,
+            refreshToken: response.data.data.refreshToken,
+            accessToken: response.data.data.accessToken,
           };
         } catch (error) {
           if (error instanceof AxiosError) {
-            toast.error(error.response?.data?.message);
-            throw new Error(error.response?.data?.message || "Login failed");
+            console.log(error.response?.data);
+            throw new Error(error.response?.data?.error?.message || "Login failed");
           }
           throw new Error("Login failed");
         }

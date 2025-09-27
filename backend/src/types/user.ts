@@ -50,7 +50,7 @@ interface User {
   referral?: string;
   refreshToken?: string;
   pendingPayments?: string[]; // Array of Order IDs whos status is pending
-  provider?: 'google' | 'linkedin' | 'credentials';
+  provider: 'google' | 'linkedin' | 'credentials';
   isActive: boolean;
   createdAt?: Date;
   updatedAt?: Date;

@@ -66,6 +66,14 @@ export class AuthController {
       throw new AppError("User not found!", 401);
     }
 
+    // check if different provider
+    if (user.provider !== "credentials") {
+      throw new AppError(
+        `User is registered with ${user.provider.toUpperCase()}!`,
+        401
+      );
+    }
+
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       throw new AppError("Invalid credentials!", 401);
@@ -115,11 +123,7 @@ export class AuthController {
         refreshToken,
       };
 
-      sendSuccessResponse(
-        res,
-        data,
-        "User created successfully"
-      );
+      sendSuccessResponse(res, data, "User created successfully");
       return;
     }
 

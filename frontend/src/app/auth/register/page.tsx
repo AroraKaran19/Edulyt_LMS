@@ -42,7 +42,23 @@ const RegisterPage = () => {
         }
       );
       if (res.status === 201) {
-        router.push("/auth/login");
+        if (!res.data.success) {
+          setError(res.data.message);
+          return;
+        }
+        // Auto-login the user after successful registration
+        const signInResult = await signIn("credentials", {
+          email,
+          password,
+          redirect: false,
+        });
+
+        if (signInResult?.ok) {
+          router.push("/dashboard");
+        } else {
+          // If auto-login fails, redirect to login page
+          router.push("/auth/login");
+        }
       } else {
         setError(res.data.message);
       }
