@@ -21,7 +21,7 @@ import { useCourses } from "@/hooks/useCourses";
 import { toast } from "react-toastify";
 import { cn } from "@/lib/utils";
 import Loader from "@/components/ui/Loader";
-import { clearAllCourseStorage } from "@/utils/courseStorage";
+import { clearAllCourseStorage, clearCourseEditStorage } from "@/utils/courseStorage";
 
 // Status Toggle Component
 const StatusToggle = ({
@@ -171,6 +171,7 @@ const ManageCoursesPage = () => {
   };
 
   const handleEditCourse = (courseId: string) => {
+    clearCourseEditStorage();
     router.push(`/admin/courses/manage-courses/edit/${courseId}`);
   };
 

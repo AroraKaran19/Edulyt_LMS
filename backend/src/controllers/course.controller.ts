@@ -144,7 +144,7 @@ export const updateCourseMetadata = asyncHandler(
 
     sendSuccessResponse(
       res,
-      { courseId, updated: true },
+      result,
       "Course metadata updated successfully",
       200
     );
@@ -163,7 +163,7 @@ export const createCourseMetadata = asyncHandler(
 
     sendSuccessResponse(
       res,
-      { courseId: result.courseId },
+      result,
       "Course metadata created successfully",
       201
     );
@@ -176,7 +176,6 @@ export const getCoursesForAdmin = asyncHandler(
       page = 1,
       limit = 10,
       search,
-      filters,
       audienceFilter,
       category,
     } = req.query;
@@ -191,7 +190,7 @@ export const getCoursesForAdmin = asyncHandler(
       sendSuccessResponse(res, [], "No courses found", 200);
       return;
     }
-    sendSuccessResponse(res, courses, "Courses retrieved successfully", 200);
+    sendSuccessResponse(res, { courses }, "Courses retrieved successfully", 200);
   }
 );
 
@@ -209,7 +208,7 @@ export const getCourseByIdAdmin = asyncHandler(
       throw new AppError("Course not found", 404);
     }
 
-    sendSuccessResponse(res, { course }, "Course retrieved successfully", 200);
+    sendSuccessResponse(res, course, "Course retrieved successfully", 200);
   }
 );
 
@@ -243,7 +242,7 @@ export const updateCourseModuleReferences = asyncHandler(
     );
     sendSuccessResponse(
       res,
-      result,
+      result.message,
       "Course module references updated successfully",
       200
     );
@@ -255,7 +254,7 @@ export const finalizeCourseCreation = asyncHandler(
     const { courseId } = req.params;
 
     const result = await FinalizeCourseCreationService(courseId);
-    sendSuccessResponse(res, result, result.message, 200);
+    sendSuccessResponse(res, result.message, "Course finalized successfully", 200);
   }
 );
 
@@ -289,13 +288,17 @@ export const updateSingleCourseModule = asyncHandler(
       moduleId,
       moduleData
     );
-    sendSuccessResponse(res, result, "Module updated successfully", 200);
+    sendSuccessResponse(res, result.module, "Module updated successfully", 200);
   }
 );
 
 export const deleteSingleCourseModule = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const { courseId, moduleId } = req.params;
+
+    if (!courseId) {
+      throw new AppError("Course ID is required", 400);
+    }
 
     if (!moduleId) {
       throw new AppError("Module ID is required", 400);
@@ -328,7 +331,7 @@ export const addSingleCourseLesson = asyncHandler(
       moduleId,
       lessonData
     );
-    sendSuccessResponse(res, result, "Lesson added successfully", 201);
+    sendSuccessResponse(res, result.lesson, "Lesson added successfully", 201);
   }
 );
 
@@ -347,7 +350,7 @@ export const updateSingleCourseLesson = asyncHandler(
       lessonId,
       lessonData
     );
-    sendSuccessResponse(res, result, "Lesson updated successfully", 200);
+    sendSuccessResponse(res, result.lesson, "Lesson updated successfully", 200);
   }
 );
 
@@ -364,7 +367,7 @@ export const deleteSingleCourseLesson = asyncHandler(
       moduleId,
       lessonId
     );
-    sendSuccessResponse(res, result, "Lesson deleted successfully", 200);
+    sendSuccessResponse(res, result.message, "Lesson deleted successfully", 200);
   }
 );
 
@@ -391,7 +394,7 @@ export const addSingleCourseContent = asyncHandler(
       lessonId,
       contentData
     );
-    sendSuccessResponse(res, result, "Content added successfully", 201);
+    sendSuccessResponse(res, result.content, "Content added successfully", 201);
   }
 );
 
@@ -414,7 +417,7 @@ export const updateSingleCourseContent = asyncHandler(
       contentId,
       contentData
     );
-    sendSuccessResponse(res, result, "Content updated successfully", 200);
+    sendSuccessResponse(res, result.content, "Content updated successfully", 200);
   }
 );
 
@@ -435,7 +438,7 @@ export const deleteSingleCourseContent = asyncHandler(
       lessonId,
       contentId
     );
-    sendSuccessResponse(res, result, "Content deleted successfully", 200);
+    sendSuccessResponse(res, result.message, "Content deleted successfully", 200);
   }
 );
 

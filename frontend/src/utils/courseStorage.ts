@@ -70,9 +70,50 @@ export const clearCourseEditStorage = (): void => {
     COURSE_EDIT_KEYS.forEach(key => {
       localStorage.removeItem(key);
     });
-    console.log("Cleared course edit localStorage keys");
+    
+    // Clear all course-specific edit keys (course_form_edit_*, course_modules_*, course_form_draft_edit_*)
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && (
+        key.startsWith('course_form_edit_') ||
+        key.startsWith('course_modules_') ||
+        key.startsWith('course_form_draft_edit_')
+      )) {
+        keysToRemove.push(key);
+      }
+    }
+    
+    keysToRemove.forEach(key => {
+      localStorage.removeItem(key);
+    });
+    
+    console.log("Cleared course edit localStorage keys and course-specific edit data");
   } catch (error) {
     console.error("Error clearing course edit localStorage:", error);
+  }
+};
+
+/**
+ * Clear edit data for a specific course
+ */
+export const clearCourseEditData = (courseId: string): void => {
+  if (typeof window === "undefined") return;
+
+  try {
+    const keysToRemove = [
+      `course_form_edit_${courseId}`,
+      `course_modules_${courseId}`,
+      `course_form_draft_edit_${courseId}`,
+    ];
+    
+    keysToRemove.forEach(key => {
+      localStorage.removeItem(key);
+    });
+    
+    console.log(`Cleared edit data for course: ${courseId}`);
+  } catch (error) {
+    console.error(`Error clearing edit data for course ${courseId}:`, error);
   }
 };
 

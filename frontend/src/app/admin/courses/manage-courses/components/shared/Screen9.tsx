@@ -27,7 +27,7 @@ const Screen9 = () => {
   } = useFormContext();
 
   // Course form context for loading states
-  const { isCreating, isUpdating, isEditMode } = useCourseFormContext();
+  const { isCreating, isUpdating } = useCourseFormContext();
 
   // Watch all form values
   const formData = watch();
@@ -243,12 +243,40 @@ const Screen9 = () => {
       style={{ scrollbarWidth: "thin" }}
     >
 
+      {/* Publishing Notice */}
+      <Container
+        title="Important Notice"
+        description="Please read this carefully before proceeding"
+        icon={AlertCircle}
+        className="mb-6 h-fit shadow-none border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50"
+        classNameBody="flex flex-col gap-4 overflow-visible"
+      >
+        <div className="flex items-start gap-4 p-4 bg-white rounded-xl border-2 border-amber-200 shadow-sm">
+          <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
+            <Zap className="w-6 h-6 text-amber-600" />
+          </div>
+          <div className="flex-1">
+            <h4 className="text-lg font-bold text-amber-800 mb-2">
+              Course Will Be Published Automatically
+            </h4>
+            <p className="text-amber-700 text-sm leading-relaxed mb-3">
+              Creating course metadata will automatically <strong>publish your course</strong> and make it visible to students. 
+              Make sure all information is accurate and complete before proceeding.
+            </p>
+            <div className="flex items-center gap-2 text-sm text-amber-600">
+              <CheckCircle className="w-4 h-4" />
+              <span>You can edit course details after publishing</span>
+            </div>
+          </div>
+        </div>
+      </Container>
+
       {/* Validation Summary */}
       <Container
         title="Course Validation"
         description={`${
           allValid
-            ? "All requirements met - Course is ready!"
+            ? "All requirements met - Course is ready to publish!"
             : `${invalidChecks.length} validation issue${
                 invalidChecks.length !== 1 ? "s" : ""
               } found - Please fix before creating`
@@ -354,7 +382,7 @@ const Screen9 = () => {
               <div>
                 <span className="font-semibold text-lg">Action Required</span>
                 <div className="text-sm mt-1">
-                  Please complete all required fields above before creating your
+                  Please complete all required fields above before publishing your
                   course. Each section marked with a red icon needs attention.
                 </div>
               </div>

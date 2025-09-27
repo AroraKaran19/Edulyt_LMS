@@ -2,7 +2,7 @@
 import Container from "@/app/admin/components/ui/Container";
 import FlexBox from "@/components/ui/FlexBox";
 import Input from "@/components/ui/inputs/Input";
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import DropDown from "@/components/ui/dropdown/DropDown";
 import DateSelector from "@/components/ui/inputs/DateSelector";
@@ -10,7 +10,6 @@ import { Plan, Discount, PlanFeatures } from "@/types";
 import { DollarSign, Percent, Plus, Trash2, List } from "lucide-react";
 import CheckBoxContainer from "@/components/ui/inputs/CheckBoxContainer";
 import { useFormContext } from "react-hook-form";
-import { Controller } from "react-hook-form";
 import { CourseFormData } from "@/types/courseForm";
 
 interface CourseState {
@@ -25,8 +24,6 @@ const Screen5 = () => {
   const [isMounted, setIsMounted] = useState(false);
   
   const {
-    control,
-    formState: { errors },
     setValue,
     watch,
   } = useFormContext<CourseFormData>();

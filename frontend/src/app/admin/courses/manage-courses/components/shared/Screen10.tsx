@@ -23,7 +23,7 @@ const Screen10 = () => {
       </div>
 
       <div className="flex flex-col items-center gap-2 text-sm text-text-secondary">
-        <p>What's next?</p>
+        <p>What&apos;s next?</p>
         <div className="flex items-center gap-2">
           <span>
             {isEditMode

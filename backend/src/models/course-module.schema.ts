@@ -94,9 +94,13 @@ const videoSchema = new mongoose.Schema<Video>(
     thumbnailUrl: {
       type: String,
       validate: {
-        validator: validateUrl,
+        validator: function(value: string) {
+          // Allow empty strings or valid URLs
+          return !value || validateUrl(value);
+        },
         message: "Thumbnail must be a valid URL",
       },
+      required: false,
     },
     duration: { type: Number, min: [0, "Duration must be positive"] },
   },
@@ -205,7 +209,6 @@ const courseModuleSchema = new mongoose.Schema<CourseModule>(
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "CourseLesson",
-        required: true,
       },
     ],
     description: { 

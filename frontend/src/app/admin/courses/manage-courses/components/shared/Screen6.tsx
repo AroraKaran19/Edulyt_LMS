@@ -1,6 +1,6 @@
 import Container from "@/app/admin/components/ui/Container";
 import Input from "@/components/ui/inputs/Input";
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import TextArea from "@/components/ui/inputs/TextArea";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
@@ -18,12 +18,10 @@ import {
 import { FAQ } from "@/types";
 import { useFAQ } from "@/hooks/useFAQ";
 import { useFormContext, Controller } from "react-hook-form";
-import { useCourseFormContext } from "@/contexts/CourseFormContext";
 
 const Screen6 = () => {
   // Form context
   const { control, setValue, watch, formState: { errors } } = useFormContext();
-  const { isEditMode, courseId } = useCourseFormContext();
   
   // FAQ hook
   const {

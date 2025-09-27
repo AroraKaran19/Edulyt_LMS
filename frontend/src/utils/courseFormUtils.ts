@@ -50,6 +50,19 @@ export const transformFormDataToCourse = (formData: CourseFormData): Partial<Cou
     ...courseData
   } = formData;
 
+  void thumbnailSource;
+  void thumbnailS3Key;
+  void previewVideoSource;
+  void previewVideoS3Key;
+  void curriculumSource;
+  void curriculumS3Key;
+  void brochureSource;
+  void brochureS3Key;
+  void currentScreen;
+  void completedScreens;
+  void isEditMode;
+  void courseId;
+
   // Validate ObjectIds for testimonials and FAQs
   const isValidObjectId = (id: string): boolean => {
     return /^[0-9a-fA-F]{24}$/.test(id);

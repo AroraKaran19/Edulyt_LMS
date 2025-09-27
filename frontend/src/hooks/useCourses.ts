@@ -1,12 +1,10 @@
 import { useState, useCallback } from "react";
 import { Course } from "@/types/course";
+import { toast } from "react-toastify";
 
 export interface CourseResponse {
   success: boolean;
-  data?: {
-    course: Course;
-    courseId?: string;
-  };
+  data?: Course;
   message?: string;
   error?: string;
   errors?: string[];
@@ -41,7 +39,7 @@ export const useCourses = () => {
       page: number = 1,
       limit: number = 10,
       search: string = "",
-      category?: string,
+      category?: string
     ): Promise<CourseListResponse> => {
       setIsLoading(true);
       setError("");
@@ -195,13 +193,16 @@ export const useCourses = () => {
       setError("");
 
       try {
-        const response = await fetch(`${baseUrl}/courses/${courseId}/metadata`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(courseData),
-        });
+        const response = await fetch(
+          `${baseUrl}/courses/${courseId}/metadata`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(courseData),
+          }
+        );
 
         const result = await response.json();
 
@@ -212,7 +213,9 @@ export const useCourses = () => {
         return result;
       } catch (err) {
         const errorMessage =
-          err instanceof Error ? err.message : "Failed to update course metadata";
+          err instanceof Error
+            ? err.message
+            : "Failed to update course metadata";
         setError(errorMessage);
         return {
           success: false,
@@ -427,7 +430,6 @@ export const useCourses = () => {
     [baseUrl]
   );
 
-
   const addCourseLessons = useCallback(
     async (
       courseId: string,
@@ -543,7 +545,6 @@ export const useCourses = () => {
     [baseUrl]
   );
 
-
   // Individual module operations (real-time)
   const addSingleCourseModule = useCallback(
     async (courseId: string, moduleData: any): Promise<any> => {
@@ -561,15 +562,25 @@ export const useCourses = () => {
 
         const result = await response.json();
 
-        if (!response.ok) {
-          throw new Error(result.error || result.message || "Failed to add module");
+        if (!result.success) {
+          toast.error(result.error.message || "Failed to add module");
+          return {
+            success: false,
+            message: result.error.message || "Failed to add module",
+            error: result.error.message || "Failed to add module",
+          };
         }
 
         return result;
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : "Failed to add module";
+        const errorMessage =
+          error instanceof Error ? error.message : "Failed to add module";
         setError(errorMessage);
-        throw error;
+        return {
+          success: false,
+          message: "Failed to add module",
+          error: errorMessage,
+        };
       } finally {
         setIsLoading(false);
       }
@@ -578,30 +589,47 @@ export const useCourses = () => {
   );
 
   const updateSingleCourseModule = useCallback(
-    async (courseId: string, moduleId: string, moduleData: any): Promise<any> => {
+    async (
+      courseId: string,
+      moduleId: string,
+      moduleData: any
+    ): Promise<any> => {
       setIsLoading(true);
       setError("");
 
       try {
-        const response = await fetch(`${baseUrl}/courses/${courseId}/modules/${moduleId}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(moduleData),
-        });
+        const response = await fetch(
+          `${baseUrl}/courses/${courseId}/modules/${moduleId}`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(moduleData),
+          }
+        );
 
         const result = await response.json();
 
-        if (!response.ok) {
-          throw new Error(result.error || result.message || "Failed to update module");
+        if (!result.success) {
+          toast.error(result.error.message || "Failed to update module");
+          return {
+            success: false,
+            message: result.error.message || "Failed to update module",
+            error: result.error.message || "Failed to update module",
+          };
         }
 
         return result;
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : "Failed to update module";
+        const errorMessage =
+          error instanceof Error ? error.message : "Failed to update module";
         setError(errorMessage);
-        throw error;
+        return {
+          success: false,
+          message: "Failed to update module",
+          error: errorMessage,
+        };
       } finally {
         setIsLoading(false);
       }
@@ -615,22 +643,31 @@ export const useCourses = () => {
       setError("");
 
       try {
-        const response = await fetch(`${baseUrl}/courses/${courseId}/modules/${moduleId}`, {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        });
+        const response = await fetch(
+          `${baseUrl}/courses/${courseId}/modules/${moduleId}`,
+          {
+            method: "DELETE",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
 
         const result = await response.json();
 
-        if (!response.ok) {
-          throw new Error(result.error || result.message || "Failed to delete module");
+        if (!result.success) {
+          toast.error(result.error.message || "Failed to delete module");
+          return {
+            success: false,
+            message: result.error.message || "Failed to delete module",
+            error: result.error.message || "Failed to delete module",
+          };
         }
 
         return result;
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : "Failed to delete module";
+        const errorMessage =
+          error instanceof Error ? error.message : "Failed to delete module";
         setError(errorMessage);
         throw error;
       } finally {
@@ -646,30 +683,47 @@ export const useCourses = () => {
 
   // Add a single lesson to module (real-time)
   const addSingleCourseLesson = useCallback(
-    async (courseId: string, moduleId: string, lessonData: any): Promise<any> => {
+    async (
+      courseId: string,
+      moduleId: string,
+      lessonData: any
+    ): Promise<any> => {
       setIsLoading(true);
       setError("");
 
       try {
-        const response = await fetch(`${baseUrl}/courses/${courseId}/modules/${moduleId}/lessons`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(lessonData),
-        });
+        const response = await fetch(
+          `${baseUrl}/courses/${courseId}/modules/${moduleId}/lessons`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(lessonData),
+          }
+        );
 
         const result = await response.json();
 
-        if (!response.ok) {
-          throw new Error(result.error || result.message || "Failed to add lesson");
+        if (!result.success) {
+          toast.error(result.error.message || "Failed to add lesson");
+          return {
+            success: false,
+            message: result.error.message || "Failed to add lesson",
+            error: result.error.message || "Failed to add lesson",
+          };
         }
 
         return result;
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : "Failed to add lesson";
+        const errorMessage =
+          error instanceof Error ? error.message : "Failed to add lesson";
         setError(errorMessage);
-        throw error;
+        return {
+          success: false,
+          message: "Failed to add lesson",
+          error: errorMessage,
+        };
       } finally {
         setIsLoading(false);
       }
@@ -679,30 +733,48 @@ export const useCourses = () => {
 
   // Update a single lesson in module (real-time)
   const updateSingleCourseLesson = useCallback(
-    async (courseId: string, moduleId: string, lessonId: string, lessonData: any): Promise<any> => {
+    async (
+      courseId: string,
+      moduleId: string,
+      lessonId: string,
+      lessonData: any
+    ): Promise<any> => {
       setIsLoading(true);
       setError("");
 
       try {
-        const response = await fetch(`${baseUrl}/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(lessonData),
-        });
+        const response = await fetch(
+          `${baseUrl}/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(lessonData),
+          }
+        );
 
         const result = await response.json();
 
-        if (!response.ok) {
-          throw new Error(result.error || result.message || "Failed to update lesson");
+        if (!result.success) {
+          toast.error(result.error.message || "Failed to update lesson");
+          return {
+            success: false,
+            message: result.error.message || "Failed to update lesson",
+            error: result.error.message || "Failed to update lesson",
+          };
         }
 
         return result;
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : "Failed to update lesson";
+        const errorMessage =
+          error instanceof Error ? error.message : "Failed to update lesson";
         setError(errorMessage);
-        throw error;
+        return {
+          success: false,
+          message: "Failed to update lesson",
+          error: errorMessage,
+        };
       } finally {
         setIsLoading(false);
       }
@@ -712,29 +784,46 @@ export const useCourses = () => {
 
   // Delete a single lesson from module (real-time)
   const deleteSingleCourseLesson = useCallback(
-    async (courseId: string, moduleId: string, lessonId: string): Promise<any> => {
+    async (
+      courseId: string,
+      moduleId: string,
+      lessonId: string
+    ): Promise<any> => {
       setIsLoading(true);
       setError("");
 
       try {
-        const response = await fetch(`${baseUrl}/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}`, {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        });
+        const response = await fetch(
+          `${baseUrl}/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}`,
+          {
+            method: "DELETE",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
 
         const result = await response.json();
 
-        if (!response.ok) {
-          throw new Error(result.error || result.message || "Failed to delete lesson");
+        if (!result.success) {
+          toast.error(result.error.message || "Failed to delete lesson");
+          return {
+            success: false,
+            message: result.error.message || "Failed to delete lesson",
+            error: result.error.message || "Failed to delete lesson",
+          };
         }
 
         return result;
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : "Failed to delete lesson";
+        const errorMessage =
+          error instanceof Error ? error.message : "Failed to delete lesson";
         setError(errorMessage);
-        throw error;
+        return {
+          success: false,
+          message: "Failed to delete lesson",
+          error: errorMessage,
+        };
       } finally {
         setIsLoading(false);
       }
@@ -748,30 +837,48 @@ export const useCourses = () => {
 
   // Add a single content to lesson (real-time)
   const addSingleCourseContent = useCallback(
-    async (courseId: string, moduleId: string, lessonId: string, contentData: any): Promise<any> => {
+    async (
+      courseId: string,
+      moduleId: string,
+      lessonId: string,
+      contentData: any
+    ): Promise<any> => {
       setIsLoading(true);
       setError("");
 
       try {
-        const response = await fetch(`${baseUrl}/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}/contents`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(contentData),
-        });
+        const response = await fetch(
+          `${baseUrl}/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}/contents`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(contentData),
+          }
+        );
 
         const result = await response.json();
 
-        if (!response.ok) {
-          throw new Error(result.error || result.message || "Failed to add content");
+        if (!result.success) {
+          toast.error(result.error.message || "Failed to add content");
+          return {
+            success: false,
+            message: result.error.message || "Failed to add content",
+            error: result.error.message || "Failed to add content",
+          };
         }
 
         return result;
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : "Failed to add content";
+        const errorMessage =
+          error instanceof Error ? error.message : "Failed to add content";
         setError(errorMessage);
-        throw error;
+        return {
+          success: false,
+          message: "Failed to add content",
+          error: errorMessage,
+        };
       } finally {
         setIsLoading(false);
       }
@@ -781,30 +888,49 @@ export const useCourses = () => {
 
   // Update a single content in lesson (real-time)
   const updateSingleCourseContent = useCallback(
-    async (courseId: string, moduleId: string, lessonId: string, contentId: string, contentData: any): Promise<any> => {
+    async (
+      courseId: string,
+      moduleId: string,
+      lessonId: string,
+      contentId: string,
+      contentData: any
+    ): Promise<any> => {
       setIsLoading(true);
       setError("");
 
       try {
-        const response = await fetch(`${baseUrl}/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}/contents/${contentId}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(contentData),
-        });
+        const response = await fetch(
+          `${baseUrl}/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}/contents/${contentId}`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(contentData),
+          }
+        );
 
         const result = await response.json();
 
-        if (!response.ok) {
-          throw new Error(result.error || result.message || "Failed to update content");
+        if (!result.success) {
+          toast.error(result.error.message || "Failed to update content");
+          return {
+            success: false,
+            message: result.error.message || "Failed to update content",
+            error: result.error.message || "Failed to update content",
+          };
         }
 
         return result;
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : "Failed to update content";
+        const errorMessage =
+          error instanceof Error ? error.message : "Failed to update content";
         setError(errorMessage);
-        throw error;
+        return {
+          success: false,
+          message: "Failed to update content",
+          error: errorMessage,
+        };
       } finally {
         setIsLoading(false);
       }
@@ -814,29 +940,47 @@ export const useCourses = () => {
 
   // Delete a single content from lesson (real-time)
   const deleteSingleCourseContent = useCallback(
-    async (courseId: string, moduleId: string, lessonId: string, contentId: string): Promise<any> => {
+    async (
+      courseId: string,
+      moduleId: string,
+      lessonId: string,
+      contentId: string
+    ): Promise<any> => {
       setIsLoading(true);
       setError("");
 
       try {
-        const response = await fetch(`${baseUrl}/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}/contents/${contentId}`, {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        });
+        const response = await fetch(
+          `${baseUrl}/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}/contents/${contentId}`,
+          {
+            method: "DELETE",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
 
         const result = await response.json();
 
-        if (!response.ok) {
-          throw new Error(result.error || result.message || "Failed to delete content");
+        if (!result.success) {
+          toast.error(result.error.message || "Failed to delete content");
+          return {
+            success: false,
+            message: result.error.message || "Failed to delete content",
+            error: result.error.message || "Failed to delete content",
+          };
         }
 
         return result;
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : "Failed to delete content";
+        const errorMessage =
+          error instanceof Error ? error.message : "Failed to delete content";
         setError(errorMessage);
-        throw error;
+        return {
+          success: false,
+          message: "Failed to delete content",
+          error: errorMessage,
+        };
       } finally {
         setIsLoading(false);
       }

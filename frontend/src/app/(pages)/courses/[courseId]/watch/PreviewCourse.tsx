@@ -325,8 +325,7 @@ const CourseContentSection = ({
   );
 };
 
-const PreviewCourse = (props: { course: Course }) => {
-  const course = useMemo(() => ({ ...props.course }), [props.course]);
+const PreviewCourse = ({ course }: { course: Course }) => {
   const [width, setWidth] = useState(0);
   const [search, setSearch] = useState('');
 

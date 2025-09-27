@@ -41,6 +41,3 @@ export * from "./review";
 
 // FAQ Types
 export * from "./faq";
-
-// Course Reducer (New Modular Structure)
-export * from "../app/admin/courses/reducers"; 

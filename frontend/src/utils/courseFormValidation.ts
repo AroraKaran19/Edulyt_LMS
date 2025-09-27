@@ -460,6 +460,9 @@ export const SCREEN_VALIDATORS: Record<
   7: () => ({ isValid: true, errors: [], warnings: [], missingFields: [] }), // Testimonials screen
   8: validateScreen8,
   9: () => ({ isValid: true, errors: [], warnings: [], missingFields: [] }), // Review screen
+  10: () => ({ isValid: true, errors: [], warnings: [], missingFields: [] }), // Course settings screen
+  11: () => ({ isValid: true, errors: [], warnings: [], missingFields: [] }), // Modules & content screen
+  12: () => ({ isValid: true, errors: [], warnings: [], missingFields: [] }), // Course summary screen
 };
 
 // ===================

@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React from "react";
 import Container from "@/app/admin/components/ui/Container";
 import { ArrowLeftIcon, ArrowRightIcon, BookOpenIcon } from "lucide-react";
 import { FlexBox, WhiteButton } from "@/components/ui";
@@ -16,6 +16,7 @@ import Screen8 from "../components/shared/Screen8";
 import Screen9 from "../components/shared/Screen9";
 import Screen10 from "../components/shared/Screen10";
 import Screen11 from "../components/shared/Screen11";
+import Screen12 from "../components/shared/Screen12";
 import StorageIndicator from "@/components/courseForm/StorageIndicator";
 
 const CreateCoursePageContent = () => {
@@ -34,6 +35,9 @@ const CreateCoursePageContent = () => {
       }
     } else if (currentScreen === 10) {
       // On Screen10, navigate to Screen11 for modules and content
+      nextScreen();
+    } else if (currentScreen === 11) {
+      // On Screen11, navigate to Screen12 for course summary
       nextScreen();
     } else {
       nextScreen();
@@ -67,6 +71,7 @@ const CreateCoursePageContent = () => {
         {currentScreen === 9 && <Screen9 />}
         {currentScreen === 10 && <Screen10 />}
         {currentScreen === 11 && <Screen11 />}
+        {currentScreen === 12 && <Screen12 />}
       </div>
       <div className="flex justify-between items-center h-fit p-4">
         <WhiteButton
@@ -88,7 +93,7 @@ const CreateCoursePageContent = () => {
             </>
           ) : (
             <>
-              {currentScreen === 9 ? "Create Course Metadata" : currentScreen === 10 ? "Next Page" : "Next"} 
+              {currentScreen === 9 ? "Create Course Metadata" : currentScreen === 10 ? "Next Page" : currentScreen === 11 ? "Review Course" : "Next"} 
               <ArrowRightIcon className="size-4" />
             </>
           )}

@@ -1,5 +1,5 @@
 import Input from "@/components/ui/inputs/Input";
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import Container from "@/app/admin/components/ui/Container";
@@ -22,7 +22,6 @@ import {
 import { Testimonial } from "@/types";
 import { useTestimonial } from "@/hooks/useTestimonial";
 import { useFormContext, Controller } from "react-hook-form";
-import { useCourseFormContext } from "@/contexts/CourseFormContext";
 
 interface ProfileImageProps {
   src: string;
@@ -91,7 +90,6 @@ const ProfileImage: React.FC<ProfileImageProps> = ({ src, name, className }) => 
 const Screen7 = () => {
   // Form context
   const { control, setValue, watch, formState: { errors } } = useFormContext();
-  const { isEditMode, courseId } = useCourseFormContext();
   
   const {
     fetchTestimonials,

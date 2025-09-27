@@ -61,6 +61,7 @@ export interface BaseContent {
   lessonId?: string; // Reference to parent lesson
   readingMaterials?: ReadingMaterial[];
   isCompleted: boolean;
+  isActive?: boolean;
   completedAt?: Date;
   isLocked?: boolean;
   createdAt?: Date;

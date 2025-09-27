@@ -30,7 +30,6 @@ const CoursePage = ({ course }: { course: Course }) => {
   );
 
   if (!course) return null;
-  console.log(course);
 
   return (
     <div

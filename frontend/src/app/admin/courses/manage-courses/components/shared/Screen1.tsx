@@ -400,7 +400,7 @@ const Screen1 = () => {
               return true;
             },
           }}
-          render={({ field }) => (
+          render={() => (
             <UploadMediaContainer
               title="Course Curriculum (Optional)"
               description="Upload the curriculum of your course (optional)"
@@ -441,7 +441,7 @@ const Screen1 = () => {
               return true;
             },
           }}
-          render={({ field }) => (
+          render={() => (
             <UploadMediaContainer
               title="Course Brochure (Optional)"
               description="Upload the brochure of your course (optional)"

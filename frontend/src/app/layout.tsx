@@ -71,7 +71,7 @@ export default function RootLayout({
             rtl={false}
             pauseOnFocusLoss
             draggable
-            pauseOnHover
+            pauseOnHover={false}
             theme="light"
             className="toast-container"
             limit={2}

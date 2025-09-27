@@ -375,9 +375,18 @@ export const SCREEN_CONFIG: Record<number, ScreenConfig> = {
     requiredFields: [],
     optionalFields: [],
   },
+  12: {
+    id: 12,
+    title: "Course Summary",
+    description: "Review your course before publishing",
+    component: null as any,
+    validation: () => true, // Summary screen - no validation needed
+    requiredFields: [],
+    optionalFields: [],
+  },
 };
 
-export const TOTAL_SCREENS = 11;
+export const TOTAL_SCREENS = 12;
 export const STORAGE_KEY = "course_form_data";
 export const DRAFT_KEY = "course_form_draft";
 export const VERSION = "1.0.0";

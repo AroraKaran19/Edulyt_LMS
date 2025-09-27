@@ -4,9 +4,6 @@ import UploadMediaContainer from "@/components/ui/container/UploadMediaContainer
 import { ImageIcon, VideoIcon } from "lucide-react";
 import { useFormContext } from "react-hook-form";
 import { Controller } from "react-hook-form";
-import {
-  useScreenNavigation,
-} from "@/contexts/CourseFormContext";
 import { CourseFormData } from "@/types/courseForm";
 import { useUpload } from "@/hooks/useUpload";
 import React, { useEffect, useState } from "react";

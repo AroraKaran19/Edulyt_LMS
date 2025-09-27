@@ -3,6 +3,7 @@ import GoogleProvider from "next-auth/providers/google";
 import LinkedInProvider from "next-auth/providers/linkedin";
 import CredentialsProvider from "next-auth/providers/credentials";
 import axios, { AxiosError } from "axios";
+import { toast } from "react-toastify";
 
 // Extend the built-in session and user types
 declare module "next-auth" {
@@ -41,6 +42,7 @@ export const authOptions: AuthOptions = {
       authorize: async (credentials) => {
         try {
           if (!credentials?.email || !credentials?.password) {
+            toast.error("Email and password are required");
             throw new Error("Email and password are required");
           }
 
@@ -55,13 +57,12 @@ export const authOptions: AuthOptions = {
             loginData
           );
 
-          console.error(response.data.error);
-
           if (response.status !== 200) {
+            toast.error(response.data.message || "Login failed");
             throw new Error(response.data.message || "Login failed");
           }
 
-          return {
+          return {  
             id: response.data.user._id,
             email: response.data.user.email,
             name: response.data.user.fullName || response.data.user.email,
@@ -71,7 +72,7 @@ export const authOptions: AuthOptions = {
           };
         } catch (error) {
           if (error instanceof AxiosError) {
-            console.error(error.response?.data?.message);
+            toast.error(error.response?.data?.message);
             throw new Error(error.response?.data?.message || "Login failed");
           }
           throw new Error("Login failed");
@@ -120,21 +121,22 @@ export const authOptions: AuthOptions = {
             `${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/oauth-signin`,
             oauthData
           );
+          const result = response.data;
 
           if (response.status === 200 || response.status === 201) {
             // Check if response.data and response.data.user exist before accessing properties
-            if (response.data && response.data.user && response.data.user._id) {
-              user.id = response.data.user._id;
-              user.accessToken = response.data.accessToken;
-              user.refreshToken = response.data.refreshToken;
-              user.username = response.data.user.username;
+            if (result.data && result.data.user && result.data.user._id) {
+              user.id = result.data.user._id;
+              user.accessToken = result.data.accessToken;
+              user.refreshToken = result.data.refreshToken;
+              user.username = result.data.user.username;
               return true;
             } else {
-              console.error("Invalid response structure from backend:", response.data);
+              console.error("Invalid response structure from backend:", result.data);
               return false;
             }
           } else {
-            console.error("Failed to create user in backend:", response.data);
+            console.error("Failed to create user in backend:", result.data);
             return false;
           }
         }
@@ -150,9 +152,10 @@ export const authOptions: AuthOptions = {
           typeof message === "string" &&
           message.toLowerCase().includes("different provider")
         ) {
+          toast.error(message);
           return "/auth/login?error=EMAIL_IN_USE";
         }
-        console.error("SignIn callback error:", message);
+        toast.error(message);
         return false;
       }
     },

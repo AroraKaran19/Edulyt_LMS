@@ -1,6 +1,6 @@
 import Container from "@/app/admin/components/ui/Container";
 import Input from "@/components/ui/inputs/Input";
-import React, { useMemo, useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import TextArea from "@/components/ui/inputs/TextArea";
 import TagInput from "@/components/ui/inputs/TagInput";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
@@ -21,8 +21,8 @@ import { getTextFromHtml } from "@/utils/courseFormUtils";
 
 const Screen8 = () => {
   // Form context
-  const { control, setValue, watch, formState: { errors } } = useFormContext();
-  const { isEditMode, courseId } = useCourseFormContext();
+  const { control, setValue, watch } = useFormContext();
+  const { isEditMode } = useCourseFormContext();
   
   const [isGenerating, setIsGenerating] = useState(false);
 

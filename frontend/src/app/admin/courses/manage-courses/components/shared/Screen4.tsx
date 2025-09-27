@@ -28,7 +28,6 @@ const Screen4 = () => {
 
   // Watch form values
   const highlightsValue = watch("highlights") || [];
-  const featuresValue = watch("features") || [];
 
   // Sync highlights with form data
   useEffect(() => {

@@ -3,7 +3,11 @@ import userSchema from "../models/user.schema";
 import bcrypt from "bcryptjs";
 import dotenv from "dotenv";
 import { AuthService } from "../services/auth.service";
-import { asyncHandler, AppError, sendSuccessResponse } from "../middlewares/error.middleware";
+import {
+  asyncHandler,
+  AppError,
+  sendSuccessResponse,
+} from "../middlewares/error.middleware";
 
 dotenv.config();
 
@@ -16,29 +20,32 @@ export class AuthController {
 
   register = asyncHandler(async (req: Request, res: Response) => {
     const { email, password, confirmPassword, role = "user" } = req.body;
-    
+
     if (!email || !password || !confirmPassword) {
       throw new AppError("All fields are required", 400);
     }
-    
+
     const existingUser = await userSchema.findOne({ email });
     if (existingUser) {
       throw new AppError("Email already in use", 400);
     }
-    
+
     if (password !== confirmPassword) {
       throw new AppError("Passwords do not match", 400);
     }
-    
-    const { user, accessToken, refreshToken } =
-      await this.authService.register(email, password, role);
-    
+
+    const { user, accessToken, refreshToken } = await this.authService.register(
+      email,
+      password,
+      role
+    );
+
     const data = {
       user,
       accessToken,
       refreshToken,
     };
-    
+
     sendSuccessResponse(res, data, "User created successfully", 201);
   });
 
@@ -49,7 +56,7 @@ export class AuthController {
    */
   login = asyncHandler(async (req: Request, res: Response) => {
     const { email, password } = req.body;
-    
+
     if (!email || !password) {
       throw new AppError("Email and password are required!", 400);
     }
@@ -85,11 +92,11 @@ export class AuthController {
    */
   oauthSignIn = asyncHandler(async (req: Request, res: Response) => {
     const { email, fullName, provider, role, profilePicture } = req.body;
-    
+
     if (!email || !fullName || !provider || !role) {
       throw new AppError("All fields are required", 400);
     }
-    
+
     const user = await userSchema.findOne({ email });
     if (!user) {
       // Create a new user
@@ -101,28 +108,44 @@ export class AuthController {
           role,
           profilePicture
         );
-      
-      sendSuccessResponse(res, {
+
+      const data = {
         user,
         accessToken,
         refreshToken,
-      }, "User created successfully");
+      };
+
+      sendSuccessResponse(
+        res,
+        data,
+        "User created successfully"
+      );
       return;
     }
-    
+
     if (user.provider === provider) {
       // Login the user
-      const { accessToken, refreshToken } =
-        await this.authService.oauthSignIn(email, fullName, provider);
-      
-      sendSuccessResponse(res, {
-        user,
-        accessToken,
-        refreshToken,
-      }, "Login successful");
+      const { accessToken, refreshToken } = await this.authService.oauthSignIn(
+        email,
+        fullName,
+        provider
+      );
+
+      sendSuccessResponse(
+        res,
+        {
+          user,
+          accessToken,
+          refreshToken,
+        },
+        "Login successful"
+      );
     } else {
       // return error
-      throw new AppError("User already registered with different provider!", 401);
+      throw new AppError(
+        "User already registered with different provider!",
+        401
+      );
     }
   });
 
@@ -133,15 +156,15 @@ export class AuthController {
    */
   refreshToken = asyncHandler(async (req: Request, res: Response) => {
     const { refreshToken } = req.body;
-    
+
     if (!refreshToken) {
       throw new AppError("Refresh token is required", 400);
     }
-    
+
     const { accessToken } = await this.authService.refreshToken(refreshToken);
-    
+
     const data = { accessToken };
-    
+
     sendSuccessResponse(res, data, "Token refreshed");
   });
 }

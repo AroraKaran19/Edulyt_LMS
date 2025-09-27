@@ -4,12 +4,10 @@ import {
   CourseFormData,
   UseCourseFormOptions,
   UseCourseFormReturn,
-  CourseFormResponse,
 } from "@/types/courseForm";
 import {
   validateScreen,
   validateAllScreens,
-  getRequiredScreens,
 } from "@/utils/courseFormValidation";
 import {
   getInitialFormData,
@@ -32,7 +30,6 @@ import {
   autoGenerateKeywords,
 } from "@/utils/courseFormUtils";
 import { useCourses } from "./useCourses";
-import { Course } from "@/types/course";
 import { toast } from "react-toastify";
 
 // ===================
@@ -146,7 +143,7 @@ export const useCourseForm = (
 
       if (response.success && response.data) {
         const apiFormData = transformCourseToFormData(
-          response.data.course,
+          response.data,
           true
         );
 
@@ -249,7 +246,7 @@ export const useCourseForm = (
         }
         return prev;
       });
-      setCurrentScreen((prev) => Math.min(prev + 1, 11));
+      setCurrentScreen((prev) => Math.min(prev + 1, 12));
     } else {
       setValidationErrors({
         [`screen_${currentScreen}`]: currentValidation.errors,
@@ -267,7 +264,7 @@ export const useCourseForm = (
   }, [getValues, mode, courseId]);
 
   const goToScreen = useCallback((screen: number) => {
-    if (screen >= 1 && screen <= 11) {
+    if (screen >= 1 && screen <= 12) {
       setCurrentScreen(screen);
       setValidationErrors({});
     }
@@ -309,15 +306,6 @@ export const useCourseForm = (
   // ===================
   // Form Actions
   // ===================
-
-  const resetForm = useCallback(() => {
-    const initialData = getInitialData();
-    reset(initialData);
-    setCurrentScreen(1);
-    setCompletedScreens([]);
-    setValidationErrors({});
-    clearFormDataFromStorage(mode, courseId);
-  }, [getInitialData, reset, mode, courseId]);
 
   const saveDraft = useCallback(() => {
     const formData = getValues();
@@ -515,21 +503,11 @@ export const useCourseForm = (
     setIsFormValid(validation.isValid);
   }, [currentScreen, watch()]);
 
-  const canGoNext = isFormValid && currentScreen <= 11;
+  const canGoNext = isFormValid && currentScreen <= 12;
 
   const canGoPrev = useMemo(() => {
     return currentScreen > 1;
   }, [currentScreen]);
-
-  const formProgress = useMemo(() => {
-    const formData = getValues();
-    return calculateFormProgress(formData);
-  }, [getValues]);
-
-  const screenProgress = useMemo(() => {
-    const formData = getValues();
-    return calculateScreenProgress(formData, currentScreen);
-  }, [getValues, currentScreen]);
 
   // ===================
   // Auto-generation Functions
