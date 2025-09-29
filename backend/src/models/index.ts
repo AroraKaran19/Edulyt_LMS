@@ -1,6 +1,5 @@
-import userSchema from "./user.schema";
-import instructorSchema from "./instructor.schema";
+import { UserModel, InstructorModel, StudentModel, CollaboratorModel } from "./user.schema";
 import reviewSchema from "./review.schema";
 import planSchema from "./plans.schema";
 
-export { userSchema, instructorSchema, reviewSchema, planSchema };
+export { UserModel, InstructorModel, StudentModel, CollaboratorModel, reviewSchema, planSchema };

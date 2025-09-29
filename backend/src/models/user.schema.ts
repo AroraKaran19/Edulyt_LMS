@@ -1,292 +1,306 @@
 import mongoose from "mongoose";
-import { User } from "../types"; // Assuming User type is defined in types file
+import { User, Instructor, Student, Collaborator } from "../types";
 import {
   validateEmail,
-  validateLinkedinUrl,
-  validateGithubUrl,
   validatePhoneNumber,
 } from "./validators";
 
-// ===================
-// Marks Sub-Schema
-// ===================
+const googleSchema = new mongoose.Schema({
+  id: { type: String, required: false },
+  name: { type: String, required: false },
+  email: { type: String, required: false },
+  image: { type: String, required: false },
+  email_verified: { type: Boolean, required: false },
+}, { _id: false });
 
-const marksSchema = new mongoose.Schema(
+const linkedinSchema = new mongoose.Schema({
+  sub: { type: String, required: false },
+  name: { type: String, required: false },
+  given_name: { type: String, required: false },
+  family_name: { type: String, required: false },
+  picture: { type: String, required: false },
+  locale: { type: String, required: false },
+  email: { type: String, required: false },
+  email_verified: { type: Boolean, required: false },
+  refreshToken: { type: String, required: false },
+  accessToken: { type: String, required: false },
+}, { _id: false });
+
+const githubSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  login: { type: String, required: true },
+  id: { type: Number, required: true },
+  node_id: { type: String, required: true },
+  avatar_url: { type: String, required: true },
+  gravatar_id: { type: String, required: true },
+  html_url: { type: String, required: true },
+  starred_url: { type: String, required: true },
+  type: { type: String, required: true },
+  user_view_type: { type: String, required: true },
+  site_admin: { type: Boolean, required: true },
+  company: { type: String, required: true },
+  blog: { type: String, required: true },
+  location: { type: String, required: true },
+  email: { type: String, required: false },
+  bio: { type: String, required: true },
+  public_repos: { type: Number, required: true },
+  public_gists: { type: Number, required: true },
+  followers: { type: Number, required: true },
+  following: { type: Number, required: true },
+  created_at: { type: String, required: true },
+  updated_at: { type: String, required: true },
+  refreshToken: { type: String, required: false },
+  accessToken: { type: String, required: false },
+}, { _id: false });
+
+const socialProfilesSchema = new mongoose.Schema({
+  google: { type: googleSchema, required: false },
+  linkedin: { type: linkedinSchema, required: false },
+  github: { type: githubSchema, required: false },
+  instagram: { type: String, required: false },
+}, { _id: false });
+
+const addressSchema = new mongoose.Schema({
+  address: { type: String, required: false },
+  city: { type: String, required: false },
+  state: { type: String, required: false },
+  country: { type: String, required: false },
+  pincode: { type: String, required: false },
+}, { _id: false });
+
+const userSchema = new mongoose.Schema<User>(
   {
-    score: {
-      type: Number,
-      required: true,
-      min: [0, "Score must be positive"],
-      max: [100, "Score cannot exceed 100 for percentage or 10 for CGPA"], // Note: Validation can be enhanced in custom validator if needed
-    },
-    unit: {
+    status: {
       type: String,
       required: true,
-      enum: ["percentage", "cgpa"],
+      enum: ["active", "inactive", "blocked"],
+      default: "active",
     },
-  },
-  { _id: false }
-);
-
-// ===================
-// Pursuing Marks Sub-Schema (for table-like structure per semester/year)
-// ===================
-
-const pursuingMarksSchema = new mongoose.Schema(
-  {
-    period: {
-      type: String,
-      required: true,
-      trim: true,
-      minlength: 1,
-      maxlength: 50, // e.g., "Semester 1", "Year 1"
-    },
-    score: {
-      type: Number,
-      required: true,
-      min: [0, "Score must be positive"],
-      max: [100, "Score cannot exceed 100 for percentage or 10 for CGPA"],
-    },
-    unit: {
-      type: String,
-      required: true,
-      enum: ["percentage", "cgpa"],
-    },
-  },
-  { timestamps: true, _id: false }
-);
-
-// ===================
-// Social Profiles Sub-Schema
-// ===================
-
-const socialProfilesSchema = new mongoose.Schema(
-  {
-    linkedin: {
-      type: String,
-      required: false,
-      default: "",
-      validate: {
-        validator: validateLinkedinUrl,
-        message: "LinkedIn must be a valid URL or empty",
-      },
-    },
-    github: {
-      type: String,
-      required: false,
-      default: "",
-      validate: {
-        validator: validateGithubUrl,
-        message: "GitHub must be a valid URL or empty",
-      },
-    },
-    // Can extend with more profiles like twitter, etc., for scalability
-  },
-  { _id: false }
-);
-
-// ===================
-// User Schema
-// ===================
-
-export const userSchema = new mongoose.Schema<User>(
-  {
-    username: {
-      type: String,
-      required: false,
-      trim: true,
-      minlength: [3, "Username must be at least 3 characters"],
-      maxlength: [50, "Username cannot exceed 50 characters"],
-    },
-    role: {
-      type: String,
-      required: true,
-      enum: ["super-admin", "admin", "instructor", "affiliate", "user"],
-    },
-    fullName: {
-      type: String,
-      required: false,
-      trim: true,
-      minlength: [3, "Full name must be at least 3 characters"],
-      maxlength: [100, "Full name cannot exceed 100 characters"],
-    },
-    profilePicture: {
-      type: String,
-      required: false,
-      trim: true,
-    },
+    firstName: { type: String, required: false },
+    lastName: { type: String, required: false },
+    profilePicture: { type: String, required: false },
     email: {
       type: String,
       required: true,
       unique: true,
-      lowercase: true,
-      trim: true,
-      validate: {
-        validator: validateEmail,
-        message: "Email must be a valid email address",
-      },
-    },
-    password: {
-      type: String,
-      required: true,
-      select: false,
-      minlength: [5, "Password must be at least 8 characters"],
-      maxlength: [100, "Password cannot exceed 100 characters"],
+      validate: validateEmail,
     },
     phone: {
       type: String,
       required: false,
-      trim: true,
-      validate: {
-        validator: validatePhoneNumber,
-        message: "Phone number must be valid",
-      },
+      validate: validatePhoneNumber,
     },
-    isPhoneVerified: {
-      type: Boolean,
-      default: false,
-      required: false,
-    },
-    dob: {
-      type: Date,
-      required: false,
-    },
-    gender: {
+    whatsappNumber: {
       type: String,
       required: false,
-      enum: ["male", "female", "other", "prefer-not-to-say"],
+      validate: validatePhoneNumber,
     },
-    experienceLevel: {
+    password: { type: String, required: true },
+    userType: {
       type: String,
-      required: false,
-      enum: [
-        "Student",
-        "Graduate",
-        "Post Graduate",
-        "Fresher",
-        "0 - 2 Years",
-        "2 - 5 Years",
-        "5 - 10 Years",
-      ],
-    },
-    universityName: {
-      type: String,
-      required: false,
-      trim: true,
-    },
-    collegeName: {
-      type: String,
-      required: false,
-      trim: true,
-    },
-    collegeState: {
-      type: String,
-      required: false,
-      trim: true,
-    },
-    country: {
-      type: String,
-      required: false,
-      trim: true,
-    },
-    currentDegree: {
-      type: String,
-      required: false,
-      enum: ["graduation", "postgraduation", ""],
-    },
-    currentCourse: {
-      type: String,
-      required: false,
-      trim: true,
-    },
-    // socialProfiles: {
-    //   type: socialProfilesSchema,
-    //   required: false,
-    //   default: {},
-    // },
-    placementCellEmail: {
-      type: String,
-      required: false,
-      validate: {
-        validator: validateEmail,
-        message: "Placement cell email must be a valid email address or empty",
-      },
-    },
-    guardianPhone: {
-      type: String,
-      required: false,
-      trim: true,
-      validate: {
-        validator: validatePhoneNumber,
-        message: "Guardian phone number must be valid or empty",
-      },
-    },
-    isGuardianPhoneVerified: {
-      type: Boolean,
-      default: false,
-      required: false,
-    },
-    tenthMarks: {
-      type: marksSchema,
-      required: false,
-    },
-    twelfthMarks: {
-      type: marksSchema,
-      required: false,
-    },
-    pursuingMarks: {
-      type: [pursuingMarksSchema],
-      required: false,
-    },
-    enrolledCourses: {
-      type: [mongoose.Schema.Types.ObjectId],
-      ref: "Course",
-      required: false,
-    },
-    pendingPayments: {
-      type: [mongoose.Schema.Types.ObjectId],
-      ref: "Order",
-      required: false,
+      required: true,
+      enum: ["student", "instructor", "collaborator", "admin", "super-admin"],
+      default: "student",
     },
     provider: {
       type: String,
-      required: true,
-      enum: ["google", "linkedin", "credentials"],
+      enum: ["credentials", "google", "linkedin"],
       default: "credentials",
-    },
-    referral: {
-      type: String,
-      required: false,
-      trim: true,
-    },
-    refreshToken: {
-      type: String,
-      required: false,
-    },
-    isActive: {
-      type: Boolean,
-      default: true,
       required: true,
     },
+    address: {
+      type: addressSchema,
+      required: false,
+    },
+    accounts: {
+      type: socialProfilesSchema,
+      required: true,
+    },
+    dob: { type: Date, required: false },
+    permissions: {
+      type: [String],
+      required: true,
+      default: [],
+    },
+    refreshTokens: [{
+      token: { type: String, required: true },
+      deviceInfo: {
+        userAgent: { type: String, required: false },
+        ipAddress: { type: String, required: false },
+        deviceType: { type: String, required: false },
+      },
+      createdAt: { type: Date, default: Date.now },
+      lastUsed: { type: Date, default: Date.now },
+      isActive: { type: Boolean, default: true },
+    }],
+    createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now },
   },
-  { timestamps: true }
+  {
+    discriminatorKey: "userType",
+    timestamps: true,
+  }
 );
 
-// Indexes for scalability and query performance
-userSchema.index({ username: 1 });
-userSchema.index({ phone: 1 }); // For lookups by phone
-userSchema.index({ experienceLevel: 1 }); // For filtering by experience
-userSchema.index({ country: 1 }); // For geographic filtering
-userSchema.index({ collegeState: 1 }); // For state-based queries
-userSchema.index({ enrolledCourses: 1 }); // For users with specific courses (multi-key index)
-userSchema.index({ isActive: 1 }); // For active users
-userSchema.index({ createdAt: -1 }); // Sorting by creation date descending
-userSchema.index({ updatedAt: -1 }); // Sorting by update date descending
-
-// Pre-save hook (similar to other schemas)
+// Add middleware to update the updatedAt field before saving
 userSchema.pre("save", function (next) {
-  this.set("updatedAt", new Date());
+  this.updatedAt = new Date();
   next();
 });
 
-export default mongoose.model<User>("User", userSchema);
+// Add middleware to update the updatedAt field before updating
+userSchema.pre("findOneAndUpdate", function (next) {
+  this.set({ updatedAt: new Date() });
+  next();
+});
+
+// Add middleware to update the updatedAt field before updating
+userSchema.pre("updateOne", function (next) {
+  this.set({ updatedAt: new Date() });
+  next();
+});
+
+// Add middleware to update the updatedAt field before updating
+userSchema.pre("updateMany", function (next) {
+  this.set({ updatedAt: new Date() });
+  next();
+});
+
+// Create the base User model
+const UserModel = mongoose.model<User>("User", userSchema);
+
+// Instructor discriminator schema
+const instructorSchema = new mongoose.Schema<Instructor>({
+  rating: {
+    type: Number,
+    required: true,
+    default: 0,
+    min: 0,
+    max: 5,
+  },
+  totalStudents: {
+    type: Number,
+    required: true,
+    default: 0,
+    min: 0,
+  },
+  bio: { type: String, required: false },
+  currentPosition: { type: String, required: false },
+  currentCompany: { type: String, required: false },
+  previousExperience: {
+    type: [String],
+    required: false,
+    default: [],
+  },
+  linkedinUrl: {
+    type: String,
+    required: false,
+    validate: {
+      validator: function (v: string) {
+        if (!v) return true; // Allow empty string
+        return /^https?:\/\/(www\.)?linkedin\.com\/in\/[a-zA-Z0-9-]+\/?$/.test(v);
+      },
+      message: "Invalid LinkedIn URL format",
+    },
+  },
+  reviews: {
+    type: [mongoose.Schema.Types.ObjectId],
+    ref: "Review",
+    required: false,
+    default: [],
+  },
+  ownedCourses: {
+    type: [mongoose.Schema.Types.ObjectId],
+    ref: "Course",
+    required: false,
+    default: [],
+  },
+});
+
+// Student discriminator schema
+const studentSchema = new mongoose.Schema<Student>({
+  collegeName: { type: String, required: false },
+  passingYear: {
+    type: Number,
+    required: false,
+    min: 1900,
+    max: new Date().getFullYear() + 10,
+  },
+  areaOfInterest: { type: String, required: false },
+  experience: { type: String, required: false },
+  currentPosition: { type: String, required: false },
+  currentCompany: { type: String, required: false },
+  domain: { type: String, required: false },
+  portfolio: {
+    type: String,
+    required: false,
+    validate: {
+      validator: function (v: string) {
+        if (!v) return true; // Allow empty
+        return /^https?:\/\/.+/.test(v); // Basic URL validation
+      },
+      message: "Portfolio must be a valid URL",
+    },
+  },
+  // Joining info
+  joinSource: {
+    type: String,
+    enum: ["direct", "affiliate", "promotion"],
+    required: false,
+  },
+  affiliation: {
+    isAffiliate: {
+      type: Boolean,
+      required: false,
+      default: false,
+    },
+    affiliate: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Affiliate",
+      required: false,
+    },
+  },
+  // Orders
+  orders: {
+    type: [mongoose.Schema.Types.ObjectId],
+    ref: "PaymentOrder",
+    required: false,
+    default: [],
+  },
+  // Pending payments
+  pendingPayments: {
+    type: [mongoose.Schema.Types.ObjectId],
+    ref: "PaymentOrder",
+    required: false,
+    default: [],
+  },
+});
+
+// Collaborator discriminator schema
+const collaboratorSchema = new mongoose.Schema<Collaborator>({
+  totalReferrals: {
+    type: Number,
+    required: true,
+    default: 0,
+    min: 0,
+  },
+  totalEarnings: {
+    type: Number,
+    required: true,
+    default: 0,
+    min: 0,
+  },
+});
+
+// Create discriminator models
+const InstructorModel = UserModel.discriminator<Instructor>(
+  "instructor",
+  instructorSchema
+);
+const StudentModel = UserModel.discriminator<Student>("student", studentSchema);
+const CollaboratorModel = UserModel.discriminator<Collaborator>(
+  "collaborator",
+  collaboratorSchema
+);
+
+export { UserModel, InstructorModel, StudentModel, CollaboratorModel };

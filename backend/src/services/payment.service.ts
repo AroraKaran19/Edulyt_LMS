@@ -1,14 +1,32 @@
 import { CourseModel } from "../models/course.schema";
 import { OrderModel } from "../models/order.schema";
 import dotenv from "dotenv";
-import UserModel from "../models/user.schema";
+import { UserModel, StudentModel } from "../models/user.schema";
 import jwt from "jsonwebtoken";
 import { generatePaytmChecksum } from "../utils/helper/PaytmChecksum";
 import axios from "axios";
+import { createEnrollment } from "./enrollment.service";
 
 dotenv.config();
 
 export class PaymentService {
+  /**
+   * Update pending payments for a user
+   * @param userId - User ID
+   * @param updateOperation - MongoDB update operation
+   */
+  private async updatePendingPayments(userId: string, updateOperation: any) {
+    const user = await UserModel.findById(userId);
+    if (!user) {
+      throw new Error("User not found");
+    }
+    
+    // For students, use StudentModel to access pendingPayments
+    if (user.userType === "student") {
+      await StudentModel.findByIdAndUpdate(userId, updateOperation);
+    }
+  }
+
   /**
    * Get order info
    * @param orderId - Order id
@@ -72,7 +90,7 @@ export class PaymentService {
     await order.save();
 
     // save the orderid in the user's pendingPayments array
-    await UserModel.findByIdAndUpdate(userId, {
+    await this.updatePendingPayments(userId, {
       $push: { pendingPayments: order._id.toString() },
     });
 
@@ -269,14 +287,16 @@ export class PaymentService {
           await order.save();
 
           // remove the order id from the user's pendingPayments array
-          await UserModel.findByIdAndUpdate(order.userId, {
+          await this.updatePendingPayments(order.userId.toString(), {
             $pull: { pendingPayments: order._id.toString() },
           });
 
-          // add the order id to the user's enrolledCourses array
-          await UserModel.findByIdAndUpdate(order.userId, {
-            $push: { enrolledCourses: order.courseId.toString() },
-          });
+          // Create enrollment record using Enrollments collection
+          await createEnrollment(
+            order.userId.toString(),
+            order.courseId.toString(),
+            "direct"
+          );
 
           // increase enrollments count
           await CourseModel.findByIdAndUpdate(order.courseId, {
@@ -316,6 +336,151 @@ export class PaymentService {
       return decoded;
     } catch (error) {
       console.error("Error verifying payment gateway token:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Process payment webhook
+   * @param webhookData - Webhook payload from payment gateway
+   * @returns Processing result
+   */
+  async processWebhook(webhookData: any) {
+    try {
+      console.log("Processing webhook data:", webhookData);
+
+      // Extract order information from webhook
+      const orderId = webhookData.orderId || webhookData.ORDERID;
+      const txnId = webhookData.txnId || webhookData.TXNID;
+      const status = webhookData.status || webhookData.STATUS;
+      const amount = webhookData.amount || webhookData.TXNAMOUNT;
+
+      if (!orderId) {
+        return {
+          success: false,
+          message: "Order ID not found in webhook data",
+        };
+      }
+
+      // Find the order
+      const order = await OrderModel.findById(orderId);
+      if (!order) {
+        return {
+          success: false,
+          message: "Order not found",
+          orderId,
+        };
+      }
+
+      // Check if order is already processed
+      if (order.paymentStatus === "success") {
+        return {
+          success: true,
+          message: "Order already processed successfully",
+          orderId,
+        };
+      }
+
+      // Process based on payment status
+      if (status === "TXN_SUCCESS" || status === "success") {
+        // Payment successful
+        await this.handleSuccessfulPayment(order, txnId, amount);
+        return {
+          success: true,
+          message: "Payment processed successfully",
+          orderId,
+        };
+      } else if (status === "TXN_FAILURE" || status === "failed") {
+        // Payment failed
+        await this.handleFailedPayment(order);
+        return {
+          success: true,
+          message: "Payment failure processed",
+          orderId,
+        };
+      } else {
+        // Unknown status
+        return {
+          success: false,
+          message: `Unknown payment status: ${status}`,
+          orderId,
+        };
+      }
+    } catch (error) {
+      console.error("Error processing webhook:", error);
+      return {
+        success: false,
+        message: "Error processing webhook",
+        error: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
+  }
+
+  /**
+   * Handle successful payment
+   * @param order - Order document
+   * @param txnId - Transaction ID
+   * @param amount - Transaction amount
+   */
+  private async handleSuccessfulPayment(
+    order: any,
+    txnId: string,
+    amount: string
+  ) {
+    try {
+      // Update order status
+      order.paymentStatus = "success";
+      order.txnId = txnId;
+      order.paymentMode = "online";
+      await order.save();
+
+      // Remove from pending payments
+      await this.updatePendingPayments(order.userId.toString(), {
+        $pull: { pendingPayments: order._id.toString() },
+      });
+
+      // Note: Course enrollment is now handled by the Enrollments collection
+      // The enrollment record is created in the createEnrollment call above
+
+      // Create enrollment record
+      await createEnrollment(
+        order.userId.toString(),
+        order.courseId.toString(),
+        "direct"
+      );
+
+      // Increase course enrollments count
+      await CourseModel.findByIdAndUpdate(order.courseId, {
+        $inc: { enrollments: 1 },
+      });
+
+      console.log(
+        `Payment successful for order ${order._id}, user enrolled in course`
+      );
+    } catch (error) {
+      console.error("Error handling successful payment:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Handle failed payment
+   * @param order - Order document
+   */
+  private async handleFailedPayment(order: any) {
+    try {
+      // Update order status
+      order.paymentStatus = "failed";
+      await order.save();
+
+      // Remove from pending payments
+      await this.updatePendingPayments(order.userId.toString(), {
+        $pull: { pendingPayments: order._id.toString() },
+      });
+
+      console.log(`Payment failed for order ${order._id}`);
+    } catch (error) {
+      console.error("Error handling failed payment:", error);
       throw error;
     }
   }

@@ -1,6 +1,6 @@
-import { userSchema } from "@/models";
-import { User } from "@/types";
-import { createErrorResponse, errorMessages } from "@/utils/error.message";
+import { UserModel } from "../models/user.schema";
+import { User } from "../types";
+import { createErrorResponse, errorMessages } from "../utils/error.message";
 import { NextFunction, Request, Response } from "express";
 import jwt, {
   JwtPayload,
@@ -110,7 +110,7 @@ export const verifyUser = async (
 
     // Fetch user with timeout
     const user = (await Promise.race([
-      userSchema.findById(decoded.id).lean(),
+      UserModel.findById(decoded.id).lean(),
       //   new Promise((_, reject) =>
       //     setTimeout(() => reject(new Error("Database query timeout")), 5000)
       //   ),

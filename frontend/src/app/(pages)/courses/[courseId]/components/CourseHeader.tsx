@@ -136,14 +136,13 @@ const CourseHeader = ({
               >
                 {course?.title}
               </h1>
-              <p
+              <div
                 className={cn(
-                  "text-[16px] font-normal text-center md:text-left",
+                  "text-[16px] font-normal text-center md:text-left prose prose-sm max-w-none",
                   plusJakartaSans.className
                 )}
-              >
-                {course?.description}
-              </p>
+                dangerouslySetInnerHTML={{ __html: course?.description || "" }}
+              />
             </div>
           </div>
           <div className="course-details-content-right w-full lg:w-2/5 flex flex-col gap-4 mt-3 lg:mt-0 items-center lg:items-end justify-center">
@@ -154,6 +153,7 @@ const CourseHeader = ({
                 Date.now() && (
                 <div className="course-discount flex flex-col gap-2">
                   <DiscountCountdown
+                    discount={course.discount}
                     days={discountCountdown?.days || 0}
                     hours={discountCountdown?.hours || 0}
                     minutes={discountCountdown?.minutes || 0}

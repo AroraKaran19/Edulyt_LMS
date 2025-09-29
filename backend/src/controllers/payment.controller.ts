@@ -1,6 +1,6 @@
 import { PaymentService } from "../services/payment.service";
 import { Request, Response } from "express";
-import UserModel from "../models/user.schema";
+import { UserModel } from "../models/user.schema";
 import { asyncHandler, AppError, sendSuccessResponse } from "../middlewares/error.middleware";
 
 export class PaymentController {
@@ -49,8 +49,15 @@ export class PaymentController {
       throw new AppError("User not found", 404);
     }
 
-    // Check if user is already enrolled in the course
-    if (user.enrolledCourses?.includes(courseId)) {
+    // Check if user is already enrolled in the course using Enrollments collection
+    const { EnrollmentModel } = await import("../models/enrollment.schema");
+    const existingEnrollment = await EnrollmentModel.findOne({ 
+      userId, 
+      courseId, 
+      status: { $in: ["active", "completed"] } 
+    });
+    
+    if (existingEnrollment) {
       throw new AppError("User already enrolled in the course", 409);
     }
 
@@ -110,5 +117,44 @@ export class PaymentController {
     );
     
     sendSuccessResponse(res, { decoded }, "Payment gateway token verified successfully");
+  });
+
+  /**
+   * Handle payment gateway webhook
+   * @param req - The request object
+   * @param res - The response object
+   */
+  handlePaymentWebhook = asyncHandler(async (
+    req: Request,
+    res: Response
+  ): Promise<void> => {
+    try {
+      const webhookData = req.body;
+      
+      // Log webhook data for debugging
+      console.log("Payment webhook received:", JSON.stringify(webhookData, null, 2));
+      
+      // Process the webhook data
+      const result = await this.paymentService.processWebhook(webhookData);
+      
+      if (result.success) {
+        res.status(200).json({ 
+          success: true, 
+          message: "Webhook processed successfully",
+          orderId: result.orderId 
+        });
+      } else {
+        res.status(400).json({ 
+          success: false, 
+          message: result.message || "Webhook processing failed" 
+        });
+      }
+    } catch (error) {
+      console.error("Webhook processing error:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Internal server error processing webhook" 
+      });
+    }
   });
 }

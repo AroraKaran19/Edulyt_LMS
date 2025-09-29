@@ -103,8 +103,7 @@ const Navbar = () => {
       >
         <div className="logo h-[52px] min-h-[24px] flex-none w-1/3 flex items-center lg:w-1/4">
           <Link
-            href="https://airkrit.com"
-            target="_blank"
+            href="/"
             className="h-full cursor-pointer select-none"
             draggable={false}
           >

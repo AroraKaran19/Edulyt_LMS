@@ -87,9 +87,10 @@ const OverviewSection = ({ course }: { course: Course }) => {
         <h2 className="text-3xl font-bold font-coolvetica text-black">
           What will you learn?
         </h2>
-        <p className="text-base font-normal text-black line-clamp-5">
-          {course.whatYouWillLearn}
-        </p>
+        <div 
+          className="text-base font-normal text-black line-clamp-5 prose prose-sm max-w-none"
+          dangerouslySetInnerHTML={{ __html: course.whatYouWillLearn || "" }}
+        />
       </div>
       <hr className="w-full border-t-2 border-gray-200" />
       {course?.skills.length > 0 && (

@@ -1,11 +1,11 @@
 import { useState, useCallback } from 'react';
-import { CourseInstructor } from '@/types';
+import { Instructor } from '@/types';
 
 // Response types
 export interface InstructorResponse {
   success: boolean;
   message: string;
-  data?: CourseInstructor;
+  data?: Instructor;
   error?: string;
 }
 
@@ -13,7 +13,7 @@ export interface InstructorListResponse {
   success: boolean;
   message: string;
   data?: {
-    instructors: CourseInstructor[];
+    instructors: Instructor[];
     pagination: {
       total: number;
       page: number;
@@ -97,7 +97,7 @@ export const useInstructors = () => {
   }, [baseUrl]);
 
   // Create instructor
-  const createInstructor = useCallback(async (instructorData: Partial<CourseInstructor>): Promise<InstructorResponse> => {
+  const createInstructor = useCallback(async (instructorData: Partial<Instructor>): Promise<InstructorResponse> => {
     setIsLoading(true);
     setError('');
 
@@ -131,7 +131,7 @@ export const useInstructors = () => {
   }, [baseUrl]);
 
   // Update instructor
-  const updateInstructor = useCallback(async (instructorId: string, instructorData: Partial<CourseInstructor>): Promise<InstructorResponse> => {
+  const updateInstructor = useCallback(async (instructorId: string, instructorData: Partial<Instructor>): Promise<InstructorResponse> => {
     setIsLoading(true);
     setError('');
 

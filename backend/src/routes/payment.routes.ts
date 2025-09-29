@@ -40,4 +40,13 @@ router.get("/status/:orderId", paymentController.getPaymentStatus);
  */
 router.get("/verify-token/:token", paymentController.verifyPaymentGatewayToken);
 
+/**
+ * @route   POST /api/payment/webhook
+ * @desc    Payment gateway webhook for automated payment status updates
+ * @access  Public (webhook endpoint)
+ * @body    Payment gateway webhook payload
+ * @return  Success/Error response
+ */
+router.post("/webhook", paymentController.handlePaymentWebhook);
+
 export default router;

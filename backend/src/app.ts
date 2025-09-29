@@ -10,6 +10,7 @@ import paymentRoutes from "./routes/payment.routes";
 import faqRoutes from "./routes/faq.routes";
 import testimonialRoutes from "./routes/testimonial.routes";
 import categoryRoutes from "./routes/category.routes";
+import instructorRoutes from "./routes/instructor.routes";
 
 import { errorHandler, notFoundHandler } from "./middlewares/error.middleware";
 
@@ -77,6 +78,7 @@ app.use("/api/payment", paymentRoutes);
 app.use("/api/faqs", faqRoutes);
 app.use("/api/testimonials", testimonialRoutes);
 app.use("/api/categories", categoryRoutes);
+app.use("/api/instructor", instructorRoutes);
 
 // Error handling middleware (must be after all routes)
 app.use(notFoundHandler); // Handle 404 errors

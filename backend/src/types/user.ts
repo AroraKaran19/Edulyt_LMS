@@ -1,126 +1,141 @@
-// ===================
-// User Interface
-// ===================
+import { Affiliate, Course, Review, PaymentOrder } from ".";
 
-interface Marks {
-  score: number;
-  unit: 'percentage' | 'cgpa';
+export interface Collaborator extends User {
+  totalReferrals: number;
+  totalEarnings: number;
 }
 
-interface PursuingMarks {
-  period: string;
-  score: number;
-  unit: 'percentage' | 'cgpa';
-  createdAt?: Date;
-  updatedAt?: Date;
+export interface Instructor extends User {
+  rating: number;
+  totalStudents: number;
+  bio?: string;
+  currentPosition?: string;
+  currentCompany?: string;
+  previousExperience?: string[];
+  linkedinUrl?: string;
+  reviews: Review["_id"][];
+  ownedCourses: Course["_id"][];
 }
 
-interface SocialProfiles {
-  linkedin?: string;
-  github?: string;
+export interface Student extends User {
+  collegeName?: string;
+  passingYear?: number;
+  areaOfInterest?: string;
+  experience?: string;
+
+  currentPosition?: string;
+  currentCompany?: string;
+  domain?: string;
+
+  portfolio?: string;
+
+  accounts: SocialProfiles;
+
+  // Joining info
+  joinSource?: "direct" | "affiliate" | "promotion";
+  affiliation?: {
+    isAffiliate: boolean; // if user has been referred by an affiliate
+    affiliate: Affiliate;
+  };
+
+  // Orders
+  orders: PaymentOrder["_id"][];
+  
+  // Pending payments
+  pendingPayments: PaymentOrder["_id"][];
 }
 
-interface User {
+export interface SocialProfiles {
+  google?: {
+    id?: string;
+    name?: string;
+    email?: string;
+    image?: string;
+    email_verified?: boolean;
+  };
+  linkedin?: {
+    sub?: string;
+    name?: string;
+    given_name?: string;
+    family_name?: string;
+    picture?: string;
+    locale?: string;
+    email?: string;
+    email_verified?: boolean;
+
+    refreshToken?: string;
+    accessToken?: string;
+  };
+  github?: {
+    name: string;
+    login: string;
+    id: number;
+    node_id: string;
+    avatar_url: string;
+    gravatar_id: string;
+    html_url: string;
+    starred_url: string;
+    type: string;
+    user_view_type: string;
+    site_admin: boolean;
+    company: string;
+    blog: string;
+    location: string;
+    email?: string;
+    bio: string;
+    public_repos: number;
+    public_gists: number;
+    followers: number;
+    following: number;
+    created_at: string;
+    updated_at: string;
+
+    refreshToken?: string;
+    accessToken?: string;
+  };
+  instagram?: string;
+}
+
+export interface User {
   _id?: string;
-  role: 'super-admin' | 'admin' | 'instructor' | 'affiliate' | 'user';
-  username: string;
-  fullName: string;
+  status: "active" | "inactive" | "blocked";
+
+  firstName?: string;
+  lastName?: string;
   profilePicture?: string;
   email: string;
+  phone?: string;
+  whatsappNumber?: string;
   password: string;
-  phone: string;
-  isPhoneVerified: boolean;
-  dob: Date;
-  gender: 'male' | 'female' | 'other' | 'prefer-not-to-say';
-  experienceLevel: 'Student' | 'Graduate' | 'Post Graduate' | 'Fresher' | '0 - 2 Years' | '2 - 5 Years' | '5 - 10 Years';
-  universityName?: string;
-  collegeName?: string;
-  collegeState?: string;
-  country: string;
-  currentDegree?: 'graduation' | 'postgraduation' | '';
-  currentCourse?: string;
-  socialProfiles: SocialProfiles;
-  placementCellEmail?: string;
-  guardianPhone?: string;
-  isGuardianPhoneVerified?: boolean;
-  tenthMarks?: Marks;
-  twelfthMarks?: Marks;
-  pursuingMarks?: PursuingMarks[];
-  enrolledCourses?: string[]; // Array of Course IDs
-  referral?: string;
-  refreshToken?: string;
-  pendingPayments?: string[]; // Array of Order IDs whos status is pending
-  provider: 'google' | 'linkedin' | 'credentials';
-  isActive: boolean;
-  createdAt?: Date;
-  updatedAt?: Date;
-}
+  userType: "student" | "instructor" | "collaborator" | "admin" | "super-admin";
+  provider: "credentials" | "google" | "linkedin";
 
-// ===================
-// User Progress Interface
-// ===================
+  address?: {
+    address?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    pincode?: string;
+  };
 
-interface QuizAttempt {
-  attemptNumber: number;
-  score: number;
-  passed: boolean;
-  answers: {
-    questionIndex: number;
-    selectedAnswers: string[];
+  accounts: SocialProfiles;
+
+  dob?: Date;
+
+  permissions: string[];
+
+  refreshTokens: {
+    token: string;
+    deviceInfo?: {
+      userAgent?: string;
+      ipAddress?: string;
+      deviceType?: string;
+    };
+    createdAt: Date;
+    lastUsed: Date;
+    isActive: boolean;
   }[];
-  attemptedAt: Date;
+
   createdAt?: Date;
   updatedAt?: Date;
 }
-
-interface ContentProgress {
-  contentId: string; // Content ID
-  type: 'video' | 'quiz';
-  completed: boolean;
-  progress: number;
-  watchedTime?: number;
-  attempts?: QuizAttempt[];
-  lastAccessed?: Date;
-  createdAt?: Date;
-  updatedAt?: Date;
-}
-
-interface LessonProgress {
-  lessonId: string; // CourseLesson ID
-  completed: boolean;
-  progress: number;
-  contents: ContentProgress[];
-  lastAccessed?: Date;
-  createdAt?: Date;
-  updatedAt?: Date;
-}
-
-interface ModuleProgress {
-  moduleId: string; // CourseModule ID
-  completed: boolean;
-  progress: number;
-  lessons: LessonProgress[];
-  lastAccessed?: Date;
-  createdAt?: Date;
-  updatedAt?: Date;
-}
-
-interface UserProgress {
-  _id?: string;
-  userId: string; // User ID
-  courseId: string; // Course ID
-  enrolledAt: Date;
-  completed: boolean;
-  completionDate?: Date;
-  overallProgress: number;
-  totalTimeSpent: number;
-  modules: ModuleProgress[];
-  certificateIssued: boolean;
-  certificateUrl?: string;
-  lastAccessed?: Date;
-  isActive: boolean;
-  createdAt?: Date;
-  updatedAt?: Date;
-}
-
-export { User, UserProgress, Marks, PursuingMarks, SocialProfiles, QuizAttempt, ContentProgress, LessonProgress, ModuleProgress };

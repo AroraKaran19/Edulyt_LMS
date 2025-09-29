@@ -64,7 +64,9 @@ export const authOptions: AuthOptions = {
           return {  
             id: response.data.data.user._id,
             email: response.data.data.user.email,
-            name: response.data.data.user.fullName || response.data.data.user.email,
+            name: response.data.data.user.firstName && response.data.data.user.lastName 
+              ? `${response.data.data.user.firstName} ${response.data.data.user.lastName}` 
+              : response.data.data.user.email,
             username: response.data.data.user.username,
             refreshToken: response.data.data.refreshToken,
             accessToken: response.data.data.accessToken,
@@ -105,11 +107,14 @@ export const authOptions: AuthOptions = {
           account?.provider === "google" ||
           account?.provider === "linkedin"
         ) {
+          console.log(user);
+          console.log(profile);
+          console.log(account);
           const oauthData = {
             email: user.email,
             fullName: user.name,
             provider: account.provider,
-            role: "user", // Default role for OAuth users
+            userType: "student", // Default userType for OAuth users
             ...(profile &&
               account?.provider === "google" && {
                 profilePicture: user.image || (profile as any)?.picture,

@@ -1,5 +1,5 @@
 import React from "react";
-import { Course, CourseInstructor } from "@/types";
+import { Course, Instructor } from "@/types";
 import { cn } from "@/lib/utils";
 import { Plus } from "lucide-react";
 import BestsellerBadge from "@/components/ui/course/BestsellerBadge";
@@ -81,7 +81,7 @@ const TopCourseCard = ({
         className={cn("instructors mt-2 flex gap-2 items-center select-none")}
       >
         {course.instructor.map(
-          (instructor: CourseInstructor, index: number) => {
+          (instructor: Instructor, index: number) => {
             if (index < 2) {
               return <InstructorCard key={index} instructor={instructor} />;
             }

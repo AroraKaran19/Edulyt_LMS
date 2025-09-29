@@ -16,6 +16,7 @@ const LoginPage = () => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [isClient, setIsClient] = useState(false);
+  const [isOAuthLoading, setIsOAuthLoading] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -27,6 +28,16 @@ const LoginPage = () => {
       router.push("/dashboard");
     }
   }, [status]);
+
+  const handleOAuthSignIn = async (provider: string) => {
+    setIsOAuthLoading(true);
+    try {
+      await signIn(provider, { callbackUrl: "/dashboard" });
+    } catch (error) {
+      console.error("OAuth sign in error:", error);
+      setIsOAuthLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -144,6 +155,19 @@ const LoginPage = () => {
     );
   }
 
+  // Show loading overlay when OAuth is in progress
+  if (isOAuthLoading) {
+    return (
+      <div className="w-full h-full flex items-center justify-center relative">
+        <div className="absolute inset-0 backdrop-blur-sm z-10"></div>
+        <div className="relative z-20 flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-gray-200 border-t-orange-500 rounded-full animate-spin"></div>
+          <p className="text-lg font-medium text-gray-700">Redirecting to {isOAuthLoading ? 'authentication provider' : ''}...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="header flex flex-col gap-2 mb-2">
@@ -206,7 +230,8 @@ const LoginPage = () => {
       <div className="oauth-buttons w-full max-w-lg lg:max-w-full flex flex-col items-center justify-center gap-6">
         <WhiteButton
           className="w-full flex items-center justify-center gap-2 rounded-xl font-bold shadow-[inset_0_-2px_7px_0_rgba(183,159,255,0.22)]"
-          onClick={() => signIn("google")}
+          onClick={() => handleOAuthSignIn("google")}
+          disabled={isOAuthLoading}
         >
           <Image
             src="/google-icon.svg"
@@ -215,11 +240,12 @@ const LoginPage = () => {
             height={20}
             className="size-4"
           />
-          <span>Sign In using Google</span>
+          <span>{isOAuthLoading ? "Signing in..." : "Sign In using Google"}</span>
         </WhiteButton>
         <WhiteButton
           className="w-full flex items-center justify-center gap-2 rounded-xl font-bold shadow-[inset_0_-2px_7px_0_rgba(183,159,255,0.22)]"
-          onClick={() => signIn("linkedin")}
+          onClick={() => handleOAuthSignIn("linkedin")}
+          disabled={isOAuthLoading}
         >
           <Image
             src="/linkedin-icon.svg"
@@ -228,7 +254,7 @@ const LoginPage = () => {
             height={20}
             className="size-4"
           />
-          <span>Sign In using LinkedIn</span>
+          <span>{isOAuthLoading ? "Signing in..." : "Sign In using LinkedIn"}</span>
         </WhiteButton>
       </div>
       <p className="text-sm text-gray-500 text-center font-bold self-center">

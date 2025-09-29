@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { CourseInstructor } from "@/types";
+import { Instructor } from "@/types";
 import Image from "next/image";
 import Link from "next/link";
 import React from "react";
@@ -7,15 +7,15 @@ import React from "react";
 const InstructorCard = ({
   instructor,
   ...props
-}: { instructor: CourseInstructor } & {
+}: { instructor: Instructor } & {
   className?: string;
   style?: React.CSSProperties;
 }) => {
 
   return (
     <Link
-      href={`/instructors/${instructor.fullName
-        .toLowerCase()
+      href={`/instructors/${instructor?.firstName} ${instructor?.lastName
+        ?.toLowerCase()
         .replace(/\s+/g, "-")
         .replace(/[^a-z0-9-]/g, "")}`}
       className={cn(
@@ -28,7 +28,7 @@ const InstructorCard = ({
     >
       <Image
         src={instructor.profilePicture || "/courseDefaultTestimonial.png"}
-        alt={instructor.fullName}
+        alt={instructor.firstName + " " + instructor.lastName}
         className="size-5 rounded-full flex-shrink-0"
         width={20}
         height={20}
@@ -38,7 +38,7 @@ const InstructorCard = ({
         priority
       />
       <span className="flex-1 text-ellipsis overflow-hidden whitespace-nowrap min-w-0">
-        {instructor.fullName}
+        {instructor.firstName + " " + instructor.lastName}
       </span>
     </Link>
   );

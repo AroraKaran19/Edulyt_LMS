@@ -41,10 +41,12 @@ const AboutTheCourseComponent = ({ course }: { course: Course }) => {
         className="what-will-you-learn w-full flex flex-col gap-6"
       >
         <CourseTitle title="What will you learn?" />
-        <p className="text-base font-normal">
-          {course?.whatYouWillLearn ||
-            "Lorem ipsum dolor sit amet consectetur. Orci at ultricies pellentesque egestas sollicitudin amet morbi tortor. Mattis odio sagittis ullamcorper maecenas viverra orci at. Pellentesque sed lacus felis consequat purus turpis purus ornare purus. At lacus sed elementum imperdiet. Faucibus sit massa duis arcu quis ultricies. Tellus aliquam enim commodo egestas rhoncus aliquet velit scelerisque amet. Commodo in eu mattis cras. Mus faucibus netus et aliquet. Pulvinar hendrerit tristique scelerisque sed eget in."}
-        </p>
+        <div 
+          className="text-base font-normal prose prose-sm max-w-none"
+          dangerouslySetInnerHTML={{ 
+            __html: course?.whatYouWillLearn
+          }}
+        />
       </section>
       {course?.skills.length > 0 && (
         <section

@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { CourseInstructor, Discount, FAQ, Review, User } from ".";
+import { Discount, FAQ, Instructor, Review, User } from ".";
 
 // ===================
 // Document Types
@@ -206,7 +206,7 @@ export interface Course {
   modules?: CourseModule[];
 
   // Instructor
-  instructor: CourseInstructor["_id"][]; // can be multiple instructors
+  instructor: Instructor["_id"][]; // can be multiple instructors
 
   // Pricing Plans
   plans: {

@@ -1,151 +1,116 @@
-import { CourseInstructor, User } from "../types";
-import userModel from "../models/user.schema";
-import { CourseModel } from "../models/course.schema";
+import { InstructorModel } from "../models/user.schema";
+import { User as UserType } from "../types/user";
 import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 
 export class InstructorService {
   /**
-   * Get all instructors
-   * @param page - Page number
-   * @param limit - Limit number
-   * @returns Instructors or null
+   * Register a new instructor
+   * @param instructorData - Instructor registration data
+   * @param deviceInfo - Device information from request
+   * @returns { user: UserType, accessToken: string, refreshToken: string }
    */
-  async getAllInstructors(page: number, limit: number): Promise<User[] | null> {
-    try {
-      const instructors = await userModel
-        .find({ role: "instructor" })
-        .skip((page - 1) * limit)
-        .limit(limit);
-      return instructors;
-    } catch (error) {
-      console.error("Error getting all instructors:", error);
-      throw error;
+  async registerInstructor(
+    instructorData: any,
+    deviceInfo?: {
+      userAgent?: string;
+      ipAddress?: string;
+      deviceType?: string;
     }
-  }
-
-  /**
-   * Get instructor by id
-   * @param instructorId - Instructor id
-   * @returns Instructor or null
-   */
-  async getInstructorById(instructorId: string): Promise<User | null> {
+  ): Promise<{ user: UserType; accessToken: string; refreshToken: string }> {
     try {
-      const instructor = await userModel.findById(instructorId);
-      return instructor;
-    } catch (error) {
-      console.error("Error getting instructor by id:", error);
-      throw error;
-    }
-  }
+      const existingUser = await InstructorModel.findOne({ email: instructorData.email });
+      if (existingUser) {
+        throw new Error("Email already in use!");
+      }
 
-  /**
-   * Create instructor
-   * @param instructorData - Instructor data
-   * @returns Instructor
-   */
-  async createInstructor(
-    instructorData: Partial<CourseInstructor>
-  ): Promise<User> {
-    try {
-      const {
-        email,
-        fullName,
-        profilePicture,
-        password,
-        currentPosition,
-        currentCompany,
-      } = instructorData;
-      if (
-        !email ||
-        !fullName ||
-        !profilePicture ||
-        !password ||
-        !currentPosition ||
-        !currentCompany
-      ) {
-        throw new Error("All fields are required!");
-      }
-      const user = await userModel.findOne({ email });
-      if (user) {
-        throw new Error("User already exists!");
-      }
-      const hashedPassword = await bcrypt.hash(password, 10);
-      let username = fullName.toLowerCase().replace(/ /g, "");
-      while (await userModel.findOne({ username })) {
-        username = username + Math.random().toString(36).substring(2, 5);
-      }
-      const newUser = new userModel({
-        username,
-        email,
-        fullName,
-        profilePicture,
+      const hashedPassword = await bcrypt.hash(instructorData.password, 10);
+
+      const userData = {
+        email: instructorData.email,
         password: hashedPassword,
-        role: "instructor",
-        currentPosition,
-        currentCompany,
+        userType: "instructor",
+        provider: "credentials",
+        accounts: {},
+        firstName: instructorData.firstName,
+        lastName: instructorData.lastName,
+        phone: instructorData.phone,
+        whatsappNumber: instructorData.whatsappNumber,
+        profilePicture: instructorData.profilePicture,
+        address: instructorData.address,
+        bio: instructorData.bio,
+        currentPosition: instructorData.currentPosition,
+        currentCompany: instructorData.currentCompany,
+        previousExperience: instructorData.previousExperience || [],
+        linkedinUrl: instructorData.linkedinUrl,
         rating: 0,
         totalStudents: 0,
         reviews: [],
         ownedCourses: [],
-      });
-      await newUser.save();
-      return newUser;
+      };
+
+      const newInstructor = new InstructorModel(userData);
+      await newInstructor.save();
+
+      const accessToken = await this.generateAccessToken(newInstructor._id);
+      const refreshToken = await this.generateRefreshToken(newInstructor._id);
+
+      // Add refresh token to user's refreshTokens array
+      if (refreshToken) {
+        await InstructorModel.findByIdAndUpdate(newInstructor._id, {
+          $push: {
+            refreshTokens: {
+              token: refreshToken,
+              deviceInfo: {
+                userAgent: deviceInfo?.userAgent || "Unknown",
+                ipAddress: deviceInfo?.ipAddress || "Unknown",
+                deviceType: deviceInfo?.deviceType || this.detectDeviceType(deviceInfo?.userAgent),
+              },
+              createdAt: new Date(),
+              lastUsed: new Date(),
+              isActive: true,
+            },
+          },
+        });
+      }
+
+      return { user: newInstructor, accessToken, refreshToken };
     } catch (error) {
-      console.error("Error creating instructor:", error);
-      throw error;
+      console.log(error);
+      throw new Error("Internal server error!");
     }
   }
 
-  /**
-   * Update instructor
-   * @param instructorId - Instructor id
-   * @param instructorData - Instructor data
-   * @returns Instructor or null
-   */
-  async updateInstructor(
-    instructorId: string,
-    instructorData: Partial<CourseInstructor>
-  ): Promise<User | null> {
-    try {
-      if (!instructorId) {
-        throw new Error("Instructor ID is required!");
-      }
-      if (!instructorData) {
-        throw new Error("Instructor data is required!");
-      }
-      const instructor = await userModel.findByIdAndUpdate(
-        instructorId,
-        instructorData,
-        { new: true }
-      );
-      return instructor;
-    } catch (error) {
-      console.error("Error updating instructor:", error);
-      throw error;
-    }
+  async generateAccessToken(userId: string): Promise<string> {
+    return jwt.sign({ userId }, process.env.JWT_SECRET!, {
+      expiresIn: "1h",
+    });
+  }
+
+  async generateRefreshToken(userId: string): Promise<string> {
+    return jwt.sign({ userId }, process.env.JWT_SECRET!, {
+      expiresIn: "7d",
+    });
   }
 
   /**
-   * Delete instructor
-   * @param instructorId - Instructor id
-   * @returns Instructor or null
+   * Detect device type from user agent
+   * @param userAgent - User agent string
+   * @returns Device type
    */
-  async deleteInstructor(instructorId: string): Promise<User | null> {
-    try {
-      const instructor = await userModel.findById(instructorId);
-      if (!instructor) {
-        throw new Error("Instructor not found!");
-      }
-      // delete instructor from all courses
-      await CourseModel.updateMany(
-        { instructor: instructorId },
-        { $pull: { instructor: instructorId } }
-      );
-      await userModel.findByIdAndDelete(instructorId);
-      return instructor;
-    } catch (error) {
-      console.error("Error deleting instructor:", error);
-      throw error;
+  private detectDeviceType(userAgent?: string): string {
+    if (!userAgent) return "unknown";
+    
+    const ua = userAgent.toLowerCase();
+    
+    if (ua.includes("mobile") || ua.includes("android") || ua.includes("iphone")) {
+      return "mobile";
+    } else if (ua.includes("tablet") || ua.includes("ipad")) {
+      return "tablet";
+    } else if (ua.includes("desktop") || ua.includes("windows") || ua.includes("macintosh") || ua.includes("linux")) {
+      return "desktop";
+    } else {
+      return "web";
     }
   }
 }

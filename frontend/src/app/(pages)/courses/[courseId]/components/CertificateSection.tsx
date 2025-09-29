@@ -5,6 +5,7 @@ import { Crown } from "lucide-react";
 import React from "react";
 import CertificateCarousel from "../../components/CertificateCarousel";
 import PlanCard from "./PlanCard";
+import { calculateCombinedDiscount } from "@/utils/discountUtils";
 
 const CertificateSection = ({
   course,
@@ -29,56 +30,48 @@ const CertificateSection = ({
 
   // Only add Essential plan if it exists
   if (course.plans?.essential) {
+    const essentialPrice = course.plans.essential.price || 0;
+    const combinedDiscount = calculateCombinedDiscount(
+      essentialPrice,
+      course.plans.essential.discount,
+      course.discount
+    );
+
     plans.push({
       type: "essential",
       icon: <Crown className="size-5" />,
       name: course.plans.essential.title,
       theme: "bg-[#F68A5C]",
-      price: course.plans.essential.price || 0,
+      price: essentialPrice,
       features: course.plans.essential.features || [],
-      discountType: course.plans.essential.discount?.discount,
-      discountValue: course.plans.essential.discount?.value,
-      discountLabel: `${
-        course.plans.essential.discount?.discount === "fixed"
-          ? `₹${course.plans.essential.discount?.value} off`
-          : `${course.plans.essential.discount?.value}% off`
-      }`,
-      discountPrice: Math.round(
-        (course.plans.essential.price || 0) -
-          (course.plans.essential.discount?.discount === "fixed"
-            ? course.plans.essential.discount?.value || 0
-            : ((course.plans.essential.price || 0) *
-                (course.plans.essential.discount?.value || 0)) /
-              100)
-      ),
+      discountType: combinedDiscount.discountType,
+      discountValue: combinedDiscount.discountValue,
+      discountLabel: combinedDiscount.discountLabel,
+      discountPrice: combinedDiscount.discountPrice,
       isPopular: course.plans.essential.isPopular,
     });
   }
 
   // Only add Elite plan if it exists
   if (course.plans?.elite) {
+    const elitePrice = course.plans.elite.price || 0;
+    const combinedDiscount = calculateCombinedDiscount(
+      elitePrice,
+      course.plans.elite.discount,
+      course.discount
+    );
+
     plans.push({
       type: "elite",
       icon: <Crown className="size-5" />,
       name: course.plans.elite.title,
       theme: "bg-[#8B5CF6]",
-      price: course.plans.elite.price || 0,
+      price: elitePrice,
       features: course.plans.elite.features || [],
-      discountType: course.plans.elite.discount?.discount,
-      discountValue: course.plans.elite.discount?.value,
-      discountLabel: `${
-        course.plans.elite.discount?.discount === "fixed"
-          ? `₹${course.plans.elite.discount?.value} off`
-          : `${course.plans.elite.discount?.value}% off`
-      }`,
-      discountPrice: Math.round(
-        (course.plans.elite.price || 0) -
-          (course.plans.elite.discount?.discount === "fixed"
-            ? course.plans.elite.discount?.value || 0
-            : ((course.plans.elite.price || 0) *
-                (course.plans.elite.discount?.value || 0)) /
-              100)
-      ),
+      discountType: combinedDiscount.discountType,
+      discountValue: combinedDiscount.discountValue,
+      discountLabel: combinedDiscount.discountLabel,
+      discountPrice: combinedDiscount.discountPrice,
       isPopular: course.plans.elite.isPopular,
     });
   }
@@ -96,9 +89,10 @@ const CertificateSection = ({
             </span>
             .
           </h2>
-          <p className="text-white text-sm md:text-base font-extrabold italic text-center md:text-left text-wrap break-words">
-            {course.whoShouldJoin}
-          </p>
+          <div 
+            className="text-white text-sm md:text-base font-extrabold italic text-center md:text-left text-wrap break-words prose prose-sm max-w-none prose-invert"
+            dangerouslySetInnerHTML={{ __html: course.whoShouldJoin || "" }}
+          />
         </div>
       </div>
 

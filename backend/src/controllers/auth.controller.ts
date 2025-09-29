@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import userSchema from "../models/user.schema";
+import { UserModel } from "../models/user.schema";
 import bcrypt from "bcryptjs";
 import dotenv from "dotenv";
 import { AuthService } from "../services/auth.service";
@@ -18,14 +18,27 @@ export class AuthController {
     this.authService = new AuthService();
   }
 
+  /**
+   * Extract device information from request
+   * @param req - Express request object
+   * @returns Device information object
+   */
+  private extractDeviceInfo(req: Request) {
+    return {
+      userAgent: req.get("User-Agent"),
+      ipAddress: req.ip || req.connection.remoteAddress || req.socket.remoteAddress,
+      deviceType: undefined, // Will be auto-detected from user agent
+    };
+  }
+
   register = asyncHandler(async (req: Request, res: Response) => {
-    const { email, password, confirmPassword, role = "user" } = req.body;
+    const { email, password, confirmPassword, userType = "student", instructorData, ...additionalData } = req.body;
 
     if (!email || !password || !confirmPassword) {
       throw new AppError("All fields are required", 400);
     }
 
-    const existingUser = await userSchema.findOne({ email });
+    const existingUser = await UserModel.findOne({ email });
     if (existingUser) {
       throw new AppError("Email already in use", 400);
     }
@@ -34,10 +47,21 @@ export class AuthController {
       throw new AppError("Passwords do not match", 400);
     }
 
+    // Extract device information from request
+    const deviceInfo = this.extractDeviceInfo(req);
+
+    // Prepare additional data for the service
+    const serviceAdditionalData = {
+      ...additionalData,
+      instructorData
+    };
+
     const { user, accessToken, refreshToken } = await this.authService.register(
       email,
       password,
-      role
+      userType,
+      deviceInfo,
+      serviceAdditionalData
     );
 
     const data = {
@@ -61,12 +85,12 @@ export class AuthController {
       throw new AppError("Email and password are required!", 400);
     }
 
-    const user = await userSchema.findOne({ email }).select("+password");
+    const user = await UserModel.findOne({ email }).select("+password");
     if (!user) {
       throw new AppError("User not found!", 401);
     }
 
-    // check if different provider
+    // Check if user is registered with OAuth provider
     if (user.provider !== "credentials") {
       throw new AppError(
         `User is registered with ${user.provider.toUpperCase()}!`,
@@ -79,9 +103,13 @@ export class AuthController {
       throw new AppError("Invalid credentials!", 401);
     }
 
+    // Extract device information from request
+    const deviceInfo = this.extractDeviceInfo(req);
+
     const { accessToken, refreshToken } = await this.authService.login(
       email,
-      password
+      password,
+      deviceInfo
     );
 
     const data = {
@@ -99,13 +127,21 @@ export class AuthController {
    * @param res - Express response object
    */
   oauthSignIn = asyncHandler(async (req: Request, res: Response) => {
-    const { email, fullName, provider, role, profilePicture } = req.body;
+    const { email, fullName, provider, userType = "student", profilePicture } = req.body;
 
-    if (!email || !fullName || !provider || !role) {
+    if (!email || !fullName || !provider) {
       throw new AppError("All fields are required", 400);
     }
 
-    const user = await userSchema.findOne({ email });
+    // Only allow Google and LinkedIn for OAuth login
+    if (provider !== "google" && provider !== "linkedin") {
+      throw new AppError("Only Google and LinkedIn OAuth are supported", 400);
+    }
+
+    // Extract device information from request
+    const deviceInfo = this.extractDeviceInfo(req);
+
+    const user = await UserModel.findOne({ email });
     if (!user) {
       // Create a new user
       const { user, accessToken, refreshToken } =
@@ -113,8 +149,9 @@ export class AuthController {
           email,
           fullName,
           provider,
-          role,
-          profilePicture
+          userType,
+          profilePicture,
+          deviceInfo
         );
 
       const data = {
@@ -127,12 +164,14 @@ export class AuthController {
       return;
     }
 
+    // Check if user has the same OAuth provider
     if (user.provider === provider) {
       // Login the user
       const { accessToken, refreshToken } = await this.authService.oauthSignIn(
         email,
         fullName,
-        provider
+        provider,
+        deviceInfo
       );
 
       sendSuccessResponse(

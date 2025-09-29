@@ -10,7 +10,9 @@ export interface Discount {
  
 // Re-export all types
 export * from './course';
-export * from './instructor';
 export * from './user'; 
 export * from './review';
 export * from './faq';
+export * from './enrollment';
+export * from './affiliate';
+export * from './order';

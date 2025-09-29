@@ -67,9 +67,9 @@ export default function RootLayout({
             autoClose={5000}
             hideProgressBar={false}
             newestOnTop={false}
-            closeOnClick
+            closeOnClick={true}
             rtl={false}
-            pauseOnFocusLoss
+            pauseOnFocusLoss={false}
             draggable
             pauseOnHover={false}
             theme="light"

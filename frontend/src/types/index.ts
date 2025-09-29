@@ -33,11 +33,14 @@ export * from "./user";
 // Course Types
 export * from "./course";
 
-// Instructor Types
-export * from "./instructor";
-
 // Review Types
 export * from "./review";
 
 // FAQ Types
 export * from "./faq";
+
+// Affiliate Types
+export * from "./affiliate";
+
+// Order Types
+export * from "./order";

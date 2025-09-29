@@ -1,4 +1,4 @@
-import userSchema from "../models/user.schema";
+import { UserModel } from "../models/user.schema";
 import { User } from "../types/user";
 import { createErrorResponse, errorMessages } from "../utils/error.message";
 import { NextFunction, Request, Response } from "express";
@@ -110,7 +110,7 @@ export const verifyAdmin = async (
 
     // Fetch user with timeout
     const user = (await Promise.race([
-      userSchema.findById(decoded.id).lean(),
+      UserModel.findById(decoded.id).lean(),
       //   new Promise((_, reject) =>
       //     setTimeout(() => reject(new Error("Database query timeout")), 5000)
       //   ),
@@ -133,7 +133,7 @@ export const verifyAdmin = async (
     // }
 
     req.admin = user;
-    console.info(`Admin authenticated: ${user.username}`);
+    console.info(`Admin authenticated: ${user.email}`);
     next();
   } catch (error) {
     console.error("Admin authentication middleware error:", error);
