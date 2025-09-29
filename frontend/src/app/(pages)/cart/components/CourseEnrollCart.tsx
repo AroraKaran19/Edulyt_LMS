@@ -52,63 +52,144 @@ const CourseEnrollCart = () => {
       {/* Cart Details */}
       <div className='w-full h-full flex flex-col lg:flex-row gap-4'>
         {/* Course Image Section */}
-        <div className='w-full lg:flex-3 bg-white rounded-2xl sm:rounded-3xl p-1 sm:p-[6px]'>
-          <div className="w-full h-full">
-            <div className="relative w-full rounded-xl sm:rounded-[18px] overflow-hidden mb-2 sm:mb-3">
-              <Image 
-                src="/cart-ai-image.png"
-                alt="certificate" 
-                width={300} 
-                height={226}
-                className="w-full h-full object-cover min-h-[200px] sm:min-h-[300px] md:min-h-[400px] lg:min-h-[620px]"
-              />
-              
-              {/* Overlay Content */}
-              <div className="absolute bottom-2 sm:bottom-3 left-2 sm:left-3 px-1 sm:px-2 w-full pr-4 sm:pr-6">
-                {/* Best Seller Badge */}
-                <div className="mb-2 sm:mb-3">
-                  <p className="font-bold text-xs sm:text-sm md:text-lg font-plus-jakarta text-[#F7AD24] px-2 py-1 rounded"
-                    style={{ background: "linear-gradient(89.99deg, rgba(247, 191, 36, 0.23) 0.19%, rgba(255, 217, 195, 0) 99.99%)" }}>
-                    Best seller
-                    <span className="font-medium text-xs sm:text-sm md:text-lg font-plus-jakarta text-[#F7AD2496] leading-[173%] block sm:inline">
-                      (enrolled by 35k students)
-                    </span>
-                  </p>
-                </div>
+        <div className='w-full max-h-fit lg:flex-3 bg-white rounded-2xl sm:rounded-3xl p-1 sm:p-[6px]'>
+          <div className="w-full">
+            <div className="relative w-full rounded-xl sm:rounded-[18px] overflow-hidden">
+              {currentStep === 2 ? (
+                <div className="flex flex-col gap-2">
+                  {/* First Image */}
+                  <div className="relative rounded-xl sm:rounded-[18px] overflow-hidden">
+                    <Image
+                      src="/t&c-1.png"
+                      alt="t&c"
+                      width={412}
+                      height={304}
+                      className="w-full object-cover"
+                    />
+                  </div>
 
-                {/* Course Title */}
-                <p className="font-normal text-sm sm:text-lg md:text-xl font-coolvetica mb-2 sm:mb-3 text-white">
-                  Data Science: Zero to Hundred
-                </p>
+                  {/* Second Image with Overlay */}
+                  <div className="relative rounded-xl sm:rounded-[18px] overflow-hidden">
+                    <Image
+                      src="/t&c-1.png"
+                      alt="t&c"
+                      width={412}
+                      height={304}
+                      className="w-full object-cover"
+                    />
 
-                {/* Rating */}
-                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-2 sm:mb-3">
-                  <div className="flex items-center gap-1">
-                    <Star className="w-3 h-3 sm:w-4 sm:h-4 text-[#F7AD24]" fill="#F7AD24" />
-                    <span className="font-bold text-xs sm:text-sm md:text-lg font-plus-jakarta text-[#F7AD24]">4.5 Rating</span>
-                  </div>
-                  <span className="font-normal text-xs sm:text-sm md:text-lg font-plus-jakarta text-white leading-[173%]">
-                    (more than 6,000 reviews)
-                  </span>
-                </div>
+                    {/* Gradient Overlay */}
+                    <div className="absolute inset-0 bg-[radial-gradient(71.14%_64.15%_at_50%_9.47%,_rgba(255,_255,_255,_0)_0%,_rgba(0,_0,_0,_0.85)_100%)]"></div>
 
-                {/* User Avatars */}
-                <div className="flex gap-1 sm:gap-2 overflow-x-auto">
-                  <div className="bg-[#EEEEEE] rounded-full sm:rounded-[34px] p-1 sm:p-[2px] border-2 border-white flex items-center gap-1 sm:gap-2 flex-shrink-0">
-                    <Image src="/user.svg" alt="user" width={16} height={16} className="sm:w-5 sm:h-5 md:w-6 md:h-6 rounded-full border border-white" />
-                    <span className="text-xs sm:text-sm text-gray-700 font-medium hidden md:inline pr-1 sm:pr-2">John Doe</span>
-                    <span className="text-xs sm:text-sm text-gray-700 font-medium md:hidden pr-1 sm:pr-2">JD</span>
-                  </div>
-                  <div className="bg-[#EEEEEE] rounded-full sm:rounded-[34px] p-1 sm:p-[2px] border-2 border-white flex items-center gap-1 sm:gap-2 flex-shrink-0">
-                    <Image src="/user.svg" alt="user" width={16} height={16} className="sm:w-5 sm:h-5 md:w-6 md:h-6 rounded-full border border-white" />
-                    <span className="text-xs sm:text-sm text-gray-700 font-medium hidden md:inline pr-1 sm:pr-2">John Doe</span>
-                    <span className="text-xs sm:text-sm text-gray-700 font-medium md:hidden pr-1 sm:pr-2">JD</span>
-                  </div>
-                  <div className="bg-[#EEEEEE] rounded-full sm:rounded-[34px] p-1 sm:p-[2px] border-2 border-white flex items-center gap-1 sm:gap-2 flex-shrink-0">
-                    <span className="text-xs sm:text-sm text-gray-700 font-medium px-2 py-1">+1</span>
+                    {/* Overlay Content */}
+                    <div className="absolute bottom-2 sm:bottom-3 left-2 sm:left-3 px-1 sm:px-2 w-full pr-4 sm:pr-6">
+                      {/* Best Seller Badge */}
+                      <div className="mb-2 sm:mb-3">
+                        <p className="font-bold text-xs sm:text-sm md:text-lg font-plus-jakarta text-[#F7AD24] px-2 py-1 rounded"
+                          style={{ background: "linear-gradient(89.99deg, rgba(247, 191, 36, 0.23) 0.19%, rgba(255, 217, 195, 0) 99.99%)" }}>
+                          Best seller
+                          <span className="font-medium text-xs sm:text-sm md:text-lg font-plus-jakarta text-[#F7AD2496] leading-[173%] block sm:inline">
+                            (enrolled by 35k students)
+                          </span>
+                        </p>
+                      </div>
+
+                      {/* Course Title */}
+                      <p className="font-normal text-sm sm:text-lg md:text-xl font-coolvetica mb-2 sm:mb-3 text-white">
+                        Data Science: Zero to Hundred
+                      </p>
+
+                      {/* Rating */}
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-2 sm:mb-3">
+                        <div className="flex items-center gap-1">
+                          <Star className="w-3 h-3 sm:w-4 sm:h-4 text-[#F7AD24]" fill="#F7AD24" />
+                          <span className="font-bold text-xs sm:text-sm md:text-lg font-plus-jakarta text-[#F7AD24]">4.5 Rating</span>
+                        </div>
+                        <span className="font-normal text-xs sm:text-sm md:text-lg font-plus-jakarta text-white leading-[173%]">
+                          (more than 6,000 reviews)
+                        </span>
+                      </div>
+
+                      {/* User Avatars */}
+                      <div className="flex gap-1 sm:gap-2 overflow-x-auto">
+                        <div className="bg-[#EEEEEE] rounded-full sm:rounded-[34px] p-1 sm:p-[2px] border-2 border-white flex items-center gap-1 sm:gap-2 flex-shrink-0">
+                          <Image src="/user.svg" alt="user" width={16} height={16} className="sm:w-5 sm:h-5 md:w-6 md:h-6 rounded-full border border-white" />
+                          <span className="text-xs sm:text-sm text-gray-700 font-medium hidden md:inline pr-1 sm:pr-2">John Doe</span>
+                          <span className="text-xs sm:text-sm text-gray-700 font-medium md:hidden pr-1 sm:pr-2">JD</span>
+                        </div>
+                        <div className="bg-[#EEEEEE] rounded-full sm:rounded-[34px] p-1 sm:p-[2px] border-2 border-white flex items-center gap-1 sm:gap-2 flex-shrink-0">
+                          <Image src="/user.svg" alt="user" width={16} height={16} className="sm:w-5 sm:h-5 md:w-6 md:h-6 rounded-full border border-white" />
+                          <span className="text-xs sm:text-sm text-gray-700 font-medium hidden md:inline pr-1 sm:pr-2">John Doe</span>
+                          <span className="text-xs sm:text-sm text-gray-700 font-medium md:hidden pr-1 sm:pr-2">JD</span>
+                        </div>
+                        <div className="bg-[#EEEEEE] rounded-full sm:rounded-[34px] p-1 sm:p-[2px] border-2 border-white flex items-center gap-1 sm:gap-2 flex-shrink-0">
+                          <span className="text-xs sm:text-sm text-gray-700 font-medium px-2 py-1">+1</span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <>
+                  <Image
+                    src="/cart-ai-image.png"
+                    alt="certificate"
+                    width={300}
+                    height={226}
+                    className="w-full object-cover"
+                  />
+
+                  {/* Gradient Overlay */}
+                  <div className="absolute inset-0 bg-[radial-gradient(71.14%_64.15%_at_50%_9.47%,_rgba(255,_255,_255,_0)_0%,_rgba(0,_0,_0,_0.85)_100%)]"></div>
+
+                  {/* Overlay Content */}
+                  <div className="absolute bottom-2 sm:bottom-3 left-2 sm:left-3 px-1 sm:px-2 w-full pr-4 sm:pr-6">
+                    {/* Best Seller Badge */}
+                    <div className="mb-2 sm:mb-3">
+                      <p className="font-bold text-xs sm:text-sm md:text-lg font-plus-jakarta text-[#F7AD24] px-2 py-1 rounded"
+                        style={{ background: "linear-gradient(89.99deg, rgba(247, 191, 36, 0.23) 0.19%, rgba(255, 217, 195, 0) 99.99%)" }}>
+                        Best seller
+                        <span className="font-medium text-xs sm:text-sm md:text-lg font-plus-jakarta text-[#F7AD2496] leading-[173%] block sm:inline">
+                          (enrolled by 35k students)
+                        </span>
+                      </p>
+                    </div>
+
+                    {/* Course Title */}
+                    <p className="font-normal text-sm sm:text-lg md:text-xl font-coolvetica mb-2 sm:mb-3 text-white">
+                      Data Science: Zero to Hundred
+                    </p>
+
+                    {/* Rating */}
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-2 sm:mb-3">
+                      <div className="flex items-center gap-1">
+                        <Star className="w-3 h-3 sm:w-4 sm:h-4 text-[#F7AD24]" fill="#F7AD24" />
+                        <span className="font-bold text-xs sm:text-sm md:text-lg font-plus-jakarta text-[#F7AD24]">4.5 Rating</span>
+                      </div>
+                      <span className="font-normal text-xs sm:text-sm md:text-lg font-plus-jakarta text-white leading-[173%]">
+                        (more than 6,000 reviews)
+                      </span>
+                    </div>
+
+                    {/* User Avatars */}
+                    <div className="flex gap-1 sm:gap-2 overflow-x-auto">
+                      <div className="bg-[#EEEEEE] rounded-full sm:rounded-[34px] p-1 sm:p-[2px] border-2 border-white flex items-center gap-1 sm:gap-2 flex-shrink-0">
+                        <Image src="/user.svg" alt="user" width={16} height={16} className="sm:w-5 sm:h-5 md:w-6 md:h-6 rounded-full border border-white" />
+                        <span className="text-xs sm:text-sm text-gray-700 font-medium hidden md:inline pr-1 sm:pr-2">John Doe</span>
+                        <span className="text-xs sm:text-sm text-gray-700 font-medium md:hidden pr-1 sm:pr-2">JD</span>
+                      </div>
+                      <div className="bg-[#EEEEEE] rounded-full sm:rounded-[34px] p-1 sm:p-[2px] border-2 border-white flex items-center gap-1 sm:gap-2 flex-shrink-0">
+                        <Image src="/user.svg" alt="user" width={16} height={16} className="sm:w-5 sm:h-5 md:w-6 md:h-6 rounded-full border border-white" />
+                        <span className="text-xs sm:text-sm text-gray-700 font-medium hidden md:inline pr-1 sm:pr-2">John Doe</span>
+                        <span className="text-xs sm:text-sm text-gray-700 font-medium md:hidden pr-1 sm:pr-2">JD</span>
+                      </div>
+                      <div className="bg-[#EEEEEE] rounded-full sm:rounded-[34px] p-1 sm:p-[2px] border-2 border-white flex items-center gap-1 sm:gap-2 flex-shrink-0">
+                        <span className="text-xs sm:text-sm text-gray-700 font-medium px-2 py-1">+1</span>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -181,7 +262,7 @@ const CourseEnrollCart = () => {
               Dive into Artifical Intelligence & Machine Learning projects to sharpen skills and build a unique portfolio
             </p>
           </div>
-          
+
           <div className="w-full flex flex-col gap-2 sm:gap-3 md:gap-4 min-h-[200px] sm:min-h-[250px] md:min-h-[300px]">
             {course.faqs.map((faq, index) => (
               <div key={index} className="border border-[#00000014] rounded-xl sm:rounded-2xl bg-[#F3F3F3] overflow-hidden">
@@ -193,20 +274,18 @@ const CourseEnrollCart = () => {
                     {faq.question}
                   </p>
                   <span className="text-xl font-medium text-[#000000] transform transition-transform duration-300 flex-shrink-0 mt-0.5">
-                    <ChevronDown 
-                      className={`w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 transition-transform duration-300 ${
-                        openIndex === index ? 'rotate-180' : 'rotate-0'
-                      }`} 
+                    <ChevronDown
+                      className={`w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 transition-transform duration-300 ${openIndex === index ? 'rotate-180' : 'rotate-0'
+                        }`}
                     />
                   </span>
                 </button>
-                
+
                 <div
-                  className={`overflow-hidden transition-all duration-300 ease-in-out ${
-                    openIndex === index 
-                      ? 'max-h-48 sm:max-h-64 md:max-h-96 opacity-100' 
-                      : 'max-h-0 opacity-0'
-                  }`}
+                  className={`overflow-hidden transition-all duration-300 ease-in-out ${openIndex === index
+                    ? 'max-h-48 sm:max-h-64 md:max-h-96 opacity-100'
+                    : 'max-h-0 opacity-0'
+                    }`}
                 >
                   <div className="px-3 sm:px-4 md:px-5 pb-3 sm:pb-4 md:pb-5">
                     <p className="text-sm sm:text-base text-text-primary leading-relaxed font-plus-jakarta">
