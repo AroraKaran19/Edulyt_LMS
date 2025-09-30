@@ -7,11 +7,12 @@ import { Manrope, Plus_Jakarta_Sans } from "next/font/google";
 import { cn, fetcher } from "@/lib/utils";
 import { NavItem } from "@/types";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
-import { Menu, X } from "lucide-react";
+import { Bell, HelpCircle, LogOut, Menu, Search, Settings, User2, X } from "lucide-react";
 import HoverContainer from "./HoverContainer";
 import useSWR from "swr";
 import { ENDPOINTS } from "@/constants/endpoints";
-import { useSession } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
+import FloatingContainer from "@/components/ui/FloatingContainer";
 
 const manrope = Manrope({
   subsets: ["latin"],
@@ -42,6 +43,8 @@ const Navbar = () => {
   const [courseCount, setCourseCount] = useState(0);
   const { data } = useSWR(ENDPOINTS.courses.all, fetcher);
   const courses = data?.data.courses;
+  const { data: session } = useSession();
+  const user = session?.user;
 
   useEffect(() => {
     setCourseCount(courses?.length || 0);
@@ -65,6 +68,24 @@ const Navbar = () => {
   const [isHoverContainerVisible, setIsHoverContainerVisible] = useState(false);
   const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null);
   const [activeNavLink, setActiveNavLink] = useState<NavItem | null>(null);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [isUserOpen, setIsUserOpen] = useState(false);
+
+  // close all floating container in on click outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (
+        target.closest(".notification-wrapper") ||
+        target.closest(".user-wrapper")
+      )
+        return;
+      setIsNotificationOpen(false);
+      setIsUserOpen(false);
+    };
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, [isNotificationOpen, isUserOpen]);
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -93,11 +114,23 @@ const Navbar = () => {
     setHoverTimeout(timeout2);
   };
 
+  const handleClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    event.stopPropagation();
+    const target = event.target as HTMLElement;
+    if (target.closest(".notification-wrapper")) {
+      setIsUserOpen(false);
+      setIsNotificationOpen(!isNotificationOpen);
+    } else if (target.closest(".user-wrapper")) {
+      setIsNotificationOpen(false);
+      setIsUserOpen(!isUserOpen);
+    }
+  };
+
   return (
     <>
       <header
         className={cn(
-          "navbar w-full fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md h-[78px] flex items-center px-8 justify-between shadow-[0_0_1px_2px_rgba(0,0,0,0.1)]",
+          "navbar w-full fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md h-[78px] flex items-center px-4 sm:px-6 lg:px-8 justify-between shadow-[0_0_1px_2px_rgba(0,0,0,0.1)]",
           "transition-all duration-300 ease-in-out"
         )}
       >
@@ -151,7 +184,144 @@ const Navbar = () => {
             "xl:gap-4"
           )}
         >
-          {!isAuthenticated && (
+          {isAuthenticated ? (
+            <>
+              {/* Right Section - Actions */}
+              <div className="flex items-center gap-2 sm:gap-3 lg:gap-6">
+                {/* Mobile Search Button */}
+                <button
+                  type="button"
+                  title="Search"
+                  // onClick={toggleMobileSearch}
+                  className="md:hidden p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <Search className="size-5 text-text-primary" />
+                </button>
+
+                {/* Notifications */}
+                <div
+                  className="notification-wrapper relative cursor-pointer p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  onClick={handleClick}
+                >
+                  <Bell className="size-5 sm:size-6 text-text-primary" />
+                  {/* {notifications > 0 && (
+                    <div className="absolute -top-1 -right-1 size-4 bg-[#F77124] rounded-full flex items-center justify-center">
+                      <span className="text-[10px] text-white font-semibold select-none leading-none">
+                        {notifications}
+                      </span>
+                    </div>
+                  )} */}
+                  {isNotificationOpen && (
+                    <FloatingContainer
+                      title="Notifications"
+                      markerTitle="Mark all as read"
+                      onMarkerClick={() => { }}
+                      onViewAll={() => { }}
+                      onElementClick={() => { }}
+                      elements={[]}
+                      className="notification-floating-container"
+                    />
+                  )}
+                </div>
+
+                {/* User Profile */}
+                <div className="user-wrapper relative flex items-center gap-1 cursor-pointer p-2 hover:bg-gray-100 rounded-lg transition-colors" onClick={handleClick}>
+                  <div className="user-image size-8 sm:size-9 rounded-xl overflow-hidden">
+                    {user?.image ? (
+                      <Image
+                        src={user.image}
+                        alt={user.name || "User"}
+                        width={36}
+                        height={36}
+                        className="cursor-pointer w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="size-8 sm:size-9 bg-[#5E00FF] rounded-xl overflow-hidden flex items-center justify-center">
+                        <span className="text-white text-sm sm:text-base font-bold select-none">
+                          {user?.name ? (
+                            user.name.split(" ").length === 1
+                              ? user.name.substring(0, 2).toUpperCase()
+                              : (
+                                user.name.split(" ")[0]?.substring(0, 1) +
+                                user.name.split(" ")[1]?.substring(0, 1)
+                              ).toUpperCase()
+                          ) : (
+                            user?.email ? user.email.substring(0, 2).toUpperCase() : "U"
+                          )}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="user-info hidden sm:flex flex-col select-none">
+                    <div className="user-name text-text-primary text-xs font-bold">
+                      {user?.name || "User"}
+                    </div>
+                    <div className="user-title text-gray-500 text-xs font-normal">
+                      Admin
+                    </div>
+                  </div>
+                  {isUserOpen && (
+                    <FloatingContainer
+                      className="mt-2 w-64"
+                      title="User's Settings"
+                      onViewAll={() => { }}
+                      onElementClick={() => { }}
+                      elements={[
+                        <div key={String(Math.random())} className="flex items-center gap-1 p-0.5 hover:bg-gray-50 rounded-md transition-colors">
+                          <div className="p-0.5 bg-[#FFF1E9] rounded-full">
+                            <User2 className="size-4 text-[#F77124]" />
+                          </div>
+                          <span className="font-medium text-text-primary">
+                            Profile
+                          </span>
+                        </div>,
+                        <div key={String(Math.random())} className="flex items-center gap-1 p-0.5 hover:bg-gray-50 rounded-md transition-colors">
+                          <div className="p-0.5 bg-[#FFF1E9] rounded-full">
+                            <Settings className="size-4 text-[#F77124]" />
+                          </div>
+                          <span className="font-medium text-text-primary">
+                            Settings
+                          </span>
+                        </div>,
+                        <div key={String(Math.random())} className="flex items-center gap-1 p-0.5 hover:bg-gray-50 rounded-md transition-colors">
+                          <div className="p-0.5 bg-[#FFF1E9] rounded-full">
+                            <HelpCircle className="size-4 text-[#F77124]" />
+                          </div>
+                          <span className="font-medium text-text-primary">Help</span>
+                        </div>,
+                        <div key={String(Math.random())}
+                          className="flex items-center gap-1 p-0.5 hover:bg-[#FFF1E9] rounded-md transition-colors"
+                          onClick={() => {
+                            localStorage.removeItem('adminToken');
+                            localStorage.removeItem('adminProfile');
+                            signOut({ callbackUrl: "/" });
+                          }}
+                        >
+                          <div className="p-0.5 bg-[#FFF1E9] rounded-full">
+                            <LogOut className="size-4 text-[#F77124]" />
+                          </div>
+                          <span className="font-medium text-[#F77124]">Logout</span>
+                        </div>,
+                      ]}
+                      showViewAll={false}
+                    />
+                  )}
+                </div>
+
+                {/* Mobile Menu Button */}
+                <button
+                  onClick={toggleMenu}
+                  className="lg:hidden p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  {isMenuOpen ? (
+                    <X className="size-5 text-text-primary" />
+                  ) : (
+                    <Menu className="size-5 text-text-primary" />
+                  )}
+                </button>
+              </div>
+            </>
+          ) : (
             <>
               <Link href="/auth/login" className="hidden sm:block">
                 <WhiteButton className="text-xs font-semibold">Log In</WhiteButton>
@@ -165,21 +335,20 @@ const Navbar = () => {
                   Register Now
                 </OrangeButton>
               </Link>
+              {/* Mobile Menu Button for non-authenticated users */}
+              <button
+                onClick={toggleMenu}
+                className="lg:hidden p-2 rounded-md hover:bg-gray-100 transition-colors"
+                aria-label="Toggle menu"
+              >
+                {isMenuOpen ? (
+                  <X className="h-6 w-6 text-gray-700" />
+                ) : (
+                  <Menu className="h-6 w-6 text-gray-700" />
+                )}
+              </button>
             </>
           )}
-
-          {/* Hamburger Menu Button */}
-          <button
-            onClick={toggleMenu}
-            className="lg:hidden p-2 rounded-md hover:bg-gray-100 transition-colors"
-            aria-label="Toggle menu"
-          >
-            {isMenuOpen ? (
-              <X className="h-6 w-6 text-gray-700" />
-            ) : (
-              <Menu className="h-6 w-6 text-gray-700" />
-            )}
-          </button>
         </div>
       </header>
 
@@ -228,7 +397,7 @@ const Navbar = () => {
                   plusJakartaSans.className
                 )}
               >
-                {!isAuthenticated && (
+                {!isAuthenticated ? (
                   <>
                     <Link href="/auth/login" onClick={toggleMenu}>
                       <WhiteButton className="w-full text-sm font-semibold justify-center">
@@ -244,6 +413,58 @@ const Navbar = () => {
                         Register Now
                       </OrangeButton>
                     </Link>
+                  </>
+                ) : (
+                  <>
+                    {/* Mobile User Profile Section */}
+
+                    {/* Mobile User Actions */}
+                    <div className="space-y-2">
+                      <button
+                        onClick={toggleMenu}
+                        className="w-full flex items-center gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors text-left"
+                      >
+                        <div className="p-2 bg-[#FFF1E9] rounded-full">
+                          <User2 className="size-5 text-[#F77124]" />
+                        </div>
+                        <span className="font-medium text-text-primary">Profile</span>
+                      </button>
+
+                      <button
+                        onClick={toggleMenu}
+                        className="w-full flex items-center gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors text-left"
+                      >
+                        <div className="p-2 bg-[#FFF1E9] rounded-full">
+                          <Settings className="size-5 text-[#F77124]" />
+                        </div>
+                        <span className="font-medium text-text-primary">Settings</span>
+                      </button>
+
+                      <button
+                        onClick={toggleMenu}
+                        className="w-full flex items-center gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors text-left"
+                      >
+                        <div className="p-2 bg-[#FFF1E9] rounded-full">
+                          <HelpCircle className="size-5 text-[#F77124]" />
+                        </div>
+                        <span className="font-medium text-text-primary">Help</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          localStorage.removeItem('adminToken');
+                          localStorage.removeItem('adminProfile');
+                          signOut({ callbackUrl: "/" });
+                          toggleMenu();
+                        }}
+                        className="w-full flex items-center gap-3 p-3 hover:bg-[#FFF1E9] rounded-lg transition-colors text-left"
+                      >
+                        <div className="p-2 bg-[#FFF1E9] rounded-full">
+                          <LogOut className="size-5 text-[#F77124]" />
+                        </div>
+                        <span className="font-medium text-[#F77124]">Logout</span>
+                      </button>
+                    </div>
                   </>
                 )}
               </div>

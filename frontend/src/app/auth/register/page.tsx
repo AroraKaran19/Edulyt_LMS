@@ -1,7 +1,7 @@
 "use client";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
-import { Eye, Lock, Mail } from "lucide-react";
+import { Eye, EyeOff, Lock, Mail } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
@@ -17,6 +17,8 @@ const RegisterPage = () => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [isOAuthLoading, setIsOAuthLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -129,28 +131,34 @@ const RegisterPage = () => {
             <Lock className="w-full h-full" />
           </label>
           <input
-            type="password"
+            type={showPassword ? "text" : "password"}
             placeholder="Password"
             className="w-full bg-transparent outline-none font-bold"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
           />
-          <Eye className="size-4 absolute right-3 top-1/2 -translate-y-1/2" />
+          {showPassword ?
+            <Eye className="size-4 absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer" onClick={() => setShowPassword(!showPassword)} />
+            : <EyeOff className="size-4 absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer" onClick={() => setShowPassword(!showPassword)} />
+          }
         </div>
         <div className="confirm-password-input w-full flex gap-3 bg-white rounded-md p-3 border border-gray-300 relative">
           <label htmlFor="confirm-password" className="text-sm text-gray-500">
             <Lock className="w-full h-full" />
           </label>
           <input
-            type="password"
+            type={showConfirmPassword ? "text" : "password"}
             placeholder="Confirm Password"
             className="w-full bg-transparent outline-none font-bold"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             required
           />
-          <Eye className="size-4 absolute right-3 top-1/2 -translate-y-1/2" />
+          {showConfirmPassword
+            ? <Eye className="size-4 absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer" onClick={() => setShowConfirmPassword(!showConfirmPassword)} />
+            : <EyeOff className="size-4 absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer" onClick={() => setShowConfirmPassword(!showConfirmPassword)} />
+          }
         </div>
         {error && <div className="text-red-500 text-sm font-bold">{error}</div>}
         <OrangeButton

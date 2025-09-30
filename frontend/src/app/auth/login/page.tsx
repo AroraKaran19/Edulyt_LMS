@@ -1,7 +1,7 @@
 "use client";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
-import { Eye, Lock, Mail } from "lucide-react";
+import { Eye, EyeOff, Lock, Mail } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
@@ -17,6 +17,7 @@ const LoginPage = () => {
   const [loading, setLoading] = useState(false);
   const [isClient, setIsClient] = useState(false);
   const [isOAuthLoading, setIsOAuthLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -102,7 +103,7 @@ const LoginPage = () => {
             />
             <Eye className="size-4 absolute right-3 top-1/2 -translate-y-1/2" />
           </div>
-          <OrangeButton 
+          <OrangeButton
             type="button"
             className="w-full mt-1 lg:mt-2 rounded-xl font-bold"
             disabled
@@ -201,7 +202,7 @@ const LoginPage = () => {
             <Lock className="w-full h-full" />
           </label>
           <input
-            type="password"
+            type={showPassword ? "text" : "password"}
             placeholder="Password"
             className="w-full bg-transparent outline-none font-bold"
             value={password}
@@ -209,10 +210,13 @@ const LoginPage = () => {
             required
             suppressHydrationWarning
           />
-          <Eye className="size-4 absolute right-3 top-1/2 -translate-y-1/2" />
+          {showPassword ?
+            <Eye className="size-4 absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer" onClick={() => setShowPassword(!showPassword)} />
+            : <EyeOff className="size-4 absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer" onClick={() => setShowPassword(!showPassword)} />
+          }
         </div>
         {error && <div className="text-red-500 text-sm font-bold">{error}</div>}
-        <OrangeButton 
+        <OrangeButton
           type="submit"
           className="w-full mt-1 lg:mt-2 rounded-xl font-bold"
           disabled={loading}
