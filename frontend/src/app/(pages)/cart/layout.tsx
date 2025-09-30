@@ -1,6 +1,7 @@
 import React from "react";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { Metadata } from "next";
+import AuthGuard from "@/components/shared/AuthGuard";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -16,11 +17,13 @@ export const metadata: Metadata = {
 
 const CartLayout = ({ children }: { children: React.ReactNode }) => {
   return (
-    <div
-      className={`min-h-[calc(100dvh-78px)] w-full flex flex-col gap-10 p-4 bg-[rgba(226,226,226,0.4)] ${plusJakartaSans.className}`}
-    >
-      {children}
-    </div>
+    <AuthGuard>
+      <div
+        className={`min-h-[calc(100dvh-78px)] w-full flex flex-col gap-10 p-4 bg-[rgba(226,226,226,0.4)] ${plusJakartaSans.className}`}
+      >
+        {children}
+      </div>
+    </AuthGuard>
   );
 };
 
