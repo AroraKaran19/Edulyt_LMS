@@ -1,8 +1,8 @@
 import React from "react";
 import DashboardPage from "./DashboardPage";
-import { useSession } from "next-auth/react";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/auth";
+import { redirect } from "next/navigation";
 
 export const generateMetadata = () => {
   return {
@@ -14,7 +14,6 @@ export const generateMetadata = () => {
 
 const UserDashboard = async () => {
   const session = await getServerSession(authOptions);
-  console.log(session);
 
   if (!session) {
     redirect("/auth/login");
