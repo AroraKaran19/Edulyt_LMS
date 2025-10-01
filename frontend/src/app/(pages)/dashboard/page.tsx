@@ -1,4 +1,3 @@
-import { redirect } from "next/navigation";
 import React from "react";
 import DashboardPage from "./DashboardPage";
 import { useSession } from "next-auth/react";

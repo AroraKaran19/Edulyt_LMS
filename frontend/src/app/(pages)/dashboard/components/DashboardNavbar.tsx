@@ -80,6 +80,7 @@ const DashboardNavbar = () => {
       href: "/dashboard/certificates",
     },
   ];
+  
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [isUserOpen, setIsUserOpen] = useState(false);
 
@@ -154,6 +155,8 @@ const DashboardNavbar = () => {
         <div className="flex items-center gap-3 sm:gap-6 lg:gap-10">
           {/* Mobile Search Button */}
           <button
+            type="button"
+            title="Search"
             onClick={toggleMobileSearch}
             className="md:hidden p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >

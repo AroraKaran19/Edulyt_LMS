@@ -21,6 +21,8 @@ const RegisterPage = () => {
   const [isOAuthLoading, setIsOAuthLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -158,6 +160,7 @@ const RegisterPage = () => {
           </label>
           <input
             type={showPassword ? "text" : "password"}
+            type={showPassword ? "text" : "password"}
             placeholder="Password"
             className="w-full bg-transparent outline-none font-bold pr-20"
             value={password}
@@ -188,6 +191,7 @@ const RegisterPage = () => {
             <Lock className="w-full h-full" />
           </label>
           <input
+            type={showConfirmPassword ? "text" : "password"}
             type={showConfirmPassword ? "text" : "password"}
             placeholder="Confirm Password"
             className="w-full bg-transparent outline-none font-bold pr-10"
