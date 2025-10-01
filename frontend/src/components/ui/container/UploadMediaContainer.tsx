@@ -555,7 +555,7 @@ const UploadMediaContainer: React.FC<UploadMediaContainerProps> = ({
 
               {/* URL display */}
               <div className="text-xs text-gray-600 bg-white px-2 py-1 rounded border max-w-full truncate">
-                {mediaUrl}
+                {mediaUrl.length > 20 ? `...${mediaUrl.slice(-20)}` : mediaUrl}
               </div>
 
               {/* Remove button */}

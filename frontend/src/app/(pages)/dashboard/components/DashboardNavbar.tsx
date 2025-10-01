@@ -161,7 +161,7 @@ const DashboardNavbar = () => {
           </button>
 
           {/* Notifications */}
-          <div
+          {/* <div
             className="notification-wrapper relative cursor-pointer"
             onClick={handleClick}
           >
@@ -195,7 +195,7 @@ const DashboardNavbar = () => {
                 className="notification-floating-container"
               />
             )}
-          </div>
+          </div> */}
 
           {/* User Profile */}
           <div className="user-wrapper relative flex items-center gap-1 cursor-pointer" onClick={handleClick}>
@@ -240,14 +240,14 @@ const DashboardNavbar = () => {
                 onViewAll={() => { }}
                 onElementClick={() => { }}
                 elements={[
-                  <div key={String(Math.random())} className="flex items-center gap-1 p-0.5 hover:bg-gray-50 rounded-md transition-colors">
-                    <div className="p-0.5 bg-[#FFF1E9] rounded-full">
-                      <User2 className="size-4 text-[#F77124]" />
-                    </div>
-                    <span className="font-medium text-text-primary">
-                      Profile
-                    </span>
-                  </div>,
+                  // <div key={String(Math.random())} className="flex items-center gap-1 p-0.5 hover:bg-gray-50 rounded-md transition-colors">
+                  //   <div className="p-0.5 bg-[#FFF1E9] rounded-full">
+                  //     <User2 className="size-4 text-[#F77124]" />
+                  //   </div>
+                  //   <span className="font-medium text-text-primary">
+                  //     Profile
+                  //   </span>
+                  // </div>,
                   <div key={String(Math.random())} className="flex items-center gap-1 p-0.5 hover:bg-gray-50 rounded-md transition-colors">
                     <div className="p-0.5 bg-[#FFF1E9] rounded-full">
                       <Settings className="size-4 text-[#F77124]" />

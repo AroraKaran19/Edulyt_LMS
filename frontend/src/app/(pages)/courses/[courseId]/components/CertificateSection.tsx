@@ -5,7 +5,7 @@ import { Crown } from "lucide-react";
 import React from "react";
 import CertificateCarousel from "../../components/CertificateCarousel";
 import PlanCard from "./PlanCard";
-import { calculateCombinedDiscount } from "@/utils/discountUtils";
+import { calculateDiscountDisplay } from "@/utils/discountUtils";
 
 const CertificateSection = ({
   course,
@@ -31,7 +31,7 @@ const CertificateSection = ({
   // Only add Essential plan if it exists
   if (course.plans?.essential) {
     const essentialPrice = course.plans.essential.price || 0;
-    const combinedDiscount = calculateCombinedDiscount(
+    const combinedDiscount = calculateDiscountDisplay(
       essentialPrice,
       course.plans.essential.discount,
       course.discount
@@ -55,7 +55,7 @@ const CertificateSection = ({
   // Only add Elite plan if it exists
   if (course.plans?.elite) {
     const elitePrice = course.plans.elite.price || 0;
-    const combinedDiscount = calculateCombinedDiscount(
+    const combinedDiscount = calculateDiscountDisplay(
       elitePrice,
       course.plans.elite.discount,
       course.discount

@@ -4,6 +4,7 @@ import React from "react";
 import { cn } from "@/lib/utils";
 
 interface WhiteButtonProps {
+  type?: "button" | "submit" | "reset";
   children: React.ReactNode;
   className?: string;
   onClick?: () => void;
@@ -12,6 +13,7 @@ interface WhiteButtonProps {
 }
 
 const WhiteButton = ({
+  type,
   children,
   className,
   onClick,
@@ -20,6 +22,7 @@ const WhiteButton = ({
 }: WhiteButtonProps) => {
   return (
     <button
+      type={type}
       className={cn(
         "bg-white text-black px-6 py-3 rounded-2xl border border-gray-200 shadow-[inset_0_-2px_2px_0_rgba(0,0,0,0.1)]",
         className,

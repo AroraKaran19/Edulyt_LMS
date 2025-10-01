@@ -8,11 +8,7 @@ import {
   BookOpen,
   Plus,
   Search,
-  Edit,
   Trash2,
-  Eye,
-  Grid,
-  List,
   Filter,
   Users,
   Star,
@@ -21,9 +17,12 @@ import { useCourses } from "@/hooks/useCourses";
 import { toast } from "react-toastify";
 import { cn } from "@/lib/utils";
 import Loader from "@/components/ui/Loader";
-import { clearAllCourseStorage, clearCourseEditStorage } from "@/utils/courseStorage";
+import { 
+  clearAllCourseStorage,
+  clearCourseEditStorage,
+} from "@/utils/courseStorage";
+import { WhiteButton } from "@/components/ui";
 
-// Status Toggle Component
 const StatusToggle = ({
   isActive,
   onToggle,
@@ -105,7 +104,6 @@ const ManageCoursesPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState("all");
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [selectedCourses, setSelectedCourses] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -257,28 +255,28 @@ const ManageCoursesPage = () => {
     return price ? `$${price}` : "Free";
   };
 
-  const formatDate = (date: Date | undefined) => {
-    if (!date) return "N/A";
-    return new Date(date).toLocaleDateString();
-  };
-
   return (
-    <div className="min-h-screen w-full bg-gray-50">
+    <div className="min-h-screen w-full bg-gradient-to-br from-gray-50 to-gray-100">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 w-full">
-        <div className="w-full px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center">
-              <BookOpen className="w-8 h-8 text-orange-500 mr-3" />
-              <h1 className="text-2xl font-bold text-gray-900">
-                Course Management
-              </h1>
+      <div className="bg-white border-b border-gray-200 w-full shadow-sm">
+        <div className="w-full px-6 lg:px-8">
+          <div className="flex items-center justify-between h-20">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-gradient-to-br from-orange-100 to-orange-200 rounded-2xl flex items-center justify-center shadow-sm">
+                <BookOpen className="w-6 h-6 text-orange-600" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">
+                  Course Management
+                </h1>
+                <p className="text-gray-600 mt-1">Manage and organize your courses</p>
+              </div>
             </div>
             <OrangeButton
               onClick={handleCreateCourse}
-              className="flex items-center gap-2"
+              className="flex items-center gap-2 px-6 py-3 text-base font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-5 h-5" />
               Create Course
             </OrangeButton>
           </div>
@@ -305,64 +303,38 @@ const ManageCoursesPage = () => {
             <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center">
               {/* Search Bar */}
               <div className="flex-1 relative max-w-md">
-                <Search className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                <Search className="w-5 h-5 absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
                 <input
                   type="text"
                   placeholder="Search courses by title, description, or category..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-white shadow-sm"
+                  className="w-full pl-12 pr-4 py-4 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 bg-white shadow-sm hover:border-orange-400 transition-all duration-200 text-base"
                 />
               </div>
 
               {/* Filter Toggle */}
-              <button
+              <WhiteButton
                 onClick={() => setShowFilters(!showFilters)}
-                className="ml-auto flex items-center gap-2 px-4 py-3 border border-gray-300 rounded-xl bg-white shadow-sm hover:bg-gray-50 transition-colors"
+                className="flex items-center gap-3 px-6 py-4 text-base font-medium shadow-sm hover:shadow-md transition-all duration-200"
               >
-                <Filter className="w-4 h-4" />
-                <span className="text-sm font-medium text-gray-700">
-                  Filters
-                </span>
-              </button>
-
-              {/* View Mode Toggle */}
-              <div className="flex items-center border border-gray-300 rounded-xl overflow-hidden bg-white shadow-sm">
-                <button
-                  onClick={() => setViewMode("grid")}
-                  className={`p-3 transition-colors ${
-                    viewMode === "grid"
-                      ? "bg-orange-500 text-white"
-                      : "bg-white text-gray-600 hover:bg-gray-50"
-                  }`}
-                >
-                  <Grid className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => setViewMode("list")}
-                  className={`p-3 border-l border-gray-300 transition-colors ${
-                    viewMode === "list"
-                      ? "bg-orange-500 text-white"
-                      : "bg-white text-gray-600 hover:bg-gray-50"
-                  }`}
-                >
-                  <List className="w-4 h-4" />
-                </button>
-              </div>
+                <Filter className="w-5 h-5" />
+                <span>Filters</span>
+              </WhiteButton>
             </div>
 
             {/* Filters Panel */}
             {showFilters && (
-              <div className="mt-4 p-6 bg-white rounded-xl border border-gray-200 shadow-sm">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="mt-6 p-8 bg-white rounded-2xl border border-gray-200 shadow-lg">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-semibold text-gray-700 mb-3">
                       Category
                     </label>
                     <select
                       value={selectedCategory}
                       onChange={(e) => setSelectedCategory(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                      className="w-full px-4 py-4 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 bg-white shadow-sm hover:border-orange-400 transition-all duration-200 text-base"
                     >
                       <option value="all">All Categories</option>
                       {categories.map((category) => (
@@ -373,13 +345,13 @@ const ManageCoursesPage = () => {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-semibold text-gray-700 mb-3">
                       Status
                     </label>
                     <select
                       value={selectedStatus}
                       onChange={(e) => setSelectedStatus(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                      className="w-full px-4 py-4 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 bg-white shadow-sm hover:border-orange-400 transition-all duration-200 text-base"
                     >
                       <option value="all">All Status</option>
                       <option value="active">Active</option>
@@ -397,55 +369,66 @@ const ManageCoursesPage = () => {
         {/* Results Summary */}
         {!isLoading && (
           <>
-            <div className="flex items-center justify-between mb-6">
-              <div className="text-sm text-gray-600">
-                Showing {filteredCourses.length} of {courses.length} courses
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center gap-4">
+                <div className="bg-gradient-to-r from-orange-50 to-orange-100 px-6 py-3 rounded-2xl border border-orange-200 shadow-sm">
+                  <span className="text-orange-700 font-bold text-base">
+                    {filteredCourses.length} of {courses.length} courses
+                  </span>
+                </div>
               </div>
               {filteredCourses.length > 0 && (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
                   <input
                     type="checkbox"
                     checked={selectedCourses.length === filteredCourses.length}
                     onChange={handleSelectAll}
-                    className="w-4 h-4 text-orange-600 bg-gray-100 border-gray-300 rounded focus:ring-orange-500"
+                    className="w-5 h-5 text-orange-600 bg-gray-100 border-gray-300 rounded focus:ring-orange-500"
                   />
-                  <span className="text-sm text-gray-600">Select all</span>
+                  <span className="text-base font-medium text-gray-700">Select all</span>
                 </div>
               )}
             </div>
 
             {/* Bulk Actions */}
             {selectedCourses.length > 0 && (
-              <div className="mb-6 p-4 bg-orange-50 border border-orange-200 rounded-xl">
+              <div className="mb-8 p-6 bg-gradient-to-r from-orange-50 to-orange-100 border border-orange-200 rounded-2xl shadow-sm">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-orange-800">
-                    {selectedCourses.length} course(s) selected
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <button
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-orange-200 rounded-full flex items-center justify-center">
+                      <span className="text-orange-800 font-bold text-sm">
+                        {selectedCourses.length}
+                      </span>
+                    </div>
+                    <span className="text-lg font-semibold text-orange-800">
+                      course{selectedCourses.length > 1 ? 's' : ''} selected
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <WhiteButton
                       onClick={() => handleBulkAction("activate")}
-                      className="px-4 py-2 text-sm bg-green-100 text-green-800 rounded-lg hover:bg-green-200 transition-colors"
+                      className="px-6 py-3 text-base font-medium bg-green-50 text-green-700 border-green-200 hover:bg-green-100 transition-all duration-200 shadow-sm hover:shadow-md"
                     >
                       Activate
-                    </button>
-                    <button
+                    </WhiteButton>
+                    <WhiteButton
                       onClick={() => handleBulkAction("deactivate")}
-                      className="px-4 py-2 text-sm bg-yellow-100 text-yellow-800 rounded-lg hover:bg-yellow-200 transition-colors"
+                      className="px-6 py-3 text-base font-medium bg-yellow-50 text-yellow-700 border-yellow-200 hover:bg-yellow-100 transition-all duration-200 shadow-sm hover:shadow-md"
                     >
                       Deactivate
-                    </button>
-                    <button
+                    </WhiteButton>
+                    <WhiteButton
                       onClick={() => handleBulkAction("delete")}
-                      className="px-4 py-2 text-sm bg-red-100 text-red-800 rounded-lg hover:bg-red-200 transition-colors"
+                      className="px-6 py-3 text-base font-medium bg-red-50 text-red-700 border-red-200 hover:bg-red-100 transition-all duration-200 shadow-sm hover:shadow-md"
                     >
                       Delete
-                    </button>
+                    </WhiteButton>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Course List */}
+            {/* Course Grid */}
             {filteredCourses.length === 0 ? (
               <div className="h-full bg-white rounded-xl border border-gray-200 p-12 text-center">
                 <div className="flex flex-col items-center">
@@ -483,10 +466,10 @@ const ManageCoursesPage = () => {
                       selectedStatus !== "all") && (
                       <button
                         onClick={() => {
-                          setSearchTerm("");
-                          setSelectedCategory("all");
-                          setSelectedStatus("all");
-                        }}
+                  setSearchTerm("");
+                  setSelectedCategory("all");
+                  setSelectedStatus("all");
+                }}
                         className="px-6 py-3 text-base font-medium text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                       >
                         Clear Filters
@@ -495,12 +478,12 @@ const ManageCoursesPage = () => {
                   </div>
                 </div>
               </div>
-            ) : viewMode === "grid" ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
                 {filteredCourses.map((course) => (
                   <div
                     key={course._id}
-                    className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-200 hover:border-orange-300"
+                    className="bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-xl transition-all duration-300 hover:border-orange-300 group"
                   >
                     <div className="relative">
                       <img
@@ -554,33 +537,39 @@ const ManageCoursesPage = () => {
                       </div>
                     </div>
 
-                    <div className="p-6">
-                      <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2 text-lg">
+                    <div className="p-8">
+                      <h3 className="font-bold text-gray-900 mb-3 line-clamp-2 text-xl">
                         {course.title}
                       </h3>
 
-                      <p className="text-sm text-gray-600 mb-4 line-clamp-2">
-                        {course.shortDescription}
-                      </p>
+                      <p
+                        className="text-gray-600 mb-6 line-clamp-2 text-base leading-relaxed"
+                        dangerouslySetInnerHTML={{
+                          __html: course.shortDescription,
+                        }}
+                      ></p>
 
-                      <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
-                        <span className="flex items-center gap-1">
-                          <Users className="w-4 h-4" />
-                          {course.analytics?.totalEnrollments.toLocaleString() ||
-                            0}
+                      <div className="flex items-center justify-between text-sm text-gray-500 mb-6">
+                        <span className="flex items-center gap-2">
+                          <Users className="w-5 h-5 text-orange-500" />
+                          <span className="font-medium">
+                            {course.analytics?.totalEnrollments.toLocaleString() || 0}
+                          </span>
                         </span>
-                        <span className="flex items-center gap-1">
-                          <Star className="w-4 h-4" />
-                          {course.analytics?.totalRatings || 0}
+                        <span className="flex items-center gap-2">
+                          <Star className="w-5 h-5 text-yellow-500" />
+                          <span className="font-medium">
+                            {course.analytics?.totalRatings || 0}
+                          </span>
                         </span>
-                        <span className="font-semibold text-orange-600">
+                        <span className="font-bold text-orange-600 text-lg">
                           {formatPrice(course)}
                         </span>
                       </div>
 
                       {/* Status Toggle */}
-                      <div className="flex items-center justify-between mb-4 p-3 bg-gray-50 rounded-lg">
-                        <span className="text-sm font-medium text-gray-700">
+                      <div className="flex items-center justify-between mb-6 p-4 bg-gray-50 rounded-2xl">
+                        <span className="text-base font-semibold text-gray-700">
                           Status
                         </span>
                         <StatusToggle
@@ -591,173 +580,29 @@ const ManageCoursesPage = () => {
                         />
                       </div>
 
-                      <div className="flex items-center gap-2">
-                        <button
+                      <div className="flex items-center gap-3">
+                        <WhiteButton
                           onClick={() => handleViewCourse(course.slug!)}
-                          className="flex-1 px-3 py-2 text-sm border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                          className="flex-1 px-4 py-3 text-base font-medium shadow-sm hover:shadow-md transition-all duration-200"
                         >
                           View
-                        </button>
-                        <button
+                        </WhiteButton>
+                        <OrangeButton
                           onClick={() => handleEditCourse(course._id!)}
-                          className="flex-1 px-3 py-2 text-sm bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
+                          className="flex-1 px-4 py-3 text-base font-medium shadow-sm hover:shadow-md transition-all duration-200"
                         >
                           Edit
-                        </button>
+                        </OrangeButton>
                         <button
                           onClick={() => handleDeleteCourse(course._id!)}
-                          className="px-3 py-2 text-sm border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+                          className="px-4 py-3 text-base border border-red-300 text-red-600 rounded-2xl hover:bg-red-50 transition-all duration-200 shadow-sm hover:shadow-md"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-5 h-5" />
                         </button>
                       </div>
                     </div>
                   </div>
-                ))}
-              </div>
-            ) : (
-              /* List View */
-              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-4 text-left">
-                          <input
-                            type="checkbox"
-                            checked={
-                              selectedCourses.length === filteredCourses.length
-                            }
-                            onChange={handleSelectAll}
-                            className="w-4 h-4 text-orange-600 bg-gray-100 border-gray-300 rounded focus:ring-orange-500"
-                          />
-                        </th>
-                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                          Course
-                        </th>
-                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                          Category
-                        </th>
-                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                          Enrollments
-                        </th>
-                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                          Price
-                        </th>
-                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                          Status
-                        </th>
-                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                          Toggle
-                        </th>
-                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                          Updated
-                        </th>
-                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                          Actions
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {filteredCourses.map((course) => (
-                        <tr
-                          key={course._id}
-                          className="hover:bg-gray-50 transition-colors"
-                        >
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <input
-                              type="checkbox"
-                              checked={selectedCourses.includes(course._id!)}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setSelectedCourses((prev) => [
-                                    ...prev,
-                                    course._id!,
-                                  ]);
-                                } else {
-                                  setSelectedCourses((prev) =>
-                                    prev.filter((id) => id !== course._id)
-                                  );
-                                }
-                              }}
-                              className="w-4 h-4 text-orange-600 bg-gray-100 border-gray-300 rounded focus:ring-orange-500"
-                            />
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center">
-                              <img
-                                src={course.thumbnail}
-                                alt={course.title}
-                                className="w-12 h-12 rounded-lg object-cover mr-4"
-                              />
-                              <div>
-                                <div className="text-sm font-semibold text-gray-900">
-                                  {course.title}
-                                </div>
-                                <div className="text-sm text-gray-500">
-                                  {course.shortDescription}
-                                </div>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {course.category}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {course.analytics?.totalEnrollments.toLocaleString() ||
-                              0}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
-                            {formatPrice(course)}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <StatusBadge
-                              isActive={course.isActive}
-                              isFeatured={course.isFeatured}
-                              isCertified={course.isCertified}
-                            />
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <StatusToggle
-                              isActive={course.isActive}
-                              onToggle={handleStatusToggle}
-                              courseId={course._id!}
-                              isLoading={loadingStates[course._id!]}
-                            />
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {formatDate(course.updatedAt)}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={() => handleViewCourse(course.slug!)}
-                                className="text-blue-600 hover:text-blue-900 transition-colors"
-                                title="View Course"
-                              >
-                                <Eye className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => handleEditCourse(course._id!)}
-                                className="text-orange-600 hover:text-orange-900 transition-colors"
-                                title="Edit Course"
-                              >
-                                <Edit className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteCourse(course._id!)}
-                                className="text-red-600 hover:text-red-900 transition-colors"
-                                title="Delete Course"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
                       ))}
-                    </tbody>
-                  </table>
-                </div>
               </div>
             )}
           </>

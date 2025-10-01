@@ -11,7 +11,15 @@ export interface Instructor extends User {
   bio?: string;
   currentPosition?: string;
   currentCompany?: string;
-  previousExperience?: string[];
+  previousExperience?: {
+    companyName: string;
+    position: string;
+    duration: {
+      from: Date;
+      to: Date;
+    };
+    description: string;
+  }[];
   linkedinUrl?: string;
   reviews: Review[];
   ownedCourses: Course[];
@@ -21,7 +29,15 @@ export interface Student extends User {
   collegeName?: string;
   passingYear?: number;
   areaOfInterest?: string;
-  experience?: string;
+  experience?: {
+    companyName: string;
+    position: string;
+    duration: {
+      from: Date;
+      to: Date;
+    };
+    description: string;
+  }[];
 
   currentPosition?: string;
   currentCompany?: string;
@@ -40,7 +56,7 @@ export interface Student extends User {
 
   // Orders
   orders: PaymentOrder["_id"][];
-  
+
   // Pending payments (only for students)
   pendingPayments: PaymentOrder["_id"][];
 }

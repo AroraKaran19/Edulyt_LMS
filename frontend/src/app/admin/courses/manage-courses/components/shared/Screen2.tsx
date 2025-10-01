@@ -62,7 +62,7 @@ const Screen2 = () => {
   if (!isMounted) {
     return (
       <Container
-        title="Learning Information"
+        title="Learning Information (Screen 2)"
         description="Define what students will learn and course requirements"
         className="h-full w-full"
         classNameBody="flex flex-col gap-4"
@@ -76,7 +76,7 @@ const Screen2 = () => {
 
   return (
     <Container
-      title="Learning Information"
+      title="Learning Information (Screen 2)"
       description="Define what students will learn and course requirements"
       className="h-full w-full"
       classNameBody="flex flex-col gap-4"

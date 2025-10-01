@@ -68,6 +68,18 @@ const addressSchema = new mongoose.Schema({
   pincode: { type: String, required: false },
 }, { _id: false });
 
+const previousExperienceDurationSchema = new mongoose.Schema({
+  from: { type: Date, required: true },
+  to: { type: Date, required: true },
+}, { _id: false });
+
+const previousExperienceSchema = new mongoose.Schema({
+  companyName: { type: String, required: true },
+  position: { type: String, required: true },
+  duration: { type: previousExperienceDurationSchema, required: true },
+  description: { type: String, required: true },
+}, { _id: false });
+
 const userSchema = new mongoose.Schema<User>(
   {
     status: {
@@ -188,7 +200,7 @@ const instructorSchema = new mongoose.Schema<Instructor>({
   currentPosition: { type: String, required: false },
   currentCompany: { type: String, required: false },
   previousExperience: {
-    type: [String],
+    type: [previousExperienceSchema],
     required: false,
     default: [],
   },
@@ -227,7 +239,7 @@ const studentSchema = new mongoose.Schema<Student>({
     max: new Date().getFullYear() + 10,
   },
   areaOfInterest: { type: String, required: false },
-  experience: { type: String, required: false },
+  experience: { type: [previousExperienceSchema], required: false },
   currentPosition: { type: String, required: false },
   currentCompany: { type: String, required: false },
   domain: { type: String, required: false },

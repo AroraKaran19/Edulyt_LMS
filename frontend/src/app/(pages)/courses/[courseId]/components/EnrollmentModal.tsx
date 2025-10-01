@@ -8,7 +8,7 @@ import PlanCard from "./PlanCard";
 import DiscountCountdown from "../../components/DiscountCountdown";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { calculateDiscountTime } from "@/lib/utils";
-import { calculateCombinedDiscount } from "@/utils/discountUtils";
+import { calculateDiscountDisplay } from "@/utils/discountUtils";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -45,7 +45,7 @@ const EnrollmentModal: React.FC<EnrollmentModalProps> = ({
   // Only add Essential plan if it exists
   if (course.plans?.essential) {
     const essentialPrice = course.plans.essential.price || 0;
-    const combinedDiscount = calculateCombinedDiscount(
+    const combinedDiscount = calculateDiscountDisplay(
       essentialPrice,
       course.plans.essential.discount,
       course.discount
@@ -69,7 +69,7 @@ const EnrollmentModal: React.FC<EnrollmentModalProps> = ({
   // Only add Elite plan if it exists
   if (course.plans?.elite) {
     const elitePrice = course.plans.elite.price || 0;
-    const combinedDiscount = calculateCombinedDiscount(
+    const combinedDiscount = calculateDiscountDisplay(
       elitePrice,
       course.plans.elite.discount,
       course.discount
@@ -112,16 +112,22 @@ const EnrollmentModal: React.FC<EnrollmentModalProps> = ({
             Select the plan that best fits your learning goals
           </p>
           {/* Discount Countdown */}
-          <div className="w-full flex justify-center mt-2">
-            <DiscountCountdown
-              discount={course.discount}
-              days={discountCountdown?.days || 0}
-              hours={discountCountdown?.hours || 0}
-              minutes={discountCountdown?.minutes || 0}
-              seconds={discountCountdown?.seconds || 0}
-              className={`${plusJakartaSans.className} text-sm md:text-base`}
-            />
-          </div>
+          {course?.discount &&
+            course.discount.isActive &&
+            course.discount.value > 0 &&
+            course.discount.endDate &&
+            new Date(course.discount.endDate).getTime() > Date.now() && (
+            <div className="w-full flex justify-center mt-2">
+              <DiscountCountdown
+                discount={course.discount}
+                days={discountCountdown?.days || 0}
+                hours={discountCountdown?.hours || 0}
+                minutes={discountCountdown?.minutes || 0}
+                seconds={discountCountdown?.seconds || 0}
+                className={`${plusJakartaSans.className} text-sm md:text-base`}
+              />
+            </div>
+          )}
         </div>
 
         {/* Plans Grid */}

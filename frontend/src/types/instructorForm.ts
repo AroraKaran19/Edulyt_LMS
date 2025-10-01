@@ -1,13 +1,22 @@
 import { z } from "zod";
+import { passwordSchema } from "@/utils/passwordValidation";
 
 export const instructorRegistrationSchema = z
   .object({
     firstName: z.string().min(1, "First name is required"),
     lastName: z.string().min(1, "Last name is required"),
     email: z.string().email("Invalid email address"),
-    phone: z.string().min(10, "Phone number must be at least 10 digits"),
-    whatsappNumber: z.string().optional(),
-    password: z.string().min(6, "Password must be at least 6 characters"),
+    phone: z
+      .string()
+      .min(10, "Phone number must be at least 10 digits")
+      .regex(/^(\+91[0-9]{10}|[0-9]{10})$/, "Phone number must be 10 digits or +91 followed by 10 digits"),
+    whatsappNumber: z
+      .string()
+      .optional()
+      .refine((val) => !val || /^(\+91[0-9]{10}|[0-9]{10})$/.test(val), {
+        message: "WhatsApp number must be 10 digits or +91 followed by 10 digits",
+      }),
+    password: passwordSchema,
     confirmPassword: z.string(),
     profilePicture: z.string().optional(),
     bio: z.string().min(10, "Bio must be at least 10 characters"),

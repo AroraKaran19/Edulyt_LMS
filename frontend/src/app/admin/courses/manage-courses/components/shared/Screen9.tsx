@@ -188,7 +188,7 @@ const Screen9 = () => {
   if (!isMounted) {
     return (
       <Container
-        title="Review & Create Course Metadata"
+        title="Review & Create Course Metadata (Screen 9)"
         description="Review all course information before creating the course metadata. Modules can be added later."
         className="h-full w-full max-h-full overflow-y-auto flex flex-col"
         classNameBody="flex flex-col gap-6"
@@ -208,7 +208,7 @@ const Screen9 = () => {
   if (isCreating || isUpdating) {
     return (
       <Container
-        title="Review & Create Course Metadata"
+        title="Review & Create Course Metadata (Screen 9)"
         description="Review all course information before creating the course metadata. Modules can be added later."
         className="h-full w-full max-h-full overflow-y-auto flex flex-col"
         classNameBody="flex flex-col gap-6"

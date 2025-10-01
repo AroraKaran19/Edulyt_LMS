@@ -11,7 +11,7 @@ import faqRoutes from "./routes/faq.routes";
 import testimonialRoutes from "./routes/testimonial.routes";
 import categoryRoutes from "./routes/category.routes";
 import instructorRoutes from "./routes/instructor.routes";
-
+import adminRoutes from "./routes/admin.route";
 import { errorHandler, notFoundHandler } from "./middlewares/error.middleware";
 
 // Load environment variables
@@ -79,7 +79,7 @@ app.use("/api/faqs", faqRoutes);
 app.use("/api/testimonials", testimonialRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/instructor", instructorRoutes);
-
+app.use("/api/admin", adminRoutes);
 // Error handling middleware (must be after all routes)
 app.use(notFoundHandler); // Handle 404 errors
 app.use(errorHandler); // Handle all other errors

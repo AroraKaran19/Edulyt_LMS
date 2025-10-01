@@ -331,7 +331,7 @@ const Screen7 = () => {
   if (!isMounted) {
     return (
       <Container
-        title="Course Testimonials"
+        title="Course Testimonials (Screen 7)"
         description="Select existing testimonials for your course"
         icon={Users}
         className="h-full w-full max-h-full overflow-y-auto flex flex-col"
@@ -350,7 +350,7 @@ const Screen7 = () => {
 
   return (
     <Container
-      title="Course Testimonials"
+      title="Course Testimonials (Screen 7)"
       description={`Select existing testimonials for your course (${selectedTestimonialIds.length} selected)`}
       icon={Users}
       className="h-full w-full max-h-full overflow-y-auto flex flex-col"

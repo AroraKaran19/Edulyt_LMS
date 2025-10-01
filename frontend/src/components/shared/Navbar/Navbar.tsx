@@ -56,7 +56,7 @@ const Navbar = () => {
     {
       label: "Internships",
       // TODO: change to the actual link when the internship page is ready
-      href: "https://airkrit.com/internships.php",
+      href: "https://edulyt.com/internships.php",
       featureBox: "100+",
     },
   ];

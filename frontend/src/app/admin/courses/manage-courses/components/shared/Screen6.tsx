@@ -261,7 +261,7 @@ const Screen6 = () => {
   if (!isMounted) {
     return (
       <Container
-        title="Course FAQs"
+        title="Course FAQs (Screen 6)"
         description="Select pre-built FAQs or create new ones for your course"
         className="h-full w-full max-h-full overflow-hidden flex flex-col"
         classNameBody="flex flex-col gap-4"
@@ -278,7 +278,7 @@ const Screen6 = () => {
 
   return (
     <Container
-      title="Course FAQs"
+      title="Course FAQs (Screen 6)"
       description="Select pre-built FAQs or create new ones for your course"
       className="h-full w-full max-h-full overflow-hidden flex flex-col"
       classNameBody="flex flex-col gap-4"

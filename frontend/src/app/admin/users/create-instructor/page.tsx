@@ -17,7 +17,9 @@ import {
   InstructorRegistrationFormData,
 } from "@/types/instructorForm";
 import { Plus_Jakarta_Sans } from "next/font/google";
-import { UserPlus, ArrowLeft } from "lucide-react";
+import { UserPlus, ArrowLeft, RefreshCw, Eye, EyeOff } from "lucide-react";
+import PasswordStrengthIndicator from "@/components/ui/PasswordStrengthIndicator";
+import { generateSecurePassword } from "@/utils/passwordValidation";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -31,15 +33,19 @@ const CreateInstructorPage = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [profilePictureUrl, setProfilePictureUrl] = useState<string>("");
   const [experienceInput, setExperienceInput] = useState("");
+  const [submitAttempted, setSubmitAttempted] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const {
     register,
     handleSubmit,
     setValue,
     watch,
-    formState: { errors, isSubmitting },
+    formState: { errors, isSubmitting, isValid },
   } = useForm<InstructorRegistrationFormData>({
     resolver: zodResolver(instructorRegistrationSchema) as any,
+    mode: "onChange", // Enable real-time validation
     defaultValues: {
       firstName: "",
       lastName: "",
@@ -65,6 +71,24 @@ const CreateInstructorPage = () => {
   });
 
   const watchedPreviousExperience = watch("previousExperience") || [];
+  const watchedPassword = watch("password") || "";
+
+  // Generate secure password
+  const handleGeneratePassword = () => {
+    const newPassword = generateSecurePassword();
+    setValue("password", newPassword);
+    setValue("confirmPassword", newPassword);
+    toast.success("Secure password generated!");
+  };
+
+  // Toggle password visibility
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
+
+  const toggleConfirmPasswordVisibility = () => {
+    setShowConfirmPassword(!showConfirmPassword);
+  };
 
   const handleAddExperience = () => {
     if (experienceInput.trim()) {
@@ -95,10 +119,21 @@ const CreateInstructorPage = () => {
         setValue("profilePicture", url);
         toast.success("Profile picture uploaded successfully");
       } else {
+        // Handle specific upload errors
+        if (response.message?.includes('File size too large')) {
+          toast.error("File size is too large. Please select a smaller image.");
+        } else if (response.message?.includes('Invalid file type')) {
+          toast.error("Invalid file type. Please select a valid image file.");
+        } else {
+          toast.error(response.message || "Failed to upload profile picture");
+        }
         throw new Error(response.message || "Upload failed");
       }
     } catch (error) {
-      toast.error("Failed to upload profile picture");
+      // Only show error toast if it's not already shown above
+      if (!error || !(error as Error).message?.includes('File size') && !(error as Error).message?.includes('Invalid file type')) {
+        toast.error("Failed to upload profile picture. Please try again.");
+      }
       console.error("Upload error:", error);
     } finally {
       setIsUploading(false);
@@ -111,25 +146,69 @@ const CreateInstructorPage = () => {
   };
 
   const onSubmit = async (data: InstructorRegistrationFormData) => {
+    setSubmitAttempted(true);
+    
     try {
       const result = await registerInstructor(data);
 
       if (result.success) {
         toast.success("Instructor created successfully!");
-        router.push("/admin/users");
+        // Redirect to users page after a short delay to show success message
+        setTimeout(() => {
+          router.push("/admin/users");
+        }, 1500);
       } else {
-        toast.error(result.message || "Failed to create instructor");
+        // Handle specific error types with appropriate messages
+        switch (result.error) {
+          case 'VALIDATION_ERROR':
+            toast.error(result.message || "Please check all required fields and try again");
+            break;
+          case 'DUPLICATE_EMAIL':
+            toast.error(result.message || "An instructor with this email already exists");
+            // Focus on email field
+            const emailInput = document.querySelector('input[name="email"]') as HTMLInputElement;
+            if (emailInput) {
+              emailInput.focus();
+              emailInput.select();
+            }
+            break;
+          case 'UNAUTHORIZED':
+            toast.error(result.message || "You are not authorized to create instructors");
+            // Redirect to login or admin dashboard
+            setTimeout(() => {
+              router.push("/admin");
+            }, 2000);
+            break;
+          case 'NETWORK_ERROR':
+            toast.error(result.message || "Network error. Please check your connection and try again");
+            break;
+          case 'SERVER_ERROR':
+            toast.error(result.message || "Server error occurred. Please try again later");
+            break;
+          default:
+            toast.error(result.message || "Failed to create instructor. Please try again");
+        }
       }
     } catch (error) {
       console.error("Error creating instructor:", error);
-      toast.error("Failed to create instructor");
+      toast.error("An unexpected error occurred. Please try again");
     }
   };
 
   return (
     <div
-      className={`min-h-screen w-full bg-gray-50 ${plusJakartaSans.className} flex flex-col z-10`}
+      className={`min-h-screen w-full bg-gray-50 ${plusJakartaSans.className} flex flex-col z-10 relative`}
     >
+      {/* Loading Overlay */}
+      {isSubmitting && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-8 max-w-sm mx-4 text-center">
+            <div className="w-12 h-12 border-4 border-orange-200 border-t-orange-500 rounded-full animate-spin mx-auto mb-4"></div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Creating Instructor</h3>
+            <p className="text-gray-600 text-sm">Please wait while we create the instructor account...</p>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <div className="bg-white border-b border-gray-200 w-full sticky top-0 z-10 flex-shrink-0">
         <div className="w-full px-4 sm:px-6 lg:px-8">
@@ -209,27 +288,39 @@ const CreateInstructorPage = () => {
                   <div>
                     <Input
                       label="Phone Number"
-                      placeholder="Enter phone number"
+                      type="tel"
+                      placeholder="Enter 10-digit phone number"
                       {...register("phone")}
                       required
+                      pattern="[0-9]{10}"
+                      title="Please enter a 10-digit phone number"
                     />
                     {errors.phone && (
                       <p className="text-red-500 text-sm mt-1">
                         {errors.phone.message}
                       </p>
                     )}
+                    <p className="text-gray-500 text-xs mt-1">
+                      Enter 10 digits (e.g., 9876543210) or +91 followed by 10 digits
+                    </p>
                   </div>
                   <div>
                     <Input
                       label="WhatsApp Number"
-                      placeholder="Enter WhatsApp number"
+                      type="tel"
+                      placeholder="Enter WhatsApp number (optional)"
                       {...register("whatsappNumber")}
+                      pattern="[0-9]{10}"
+                      title="Please enter a 10-digit WhatsApp number"
                     />
                     {errors.whatsappNumber && (
                       <p className="text-red-500 text-sm mt-1">
                         {errors.whatsappNumber.message}
                       </p>
                     )}
+                    <p className="text-gray-500 text-xs mt-1">
+                      Optional: Enter 10 digits (e.g., 9876543210) or +91 followed by 10 digits
+                    </p>
                   </div>
                 </div>
               </div>
@@ -424,39 +515,91 @@ const CreateInstructorPage = () => {
                       {errors.linkedinUrl.message}
                     </p>
                   )}
+                  <p className="text-gray-500 text-xs mt-1">
+                    Optional: Enter a valid LinkedIn profile URL
+                  </p>
                 </div>
               </div>
 
               {/* Account Security */}
               <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-                <h2 className="text-lg font-semibold text-gray-900 mb-6">
-                  Account Security
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    Account Security
+                  </h2>
+                  <WhiteButton
+                    type="button"
+                    onClick={handleGeneratePassword}
+                    className="flex items-center gap-2 px-4 py-2 text-sm"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    Generate Password
+                  </WhiteButton>
+                </div>
+                
+                <div className="space-y-6">
+                  {/* Password Field */}
                   <div>
-                    <Input
-                      label="Password"
-                      type="password"
-                      placeholder="Enter password"
-                      {...register("password")}
-                      required
-                      minLength={6}
-                    />
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Password
+                    </label>
+                    <div className="relative">
+                      <Input
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Enter password"
+                        {...register("password")}
+                        required
+                        className="pr-20"
+                      />
+                      <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={togglePasswordVisibility}
+                          className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                        >
+                          {showPassword ? (
+                            <EyeOff className="w-4 h-4" />
+                          ) : (
+                            <Eye className="w-4 h-4" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
                     {errors.password && (
                       <p className="text-red-500 text-sm mt-1">
                         {errors.password.message}
                       </p>
                     )}
+                    <PasswordStrengthIndicator password={watchedPassword} />
                   </div>
+
+                  {/* Confirm Password Field */}
                   <div>
-                    <Input
-                      label="Confirm Password"
-                      type="password"
-                      placeholder="Confirm password"
-                      {...register("confirmPassword")}
-                      required
-                      minLength={6}
-                    />
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Confirm Password
+                    </label>
+                    <div className="relative">
+                      <Input
+                        type={showConfirmPassword ? "text" : "password"}
+                        placeholder="Confirm password"
+                        {...register("confirmPassword")}
+                        required
+                        className="pr-10"
+                      />
+                      <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                        <button
+                          type="button"
+                          onClick={toggleConfirmPasswordVisibility}
+                          className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                        >
+                          {showConfirmPassword ? (
+                            <EyeOff className="w-4 h-4" />
+                          ) : (
+                            <Eye className="w-4 h-4" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
                     {errors.confirmPassword && (
                       <p className="text-red-500 text-sm mt-1">
                         {errors.confirmPassword.message}
@@ -466,20 +609,57 @@ const CreateInstructorPage = () => {
                 </div>
               </div>
 
+              {/* Form Validation Summary */}
+              {submitAttempted && Object.keys(errors).length > 0 && (
+                <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
+                  <div className="flex items-start gap-3">
+                    <div className="w-5 h-5 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <span className="text-red-600 text-xs font-bold">!</span>
+                    </div>
+                    <div>
+                      <h3 className="text-red-800 font-semibold text-sm mb-2">
+                        Please fix the following errors:
+                      </h3>
+                      <ul className="text-red-700 text-sm space-y-1">
+                        {Object.entries(errors).slice(0, 3).map(([field, error]) => (
+                          <li key={field} className="flex items-center gap-2">
+                            <span className="w-1 h-1 bg-red-500 rounded-full"></span>
+                            <span className="capitalize">{field.replace(/([A-Z])/g, ' $1').toLowerCase()}: {error?.message}</span>
+                          </li>
+                        ))}
+                        {Object.keys(errors).length > 3 && (
+                          <li className="text-red-600 text-xs">
+                            ... and {Object.keys(errors).length - 3} more errors
+                          </li>
+                        )}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Submit Buttons */}
               <div className="flex justify-end gap-4 pb-8">
                 <WhiteButton
                   onClick={() => router.back()}
                   className="px-6 py-3"
+                  disabled={isSubmitting}
                 >
                   Cancel
                 </WhiteButton>
                 <OrangeButton
                   type="submit"
-                  disabled={isSubmitting}
-                  className="px-6 py-3"
+                  disabled={isSubmitting || !isValid}
+                  className="px-6 py-3 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isSubmitting ? "Creating..." : "Create Instructor"}
+                  {isSubmitting ? (
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Creating...
+                    </div>
+                  ) : (
+                    "Create Instructor"
+                  )}
                 </OrangeButton>
               </div>
             </form>

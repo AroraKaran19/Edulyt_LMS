@@ -1,6 +1,6 @@
 "use client";
 import { Search } from "lucide-react";
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 
 const Searchbar2 = ({
@@ -18,6 +18,20 @@ const Searchbar2 = ({
   className?: string;
   props?: React.ComponentProps<"div">;
 }) => {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    // Clean up any external styles that might be injected by browser extensions
+    if (inputRef.current) {
+      const input = inputRef.current;
+      input.style.backgroundImage = 'none';
+      input.style.backgroundRepeat = 'no-repeat';
+      input.style.backgroundSize = 'auto';
+      input.style.backgroundPosition = 'initial';
+      input.removeAttribute('data-temp-mail-org');
+    }
+  }, []);
+
   return (
     <div
       {...props}
@@ -27,11 +41,19 @@ const Searchbar2 = ({
       )}
     >
       <input
+        ref={inputRef}
         type="text"
         value={value}
         onChange={onChange}
         placeholder={placeholder}
-        className="w-full outline-none text-xs font-medium"
+        className="w-full outline-none text-xs font-medium bg-transparent"
+        style={{
+          backgroundImage: 'none !important',
+          backgroundRepeat: 'no-repeat !important',
+          backgroundSize: 'auto !important',
+          backgroundPosition: 'initial !important'
+        }}
+        suppressHydrationWarning
       />
       <div
         onClick={onSearch}

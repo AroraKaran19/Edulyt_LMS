@@ -80,7 +80,11 @@ const DiscountCountdown = ({
     ? countdown
     : { days, hours, minutes, seconds };
 
-  return mounted ? (
+  return mounted &&
+    discount &&
+    discount.isActive &&
+    discount.endDate &&
+    new Date(discount.endDate) > new Date() ? (
     <div
       className={cn(
         "discount-countdown flex flex-col gap-2 text-base",
@@ -95,7 +99,9 @@ const DiscountCountdown = ({
           )}
         >
           <span className="py-2 px-3 rounded-lg bg-[#F7AD24] text-white w-fit">
-            {discount.value}% off
+            {discount.discount === "fixed" 
+              ? `₹${discount.value} off` 
+              : `${discount.value}% off`}
           </span>
         </div>
       )}

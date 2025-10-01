@@ -79,112 +79,8 @@ export const useCourses = () => {
     [baseUrl]
   );
 
-  // Get course by slug
-  const getCourseBySlug = useCallback(
-    async (slug: string): Promise<CourseResponse> => {
-      setIsLoading(true);
-      setError("");
 
-      try {
-        const response = await fetch(`${baseUrl}/courses/${slug}`);
-        const result = await response.json();
 
-        if (!result.success) {
-          setError(result.error || result.message);
-        }
-
-        return result;
-      } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : "Failed to fetch course";
-        setError(errorMessage);
-        return {
-          success: false,
-          message: "Failed to fetch course",
-          error: errorMessage,
-        };
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [baseUrl]
-  );
-
-  // Create course
-  const createCourse = useCallback(
-    async (courseData: any): Promise<CourseResponse> => {
-      setIsLoading(true);
-      setError("");
-
-      try {
-        const response = await fetch(`${baseUrl}/courses`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(courseData),
-        });
-
-        const result = await response.json();
-
-        if (!result.success) {
-          setError(result.error || result.message);
-        }
-
-        return result;
-      } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : "Failed to create course";
-        setError(errorMessage);
-        return {
-          success: false,
-          message: "Failed to create course",
-          error: errorMessage,
-        };
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [baseUrl]
-  );
-
-  // Update course
-  const updateCourse = useCallback(
-    async (courseId: string, courseData: any): Promise<CourseResponse> => {
-      setIsLoading(true);
-      setError("");
-
-      try {
-        const response = await fetch(`${baseUrl}/courses/${courseId}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(courseData),
-        });
-
-        const result = await response.json();
-
-        if (!result.success) {
-          setError(result.error || result.message);
-        }
-
-        return result;
-      } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : "Failed to update course";
-        setError(errorMessage);
-        return {
-          success: false,
-          message: "Failed to update course",
-          error: errorMessage,
-        };
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [baseUrl]
-  );
 
   // Update course metadata
   const updateCourseMetadata = useCallback(
@@ -421,121 +317,6 @@ export const useCourses = () => {
         return {
           success: false,
           message: "Failed to create course metadata",
-          error: errorMessage,
-        };
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [baseUrl]
-  );
-
-  const addCourseLessons = useCallback(
-    async (
-      courseId: string,
-      moduleId: string,
-      lessons: any[]
-    ): Promise<any> => {
-      setIsLoading(true);
-      setError("");
-
-      try {
-        // Create AbortController for timeout handling
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minutes timeout
-
-        const response = await fetch(
-          `${baseUrl}/courses/chunked/${courseId}/lessons`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ moduleId, lessons }),
-            signal: controller.signal,
-          }
-        );
-
-        clearTimeout(timeoutId);
-
-        const result = await response.json();
-
-        if (!result.success) {
-          setError(result.error || result.message);
-        }
-
-        return result;
-      } catch (err) {
-        let errorMessage = "Failed to add course lessons";
-
-        if (err instanceof Error) {
-          if (err.name === "AbortError") {
-            errorMessage =
-              "Request timeout - Adding course lessons took too long. Please try again.";
-          } else {
-            errorMessage = err.message;
-          }
-        }
-
-        setError(errorMessage);
-        return {
-          success: false,
-          message: "Failed to add course lessons",
-          error: errorMessage,
-        };
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [baseUrl]
-  );
-
-  const finalizeCourseCreation = useCallback(
-    async (courseId: string): Promise<any> => {
-      setIsLoading(true);
-      setError("");
-
-      try {
-        // Create AbortController for timeout handling
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minutes timeout
-
-        const response = await fetch(
-          `${baseUrl}/courses/chunked/${courseId}/finalize`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            signal: controller.signal,
-          }
-        );
-
-        clearTimeout(timeoutId);
-
-        const result = await response.json();
-
-        if (!result.success) {
-          setError(result.error || result.message);
-        }
-
-        return result;
-      } catch (err) {
-        let errorMessage = "Failed to finalize course creation";
-
-        if (err instanceof Error) {
-          if (err.name === "AbortError") {
-            errorMessage =
-              "Request timeout - Finalizing course creation took too long. Please try again.";
-          } else {
-            errorMessage = err.message;
-          }
-        }
-
-        setError(errorMessage);
-        return {
-          success: false,
-          message: "Failed to finalize course creation",
           error: errorMessage,
         };
       } finally {
@@ -995,10 +776,7 @@ export const useCourses = () => {
 
     // Methods
     getAllCourses,
-    getCourseBySlug,
     getCourseByIdAdmin,
-    createCourse,
-    updateCourse,
     updateCourseMetadata,
     updateCourseStatus,
     updateCourseStatusBulk,
@@ -1007,8 +785,6 @@ export const useCourses = () => {
     clearError: () => setError(""),
     // Course creation methods
     createCourseMetadata,
-    addCourseLessons,
-    finalizeCourseCreation,
     // Individual module operations (real-time)
     addSingleCourseModule,
     updateSingleCourseModule,

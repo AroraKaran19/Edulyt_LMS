@@ -33,14 +33,9 @@ const CreateCoursePageContent = () => {
         console.error("Failed to create course:", error);
         // Error handling is done in Screen9
       }
-    } else if (currentScreen === 10) {
-      // On Screen10, navigate to Screen11 for modules and content
-      nextScreen();
-    } else if (currentScreen === 11) {
-      // On Screen11, navigate to Screen12 for course summary
-      nextScreen();
     } else {
-      nextScreen();
+      // For all other screens, use the validation-enabled nextScreen
+      await nextScreen();
     }
   };
 

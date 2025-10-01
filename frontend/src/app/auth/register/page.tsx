@@ -1,13 +1,15 @@
 "use client";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
-import { Eye, Lock, Mail } from "lucide-react";
+import { Eye, Lock, Mail, EyeOff, RefreshCw } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
 import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import axios, { isAxiosError } from "axios";
+import PasswordStrengthIndicator from "@/components/ui/PasswordStrengthIndicator";
+import { generateSecurePassword, validatePasswordStrength } from "@/utils/passwordValidation";
 
 const RegisterPage = () => {
   const { status } = useSession();
@@ -17,6 +19,8 @@ const RegisterPage = () => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [isOAuthLoading, setIsOAuthLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -24,6 +28,22 @@ const RegisterPage = () => {
       router.push("/dashboard");
     }
   }, [status]);
+
+  // Generate secure password
+  const handleGeneratePassword = () => {
+    const newPassword = generateSecurePassword();
+    setPassword(newPassword);
+    setConfirmPassword(newPassword);
+  };
+
+  // Toggle password visibility
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
+
+  const toggleConfirmPasswordVisibility = () => {
+    setShowConfirmPassword(!showConfirmPassword);
+  };
 
   const handleOAuthSignIn = async (provider: string) => {
     setIsOAuthLoading(true);
@@ -38,6 +58,14 @@ const RegisterPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    
+    // Validate password strength
+    const passwordValidation = validatePasswordStrength(password);
+    if (!passwordValidation.isValid) {
+      setError(passwordValidation.errors.join(", "));
+      return;
+    }
+    
     if (password !== confirmPassword) {
       setError("Passwords do not match");
       return;
@@ -129,28 +157,51 @@ const RegisterPage = () => {
             <Lock className="w-full h-full" />
           </label>
           <input
-            type="password"
+            type={showPassword ? "text" : "password"}
             placeholder="Password"
-            className="w-full bg-transparent outline-none font-bold"
+            className="w-full bg-transparent outline-none font-bold pr-20"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
           />
-          <Eye className="size-4 absolute right-3 top-1/2 -translate-y-1/2" />
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleGeneratePassword}
+              className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+              title="Generate secure password"
+            >
+              <RefreshCw className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={togglePasswordVisibility}
+              className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
         </div>
+        {password && <PasswordStrengthIndicator password={password} />}
         <div className="confirm-password-input w-full flex gap-3 bg-white rounded-md p-3 border border-gray-300 relative">
           <label htmlFor="confirm-password" className="text-sm text-gray-500">
             <Lock className="w-full h-full" />
           </label>
           <input
-            type="password"
+            type={showConfirmPassword ? "text" : "password"}
             placeholder="Confirm Password"
-            className="w-full bg-transparent outline-none font-bold"
+            className="w-full bg-transparent outline-none font-bold pr-10"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             required
           />
-          <Eye className="size-4 absolute right-3 top-1/2 -translate-y-1/2" />
+          <button
+            type="button"
+            onClick={toggleConfirmPasswordVisibility}
+            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+          </button>
         </div>
         {error && <div className="text-red-500 text-sm font-bold">{error}</div>}
         <OrangeButton

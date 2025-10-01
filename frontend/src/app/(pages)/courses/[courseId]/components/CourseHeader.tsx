@@ -149,8 +149,8 @@ const CourseHeader = ({
             {course?.discount &&
               course.discount.isActive &&
               course.discount.value > 0 &&
-              new Date(course.discount.endDate || "").getTime() >
-                Date.now() && (
+              course.discount.endDate &&
+              new Date(course.discount.endDate).getTime() > Date.now() && (
                 <div className="course-discount flex flex-col gap-2">
                   <DiscountCountdown
                     discount={course.discount}

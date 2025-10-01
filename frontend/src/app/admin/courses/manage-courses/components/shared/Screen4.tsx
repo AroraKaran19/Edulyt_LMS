@@ -66,7 +66,7 @@ const Screen4 = () => {
   if (!isMounted) {
     return (
       <Container
-        title="Highlights & Features"
+        title="Highlights & Features (Screen 4)"
         description="Define key selling points and features that make your course stand out"
         className="h-full w-full"
         classNameBody="flex flex-col gap-4"
@@ -80,7 +80,7 @@ const Screen4 = () => {
 
   return (
     <Container
-      title="Highlights & Features"
+      title="Highlights & Features (Screen 4)"
       description="Define key selling points and features that make your course stand out"
       className="h-full w-full"
       classNameBody="flex flex-col gap-4"

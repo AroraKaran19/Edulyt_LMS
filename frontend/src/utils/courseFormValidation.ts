@@ -144,6 +144,60 @@ export const validateInstructor = (instructor: any[]): string[] => {
   return errors;
 };
 
+export const validatePlanDiscount = (discount: any, planName: string): string[] => {
+  const errors: string[] = [];
+
+  if (!discount) {
+    return errors; // Discount is optional
+  }
+
+  // Only validate if discount is active
+  if (discount.isActive) {
+    if (!discount.discount || (discount.discount !== "percentage" && discount.discount !== "fixed")) {
+      errors.push(`${planName} discount type must be either 'percentage' or 'fixed'`);
+    }
+
+    if (discount.value === undefined || discount.value === null || discount.value < 0) {
+      errors.push(`${planName} discount value must be 0 or greater`);
+    }
+
+    if (discount.discount === "percentage" && discount.value > 100) {
+      errors.push(`${planName} percentage discount cannot exceed 100%`);
+    }
+
+    // Validate dates
+    if (!discount.startDate) {
+      errors.push(`${planName} discount start date is required when discount is active`);
+    }
+
+    if (!discount.endDate) {
+      errors.push(`${planName} discount end date is required when discount is active`);
+    } else {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Reset time to start of day
+      
+      const endDate = new Date(discount.endDate);
+      endDate.setHours(0, 0, 0, 0); // Reset time to start of day
+
+      if (endDate < today) {
+        errors.push(`${planName} discount end date must be today or later`);
+      }
+    }
+
+    // Validate start date is before end date
+    if (discount.startDate && discount.endDate) {
+      const startDate = new Date(discount.startDate);
+      const endDate = new Date(discount.endDate);
+      
+      if (startDate >= endDate) {
+        errors.push(`${planName} discount start date must be before end date`);
+      }
+    }
+  }
+
+  return errors;
+};
+
 export const validatePlans = (plans: any): string[] => {
   const errors: string[] = [];
 
@@ -169,6 +223,12 @@ export const validatePlans = (plans: any): string[] => {
         }
       });
     }
+
+    // Validate essential plan discount
+    if (plans.essential.discount?.isActive) {
+      const planDiscountErrors = validatePlanDiscount(plans.essential.discount, "Essential plan");
+      errors.push(...planDiscountErrors);
+    }
   }
 
   // Validate elite plan if present
@@ -188,6 +248,66 @@ export const validatePlans = (plans: any): string[] => {
           errors.push(`Elite plan feature ${index + 1} title is required`);
         }
       });
+    }
+
+    // Validate elite plan discount
+    if (plans.elite.discount?.isActive) {
+      const planDiscountErrors = validatePlanDiscount(plans.elite.discount, "Elite plan");
+      errors.push(...planDiscountErrors);
+    }
+  }
+
+  return errors;
+};
+
+export const validateDiscount = (discount: any): string[] => {
+  const errors: string[] = [];
+
+  if (!discount) {
+    return errors; // Discount is optional
+  }
+
+  // Only validate if discount is active
+  if (discount.isActive) {
+    if (!discount.discount || (discount.discount !== "percentage" && discount.discount !== "fixed")) {
+      errors.push("Course discount type must be either 'percentage' or 'fixed'");
+    }
+
+    if (discount.value === undefined || discount.value === null || discount.value < 0) {
+      errors.push("Course discount value must be 0 or greater");
+    }
+
+    if (discount.discount === "percentage" && discount.value > 100) {
+      errors.push("Course percentage discount cannot exceed 100%");
+    }
+
+    // Validate dates
+    if (!discount.startDate) {
+      errors.push("Course discount start date is required when discount is active");
+    }
+
+    if (!discount.endDate) {
+      errors.push("Course discount end date is required when discount is active");
+    } else {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Reset time to start of day
+      
+      const endDate = new Date(discount.endDate);
+      endDate.setHours(0, 0, 0, 0); // Reset time to start of day
+
+      if (endDate < today) {
+        errors.push("Course discount end date must be today or later");
+      }
+    }
+
+    // Validate start date is before end date
+    if (discount.startDate && discount.endDate) {
+      const startDate = new Date(discount.startDate);
+      const endDate = new Date(discount.endDate);
+      
+      if (startDate >= endDate) {
+        errors.push("Course discount start date must be before end date");
+      }
     }
   }
 
@@ -392,6 +512,12 @@ export const validateScreen5 = (
   if (plansErrors.length > 0) {
     errors.push(...plansErrors);
     missingFields.push("plans");
+  }
+
+  const discountErrors = validateDiscount(data.discount);
+  if (discountErrors.length > 0) {
+    errors.push(...discountErrors);
+    missingFields.push("discount");
   }
 
   return {

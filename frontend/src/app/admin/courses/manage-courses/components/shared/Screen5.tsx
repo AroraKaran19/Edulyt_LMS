@@ -373,7 +373,7 @@ const Screen5 = () => {
   if (!isMounted) {
     return (
       <Container
-        title="Pricing & Plans"
+        title="Pricing & Plans (Screen 5)"
         description="Set up pricing plans and discount options for your course"
         className="h-full w-full max-h-full overflow-y-auto flex flex-col"
         classNameBody="flex flex-col gap-6"
@@ -388,7 +388,7 @@ const Screen5 = () => {
 
   return (
     <Container
-      title="Pricing & Plans"
+      title="Pricing & Plans (Screen 5)"
       description="Set up pricing plans and discount options for your course"
       className="h-full w-full max-h-full overflow-y-auto flex flex-col"
       classNameBody="flex flex-col gap-6"
@@ -682,6 +682,7 @@ const Screen5 = () => {
                             }
                             className="w-full"
                             required
+                            minDate={new Date()}
                           />
                         </div>
                       </FlexBox>
@@ -946,6 +947,7 @@ const Screen5 = () => {
                             }
                             className="w-full"
                             required
+                            minDate={new Date()}
                           />
                         </div>
                       </FlexBox>
@@ -1045,15 +1047,16 @@ const Screen5 = () => {
                   required
                 />
               </div>
-              <div className="flex-1">
-                <DateSelector
-                  label="End Date"
-                  value={state.discount.endDate}
-                  onChange={(date) => updateDiscount("endDate", date)}
-                  className="w-full"
-                  required
-                />
-              </div>
+                        <div className="flex-1">
+                          <DateSelector
+                            label="End Date"
+                            value={state.discount.endDate}
+                            onChange={(date) => updateDiscount("endDate", date)}
+                            className="w-full"
+                            required
+                            minDate={new Date()}
+                          />
+                        </div>
             </FlexBox>
           </div>
         )}

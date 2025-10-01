@@ -22,6 +22,7 @@ import UploadMediaContainer from "@/components/ui/container/UploadMediaContainer
 import CheckBoxContainer from "@/components/ui/inputs/CheckBoxContainer";
 import { useUpload } from "@/hooks/useUpload";
 import { useCourses } from "@/hooks/useCourses";
+import { getVideoDuration, formatDuration, parseDuration, isValidDurationFormat } from "@/utils/videoUtils";
 import {
   CourseModule,
   CourseLesson,
@@ -199,6 +200,7 @@ const Screen11 = () => {
   const [isUploadingVideoThumbnail, setIsUploadingVideoThumbnail] = useState(false);
   const [isUploadingDocument, setIsUploadingDocument] = useState(false);
   const [isUploadingModuleThumbnail, setIsUploadingModuleThumbnail] = useState(false);
+  const [isExtractingDuration, setIsExtractingDuration] = useState(false);
   const [newModule, setNewModule] = useState({
     title: "",
     description: "",
@@ -228,6 +230,7 @@ const Screen11 = () => {
     videoThumbnailUrl: "",
     videoThumbnailSource: "url" as "upload" | "url",
     videoThumbnailS3Key: "",
+    videoDuration: "",
     documentUrl: "",
     documentSource: "url" as "upload" | "url",
     documentS3Key: "",
@@ -253,6 +256,7 @@ const Screen11 = () => {
     videoThumbnailUrl: "",
     videoThumbnailSource: "url" as "upload" | "url",
     videoThumbnailS3Key: "",
+    videoDuration: "",
     documentUrl: "",
     documentSource: "url" as "upload" | "url",
     documentS3Key: "",
@@ -620,6 +624,7 @@ const Screen11 = () => {
       videoThumbnailUrl: "",
       videoThumbnailSource: "url",
       videoThumbnailS3Key: "",
+      videoDuration: "",
       documentUrl: "",
       documentSource: "url",
       documentS3Key: "",
@@ -651,6 +656,14 @@ const Screen11 = () => {
         toast.error("Video is required for video content");
         return;
       }
+      if (!newContent.videoDuration.trim()) {
+        toast.error("Video duration is required for video content");
+        return;
+      }
+      if (!newContent.videoDuration || isNaN(Number(newContent.videoDuration)) || Number(newContent.videoDuration) <= 0) {
+        toast.error("Please enter a valid duration in seconds (e.g., 150 for 2 minutes 30 seconds)");
+        return;
+      }
       contentData = {
               title: newContent.title,
               description: newContent.description,
@@ -664,6 +677,7 @@ const Screen11 = () => {
                 },
               ],
         thumbnailUrl: newContent.videoThumbnailUrl,
+        duration: Number(newContent.videoDuration),
           isCompleted: false,
           isActive: newContent.isActive,
           isLocked: false,
@@ -710,6 +724,7 @@ const Screen11 = () => {
             type: "video",
             sources: result.data.sources || [],
             thumbnailUrl: result.data.thumbnailUrl,
+            duration: result.data.duration || 0,
             isCompleted: result.data.isCompleted || false,
             isActive: result.data.isActive !== undefined ? result.data.isActive : true,
             isLocked: result.data.isLocked || false,
@@ -774,6 +789,7 @@ const Screen11 = () => {
           videoThumbnailUrl: "",
           videoThumbnailSource: "url",
           videoThumbnailS3Key: "",
+          videoDuration: "",
           documentUrl: "",
           documentSource: "url",
           documentS3Key: "",
@@ -859,6 +875,14 @@ const Screen11 = () => {
         toast.error("Video is required for video content");
         return;
       }
+      if (!editingContent.videoDuration.trim()) {
+        toast.error("Video duration is required for video content");
+        return;
+      }
+      if (!editingContent.videoDuration || isNaN(Number(editingContent.videoDuration)) || Number(editingContent.videoDuration) <= 0) {
+        toast.error("Please enter a valid duration in seconds (e.g., 150 for 2 minutes 30 seconds)");
+        return;
+      }
       contentData = {
         title: editingContent.title,
         description: editingContent.description,
@@ -872,6 +896,7 @@ const Screen11 = () => {
           },
         ],
         thumbnailUrl: editingContent.videoThumbnailUrl,
+        duration: Number(editingContent.videoDuration),
         isCompleted: false,
         isActive: editingContent.isActive,
         isLocked: false,
@@ -960,6 +985,7 @@ const Screen11 = () => {
           videoThumbnailUrl: "",
           videoThumbnailSource: "url",
           videoThumbnailS3Key: "",
+          videoDuration: "",
           documentUrl: "",
           documentSource: "url",
           documentS3Key: "",
@@ -986,6 +1012,7 @@ const Screen11 = () => {
       videoThumbnailUrl: (content as VideoContent).thumbnailUrl || "",
       videoThumbnailSource: "url",
       videoThumbnailS3Key: "",
+      videoDuration: (content as VideoContent).duration ? (content as VideoContent).duration!.toString() : "",
       documentUrl: (content as DocumentContent).documentUrl || "",
       documentSource: "url",
       documentS3Key: "",
@@ -1094,15 +1121,32 @@ const Screen11 = () => {
 
   const handleContentVideoUpload = async (file: File, folderName: string) => {
     setIsUploadingVideo(true);
+    setIsExtractingDuration(true);
     try {
       const result = await uploadFile(file, folderName);
       if (result.success && result.data) {
-        setNewContent((prev) => ({
-          ...prev,
-          videoUrl: result.data!.url,
-          videoSource: "upload",
-          videoS3Key: result.data!.s3Key,
-        }));
+        // Extract video duration
+        try {
+          const duration = await getVideoDuration(file);
+          
+          setNewContent((prev) => ({
+            ...prev,
+            videoUrl: result.data!.url,
+            videoSource: "upload",
+            videoS3Key: result.data!.s3Key,
+            videoDuration: duration.toString(),
+          }));
+        } catch (durationError) {
+          console.error("Error extracting video duration:", durationError);
+          // Still set the video URL but without duration
+          setNewContent((prev) => ({
+            ...prev,
+            videoUrl: result.data!.url,
+            videoSource: "upload",
+            videoS3Key: result.data!.s3Key,
+          }));
+          toast.warning("Video uploaded but duration could not be extracted. Please enter duration manually.");
+        }
         return result.data.url;
       }
       throw new Error(result.error || "Upload failed");
@@ -1111,6 +1155,7 @@ const Screen11 = () => {
       throw error;
     } finally {
       setIsUploadingVideo(false);
+      setIsExtractingDuration(false);
     }
   };
 
@@ -1120,16 +1165,32 @@ const Screen11 = () => {
       videoUrl: "",
       videoSource: "url",
       videoS3Key: "",
+      videoDuration: "",
     }));
   };
 
-  const handleContentVideoUrlSubmit = (url: string) => {
+  const handleContentVideoUrlSubmit = async (url: string) => {
     setNewContent((prev) => ({
       ...prev,
       videoUrl: url,
       videoSource: "url",
       videoS3Key: "",
     }));
+    
+    // Try to extract duration from URL
+    setIsExtractingDuration(true);
+    try {
+      const duration = await getVideoDuration(url);
+      setNewContent((prev) => ({
+        ...prev,
+        videoDuration: duration.toString(),
+      }));
+    } catch (error) {
+      console.error("Error extracting video duration from URL:", error);
+      // Don't show error toast for URL duration extraction as it's optional
+    } finally {
+      setIsExtractingDuration(false);
+    }
   };
 
   const handleContentDocumentUpload = async (file: File, folderName: string) => {
@@ -1216,7 +1277,7 @@ const Screen11 = () => {
   if (isLoadingModules) {
     return (
       <Container
-        title="Course Modules & Content"
+        title="Course Modules & Content (Screen 11)"
         description="Loading course modules and content..."
         className="h-full w-full max-h-full overflow-y-auto flex flex-col relative"
         classNameBody="flex flex-col gap-6"
@@ -1234,7 +1295,7 @@ const Screen11 = () => {
 
   return (
     <Container
-      title="Course Modules & Content"
+      title="Course Modules & Content (Screen 11)"
       description="Create and manage your course modules, lessons, and content"
       className="h-full w-full max-h-full overflow-y-auto flex flex-col relative"
       classNameBody="flex flex-col gap-6"
@@ -1905,6 +1966,19 @@ const Screen11 = () => {
                                           className="w-full"
                                           isUploading={isUploadingVideoThumbnail}
                                         />
+                                        <Input
+                                          label="Video Duration (in seconds)"
+                                          placeholder="Enter duration in seconds (e.g., 150 for 2 minutes 30 seconds)"
+                                          value={editingContent.videoDuration}
+                                          onChange={(e) =>
+                                            setEditingContent({
+                                              ...editingContent,
+                                              videoDuration: e.target.value,
+                                            })
+                                          }
+                                          required
+                                          className="w-full"
+                                        />
                                       </>
                                     )}
 
@@ -1954,15 +2028,16 @@ const Screen11 = () => {
                                         !editingContent.description.trim() ||
                                         isUploadingVideo ||
                                         isUploadingVideoThumbnail ||
-                                        isUploadingDocument
+                                        isUploadingDocument ||
+                                        isExtractingDuration
                                       }
                                       glow={false}
                                       className="flex items-center gap-2 text-sm"
                                     >
-                                      {(isUploadingVideo || isUploadingVideoThumbnail || isUploadingDocument) ? (
+                                      {(isUploadingVideo || isUploadingVideoThumbnail || isUploadingDocument || isExtractingDuration) ? (
                                         <>
                                           <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                          Uploading...
+                                          {isExtractingDuration ? "Extracting duration..." : "Uploading..."}
                                         </>
                                       ) : (
                                         "Update Content"
@@ -1982,13 +2057,14 @@ const Screen11 = () => {
                                           videoThumbnailUrl: "",
                                           videoThumbnailSource: "url",
                                           videoThumbnailS3Key: "",
+                                          videoDuration: "",
                                           documentUrl: "",
                                           documentSource: "url",
                                           documentS3Key: "",
                                           isActive: true,
                                         });
                                       }}
-                                      disabled={isUploadingVideo || isUploadingVideoThumbnail || isUploadingDocument}
+                                      disabled={isUploadingVideo || isUploadingVideoThumbnail || isUploadingDocument || isExtractingDuration}
                                       className="text-sm"
                                     >
                                       Cancel
@@ -2096,6 +2172,19 @@ const Screen11 = () => {
                                           className="w-full"
                                           isUploading={isUploadingVideoThumbnail}
                                         />
+                                        <Input
+                                          label="Video Duration (in seconds)"
+                                          placeholder="Enter duration in seconds (e.g., 150 for 2 minutes 30 seconds)"
+                                          value={newContent.videoDuration}
+                                          onChange={(e) =>
+                                            setNewContent({
+                                              ...newContent,
+                                              videoDuration: e.target.value,
+                                            })
+                                          }
+                                          required
+                                          className="w-full"
+                                        />
                                       </>
                                     )}
 
@@ -2145,15 +2234,16 @@ const Screen11 = () => {
                                         !newContent.description.trim() ||
                                         isUploadingVideo ||
                                         isUploadingVideoThumbnail ||
-                                        isUploadingDocument
+                                        isUploadingDocument ||
+                                        isExtractingDuration
                                       }
                                       glow={false}
                                       className="flex items-center gap-2 text-sm"
                                     >
-                                      {(isUploadingVideo || isUploadingVideoThumbnail || isUploadingDocument) ? (
+                                      {(isUploadingVideo || isUploadingVideoThumbnail || isUploadingDocument || isExtractingDuration) ? (
                                         <>
                                           <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                          Uploading...
+                                          {isExtractingDuration ? "Extracting duration..." : "Uploading..."}
                                         </>
                                       ) : (
                                         `Add ${contentTypeToAdd.charAt(0).toUpperCase() + contentTypeToAdd.slice(1)}`
@@ -2164,7 +2254,7 @@ const Screen11 = () => {
                                         setIsAddingContent(false);
                                         setContentTypeToAdd(null);
                                       }}
-                                      disabled={isUploadingVideo || isUploadingVideoThumbnail || isUploadingDocument}
+                                      disabled={isUploadingVideo || isUploadingVideoThumbnail || isUploadingDocument || isExtractingDuration}
                                       className="text-sm"
                                     >
                                       Cancel
@@ -2207,6 +2297,11 @@ const Screen11 = () => {
                                           <p className="text-xs text-gray-600">
                                             {content.description}
                                           </p>
+                                          {content.type === "video" && (content as VideoContent).duration && (
+                                            <p className="text-xs text-blue-600 font-medium">
+                                              Duration: {formatDuration((content as VideoContent).duration!)}
+                                            </p>
+                                          )}
                                         </div>
                                       </div>
                                       <div className="flex items-center gap-2">

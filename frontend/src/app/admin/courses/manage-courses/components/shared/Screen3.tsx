@@ -124,7 +124,7 @@ const Screen3 = () => {
   if (!isMounted) {
     return (
       <Container
-        title="Course Media"
+        title="Course Media (Screen 3)"
         description="Upload visual content to showcase your course"
         className="h-full w-full"
         classNameBody="flex flex-col gap-4"
@@ -138,7 +138,7 @@ const Screen3 = () => {
 
   return (
     <Container
-      title="Course Media"
+      title="Course Media (Screen 3)"
       description="Upload visual content to showcase your course"
       className="h-full w-full"
       classNameBody="flex flex-col gap-4"

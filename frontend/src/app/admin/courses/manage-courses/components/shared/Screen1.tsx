@@ -50,6 +50,7 @@ const Screen1 = () => {
   const brochureS3Key = watch("brochureS3Key");
   const brochureSource = watch("brochureSource");
   const titleValue = watch("title");
+  const languageValue = watch("language");
 
   const [curriculumFolderName, setCurriculumFolderName] = useState(
     "courses/new_course/curriculum"
@@ -57,6 +58,16 @@ const Screen1 = () => {
   const [brochureFolderName, setBrochureFolderName] = useState(
     "courses/new_course/brochure"
   );
+
+  // Language mapping for display
+  const languageMap: Record<string, string> = {
+    "en": "English (en)",
+    "hi": "Hindi (hi)",
+    "es": "Spanish (es)",
+    "fr": "French (fr)",
+    "de": "German (de)",
+    "zh": "Chinese (zh)",
+  };
 
   useEffect(() => {
     if (titleValue) {
@@ -160,7 +171,7 @@ const Screen1 = () => {
   if (!isMounted) {
     return (
       <Container
-        title="Basic Information"
+        title="Basic Information (Screen 1)"
         description="Define the core details of your course"
         className="h-full w-full"
         classNameBody="flex flex-col gap-4"
@@ -174,7 +185,7 @@ const Screen1 = () => {
 
   return (
     <Container
-      title="Basic Information"
+      title="Basic Information (Screen 1)"
       description="Define the core details of your course"
       className="h-full w-full"
       classNameBody="flex flex-col gap-4"
@@ -279,9 +290,6 @@ const Screen1 = () => {
                 options={[
                   "college-students",
                   "professionals",
-                  "beginners",
-                  "intermediate",
-                  "advanced",
                 ]}
                 error={errors.audience?.message}
                 required={true}
@@ -296,16 +304,20 @@ const Screen1 = () => {
               <DropDown
                 {...field}
                 label="Course Language"
-                onChange={(e: ChangeEvent<HTMLSelectElement>) =>
-                  field.onChange(e.target.value)
-                }
+                value={languageMap[field.value] || field.value || "Select Language"}
+                onChange={(e: ChangeEvent<HTMLSelectElement>) => {
+                  // Extract language code from "English (en)" format
+                  const selectedValue = e.target.value;
+                  const languageCode = selectedValue.match(/\(([^)]+)\)$/)?.[1] || selectedValue;
+                  field.onChange(languageCode);
+                }}
                 options={[
-                  "English",
-                  "Hindi",
-                  "Spanish",
-                  "French",
-                  "German",
-                  "Chinese",
+                  "English (en)",
+                  "Hindi (hi)", 
+                  "Spanish (es)",
+                  "French (fr)",
+                  "German (de)",
+                  "Chinese (zh)",
                 ]}
                 error={errors.language?.message}
                 required={true}
@@ -445,7 +457,7 @@ const Screen1 = () => {
             <UploadMediaContainer
               title="Course Brochure (Optional)"
               description="Upload the brochure of your course (optional)"
-              type="image"
+              type="document"
               folderName={brochureFolderName}
               mediaUrl={brochureValue}
               mediaSource={brochureSource}

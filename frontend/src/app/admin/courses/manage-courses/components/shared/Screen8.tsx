@@ -162,8 +162,10 @@ const Screen8 = () => {
       setValue("metaDescription", metaDescription, { shouldDirty: true, shouldTouch: true });
       setValue("keywords", allKeywords, { shouldDirty: true, shouldTouch: true });
 
-      // Validate the generated slug
-      await validateSlug(slug);
+      // Validate the generated slug (only in create mode)
+      if (!isEditMode) {
+        await validateSlug(slug);
+      }
 
       // Also add keywords as tags
       if (tags && tags.length > 0) {
@@ -186,7 +188,7 @@ const Screen8 = () => {
   if (!isMounted) {
     return (
       <Container
-        title="SEO Management"
+        title="SEO Management (Screen 8)"
         description="Optimize your course for search engines and discoverability"
         icon={Search}
         className="h-full w-full max-h-full overflow-y-auto flex flex-col"
@@ -205,7 +207,7 @@ const Screen8 = () => {
 
   return (
     <Container
-      title="SEO Management"
+      title="SEO Management (Screen 8)"
       description="Optimize your course for search engines and discoverability"
       icon={Search}
       className="h-full w-full max-h-full overflow-y-auto flex flex-col"
@@ -274,9 +276,9 @@ const Screen8 = () => {
                     value={field.value || ""}
                     onChange={field.onChange}
                     className={`w-full ${
-                      slugValidation.isAvailable === false
+                      !isEditMode && slugValidation.isAvailable === false
                         ? "border-red-300 focus:border-red-500 focus:ring-red-500"
-                        : slugValidation.isAvailable === true
+                        : !isEditMode && slugValidation.isAvailable === true
                         ? "border-green-300 focus:border-green-500 focus:ring-green-500"
                         : ""
                     }`}
@@ -285,7 +287,7 @@ const Screen8 = () => {
                 )}
               />
               {/* Validation Icon */}
-              {slug && slug.trim().length > 0 && (
+              {slug && slug.trim().length > 0 && !isEditMode && (
                 <div className="absolute right-3 top-1/2 -translate-y-1/2">
                   {slugValidation.isChecking ? (
                     <Loader2 className="w-4 h-4 text-gray-400 animate-spin" />
@@ -301,6 +303,7 @@ const Screen8 = () => {
             {/* Validation Message */}
             {slug &&
               slug.trim().length > 0 &&
+              !isEditMode &&
               slugValidation.message && (
                 <div
                   className={`text-xs flex items-center gap-2 ${
