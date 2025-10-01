@@ -101,9 +101,12 @@ const GenerateNavbarContent = ({
                   <div className="w-2/3 h-full flex flex-col gap-1 py-2">
                     <div className="w-full h-full flex flex-col gap-1 justify-between">
                       <h3 className="text-sm font-bold">{course.title}</h3>
-                      <p className="text-xs text-gray-500 line-clamp-2">
-                        {course.description}
-                      </p>
+                      <p
+                        className="text-xs text-gray-500 line-clamp-2"
+                        dangerouslySetInnerHTML={{
+                          __html: course.description,
+                        }}
+                      ></p>
                     </div>
                   </div>
                 </Link>

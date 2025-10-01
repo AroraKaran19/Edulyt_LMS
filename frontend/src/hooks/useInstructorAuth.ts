@@ -11,7 +11,15 @@ export interface InstructorRegistrationData {
   bio: string;
   currentPosition: string;
   currentCompany: string;
-  previousExperience?: string[];
+  previousExperience?: {
+    companyName: string;
+    position: string;
+    duration: {
+      from: Date;
+      to: Date;
+    };
+    description: string;
+  }[];
   address?: {
     address?: string;
     city?: string;
@@ -20,6 +28,10 @@ export interface InstructorRegistrationData {
     pincode?: string;
   };
   linkedinUrl?: string;
+  dob?: Date;
+  userType: "instructor";
+  provider: "credentials";
+  permissions: string[];
 }
 
 export interface InstructorAuthResponse {

@@ -1,6 +1,17 @@
 import { z } from "zod";
 import { passwordSchema } from "@/utils/passwordValidation";
 
+// Previous experience schema matching the backend
+const previousExperienceSchema = z.object({
+  companyName: z.string().min(1, "Company name is required"),
+  position: z.string().min(1, "Position is required"),
+  duration: z.object({
+    from: z.date({ required_error: "Start date is required" }),
+    to: z.date({ required_error: "End date is required" }),
+  }),
+  description: z.string().min(10, "Description must be at least 10 characters"),
+});
+
 export const instructorRegistrationSchema = z
   .object({
     firstName: z.string().min(1, "First name is required"),
@@ -22,7 +33,7 @@ export const instructorRegistrationSchema = z
     bio: z.string().min(10, "Bio must be at least 10 characters"),
     currentPosition: z.string().min(1, "Current position is required"),
     currentCompany: z.string().min(1, "Current company is required"),
-    previousExperience: z.array(z.string()).optional(),
+    previousExperience: z.array(previousExperienceSchema).optional().default([]),
     address: z
       .object({
         address: z.string().optional(),
@@ -37,6 +48,11 @@ export const instructorRegistrationSchema = z
       .url("Invalid LinkedIn URL")
       .optional()
       .or(z.literal("")),
+    // Required fields from user schema
+    dob: z.date().optional(),
+    userType: z.literal("instructor"),
+    provider: z.literal("credentials"),
+    permissions: z.array(z.string()).default(["instructor:create", "instructor:read", "instructor:update"]),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords don't match",

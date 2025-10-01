@@ -10,12 +10,14 @@ import TextArea from "@/components/ui/inputs/TextArea";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import UploadMediaContainer from "@/components/ui/container/UploadMediaContainer";
+import DatePicker from "react-datepicker";
 import { useUpload } from "@/hooks/useUpload";
 import { useInstructorAuth } from "@/hooks/useInstructorAuth";
 import {
   instructorRegistrationSchema,
   InstructorRegistrationFormData,
 } from "@/types/instructorForm";
+import { InstructorRegistrationData } from "@/hooks/useInstructorAuth";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { UserPlus, ArrowLeft, RefreshCw, Eye, EyeOff } from "lucide-react";
 import PasswordStrengthIndicator from "@/components/ui/PasswordStrengthIndicator";
@@ -32,10 +34,17 @@ const CreateInstructorPage = () => {
   const { registerInstructor } = useInstructorAuth();
   const [isUploading, setIsUploading] = useState(false);
   const [profilePictureUrl, setProfilePictureUrl] = useState<string>("");
-  const [experienceInput, setExperienceInput] = useState("");
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showExperienceForm, setShowExperienceForm] = useState(false);
+  const [newExperience, setNewExperience] = useState({
+    companyName: "",
+    position: "",
+    from: undefined as Date | undefined,
+    to: undefined as Date | undefined,
+    description: "",
+  });
 
   const {
     register,
@@ -67,6 +76,10 @@ const CreateInstructorPage = () => {
         pincode: "",
       },
       linkedinUrl: "",
+      dob: undefined,
+      userType: "instructor" as const,
+      provider: "credentials" as const,
+      permissions: ["instructor:create", "instructor:read", "instructor:update"],
     },
   });
 
@@ -91,13 +104,28 @@ const CreateInstructorPage = () => {
   };
 
   const handleAddExperience = () => {
-    if (experienceInput.trim()) {
+    if (newExperience.companyName.trim() && newExperience.position.trim() && 
+        newExperience.from && newExperience.to && newExperience.description.trim()) {
       const currentExperience = watchedPreviousExperience;
-      setValue("previousExperience", [
-        ...currentExperience,
-        experienceInput.trim(),
-      ]);
-      setExperienceInput("");
+      const experienceToAdd = {
+        companyName: newExperience.companyName.trim(),
+        position: newExperience.position.trim(),
+        duration: {
+          from: newExperience.from,
+          to: newExperience.to,
+        },
+        description: newExperience.description.trim(),
+      };
+      
+      setValue("previousExperience", [...currentExperience, experienceToAdd]);
+      setNewExperience({
+        companyName: "",
+        position: "",
+        from: undefined,
+        to: undefined,
+        description: "",
+      });
+      setShowExperienceForm(false);
     }
   };
 
@@ -107,6 +135,17 @@ const CreateInstructorPage = () => {
       "previousExperience",
       currentExperience.filter((_, i) => i !== index)
     );
+  };
+
+  const handleCancelExperience = () => {
+    setNewExperience({
+      companyName: "",
+      position: "",
+      from: undefined,
+      to: undefined,
+      description: "",
+    });
+    setShowExperienceForm(false);
   };
 
   const handleProfilePictureUpload = async (file: File, folderName: string) => {
@@ -148,8 +187,29 @@ const CreateInstructorPage = () => {
   const onSubmit = async (data: InstructorRegistrationFormData) => {
     setSubmitAttempted(true);
     
+    // Transform form data to match the expected API format
+    const transformedData: InstructorRegistrationData = {
+      firstName: data.firstName,
+      lastName: data.lastName,
+      email: data.email,
+      phone: data.phone,
+      whatsappNumber: data.whatsappNumber,
+      password: data.password,
+      profilePicture: data.profilePicture,
+      bio: data.bio,
+      currentPosition: data.currentPosition,
+      currentCompany: data.currentCompany,
+      previousExperience: data.previousExperience,
+      address: data.address,
+      linkedinUrl: data.linkedinUrl,
+      dob: data.dob,
+      userType: data.userType,
+      provider: data.provider,
+      permissions: data.permissions,
+    };
+    
     try {
-      const result = await registerInstructor(data);
+      const result = await registerInstructor(transformedData);
 
       if (result.success) {
         toast.success("Instructor created successfully!");
@@ -325,6 +385,37 @@ const CreateInstructorPage = () => {
                 </div>
               </div>
 
+              {/* Date of Birth */}
+              <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+                <h2 className="text-lg font-semibold text-gray-900 mb-6">
+                  Personal Information
+                </h2>
+                 <div className="max-w-md">
+                   <label className="block text-sm font-medium text-gray-700 mb-2">
+                     Date of Birth
+                   </label>
+                   <DatePicker
+                     selected={watch("dob")}
+                     onChange={(date) => setValue("dob", date || undefined)}
+                     placeholderText="Select date of birth"
+                     maxDate={new Date()}
+                     dateFormat="MM/dd/yyyy"
+                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                     showYearDropdown
+                     showMonthDropdown
+                     dropdownMode="select"
+                   />
+                   {errors.dob && (
+                     <p className="text-red-500 text-sm mt-1">
+                       {errors.dob.message}
+                     </p>
+                   )}
+                   <p className="text-gray-500 text-xs mt-1">
+                     Optional: Select the instructor's date of birth
+                   </p>
+                 </div>
+              </div>
+
               {/* Profile Picture */}
               <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
                 <h2 className="text-lg font-semibold text-gray-900 mb-6">
@@ -400,41 +491,134 @@ const CreateInstructorPage = () => {
 
               {/* Previous Experience */}
               <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-                <h2 className="text-lg font-semibold text-gray-900 mb-6">
-                  Previous Experience
-                </h2>
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    Previous Experience
+                  </h2>
+                  <OrangeButton
+                    type="button"
+                    onClick={() => setShowExperienceForm(true)}
+                    variant="small"
+                    disabled={showExperienceForm}
+                  >
+                    Add Experience
+                  </OrangeButton>
+                </div>
+                
                 <div className="space-y-4">
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Add previous experience"
-                      value={experienceInput}
-                      setChange={setExperienceInput}
-                      className="flex-1"
-                    />
-                    <OrangeButton
-                      type="button"
-                      onClick={handleAddExperience}
-                      disabled={!experienceInput.trim()}
-                      variant="small"
-                    >
-                      Add
-                    </OrangeButton>
-                  </div>
+                  {/* Add Experience Form */}
+                  {showExperienceForm && (
+                    <div className="bg-gray-50 p-4 rounded-lg space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <Input
+                          label="Company Name"
+                          placeholder="Enter company name"
+                          value={newExperience.companyName}
+                          setChange={(value) => setNewExperience(prev => ({ ...prev, companyName: value }))}
+                          required
+                        />
+                        <Input
+                          label="Position"
+                          placeholder="Enter position/role"
+                          value={newExperience.position}
+                          setChange={(value) => setNewExperience(prev => ({ ...prev, position: value }))}
+                          required
+                        />
+                      </div>
+                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                         <div>
+                           <label className="block text-sm font-medium text-gray-700 mb-2">
+                             Start Date <span className="text-red-500">*</span>
+                           </label>
+                           <DatePicker
+                             selected={newExperience.from}
+                             onChange={(date) => setNewExperience(prev => ({ ...prev, from: date || undefined }))}
+                             placeholderText="Select start date"
+                             maxDate={new Date()}
+                             dateFormat="MM/dd/yyyy"
+                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                             showYearDropdown
+                             showMonthDropdown
+                             dropdownMode="select"
+                           />
+                         </div>
+                         <div>
+                           <label className="block text-sm font-medium text-gray-700 mb-2">
+                             End Date <span className="text-red-500">*</span>
+                           </label>
+                           <DatePicker
+                             selected={newExperience.to}
+                             onChange={(date) => setNewExperience(prev => ({ ...prev, to: date || undefined }))}
+                             placeholderText="Select end date"
+                             maxDate={new Date()}
+                             minDate={newExperience.from}
+                             dateFormat="MM/dd/yyyy"
+                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                             showYearDropdown
+                             showMonthDropdown
+                             dropdownMode="select"
+                           />
+                         </div>
+                       </div>
+                      <TextArea
+                        label="Description"
+                        placeholder="Describe the role and responsibilities"
+                        value={newExperience.description}
+                        setChange={(value) => setNewExperience(prev => ({ ...prev, description: value }))}
+                        required
+                        rows={3}
+                        maxLength={500}
+                        showWordCount
+                      />
+                      <div className="flex gap-2 justify-end">
+                        <WhiteButton
+                          type="button"
+                          onClick={handleCancelExperience}
+                          className="px-4 py-2 text-sm"
+                        >
+                          Cancel
+                        </WhiteButton>
+                        <OrangeButton
+                          type="button"
+                          onClick={handleAddExperience}
+                          variant="small"
+                          disabled={!newExperience.companyName.trim() || !newExperience.position.trim() || 
+                                   !newExperience.from || !newExperience.to || !newExperience.description.trim()}
+                        >
+                          Add Experience
+                        </OrangeButton>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Experience List */}
                   {watchedPreviousExperience.length > 0 && (
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       {watchedPreviousExperience.map((exp, index) => (
                         <div
                           key={index}
-                          className="flex items-center justify-between bg-gray-50 p-3 rounded-lg"
+                          className="bg-gray-50 p-4 rounded-lg border border-gray-200"
                         >
-                          <span className="text-sm text-gray-700">{exp}</span>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveExperience(index)}
-                            className="text-red-500 hover:text-red-700 text-sm"
-                          >
-                            Remove
-                          </button>
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <h3 className="font-medium text-gray-900">{exp.position}</h3>
+                                <span className="text-gray-500">at</span>
+                                <span className="font-medium text-orange-600">{exp.companyName}</span>
+                              </div>
+                              <div className="text-sm text-gray-600 mb-2">
+                                {exp.duration.from.toLocaleDateString()} - {exp.duration.to.toLocaleDateString()}
+                              </div>
+                              <p className="text-sm text-gray-700">{exp.description}</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveExperience(index)}
+                              className="ml-4 text-red-500 hover:text-red-700 text-sm font-medium"
+                            >
+                              Remove
+                            </button>
+                          </div>
                         </div>
                       ))}
                     </div>

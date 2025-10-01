@@ -3,7 +3,6 @@ import type { NextRequest } from 'next/server';
 
 export async function middleware(request: NextRequest) {
     // Temporarily disable middleware to test
-    console.log("🛡️ Middleware - DISABLED for testing");
     return NextResponse.next();
 }
 

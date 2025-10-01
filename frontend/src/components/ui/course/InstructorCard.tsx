@@ -11,13 +11,27 @@ const InstructorCard = ({
   className?: string;
   style?: React.CSSProperties;
 }) => {
+  const getDisplayName = () => {
+    if (instructor.firstName && instructor.lastName) {
+      return `${instructor.firstName} ${instructor.lastName}`;
+    } else if (instructor.firstName) {
+      return instructor.firstName;
+    } else if (instructor.lastName) {
+      return instructor.lastName;
+    } else if (instructor.email) {
+      return instructor.email;
+    }
+    return "Instructor";
+  };
+
+  const getSlug = () => {
+    const name = getDisplayName();
+    return name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+  };
 
   return (
     <Link
-      href={`/instructors/${instructor?.firstName} ${instructor?.lastName
-        ?.toLowerCase()
-        .replace(/\s+/g, "-")
-        .replace(/[^a-z0-9-]/g, "")}`}
+      href={`/instructors/${getSlug()}`}
       className={cn(
         "instructor flex gap-1 items-center bg-[#EEEEEE] rounded-full p-1 text-xs font-bold text-text-primary select-none cursor-pointer max-w-[150px]",
         props.className
@@ -28,7 +42,7 @@ const InstructorCard = ({
     >
       <Image
         src={instructor.profilePicture || "/courseDefaultTestimonial.png"}
-        alt={instructor.firstName + " " + instructor.lastName}
+        alt={getDisplayName()}
         className="size-5 rounded-full flex-shrink-0"
         width={20}
         height={20}
@@ -38,7 +52,7 @@ const InstructorCard = ({
         priority
       />
       <span className="flex-1 text-ellipsis overflow-hidden whitespace-nowrap min-w-0">
-        {instructor.firstName + " " + instructor.lastName}
+        {getDisplayName()}
       </span>
     </Link>
   );

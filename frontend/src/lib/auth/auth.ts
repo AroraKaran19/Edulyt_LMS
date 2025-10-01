@@ -5,6 +5,51 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import axios, { AxiosError } from "axios";
 import { toast } from "react-toastify";
 
+// Enrollment types
+interface Enrollment {
+  _id: string;
+  userId: string;
+  courseId: string;
+  enrolledAt: string;
+  status: "active" | "completed" | "dropped" | "paused";
+  progress: {
+    overallCompletion: number;
+    modules: Array<{
+      moduleId: string;
+      completion: number;
+      lessons: Array<{
+        lessonId: string;
+        completed: boolean;
+        completedAt?: string;
+        score?: number;
+        timeSpent?: number;
+        lastAccessedAt?: string;
+      }>;
+      startedAt?: string;
+      completedAt?: string;
+    }>;
+    lastContentAccessed?: {
+      moduleId: string;
+      lessonId: string;
+      contentId: string;
+      contentType: "video" | "quiz" | "document";
+      lastPosition?: number;
+      timestamp: string;
+    };
+  };
+  lastUpdated: string;
+  enrollmentSource?: "direct" | "gift" | "promotion";
+  giftFrom?: string;
+  promotionCode?: string;
+  completedAt?: string;
+  certificateIssued?: boolean;
+  certificateIssuedAt?: string;
+  totalTimeSpent?: number;
+  lastActivityAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 // Extend the built-in session and user types
 declare module "next-auth" {
   interface Session extends DefaultSession {
@@ -12,6 +57,7 @@ declare module "next-auth" {
     user: {
       id: string;
       username?: string;
+      enrolledCourses?: Enrollment[];
     } & DefaultSession["user"];
   }
 
@@ -20,6 +66,7 @@ declare module "next-auth" {
     username?: string;
     accessToken?: string;
     refreshToken?: string;
+    enrolledCourses?: Enrollment[];
   }
 }
 
@@ -28,6 +75,7 @@ declare module "next-auth/jwt" {
     accessToken?: string;
     username?: string;
     refreshToken?: string;
+    enrolledCourses?: Enrollment[];
   }
 }
 
@@ -70,10 +118,10 @@ export const authOptions: AuthOptions = {
             username: response.data.data.user.username,
             refreshToken: response.data.data.refreshToken,
             accessToken: response.data.data.accessToken,
+            enrolledCourses: response.data.data.user.enrolledCourses,
           };
         } catch (error) {
           if (error instanceof AxiosError) {
-            console.log(error.response?.data);
             throw new Error(error.response?.data?.error?.message || "Login failed");
           }
           throw new Error("Login failed");
@@ -107,9 +155,6 @@ export const authOptions: AuthOptions = {
           account?.provider === "google" ||
           account?.provider === "linkedin"
         ) {
-          console.log(user);
-          console.log(profile);
-          console.log(account);
           const oauthData = {
             email: user.email,
             fullName: user.name,
@@ -126,6 +171,7 @@ export const authOptions: AuthOptions = {
             oauthData
           );
           const result = response.data;
+          console.log(result);
 
           if (response.status === 200 || response.status === 201) {
             // Check if response.data and response.data.user exist before accessing properties
@@ -134,6 +180,7 @@ export const authOptions: AuthOptions = {
               user.accessToken = result.data.accessToken;
               user.refreshToken = result.data.refreshToken;
               user.username = result.data.user.username;
+              user.enrolledCourses = result.data.user.enrolledCourses;
               return true;
             } else {
               console.error("Invalid response structure from backend:", result.data);
@@ -170,6 +217,7 @@ export const authOptions: AuthOptions = {
           token.accessToken = user.accessToken;
           token.username = user.username;
           token.refreshToken = user.refreshToken;
+          token.enrolledCourses = user.enrolledCourses;
         }
 
         // Return previous token if the access token has not expired yet
@@ -208,6 +256,7 @@ export const authOptions: AuthOptions = {
         if (token && session.user) {
           session.user.id = token.sub || "";
           session.user.username = token.username as string;
+          session.user.enrolledCourses = token.enrolledCourses as any[];
           session.accessToken = token.accessToken as string;
         }
         return session;

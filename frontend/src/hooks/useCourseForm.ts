@@ -50,6 +50,8 @@ export const useCourseForm = (
 
   const [currentScreen, setCurrentScreen] = useState(1);
   const [isEditMode] = useState(mode === "edit");
+  const [currentCourseId, setCurrentCourseId] = useState<string | undefined>(courseId);
+  
   const [isCreating, setIsCreating] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -74,19 +76,19 @@ export const useCourseForm = (
 
   const getInitialData = useCallback((): CourseFormData => {
     if (initialData) {
-      return { ...getInitialFormData(isEditMode, courseId), ...initialData };
+      return { ...getInitialFormData(isEditMode, currentCourseId), ...initialData };
     }
 
     // Try to load from draft storage first (most recent data)
     const draftData = loadDraftFromStorage(mode, courseId);
     if (draftData) {
-      return { ...draftData, isEditMode, courseId };
+      return { ...draftData, isEditMode, courseId: currentCourseId };
     }
 
     // Fallback to main storage
     const storedData = loadFormDataFromStorage(mode, courseId);
     if (storedData) {
-      return { ...storedData, isEditMode, courseId };
+      return { ...storedData, isEditMode, courseId: currentCourseId };
     }
 
     if (isEditMode && courseId) {
@@ -126,11 +128,11 @@ export const useCourseForm = (
   // ===================
 
   const loadCourseData = useCallback(async () => {
-    if (!isEditMode || !courseId) return;
+    if (!isEditMode || !currentCourseId) return;
 
     try {
       setIsSaving(true);
-      const response = await getCourseByIdAdmin(courseId);
+      const response = await getCourseByIdAdmin(currentCourseId);
 
       if (response.success && response.data) {
         const apiFormData = transformCourseToFormData(
@@ -159,7 +161,7 @@ export const useCourseForm = (
               localData.curriculumS3Key || apiFormData.curriculumS3Key,
             brochureS3Key: localData.brochureS3Key || apiFormData.brochureS3Key,
             isEditMode: true,
-            courseId: courseId,
+            courseId: currentCourseId,
           };
           reset(mergedData);
         } else {
@@ -172,14 +174,14 @@ export const useCourseForm = (
     } finally {
       setIsSaving(false);
     }
-  }, [isEditMode, courseId, getCourseByIdAdmin, reset, mode]);
+  }, [isEditMode, currentCourseId, getCourseByIdAdmin, reset, mode]);
 
   // Load course data on mount for edit mode
   useEffect(() => {
-    if (isEditMode && courseId) {
+    if (isEditMode && currentCourseId) {
       loadCourseData();
     }
-  }, [isEditMode, courseId, loadCourseData]);
+  }, [isEditMode, currentCourseId, loadCourseData]);
 
   // ===================
   // Auto-save functionality
@@ -319,6 +321,15 @@ export const useCourseForm = (
         throw new Error(errorMessage);
       }
 
+      // Update courseId with the newly created course ID
+      // The backend returns { course: Course, courseId: string }
+      const responseData = response.data as any;
+      if (responseData?.courseId) {
+        setCurrentCourseId(responseData.courseId);
+      } else if (responseData?.course?._id) {
+        setCurrentCourseId(responseData.course._id);
+      }
+
       toast.success(
         response.message || "Course created successfully!"
       );
@@ -327,7 +338,7 @@ export const useCourseForm = (
       nextScreen();
 
       // Clear form data after successful creation
-      clearFormDataFromStorage(mode, courseId);
+      clearFormDataFromStorage(mode, currentCourseId);
     } catch (error) {
       console.error("Failed to create course:", error);
       const errorMessage = error instanceof Error ? error.message : "Failed to create course";
@@ -462,7 +473,7 @@ export const useCourseForm = (
     currentScreen,
     completedScreens: [],
     isEditMode,
-    courseId,
+    courseId: currentCourseId,
 
     // Navigation
     nextScreen,

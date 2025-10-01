@@ -40,6 +40,8 @@ const Screen11 = () => {
   const { isEditMode, courseId } = useCourseFormContext();
   const { watch } = useFormContext<CourseFormData>();
   
+  // Debug: Log courseId to see if it's available
+  
   // LocalStorage key for modules
   const modulesStorageKey = `course_modules_${isEditMode ? courseId : 'new'}`;
 
@@ -300,9 +302,11 @@ const Screen11 = () => {
     }
 
     if (!courseId) {
+      console.error('addModule - courseId is missing:', courseId);
       toast.error("Course ID is required to add a module");
       return;
     }
+    
 
     try {
       // Prepare module data for API

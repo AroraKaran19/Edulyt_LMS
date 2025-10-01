@@ -59,7 +59,7 @@ export default function RootLayout({
       <Head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       </Head>
-      <body className={cn(plusJakartaSans.className, "antialiased")}>
+      <body className={cn(plusJakartaSans.className, "antialiased")} suppressHydrationWarning>
         <ReduxProvider>
           <LayoutWrapper>{children}</LayoutWrapper>
           <ToastContainer

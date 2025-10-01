@@ -8,6 +8,7 @@ import {
   AppError,
   sendSuccessResponse,
 } from "../middlewares/error.middleware";
+import { EnrollmentModel } from "../models/enrollment.schema";
 
 dotenv.config();
 
@@ -98,6 +99,9 @@ export class AuthController {
       );
     }
 
+    // get enrolled courses list
+    const enrolledCourses = await EnrollmentModel.find({ userId: user._id });
+
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       throw new AppError("Invalid credentials!", 401);
@@ -113,7 +117,7 @@ export class AuthController {
     );
 
     const data = {
-      user,
+      user: { ...user.toObject(), enrolledCourses },
       accessToken,
       refreshToken,
     };
@@ -154,8 +158,11 @@ export class AuthController {
           deviceInfo
         );
 
+      // Fetch enrolled courses for new user (will be empty array for new users)
+      const enrolledCourses = await EnrollmentModel.find({ userId: user._id });
+
       const data = {
-        user,
+        user: { ...(user as any).toObject(), enrolledCourses },
         accessToken,
         refreshToken,
       };
@@ -174,10 +181,12 @@ export class AuthController {
         deviceInfo
       );
 
+      const enrolledCourses = await EnrollmentModel.find({ userId: user._id });
+
       sendSuccessResponse(
         res,
         {
-          user,
+          user: { ...user.toObject(), enrolledCourses } ,
           accessToken,
           refreshToken,
         },

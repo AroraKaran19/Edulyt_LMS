@@ -10,8 +10,7 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 
 export const metadata: Metadata = {
   title: "Cart | Airkrit India",
-  description:
-    "Cart page of Airkrit India.",
+  description: "Cart page of Airkrit India.",
   keywords: ["cart", "airkrit"],
 };
 

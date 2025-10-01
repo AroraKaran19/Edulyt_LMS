@@ -106,7 +106,6 @@ const DiscountCountdown = ({
         </div>
       )}
       <p className="font-medium text-text-primary flex flex-wrap gap-2 justify-center md:justify-start">
-        <span>(!)</span>
         <span>Limited Offer Ends In</span>
         <span className="underline">
           {displayCountdown.days > 0 ? `${displayCountdown.days} D : ` : ""}
@@ -118,7 +117,6 @@ const DiscountCountdown = ({
             ? `${displayCountdown.seconds} Sec`
             : ""}
         </span>
-        <span>(!)</span>
       </p>
     </div>
   ) : null;

@@ -12,6 +12,31 @@ const InstructorDisplayCard: React.FC<InstructorDisplayCardProps> = ({
   instructor,
   className
 }) => {
+  const getDisplayName = () => {
+    if (instructor.firstName && instructor.lastName) {
+      return `${instructor.firstName} ${instructor.lastName}`;
+    } else if (instructor.firstName) {
+      return instructor.firstName;
+    } else if (instructor.lastName) {
+      return instructor.lastName;
+    } else if (instructor.email) {
+      return instructor.email;
+    }
+    return "Instructor";
+  };
+
+  const getInitials = () => {
+    if (instructor.firstName && instructor.lastName) {
+      return `${instructor.firstName.charAt(0)}${instructor.lastName.charAt(0)}`.toUpperCase();
+    } else if (instructor.firstName) {
+      return instructor.firstName.charAt(0).toUpperCase();
+    } else if (instructor.lastName) {
+      return instructor.lastName.charAt(0).toUpperCase();
+    } else if (instructor.email) {
+      return instructor.email.charAt(0).toUpperCase();
+    }
+    return "I";
+  };
 
   return (
     <div className={cn(
@@ -22,7 +47,7 @@ const InstructorDisplayCard: React.FC<InstructorDisplayCardProps> = ({
         {instructor.profilePicture ? (
           <Image
             src={instructor.profilePicture}
-            alt={instructor.firstName + " " + instructor.lastName}
+            alt={getDisplayName()}
             width={20}
             height={20}
             className="w-full h-full object-cover"
@@ -31,13 +56,13 @@ const InstructorDisplayCard: React.FC<InstructorDisplayCardProps> = ({
         ) : (
           <div className="w-full h-full bg-gray-300 flex items-center justify-center">
             <span className="text-[8px] text-gray-600 font-medium">
-              {instructor.firstName?.charAt(0).toUpperCase()}
+              {getInitials()}
             </span>
           </div>
         )}
       </div>
       <span className="text-xs text-gray-700 font-medium truncate max-w-[80px]">
-        {instructor.firstName + " " + instructor.lastName}
+        {getDisplayName()}
       </span>
     </div>
   );

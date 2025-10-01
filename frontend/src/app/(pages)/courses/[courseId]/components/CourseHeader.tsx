@@ -47,11 +47,11 @@ const CourseHeader = ({
 
   const formattedReviewsCount = useMemo(() => {
     const totalReviews = course?.analytics?.totalReviews;
-    
+
     if (!totalReviews || totalReviews === 0) {
       return "0";
     }
-    
+
     if (totalReviews >= 1000000) {
       return `${(totalReviews / 1000000).toFixed(1).replace(/\.0$/, "")}M`;
     } else if (totalReviews >= 1000) {
@@ -70,46 +70,10 @@ const CourseHeader = ({
     planType: "elite" | "essential"
   ): Promise<void> => {
     try {
-      setIsPaymentLoading(true);
-      onLoadingChange?.(true);
-
-      const generateOrder = await axios.post(`/api/payment/new`, {
-        courseId: course._id,
-        planType: planType,
-        userId: session?.user?.id,
-      });
-      if (!generateOrder.data.success) {
-        console.error(generateOrder.data.message);
-        if (generateOrder.data.message?.includes("already enrolled")) {
-          toast.error("You are already enrolled in this course!");
-        } else {
-          toast.error("Something went wrong. Please try again.");
-        }
-      }
-
-      if (generateOrder.data.redirectUrl) {
-        router.push(generateOrder.data.redirectUrl);
-      }
-    } catch (error: any) {
-      console.error(error);
-      // Handle axios error responses
-      if (error.response?.data?.message) {
-        const errorMessage = error.response.data.message;
-        if (
-          errorMessage.includes("already enrolled") ||
-          errorMessage.includes("already exists") ||
-          errorMessage.includes("User already enrolled")
-        ) {
-          toast.error("You are already enrolled in this course!");
-        } else {
-          toast.error("Something went wrong. Please try again.");
-        }
-      } else {
-        toast.error("Something went wrong. Please try again.");
-      }
+      router.push(`/cart?courseId=${course._id}&planType=${planType}`);
+    } catch (e) {
+      console.error(e);
     } finally {
-      setIsPaymentLoading(false);
-      onLoadingChange?.(false);
       setIsEnrollmentModalOpen?.(false);
     }
   };

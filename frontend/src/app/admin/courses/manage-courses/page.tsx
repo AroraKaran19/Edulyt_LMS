@@ -17,7 +17,7 @@ import { useCourses } from "@/hooks/useCourses";
 import { toast } from "react-toastify";
 import { cn } from "@/lib/utils";
 import Loader from "@/components/ui/Loader";
-import { 
+import {
   clearAllCourseStorage,
   clearCourseEditStorage,
 } from "@/utils/courseStorage";
@@ -164,7 +164,7 @@ const ManageCoursesPage = () => {
   const handleCreateCourse = () => {
     // Clear all course-related localStorage keys to start fresh
     clearAllCourseStorage();
-    
+
     router.push("/admin/courses/manage-courses/create");
   };
 
@@ -256,7 +256,7 @@ const ManageCoursesPage = () => {
   };
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="min-h-screen w-full bg-gradient-to-br from-gray-50 to-gray-100 overflow-y-auto">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 w-full shadow-sm">
         <div className="w-full px-6 lg:px-8">
@@ -269,7 +269,9 @@ const ManageCoursesPage = () => {
                 <h1 className="text-3xl font-bold text-gray-900">
                   Course Management
                 </h1>
-                <p className="text-gray-600 mt-1">Manage and organize your courses</p>
+                <p className="text-gray-600 mt-1">
+                  Manage and organize your courses
+                </p>
               </div>
             </div>
             <OrangeButton
@@ -385,7 +387,9 @@ const ManageCoursesPage = () => {
                     onChange={handleSelectAll}
                     className="w-5 h-5 text-orange-600 bg-gray-100 border-gray-300 rounded focus:ring-orange-500"
                   />
-                  <span className="text-base font-medium text-gray-700">Select all</span>
+                  <span className="text-base font-medium text-gray-700">
+                    Select all
+                  </span>
                 </div>
               )}
             </div>
@@ -401,7 +405,7 @@ const ManageCoursesPage = () => {
                       </span>
                     </div>
                     <span className="text-lg font-semibold text-orange-800">
-                      course{selectedCourses.length > 1 ? 's' : ''} selected
+                      course{selectedCourses.length > 1 ? "s" : ""} selected
                     </span>
                   </div>
                   <div className="flex items-center gap-3">
@@ -466,10 +470,10 @@ const ManageCoursesPage = () => {
                       selectedStatus !== "all") && (
                       <button
                         onClick={() => {
-                  setSearchTerm("");
-                  setSelectedCategory("all");
-                  setSelectedStatus("all");
-                }}
+                          setSearchTerm("");
+                          setSelectedCategory("all");
+                          setSelectedStatus("all");
+                        }}
                         className="px-6 py-3 text-base font-medium text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                       >
                         Clear Filters
@@ -553,7 +557,8 @@ const ManageCoursesPage = () => {
                         <span className="flex items-center gap-2">
                           <Users className="w-5 h-5 text-orange-500" />
                           <span className="font-medium">
-                            {course.analytics?.totalEnrollments.toLocaleString() || 0}
+                            {course.analytics?.totalEnrollments.toLocaleString() ||
+                              0}
                           </span>
                         </span>
                         <span className="flex items-center gap-2">
@@ -602,7 +607,7 @@ const ManageCoursesPage = () => {
                       </div>
                     </div>
                   </div>
-                      ))}
+                ))}
               </div>
             )}
           </>

@@ -26,19 +26,45 @@ interface User {
 
 // User Avatar Component
 const UserAvatar = ({ user }: { user: User }) => {
+  const getInitials = () => {
+    if (user.firstName && user.lastName) {
+      return `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`;
+    } else if (user.firstName) {
+      return user.firstName.charAt(0);
+    } else if (user.lastName) {
+      return user.lastName.charAt(0);
+    } else if (user.email) {
+      return user.email.charAt(0).toUpperCase();
+    }
+    return "U";
+  };
+
+  const getDisplayName = () => {
+    if (user.firstName && user.lastName) {
+      return `${user.firstName} ${user.lastName}`;
+    } else if (user.firstName) {
+      return user.firstName;
+    } else if (user.lastName) {
+      return user.lastName;
+    } else if (user.email) {
+      return user.email;
+    }
+    return "User";
+  };
+
   return (
     <div className="w-14 h-14 rounded-full bg-gradient-to-br from-orange-100 to-orange-200 flex items-center justify-center overflow-hidden shadow-sm">
       {user.profilePicture ? (
         <Image 
           src={user.profilePicture} 
-          alt={`${user.firstName} ${user.lastName}`}
+          alt={getDisplayName()}
           width={56}
           height={56}
           className="w-full h-full object-cover"
         />
       ) : (
         <span className="text-orange-600 font-bold text-xl">
-          {user.firstName.charAt(0)}{user.lastName.charAt(0)}
+          {getInitials()}
         </span>
       )}
     </div>
@@ -195,6 +221,19 @@ const ProviderIcon = ({ provider }: { provider: string }) => {
 
 // User Card Component
 const UserCard = ({ user }: { user: User }) => {
+  const getDisplayName = () => {
+    if (user.firstName && user.lastName) {
+      return `${user.firstName} ${user.lastName}`;
+    } else if (user.firstName) {
+      return user.firstName;
+    } else if (user.lastName) {
+      return user.lastName;
+    } else if (user.email) {
+      return user.email;
+    }
+    return "User";
+  };
+
   return (
     <div className="bg-white rounded-2xl border border-gray-100 p-6 hover:shadow-lg hover:border-orange-200 transition-all duration-300 group">
       <div className="flex items-start justify-between">
@@ -204,7 +243,7 @@ const UserCard = ({ user }: { user: User }) => {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-2">
               <h3 className="font-semibold text-gray-900 text-lg truncate">
-                {user.firstName} {user.lastName}
+                {getDisplayName()}
               </h3>
               <ProviderIcon provider={user.provider} />
             </div>
