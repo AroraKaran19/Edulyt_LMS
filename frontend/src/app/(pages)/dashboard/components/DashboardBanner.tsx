@@ -20,7 +20,7 @@ const DashboardBanner = () => {
       <FlexBox className="w-full items-center justify-center lg:justify-start gap-2 sm:gap-4 lg:gap-6 flex-wrap">
         <Card title="Courses" count={10} icon={<Image src="/CourseBannerIcon.svg" width={24} height={24} alt="courses" draggable={false} />} />
         <Card title="Certificates" count={10} icon={<Image src="/CertificateBannerIcon.svg" width={24} height={24} alt="certificates" draggable={false} />} />
-        <Card title="Applications" count={10} icon={<Image src="/ApplicationsBannerIcon.svg" width={24} height={24} alt="applications" draggable={false} />} />
+        {/* <Card title="Applications" count={10} icon={<Image src="/ApplicationsBannerIcon.svg" width={24} height={24} alt="applications" draggable={false} />} /> */}
       </FlexBox>
     </FlexBox>
   );

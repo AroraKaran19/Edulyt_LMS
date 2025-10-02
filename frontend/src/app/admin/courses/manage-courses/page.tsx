@@ -252,7 +252,7 @@ const ManageCoursesPage = () => {
 
   const formatPrice = (course: Course) => {
     const price = course.plans?.essential?.price || course.plans?.elite?.price;
-    return price ? `$${price}` : "Free";
+    return price ? `₹${price}` : "Free";
   };
 
   return (

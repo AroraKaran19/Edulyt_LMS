@@ -70,7 +70,7 @@ const CourseHeader = ({
     planType: "elite" | "essential"
   ): Promise<void> => {
     try {
-      router.push(`/cart?courseId=${course._id}&planType=${planType}`);
+      router.push(`/cart?course=${course.slug}&planType=${planType}`);
     } catch (e) {
       console.error(e);
     } finally {

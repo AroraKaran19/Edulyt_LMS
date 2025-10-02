@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { Course } from "@/types/course";
 import { toast } from "react-toastify";
+import apiClient from "@/configs/apiConfig";
 
 export interface CourseResponse {
   success: boolean;
@@ -27,12 +28,6 @@ export const useCourses = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>("");
 
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
-
-  if (!baseUrl) {
-    throw new Error("NEXT_PUBLIC_API_BASE_URL is not set");
-  }
-
   // Get all courses with optimization options
   const getAllCourses = useCallback(
     async (
@@ -55,17 +50,16 @@ export const useCourses = () => {
           params.append("category", category);
         }
 
-        const response = await fetch(`${baseUrl}/courses?${params}`);
-        const result = await response.json();
+        const response = await apiClient.get(`/courses?${params}`);
+        const result = response.data;
 
         if (!result.success) {
           setError(result.error || result.message);
         }
 
         return result;
-      } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : "Failed to fetch courses";
+      } catch (err: any) {
+        const errorMessage = err?.response?.data?.message || err?.message || "Failed to fetch courses";
         setError(errorMessage);
         return {
           success: false,
@@ -76,7 +70,7 @@ export const useCourses = () => {
         setIsLoading(false);
       }
     },
-    [baseUrl]
+    []
   );
 
 
@@ -89,29 +83,16 @@ export const useCourses = () => {
       setError("");
 
       try {
-        const response = await fetch(
-          `${baseUrl}/courses/${courseId}/metadata`,
-          {
-            method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(courseData),
-          }
-        );
-
-        const result = await response.json();
+        const response = await apiClient.put(`/courses/${courseId}/metadata`, courseData);
+        const result = response.data;
 
         if (!result.success) {
           setError(result.error || result.message);
         }
 
         return result;
-      } catch (err) {
-        const errorMessage =
-          err instanceof Error
-            ? err.message
-            : "Failed to update course metadata";
+      } catch (err: any) {
+        const errorMessage = err?.response?.data?.message || err?.message || "Failed to update course metadata";
         setError(errorMessage);
         return {
           success: false,
@@ -122,7 +103,7 @@ export const useCourses = () => {
         setIsLoading(false);
       }
     },
-    [baseUrl]
+    []
   );
 
   // Update course status
@@ -132,24 +113,16 @@ export const useCourses = () => {
       setError("");
 
       try {
-        const response = await fetch(`${baseUrl}/courses/status/${courseId}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ isActive: status }),
-        });
-
-        const result = await response.json();
+        const response = await apiClient.put(`/courses/status/${courseId}`, { isActive: status });
+        const result = response.data;
 
         if (!result.success) {
           setError(result.error || result.message);
         }
 
         return result;
-      } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : "Failed to update course status";
+      } catch (err: any) {
+        const errorMessage = err?.response?.data?.message || err?.message || "Failed to update course status";
         setError(errorMessage);
         return {
           success: false,
@@ -160,7 +133,7 @@ export const useCourses = () => {
         setIsLoading(false);
       }
     },
-    [baseUrl]
+    []
   );
 
   // Update course status in bulk
@@ -173,26 +146,16 @@ export const useCourses = () => {
       setError("");
 
       try {
-        const response = await fetch(`${baseUrl}/courses/status/bulk`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ courses, isActive }),
-        });
-
-        const result = await response.json();
+        const response = await apiClient.put("/courses/status/bulk", { courses, isActive });
+        const result = response.data;
 
         if (!result.success) {
           setError(result.error || result.message);
         }
 
         return result;
-      } catch (err) {
-        const errorMessage =
-          err instanceof Error
-            ? err.message
-            : "Failed to update course status in bulk";
+      } catch (err: any) {
+        const errorMessage = err?.response?.data?.message || err?.message || "Failed to update course status in bulk";
         setError(errorMessage);
         console.error("Error updating course status in bulk:", errorMessage);
         return {
@@ -204,7 +167,7 @@ export const useCourses = () => {
         setIsLoading(false);
       }
     },
-    [baseUrl]
+    []
   );
 
   // Delete course
@@ -214,20 +177,16 @@ export const useCourses = () => {
       setError("");
 
       try {
-        const response = await fetch(`${baseUrl}/courses/${courseId}`, {
-          method: "DELETE",
-        });
-
-        const result = await response.json();
+        const response = await apiClient.delete(`/courses/${courseId}`);
+        const result = response.data;
 
         if (!result.success) {
           setError(result.error || result.message);
         }
 
         return result;
-      } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : "Failed to delete course";
+      } catch (err: any) {
+        const errorMessage = err?.response?.data?.message || err?.message || "Failed to delete course";
         setError(errorMessage);
         return {
           success: false,
@@ -238,7 +197,7 @@ export const useCourses = () => {
         setIsLoading(false);
       }
     },
-    [baseUrl]
+    []
   );
 
   // Get course by ID (Admin version - includes inactive courses)
@@ -248,17 +207,16 @@ export const useCourses = () => {
       setError("");
 
       try {
-        const response = await fetch(`${baseUrl}/courses/admin/id/${courseId}`);
-        const result = await response.json();
+        const response = await apiClient.get(`/courses/admin/id/${courseId}`);
+        const result = response.data;
 
         if (!result.success) {
           setError(result.error || result.message);
         }
 
         return result;
-      } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : "Failed to fetch course";
+      } catch (err: any) {
+        const errorMessage = err?.response?.data?.message || err?.message || "Failed to fetch course";
         setError(errorMessage);
         return {
           success: false,
@@ -269,7 +227,7 @@ export const useCourses = () => {
         setIsLoading(false);
       }
     },
-    [baseUrl]
+    []
   );
 
   // Chunked course creation functions
@@ -283,34 +241,26 @@ export const useCourses = () => {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minutes timeout
 
-        const response = await fetch(`${baseUrl}/courses/chunked/metadata`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(courseMetadata),
+        const response = await apiClient.post("/courses/chunked/metadata", courseMetadata, {
           signal: controller.signal,
         });
 
         clearTimeout(timeoutId);
 
-        const result = await response.json();
+        const result = response.data;
 
         if (!result.success) {
           setError(result.error || result.message);
         }
 
         return result;
-      } catch (err) {
+      } catch (err: any) {
         let errorMessage = "Failed to create course metadata";
 
-        if (err instanceof Error) {
-          if (err.name === "AbortError") {
-            errorMessage =
-              "Request timeout - Course metadata creation took too long. Please try again.";
-          } else {
-            errorMessage = err.message;
-          }
+        if (err?.name === "AbortError") {
+          errorMessage = "Request timeout - Course metadata creation took too long. Please try again.";
+        } else {
+          errorMessage = err?.response?.data?.message || err?.message || "Failed to create course metadata";
         }
 
         setError(errorMessage);
@@ -323,7 +273,7 @@ export const useCourses = () => {
         setIsLoading(false);
       }
     },
-    [baseUrl]
+    []
   );
 
   // Individual module operations (real-time)
@@ -333,15 +283,8 @@ export const useCourses = () => {
       setError("");
 
       try {
-        const response = await fetch(`${baseUrl}/courses/${courseId}/modules`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(moduleData),
-        });
-
-        const result = await response.json();
+        const response = await apiClient.post(`/courses/${courseId}/modules`, moduleData);
+        const result = response.data;
 
         if (!result.success) {
           toast.error(result.error.message || "Failed to add module");
@@ -353,9 +296,8 @@ export const useCourses = () => {
         }
 
         return result;
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : "Failed to add module";
+      } catch (error: any) {
+        const errorMessage = error?.response?.data?.message || error?.message || "Failed to add module";
         setError(errorMessage);
         return {
           success: false,
@@ -366,7 +308,7 @@ export const useCourses = () => {
         setIsLoading(false);
       }
     },
-    [baseUrl]
+    []
   );
 
   const updateSingleCourseModule = useCallback(
@@ -379,18 +321,8 @@ export const useCourses = () => {
       setError("");
 
       try {
-        const response = await fetch(
-          `${baseUrl}/courses/${courseId}/modules/${moduleId}`,
-          {
-            method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(moduleData),
-          }
-        );
-
-        const result = await response.json();
+        const response = await apiClient.put(`/courses/${courseId}/modules/${moduleId}`, moduleData);
+        const result = response.data;
 
         if (!result.success) {
           toast.error(result.error.message || "Failed to update module");
@@ -402,9 +334,8 @@ export const useCourses = () => {
         }
 
         return result;
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : "Failed to update module";
+      } catch (error: any) {
+        const errorMessage = error?.response?.data?.message || error?.message || "Failed to update module";
         setError(errorMessage);
         return {
           success: false,
@@ -415,7 +346,7 @@ export const useCourses = () => {
         setIsLoading(false);
       }
     },
-    [baseUrl]
+    []
   );
 
   const deleteSingleCourseModule = useCallback(
@@ -424,17 +355,8 @@ export const useCourses = () => {
       setError("");
 
       try {
-        const response = await fetch(
-          `${baseUrl}/courses/${courseId}/modules/${moduleId}`,
-          {
-            method: "DELETE",
-            headers: {
-              "Content-Type": "application/json",
-            },
-          }
-        );
-
-        const result = await response.json();
+        const response = await apiClient.delete(`/courses/${courseId}/modules/${moduleId}`);
+        const result = response.data;
 
         if (!result.success) {
           toast.error(result.error.message || "Failed to delete module");
@@ -446,16 +368,15 @@ export const useCourses = () => {
         }
 
         return result;
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : "Failed to delete module";
+      } catch (error: any) {
+        const errorMessage = error?.response?.data?.message || error?.message || "Failed to delete module";
         setError(errorMessage);
         throw error;
       } finally {
         setIsLoading(false);
       }
     },
-    [baseUrl]
+    []
   );
 
   // ===================
@@ -473,18 +394,8 @@ export const useCourses = () => {
       setError("");
 
       try {
-        const response = await fetch(
-          `${baseUrl}/courses/${courseId}/modules/${moduleId}/lessons`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(lessonData),
-          }
-        );
-
-        const result = await response.json();
+        const response = await apiClient.post(`/courses/${courseId}/modules/${moduleId}/lessons`, lessonData);
+        const result = response.data;
 
         if (!result.success) {
           toast.error(result.error.message || "Failed to add lesson");
@@ -496,9 +407,8 @@ export const useCourses = () => {
         }
 
         return result;
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : "Failed to add lesson";
+      } catch (error: any) {
+        const errorMessage = error?.response?.data?.message || error?.message || "Failed to add lesson";
         setError(errorMessage);
         return {
           success: false,
@@ -509,7 +419,7 @@ export const useCourses = () => {
         setIsLoading(false);
       }
     },
-    [baseUrl]
+    []
   );
 
   // Update a single lesson in module (real-time)
@@ -524,18 +434,8 @@ export const useCourses = () => {
       setError("");
 
       try {
-        const response = await fetch(
-          `${baseUrl}/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}`,
-          {
-            method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(lessonData),
-          }
-        );
-
-        const result = await response.json();
+        const response = await apiClient.put(`/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}`, lessonData);
+        const result = response.data;
 
         if (!result.success) {
           toast.error(result.error.message || "Failed to update lesson");
@@ -547,9 +447,8 @@ export const useCourses = () => {
         }
 
         return result;
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : "Failed to update lesson";
+      } catch (error: any) {
+        const errorMessage = error?.response?.data?.message || error?.message || "Failed to update lesson";
         setError(errorMessage);
         return {
           success: false,
@@ -560,7 +459,7 @@ export const useCourses = () => {
         setIsLoading(false);
       }
     },
-    [baseUrl]
+    []
   );
 
   // Delete a single lesson from module (real-time)
@@ -574,17 +473,8 @@ export const useCourses = () => {
       setError("");
 
       try {
-        const response = await fetch(
-          `${baseUrl}/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}`,
-          {
-            method: "DELETE",
-            headers: {
-              "Content-Type": "application/json",
-            },
-          }
-        );
-
-        const result = await response.json();
+        const response = await apiClient.delete(`/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}`);
+        const result = response.data;
 
         if (!result.success) {
           toast.error(result.error.message || "Failed to delete lesson");
@@ -596,9 +486,8 @@ export const useCourses = () => {
         }
 
         return result;
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : "Failed to delete lesson";
+      } catch (error: any) {
+        const errorMessage = error?.response?.data?.message || error?.message || "Failed to delete lesson";
         setError(errorMessage);
         return {
           success: false,
@@ -609,7 +498,7 @@ export const useCourses = () => {
         setIsLoading(false);
       }
     },
-    [baseUrl]
+    []
   );
 
   // ===================
@@ -628,18 +517,8 @@ export const useCourses = () => {
       setError("");
 
       try {
-        const response = await fetch(
-          `${baseUrl}/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}/contents`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(contentData),
-          }
-        );
-
-        const result = await response.json();
+        const response = await apiClient.post(`/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}/contents`, contentData);
+        const result = response.data;
 
         if (!result.success) {
           toast.error(result.error.message || "Failed to add content");
@@ -651,9 +530,8 @@ export const useCourses = () => {
         }
 
         return result;
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : "Failed to add content";
+      } catch (error: any) {
+        const errorMessage = error?.response?.data?.message || error?.message || "Failed to add content";
         setError(errorMessage);
         return {
           success: false,
@@ -664,7 +542,7 @@ export const useCourses = () => {
         setIsLoading(false);
       }
     },
-    [baseUrl]
+    []
   );
 
   // Update a single content in lesson (real-time)
@@ -680,18 +558,8 @@ export const useCourses = () => {
       setError("");
 
       try {
-        const response = await fetch(
-          `${baseUrl}/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}/contents/${contentId}`,
-          {
-            method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(contentData),
-          }
-        );
-
-        const result = await response.json();
+        const response = await apiClient.put(`/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}/contents/${contentId}`, contentData);
+        const result = response.data;
 
         if (!result.success) {
           toast.error(result.error.message || "Failed to update content");
@@ -703,9 +571,8 @@ export const useCourses = () => {
         }
 
         return result;
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : "Failed to update content";
+      } catch (error: any) {
+        const errorMessage = error?.response?.data?.message || error?.message || "Failed to update content";
         setError(errorMessage);
         return {
           success: false,
@@ -716,7 +583,7 @@ export const useCourses = () => {
         setIsLoading(false);
       }
     },
-    [baseUrl]
+    []
   );
 
   // Delete a single content from lesson (real-time)
@@ -731,17 +598,8 @@ export const useCourses = () => {
       setError("");
 
       try {
-        const response = await fetch(
-          `${baseUrl}/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}/contents/${contentId}`,
-          {
-            method: "DELETE",
-            headers: {
-              "Content-Type": "application/json",
-            },
-          }
-        );
-
-        const result = await response.json();
+        const response = await apiClient.delete(`/courses/${courseId}/modules/${moduleId}/lessons/${lessonId}/contents/${contentId}`);
+        const result = response.data;
 
         if (!result.success) {
           toast.error(result.error.message || "Failed to delete content");
@@ -753,9 +611,8 @@ export const useCourses = () => {
         }
 
         return result;
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : "Failed to delete content";
+      } catch (error: any) {
+        const errorMessage = error?.response?.data?.message || error?.message || "Failed to delete content";
         setError(errorMessage);
         return {
           success: false,
@@ -766,7 +623,7 @@ export const useCourses = () => {
         setIsLoading(false);
       }
     },
-    [baseUrl]
+    []
   );
 
   return {

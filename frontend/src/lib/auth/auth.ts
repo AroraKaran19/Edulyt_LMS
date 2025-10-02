@@ -58,6 +58,8 @@ declare module "next-auth" {
       id: string;
       username?: string;
       enrolledCourses?: Enrollment[];
+      isFirstTime?: boolean;
+      role?: string;
     } & DefaultSession["user"];
   }
 
@@ -67,6 +69,8 @@ declare module "next-auth" {
     accessToken?: string;
     refreshToken?: string;
     enrolledCourses?: Enrollment[];
+    isFirstTime?: boolean;
+    role?: string;
   }
 }
 
@@ -76,6 +80,8 @@ declare module "next-auth/jwt" {
     username?: string;
     refreshToken?: string;
     enrolledCourses?: Enrollment[];
+    isFirstTime?: boolean;
+    role?: string;
   }
 }
 
@@ -109,16 +115,23 @@ export const authOptions: AuthOptions = {
             throw new Error(response.data.message || "Login failed");
           }
 
+          const user = response.data.data.user;
+          
+          // Check if this is a first-time user based on profile completeness
+          const isFirstTime = !user.firstName || !user.lastName;
+          
           return {  
-            id: response.data.data.user._id,
-            email: response.data.data.user.email,
-            name: response.data.data.user.firstName && response.data.data.user.lastName 
-              ? `${response.data.data.user.firstName} ${response.data.data.user.lastName}` 
-              : response.data.data.user.email,
-            username: response.data.data.user.username,
+            id: user._id,
+            email: user.email,
+            name: user.firstName && user.lastName 
+              ? `${user.firstName} ${user.lastName}` 
+              : user.email,
+            username: user.username,
             refreshToken: response.data.data.refreshToken,
             accessToken: response.data.data.accessToken,
-            enrolledCourses: response.data.data.user.enrolledCourses,
+            enrolledCourses: user.enrolledCourses,
+            isFirstTime: isFirstTime,
+            role: user.role || user.userType || "student",
           };
         } catch (error) {
           if (error instanceof AxiosError) {
@@ -181,6 +194,15 @@ export const authOptions: AuthOptions = {
               user.refreshToken = result.data.refreshToken;
               user.username = result.data.user.username;
               user.enrolledCourses = result.data.user.enrolledCourses;
+              user.role = result.data.user.role || result.data.user.userType || "student";
+              
+              // Check if this is a new user (first time login)
+              if (result.message === "User created successfully") {
+                user.isFirstTime = true;
+              } else {
+                user.isFirstTime = false;
+              }
+              
               return true;
             } else {
               console.error("Invalid response structure from backend:", result.data);
@@ -218,6 +240,8 @@ export const authOptions: AuthOptions = {
           token.username = user.username;
           token.refreshToken = user.refreshToken;
           token.enrolledCourses = user.enrolledCourses;
+          token.isFirstTime = user.isFirstTime;
+          token.role = user.role;
         }
 
         // Return previous token if the access token has not expired yet
@@ -258,6 +282,8 @@ export const authOptions: AuthOptions = {
           session.user.username = token.username as string;
           session.user.enrolledCourses = token.enrolledCourses as any[];
           session.accessToken = token.accessToken as string;
+          (session.user as any).isFirstTime = token.isFirstTime;
+          (session.user as any).role = token.role;
         }
         return session;
       } catch (error) {

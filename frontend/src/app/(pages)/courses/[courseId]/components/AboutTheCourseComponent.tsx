@@ -11,7 +11,7 @@ const AboutTheCourseComponent = ({ course }: { course: Course }) => {
     },
     {
       title: "Global market value",
-      description: "$279 B",
+      description: "₹279 B",
     },
     {
       title: "Companies using Python",

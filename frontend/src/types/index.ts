@@ -44,3 +44,6 @@ export * from "./affiliate";
 
 // Order Types
 export * from "./order";
+
+// Enrollment Types
+export * from "./enrollment";

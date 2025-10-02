@@ -8,6 +8,8 @@ import React, { useEffect, useState } from "react";
 import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import axios, { isAxiosError } from "axios";
+import { toast } from "react-toastify";
+import { getApiErrorMessage } from "@/utils/errorUtils";
 import PasswordStrengthIndicator from "@/components/ui/PasswordStrengthIndicator";
 import { generateSecurePassword, validatePasswordStrength } from "@/utils/passwordValidation";
 
@@ -16,7 +18,6 @@ const RegisterPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [isOAuthLoading, setIsOAuthLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -48,26 +49,32 @@ const RegisterPage = () => {
   const handleOAuthSignIn = async (provider: string) => {
     setIsOAuthLoading(true);
     try {
-      await signIn(provider, { callbackUrl: "/dashboard" });
+      // OAuth will redirect to /auth/callback which will handle first-time detection
+      await signIn(provider, { callbackUrl: "/auth/callback" });
     } catch (error) {
       console.error("OAuth sign in error:", error);
+      if (isAxiosError(error)) {
+        const errorMessage = getApiErrorMessage(error, `Failed to sign in with ${provider}. Please try again.`);
+        toast.error(errorMessage);
+      } else {
+        toast.error(`Failed to sign in with ${provider}. Please try again.`);
+      }
       setIsOAuthLoading(false);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
     
     // Validate password strength
     const passwordValidation = validatePasswordStrength(password);
     if (!passwordValidation.isValid) {
-      setError(passwordValidation.errors.join(", "));
+      toast.error(passwordValidation.errors.join(", "));
       return;
     }
     
     if (password !== confirmPassword) {
-      setError("Passwords do not match");
+      toast.error("Passwords do not match");
       return;
     }
     setLoading(true);
@@ -82,9 +89,10 @@ const RegisterPage = () => {
       );
       if (res.status === 201) {
         if (!res.data.success) {
-          setError(res.data.message);
+          toast.error(res.data.message);
           return;
         }
+        toast.success("Registration successful! Logging you in...");
         // Auto-login the user after successful registration
         const signInResult = await signIn("credentials", {
           email,
@@ -99,13 +107,14 @@ const RegisterPage = () => {
           router.push("/auth/login");
         }
       } else {
-        setError(res.data.message);
+        toast.error(res.data.message);
       }
     } catch (error) {
       if (isAxiosError(error)) {
-        setError(error.response?.data.message as string);
+        const errorMessage = getApiErrorMessage(error, "Something went wrong. Please try again.");
+        toast.error(errorMessage);
       } else {
-        setError("Something went wrong. Please try again.");
+        toast.error("Something went wrong. Please try again.");
       }
     } finally {
       setLoading(false);
@@ -203,7 +212,6 @@ const RegisterPage = () => {
             {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
           </button>
         </div>
-        {error && <div className="text-red-500 text-sm font-bold">{error}</div>}
         <OrangeButton
           className="w-full mt-1 lg:mt-2 rounded-xl font-bold"
           type="submit"

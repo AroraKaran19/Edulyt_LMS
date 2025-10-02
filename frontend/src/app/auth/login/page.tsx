@@ -8,12 +8,13 @@ import React, { useEffect, useState } from "react";
 import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { isAxiosError } from "axios";
+import { toast } from "react-toastify";
+import { getApiErrorMessage } from "@/utils/errorUtils";
 
 const LoginPage = () => {
-  const { status } = useSession();
+  const { status, data: session } = useSession();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [isClient, setIsClient] = useState(false);
   const [isOAuthLoading, setIsOAuthLoading] = useState(false);
@@ -24,25 +25,41 @@ const LoginPage = () => {
     setIsClient(true);
   }, []);
 
+  // Handle redirect after successful login
   useEffect(() => {
-    if (status === "authenticated") {
-      router.push("/dashboard");
+    if (!isClient) return;
+
+    if (status === "authenticated" && session?.user) {
+      // Check if this is a first-time login
+      const user = session.user as any;
+      if (user?.isFirstTime) {
+        router.push("/profile/settings");
+      } else {
+        router.push("/dashboard");
+      }
+    } else if (status === "unauthenticated") {
+      // User is not logged in, stay on login page
     }
-  }, [status]);
+  }, [status, session, router, isClient]);
 
   const handleOAuthSignIn = async (provider: string) => {
     setIsOAuthLoading(true);
     try {
-      await signIn(provider, { callbackUrl: "/dashboard" });
+      await signIn(provider, { callbackUrl: "/auth/callback" });
     } catch (error) {
       console.error("OAuth sign in error:", error);
+      if (isAxiosError(error)) {
+        const errorMessage = getApiErrorMessage(error, `Failed to sign in with ${provider}. Please try again.`);
+        toast.error(errorMessage);
+      } else {
+        toast.error(`Failed to sign in with ${provider}. Please try again.`);
+      }
       setIsOAuthLoading(false);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
     setLoading(true);
     try {
       const res = await signIn("credentials", {
@@ -50,17 +67,22 @@ const LoginPage = () => {
         password,
         redirect: false,
       });
-      if (res?.status === 200) {
-        router.push("/dashboard");
+      if (res?.ok) {
+        // For credentials login, the useEffect will handle the redirect
+        // based on first-time detection from the session
+        // No need to redirect here as useEffect will handle it
+        toast.success("Login successful!");
       } else {
-        setError(res?.error as string);
+        console.error("Login failed:", res?.error);
+        toast.error(res?.error as string || "Login failed. Please try again.");
       }
     } catch (error) {
+      console.error("Login error:", error);
       if (isAxiosError(error)) {
-        setError(error.response?.data.message as string);
+        const errorMessage = getApiErrorMessage(error, "Login failed. Please try again.");
+        toast.error(errorMessage);
       } else {
-        setError("Something went wrong. Please try again.");
-        console.error("Login error:", error);
+        toast.error("Something went wrong. Please try again.");
       }
     } finally {
       setLoading(false);
@@ -215,7 +237,6 @@ const LoginPage = () => {
             : <EyeOff className="size-4 absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer" onClick={() => setShowPassword(!showPassword)} />
           }
         </div>
-        {error && <div className="text-red-500 text-sm font-bold">{error}</div>}
         <OrangeButton
           type="submit"
           className="w-full mt-1 lg:mt-2 rounded-xl font-bold"

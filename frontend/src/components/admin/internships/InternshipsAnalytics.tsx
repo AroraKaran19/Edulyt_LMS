@@ -333,7 +333,7 @@ const InternshipsAnalytics = () => {
                   <p className="text-[#475467] text-xs mb-1 font-medium">
                     Price
                   </p>
-                  <p className="font-bold text-black text-sm">$10,000</p>
+                  <p className="font-bold text-black text-sm">₹10,000</p>
                 </div>
                 <div className="hidden sm:block w-px h-8 bg-gray-300"></div>
                 <div className="text-left flex-1 sm:flex-none">
@@ -394,7 +394,7 @@ const InternshipsAnalytics = () => {
                   <p className="text-[#475467] text-xs mb-1 font-medium">
                     Price
                   </p>
-                  <p className="font-bold text-black text-sm">$10,000</p>
+                  <p className="font-bold text-black text-sm">₹10,000</p>
                 </div>
                 <div className="hidden sm:block w-px h-8 bg-gray-300"></div>
                 <div className="text-left flex-1 sm:flex-none">
@@ -455,7 +455,7 @@ const InternshipsAnalytics = () => {
                   <p className="text-[#475467] text-xs mb-1 font-medium">
                     Price
                   </p>
-                  <p className="font-bold text-black text-sm">$10,000</p>
+                  <p className="font-bold text-black text-sm">₹10,000</p>
                 </div>
                 <div className="hidden sm:block w-px h-8 bg-gray-300"></div>
                 <div className="text-left flex-1 sm:flex-none">

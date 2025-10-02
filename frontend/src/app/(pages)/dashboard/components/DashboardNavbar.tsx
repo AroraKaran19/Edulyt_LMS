@@ -3,7 +3,16 @@ import Navlink from "@/components/shared/Navbar/Navlink";
 import FloatingContainer from "@/components/ui/FloatingContainer";
 import Searchbar2 from "@/components/ui/Searchbar2";
 import { NavItem } from "@/types";
-import { Bell, HelpCircle, LogOut, Settings, User2, Menu, X, Search } from "lucide-react";
+import {
+  Bell,
+  HelpCircle,
+  LogOut,
+  Settings,
+  User2,
+  Menu,
+  X,
+  Search,
+} from "lucide-react";
 import Image from "next/image";
 import React, { useEffect, useState } from "react";
 import AlertBanner from "@/components/ui/AlertBanner";
@@ -35,29 +44,29 @@ const DashboardNavbar = () => {
       title: "Course Enrollment",
       message: "New student enrolled in React Fundamentals",
       time: "2 minutes ago",
-      isRead: false
+      isRead: false,
     },
     {
       id: "2",
       title: "Assignment Submitted",
       message: "John submitted JavaScript Advanced assignment",
       time: "1 hour ago",
-      isRead: false
+      isRead: false,
     },
     {
       id: "3",
       title: "Payment Received",
-      message: "Payment of $299 received for Premium Course",
+      message: "Payment of ₹299 received for Premium Course",
       time: "3 hours ago",
-      isRead: true
+      isRead: true,
     },
     {
       id: "4",
       title: "Review Posted",
       message: "Sarah left a 5-star review on your course",
       time: "1 day ago",
-      isRead: true
-    }
+      isRead: true,
+    },
   ];
 
   const notifications = notificationsList.length; // Count for badge
@@ -71,16 +80,16 @@ const DashboardNavbar = () => {
       label: "My Courses",
       href: "/dashboard/courses",
     },
-    {
-      label: "My Applications",
-      href: "/dashboard/applications",
-    },
+    // {
+    //   label: "My Applications",
+    //   href: "/dashboard/applications",
+    // },
     {
       label: "Certificates",
       href: "/dashboard/certificates",
     },
   ];
-  
+
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [isUserOpen, setIsUserOpen] = useState(false);
 
@@ -146,7 +155,7 @@ const DashboardNavbar = () => {
               placeholder="Search a course by its name, title or author name"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              onSearch={() => { }} // TODO: Implement search functionality
+              onSearch={() => {}} // TODO: Implement search functionality
             />
           </div>
         </div>
@@ -201,7 +210,10 @@ const DashboardNavbar = () => {
           </div> */}
 
           {/* User Profile */}
-          <div className="user-wrapper relative flex items-center gap-1 cursor-pointer" onClick={handleClick}>
+          <div
+            className="user-wrapper relative flex items-center gap-1 cursor-pointer"
+            onClick={handleClick}
+          >
             <div className="user-image size-8 sm:size-9 rounded-xl overflow-hidden">
               {user?.image ? (
                 <Image
@@ -214,16 +226,16 @@ const DashboardNavbar = () => {
               ) : (
                 <div className="size-8 sm:size-9 bg-[#5E00FF] rounded-xl overflow-hidden flex items-center justify-center">
                   <span className="text-white text-sm sm:text-base font-bold select-none">
-                    {user?.name ? (
-                      user.name.split(" ").length === 1
+                    {user?.name
+                      ? user.name.split(" ").length === 1
                         ? user.name.substring(0, 2).toUpperCase()
                         : (
-                          user.name.split(" ")[0]?.substring(0, 1) +
-                          user.name.split(" ")[1]?.substring(0, 1)
-                        ).toUpperCase()
-                    ) : (
-                      user?.email ? user.email.substring(0, 2).toUpperCase() : "U"
-                    )}
+                            user.name.split(" ")[0]?.substring(0, 1) +
+                            user.name.split(" ")[1]?.substring(0, 1)
+                          ).toUpperCase()
+                      : user?.email
+                      ? user.email.substring(0, 2).toUpperCase()
+                      : "U"}
                   </span>
                 </div>
               )}
@@ -233,15 +245,16 @@ const DashboardNavbar = () => {
                 {user?.name || "User"}
               </div>
               <div className="user-title text-gray-500 text-xs font-normal">
-                Admin
+                {(user?.role?.charAt(0)?.toUpperCase() || "") +
+                  user?.role?.slice(1) || "User"}
               </div>
             </div>
             {isUserOpen && (
               <FloatingContainer
                 className="mt-2 w-64"
                 title="User's Settings"
-                onViewAll={() => { }}
-                onElementClick={() => { }}
+                onViewAll={() => {}}
+                onElementClick={() => {}}
                 elements={[
                   // <div key={String(Math.random())} className="flex items-center gap-1 p-0.5 hover:bg-gray-50 rounded-md transition-colors">
                   //   <div className="p-0.5 bg-[#FFF1E9] rounded-full">
@@ -251,25 +264,34 @@ const DashboardNavbar = () => {
                   //     Profile
                   //   </span>
                   // </div>,
-                  <div key={String(Math.random())} className="flex items-center gap-1 p-0.5 hover:bg-gray-50 rounded-md transition-colors">
-                    <div className="p-0.5 bg-[#FFF1E9] rounded-full">
-                      <Settings className="size-4 text-[#F77124]" />
+                  <Link href="/profile/settings">
+                    <div
+                      key={String(Math.random())}
+                      className="flex items-center gap-1 p-0.5 hover:bg-gray-50 rounded-md transition-colors"
+                    >
+                      <div className="p-0.5 bg-[#FFF1E9] rounded-full">
+                        <Settings className="size-4 text-[#F77124]" />
+                      </div>
+                      <span className="font-medium text-text-primary">
+                        Settings
+                      </span>
                     </div>
-                    <span className="font-medium text-text-primary">
-                      Settings
-                    </span>
-                  </div>,
-                  <div key={String(Math.random())} className="flex items-center gap-1 p-0.5 hover:bg-gray-50 rounded-md transition-colors">
+                  </Link>,
+                  <div
+                    key={String(Math.random())}
+                    className="flex items-center gap-1 p-0.5 hover:bg-gray-50 rounded-md transition-colors"
+                  >
                     <div className="p-0.5 bg-[#FFF1E9] rounded-full">
                       <HelpCircle className="size-4 text-[#F77124]" />
                     </div>
                     <span className="font-medium text-text-primary">Help</span>
                   </div>,
-                  <div key={String(Math.random())}
+                  <div
+                    key={String(Math.random())}
                     className="flex items-center gap-1 p-0.5 hover:bg-[#FFF1E9] rounded-md transition-colors"
                     onClick={() => {
-                      localStorage.removeItem('adminToken');
-                      localStorage.removeItem('adminProfile');
+                      localStorage.removeItem("adminToken");
+                      localStorage.removeItem("adminProfile");
                       signOut({ callbackUrl: "/" });
                     }}
                   >
@@ -306,7 +328,7 @@ const DashboardNavbar = () => {
             placeholder="Search courses..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            onSearch={() => { }}
+            onSearch={() => {}}
           />
         </div>
       )}
@@ -334,11 +356,11 @@ const DashboardNavbar = () => {
       </div>
 
       <DashboardBanner />
-      <AlertBanner
+      {/* <AlertBanner
         message="50% off on every new course purchased!"
         type="limited-time-offer"
         className="px-4 sm:px-6 md:px-10 lg:px-20 py-[5px]"
-      />
+      /> */}
     </header>
   );
 };

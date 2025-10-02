@@ -1,5 +1,6 @@
 "use client";
 import { OrangeButton } from "@/components/ui";
+import { useSession } from "next-auth/react";
 import Image from "next/image";
 import React, { useState } from "react";
 
@@ -8,9 +9,10 @@ interface ApplicationDetailsProps {
 }
 
 const ApplicationDetails = ({ onNext }: ApplicationDetailsProps) => {
+  const { data: session } = useSession();
   const [formData, setFormData] = useState<{ [key: string]: string }>({
-    fullName: "",
-    email: "",
+    fullName: session?.user?.name || "",
+    email: session?.user?.email || "",
     phone: "",
     collegeName: "",
     degreeName: "",
