@@ -17,7 +17,7 @@ export const getVideoDuration = (video: File | string): Promise<number> => {
     });
     
     videoElement.addEventListener('error', (e) => {
-      reject(new Error('Failed to load video metadata'));
+      reject(new Error('Failed to load video metadata: ' + e.message));
     });
     
     if (video instanceof File) {

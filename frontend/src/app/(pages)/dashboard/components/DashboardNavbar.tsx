@@ -4,18 +4,15 @@ import FloatingContainer from "@/components/ui/FloatingContainer";
 import Searchbar2 from "@/components/ui/Searchbar2";
 import { NavItem } from "@/types";
 import {
-  Bell,
   HelpCircle,
   LogOut,
   Settings,
-  User2,
   Menu,
   X,
   Search,
 } from "lucide-react";
 import Image from "next/image";
 import React, { useEffect, useState } from "react";
-import AlertBanner from "@/components/ui/AlertBanner";
 import FlexBox from "@/components/ui/FlexBox";
 import DashboardBanner from "./DashboardBanner";
 import Link from "next/link";
@@ -69,7 +66,6 @@ const DashboardNavbar = () => {
     },
   ];
 
-  const notifications = notificationsList.length; // Count for badge
   const navLinks: NavItem[] = [
     {
       label: "Home",
@@ -266,7 +262,7 @@ const DashboardNavbar = () => {
                   // </div>,
                   <Link href="/profile/settings">
                     <div
-                      key={String(Math.random())}
+                      key={"settings"}
                       className="flex items-center gap-1 p-0.5 hover:bg-gray-50 rounded-md transition-colors"
                     >
                       <div className="p-0.5 bg-[#FFF1E9] rounded-full">
@@ -278,7 +274,7 @@ const DashboardNavbar = () => {
                     </div>
                   </Link>,
                   <div
-                    key={String(Math.random())}
+                    key={"help"}
                     className="flex items-center gap-1 p-0.5 hover:bg-gray-50 rounded-md transition-colors"
                   >
                     <div className="p-0.5 bg-[#FFF1E9] rounded-full">
@@ -287,7 +283,7 @@ const DashboardNavbar = () => {
                     <span className="font-medium text-text-primary">Help</span>
                   </div>,
                   <div
-                    key={String(Math.random())}
+                    key={"logout"}
                     className="flex items-center gap-1 p-0.5 hover:bg-[#FFF1E9] rounded-md transition-colors"
                     onClick={() => {
                       localStorage.removeItem("adminToken");

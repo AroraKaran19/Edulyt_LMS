@@ -18,7 +18,7 @@ const PasswordStrengthIndicator: React.FC<PasswordStrengthIndicatorProps> = ({
 }) => {
   if (!password) return null;
 
-  const { isValid, errors, strength } = validatePasswordStrength(password);
+  const { strength } = validatePasswordStrength(password);
   const strengthLabel = getPasswordStrengthLabel(strength);
   const strengthColor = getPasswordStrengthColor(strength);
 

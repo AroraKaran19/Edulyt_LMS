@@ -22,7 +22,10 @@ import UploadMediaContainer from "@/components/ui/container/UploadMediaContainer
 import CheckBoxContainer from "@/components/ui/inputs/CheckBoxContainer";
 import { useUpload } from "@/hooks/useUpload";
 import { useCourses } from "@/hooks/useCourses";
-import { getVideoDuration, formatDuration, parseDuration, isValidDurationFormat } from "@/utils/videoUtils";
+import {
+  getVideoDuration,
+  formatDuration,
+} from "@/utils/videoUtils";
 import {
   CourseModule,
   CourseLesson,
@@ -39,11 +42,11 @@ import { toast } from "react-toastify";
 const Screen11 = () => {
   const { isEditMode, courseId } = useCourseFormContext();
   const { watch } = useFormContext<CourseFormData>();
-  
+
   // Debug: Log courseId to see if it's available
-  
+
   // LocalStorage key for modules
-  const modulesStorageKey = `course_modules_${isEditMode ? courseId : 'new'}`;
+  const modulesStorageKey = `course_modules_${isEditMode ? courseId : "new"}`;
 
   // Watch course title for dynamic folder naming
   const titleValue = watch("title");
@@ -65,10 +68,10 @@ const Screen11 = () => {
   }, [titleValue]);
 
   const { uploadFile } = useUpload();
-  const { 
-    addSingleCourseModule, 
-    updateSingleCourseModule, 
-    deleteSingleCourseModule, 
+  const {
+    addSingleCourseModule,
+    updateSingleCourseModule,
+    deleteSingleCourseModule,
     addSingleCourseLesson,
     updateSingleCourseLesson,
     deleteSingleCourseLesson,
@@ -76,7 +79,7 @@ const Screen11 = () => {
     updateSingleCourseContent,
     deleteSingleCourseContent,
     getCourseByIdAdmin,
-    isLoading: isApiLoading 
+    isLoading: isApiLoading,
   } = useCourses();
 
   // LocalStorage helper functions
@@ -105,7 +108,7 @@ const Screen11 = () => {
   useEffect(() => {
     const loadModules = async () => {
       setIsLoadingModules(true);
-      
+
       try {
         if (isEditMode && courseId) {
           // In edit mode, try to load from localStorage first, then from API if needed
@@ -144,16 +147,16 @@ const Screen11 = () => {
 
   // Save modules to localStorage whenever modules change
   useEffect(() => {
-    if (typeof window !== 'undefined' && modules.length > 0) {
+    if (typeof window !== "undefined" && modules.length > 0) {
       saveModulesToLocalStorage(modules);
     }
   }, [modules, modulesStorageKey]);
 
   // Clear localStorage when switching between create and edit modes
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       // Clear old localStorage data when mode changes
-      const oldKey = `course_modules_${isEditMode ? 'new' : courseId}`;
+      const oldKey = `course_modules_${isEditMode ? "new" : courseId}`;
       localStorage.removeItem(oldKey);
     }
   }, [isEditMode, courseId]);
@@ -161,20 +164,25 @@ const Screen11 = () => {
   // Function to initialize modules from course data
   const initializeModulesFromCourseData = (courseData: any) => {
     if (courseData?.modules && Array.isArray(courseData.modules)) {
-      const transformedModules: CourseModule[] = courseData.modules.map((selectedModule: any) => ({
-        _id: selectedModule._id,
-        title: selectedModule.title,
-        description: selectedModule.description,
-        thumbnailUrl: selectedModule.thumbnailUrl,
-        thumbnailSource: selectedModule.thumbnailSource || "url",
-        thumbnailS3Key: selectedModule.thumbnailS3Key || "",
-        lessonIds: selectedModule.lessonIds || [],
-        isCompleted: selectedModule.isCompleted || false,
-        isActive: selectedModule.isActive !== undefined ? selectedModule.isActive : true,
-        isLocked: selectedModule.isLocked || false,
-        lessons: selectedModule.lessons || [],
-      }));
-      
+      const transformedModules: CourseModule[] = courseData.modules.map(
+        (selectedModule: any) => ({
+          _id: selectedModule._id,
+          title: selectedModule.title,
+          description: selectedModule.description,
+          thumbnailUrl: selectedModule.thumbnailUrl,
+          thumbnailSource: selectedModule.thumbnailSource || "url",
+          thumbnailS3Key: selectedModule.thumbnailS3Key || "",
+          lessonIds: selectedModule.lessonIds || [],
+          isCompleted: selectedModule.isCompleted || false,
+          isActive:
+            selectedModule.isActive !== undefined
+              ? selectedModule.isActive
+              : true,
+          isLocked: selectedModule.isLocked || false,
+          lessons: selectedModule.lessons || [],
+        })
+      );
+
       setModules(transformedModules);
       saveModulesToLocalStorage(transformedModules);
     }
@@ -197,11 +205,15 @@ const Screen11 = () => {
   const [isEditingLesson, setIsEditingLesson] = useState(false);
   const [isAddingContent, setIsAddingContent] = useState(false);
   const [isEditingContent, setIsEditingContent] = useState(false);
-  const [contentTypeToAdd, setContentTypeToAdd] = useState<"video" | "quiz" | "document" | null>(null);
+  const [contentTypeToAdd, setContentTypeToAdd] = useState<
+    "video" | "quiz" | "document" | null
+  >(null);
   const [isUploadingVideo, setIsUploadingVideo] = useState(false);
-  const [isUploadingVideoThumbnail, setIsUploadingVideoThumbnail] = useState(false);
+  const [isUploadingVideoThumbnail, setIsUploadingVideoThumbnail] =
+    useState(false);
   const [isUploadingDocument, setIsUploadingDocument] = useState(false);
-  const [isUploadingModuleThumbnail, setIsUploadingModuleThumbnail] = useState(false);
+  const [isUploadingModuleThumbnail, setIsUploadingModuleThumbnail] =
+    useState(false);
   const [isExtractingDuration, setIsExtractingDuration] = useState(false);
   const [newModule, setNewModule] = useState({
     title: "",
@@ -211,10 +223,10 @@ const Screen11 = () => {
     thumbnailS3Key: "",
     isActive: true,
   });
-  const [newLesson, setNewLesson] = useState({ 
-    title: "", 
-    description: "", 
-    isActive: true 
+  const [newLesson, setNewLesson] = useState({
+    title: "",
+    description: "",
+    isActive: true,
   });
   const [editingLesson, setEditingLesson] = useState({
     _id: "",
@@ -302,11 +314,10 @@ const Screen11 = () => {
     }
 
     if (!courseId) {
-      console.error('addModule - courseId is missing:', courseId);
+      console.error("addModule - courseId is missing:", courseId);
       toast.error("Course ID is required to add a module");
       return;
     }
-    
 
     try {
       // Prepare module data for API
@@ -334,7 +345,8 @@ const Screen11 = () => {
           thumbnailS3Key: result.data.thumbnailS3Key || "",
           lessonIds: result.data.lessonIds || [],
           isCompleted: result.data.isCompleted || false,
-          isActive: result.data.isActive !== undefined ? result.data.isActive : true,
+          isActive:
+            result.data.isActive !== undefined ? result.data.isActive : true,
           isLocked: result.data.isLocked || false,
           lessons: [],
         };
@@ -342,10 +354,10 @@ const Screen11 = () => {
         // Add module to local state
         const updatedModules = [...modules, selectedModule];
         setModules(updatedModules);
-        
+
         // Save to localStorage
         saveModulesToLocalStorage(updatedModules);
-        
+
         // Reset form
         setNewModule({
           title: "",
@@ -357,7 +369,10 @@ const Screen11 = () => {
         });
         setIsAddingModule(false);
       } else {
-        console.error("Failed to create module:", result.error || result.message);
+        console.error(
+          "Failed to create module:",
+          result.error || result.message
+        );
       }
     } catch (error) {
       console.error("Error creating module:", error);
@@ -386,12 +401,16 @@ const Screen11 = () => {
       };
 
       // Make API call to update module
-      const result = await updateSingleCourseModule(courseId, editingModule._id, moduleData);
+      const result = await updateSingleCourseModule(
+        courseId,
+        editingModule._id,
+        moduleData
+      );
 
       if (result.success && result.data) {
         // Update module in local state
-        const updatedModules = modules.map(selectedModule => 
-          selectedModule._id === editingModule._id 
+        const updatedModules = modules.map((selectedModule) =>
+          selectedModule._id === editingModule._id
             ? {
                 ...selectedModule,
                 title: result.data.title,
@@ -399,15 +418,18 @@ const Screen11 = () => {
                 thumbnailUrl: result.data.thumbnailUrl,
                 thumbnailSource: result.data.thumbnailSource || "url",
                 thumbnailS3Key: result.data.thumbnailS3Key || "",
-                isActive: result.data.isActive !== undefined ? result.data.isActive : true,
+                isActive:
+                  result.data.isActive !== undefined
+                    ? result.data.isActive
+                    : true,
               }
             : selectedModule
         );
         setModules(updatedModules);
-        
+
         // Save to localStorage
         saveModulesToLocalStorage(updatedModules);
-        
+
         // Reset form and close edit mode
         setEditingModule({
           _id: "",
@@ -420,7 +442,10 @@ const Screen11 = () => {
         });
         setIsEditingModule(false);
       } else {
-        console.error("Failed to update module:", result.error || result.message);
+        console.error(
+          "Failed to update module:",
+          result.error || result.message
+        );
       }
     } catch (error) {
       console.error("Error updating module:", error);
@@ -438,7 +463,11 @@ const Screen11 = () => {
       return;
     }
 
-    if (!confirm("Are you sure you want to delete this module? This action cannot be undone.")) {
+    if (
+      !confirm(
+        "Are you sure you want to delete this module? This action cannot be undone."
+      )
+    ) {
       return;
     }
 
@@ -448,15 +477,20 @@ const Screen11 = () => {
 
       if (result.success) {
         // Remove module from local state
-        const updatedModules = modules.filter(selectedModule => selectedModule._id !== moduleId);
+        const updatedModules = modules.filter(
+          (selectedModule) => selectedModule._id !== moduleId
+        );
         setModules(updatedModules);
-        
+
         // Save to localStorage
         saveModulesToLocalStorage(updatedModules);
-        
+
         console.log("Module deleted successfully");
       } else {
-        console.error("Failed to delete module:", result.error || result.message);
+        console.error(
+          "Failed to delete module:",
+          result.error || result.message
+        );
       }
     } catch (error) {
       console.error("Error deleting module:", error);
@@ -471,7 +505,8 @@ const Screen11 = () => {
       thumbnailUrl: selectedModule.thumbnailUrl || "",
       thumbnailSource: selectedModule.thumbnailSource || "url",
       thumbnailS3Key: selectedModule.thumbnailS3Key || "",
-      isActive: selectedModule.isActive !== undefined ? selectedModule.isActive : true,
+      isActive:
+        selectedModule.isActive !== undefined ? selectedModule.isActive : true,
     });
     setIsEditingModule(true);
   };
@@ -497,10 +532,14 @@ const Screen11 = () => {
       const lessonData = {
         title: newLesson.title,
         description: newLesson.description,
-      isActive: newLesson.isActive,
+        isActive: newLesson.isActive,
       };
 
-      const result = await addSingleCourseLesson(courseId, moduleId, lessonData);
+      const result = await addSingleCourseLesson(
+        courseId,
+        moduleId,
+        lessonData
+      );
 
       if (result.success && result.data) {
         const lesson: CourseLesson = {
@@ -510,30 +549,34 @@ const Screen11 = () => {
           contentIds: result.data.contentIds || [],
           moduleId,
           isCompleted: result.data.isCompleted || false,
-          isActive: result.data.isActive !== undefined ? result.data.isActive : true,
+          isActive:
+            result.data.isActive !== undefined ? result.data.isActive : true,
           isLocked: result.data.isLocked || false,
-        contents: [],
-    };
+          contents: [],
+        };
 
         // Add lesson to local state
-      const updatedModules = modules.map((selectedModule) =>
-      selectedModule._id === moduleId 
-        ? { 
-            ...selectedModule, 
+        const updatedModules = modules.map((selectedModule) =>
+          selectedModule._id === moduleId
+            ? {
+                ...selectedModule,
                 lessons: [...(selectedModule.lessons || []), lesson],
                 lessonIds: [...selectedModule.lessonIds, lesson._id!],
-          }
-        : selectedModule
+              }
+            : selectedModule
         );
-      setModules(updatedModules);
-      
-      // Save to localStorage
-      saveModulesToLocalStorage(updatedModules);
+        setModules(updatedModules);
 
-      setNewLesson({ title: "", description: "", isActive: true });
-      setIsAddingLesson(false);
+        // Save to localStorage
+        saveModulesToLocalStorage(updatedModules);
+
+        setNewLesson({ title: "", description: "", isActive: true });
+        setIsAddingLesson(false);
       } else {
-        console.error("Failed to create lesson:", result.error || result.message);
+        console.error(
+          "Failed to create lesson:",
+          result.error || result.message
+        );
       }
     } catch (error) {
       console.error("Error creating lesson:", error);
@@ -564,7 +607,12 @@ const Screen11 = () => {
       };
 
       // Make API call to update lesson
-      const result = await updateSingleCourseLesson(courseId, moduleId, editingLesson._id, lessonData);
+      const result = await updateSingleCourseLesson(
+        courseId,
+        moduleId,
+        editingLesson._id,
+        lessonData
+      );
 
       if (result.success && result.data) {
         // Update lesson in local state
@@ -578,7 +626,10 @@ const Screen11 = () => {
                         ...lesson,
                         title: result.data.title,
                         description: result.data.description,
-                        isActive: result.data.isActive !== undefined ? result.data.isActive : true,
+                        isActive:
+                          result.data.isActive !== undefined
+                            ? result.data.isActive
+                            : true,
                       }
                     : lesson
                 ),
@@ -586,7 +637,7 @@ const Screen11 = () => {
             : selectedModule
         );
         setModules(updatedModules);
-        
+
         // Save to localStorage
         saveModulesToLocalStorage(updatedModules);
 
@@ -599,7 +650,10 @@ const Screen11 = () => {
         });
         setIsEditingLesson(false);
       } else {
-        console.error("Failed to update lesson:", result.error || result.message);
+        console.error(
+          "Failed to update lesson:",
+          result.error || result.message
+        );
       }
     } catch (error) {
       console.error("Error updating lesson:", error);
@@ -664,27 +718,33 @@ const Screen11 = () => {
         toast.error("Video duration is required for video content");
         return;
       }
-      if (!newContent.videoDuration || isNaN(Number(newContent.videoDuration)) || Number(newContent.videoDuration) <= 0) {
-        toast.error("Please enter a valid duration in seconds (e.g., 150 for 2 minutes 30 seconds)");
+      if (
+        !newContent.videoDuration ||
+        isNaN(Number(newContent.videoDuration)) ||
+        Number(newContent.videoDuration) <= 0
+      ) {
+        toast.error(
+          "Please enter a valid duration in seconds (e.g., 150 for 2 minutes 30 seconds)"
+        );
         return;
       }
       contentData = {
-              title: newContent.title,
-              description: newContent.description,
-              type: "video",
-              sources: [
-                {
-                  quality: "720p",
-                  videoUrl: newContent.videoUrl,
-                  videoSource: newContent.videoSource,
-                  videoS3Key: newContent.videoS3Key,
-                },
-              ],
+        title: newContent.title,
+        description: newContent.description,
+        type: "video",
+        sources: [
+          {
+            quality: "720p",
+            videoUrl: newContent.videoUrl,
+            videoSource: newContent.videoSource,
+            videoS3Key: newContent.videoS3Key,
+          },
+        ],
         thumbnailUrl: newContent.videoThumbnailUrl,
         duration: Number(newContent.videoDuration),
-          isCompleted: false,
-          isActive: newContent.isActive,
-          isLocked: false,
+        isCompleted: false,
+        isActive: newContent.isActive,
+        isLocked: false,
       };
     } else if (newContent.type === "document") {
       if (!newContent.documentUrl.trim()) {
@@ -703,23 +763,28 @@ const Screen11 = () => {
     } else {
       // Quiz content
       contentData = {
-              title: newContent.title,
-              description: newContent.description,
-              type: "quiz",
-          questions: [],
-          isCompleted: false,
-          isActive: newContent.isActive,
-          isLocked: false,
+        title: newContent.title,
+        description: newContent.description,
+        type: "quiz",
+        questions: [],
+        isCompleted: false,
+        isActive: newContent.isActive,
+        isLocked: false,
       };
     }
 
     try {
       // Make API call to create content
-      const result = await addSingleCourseContent(courseId, moduleId, lessonId, contentData);
+      const result = await addSingleCourseContent(
+        courseId,
+        moduleId,
+        lessonId,
+        contentData
+      );
 
       if (result.success && result.data) {
         let content: Content;
-        
+
         if (result.data.type === "video") {
           content = {
             _id: result.data._id,
@@ -730,9 +795,10 @@ const Screen11 = () => {
             thumbnailUrl: result.data.thumbnailUrl,
             duration: result.data.duration || 0,
             isCompleted: result.data.isCompleted || false,
-            isActive: result.data.isActive !== undefined ? result.data.isActive : true,
+            isActive:
+              result.data.isActive !== undefined ? result.data.isActive : true,
             isLocked: result.data.isLocked || false,
-              lessonId,
+            lessonId,
           } as VideoContent;
         } else if (result.data.type === "document") {
           content = {
@@ -742,7 +808,8 @@ const Screen11 = () => {
             type: "document",
             documentUrl: result.data.documentUrl,
             isCompleted: result.data.isCompleted || false,
-            isActive: result.data.isActive !== undefined ? result.data.isActive : true,
+            isActive:
+              result.data.isActive !== undefined ? result.data.isActive : true,
             isLocked: result.data.isLocked || false,
             lessonId,
           } as DocumentContent;
@@ -754,42 +821,43 @@ const Screen11 = () => {
             type: "quiz",
             questions: result.data.questions || [],
             isCompleted: result.data.isCompleted || false,
-            isActive: result.data.isActive !== undefined ? result.data.isActive : true,
+            isActive:
+              result.data.isActive !== undefined ? result.data.isActive : true,
             isLocked: result.data.isLocked || false,
             lessonId,
           } as QuizContent;
         }
 
         // Add content to local state
-      const updatedModules = modules.map((selectedModule) =>
-      selectedModule._id === moduleId 
-        ? {
-            ...selectedModule,
+        const updatedModules = modules.map((selectedModule) =>
+          selectedModule._id === moduleId
+            ? {
+                ...selectedModule,
                 lessons: selectedModule.lessons?.map((lesson) =>
-              lesson._id === lessonId
-                ? {
-                    ...lesson,
+                  lesson._id === lessonId
+                    ? {
+                        ...lesson,
                         contents: [...(lesson.contents || []), content],
                         contentIds: [...lesson.contentIds, content._id!],
-                  }
-                : lesson
+                      }
+                    : lesson
                 ),
-          }
-        : selectedModule
+              }
+            : selectedModule
         );
-      setModules(updatedModules);
-      
-      // Save to localStorage
-      saveModulesToLocalStorage(updatedModules);
+        setModules(updatedModules);
+
+        // Save to localStorage
+        saveModulesToLocalStorage(updatedModules);
 
         // Reset form
-      setNewContent({
-        title: "",
-        description: "",
-        type: "video",
-        videoUrl: "",
-        videoSource: "url",
-        videoS3Key: "",
+        setNewContent({
+          title: "",
+          description: "",
+          type: "video",
+          videoUrl: "",
+          videoSource: "url",
+          videoS3Key: "",
           videoThumbnailUrl: "",
           videoThumbnailSource: "url",
           videoThumbnailS3Key: "",
@@ -797,18 +865,20 @@ const Screen11 = () => {
           documentUrl: "",
           documentSource: "url",
           documentS3Key: "",
-        isActive: true,
-      });
-      setIsAddingContent(false);
+          isActive: true,
+        });
+        setIsAddingContent(false);
         setContentTypeToAdd(null);
       } else {
-        console.error("Failed to create content:", result.error || result.message);
+        console.error(
+          "Failed to create content:",
+          result.error || result.message
+        );
       }
     } catch (error) {
       console.error("Error creating content:", error);
     }
   };
-
 
   const deleteLesson = async (moduleId: string, lessonId: string) => {
     if (!courseId) {
@@ -821,35 +891,48 @@ const Screen11 = () => {
       return;
     }
 
-    if (!confirm("Are you sure you want to delete this lesson? This action cannot be undone.")) {
+    if (
+      !confirm(
+        "Are you sure you want to delete this lesson? This action cannot be undone."
+      )
+    ) {
       return;
     }
 
     try {
       // Make API call to delete lesson
-      const result = await deleteSingleCourseLesson(courseId, moduleId, lessonId);
+      const result = await deleteSingleCourseLesson(
+        courseId,
+        moduleId,
+        lessonId
+      );
 
       if (result.success) {
         // Remove lesson from local state
-    const updatedModules = modules.map((selectedModule) =>
-      selectedModule._id === moduleId
-        ? {
-            ...selectedModule,
-            lessons: selectedModule.lessons?.filter(
-              (lesson) => lesson._id !== lessonId
-            ),
-            lessonIds: selectedModule.lessonIds.filter((_id) => _id !== lessonId),
-          }
-        : selectedModule
-    );
-    setModules(updatedModules);
-    
-    // Save to localStorage
-    saveModulesToLocalStorage(updatedModules);
-        
+        const updatedModules = modules.map((selectedModule) =>
+          selectedModule._id === moduleId
+            ? {
+                ...selectedModule,
+                lessons: selectedModule.lessons?.filter(
+                  (lesson) => lesson._id !== lessonId
+                ),
+                lessonIds: selectedModule.lessonIds.filter(
+                  (_id) => _id !== lessonId
+                ),
+              }
+            : selectedModule
+        );
+        setModules(updatedModules);
+
+        // Save to localStorage
+        saveModulesToLocalStorage(updatedModules);
+
         console.log("Lesson deleted successfully");
       } else {
-        console.error("Failed to delete lesson:", result.error || result.message);
+        console.error(
+          "Failed to delete lesson:",
+          result.error || result.message
+        );
       }
     } catch (error) {
       console.error("Error deleting lesson:", error);
@@ -883,8 +966,14 @@ const Screen11 = () => {
         toast.error("Video duration is required for video content");
         return;
       }
-      if (!editingContent.videoDuration || isNaN(Number(editingContent.videoDuration)) || Number(editingContent.videoDuration) <= 0) {
-        toast.error("Please enter a valid duration in seconds (e.g., 150 for 2 minutes 30 seconds)");
+      if (
+        !editingContent.videoDuration ||
+        isNaN(Number(editingContent.videoDuration)) ||
+        Number(editingContent.videoDuration) <= 0
+      ) {
+        toast.error(
+          "Please enter a valid duration in seconds (e.g., 150 for 2 minutes 30 seconds)"
+        );
         return;
       }
       contentData = {
@@ -934,7 +1023,13 @@ const Screen11 = () => {
 
     try {
       // Make API call to update content
-      const result = await updateSingleCourseContent(courseId, moduleId, lessonId, editingContent._id, contentData);
+      const result = await updateSingleCourseContent(
+        courseId,
+        moduleId,
+        lessonId,
+        editingContent._id,
+        contentData
+      );
 
       if (result.success && result.data) {
         // Update content in local state
@@ -962,7 +1057,10 @@ const Screen11 = () => {
                                 ...(result.data.type === "quiz" && {
                                   questions: result.data.questions || [],
                                 }),
-                                isActive: result.data.isActive !== undefined ? result.data.isActive : true,
+                                isActive:
+                                  result.data.isActive !== undefined
+                                    ? result.data.isActive
+                                    : true,
                               }
                             : content
                         ),
@@ -973,7 +1071,7 @@ const Screen11 = () => {
             : selectedModule
         );
         setModules(updatedModules);
-        
+
         // Save to localStorage
         saveModulesToLocalStorage(updatedModules);
 
@@ -997,7 +1095,10 @@ const Screen11 = () => {
         });
         setIsEditingContent(false);
       } else {
-        console.error("Failed to update content:", result.error || result.message);
+        console.error(
+          "Failed to update content:",
+          result.error || result.message
+        );
       }
     } catch (error) {
       console.error("Error updating content:", error);
@@ -1016,7 +1117,9 @@ const Screen11 = () => {
       videoThumbnailUrl: (content as VideoContent).thumbnailUrl || "",
       videoThumbnailSource: "url",
       videoThumbnailS3Key: "",
-      videoDuration: (content as VideoContent).duration ? (content as VideoContent).duration!.toString() : "",
+      videoDuration: (content as VideoContent).duration
+        ? (content as VideoContent).duration!.toString()
+        : "",
       documentUrl: (content as DocumentContent).documentUrl || "",
       documentSource: "url",
       documentS3Key: "",
@@ -1035,44 +1138,56 @@ const Screen11 = () => {
       return;
     }
 
-    if (!confirm("Are you sure you want to delete this content? This action cannot be undone.")) {
+    if (
+      !confirm(
+        "Are you sure you want to delete this content? This action cannot be undone."
+      )
+    ) {
       return;
     }
 
     try {
       // Make API call to delete content
-      const result = await deleteSingleCourseContent(courseId, moduleId, lessonId, contentId);
+      const result = await deleteSingleCourseContent(
+        courseId,
+        moduleId,
+        lessonId,
+        contentId
+      );
 
       if (result.success) {
         // Remove content from local state
-    const updatedModules = modules.map((selectedModule) =>
-      selectedModule._id === moduleId
-        ? {
-            ...selectedModule,
-            lessons: selectedModule.lessons?.map((lesson) =>
-              lesson._id === lessonId
-                ? {
-                    ...lesson,
-                    contents: lesson.contents?.filter(
-                      (content) => content._id !== contentId
-                    ),
-                    contentIds: lesson.contentIds.filter(
-                      (_id) => _id !== contentId
-                    ),
-                  }
-                : lesson
-            ),
-          }
-        : selectedModule
-    );
-    setModules(updatedModules);
-    
-    // Save to localStorage
-    saveModulesToLocalStorage(updatedModules);
-        
+        const updatedModules = modules.map((selectedModule) =>
+          selectedModule._id === moduleId
+            ? {
+                ...selectedModule,
+                lessons: selectedModule.lessons?.map((lesson) =>
+                  lesson._id === lessonId
+                    ? {
+                        ...lesson,
+                        contents: lesson.contents?.filter(
+                          (content) => content._id !== contentId
+                        ),
+                        contentIds: lesson.contentIds.filter(
+                          (_id) => _id !== contentId
+                        ),
+                      }
+                    : lesson
+                ),
+              }
+            : selectedModule
+        );
+        setModules(updatedModules);
+
+        // Save to localStorage
+        saveModulesToLocalStorage(updatedModules);
+
         console.log("Content deleted successfully");
       } else {
-        console.error("Failed to delete content:", result.error || result.message);
+        console.error(
+          "Failed to delete content:",
+          result.error || result.message
+        );
       }
     } catch (error) {
       console.error("Error deleting content:", error);
@@ -1132,7 +1247,7 @@ const Screen11 = () => {
         // Extract video duration
         try {
           const duration = await getVideoDuration(file);
-          
+
           setNewContent((prev) => ({
             ...prev,
             videoUrl: result.data!.url,
@@ -1149,7 +1264,9 @@ const Screen11 = () => {
             videoSource: "upload",
             videoS3Key: result.data!.s3Key,
           }));
-          toast.warning("Video uploaded but duration could not be extracted. Please enter duration manually.");
+          toast.warning(
+            "Video uploaded but duration could not be extracted. Please enter duration manually."
+          );
         }
         return result.data.url;
       }
@@ -1180,7 +1297,7 @@ const Screen11 = () => {
       videoSource: "url",
       videoS3Key: "",
     }));
-    
+
     // Try to extract duration from URL
     setIsExtractingDuration(true);
     try {
@@ -1197,7 +1314,10 @@ const Screen11 = () => {
     }
   };
 
-  const handleContentDocumentUpload = async (file: File, folderName: string) => {
+  const handleContentDocumentUpload = async (
+    file: File,
+    folderName: string
+  ) => {
     setIsUploadingDocument(true);
     try {
       const result = await uploadFile(file, folderName);
@@ -1237,7 +1357,10 @@ const Screen11 = () => {
     }));
   };
 
-  const handleContentVideoThumbnailUpload = async (file: File, folderName: string) => {
+  const handleContentVideoThumbnailUpload = async (
+    file: File,
+    folderName: string
+  ) => {
     setIsUploadingVideoThumbnail(true);
     try {
       const result = await uploadFile(file, folderName);
@@ -1377,9 +1500,13 @@ const Screen11 = () => {
               />
             </FlexBox>
             <div className="flex gap-2 mt-4">
-              <OrangeButton 
+              <OrangeButton
                 onClick={addModule}
-                disabled={isApiLoading || !newModule.title.trim() || isUploadingModuleThumbnail}
+                disabled={
+                  isApiLoading ||
+                  !newModule.title.trim() ||
+                  isUploadingModuleThumbnail
+                }
                 glow={false}
                 className="flex items-center gap-2"
               >
@@ -1397,7 +1524,7 @@ const Screen11 = () => {
                   "Add Module"
                 )}
               </OrangeButton>
-              <WhiteButton 
+              <WhiteButton
                 onClick={() => setIsAddingModule(false)}
                 disabled={isApiLoading || isUploadingModuleThumbnail}
               >
@@ -1428,7 +1555,10 @@ const Screen11 = () => {
                 placeholder="Enter module description"
                 value={editingModule.description}
                 onChange={(e) =>
-                  setEditingModule({ ...editingModule, description: e.target.value })
+                  setEditingModule({
+                    ...editingModule,
+                    description: e.target.value,
+                  })
                 }
                 required
               />
@@ -1444,9 +1574,12 @@ const Screen11 = () => {
                 onFileUpload={async (file, folderName) => {
                   // Handle thumbnail upload for editing module
                   try {
-                    const url = await handleModuleThumbnailUpload(file, folderName);
+                    const url = await handleModuleThumbnailUpload(
+                      file,
+                      folderName
+                    );
                     if (url) {
-                      setEditingModule(prev => ({
+                      setEditingModule((prev) => ({
                         ...prev,
                         thumbnailUrl: url,
                         thumbnailSource: "upload",
@@ -1459,7 +1592,7 @@ const Screen11 = () => {
                   }
                 }}
                 onFileRemove={() => {
-                  setEditingModule(prev => ({
+                  setEditingModule((prev) => ({
                     ...prev,
                     thumbnailUrl: "",
                     thumbnailSource: "url",
@@ -1467,7 +1600,7 @@ const Screen11 = () => {
                   }));
                 }}
                 onUrlSubmit={(url) => {
-                  setEditingModule(prev => ({
+                  setEditingModule((prev) => ({
                     ...prev,
                     thumbnailUrl: url,
                     thumbnailSource: "url",
@@ -1489,7 +1622,7 @@ const Screen11 = () => {
               />
             </FlexBox>
             <div className="flex gap-2 mt-4">
-              <OrangeButton 
+              <OrangeButton
                 onClick={editModule}
                 disabled={isApiLoading || !editingModule.title.trim()}
                 glow={false}
@@ -1504,7 +1637,7 @@ const Screen11 = () => {
                   "Update Module"
                 )}
               </OrangeButton>
-              <WhiteButton 
+              <WhiteButton
                 onClick={() => {
                   setIsEditingModule(false);
                   setEditingModule({
@@ -1556,839 +1689,1027 @@ const Screen11 = () => {
         ) : (
           /* Modules List - Only show when modules exist */
           <div className="space-y-4">
-            {!isAddingModule && !isEditingModule && modules.map((selectedModule) => (
-              <div
-                key={selectedModule._id}
-                className="bg-white rounded-lg border border-gray-200 shadow-sm"
-              >
-                {/* Module Header */}
-                <div className="p-4 border-b border-gray-200">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <button
-                        onClick={() => toggleModuleExpansion(selectedModule._id!)}
-                        className="p-1 hover:bg-gray-100 rounded"
-                      >
-                        {expandedModules.has(selectedModule._id!) ? (
-                          <ChevronDown className="w-4 h-4" />
-                        ) : (
-                          <ChevronRight className="w-4 h-4" />
-                        )}
-                      </button>
-                      <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center overflow-hidden">
-                        {selectedModule.thumbnailUrl ? (
-                          <img
-                            src={selectedModule.thumbnailUrl}
-                            alt={selectedModule.title}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <BookOpen className="w-5 h-5 text-orange-600" />
-                        )}
+            {!isAddingModule &&
+              !isEditingModule &&
+              modules.map((selectedModule) => (
+                <div
+                  key={selectedModule._id}
+                  className="bg-white rounded-lg border border-gray-200 shadow-sm"
+                >
+                  {/* Module Header */}
+                  <div className="p-4 border-b border-gray-200">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() =>
+                            toggleModuleExpansion(selectedModule._id!)
+                          }
+                          className="p-1 hover:bg-gray-100 rounded"
+                        >
+                          {expandedModules.has(selectedModule._id!) ? (
+                            <ChevronDown className="w-4 h-4" />
+                          ) : (
+                            <ChevronRight className="w-4 h-4" />
+                          )}
+                        </button>
+                        <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center overflow-hidden">
+                          {selectedModule.thumbnailUrl ? (
+                            <img
+                              src={selectedModule.thumbnailUrl}
+                              alt={selectedModule.title}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <BookOpen className="w-5 h-5 text-orange-600" />
+                          )}
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-gray-800">
+                            {selectedModule.title}
+                          </h3>
+                          <p className="text-sm text-gray-600">
+                            {selectedModule.description}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="font-semibold text-gray-800">
-                          {selectedModule.title}
-                        </h3>
-                        <p className="text-sm text-gray-600">
-                          {selectedModule.description}
-                        </p>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-500">
+                          {selectedModule.lessons?.length || 0} lessons
+                        </span>
+                        <button
+                          onClick={() => startEditingModule(selectedModule)}
+                          disabled={isApiLoading}
+                          className="p-1 hover:bg-gray-100 rounded disabled:opacity-50"
+                        >
+                          <Edit3 className="w-4 h-4 text-gray-600" />
+                        </button>
+                        <button
+                          onClick={() => deleteModule(selectedModule._id!)}
+                          disabled={isApiLoading}
+                          className="p-1 hover:bg-red-100 rounded disabled:opacity-50"
+                        >
+                          <Trash2 className="w-4 h-4 text-red-600" />
+                        </button>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-gray-500">
-                        {selectedModule.lessons?.length || 0} lessons
-                      </span>
-                      <button
-                        onClick={() => startEditingModule(selectedModule)}
-                        disabled={isApiLoading}
-                        className="p-1 hover:bg-gray-100 rounded disabled:opacity-50"
-                      >
-                        <Edit3 className="w-4 h-4 text-gray-600" />
-                      </button>
-                      <button
-                        onClick={() => deleteModule(selectedModule._id!)}
-                        disabled={isApiLoading}
-                        className="p-1 hover:bg-red-100 rounded disabled:opacity-50"
-                      >
-                        <Trash2 className="w-4 h-4 text-red-600" />
-                      </button>
                     </div>
                   </div>
-                </div>
 
-                {/* Module Content */}
-                {expandedModules.has(selectedModule._id!) && (
-                  <div className="p-4">
-                    {/* Add Lesson Button */}
-                    <div className="flex justify-between items-center mb-4">
-                      <h4 className="text-lg font-medium text-gray-700">
-                        Lessons
-                      </h4>
-                      {!isAddingLesson && !isEditingLesson && (
-                      <WhiteButton
-                        onClick={() => setIsAddingLesson(true)}
-                        className="flex items-center gap-2"
-                      >
-                        <Plus className="w-4 h-4" />
-                        Add Lesson
-                      </WhiteButton>
-                      )}
-                    </div>
-
-                    {/* Add Lesson Form */}
-                    {isAddingLesson && (
-                      <div className="bg-gray-50 rounded-lg p-4 mb-4 border border-gray-200">
-                        <h4 className="text-lg font-medium text-gray-800 mb-4">
-                          Add New Lesson
+                  {/* Module Content */}
+                  {expandedModules.has(selectedModule._id!) && (
+                    <div className="p-4">
+                      {/* Add Lesson Button */}
+                      <div className="flex justify-between items-center mb-4">
+                        <h4 className="text-lg font-medium text-gray-700">
+                          Lessons
                         </h4>
-                        <FlexBox className="flex-col gap-4">
-                          <Input
-                            label="Lesson Title"
-                            placeholder="Enter lesson title"
-                            value={newLesson.title}
-                            onChange={(e) =>
-                              setNewLesson({
-                                ...newLesson,
-                                title: e.target.value,
-                              })
-                            }
-                            required
-                          />
-                          <TextArea
-                            label="Description"
-                            placeholder="Enter lesson description"
-                            value={newLesson.description}
-                            onChange={(e) =>
-                              setNewLesson({
-                                ...newLesson,
-                                description: e.target.value,
-                              })
-                            }
-                            required
-                          />
-                          <CheckBoxContainer
-                            label="Active Lesson"
-                            description="Enable this lesson for students to access"
-                            checked={newLesson.isActive}
-                            onChange={(checked) =>
-                              setNewLesson({ ...newLesson, isActive: checked })
-                            }
-                          />
-                        </FlexBox>
-                        <div className="flex gap-2 mt-4">
-                          <OrangeButton 
-                            onClick={() => addLesson(selectedModule._id!)}
-                            disabled={isApiLoading || !newLesson.title.trim() || !newLesson.description.trim()}
-                            glow={false}
+                        {!isAddingLesson && !isEditingLesson && (
+                          <WhiteButton
+                            onClick={() => setIsAddingLesson(true)}
                             className="flex items-center gap-2"
                           >
-                            {isApiLoading ? (
-                              <>
-                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                Creating Lesson...
-                              </>
-                            ) : (
-                              "Add Lesson"
-                            )}
-                          </OrangeButton>
+                            <Plus className="w-4 h-4" />
+                            Add Lesson
+                          </WhiteButton>
+                        )}
+                      </div>
+
+                      {/* Add Lesson Form */}
+                      {isAddingLesson && (
+                        <div className="bg-gray-50 rounded-lg p-4 mb-4 border border-gray-200">
+                          <h4 className="text-lg font-medium text-gray-800 mb-4">
+                            Add New Lesson
+                          </h4>
+                          <FlexBox className="flex-col gap-4">
+                            <Input
+                              label="Lesson Title"
+                              placeholder="Enter lesson title"
+                              value={newLesson.title}
+                              onChange={(e) =>
+                                setNewLesson({
+                                  ...newLesson,
+                                  title: e.target.value,
+                                })
+                              }
+                              required
+                            />
+                            <TextArea
+                              label="Description"
+                              placeholder="Enter lesson description"
+                              value={newLesson.description}
+                              onChange={(e) =>
+                                setNewLesson({
+                                  ...newLesson,
+                                  description: e.target.value,
+                                })
+                              }
+                              required
+                            />
+                            <CheckBoxContainer
+                              label="Active Lesson"
+                              description="Enable this lesson for students to access"
+                              checked={newLesson.isActive}
+                              onChange={(checked) =>
+                                setNewLesson({
+                                  ...newLesson,
+                                  isActive: checked,
+                                })
+                              }
+                            />
+                          </FlexBox>
+                          <div className="flex gap-2 mt-4">
+                            <OrangeButton
+                              onClick={() => addLesson(selectedModule._id!)}
+                              disabled={
+                                isApiLoading ||
+                                !newLesson.title.trim() ||
+                                !newLesson.description.trim()
+                              }
+                              glow={false}
+                              className="flex items-center gap-2"
+                            >
+                              {isApiLoading ? (
+                                <>
+                                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                  Creating Lesson...
+                                </>
+                              ) : (
+                                "Add Lesson"
+                              )}
+                            </OrangeButton>
                             <WhiteButton
                               onClick={() => setIsAddingLesson(false)}
-                            disabled={isApiLoading}
+                              disabled={isApiLoading}
                             >
                               Cancel
                             </WhiteButton>
                           </div>
                         </div>
-                    )}
+                      )}
 
-                    {/* Edit Lesson Form */}
-                    {isEditingLesson && (
-                      <div className="bg-gray-50 rounded-lg p-4 mb-4 border border-gray-200">
-                        <h4 className="text-lg font-medium text-gray-800 mb-4">
-                          Edit Lesson
-                        </h4>
-                        <FlexBox className="flex-col gap-4">
-                          <Input
-                            label="Lesson Title"
-                            placeholder="Enter lesson title"
-                            value={editingLesson.title}
-                            onChange={(e) =>
-                              setEditingLesson({
-                                ...editingLesson,
-                                title: e.target.value,
-                              })
-                            }
-                            required
-                          />
-                      <TextArea
-                        label="Description"
-                        placeholder="Enter lesson description"
-                            value={editingLesson.description}
-                        onChange={(e) =>
-                              setEditingLesson({
-                                ...editingLesson,
-                            description: e.target.value,
-                          })
-                        }
-                            required
-                      />
-                      <CheckBoxContainer
-                        label="Active Lesson"
-                        description="Enable this lesson for students to access"
-                            checked={editingLesson.isActive}
-                        onChange={(checked) =>
-                              setEditingLesson({ ...editingLesson, isActive: checked })
-                            }
-                          />
-                        </FlexBox>
-                        <div className="flex gap-2 mt-4">
-                          <OrangeButton 
-                            onClick={() => editLesson(selectedModule._id!)}
-                            disabled={isApiLoading || !editingLesson.title.trim() || !editingLesson.description.trim()}
-                            glow={false}
-                            className="flex items-center gap-2"
-                          >
-                            {isApiLoading ? (
-                              <>
-                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                Updating Lesson...
-                              </>
-                            ) : (
-                              "Update Lesson"
-                            )}
-                          </OrangeButton>
-                          <WhiteButton 
-                            onClick={() => {
-                              setIsEditingLesson(false);
-                              setEditingLesson({
-                                _id: "",
-                                title: "",
-                                description: "",
-                                isActive: true,
-                              });
-                            }}
-                            disabled={isApiLoading}
-                          >
-                            Cancel
-                          </WhiteButton>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Lessons List */}
-                    {!isAddingLesson && !isEditingLesson && (
-                    <div className="space-y-3">
-                      {selectedModule.lessons?.map((lesson) => (
-                        <div
-                          key={lesson._id}
-                          className="bg-gray-50 rounded-lg border border-gray-200"
-                        >
-                          {/* Lesson Header */}
-                          <div className="p-3 border-b border-gray-200">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                <button
-                                  onClick={() =>
-                                    toggleLessonExpansion(lesson._id!)
-                                  }
-                                  className="p-1 hover:bg-gray-200 rounded"
-                                >
-                                  {expandedLessons.has(lesson._id!) ? (
-                                    <ChevronDown className="w-4 h-4" />
-                                  ) : (
-                                    <ChevronRight className="w-4 h-4" />
-                                  )}
-                                </button>
-                                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                                  <Play className="w-4 h-4 text-blue-600" />
-                                </div>
-                                <div>
-                                  <h5 className="font-medium text-gray-800">
-                                    {lesson.title}
-                                  </h5>
-                                  <p className="text-sm text-gray-600">
-                                    {lesson.description}
-                                  </p>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm text-gray-500">
-                                  {lesson.contents?.length || 0} content
-                                </span>
-                                <button
-                                  onClick={() => startEditingLesson(lesson)}
-                                  disabled={isApiLoading}
-                                  className="p-1 hover:bg-gray-200 rounded disabled:opacity-50"
-                                >
-                                  <Edit3 className="w-4 h-4 text-gray-600" />
-                                </button>
-                                <button
-                                  onClick={() =>
-                                    deleteLesson(selectedModule._id!, lesson._id!)
-                                  }
-                                  disabled={isApiLoading}
-                                  className="p-1 hover:bg-red-100 rounded disabled:opacity-50"
-                                >
-                                  <Trash2 className="w-4 h-4 text-red-600" />
-                                </button>
-                              </div>
-                            </div>
+                      {/* Edit Lesson Form */}
+                      {isEditingLesson && (
+                        <div className="bg-gray-50 rounded-lg p-4 mb-4 border border-gray-200">
+                          <h4 className="text-lg font-medium text-gray-800 mb-4">
+                            Edit Lesson
+                          </h4>
+                          <FlexBox className="flex-col gap-4">
+                            <Input
+                              label="Lesson Title"
+                              placeholder="Enter lesson title"
+                              value={editingLesson.title}
+                              onChange={(e) =>
+                                setEditingLesson({
+                                  ...editingLesson,
+                                  title: e.target.value,
+                                })
+                              }
+                              required
+                            />
+                            <TextArea
+                              label="Description"
+                              placeholder="Enter lesson description"
+                              value={editingLesson.description}
+                              onChange={(e) =>
+                                setEditingLesson({
+                                  ...editingLesson,
+                                  description: e.target.value,
+                                })
+                              }
+                              required
+                            />
+                            <CheckBoxContainer
+                              label="Active Lesson"
+                              description="Enable this lesson for students to access"
+                              checked={editingLesson.isActive}
+                              onChange={(checked) =>
+                                setEditingLesson({
+                                  ...editingLesson,
+                                  isActive: checked,
+                                })
+                              }
+                            />
+                          </FlexBox>
+                          <div className="flex gap-2 mt-4">
+                            <OrangeButton
+                              onClick={() => editLesson(selectedModule._id!)}
+                              disabled={
+                                isApiLoading ||
+                                !editingLesson.title.trim() ||
+                                !editingLesson.description.trim()
+                              }
+                              glow={false}
+                              className="flex items-center gap-2"
+                            >
+                              {isApiLoading ? (
+                                <>
+                                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                  Updating Lesson...
+                                </>
+                              ) : (
+                                "Update Lesson"
+                              )}
+                            </OrangeButton>
+                            <WhiteButton
+                              onClick={() => {
+                                setIsEditingLesson(false);
+                                setEditingLesson({
+                                  _id: "",
+                                  title: "",
+                                  description: "",
+                                  isActive: true,
+                                });
+                              }}
+                              disabled={isApiLoading}
+                            >
+                              Cancel
+                            </WhiteButton>
                           </div>
+                        </div>
+                      )}
 
-                          {/* Lesson Content */}
-                          {expandedLessons.has(lesson._id!) && (
-                            <div className="p-3">
-                              {/* Add Content Buttons */}
-                              <div className="flex justify-between items-center mb-3">
-                                <h6 className="text-md font-medium text-gray-700">
-                                  Content
-                                </h6>
-                                {!isAddingContent && !isEditingContent && (
-                                  <div className="flex gap-2">
-                                <WhiteButton
-                                      onClick={() => startAddingContent("video")}
-                                  className="flex items-center gap-2 text-sm"
-                                >
-                                      <FileVideo className="w-3 h-3" />
-                                      Add Video
-                                    </WhiteButton>
-                                    <WhiteButton
-                                      onClick={() => startAddingContent("document")}
-                                      className="flex items-center gap-2 text-sm"
+                      {/* Lessons List */}
+                      {!isAddingLesson && !isEditingLesson && (
+                        <div className="space-y-3">
+                          {selectedModule.lessons?.map((lesson) => (
+                            <div
+                              key={lesson._id}
+                              className="bg-gray-50 rounded-lg border border-gray-200"
+                            >
+                              {/* Lesson Header */}
+                              <div className="p-3 border-b border-gray-200">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-3">
+                                    <button
+                                      onClick={() =>
+                                        toggleLessonExpansion(lesson._id!)
+                                      }
+                                      className="p-1 hover:bg-gray-200 rounded"
                                     >
-                                      <FileText className="w-3 h-3" />
-                                      Add Document
-                                    </WhiteButton>
-                                    <WhiteButton
-                                      onClick={() => startAddingContent("quiz")}
-                                      className="flex items-center gap-2 text-sm"
-                                    >
-                                      <HelpCircle className="w-3 h-3" />
-                                      Add Quiz
-                                </WhiteButton>
-                                  </div>
-                                )}
-                              </div>
-
-                              {/* Edit Content Form */}
-                              {isEditingContent && (
-                                <div className="bg-white rounded-lg p-3 mb-3 border border-gray-200">
-                                  <div className="flex items-center justify-between mb-3">
-                                    <h6 className="text-sm font-medium text-gray-800">
-                                      Edit {editingContent.type.charAt(0).toUpperCase() + editingContent.type.slice(1)} Content
-                                  </h6>
-                                    <div className="flex items-center gap-2">
-                                      <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${
-                                        editingContent.type === "video" ? "bg-green-100" : 
-                                        editingContent.type === "document" ? "bg-blue-100" : "bg-purple-100"
-                                      }`}>
-                                        {editingContent.type === "video" ? (
-                                          <FileVideo className="w-3 h-3 text-green-600" />
-                                        ) : editingContent.type === "document" ? (
-                                          <FileText className="w-3 h-3 text-blue-600" />
-                                        ) : (
-                                          <HelpCircle className="w-3 h-3 text-purple-600" />
-                                        )}
-                                      </div>
-                                    </div>
-                                  </div>
-                                  
-                                  <FlexBox className="flex-col gap-3">
-                                    <Input
-                                      label="Content Title"
-                                      placeholder="Enter content title"
-                                      value={editingContent.title}
-                                      onChange={(e) =>
-                                        setEditingContent({
-                                          ...editingContent,
-                                          title: e.target.value,
-                                        })
-                                      }
-                                      required
-                                    />
-                                    <TextArea
-                                      label="Description"
-                                      placeholder="Enter content description"
-                                      value={editingContent.description}
-                                        onChange={(e) =>
-                                        setEditingContent({
-                                          ...editingContent,
-                                          description: e.target.value,
-                                        })
-                                      }
-                                      required
-                                    />
-                                    <CheckBoxContainer
-                                      label="Active Content"
-                                      description="Enable this content for students to access"
-                                      checked={editingContent.isActive}
-                                      onChange={(checked) =>
-                                        setEditingContent({ ...editingContent, isActive: checked })
-                                      }
-                                    />
-
-                                    {/* Video Upload for Video Content */}
-                                    {editingContent.type === "video" && (
-                                      <>
-                                        <UploadMediaContainer
-                                          title="Video Content"
-                                          description="Upload video file or add video URL"
-                                          type="video"
-                                          mediaUrl={editingContent.videoUrl}
-                                          mediaSource={editingContent.videoSource}
-                                          s3Key={editingContent.videoS3Key}
-                                          folderName={contentFolderName}
-                                          uploadContext={`${
-                                            editingContent.title || "content"
-                                          }-${lesson.title || "lesson"}`}
-                                          onFileUpload={handleContentVideoUpload}
-                                          onFileRemove={handleContentVideoRemove}
-                                          onUrlSubmit={handleContentVideoUrlSubmit}
-                                          allowUrlInput={true}
-                                          maxSize={500}
-                                          className="w-full"
-                                          required
-                                          isUploading={isUploadingVideo}
-                                        />
-                                        <UploadMediaContainer
-                                          title="Video Thumbnail (Optional)"
-                                          description="Upload a thumbnail image for this video"
-                                          type="image"
-                                          mediaUrl={editingContent.videoThumbnailUrl}
-                                          mediaSource={editingContent.videoThumbnailSource}
-                                          s3Key={editingContent.videoThumbnailS3Key}
-                                          folderName={contentFolderName}
-                                          uploadContext={`${
-                                            editingContent.title || "content"
-                                          }-thumbnail-${lesson.title || "lesson"}`}
-                                          onFileUpload={handleContentVideoThumbnailUpload}
-                                          onFileRemove={handleContentVideoThumbnailRemove}
-                                          onUrlSubmit={handleContentVideoThumbnailUrlSubmit}
-                                          allowUrlInput={true}
-                                          maxSize={10}
-                                          className="w-full"
-                                          isUploading={isUploadingVideoThumbnail}
-                                        />
-                                        <Input
-                                          label="Video Duration (in seconds)"
-                                          placeholder="Enter duration in seconds (e.g., 150 for 2 minutes 30 seconds)"
-                                          value={editingContent.videoDuration}
-                                          onChange={(e) =>
-                                            setEditingContent({
-                                              ...editingContent,
-                                              videoDuration: e.target.value,
-                                            })
-                                          }
-                                          required
-                                          className="w-full"
-                                        />
-                                      </>
-                                    )}
-
-                                    {/* Document Upload for Document Content */}
-                                    {editingContent.type === "document" && (
-                                      <UploadMediaContainer
-                                        title="Document Content"
-                                        description="Upload document file or add document URL"
-                                        type="document"
-                                        mediaUrl={editingContent.documentUrl}
-                                        mediaSource={editingContent.documentSource}
-                                        s3Key={editingContent.documentS3Key}
-                                        folderName={contentFolderName}
-                                        uploadContext={`${
-                                          editingContent.title || "content"
-                                        }-${lesson.title || "lesson"}`}
-                                        onFileUpload={handleContentDocumentUpload}
-                                        onFileRemove={handleContentDocumentRemove}
-                                        onUrlSubmit={handleContentDocumentUrlSubmit}
-                                        allowUrlInput={true}
-                                        maxSize={50}
-                                        className="w-full"
-                                        required
-                                        isUploading={isUploadingDocument}
-                                      />
-                                    )}
-
-                                    {/* Quiz Content - Basic form for now */}
-                                    {editingContent.type === "quiz" && (
-                                      <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
-                                        <div className="flex items-center gap-2 mb-2">
-                                          <HelpCircle className="w-4 h-4 text-purple-600" />
-                                          <span className="text-sm font-medium text-purple-800">Quiz Content</span>
-                                        </div>
-                                        <p className="text-sm text-purple-700">
-                                          Quiz questions and options will be configured in the next step.
-                                        </p>
-                                      </div>
-                                    )}
-                                  </FlexBox>
-
-                                  <div className="flex items-end gap-2 mt-4">
-                                    <OrangeButton
-                                      onClick={() => editContent(lesson._id!, selectedModule._id!)}
-                                      disabled={
-                                        !editingContent.title.trim() || 
-                                        !editingContent.description.trim() ||
-                                        isUploadingVideo ||
-                                        isUploadingVideoThumbnail ||
-                                        isUploadingDocument ||
-                                        isExtractingDuration
-                                      }
-                                      glow={false}
-                                      className="flex items-center gap-2 text-sm"
-                                    >
-                                      {(isUploadingVideo || isUploadingVideoThumbnail || isUploadingDocument || isExtractingDuration) ? (
-                                        <>
-                                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                          {isExtractingDuration ? "Extracting duration..." : "Uploading..."}
-                                        </>
+                                      {expandedLessons.has(lesson._id!) ? (
+                                        <ChevronDown className="w-4 h-4" />
                                       ) : (
-                                        "Update Content"
+                                        <ChevronRight className="w-4 h-4" />
                                       )}
-                                    </OrangeButton>
-                                    <WhiteButton
-                                      onClick={() => {
-                                        setIsEditingContent(false);
-                                        setEditingContent({
-                                          _id: "",
-                                          title: "",
-                                          description: "",
-                                          type: "video",
-                                          videoUrl: "",
-                                          videoSource: "url",
-                                          videoS3Key: "",
-                                          videoThumbnailUrl: "",
-                                          videoThumbnailSource: "url",
-                                          videoThumbnailS3Key: "",
-                                          videoDuration: "",
-                                          documentUrl: "",
-                                          documentSource: "url",
-                                          documentS3Key: "",
-                                          isActive: true,
-                                        });
-                                      }}
-                                      disabled={isUploadingVideo || isUploadingVideoThumbnail || isUploadingDocument || isExtractingDuration}
-                                      className="text-sm"
-                                    >
-                                      Cancel
-                                    </WhiteButton>
+                                    </button>
+                                    <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                                      <Play className="w-4 h-4 text-blue-600" />
+                                    </div>
+                                    <div>
+                                      <h5 className="font-medium text-gray-800">
+                                        {lesson.title}
+                                      </h5>
+                                      <p className="text-sm text-gray-600">
+                                        {lesson.description}
+                                      </p>
                                     </div>
                                   </div>
-                              )}
-
-                              {/* Add Content Form */}
-                              {isAddingContent && contentTypeToAdd && (
-                                <div className="bg-white rounded-lg p-3 mb-3 border border-gray-200">
-                                  <div className="flex items-center justify-between mb-3">
-                                    <h6 className="text-sm font-medium text-gray-800">
-                                      Add New {contentTypeToAdd.charAt(0).toUpperCase() + contentTypeToAdd.slice(1)} Content
-                                    </h6>
-                                    <div className="flex items-center gap-2">
-                                      <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${
-                                        contentTypeToAdd === "video" ? "bg-green-100" : 
-                                        contentTypeToAdd === "document" ? "bg-blue-100" : "bg-purple-100"
-                                      }`}>
-                                        {contentTypeToAdd === "video" ? (
-                                          <FileVideo className="w-3 h-3 text-green-600" />
-                                        ) : contentTypeToAdd === "document" ? (
-                                          <FileText className="w-3 h-3 text-blue-600" />
-                                        ) : (
-                                          <HelpCircle className="w-3 h-3 text-purple-600" />
-                                        )}
-                                      </div>
-                                    </div>
-                                  </div>
-                                  
-                                  <FlexBox className="flex-col gap-3">
-                                    <Input
-                                      label="Content Title"
-                                      placeholder="Enter content title"
-                                      value={newContent.title}
-                                      onChange={(e) =>
-                                        setNewContent({
-                                          ...newContent,
-                                          title: e.target.value,
-                                        })
-                                      }
-                                      required
-                                    />
-                                  <TextArea
-                                    label="Description"
-                                    placeholder="Enter content description"
-                                    value={newContent.description}
-                                    onChange={(e) =>
-                                      setNewContent({
-                                        ...newContent,
-                                        description: e.target.value,
-                                      })
-                                    }
-                                      required
-                                  />
-                                  <CheckBoxContainer
-                                    label="Active Content"
-                                    description="Enable this content for students to access"
-                                    checked={newContent.isActive}
-                                    onChange={(checked) =>
-                                      setNewContent({ ...newContent, isActive: checked })
-                                    }
-                                  />
-
-                                  {/* Video Upload for Video Content */}
-                                    {contentTypeToAdd === "video" && (
-                                      <>
-                                      <UploadMediaContainer
-                                        title="Video Content"
-                                        description="Upload video file or add video URL"
-                                        type="video"
-                                        mediaUrl={newContent.videoUrl}
-                                        mediaSource={newContent.videoSource}
-                                        s3Key={newContent.videoS3Key}
-                                        folderName={contentFolderName}
-                                        uploadContext={`${
-                                          newContent.title || "content"
-                                        }-${lesson.title || "lesson"}`}
-                                        onFileUpload={handleContentVideoUpload}
-                                        onFileRemove={handleContentVideoRemove}
-                                          onUrlSubmit={handleContentVideoUrlSubmit}
-                                        allowUrlInput={true}
-                                        maxSize={500}
-                                        className="w-full"
-                                          required
-                                          isUploading={isUploadingVideo}
-                                        />
-                                        <UploadMediaContainer
-                                          title="Video Thumbnail (Optional)"
-                                          description="Upload a thumbnail image for this video"
-                                          type="image"
-                                          mediaUrl={newContent.videoThumbnailUrl}
-                                          mediaSource={newContent.videoThumbnailSource}
-                                          s3Key={newContent.videoThumbnailS3Key}
-                                          folderName={contentFolderName}
-                                          uploadContext={`${
-                                            newContent.title || "content"
-                                          }-thumbnail-${lesson.title || "lesson"}`}
-                                          onFileUpload={handleContentVideoThumbnailUpload}
-                                          onFileRemove={handleContentVideoThumbnailRemove}
-                                          onUrlSubmit={handleContentVideoThumbnailUrlSubmit}
-                                          allowUrlInput={true}
-                                          maxSize={10}
-                                          className="w-full"
-                                          isUploading={isUploadingVideoThumbnail}
-                                        />
-                                        <Input
-                                          label="Video Duration (in seconds)"
-                                          placeholder="Enter duration in seconds (e.g., 150 for 2 minutes 30 seconds)"
-                                          value={newContent.videoDuration}
-                                          onChange={(e) =>
-                                            setNewContent({
-                                              ...newContent,
-                                              videoDuration: e.target.value,
-                                            })
-                                          }
-                                          required
-                                          className="w-full"
-                                        />
-                                      </>
-                                    )}
-
-                                    {/* Document Upload for Document Content */}
-                                    {contentTypeToAdd === "document" && (
-                                      <UploadMediaContainer
-                                        title="Document Content"
-                                        description="Upload document file or add document URL"
-                                        type="document"
-                                        mediaUrl={newContent.documentUrl}
-                                        mediaSource={newContent.documentSource}
-                                        s3Key={newContent.documentS3Key}
-                                        folderName={contentFolderName}
-                                        uploadContext={`${
-                                          newContent.title || "content"
-                                        }-${lesson.title || "lesson"}`}
-                                        onFileUpload={handleContentDocumentUpload}
-                                        onFileRemove={handleContentDocumentRemove}
-                                        onUrlSubmit={handleContentDocumentUrlSubmit}
-                                        allowUrlInput={true}
-                                        maxSize={50}
-                                        className="w-full"
-                                        required
-                                        isUploading={isUploadingDocument}
-                                      />
-                                    )}
-
-                                    {/* Quiz Content - Basic form for now */}
-                                    {contentTypeToAdd === "quiz" && (
-                                      <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
-                                        <div className="flex items-center gap-2 mb-2">
-                                          <HelpCircle className="w-4 h-4 text-purple-600" />
-                                          <span className="text-sm font-medium text-purple-800">Quiz Content</span>
-                                        </div>
-                                        <p className="text-sm text-purple-700">
-                                          Quiz questions and options will be configured in the next step.
-                                        </p>
-                                    </div>
-                                  )}
-                                  </FlexBox>
-
-                                  <div className="flex items-end gap-2 mt-4">
-                                    <OrangeButton
-                                      onClick={() => addContent(lesson._id!, selectedModule._id!)}
-                                      disabled={
-                                        !newContent.title.trim() || 
-                                        !newContent.description.trim() ||
-                                        isUploadingVideo ||
-                                        isUploadingVideoThumbnail ||
-                                        isUploadingDocument ||
-                                        isExtractingDuration
-                                      }
-                                      glow={false}
-                                      className="flex items-center gap-2 text-sm"
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-sm text-gray-500">
+                                      {lesson.contents?.length || 0} content
+                                    </span>
+                                    <button
+                                      onClick={() => startEditingLesson(lesson)}
+                                      disabled={isApiLoading}
+                                      className="p-1 hover:bg-gray-200 rounded disabled:opacity-50"
                                     >
-                                      {(isUploadingVideo || isUploadingVideoThumbnail || isUploadingDocument || isExtractingDuration) ? (
-                                        <>
-                                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                          {isExtractingDuration ? "Extracting duration..." : "Uploading..."}
-                                        </>
-                                      ) : (
-                                        `Add ${contentTypeToAdd.charAt(0).toUpperCase() + contentTypeToAdd.slice(1)}`
-                                      )}
-                                    </OrangeButton>
-                                    <WhiteButton
-                                      onClick={() => {
-                                        setIsAddingContent(false);
-                                        setContentTypeToAdd(null);
-                                      }}
-                                      disabled={isUploadingVideo || isUploadingVideoThumbnail || isUploadingDocument || isExtractingDuration}
-                                      className="text-sm"
+                                      <Edit3 className="w-4 h-4 text-gray-600" />
+                                    </button>
+                                    <button
+                                      onClick={() =>
+                                        deleteLesson(
+                                          selectedModule._id!,
+                                          lesson._id!
+                                        )
+                                      }
+                                      disabled={isApiLoading}
+                                      className="p-1 hover:bg-red-100 rounded disabled:opacity-50"
                                     >
-                                      Cancel
-                                    </WhiteButton>
+                                      <Trash2 className="w-4 h-4 text-red-600" />
+                                    </button>
                                   </div>
                                 </div>
-                              )}
+                              </div>
 
-                              {/* Content List */}
-                              {!isEditingContent && (
-                              <div className="space-y-2">
-                                {lesson.contents?.map((content) => (
-                                  <div
-                                    key={content._id}
-                                    className="bg-white rounded-lg p-3 border border-gray-200"
-                                  >
-                                    <div className="flex items-center justify-between">
-                                      <div className="flex items-center gap-3">
-                                        <div
-                                          className={`w-6 h-6 rounded-lg flex items-center justify-center ${
-                                            content.type === "video"
-                                              ? "bg-green-100"
-                                              : content.type === "document"
-                                              ? "bg-blue-100"
-                                              : "bg-purple-100"
-                                          }`}
-                                        >
-                                          {content.type === "video" ? (
-                                            <FileVideo className="w-3 h-3 text-green-600" />
-                                          ) : content.type === "document" ? (
-                                            <FileText className="w-3 h-3 text-blue-600" />
-                                          ) : (
-                                            <HelpCircle className="w-3 h-3 text-purple-600" />
-                                          )}
-                                        </div>
-                                        <div>
-                                          <div className="font-medium text-gray-800 text-sm">
-                                            {content.title}
-                                          </div>
-                                          <p className="text-xs text-gray-600">
-                                            {content.description}
-                                          </p>
-                                          {content.type === "video" && (content as VideoContent).duration && (
-                                            <p className="text-xs text-blue-600 font-medium">
-                                              Duration: {formatDuration((content as VideoContent).duration!)}
-                                            </p>
-                                          )}
-                                        </div>
-                                      </div>
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-xs text-gray-500 capitalize">
-                                          {content.type}
-                                        </span>
-                                        <button
-                                          onClick={() => startEditingContent(content)}
-                                          disabled={isApiLoading}
-                                          className="p-1 hover:bg-gray-200 rounded disabled:opacity-50"
-                                        >
-                                          <Edit3 className="w-3 h-3 text-gray-600" />
-                                        </button>
-                                        <button
+                              {/* Lesson Content */}
+                              {expandedLessons.has(lesson._id!) && (
+                                <div className="p-3">
+                                  {/* Add Content Buttons */}
+                                  <div className="flex justify-between items-center mb-3">
+                                    <h6 className="text-md font-medium text-gray-700">
+                                      Content
+                                    </h6>
+                                    {!isAddingContent && !isEditingContent && (
+                                      <div className="flex gap-2">
+                                        <WhiteButton
                                           onClick={() =>
-                                            deleteContent(
-                                              selectedModule._id!,
-                                              lesson._id!,
-                                              content._id!
-                                            )
+                                            startAddingContent("video")
                                           }
-                                          className="p-1 hover:bg-red-100 rounded"
+                                          className="flex items-center gap-2 text-sm"
                                         >
-                                          <Trash2 className="w-3 h-3 text-red-600" />
-                                        </button>
+                                          <FileVideo className="w-3 h-3" />
+                                          Add Video
+                                        </WhiteButton>
+                                        <WhiteButton
+                                          onClick={() =>
+                                            startAddingContent("document")
+                                          }
+                                          className="flex items-center gap-2 text-sm"
+                                        >
+                                          <FileText className="w-3 h-3" />
+                                          Add Document
+                                        </WhiteButton>
+                                        <WhiteButton
+                                          onClick={() =>
+                                            startAddingContent("quiz")
+                                          }
+                                          className="flex items-center gap-2 text-sm"
+                                        >
+                                          <HelpCircle className="w-3 h-3" />
+                                          Add Quiz
+                                        </WhiteButton>
                                       </div>
-                                    </div>
+                                    )}
+                                  </div>
 
-                                    {/* Video Preview for Video Content */}
-                                    {content.type === "video" &&
-                                      (content as VideoContent).sources?.[0]
-                                        ?.videoUrl && (
-                                        <div className="mt-3">
-                                          <div className="relative">
-                                          <video
-                                            src={
-                                              (content as VideoContent)
-                                                .sources[0].videoUrl
-                                            }
-                                            className="w-full max-w-xs h-32 object-cover rounded border"
-                                            controls
-                                              poster={(content as VideoContent).thumbnailUrl}
-                                            />
-                                            {(content as VideoContent).thumbnailUrl && (
-                                              <div className="absolute top-2 right-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
-                                                Thumbnail
-                                              </div>
+                                  {/* Edit Content Form */}
+                                  {isEditingContent && (
+                                    <div className="bg-white rounded-lg p-3 mb-3 border border-gray-200">
+                                      <div className="flex items-center justify-between mb-3">
+                                        <h6 className="text-sm font-medium text-gray-800">
+                                          Edit{" "}
+                                          {editingContent.type
+                                            .charAt(0)
+                                            .toUpperCase() +
+                                            editingContent.type.slice(1)}{" "}
+                                          Content
+                                        </h6>
+                                        <div className="flex items-center gap-2">
+                                          <div
+                                            className={`w-6 h-6 rounded-lg flex items-center justify-center ${
+                                              editingContent.type === "video"
+                                                ? "bg-green-100"
+                                                : editingContent.type ===
+                                                  "document"
+                                                ? "bg-blue-100"
+                                                : "bg-purple-100"
+                                            }`}
+                                          >
+                                            {editingContent.type === "video" ? (
+                                              <FileVideo className="w-3 h-3 text-green-600" />
+                                            ) : editingContent.type ===
+                                              "document" ? (
+                                              <FileText className="w-3 h-3 text-blue-600" />
+                                            ) : (
+                                              <HelpCircle className="w-3 h-3 text-purple-600" />
                                             )}
                                           </div>
                                         </div>
-                                      )}
+                                      </div>
 
-                                    {/* Document Preview for Document Content */}
-                                    {content.type === "document" &&
-                                      (content as DocumentContent).documentUrl && (
-                                        <div className="mt-3">
-                                          <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                                            <FileText className="w-4 h-4 text-blue-600" />
-                                            <a
-                                              href={(content as DocumentContent).documentUrl}
-                                              target="_blank"
-                                              rel="noopener noreferrer"
-                                              className="text-sm text-blue-600 hover:text-blue-800 underline"
-                                            >
-                                              View Document
-                                            </a>
+                                      <FlexBox className="flex-col gap-3">
+                                        <Input
+                                          label="Content Title"
+                                          placeholder="Enter content title"
+                                          value={editingContent.title}
+                                          onChange={(e) =>
+                                            setEditingContent({
+                                              ...editingContent,
+                                              title: e.target.value,
+                                            })
+                                          }
+                                          required
+                                        />
+                                        <TextArea
+                                          label="Description"
+                                          placeholder="Enter content description"
+                                          value={editingContent.description}
+                                          onChange={(e) =>
+                                            setEditingContent({
+                                              ...editingContent,
+                                              description: e.target.value,
+                                            })
+                                          }
+                                          required
+                                        />
+                                        <CheckBoxContainer
+                                          label="Active Content"
+                                          description="Enable this content for students to access"
+                                          checked={editingContent.isActive}
+                                          onChange={(checked) =>
+                                            setEditingContent({
+                                              ...editingContent,
+                                              isActive: checked,
+                                            })
+                                          }
+                                        />
+
+                                        {/* Video Upload for Video Content */}
+                                        {editingContent.type === "video" && (
+                                          <>
+                                            <UploadMediaContainer
+                                              title="Video Content"
+                                              description="Upload video file or add video URL"
+                                              type="video"
+                                              mediaUrl={editingContent.videoUrl}
+                                              mediaSource={
+                                                editingContent.videoSource
+                                              }
+                                              s3Key={editingContent.videoS3Key}
+                                              folderName={contentFolderName}
+                                              uploadContext={`${
+                                                editingContent.title ||
+                                                "content"
+                                              }-${lesson.title || "lesson"}`}
+                                              onFileUpload={
+                                                handleContentVideoUpload
+                                              }
+                                              onFileRemove={
+                                                handleContentVideoRemove
+                                              }
+                                              onUrlSubmit={
+                                                handleContentVideoUrlSubmit
+                                              }
+                                              allowUrlInput={true}
+                                              maxSize={500}
+                                              className="w-full"
+                                              required
+                                              isUploading={isUploadingVideo}
+                                            />
+                                            <UploadMediaContainer
+                                              title="Video Thumbnail (Optional)"
+                                              description="Upload a thumbnail image for this video"
+                                              type="image"
+                                              mediaUrl={
+                                                editingContent.videoThumbnailUrl
+                                              }
+                                              mediaSource={
+                                                editingContent.videoThumbnailSource
+                                              }
+                                              s3Key={
+                                                editingContent.videoThumbnailS3Key
+                                              }
+                                              folderName={contentFolderName}
+                                              uploadContext={`${
+                                                editingContent.title ||
+                                                "content"
+                                              }-thumbnail-${
+                                                lesson.title || "lesson"
+                                              }`}
+                                              onFileUpload={
+                                                handleContentVideoThumbnailUpload
+                                              }
+                                              onFileRemove={
+                                                handleContentVideoThumbnailRemove
+                                              }
+                                              onUrlSubmit={
+                                                handleContentVideoThumbnailUrlSubmit
+                                              }
+                                              allowUrlInput={true}
+                                              maxSize={10}
+                                              className="w-full"
+                                              isUploading={
+                                                isUploadingVideoThumbnail
+                                              }
+                                            />
+                                            <Input
+                                              label="Video Duration (in seconds)"
+                                              placeholder="Enter duration in seconds (e.g., 150 for 2 minutes 30 seconds)"
+                                              value={
+                                                editingContent.videoDuration
+                                              }
+                                              onChange={(e) =>
+                                                setEditingContent({
+                                                  ...editingContent,
+                                                  videoDuration: e.target.value,
+                                                })
+                                              }
+                                              required
+                                              className="w-full"
+                                            />
+                                          </>
+                                        )}
+
+                                        {/* Document Upload for Document Content */}
+                                        {editingContent.type === "document" && (
+                                          <UploadMediaContainer
+                                            title="Document Content"
+                                            description="Upload document file or add document URL"
+                                            type="document"
+                                            mediaUrl={
+                                              editingContent.documentUrl
+                                            }
+                                            mediaSource={
+                                              editingContent.documentSource
+                                            }
+                                            s3Key={editingContent.documentS3Key}
+                                            folderName={contentFolderName}
+                                            uploadContext={`${
+                                              editingContent.title || "content"
+                                            }-${lesson.title || "lesson"}`}
+                                            onFileUpload={
+                                              handleContentDocumentUpload
+                                            }
+                                            onFileRemove={
+                                              handleContentDocumentRemove
+                                            }
+                                            onUrlSubmit={
+                                              handleContentDocumentUrlSubmit
+                                            }
+                                            allowUrlInput={true}
+                                            maxSize={50}
+                                            className="w-full"
+                                            required
+                                            isUploading={isUploadingDocument}
+                                          />
+                                        )}
+
+                                        {/* Quiz Content - Basic form for now */}
+                                        {editingContent.type === "quiz" && (
+                                          <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+                                            <div className="flex items-center gap-2 mb-2">
+                                              <HelpCircle className="w-4 h-4 text-purple-600" />
+                                              <span className="text-sm font-medium text-purple-800">
+                                                Quiz Content
+                                              </span>
+                                            </div>
+                                            <p className="text-sm text-purple-700">
+                                              Quiz questions and options will be
+                                              configured in the next step.
+                                            </p>
+                                          </div>
+                                        )}
+                                      </FlexBox>
+
+                                      <div className="flex items-end gap-2 mt-4">
+                                        <OrangeButton
+                                          onClick={() =>
+                                            editContent(
+                                              lesson._id!,
+                                              selectedModule._id!
+                                            )
+                                          }
+                                          disabled={
+                                            !editingContent.title.trim() ||
+                                            !editingContent.description.trim() ||
+                                            isUploadingVideo ||
+                                            isUploadingVideoThumbnail ||
+                                            isUploadingDocument ||
+                                            isExtractingDuration
+                                          }
+                                          glow={false}
+                                          className="flex items-center gap-2 text-sm"
+                                        >
+                                          {isUploadingVideo ||
+                                          isUploadingVideoThumbnail ||
+                                          isUploadingDocument ||
+                                          isExtractingDuration ? (
+                                            <>
+                                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                              {isExtractingDuration
+                                                ? "Extracting duration..."
+                                                : "Uploading..."}
+                                            </>
+                                          ) : (
+                                            "Update Content"
+                                          )}
+                                        </OrangeButton>
+                                        <WhiteButton
+                                          onClick={() => {
+                                            setIsEditingContent(false);
+                                            setEditingContent({
+                                              _id: "",
+                                              title: "",
+                                              description: "",
+                                              type: "video",
+                                              videoUrl: "",
+                                              videoSource: "url",
+                                              videoS3Key: "",
+                                              videoThumbnailUrl: "",
+                                              videoThumbnailSource: "url",
+                                              videoThumbnailS3Key: "",
+                                              videoDuration: "",
+                                              documentUrl: "",
+                                              documentSource: "url",
+                                              documentS3Key: "",
+                                              isActive: true,
+                                            });
+                                          }}
+                                          disabled={
+                                            isUploadingVideo ||
+                                            isUploadingVideoThumbnail ||
+                                            isUploadingDocument ||
+                                            isExtractingDuration
+                                          }
+                                          className="text-sm"
+                                        >
+                                          Cancel
+                                        </WhiteButton>
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Add Content Form */}
+                                  {isAddingContent && contentTypeToAdd && (
+                                    <div className="bg-white rounded-lg p-3 mb-3 border border-gray-200">
+                                      <div className="flex items-center justify-between mb-3">
+                                        <h6 className="text-sm font-medium text-gray-800">
+                                          Add New{" "}
+                                          {contentTypeToAdd
+                                            .charAt(0)
+                                            .toUpperCase() +
+                                            contentTypeToAdd.slice(1)}{" "}
+                                          Content
+                                        </h6>
+                                        <div className="flex items-center gap-2">
+                                          <div
+                                            className={`w-6 h-6 rounded-lg flex items-center justify-center ${
+                                              contentTypeToAdd === "video"
+                                                ? "bg-green-100"
+                                                : contentTypeToAdd ===
+                                                  "document"
+                                                ? "bg-blue-100"
+                                                : "bg-purple-100"
+                                            }`}
+                                          >
+                                            {contentTypeToAdd === "video" ? (
+                                              <FileVideo className="w-3 h-3 text-green-600" />
+                                            ) : contentTypeToAdd ===
+                                              "document" ? (
+                                              <FileText className="w-3 h-3 text-blue-600" />
+                                            ) : (
+                                              <HelpCircle className="w-3 h-3 text-purple-600" />
+                                            )}
                                           </div>
                                         </div>
-                                      )}
-                                  </div>
-                                ))}
-                              </div>
+                                      </div>
+
+                                      <FlexBox className="flex-col gap-3">
+                                        <Input
+                                          label="Content Title"
+                                          placeholder="Enter content title"
+                                          value={newContent.title}
+                                          onChange={(e) =>
+                                            setNewContent({
+                                              ...newContent,
+                                              title: e.target.value,
+                                            })
+                                          }
+                                          required
+                                        />
+                                        <TextArea
+                                          label="Description"
+                                          placeholder="Enter content description"
+                                          value={newContent.description}
+                                          onChange={(e) =>
+                                            setNewContent({
+                                              ...newContent,
+                                              description: e.target.value,
+                                            })
+                                          }
+                                          required
+                                        />
+                                        <CheckBoxContainer
+                                          label="Active Content"
+                                          description="Enable this content for students to access"
+                                          checked={newContent.isActive}
+                                          onChange={(checked) =>
+                                            setNewContent({
+                                              ...newContent,
+                                              isActive: checked,
+                                            })
+                                          }
+                                        />
+
+                                        {/* Video Upload for Video Content */}
+                                        {contentTypeToAdd === "video" && (
+                                          <>
+                                            <UploadMediaContainer
+                                              title="Video Content"
+                                              description="Upload video file or add video URL"
+                                              type="video"
+                                              mediaUrl={newContent.videoUrl}
+                                              mediaSource={
+                                                newContent.videoSource
+                                              }
+                                              s3Key={newContent.videoS3Key}
+                                              folderName={contentFolderName}
+                                              uploadContext={`${
+                                                newContent.title || "content"
+                                              }-${lesson.title || "lesson"}`}
+                                              onFileUpload={
+                                                handleContentVideoUpload
+                                              }
+                                              onFileRemove={
+                                                handleContentVideoRemove
+                                              }
+                                              onUrlSubmit={
+                                                handleContentVideoUrlSubmit
+                                              }
+                                              allowUrlInput={true}
+                                              maxSize={500}
+                                              className="w-full"
+                                              required
+                                              isUploading={isUploadingVideo}
+                                            />
+                                            <UploadMediaContainer
+                                              title="Video Thumbnail (Optional)"
+                                              description="Upload a thumbnail image for this video"
+                                              type="image"
+                                              mediaUrl={
+                                                newContent.videoThumbnailUrl
+                                              }
+                                              mediaSource={
+                                                newContent.videoThumbnailSource
+                                              }
+                                              s3Key={
+                                                newContent.videoThumbnailS3Key
+                                              }
+                                              folderName={contentFolderName}
+                                              uploadContext={`${
+                                                newContent.title || "content"
+                                              }-thumbnail-${
+                                                lesson.title || "lesson"
+                                              }`}
+                                              onFileUpload={
+                                                handleContentVideoThumbnailUpload
+                                              }
+                                              onFileRemove={
+                                                handleContentVideoThumbnailRemove
+                                              }
+                                              onUrlSubmit={
+                                                handleContentVideoThumbnailUrlSubmit
+                                              }
+                                              allowUrlInput={true}
+                                              maxSize={10}
+                                              className="w-full"
+                                              isUploading={
+                                                isUploadingVideoThumbnail
+                                              }
+                                            />
+                                            <Input
+                                              label="Video Duration (in seconds)"
+                                              placeholder="Enter duration in seconds (e.g., 150 for 2 minutes 30 seconds)"
+                                              value={newContent.videoDuration}
+                                              onChange={(e) =>
+                                                setNewContent({
+                                                  ...newContent,
+                                                  videoDuration: e.target.value,
+                                                })
+                                              }
+                                              required
+                                              className="w-full"
+                                            />
+                                          </>
+                                        )}
+
+                                        {/* Document Upload for Document Content */}
+                                        {contentTypeToAdd === "document" && (
+                                          <UploadMediaContainer
+                                            title="Document Content"
+                                            description="Upload document file or add document URL"
+                                            type="document"
+                                            mediaUrl={newContent.documentUrl}
+                                            mediaSource={
+                                              newContent.documentSource
+                                            }
+                                            s3Key={newContent.documentS3Key}
+                                            folderName={contentFolderName}
+                                            uploadContext={`${
+                                              newContent.title || "content"
+                                            }-${lesson.title || "lesson"}`}
+                                            onFileUpload={
+                                              handleContentDocumentUpload
+                                            }
+                                            onFileRemove={
+                                              handleContentDocumentRemove
+                                            }
+                                            onUrlSubmit={
+                                              handleContentDocumentUrlSubmit
+                                            }
+                                            allowUrlInput={true}
+                                            maxSize={50}
+                                            className="w-full"
+                                            required
+                                            isUploading={isUploadingDocument}
+                                          />
+                                        )}
+
+                                        {/* Quiz Content - Basic form for now */}
+                                        {contentTypeToAdd === "quiz" && (
+                                          <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+                                            <div className="flex items-center gap-2 mb-2">
+                                              <HelpCircle className="w-4 h-4 text-purple-600" />
+                                              <span className="text-sm font-medium text-purple-800">
+                                                Quiz Content
+                                              </span>
+                                            </div>
+                                            <p className="text-sm text-purple-700">
+                                              Quiz questions and options will be
+                                              configured in the next step.
+                                            </p>
+                                          </div>
+                                        )}
+                                      </FlexBox>
+
+                                      <div className="flex items-end gap-2 mt-4">
+                                        <OrangeButton
+                                          onClick={() =>
+                                            addContent(
+                                              lesson._id!,
+                                              selectedModule._id!
+                                            )
+                                          }
+                                          disabled={
+                                            !newContent.title.trim() ||
+                                            !newContent.description.trim() ||
+                                            isUploadingVideo ||
+                                            isUploadingVideoThumbnail ||
+                                            isUploadingDocument ||
+                                            isExtractingDuration
+                                          }
+                                          glow={false}
+                                          className="flex items-center gap-2 text-sm"
+                                        >
+                                          {isUploadingVideo ||
+                                          isUploadingVideoThumbnail ||
+                                          isUploadingDocument ||
+                                          isExtractingDuration ? (
+                                            <>
+                                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                              {isExtractingDuration
+                                                ? "Extracting duration..."
+                                                : "Uploading..."}
+                                            </>
+                                          ) : (
+                                            `Add ${
+                                              contentTypeToAdd
+                                                .charAt(0)
+                                                .toUpperCase() +
+                                              contentTypeToAdd.slice(1)
+                                            }`
+                                          )}
+                                        </OrangeButton>
+                                        <WhiteButton
+                                          onClick={() => {
+                                            setIsAddingContent(false);
+                                            setContentTypeToAdd(null);
+                                          }}
+                                          disabled={
+                                            isUploadingVideo ||
+                                            isUploadingVideoThumbnail ||
+                                            isUploadingDocument ||
+                                            isExtractingDuration
+                                          }
+                                          className="text-sm"
+                                        >
+                                          Cancel
+                                        </WhiteButton>
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Content List */}
+                                  {!isEditingContent && (
+                                    <div className="space-y-2">
+                                      {lesson.contents?.map((content) => (
+                                        <div
+                                          key={content._id}
+                                          className="bg-white rounded-lg p-3 border border-gray-200"
+                                        >
+                                          <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                              <div
+                                                className={`w-6 h-6 rounded-lg flex items-center justify-center ${
+                                                  content.type === "video"
+                                                    ? "bg-green-100"
+                                                    : content.type ===
+                                                      "document"
+                                                    ? "bg-blue-100"
+                                                    : "bg-purple-100"
+                                                }`}
+                                              >
+                                                {content.type === "video" ? (
+                                                  <FileVideo className="w-3 h-3 text-green-600" />
+                                                ) : content.type ===
+                                                  "document" ? (
+                                                  <FileText className="w-3 h-3 text-blue-600" />
+                                                ) : (
+                                                  <HelpCircle className="w-3 h-3 text-purple-600" />
+                                                )}
+                                              </div>
+                                              <div>
+                                                <div className="font-medium text-gray-800 text-sm">
+                                                  {content.title}
+                                                </div>
+                                                <p className="text-xs text-gray-600">
+                                                  {content.description}
+                                                </p>
+                                                {content.type === "video" &&
+                                                  (content as VideoContent)
+                                                    .duration && (
+                                                    <p className="text-xs text-blue-600 font-medium">
+                                                      Duration:{" "}
+                                                      {formatDuration(
+                                                        (
+                                                          content as VideoContent
+                                                        ).duration!
+                                                      )}
+                                                    </p>
+                                                  )}
+                                              </div>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                              <span className="text-xs text-gray-500 capitalize">
+                                                {content.type}
+                                              </span>
+                                              <button
+                                                onClick={() =>
+                                                  startEditingContent(content)
+                                                }
+                                                disabled={isApiLoading}
+                                                className="p-1 hover:bg-gray-200 rounded disabled:opacity-50"
+                                              >
+                                                <Edit3 className="w-3 h-3 text-gray-600" />
+                                              </button>
+                                              <button
+                                                onClick={() =>
+                                                  deleteContent(
+                                                    selectedModule._id!,
+                                                    lesson._id!,
+                                                    content._id!
+                                                  )
+                                                }
+                                                className="p-1 hover:bg-red-100 rounded"
+                                              >
+                                                <Trash2 className="w-3 h-3 text-red-600" />
+                                              </button>
+                                            </div>
+                                          </div>
+
+                                          {/* Video Preview for Video Content */}
+                                          {content.type === "video" &&
+                                            (content as VideoContent)
+                                              .sources?.[0]?.videoUrl && (
+                                              <div className="mt-3">
+                                                <div className="relative">
+                                                  <video
+                                                    src={
+                                                      (content as VideoContent)
+                                                        .sources[0].videoUrl
+                                                    }
+                                                    className="w-full max-w-xs h-32 object-cover rounded border"
+                                                    controls
+                                                    poster={
+                                                      (content as VideoContent)
+                                                        .thumbnailUrl
+                                                    }
+                                                  />
+                                                  {(content as VideoContent)
+                                                    .thumbnailUrl && (
+                                                    <div className="absolute top-2 right-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
+                                                      Thumbnail
+                                                    </div>
+                                                  )}
+                                                </div>
+                                              </div>
+                                            )}
+
+                                          {/* Document Preview for Document Content */}
+                                          {content.type === "document" &&
+                                            (content as DocumentContent)
+                                              .documentUrl && (
+                                              <div className="mt-3">
+                                                <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                                                  <FileText className="w-4 h-4 text-blue-600" />
+                                                  <a
+                                                    href={
+                                                      (
+                                                        content as DocumentContent
+                                                      ).documentUrl
+                                                    }
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-sm text-blue-600 hover:text-blue-800 underline"
+                                                  >
+                                                    View Document
+                                                  </a>
+                                                </div>
+                                              </div>
+                                            )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
                               )}
                             </div>
-                          )}
+                          ))}
                         </div>
-                      ))}
+                      )}
                     </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            ))}
+                  )}
+                </div>
+              ))}
           </div>
         )}
       </div>

@@ -66,7 +66,6 @@ export const useCourseForm = (
   const {
     createCourseMetadata,
     updateCourseMetadata: updateCourseAPI,
-    deleteCourseById,
     getCourseByIdAdmin,
   } = useCourses();
 
@@ -114,7 +113,6 @@ export const useCourseForm = (
     getValues,
     formState,
     reset,
-    trigger,
   } = formMethods;
 
   // Reset form when initial data changes

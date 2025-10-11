@@ -1,11 +1,36 @@
+"use client";
 import FlexBox from "@/components/ui/FlexBox";
-import { Course } from "@/types";
-import { ArrowRight } from "lucide-react";
+import { AlertCircle, ArrowRight } from "lucide-react";
 import React from "react";
 import CoursesCard1 from "./ui/CoursesCard1";
+import useSWR from "swr";
+import { ENDPOINTS } from "@/constants/endpoints";
+import { fetcher } from "@/lib/utils";
+import { Course } from "@/types";
+import { Error, Loader } from "@/components/ui";
 
 const ContinueWatchingSection = () => {
-  const courses: Course[] = [];
+  const {
+    data: courses,
+    isLoading,
+    error,
+  } = useSWR(ENDPOINTS.courses.enrolled, fetcher);
+
+  if (isLoading) {
+    return <Loader size="lg" variant="spinner" />;
+  }
+
+  if (error) {
+    return (
+      <Error
+        icon={AlertCircle}
+        iconSize="lg"
+        iconColor="text-red-500"
+        title="Error"
+        description="Error loading courses"
+      />
+    );
+  }
 
   return (
     <>
@@ -17,8 +42,8 @@ const ContinueWatchingSection = () => {
         </FlexBox>
       </FlexBox>
       <FlexBox className="w-full h-full flex-col gap-2 sm:gap-3 md:gap-4 px-3 sm:px-4 md:px-6">
-        {courses.slice(0, 3).map((course) => (
-          <CoursesCard1 key={course._id} course={course} />
+        {courses?.map((course: Course, index: number) => (
+          <CoursesCard1 key={index} course={course} />
         ))}
       </FlexBox>
     </>

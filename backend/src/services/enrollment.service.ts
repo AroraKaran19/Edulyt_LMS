@@ -3,9 +3,11 @@ import {
   EnrollmentStats,
   CourseEnrollmentStats,
   UserEnrollmentStats,
+  DetailedEnrollmentProgress,
 } from "../types/enrollment";
 import { EnrollmentModel } from "../models/enrollment.schema";
 import { AppError } from "../middlewares/error.middleware";
+import { ProgressService } from "./progress.service";
 import mongoose from "mongoose";
 
 // Create a new enrollment
@@ -108,14 +110,18 @@ export const updateEnrollmentProgress = async (
       throw new AppError("Enrollment not found", 404);
     }
 
-    await (enrollment as any).updateProgress(
+    // Use the new progress service
+    await ProgressService.updateLessonProgress(
+      enrollment._id.toString(),
       moduleId,
       lessonId,
       completed,
       score,
       timeSpent
     );
-    return enrollment;
+
+    // Return updated enrollment
+    return await EnrollmentModel.findById(enrollment._id);
   } catch (error) {
     if (error instanceof AppError) throw error;
     throw new AppError("Failed to update enrollment progress", 500);
@@ -347,6 +353,33 @@ export const getOverallEnrollmentStats = async (): Promise<EnrollmentStats> => {
     };
   } catch (error) {
     throw new AppError("Failed to fetch overall enrollment statistics", 500);
+  }
+};
+
+// Get detailed progress for an enrollment
+export const getDetailedProgress = async (
+  userId: string,
+  courseId: string
+): Promise<DetailedEnrollmentProgress> => {
+  try {
+    const enrollment = await EnrollmentModel.findOne({ userId, courseId });
+    if (!enrollment) {
+      throw new AppError("Enrollment not found", 404);
+    }
+
+    return await ProgressService.getDetailedProgress(enrollment._id.toString());
+  } catch (error) {
+    if (error instanceof AppError) throw error;
+    throw new AppError("Failed to get detailed progress", 500);
+  }
+};
+
+// Get progress summaries for multiple enrollments (for dashboard)
+export const getProgressSummaries = async (enrollmentIds: string[]) => {
+  try {
+    return await ProgressService.getProgressSummaries(enrollmentIds);
+  } catch (error) {
+    throw new AppError("Failed to get progress summaries", 500);
   }
 };
 

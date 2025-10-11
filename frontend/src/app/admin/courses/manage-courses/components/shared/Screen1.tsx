@@ -50,7 +50,6 @@ const Screen1 = () => {
   const brochureS3Key = watch("brochureS3Key");
   const brochureSource = watch("brochureSource");
   const titleValue = watch("title");
-  const languageValue = watch("language");
 
   const [curriculumFolderName, setCurriculumFolderName] = useState(
     "courses/new_course/curriculum"

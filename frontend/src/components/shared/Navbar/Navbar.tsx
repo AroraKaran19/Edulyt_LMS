@@ -8,7 +8,6 @@ import { cn, fetcher } from "@/lib/utils";
 import { NavItem } from "@/types";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import {
-  Bell,
   HelpCircle,
   Home,
   LogOut,

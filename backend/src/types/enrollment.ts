@@ -1,33 +1,23 @@
 import { User, Course } from ".";
 
-export interface LessonProgress {
-  lessonId: string;
-  completed: boolean;
-  completedAt?: Date;
-  score?: number; // For quizzes
-  timeSpent?: number; // In seconds
-  lastAccessedAt?: Date;
+// Simplified progress structure
+export interface EnrollmentProgressSummary {
+  overallCompletion: number; // 0-100 percentage, computed from module progress
+  totalModules: number;
+  completedModules: number;
+  totalLessons: number;
+  completedLessons: number;
+  lastActivityAt?: Date;
 }
 
-export interface ModuleProgress {
+// Last accessed content (stored separately for performance)
+export interface LastContentAccessed {
   moduleId: string;
-  completion: number; // 0-100 percentage
-  lessons: LessonProgress[];
-  startedAt?: Date;
-  completedAt?: Date;
-}
-
-export interface EnrollmentProgress {
-  overallCompletion: number; // 0-100 percentage, precomputed
-  modules: ModuleProgress[];
-  lastContentAccessed?: {
-    moduleId: string;
-    lessonId: string;
-    contentId: string;
-    contentType: "video" | "quiz" | "document";
-    lastPosition?: number; // For videos
-    timestamp: Date;
-  };
+  lessonId: string;
+  contentId: string;
+  contentType: "video" | "quiz" | "document";
+  lastPosition?: number; // For videos
+  timestamp: Date;
 }
 
 export interface Enrollment {
@@ -36,7 +26,7 @@ export interface Enrollment {
   courseId: Course["_id"];
   enrolledAt: Date;
   status: "active" | "completed" | "dropped" | "paused";
-  progress: EnrollmentProgress;
+  progress: EnrollmentProgressSummary; // Simplified progress summary
   lastUpdated: Date;
   
   // Optional metadata
@@ -56,6 +46,27 @@ export interface Enrollment {
   // Timestamps
   createdAt?: Date;
   updatedAt?: Date;
+}
+
+// For detailed progress queries (when needed)
+export interface DetailedEnrollmentProgress {
+  enrollmentId: string;
+  progress: EnrollmentProgressSummary;
+  lastContentAccessed?: LastContentAccessed;
+  moduleProgress: Array<{
+    moduleId: string;
+    completion: number;
+    startedAt?: Date;
+    completedAt?: Date;
+    lessons: Array<{
+      lessonId: string;
+      completed: boolean;
+      completedAt?: Date;
+      score?: number;
+      timeSpent?: number;
+      lastAccessedAt?: Date;
+    }>;
+  }>;
 }
 
 // For bulk operations and analytics

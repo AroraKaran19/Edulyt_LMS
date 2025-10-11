@@ -16,3 +16,5 @@ export * from './faq';
 export * from './enrollment';
 export * from './affiliate';
 export * from './order';
+export * from './qna';
+export * from './course-review';

@@ -13,8 +13,9 @@ import {
   getUserEnrollmentStats,
   getOverallEnrollmentStats,
   deleteEnrollment,
+  getDetailedProgress,
+  getProgressSummaries,
 } from "../services/enrollment.service";
-import { verifyUser } from "../middlewares/auth.middleware";
 
 export class EnrollmentController {
   /**
@@ -340,6 +341,60 @@ export class EnrollmentController {
         status: enrollment?.status || null
       },
       "Enrollment check completed",
+      200
+    );
+  });
+
+  /**
+   * Get detailed progress for an enrollment
+   * @param req - Express request object
+   * @param res - Express response object
+   */
+  getDetailedProgress = asyncHandler(async (req: Request, res: Response) => {
+    const { courseId } = req.params;
+    const userId = (req as any).user?.id;
+
+    if (!userId) {
+      throw new AppError("User authentication required", 401);
+    }
+
+    if (!courseId) {
+      throw new AppError("Course ID is required", 400);
+    }
+
+    const detailedProgress = await getDetailedProgress(userId, courseId);
+
+    sendSuccessResponse(
+      res,
+      { detailedProgress },
+      "Detailed progress fetched successfully",
+      200
+    );
+  });
+
+  /**
+   * Get progress summaries for multiple enrollments (for dashboard)
+   * @param req - Express request object
+   * @param res - Express response object
+   */
+  getProgressSummaries = asyncHandler(async (req: Request, res: Response) => {
+    const { enrollmentIds } = req.body;
+    const userId = (req as any).user?.id;
+
+    if (!userId) {
+      throw new AppError("User authentication required", 401);
+    }
+
+    if (!enrollmentIds || !Array.isArray(enrollmentIds)) {
+      throw new AppError("Enrollment IDs array is required", 400);
+    }
+
+    const progressSummaries = await getProgressSummaries(enrollmentIds);
+
+    sendSuccessResponse(
+      res,
+      { progressSummaries },
+      "Progress summaries fetched successfully",
       200
     );
   });

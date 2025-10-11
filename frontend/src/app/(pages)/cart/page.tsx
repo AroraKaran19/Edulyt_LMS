@@ -32,7 +32,7 @@ interface CartPageProps {
 }
 
 const CartPage = async ({ searchParams }: CartPageProps) => {
-  const resolvedSearchParams = (await searchParams);
+  const resolvedSearchParams = await searchParams;
   const courseSlug = resolvedSearchParams.course as string;
   const planType = resolvedSearchParams.planType as
     | "elite"
@@ -60,7 +60,8 @@ const CartPage = async ({ searchParams }: CartPageProps) => {
             Course Not Found
           </h1>
           <p className="text-gray-600">
-            The course you're looking for doesn't exist or has been removed.
+            The course you&apos;re looking for doesn&apos;t exist or has been
+            removed.
           </p>
         </div>
       </div>

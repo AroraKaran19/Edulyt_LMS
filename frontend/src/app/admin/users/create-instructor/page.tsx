@@ -411,7 +411,7 @@ const CreateInstructorPage = () => {
                      </p>
                    )}
                    <p className="text-gray-500 text-xs mt-1">
-                     Optional: Select the instructor's date of birth
+                     Optional: Select the instructor&apos;s date of birth
                    </p>
                  </div>
               </div>

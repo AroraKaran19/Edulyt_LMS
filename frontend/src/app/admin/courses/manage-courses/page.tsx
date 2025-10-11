@@ -59,39 +59,6 @@ const StatusToggle = ({
   );
 };
 
-// Status Badge Component
-const StatusBadge = ({
-  isActive,
-  isFeatured,
-  isCertified,
-}: {
-  isActive: boolean;
-  isFeatured?: boolean;
-  isCertified?: boolean;
-}) => {
-  return (
-    <div className="flex flex-col gap-1">
-      <span
-        className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-          isActive ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-        }`}
-      >
-        {isActive ? "Active" : "Inactive"}
-      </span>
-      {isFeatured && (
-        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
-          Featured
-        </span>
-      )}
-      {isCertified && (
-        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-          Certified
-        </span>
-      )}
-    </div>
-  );
-};
-
 const ManageCoursesPage = () => {
   const router = useRouter();
   const {

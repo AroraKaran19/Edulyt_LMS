@@ -11,7 +11,6 @@ import {
   UpdateProgressRequest,
   UpdateStatusRequest,
   EnrollmentQueryParams,
-  EnrollmentStats,
   CourseEnrollmentStats,
   UserEnrollmentStats,
 } from "@/types/enrollment";

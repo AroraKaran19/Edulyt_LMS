@@ -84,8 +84,8 @@ const CertificateSection = ({
             This Course is ideal for{" "}
             <span>
               {course.audience
-                .replace(/college-students/g, "College Students")
-                .replace(/professionals/g, "Professionals")}
+                ?.replace(/college-students/g, "College Students")
+                ?.replace(/professionals/g, "Professionals") || "Students"}
             </span>
             .
           </h2>
