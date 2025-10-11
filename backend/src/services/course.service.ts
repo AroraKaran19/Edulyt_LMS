@@ -347,12 +347,12 @@ export const CreateCourseMetadata = async (
  */
 export const updateCourseStatusService = async (
   courseId: string,
-  status: string
+  status: boolean
 ): Promise<Course> => {
   try {
     const course = await CourseModel.findByIdAndUpdate(
       courseId,
-      { status, updatedAt: new Date() },
+      { isActive: status, updatedAt: new Date() },
       { new: true, runValidators: true }
     ).select("-__v");
 

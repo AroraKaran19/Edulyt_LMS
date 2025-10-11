@@ -1,114 +1,37 @@
-import { Schema, model } from "mongoose";
+import mongoose from "mongoose";
 import { QnAQuestion } from "../types/qna";
 
-const qnaQuestionSchema = new Schema<QnAQuestion>(
+const qnaQuestionSchema = new mongoose.Schema<QnAQuestion>(
   {
     courseId: {
-      type: Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.ObjectId,
       ref: "Course",
       required: true,
-      index: true,
     },
     userId: {
-      type: Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
-      index: true,
     },
-    title: {
+    question: {
       type: String,
       required: true,
       trim: true,
-      maxlength: 200,
+      minlength: 10,
+      maxlength: 1000,
     },
-    description: {
-      type: String,
-      required: true,
-      trim: true,
-      maxlength: 2000,
-    },
-    status: {
-      type: String,
-      enum: ["open", "resolved", "closed"],
-      default: "open",
-      required: true,
-      index: true,
-    },
-    priority: {
-      type: String,
-      enum: ["low", "medium", "high"],
-      default: "medium",
-      required: true,
-      index: true,
-    },
-    tags: {
-      type: [String],
-      default: [],
-      index: true,
-    },
-    isAnonymous: {
+    isResolved: {
       type: Boolean,
       default: false,
-    },
-    upvotes: {
-      type: Number,
-      default: 0,
-      min: 0,
-    },
-    downvotes: {
-      type: Number,
-      default: 0,
-      min: 0,
-    },
-    viewCount: {
-      type: Number,
-      default: 0,
-      min: 0,
-    },
-    lastActivityAt: {
-      type: Date,
-      default: Date.now,
-      index: true,
+      required: true,
     },
   },
-  {
-    timestamps: true,
-    toJSON: { virtuals: true },
-    toObject: { virtuals: true },
-  }
+  { timestamps: true }
 );
 
-// Indexes for better query performance
-qnaQuestionSchema.index({ courseId: 1, status: 1 });
-qnaQuestionSchema.index({ userId: 1, status: 1 });
-qnaQuestionSchema.index({ createdAt: -1 });
-qnaQuestionSchema.index({ lastActivityAt: -1 });
-qnaQuestionSchema.index({ upvotes: -1 });
-qnaQuestionSchema.index({ title: "text", description: "text" });
+// Indexes
+qnaQuestionSchema.index({ courseId: 1, createdAt: -1 }); // For fetching questions by course
+qnaQuestionSchema.index({ userId: 1, createdAt: -1 }); // For fetching questions by user
+qnaQuestionSchema.index({ isResolved: 1, courseId: 1 }); // For filtering resolved/unresolved questions
 
-// Virtual for reply count
-qnaQuestionSchema.virtual("replyCount", {
-  ref: "QnAReply",
-  localField: "_id",
-  foreignField: "questionId",
-  count: true,
-});
-
-// Pre-save middleware to update lastActivityAt
-qnaQuestionSchema.pre("save", function (next) {
-  if (this.isModified() && !this.isNew) {
-    this.lastActivityAt = new Date();
-  }
-  next();
-});
-
-// Pre-save middleware to update timestamps
-qnaQuestionSchema.pre("save", function (next) {
-  if (this.isNew) {
-    this.createdAt = new Date();
-  }
-  this.updatedAt = new Date();
-  next();
-});
-
-export const QnAQuestionModel = model<QnAQuestion>("QnAQuestion", qnaQuestionSchema);
+export const QnAQuestionModel = mongoose.model("QnAQuestion", qnaQuestionSchema);
