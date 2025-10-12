@@ -6,8 +6,8 @@ const previousExperienceSchema = z.object({
   companyName: z.string().min(1, "Company name is required"),
   position: z.string().min(1, "Position is required"),
   duration: z.object({
-    from: z.date({ required_error: "Start date is required" }),
-    to: z.date({ required_error: "End date is required" }),
+    from: z.date({ message: "Start date is required" }),
+    to: z.date({ message: "End date is required" }),
   }),
   description: z.string().min(10, "Description must be at least 10 characters"),
 });

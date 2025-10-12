@@ -3,14 +3,7 @@ import Navlink from "@/components/shared/Navbar/Navlink";
 import FloatingContainer from "@/components/ui/FloatingContainer";
 import Searchbar2 from "@/components/ui/Searchbar2";
 import { NavItem } from "@/types";
-import {
-  HelpCircle,
-  LogOut,
-  Settings,
-  Menu,
-  X,
-  Search,
-} from "lucide-react";
+import { HelpCircle, LogOut, Settings, Menu, X, Search } from "lucide-react";
 import Image from "next/image";
 import React, { useEffect, useState } from "react";
 import FlexBox from "@/components/ui/FlexBox";
@@ -18,13 +11,13 @@ import DashboardBanner from "./DashboardBanner";
 import Link from "next/link";
 import { signOut, useSession } from "next-auth/react";
 
-interface Notification {
-  id: string;
-  title: string;
-  message: string;
-  time: string;
-  isRead: boolean;
-}
+// interface Notification {
+//   id: string;
+//   title: string;
+//   message: string;
+//   time: string;
+//   isRead: boolean;
+// }
 
 const DashboardNavbar = () => {
   const { data: session } = useSession();
@@ -35,36 +28,36 @@ const DashboardNavbar = () => {
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
 
   // Dynamic notifications data - can be fetched from API
-  const notificationsList: Notification[] = [
-    {
-      id: "1",
-      title: "Course Enrollment",
-      message: "New student enrolled in React Fundamentals",
-      time: "2 minutes ago",
-      isRead: false,
-    },
-    {
-      id: "2",
-      title: "Assignment Submitted",
-      message: "John submitted JavaScript Advanced assignment",
-      time: "1 hour ago",
-      isRead: false,
-    },
-    {
-      id: "3",
-      title: "Payment Received",
-      message: "Payment of ₹299 received for Premium Course",
-      time: "3 hours ago",
-      isRead: true,
-    },
-    {
-      id: "4",
-      title: "Review Posted",
-      message: "Sarah left a 5-star review on your course",
-      time: "1 day ago",
-      isRead: true,
-    },
-  ];
+  // const notificationsList: Notification[] = [
+  //   {
+  //     id: "1",
+  //     title: "Course Enrollment",
+  //     message: "New student enrolled in React Fundamentals",
+  //     time: "2 minutes ago",
+  //     isRead: false,
+  //   },
+  //   {
+  //     id: "2",
+  //     title: "Assignment Submitted",
+  //     message: "John submitted JavaScript Advanced assignment",
+  //     time: "1 hour ago",
+  //     isRead: false,
+  //   },
+  //   {
+  //     id: "3",
+  //     title: "Payment Received",
+  //     message: "Payment of ₹299 received for Premium Course",
+  //     time: "3 hours ago",
+  //     isRead: true,
+  //   },
+  //   {
+  //     id: "4",
+  //     title: "Review Posted",
+  //     message: "Sarah left a 5-star review on your course",
+  //     time: "1 day ago",
+  //     isRead: true,
+  //   },
+  // ];
 
   const navLinks: NavItem[] = [
     {
@@ -260,9 +253,8 @@ const DashboardNavbar = () => {
                   //     Profile
                   //   </span>
                   // </div>,
-                  <Link href="/profile/settings">
+                  <Link href="/profile/settings" key="settings-link">
                     <div
-                      key={"settings"}
                       className="flex items-center gap-1 p-0.5 hover:bg-gray-50 rounded-md transition-colors"
                     >
                       <div className="p-0.5 bg-[#FFF1E9] rounded-full">
@@ -274,7 +266,7 @@ const DashboardNavbar = () => {
                     </div>
                   </Link>,
                   <div
-                    key={"help"}
+                    key="help-link"
                     className="flex items-center gap-1 p-0.5 hover:bg-gray-50 rounded-md transition-colors"
                   >
                     <div className="p-0.5 bg-[#FFF1E9] rounded-full">
@@ -283,7 +275,7 @@ const DashboardNavbar = () => {
                     <span className="font-medium text-text-primary">Help</span>
                   </div>,
                   <div
-                    key={"logout"}
+                    key="logout-link"
                     className="flex items-center gap-1 p-0.5 hover:bg-[#FFF1E9] rounded-md transition-colors"
                     onClick={() => {
                       localStorage.removeItem("adminToken");

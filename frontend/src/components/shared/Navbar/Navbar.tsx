@@ -45,13 +45,13 @@ const formatNumber = (number: number) => {
   }
 };
 
-interface Notification {
-  id: string;
-  title: string;
-  message: string;
-  time: string;
-  isRead: boolean;
-}
+// interface Notification {
+//   id: string;
+//   title: string;
+//   message: string;
+//   time: string;
+//   isRead: boolean;
+// }
 
 const Navbar = () => {
   const { status } = useSession();
@@ -88,38 +88,36 @@ const Navbar = () => {
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [isUserOpen, setIsUserOpen] = useState(false);
   // Dynamic notifications data - can be fetched from API
-  const notificationsList: Notification[] = [
-    {
-      id: "1",
-      title: "Course Enrollment",
-      message: "New student enrolled in React Fundamentals",
-      time: "2 minutes ago",
-      isRead: false,
-    },
-    {
-      id: "2",
-      title: "Assignment Submitted",
-      message: "John submitted JavaScript Advanced assignment",
-      time: "1 hour ago",
-      isRead: false,
-    },
-    {
-      id: "3",
-      title: "Payment Received",
-      message: "Payment of ₹299 received for Premium Course",
-      time: "3 hours ago",
-      isRead: true,
-    },
-    {
-      id: "4",
-      title: "Review Posted",
-      message: "Sarah left a 5-star review on your course",
-      time: "1 day ago",
-      isRead: true,
-    },
-  ];
-
-  const notifications = notificationsList.length; // Count for badge
+  // const notificationsList: Notification[] = [
+  //   {
+  //     id: "1",
+  //     title: "Course Enrollment",
+  //     message: "New student enrolled in React Fundamentals",
+  //     time: "2 minutes ago",
+  //     isRead: false,
+  //   },
+  //   {
+  //     id: "2",
+  //     title: "Assignment Submitted",
+  //     message: "John submitted JavaScript Advanced assignment",
+  //     time: "1 hour ago",
+  //     isRead: false,
+  //   },
+  //   {
+  //     id: "3",
+  //     title: "Payment Received",
+  //     message: "Payment of ₹299 received for Premium Course",
+  //     time: "3 hours ago",
+  //     isRead: true,
+  //   },
+  //   {
+  //     id: "4",
+  //     title: "Review Posted",
+  //     message: "Sarah left a 5-star review on your course",
+  //     time: "1 day ago",
+  //     isRead: true,
+  //   },
+  // ];
 
   // close all floating container in on click outside
   useEffect(() => {
@@ -332,9 +330,8 @@ const Navbar = () => {
                       onViewAll={() => {}}
                       onElementClick={() => {}}
                       elements={[
-                        <Link href="/dashboard">
+                        <Link key="dashboard-link" href="/dashboard">
                           <div
-                            key={String(Math.random())}
                             className="flex items-center gap-1 p-0.5 hover:bg-gray-50 rounded-md transition-colors"
                           >
                             <div className="p-0.5 bg-[#FFF1E9] rounded-full">
@@ -345,9 +342,8 @@ const Navbar = () => {
                             </span>
                           </div>
                         </Link>,
-                        <Link href="/profile/settings">
+                        <Link key="settings-link" href="/profile/settings">
                           <div
-                            key={String(Math.random())}
                             className="flex items-center gap-1 p-0.5 hover:bg-gray-50 rounded-md transition-colors"
                           >
                             <div className="p-0.5 bg-[#FFF1E9] rounded-full">
@@ -359,7 +355,7 @@ const Navbar = () => {
                           </div>
                         </Link>,
                         <div
-                          key={String(Math.random())}
+                          key={"help-link"}
                           className="flex items-center gap-1 p-0.5 hover:bg-gray-50 rounded-md transition-colors"
                         >
                           <div className="p-0.5 bg-[#FFF1E9] rounded-full">
@@ -370,7 +366,7 @@ const Navbar = () => {
                           </span>
                         </div>,
                         <div
-                          key={String(Math.random())}
+                          key={"logout-link"}
                           className="flex items-center gap-1 p-0.5 hover:bg-[#FFF1E9] rounded-md transition-colors"
                           onClick={() => {
                             localStorage.removeItem("adminToken");
