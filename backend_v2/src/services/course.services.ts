@@ -1,0 +1,626 @@
+import { AppError } from "../middlewares/error.middleware";
+import {
+  ContentModel,
+  CourseLessonModel,
+  CourseModel,
+  CourseModuleModel,
+} from "../models";
+import { Content, Course, CourseLesson, CourseModule } from "../types";
+import mongoose from "mongoose";
+
+export const getAllCoursesService = async (
+  page: number,
+  limit: number,
+  search: string,
+  categories?: string,
+  audience?: string,
+  isAdmin?: boolean
+): Promise<{
+  courses: Course[];
+  total: number;
+  page: number;
+  totalPages: number;
+  isAdmin?: boolean;
+}> => {
+  const skip = (page - 1) * limit;
+
+  let filters: any = {};
+  if (search) {
+    filters.$or = [
+      { title: { $regex: search, $options: "i" } },
+      { description: { $regex: search, $options: "i" } },
+      { shortDescription: { $regex: search, $options: "i" } },
+    ];
+  }
+  if (categories) {
+    // Handle multiple categories separated by commas
+    const categoryList = categories.split(',').map(cat => cat.trim());
+    if (categoryList.length === 1) {
+      // Single category - use exact match for better performance
+      filters.category = categoryList[0];
+    } else {
+      // Multiple categories - use $in operator
+      filters.category = { $in: categoryList };
+    }
+  }
+  if (audience) {
+    filters.audience = { $regex: audience, $options: "i" };
+  }
+
+  const courses = await CourseModel.find(filters)
+    .skip(skip)
+    .limit(limit)
+    .select(
+      isAdmin
+        ? "-__v"
+        : "title description thumbnail instructor analytics plans.elite.price plans.elite.discount plans.essential.price plans.essential.discount discount isFeatured slug "
+    )
+    .populate("instructor", "firstName lastName email profilePicture")
+    .sort({ createdAt: -1 })
+    .lean();
+
+  const total = await CourseModel.countDocuments(filters);
+  const totalPages = Math.ceil(total / limit);
+
+  return { courses, total, totalPages, page };
+};
+
+export const getFeaturedCoursesService = async (
+  page: number,
+  limit: number,
+  search: string,
+  isAdmin?: boolean
+): Promise<{
+  courses: Course[];
+  total: number;
+  page: number;
+  totalPages: number;
+  isAdmin?: boolean;
+}> => {
+  const skip = (page - 1) * limit;
+
+  let filters: any = { isFeatured: true };
+  if (!isAdmin) {
+    filters.isActive = true;
+  }
+  if (search) {
+    filters.$or = [
+      { title: { $regex: search, $options: "i" } },
+      { description: { $regex: search, $options: "i" } },
+      { shortDescription: { $regex: search, $options: "i" } },
+    ];
+  }
+
+  const courses = await CourseModel.find(filters)
+    .skip(skip)
+    .limit(limit)
+    .select(
+      isAdmin
+        ? "-__v"
+        : "title description thumbnail instructor analytics plans.elite.price plans.elite.discount plans.essential.price plans.essential.discount discount slug"
+    )
+    .populate("instructor", "firstName lastName email profilePicture")
+    .sort({ createdAt: -1 })
+    .lean();
+
+  const total = await CourseModel.countDocuments(filters);
+  const totalPages = Math.ceil(total / limit);
+
+  return { courses, total, totalPages, page };
+};
+
+export const getCourseByIdService = async (
+  courseId: string,
+  isAdmin?: boolean
+): Promise<Course | null> => {
+  // Validate ObjectId format
+  if (!mongoose.Types.ObjectId.isValid(courseId)) {
+    return null;
+  }
+
+  const course = await CourseModel.findById(courseId)
+    .where(isAdmin ? {} : { isActive: true })
+    .select("-__v")
+    .populate("instructor", "-__v")
+    .populate("testimonials", "-__v")
+    .populate("faqs", isAdmin ? "-__v" : "-__v -_id -createdAt -updatedAt")
+    .populate({
+      path: "modules",
+      select: isAdmin ? "-__v" : "-__v -courseId -createdAt -updatedAt",
+      populate: {
+        path: "lessons",
+        select: isAdmin ? "-__v" : "-__v -moduleId -createdAt -updatedAt",
+        populate: {
+          path: "contents",
+          select: isAdmin
+            ? "-__v"
+            : "-__v -moduleId -lessonId -createdAt -updatedAt",
+        },
+      },
+    })
+    .lean();
+
+  if (!course) {
+    return null;
+  }
+
+  return course as Course;
+};
+
+export const getCourseBySlugService = async (
+  slug: string,
+  isAdmin?: boolean
+): Promise<Course | null> => {
+  const course = await CourseModel.findOne({ slug, isActive: true })
+    .where(isAdmin ? {} : { isActive: true })
+    .select("-__v")
+    .populate("instructor", "-__v")
+    .populate("testimonials", "-__v")
+    .populate("faqs", isAdmin ? "-__v" : "-__v -_id -createdAt -updatedAt")
+    .populate({
+      path: "modules",
+      select: isAdmin ? "-__v" : "-__v -courseId -createdAt -updatedAt",
+      populate: {
+        path: "lessons",
+        select: isAdmin ? "-__v" : "-__v -moduleId -createdAt -updatedAt",
+        populate: {
+          path: "contents",
+          select: isAdmin
+            ? "-__v"
+            : "-__v -moduleId -lessonId -createdAt -updatedAt",
+        },
+      },
+    })
+    .lean();
+
+  if (!course) {
+    return null;
+  }
+
+  return course as Course;
+};
+
+export const CreateCourseMetadataService = async (
+  courseData: any
+): Promise<Course | null> => {
+  try {
+    const cleanedCourseData = { ...courseData, modules: [] };
+    const course = new CourseModel(cleanedCourseData);
+
+    const savedCourse = await course.save();
+    return savedCourse as Course;
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
+    console.error("Database error in CreateCourseMetadataService:", error);
+    throw new AppError(
+      `Failed to create course: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`,
+      500
+    );
+  }
+};
+
+export const CreateCourseModuleService = async (
+  courseId: string,
+  moduleData: any
+): Promise<CourseModule | null> => {
+  const course = await CourseModel.findById(courseId);
+  if (!course) {
+    throw new AppError("Course not found", 404);
+  }
+
+  const cleanedModuleData = {
+    ...moduleData,
+    courseId: course._id,
+    lessons: [],
+  };
+  const module = new CourseModuleModel(cleanedModuleData);
+  const savedModule = await module.save();
+  return savedModule as CourseModule;
+};
+
+export const UpdateCourseModuleService = async (
+  courseId: string,
+  moduleId: string,
+  moduleData: any
+): Promise<CourseModule | null> => {
+  const course = await CourseModel.findById(courseId);
+  if (!course) {
+    throw new AppError("Course not found", 404);
+  }
+
+  const module = await CourseModuleModel.findOneAndUpdate(
+    {
+      _id: moduleId,
+      courseId: course._id,
+    },
+    {
+      ...moduleData,
+      updatedAt: new Date(),
+    },
+    {
+      new: true,
+      runValidators: true,
+    }
+  );
+
+  if (!module) {
+    return null;
+  }
+
+  return module as CourseModule;
+};
+
+export const DeleteCourseModuleService = async (
+  courseId: string,
+  moduleId: string
+): Promise<boolean> => {
+  const course = await CourseModel.findById(courseId);
+  if (!course) {
+    throw new AppError("Course not found", 404);
+  }
+
+  const module = await CourseModuleModel.findOneAndDelete({
+    _id: moduleId,
+    courseId: course._id,
+  });
+
+  if (!module) {
+    return false;
+  }
+
+  await CourseModel.findByIdAndUpdate(courseId, {
+    $pull: { modules: moduleId },
+    updatedAt: new Date(),
+  });
+
+  return true;
+};
+
+export const CreateCourseLessonService = async (
+  courseId: string,
+  moduleId: string,
+  lessonData: any
+): Promise<CourseLesson | null> => {
+  const course = await CourseModel.findById(courseId);
+  if (!course) {
+    throw new AppError("Course not found", 404);
+  }
+
+  const module = await CourseModuleModel.findById(moduleId);
+  if (!module) {
+    throw new AppError("Module not found", 404);
+  }
+
+  const cleanedLessonData = {
+    ...lessonData,
+    moduleId: module._id,
+    contents: [],
+  };
+  const lesson = new CourseLessonModel(cleanedLessonData);
+
+  const savedLesson = await lesson.save();
+
+  if (!savedLesson) {
+    return null;
+  }
+
+  await CourseModuleModel.findOneAndUpdate(
+    {
+      _id: moduleId,
+      courseId: course._id,
+    },
+    {
+      $push: { lessons: savedLesson._id },
+      updatedAt: new Date(),
+    }
+  );
+  return savedLesson as CourseLesson;
+};
+
+export const UpdateCourseLessonService = async (
+  courseId: string,
+  moduleId: string,
+  lessonId: string,
+  lessonData: any
+): Promise<CourseLesson | null> => {
+  const course = await CourseModel.findById(courseId);
+  if (!course) {
+    throw new AppError("Course not found", 404);
+  }
+
+  const module = await CourseModuleModel.findById(moduleId);
+  if (!module) {
+    throw new AppError("Module not found", 404);
+  }
+
+  const lesson = await CourseLessonModel.findOneAndUpdate(
+    {
+      _id: lessonId,
+      moduleId: module._id,
+    },
+    {
+      ...lessonData,
+      updatedAt: new Date(),
+    },
+    {
+      new: true,
+      runValidators: true,
+    }
+  );
+
+  if (!lesson) {
+    return null;
+  }
+
+  return lesson as CourseLesson;
+};
+
+export const DeleteCourseLessonService = async (
+  courseId: string,
+  moduleId: string,
+  lessonId: string
+): Promise<boolean> => {
+  const course = await CourseModel.findById(courseId);
+  if (!course) {
+    throw new AppError("Course not found", 404);
+  }
+
+  const module = await CourseModuleModel.findById(moduleId);
+  if (!module) {
+    throw new AppError("Module not found", 404);
+  }
+
+  const lesson = await CourseLessonModel.findOneAndDelete({
+    _id: lessonId,
+    moduleId: module._id,
+  });
+
+  if (!lesson) {
+    return false;
+  }
+
+  await CourseModuleModel.findOneAndUpdate(
+    {
+      _id: moduleId,
+      courseId: course._id,
+    },
+    {
+      $pull: { lessons: lessonId },
+      updatedAt: new Date(),
+    }
+  );
+
+  return true;
+};
+
+export const CreateCourseLessonContentService = async (
+  courseId: string,
+  moduleId: string,
+  lessonId: string,
+  contentData: any
+): Promise<Content | null> => {
+  const course = await CourseModel.findById(courseId);
+  if (!course) {
+    throw new AppError("Course not found", 404);
+  }
+
+  const module = await CourseModuleModel.findById(moduleId);
+  if (!module) {
+    throw new AppError("Module not found", 404);
+  }
+
+  const lesson = await CourseLessonModel.findById(lessonId);
+  if (!lesson) {
+    throw new AppError("Lesson not found", 404);
+  }
+
+  const cleanedContentData = {
+    ...contentData,
+    lessonId: lesson._id,
+    moduleId: module._id,
+  };
+  const content = new ContentModel(cleanedContentData);
+  if (!content) {
+    return null;
+  }
+
+  const savedContent = await content.save();
+  if (!savedContent) {
+    return null;
+  }
+
+  await CourseLessonModel.findOneAndUpdate(
+    {
+      _id: lessonId,
+      moduleId: module._id,
+    },
+    { $push: { contentIds: savedContent._id }, updatedAt: new Date() }
+  );
+  return savedContent as Content;
+};
+
+export const UpdateCourseLessonContentService = async (
+  courseId: string,
+  moduleId: string,
+  lessonId: string,
+  contentId: string,
+  contentData: any
+): Promise<Content | null> => {
+  const course = await CourseModel.findById(courseId);
+  if (!course) {
+    throw new AppError("Course not found", 404);
+  }
+
+  const module = await CourseModuleModel.findById(moduleId);
+  if (!module) {
+    throw new AppError("Module not found", 404);
+  }
+
+  const lesson = await CourseLessonModel.findById(lessonId);
+  if (!lesson) {
+    throw new AppError("Lesson not found", 404);
+  }
+
+  const content = await ContentModel.findOneAndUpdate(
+    {
+      _id: contentId,
+      lessonId: lesson._id,
+      moduleId: module._id,
+    },
+    { ...contentData, updatedAt: new Date() },
+    { new: true, runValidators: true }
+  );
+
+  if (!content) {
+    return null;
+  }
+
+  return content as Content;
+};
+
+export const DeleteCourseLessonContentService = async (
+  courseId: string,
+  moduleId: string,
+  lessonId: string,
+  contentId: string
+): Promise<boolean> => {
+  const course = await CourseModel.findById(courseId);
+  if (!course) {
+    throw new AppError("Course not found", 404);
+  }
+
+  const module = await CourseModuleModel.findById(moduleId);
+  if (!module) {
+    throw new AppError("Module not found", 404);
+  }
+
+  const lesson = await CourseLessonModel.findById(lessonId);
+  if (!lesson) {
+    throw new AppError("Lesson not found", 404);
+  }
+
+  const content = await ContentModel.findOneAndDelete({
+    _id: contentId,
+    lessonId: lesson._id,
+    moduleId: module._id,
+  });
+
+  if (!content) {
+    return false;
+  }
+
+  await CourseLessonModel.findOneAndUpdate(
+    {
+      _id: lessonId,
+      moduleId: module._id,
+    },
+    { $pull: { contentIds: contentId }, updatedAt: new Date() }
+  );
+  return true;
+};
+
+export const DuplicateCourseService = async (
+  courseId: string
+): Promise<Course | null> => {
+  const course = await CourseModel.findById(courseId);
+  if (!course) {
+    throw new AppError("Course not found", 404);
+  }
+
+  const cleanedCourseData = { ...course.toObject() };
+
+  delete (cleanedCourseData as any)._id;
+  delete (cleanedCourseData as any).createdAt;
+  delete (cleanedCourseData as any).updatedAt;
+
+  cleanedCourseData.title = `${cleanedCourseData.title} (Copy)`;
+  cleanedCourseData.isActive = false;
+  cleanedCourseData.isFeatured = false;
+  cleanedCourseData.createdBy = undefined;
+
+  const duplicatedCourse = new CourseModel(cleanedCourseData);
+  const savedCourse = await duplicatedCourse.save();
+
+  if (!savedCourse) {
+    throw new AppError("Failed to duplicate course", 500);
+  }
+
+  return savedCourse as Course;
+};
+
+export const UpdateCourseStatusService = async (
+  courseId: string,
+  status: boolean
+): Promise<Course | null> => {
+  const updatedCourse = await CourseModel.findOneAndUpdate(
+    { _id: courseId },
+    { isActive: status, updatedAt: new Date() },
+    { new: true, runValidators: true }
+  );
+
+  if (!updatedCourse) {
+    throw new AppError("Course not found", 404);
+  }
+
+  return updatedCourse as Course;
+};
+
+export const UpdateCourseMetadataService = async (
+  courseId: string,
+  courseData: any
+): Promise<Course | null> => {
+  const updatedCourse = await CourseModel.findOneAndUpdate(
+    { _id: courseId },
+    { ...courseData, updatedAt: new Date() },
+    { new: true, runValidators: true }
+  );
+
+  if (!updatedCourse) {
+    throw new AppError("Course not found", 404);
+  }
+
+  return updatedCourse as Course;
+};
+
+export const DeleteCourseService = async (
+  courseId: string
+): Promise<boolean> => {
+  // First check if course exists
+  const course = await CourseModel.findById(courseId);
+  if (!course) {
+    return false;
+  }
+
+  // Get all module IDs before deleting
+  const modules = await CourseModuleModel.find({ courseId: courseId });
+  const moduleIds = modules.map((module) => module._id);
+
+  // Get all lesson IDs before deleting
+  const lessons = await CourseLessonModel.find({
+    moduleId: { $in: moduleIds },
+  });
+  const lessonIds = lessons.map((lesson) => lesson._id);
+
+  // Cascade delete in reverse order (contents -> lessons -> modules -> course)
+  await ContentModel.deleteMany({
+    lessonId: { $in: lessonIds },
+  });
+  await CourseLessonModel.deleteMany({
+    moduleId: { $in: moduleIds },
+  });
+  await CourseModuleModel.deleteMany({
+    courseId: courseId,
+  });
+  const deletedCourse = await CourseModel.findOneAndDelete({ _id: courseId });
+
+  // Only check if the main course was deleted successfully
+  if (!deletedCourse) {
+    return false;
+  }
+
+  return true;
+};

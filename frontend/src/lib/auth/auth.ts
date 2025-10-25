@@ -5,70 +5,19 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import axios, { AxiosError } from "axios";
 import { toast } from "react-toastify";
 
-// Enrollment types
-interface Enrollment {
-  _id: string;
-  userId: string;
-  courseId: string;
-  enrolledAt: string;
-  status: "active" | "completed" | "dropped" | "paused";
-  progress: {
-    overallCompletion: number;
-    modules: Array<{
-      moduleId: string;
-      completion: number;
-      lessons: Array<{
-        lessonId: string;
-        completed: boolean;
-        completedAt?: string;
-        score?: number;
-        timeSpent?: number;
-        lastAccessedAt?: string;
-      }>;
-      startedAt?: string;
-      completedAt?: string;
-    }>;
-    lastContentAccessed?: {
-      moduleId: string;
-      lessonId: string;
-      contentId: string;
-      contentType: "video" | "quiz" | "document";
-      lastPosition?: number;
-      timestamp: string;
-    };
-  };
-  lastUpdated: string;
-  enrollmentSource?: "direct" | "gift" | "promotion";
-  giftFrom?: string;
-  promotionCode?: string;
-  completedAt?: string;
-  certificateIssued?: boolean;
-  certificateIssuedAt?: string;
-  totalTimeSpent?: number;
-  lastActivityAt?: string;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
 // Extend the built-in session and user types
 declare module "next-auth" {
   interface Session extends DefaultSession {
-    accessToken?: string;
     user: {
       id: string;
       username?: string;
-      enrolledCourses?: Enrollment[];
       isFirstTime?: boolean;
       role?: string;
     } & DefaultSession["user"];
   }
 
   interface User extends DefaultUser {
-    token?: string;
     username?: string;
-    accessToken?: string;
-    refreshToken?: string;
-    enrolledCourses?: Enrollment[];
     isFirstTime?: boolean;
     role?: string;
   }
@@ -76,10 +25,7 @@ declare module "next-auth" {
 
 declare module "next-auth/jwt" {
   interface JWT {
-    accessToken?: string;
     username?: string;
-    refreshToken?: string;
-    enrolledCourses?: Enrollment[];
     isFirstTime?: boolean;
     role?: string;
   }
@@ -100,15 +46,15 @@ export const authOptions: AuthOptions = {
             throw new Error("Email and password are required");
           }
 
-          // Handle registration
           const loginData = {
             email: credentials.email,
             password: credentials.password,
           };
 
           const response = await axios.post(
-            `${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/login`,
-            loginData
+            `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/auth/login`,
+            loginData,
+            { withCredentials: true }
           );
 
           if (response.status !== 200) {
@@ -127,16 +73,18 @@ export const authOptions: AuthOptions = {
               ? `${user.firstName} ${user.lastName}` 
               : user.email,
             username: user.username,
-            refreshToken: response.data.data.refreshToken,
-            accessToken: response.data.data.accessToken,
-            enrolledCourses: user.enrolledCourses,
             isFirstTime: isFirstTime,
             role: user.role || user.userType || "student",
           };
         } catch (error) {
           if (error instanceof AxiosError) {
-            throw new Error(error.response?.data?.error?.message || "Login failed");
+            const errorMessage = error.response?.data?.error?.message || 
+                               error.response?.data?.message || 
+                               "Login failed";
+            toast.error(errorMessage);
+            throw new Error(errorMessage);
           }
+          toast.error("Login failed");
           throw new Error("Login failed");
         }
       },
@@ -180,24 +128,20 @@ export const authOptions: AuthOptions = {
           };
 
           const response = await axios.post(
-            `${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/oauth-signin`,
-            oauthData
+            `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/auth/oauth-signin`,
+            oauthData,
+            { withCredentials: true }
           );
           const result = response.data;
-          console.log(result);
 
           if (response.status === 200 || response.status === 201) {
-            // Check if response.data and response.data.user exist before accessing properties
             if (result.data && result.data.user && result.data.user._id) {
               user.id = result.data.user._id;
-              user.accessToken = result.data.accessToken;
-              user.refreshToken = result.data.refreshToken;
               user.username = result.data.user.username;
-              user.enrolledCourses = result.data.user.enrolledCourses;
               user.role = result.data.user.role || result.data.user.userType || "student";
               
               // Check if this is a new user (first time login)
-              if (result.message === "User created successfully") {
+              if (result.message === "User registered successfully") {
                 user.isFirstTime = true;
               } else {
                 user.isFirstTime = false;
@@ -219,7 +163,9 @@ export const authOptions: AuthOptions = {
       } catch (error: any) {
         // If backend reports the email is already used with another provider, block and redirect
         const status = error?.response?.status;
-        const message = error?.response?.data?.message || error?.message;
+        const message = error?.response?.data?.error?.message || 
+                       error?.response?.data?.message || 
+                       error?.message;
         if (
           status === 401 &&
           typeof message === "string" &&
@@ -232,64 +178,24 @@ export const authOptions: AuthOptions = {
         return false;
       }
     },
-    async jwt({ token, user, account }) {
-      try {
-        // Initial sign in
-        if (user && account) {
-          token.accessToken = user.accessToken;
-          token.username = user.username;
-          token.refreshToken = user.refreshToken;
-          token.enrolledCourses = user.enrolledCourses;
-          token.isFirstTime = user.isFirstTime;
-          token.role = user.role;
-        }
-
-        // Return previous token if the access token has not expired yet
-        if (Date.now() < (token.exp as number) * 1000) {
-          return token;
-        }
-
-        // Access token has expired, try to refresh it
-        if (token.refreshToken) {
-          try {
-            const response = await axios.post(
-              `${process.env.NEXT_PUBLIC_API_BASE_URL}/auth/refresh-token`,
-              { refreshToken: token.refreshToken }
-            );
-
-            if (response.status === 200) {
-              token.accessToken = response.data.accessToken;
-              token.exp = Math.floor(Date.now() / 1000) + 60 * 60; // 1 hour
-            }
-          } catch (refreshError) {
-            console.error("Token refresh failed:", refreshError);
-            // Clear tokens on refresh failure
-            delete token.accessToken;
-            delete token.refreshToken;
-          }
-        }
-
-        return token;
-      } catch (error) {
-        console.error("JWT callback error:", error);
-        return token;
+    async jwt({ token, user }) {
+      // Initial sign in - store user data in token
+      if (user) {
+        token.username = user.username;
+        token.isFirstTime = user.isFirstTime;
+        token.role = user.role;
       }
+      return token;
     },
     async session({ session, token }) {
-      try {
-        if (token && session.user) {
-          session.user.id = token.sub || "";
-          session.user.username = token.username as string;
-          session.user.enrolledCourses = token.enrolledCourses as any[];
-          session.accessToken = token.accessToken as string;
-          (session.user as any).isFirstTime = token.isFirstTime;
-          (session.user as any).role = token.role;
-        }
-        return session;
-      } catch (error) {
-        console.error("Session callback error:", error);
-        return session;
+      // Pass user data from token to session
+      if (token && session.user) {
+        session.user.id = token.sub || "";
+        session.user.username = token.username as string;
+        (session.user as any).isFirstTime = token.isFirstTime;
+        (session.user as any).role = token.role;
       }
+      return session;
     },
   },
   secret: process.env.NEXT_PUBLIC_AUTH_SECRET,

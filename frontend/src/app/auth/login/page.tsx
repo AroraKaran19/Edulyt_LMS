@@ -89,7 +89,6 @@ const LoginPage = () => {
     }
   };
 
-  // Prevent hydration mismatch by not rendering form until client-side
   if (!isClient) {
     return (
       <>

@@ -1,0 +1,121 @@
+@import "tailwindcss";
+
+/* Fonts */
+@font-face {
+  font-family: "Coolvetica Regular";
+  src: url("/fonts/coolvetica/CoolveticaRg.otf") format("opentype");
+  font-weight: 800;
+}
+
+html {
+  scroll-behavior: smooth;
+  scrollbar-color: #f77124 #ffe9db;
+  scrollbar-width: thin;
+}
+
+/* Custom scrollbar styles */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* For Firefox */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f1f5f9;
+}
+
+@theme {
+  --color-text-primary: #2b1508;
+  --font-coolvetica: "Coolvetica Regular", sans-serif;
+
+  /* Animations */
+  @keyframes fadeFromLeft {
+    from {
+      opacity: 0;
+      transform: translateX(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes fadeFromTop {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes reverseSpinSlow {
+    from {
+      transform: rotate(360deg);
+    }
+    to {
+      transform: rotate(0deg);
+    }
+  }
+
+  @keyframes courseCardFadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes marqueeVertical {
+    from {
+      transform: translateY(0);
+    }
+    to {
+      transform: translateY(-50%);
+    }
+  }
+
+  --animate-fade-from-top: fadeFromTop 0.3s ease-in-out;
+  --animate-fade-in: fadeIn 0.8s ease-out;
+  --animate-reverse: reverseSpinSlow 1.5s linear infinite;
+  --animate-course-card-fade-in: courseCardFadeIn 0.8s ease-out forwards;
+  --animate-marquee-vertical: marqueeVertical 20s linear infinite;
+  --animate-marquee-vertical-paused: marqueeVertical 20s linear infinite paused;
+  --animate-marquee-vertical-medium: marqueeVertical 12s linear infinite;
+  --animate-marquee-vertical-medium-paused: marqueeVertical 12s linear infinite
+    paused;
+  --animate-marquee-vertical-fast: marqueeVertical 8s linear infinite;
+  --animate-marquee-vertical-fast-paused: marqueeVertical 8s linear infinite
+    paused;
+  --animate-fade-from-left: fadeFromLeft 0.3s ease-in-out forwards;
+}

@@ -11,7 +11,10 @@ import axios, { isAxiosError } from "axios";
 import { toast } from "react-toastify";
 import { getApiErrorMessage } from "@/utils/errorUtils";
 import PasswordStrengthIndicator from "@/components/ui/PasswordStrengthIndicator";
-import { generateSecurePassword, validatePasswordStrength } from "@/utils/passwordValidation";
+import {
+  generateSecurePassword,
+  validatePasswordStrength,
+} from "@/utils/passwordValidation";
 
 const RegisterPage = () => {
   const { status } = useSession();
@@ -54,7 +57,10 @@ const RegisterPage = () => {
     } catch (error) {
       console.error("OAuth sign in error:", error);
       if (isAxiosError(error)) {
-        const errorMessage = getApiErrorMessage(error, `Failed to sign in with ${provider}. Please try again.`);
+        const errorMessage = getApiErrorMessage(
+          error,
+          `Failed to sign in with ${provider}. Please try again.`
+        );
         toast.error(errorMessage);
       } else {
         toast.error(`Failed to sign in with ${provider}. Please try again.`);
@@ -65,14 +71,14 @@ const RegisterPage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validate password strength
     const passwordValidation = validatePasswordStrength(password);
     if (!passwordValidation.isValid) {
       toast.error(passwordValidation.errors.join(", "));
       return;
     }
-    
+
     if (password !== confirmPassword) {
       toast.error("Passwords do not match");
       return;
@@ -111,7 +117,10 @@ const RegisterPage = () => {
       }
     } catch (error) {
       if (isAxiosError(error)) {
-        const errorMessage = getApiErrorMessage(error, "Something went wrong. Please try again.");
+        const errorMessage = getApiErrorMessage(
+          error,
+          "Something went wrong. Please try again."
+        );
         toast.error(errorMessage);
       } else {
         toast.error("Something went wrong. Please try again.");
@@ -128,7 +137,9 @@ const RegisterPage = () => {
         <div className="absolute inset-0 backdrop-blur-sm z-10"></div>
         <div className="relative z-20 flex flex-col items-center gap-4">
           <div className="w-12 h-12 border-4 border-gray-200 border-t-orange-500 rounded-full animate-spin"></div>
-          <p className="text-lg font-medium text-gray-700">Redirecting to authentication provider...</p>
+          <p className="text-lg font-medium text-gray-700">
+            Redirecting to authentication provider...
+          </p>
         </div>
       </div>
     );
@@ -187,7 +198,11 @@ const RegisterPage = () => {
               onClick={togglePasswordVisibility}
               className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
             >
-              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              {showPassword ? (
+                <EyeOff className="w-4 h-4" />
+              ) : (
+                <Eye className="w-4 h-4" />
+              )}
             </button>
           </div>
         </div>
@@ -209,7 +224,11 @@ const RegisterPage = () => {
             onClick={toggleConfirmPasswordVisibility}
             className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 transition-colors"
           >
-            {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            {showConfirmPassword ? (
+              <EyeOff className="w-4 h-4" />
+            ) : (
+              <Eye className="w-4 h-4" />
+            )}
           </button>
         </div>
         <OrangeButton
@@ -240,7 +259,9 @@ const RegisterPage = () => {
             height={20}
             className="size-4"
           />
-          <span>{isOAuthLoading ? "Signing up..." : "Sign Up using Google"}</span>
+          <span>
+            {isOAuthLoading ? "Signing up..." : "Sign Up using Google"}
+          </span>
         </WhiteButton>
         <WhiteButton
           className="w-full flex items-center justify-center gap-2 rounded-xl font-bold shadow-[inset_0_-2px_7px_0_rgba(183,159,255,0.22)]"
@@ -254,7 +275,9 @@ const RegisterPage = () => {
             height={20}
             className="size-4"
           />
-          <span>{isOAuthLoading ? "Signing up..." : "Sign Up using LinkedIn"}</span>
+          <span>
+            {isOAuthLoading ? "Signing up..." : "Sign Up using LinkedIn"}
+          </span>
         </WhiteButton>
       </div>
       <p className="text-sm text-gray-500 text-center font-bold self-center">

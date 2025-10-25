@@ -1,4 +1,4 @@
-import { Course, Instructor } from ".";
+import { Course, Instructor, User } from ".";
 
 // ===================
 // Review Type
@@ -6,15 +6,11 @@ import { Course, Instructor } from ".";
 
 export interface Review {
   _id?: string;
-  name: string;
+  userId: User;
   rating: number;
   comment: string;
   reviewableType: "Course" | "Instructor";
   reviewableId: Course["_id"] | Instructor["_id"];
-  profileImage?: string;
-  currentRole: string;
-  currentCompany: string;
-  linkedin: string;
   isActive: boolean;
   createdAt?: Date;
   updatedAt?: Date;

@@ -82,7 +82,7 @@ const ProfileSettingsPage = () => {
   // Fetch user profile data from API
   useEffect(() => {
     const fetchUserProfile = async () => {
-      if (!session?.accessToken) {
+      if (!session?.user) {
         setIsLoadingProfile(false);
         return;
       }

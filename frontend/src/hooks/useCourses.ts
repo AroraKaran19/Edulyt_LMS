@@ -241,7 +241,7 @@ export const useCourses = () => {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minutes timeout
 
-        const response = await apiClient.post("/courses/chunked/metadata", courseMetadata, {
+        const response = await apiClient.post("/courses/metadata", courseMetadata, {
           signal: controller.signal,
         });
 

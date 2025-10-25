@@ -1,0 +1,160 @@
+import { Affiliate, Course, Review, PaymentOrder, Enrollment } from ".";
+
+export interface Collaborator extends User {
+  totalReferrals: number;
+  totalEarnings: number;
+}
+
+export interface Instructor extends User {
+  rating: number;
+  totalStudents: number;
+  bio?: string;
+  currentPosition?: string;
+  currentCompany?: string;
+  previousExperience?: {
+    companyName: string;
+    position: string;
+    duration: {
+      from: Date;
+      to: Date;
+    };
+    description: string;
+  }[];
+  linkedinUrl?: string;
+  reviews: Review["_id"][];
+  ownedCourses: Course["_id"][];
+}
+
+export interface Student extends User {
+  enrollments: Enrollment["_id"][];
+
+  collegeName?: string;
+  passingYear?: number;
+  areaOfInterest?: string;
+  experience?: {
+    companyName: string;
+    position: string;
+    duration: {
+      from: Date;
+      to: Date;
+    };
+    description: string;
+  }[];
+
+  currentPosition?: string;
+  currentCompany?: string;
+  domain?: string;
+
+  portfolio?: string;
+
+  accounts: SocialProfiles;
+
+  // Joining info
+  joinSource?: "direct" | "affiliate" | "promotion";
+  affiliation?: {
+    isAffiliate: boolean; // if user has been referred by an affiliate
+    affiliate: Affiliate;
+  };
+
+  // Orders
+  orders: PaymentOrder["_id"][];
+
+  // Pending payments
+  pendingPayments: PaymentOrder["_id"][];
+}
+
+export interface SocialProfiles {
+  google?: {
+    id?: string;
+    name?: string;
+    email?: string;
+    image?: string;
+    email_verified?: boolean;
+    access_token?: string;
+  };
+  linkedin?: {
+    sub?: string;
+    name?: string;
+    given_name?: string;
+    family_name?: string;
+    picture?: string;
+    locale?: string;
+    email?: string;
+    email_verified?: boolean;
+
+    refreshToken?: string;
+    accessToken?: string;
+  };
+  github?: {
+    name: string;
+    login: string;
+    id: number;
+    node_id: string;
+    avatar_url: string;
+    gravatar_id: string;
+    html_url: string;
+    starred_url: string;
+    type: string;
+    user_view_type: string;
+    site_admin: boolean;
+    company: string;
+    blog: string;
+    location: string;
+    email?: string;
+    bio: string;
+    public_repos: number;
+    public_gists: number;
+    followers: number;
+    following: number;
+    created_at: string;
+    updated_at: string;
+
+    refreshToken?: string;
+    accessToken?: string;
+  };
+  instagram?: string;
+}
+
+export interface User {
+  _id?: string;
+  status: "active" | "inactive" | "blocked";
+
+  firstName?: string;
+  lastName?: string;
+  profilePicture?: string;
+  email: string;
+  phone?: string;
+  whatsappNumber?: string;
+  password: string;
+  userType: "student" | "instructor" | "collaborator" | "admin" | "super-admin";
+  provider: "credentials" | "google" | "linkedin";
+
+  address?: {
+    address?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    pincode?: string;
+  };
+
+  accounts: SocialProfiles;
+
+  dob?: Date;
+
+  permissions: string[];
+
+  refreshTokens: {
+    token: string;
+    deviceInfo?: {
+      userAgent?: string;
+      ipAddress?: string;
+      deviceType?: string;
+    };
+    createdAt: Date;
+    lastUsed: Date;
+    isActive: boolean;
+  }[];
+
+  createdAt?: Date;
+  updatedAt?: Date;
+}

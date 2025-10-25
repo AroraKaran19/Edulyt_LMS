@@ -27,13 +27,21 @@ export class AuthController {
   private extractDeviceInfo(req: Request) {
     return {
       userAgent: req.get("User-Agent"),
-      ipAddress: req.ip || req.connection.remoteAddress || req.socket.remoteAddress,
+      ipAddress:
+        req.ip || req.connection.remoteAddress || req.socket.remoteAddress,
       deviceType: undefined, // Will be auto-detected from user agent
     };
   }
 
   register = asyncHandler(async (req: Request, res: Response) => {
-    const { email, password, confirmPassword, userType = "student", instructorData, ...additionalData } = req.body;
+    const {
+      email,
+      password,
+      confirmPassword,
+      userType = "student",
+      instructorData,
+      ...additionalData
+    } = req.body;
 
     if (!email || !password || !confirmPassword) {
       throw new AppError("All fields are required", 400);
@@ -54,7 +62,7 @@ export class AuthController {
     // Prepare additional data for the service
     const serviceAdditionalData = {
       ...additionalData,
-      instructorData
+      instructorData,
     };
 
     const { user, accessToken, refreshToken } = await this.authService.register(
@@ -131,7 +139,13 @@ export class AuthController {
    * @param res - Express response object
    */
   oauthSignIn = asyncHandler(async (req: Request, res: Response) => {
-    const { email, fullName, provider, userType = "student", profilePicture } = req.body;
+    const {
+      email,
+      fullName,
+      provider,
+      userType = "student",
+      profilePicture,
+    } = req.body;
 
     if (!email || !fullName || !provider) {
       throw new AppError("All fields are required", 400);
@@ -186,7 +200,7 @@ export class AuthController {
       sendSuccessResponse(
         res,
         {
-          user: { ...user.toObject(), enrolledCourses } ,
+          user: { ...user.toObject(), enrolledCourses },
           accessToken,
           refreshToken,
         },
