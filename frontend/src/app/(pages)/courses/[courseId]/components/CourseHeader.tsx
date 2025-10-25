@@ -10,11 +10,7 @@ import { Star } from "lucide-react";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import EnquiryFormModal from "./EnquiryFormModal";
 import EnrollmentModal from "./EnrollmentModal";
-import { FullScreenLoader } from "@/components/ui/Loader";
-import axios from "axios";
-import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { toast } from "react-toastify";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -23,7 +19,6 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 
 const CourseHeader = ({
   course,
-  onLoadingChange,
   isEnrollmentModalOpen,
   setIsEnrollmentModalOpen,
 }: {
@@ -35,14 +30,12 @@ const CourseHeader = ({
   const [isEnquiryModalOpen, setIsEnquiryModalOpen] = useState(false);
   const [localIsEnrollmentModalOpen, setLocalIsEnrollmentModalOpen] =
     useState(false);
-  const [isPaymentLoading, setIsPaymentLoading] = useState(false);
 
   // Use external state if provided, otherwise use local state
   const enrollmentModalOpen =
     isEnrollmentModalOpen ?? localIsEnrollmentModalOpen;
   const setEnrollmentModalOpen =
     setIsEnrollmentModalOpen ?? setLocalIsEnrollmentModalOpen;
-  const { data: session } = useSession();
   const router = useRouter();
 
   const formattedReviewsCount = useMemo(() => {
@@ -206,15 +199,6 @@ const CourseHeader = ({
         course={course}
         onPlanSelect={handlePlanSelect}
       />
-
-      {/* Payment Loading Overlay */}
-      {isPaymentLoading && (
-        <FullScreenLoader
-          text="Generating payment link..."
-          variant="spinner"
-          size="lg"
-        />
-      )}
     </>
   );
 };

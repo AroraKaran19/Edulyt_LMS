@@ -3,16 +3,16 @@ import React, { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useForm, Controller, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  OrangeButton,
-  WhiteButton,
-  FullScreenLoader,
-} from "@/components/ui";
+import { OrangeButton, WhiteButton, FullScreenLoader } from "@/components/ui";
 import Input from "@/components/ui/inputs/Input";
 import TextArea from "@/components/ui/inputs/TextArea";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-import { profileFormSchema, ProfileFormData, getDefaultValues } from "@/types/profileForm";
+import {
+  profileFormSchema,
+  ProfileFormData,
+  getDefaultValues,
+} from "@/types/profileForm";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
 import {
@@ -26,7 +26,6 @@ import {
 const ProfileSettingsPage = () => {
   const { data: session, update } = useSession();
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [activeTab, setActiveTab] = useState<"basic" | "role-specific">(
     "basic"
@@ -50,12 +49,20 @@ const ProfileSettingsPage = () => {
   });
 
   // Field arrays for experience
-  const { fields: experienceFields, append: appendExperience, remove: removeExperience } = useFieldArray({
+  const {
+    fields: experienceFields,
+    append: appendExperience,
+    remove: removeExperience,
+  } = useFieldArray({
     control,
     name: "experience",
   });
 
-  const { fields: previousExperienceFields, append: appendPreviousExperience, remove: removePreviousExperience } = useFieldArray({
+  const {
+    fields: previousExperienceFields,
+    append: appendPreviousExperience,
+    remove: removePreviousExperience,
+  } = useFieldArray({
     control,
     name: "previousExperience",
   });
@@ -68,7 +75,7 @@ const ProfileSettingsPage = () => {
 
   useEffect(() => {
     if (!session && isClient) {
-      router.push('/auth/login');
+      router.push("/auth/login");
     }
   }, [session, router, isClient]);
 
@@ -89,11 +96,11 @@ const ProfileSettingsPage = () => {
 
       try {
         setIsLoadingProfile(true);
-        
+
         // Import apiClient dynamically to avoid SSR issues
-        const { default: apiClient } = await import('@/configs/apiConfig');
-        
-        const response = await apiClient.get('/api/user/profile', {
+        const { default: apiClient } = await import("@/configs/apiConfig");
+
+        const response = await apiClient.get("/api/user/profile", {
           headers: {
             Authorization: `Bearer ${session.accessToken}`,
           },
@@ -101,32 +108,36 @@ const ProfileSettingsPage = () => {
 
         if (response.data.success) {
           const profileData = response.data.data.user;
-          
+
           // Update the form with fetched profile data
-          reset(getDefaultValues(profileData, profileData.userType || userType));
-          
+          reset(
+            getDefaultValues(profileData, profileData.userType || userType)
+          );
+
           // Update session with fresh data if needed
           await update({
             ...session,
             user: {
               ...session.user,
               ...profileData,
-            }
+            },
           });
         }
       } catch (error: any) {
-        console.error('Failed to fetch user profile:', error);
-        
+        console.error("Failed to fetch user profile:", error);
+
         // Handle different types of errors
         if (error.response?.status === 401) {
-          toast.error('Session expired. Please login again.');
-          router.push('/auth/login');
+          toast.error("Session expired. Please login again.");
+          router.push("/auth/login");
         } else if (error.response?.status === 404) {
-          toast.error('Profile not found. Please contact support.');
-        } else if (error.code === 'NETWORK_ERROR' || !error.response) {
-          toast.error('Network error. Please check your connection and try again.');
+          toast.error("Profile not found. Please contact support.");
+        } else if (error.code === "NETWORK_ERROR" || !error.response) {
+          toast.error(
+            "Network error. Please check your connection and try again."
+          );
         } else {
-          toast.error('Failed to load profile data. Please refresh the page.');
+          toast.error("Failed to load profile data. Please refresh the page.");
         }
       } finally {
         setIsLoadingProfile(false);
@@ -140,14 +151,14 @@ const ProfileSettingsPage = () => {
   }, [session, reset, userType, update, isLoadingProfile, router]);
 
   // Form submission handler using react-hook-form
-  const onSubmit = async (data: ProfileFormData) => {
+  const onSubmit = async () => {
     try {
       // Here you would make an API call to update the user profile
       // For now, we'll just simulate the update
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
       // toast.success("Profile updated successfully!");
-      
+
       // Clear the first-time flag after profile completion
       if (user?.isFirstTime) {
         // Update session to clear isFirstTime flag
@@ -155,14 +166,14 @@ const ProfileSettingsPage = () => {
           ...session,
           user: {
             ...session?.user,
-            isFirstTime: false
-          }
+            isFirstTime: false,
+          },
         });
       }
-      
+
       // Update the session with new data
       await update();
-      
+
       // Redirect to dashboard after successful profile update
       router.push("/dashboard");
     } catch (error) {
@@ -197,12 +208,14 @@ const ProfileSettingsPage = () => {
     }
   };
 
-  if (!isClient || isLoading || isLoadingProfile) {
+  if (!isClient || isLoadingProfile) {
     return (
-      <FullScreenLoader 
-        text={isLoadingProfile ? "Loading profile data..." : "Loading profile..."} 
-        size="lg" 
-        variant="spinner" 
+      <FullScreenLoader
+        text={
+          isLoadingProfile ? "Loading profile data..." : "Loading profile..."
+        }
+        size="lg"
+        variant="spinner"
       />
     );
   }
@@ -299,14 +312,14 @@ const ProfileSettingsPage = () => {
                       )}
                     </div>
                     <div>
-                        <div suppressHydrationWarning>
-                          <Input
-                            label="Email"
-                            type="email"
-                            {...register("email")}
-                            required
-                          />
-                        </div>
+                      <div suppressHydrationWarning>
+                        <Input
+                          label="Email"
+                          type="email"
+                          {...register("email")}
+                          required
+                        />
+                      </div>
                       {errors.email && (
                         <p className="text-red-500 text-sm mt-1">
                           {errors.email.message}
@@ -342,28 +355,28 @@ const ProfileSettingsPage = () => {
                       {...register("profilePicture")}
                       placeholder="https://example.com/image.jpg"
                     />
-                     <div className="md:col-span-2">
-                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                         Date of Birth
-                       </label>
-                       <Controller
-                         name="dob"
-                         control={control}
-                         render={({ field }) => (
-                           <DatePicker
-                             selected={field.value}
-                             onChange={field.onChange}
-                             placeholderText="Select date of birth"
-                             maxDate={new Date()}
-                             dateFormat="MM/dd/yyyy"
-                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                             showYearDropdown
-                             showMonthDropdown
-                             dropdownMode="select"
-                           />
-                         )}
-                       />
-                     </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Date of Birth
+                      </label>
+                      <Controller
+                        name="dob"
+                        control={control}
+                        render={({ field }) => (
+                          <DatePicker
+                            selected={field.value}
+                            onChange={field.onChange}
+                            placeholderText="Select date of birth"
+                            maxDate={new Date()}
+                            dateFormat="MM/dd/yyyy"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                            showYearDropdown
+                            showMonthDropdown
+                            dropdownMode="select"
+                          />
+                        )}
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -380,22 +393,10 @@ const ProfileSettingsPage = () => {
                         placeholder="Street address, apartment, suite, etc."
                       />
                     </div>
-                    <Input
-                      label="City"
-                      {...register("address.city")}
-                    />
-                    <Input
-                      label="State"
-                      {...register("address.state")}
-                    />
-                    <Input
-                      label="Country"
-                      {...register("address.country")}
-                    />
-                    <Input
-                      label="Pincode"
-                      {...register("address.pincode")}
-                    />
+                    <Input label="City" {...register("address.city")} />
+                    <Input label="State" {...register("address.state")} />
+                    <Input label="Country" {...register("address.country")} />
+                    <Input label="Pincode" {...register("address.pincode")} />
                   </div>
                 </div>
               </div>
@@ -459,7 +460,7 @@ const ProfileSettingsPage = () => {
                           </p>
                         )}
                       </div>
-                      
+
                       {/* Student Experience */}
                       <div className="md:col-span-2">
                         <h4 className="text-md font-medium text-gray-900 mb-3">
@@ -474,61 +475,67 @@ const ProfileSettingsPage = () => {
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <Input
                                   label="Company Name"
-                                  {...register(`experience.${index}.companyName`)}
+                                  {...register(
+                                    `experience.${index}.companyName`
+                                  )}
                                 />
                                 <Input
                                   label="Position"
                                   {...register(`experience.${index}.position`)}
                                 />
-                                 <div>
-                                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                                     Start Date
-                                   </label>
-                                   <Controller
-                                     name={`experience.${index}.duration.from`}
-                                     control={control}
-                                     render={({ field }) => (
-                                       <DatePicker
-                                         selected={field.value}
-                                         onChange={field.onChange}
-                                         placeholderText="Select start date"
-                                         maxDate={new Date()}
-                                         dateFormat="MM/dd/yyyy"
-                                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                                         showYearDropdown
-                                         showMonthDropdown
-                                         dropdownMode="select"
-                                       />
-                                     )}
-                                   />
-                                 </div>
-                                 <div>
-                                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                                     End Date
-                                   </label>
-                                   <Controller
-                                     name={`experience.${index}.duration.to`}
-                                     control={control}
-                                     render={({ field }) => (
-                                       <DatePicker
-                                         selected={field.value}
-                                         onChange={field.onChange}
-                                         placeholderText="Select end date"
-                                         maxDate={new Date()}
-                                         minDate={watch(`experience.${index}.duration.from`)}
-                                         dateFormat="MM/dd/yyyy"
-                                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                                         showYearDropdown
-                                         showMonthDropdown
-                                         dropdownMode="select"
-                                       />
-                                     )}
-                                   />
-                                 </div>
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Start Date
+                                  </label>
+                                  <Controller
+                                    name={`experience.${index}.duration.from`}
+                                    control={control}
+                                    render={({ field }) => (
+                                      <DatePicker
+                                        selected={field.value}
+                                        onChange={field.onChange}
+                                        placeholderText="Select start date"
+                                        maxDate={new Date()}
+                                        dateFormat="MM/dd/yyyy"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                                        showYearDropdown
+                                        showMonthDropdown
+                                        dropdownMode="select"
+                                      />
+                                    )}
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    End Date
+                                  </label>
+                                  <Controller
+                                    name={`experience.${index}.duration.to`}
+                                    control={control}
+                                    render={({ field }) => (
+                                      <DatePicker
+                                        selected={field.value}
+                                        onChange={field.onChange}
+                                        placeholderText="Select end date"
+                                        maxDate={new Date()}
+                                        minDate={watch(
+                                          `experience.${index}.duration.from`
+                                        )}
+                                        dateFormat="MM/dd/yyyy"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                                        showYearDropdown
+                                        showMonthDropdown
+                                        dropdownMode="select"
+                                      />
+                                    )}
+                                  />
+                                </div>
                                 <div className="md:col-span-2">
                                   <TextArea
                                     label="Description"
-                                    {...register(`experience.${index}.description`)}
+                                    {...register(
+                                      `experience.${index}.description`
+                                    )}
                                     rows={3}
                                     placeholder="Describe your role and responsibilities..."
                                   />
@@ -547,15 +554,17 @@ const ProfileSettingsPage = () => {
                           ))}
                           <button
                             type="button"
-                            onClick={() => appendExperience({
-                              companyName: "",
-                              position: "",
-                              duration: {
-                                from: new Date(),
-                                to: new Date(),
-                              },
-                              description: "",
-                            })}
+                            onClick={() =>
+                              appendExperience({
+                                companyName: "",
+                                position: "",
+                                duration: {
+                                  from: new Date(),
+                                  to: new Date(),
+                                },
+                                description: "",
+                              })
+                            }
                             className="w-full border-2 border-dashed border-gray-300 rounded-lg p-4 text-gray-600 hover:border-orange-400 hover:text-orange-600 transition-colors"
                           >
                             + Add Work Experience
@@ -619,63 +628,71 @@ const ProfileSettingsPage = () => {
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <Input
                                   label="Company Name"
-                                  {...register(`previousExperience.${index}.companyName`)}
+                                  {...register(
+                                    `previousExperience.${index}.companyName`
+                                  )}
                                 />
                                 <Input
                                   label="Position"
-                                  {...register(`previousExperience.${index}.position`)}
+                                  {...register(
+                                    `previousExperience.${index}.position`
+                                  )}
                                 />
-                                 <div className="md:col-span-2 grid grid-cols-2 gap-4">
-                                   <div>
-                                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                                       Start Date
-                                     </label>
-                                     <Controller
-                                       name={`previousExperience.${index}.duration.from`}
-                                       control={control}
-                                       render={({ field }) => (
-                                         <DatePicker
-                                           selected={field.value}
-                                           onChange={field.onChange}
-                                           placeholderText="Select start date"
-                                           maxDate={new Date()}
-                                           dateFormat="MM/dd/yyyy"
-                                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                                           showYearDropdown
-                                           showMonthDropdown
-                                           dropdownMode="select"
-                                         />
-                                       )}
-                                     />
-                                   </div>
-                                   <div>
-                                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                                       End Date
-                                     </label>
-                                     <Controller
-                                       name={`previousExperience.${index}.duration.to`}
-                                       control={control}
-                                       render={({ field }) => (
-                                         <DatePicker
-                                           selected={field.value}
-                                           onChange={field.onChange}
-                                           placeholderText="Select end date"
-                                           maxDate={new Date()}
-                                           minDate={watch(`previousExperience.${index}.duration.from`)}
-                                           dateFormat="MM/dd/yyyy"
-                                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                                           showYearDropdown
-                                           showMonthDropdown
-                                           dropdownMode="select"
-                                         />
-                                       )}
-                                     />
-                                   </div>
-                                 </div>
+                                <div className="md:col-span-2 grid grid-cols-2 gap-4">
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                      Start Date
+                                    </label>
+                                    <Controller
+                                      name={`previousExperience.${index}.duration.from`}
+                                      control={control}
+                                      render={({ field }) => (
+                                        <DatePicker
+                                          selected={field.value}
+                                          onChange={field.onChange}
+                                          placeholderText="Select start date"
+                                          maxDate={new Date()}
+                                          dateFormat="MM/dd/yyyy"
+                                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                                          showYearDropdown
+                                          showMonthDropdown
+                                          dropdownMode="select"
+                                        />
+                                      )}
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                      End Date
+                                    </label>
+                                    <Controller
+                                      name={`previousExperience.${index}.duration.to`}
+                                      control={control}
+                                      render={({ field }) => (
+                                        <DatePicker
+                                          selected={field.value}
+                                          onChange={field.onChange}
+                                          placeholderText="Select end date"
+                                          maxDate={new Date()}
+                                          minDate={watch(
+                                            `previousExperience.${index}.duration.from`
+                                          )}
+                                          dateFormat="MM/dd/yyyy"
+                                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                                          showYearDropdown
+                                          showMonthDropdown
+                                          dropdownMode="select"
+                                        />
+                                      )}
+                                    />
+                                  </div>
+                                </div>
                                 <div className="md:col-span-2">
                                   <TextArea
                                     label="Description"
-                                    {...register(`previousExperience.${index}.description`)}
+                                    {...register(
+                                      `previousExperience.${index}.description`
+                                    )}
                                     rows={3}
                                     placeholder="Describe your role and achievements..."
                                   />
@@ -692,15 +709,17 @@ const ProfileSettingsPage = () => {
                           ))}
                           <button
                             type="button"
-                            onClick={() => appendPreviousExperience({
-                              companyName: "",
-                              position: "",
-                              duration: {
-                                from: new Date(),
-                                to: new Date(),
-                              },
-                              description: "",
-                            })}
+                            onClick={() =>
+                              appendPreviousExperience({
+                                companyName: "",
+                                position: "",
+                                duration: {
+                                  from: new Date(),
+                                  to: new Date(),
+                                },
+                                description: "",
+                              })
+                            }
                             className="w-full border-2 border-dashed border-gray-300 rounded-lg p-4 text-gray-600 hover:border-orange-400 hover:text-orange-600 transition-colors"
                           >
                             + Add Previous Experience
@@ -710,7 +729,6 @@ const ProfileSettingsPage = () => {
                     </div>
                   </>
                 )}
-
               </div>
             )}
 
@@ -736,4 +754,3 @@ const ProfileSettingsPage = () => {
 };
 
 export default ProfileSettingsPage;
-

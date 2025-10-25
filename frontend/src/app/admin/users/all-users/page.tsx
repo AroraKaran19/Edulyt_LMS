@@ -1,6 +1,6 @@
 "use client";
 import AdminTopHeader from "@/components/admin/AdminTopHeader";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import { useUsers } from "@/hooks/useUsers";
 import Searchbar2 from "@/components/ui/Searchbar2";
@@ -464,7 +464,7 @@ const Pagination = ({
 };
 
 // Main Page Component
-const page = () => {
+const Page = () => {
   const { fetchUsers, isLoading, error } = useUsers();
   const [users, setUsers] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -473,18 +473,21 @@ const page = () => {
   const [totalUsers, setTotalUsers] = useState(0);
   const [userTypeFilter, setUserTypeFilter] = useState<string>("all");
 
-  const loadUsers = async (page: number = 1, search: string = "") => {
-    const response = await fetchUsers(page, 12, search);
-    if (response?.success) {
-      setUsers(response.data.users);
-      setTotalPages(response.data.totalPages);
-      setTotalUsers(response.data.total);
-    }
-  };
+  const loadUsers = useCallback(
+    async (page: number = 1, search: string = "") => {
+      const response = await fetchUsers(page, 12, search);
+      if (response?.success) {
+        setUsers(response.data.users);
+        setTotalPages(response.data.totalPages);
+        setTotalUsers(response.data.total);
+      }
+    },
+    [fetchUsers]
+  );
 
   useEffect(() => {
     loadUsers(currentPage, searchTerm);
-  }, [currentPage, searchTerm]);
+  }, [currentPage, searchTerm, loadUsers]);
 
   const handleSearch = () => {
     setCurrentPage(1);
@@ -556,4 +559,4 @@ const page = () => {
   );
 };
 
-export default page;
+export default Page;
