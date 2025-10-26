@@ -3,6 +3,34 @@
 import React from "react";
 import { cn } from "@/lib/utils";
 
+// Custom animations for the loader
+const fadeInAnimation = `
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+`;
+
+const scaleInAnimation = `
+  @keyframes scale-in {
+    from { 
+      opacity: 0; 
+      transform: scale(0.9) translateY(20px); 
+    }
+    to { 
+      opacity: 1; 
+      transform: scale(1) translateY(0); 
+    }
+  }
+`;
+
+// Inject animations
+if (typeof document !== "undefined") {
+  const style = document.createElement("style");
+  style.textContent = fadeInAnimation + scaleInAnimation;
+  document.head.appendChild(style);
+}
+
 interface LoaderProps {
   size?: "sm" | "md" | "lg" | "xl";
   variant?: "spinner" | "dots" | "pulse";
@@ -109,17 +137,99 @@ export const FullScreenLoader: React.FC<{
   text?: string;
   variant?: "spinner" | "dots" | "pulse";
   size?: "sm" | "md" | "lg" | "xl";
-}> = ({ text = "Loading...", variant = "spinner", size = "lg" }) => {
+  showProgress?: boolean;
+  progress?: number;
+}> = ({
+  text = "Loading...",
+  variant = "spinner",
+  size = "lg",
+  showProgress = false,
+  progress = 0,
+}) => {
   return (
-    <div className="fixed inset-0 bg-white/80 backdrop-blur-sm z-50 flex items-center justify-center">
-      <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-100">
-        <Loader
-          size={size}
-          variant={variant}
-          text={text}
-          showText={true}
-          className="min-w-[120px]"
-        />
+    <div className="fixed inset-0 bg-black/20 backdrop-blur-md z-50 flex items-center justify-center animate-fade-in">
+      <div className="flex flex-col items-center space-y-6">
+        {/* Enhanced Loader with better spacing */}
+        <div className="relative">
+          <Loader
+            size={size}
+            variant={variant}
+            text=""
+            showText={false}
+            className="min-w-[80px]"
+          />
+          {/* Optional progress ring */}
+          {showProgress && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <svg
+                className="w-20 h-20 transform -rotate-90"
+                viewBox="0 0 100 100"
+              >
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="45"
+                  stroke="currentColor"
+                  strokeWidth="8"
+                  fill="none"
+                  className="text-gray-200"
+                />
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="45"
+                  stroke="currentColor"
+                  strokeWidth="8"
+                  fill="none"
+                  strokeDasharray={`${2 * Math.PI * 45}`}
+                  strokeDashoffset={`${
+                    2 * Math.PI * 45 * (1 - progress / 100)
+                  }`}
+                  className="text-[#F77124] transition-all duration-300 ease-out"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </div>
+          )}
+        </div>
+
+        {/* Enhanced text styling */}
+        <div className="text-center space-y-2">
+          <h3 className="text-xl font-semibold text-white animate-pulse drop-shadow-lg">
+            {text}
+          </h3>
+          {showProgress && (
+            <div className="space-y-2">
+              <div className="w-full bg-white/20 rounded-full h-2 overflow-hidden">
+                <div
+                  className="bg-linear-to-r from-[#F77124] to-[#e65a1a] h-full rounded-full transition-all duration-500 ease-out"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+              <p className="text-sm text-white/80 font-medium drop-shadow">
+                {Math.round(progress)}% Complete
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Optional decorative elements - only show for dots variant */}
+        {variant === "dots" && (
+          <div className="flex space-x-1">
+            <div
+              className="w-2 h-2 bg-[#F77124] rounded-full animate-bounce"
+              style={{ animationDelay: "0ms" }}
+            />
+            <div
+              className="w-2 h-2 bg-[#F77124] rounded-full animate-bounce"
+              style={{ animationDelay: "150ms" }}
+            />
+            <div
+              className="w-2 h-2 bg-[#F77124] rounded-full animate-bounce"
+              style={{ animationDelay: "300ms" }}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

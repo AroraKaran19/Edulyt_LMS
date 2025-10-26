@@ -1,7 +1,6 @@
 import AdminTopHeader from "@/components/admin/AdminTopHeader";
 import AdminDashboard from "@/components/admin/dashboard/AdminDashboard";
 import { notFound } from "next/navigation";
-import React from "react";
 
 const AdminPage = () => {
   const user = {

@@ -1,27 +1,51 @@
-import React from "react";
-import { Plus_Jakarta_Sans } from "next/font/google";
 import { Metadata } from "next";
-
-const plusJakartaSans = Plus_Jakarta_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-});
+import React from "react";
 
 export const metadata: Metadata = {
   title: "Courses | Airkrit India",
   description:
     "Explore our wide range of courses and find the perfect one for you.",
-  keywords: ["course", "airkrit", "learn", "education"],
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_APP_URL || process.env.NODE_ENV === "production"
+      ? "https://www.airkrit.com/courses"
+      : "http://localhost:3000/courses"
+  ),
+  openGraph: {
+    title: "Courses | Airkrit India",
+    description:
+      "Explore our wide range of courses and find the perfect one for you.",
+    url: "https://www.airkrit.com/courses",
+    siteName: "Airkrit India",
+    type: "website",
+    images: [
+      {
+        url: "/logo.png",
+        width: 1200,
+        height: 630,
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Courses | Airkrit India",
+    description:
+      "Explore our wide range of courses and find the perfect one for you.",
+    images: [
+      {
+        url: "/logo.png",
+        width: 1200,
+        height: 630,
+      },
+    ],
+  },
 };
 
-const CoursesLayout = ({ children }: { children: React.ReactNode }) => {
+const CoursePageLayout = ({ children }: { children: React.ReactNode }) => {
   return (
-    <div
-      className={`min-h-[calc(100dvh-78px)] w-full flex flex-col gap-10 p-4 bg-[rgba(226,226,226,0.4)] ${plusJakartaSans.className}`}
-    >
+    <div className="w-full flex flex-col gap-10 p-4 bg-[rgba(226,226,226,0.4)]">
       {children}
     </div>
   );
 };
 
-export default CoursesLayout;
+export default CoursePageLayout;

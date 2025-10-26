@@ -37,19 +37,27 @@ const planSchema = new mongoose.Schema<Plan>(
           min: [0, "Discount value must be positive"],
           max: [100, "Discount value cannot exceed 100"],
         },
+        startDate: {
+          type: Date,
+          required: false,
+        },
+        endDate: {
+          type: Date,
+          required: false,
+        },
+        isActive: {
+          type: Boolean,
+          required: true,
+          default: true,
+        },
       },
       required: false,
+      _id: false,
     },
     isPopular: { type: Boolean, default: false, required: true },
-    trialDays: {
-      type: Number,
-      required: false,
-      min: [0, "Trial days must be positive"],
-      max: [365, "Trial days cannot exceed 365"],
-    },
     isActive: { type: Boolean, default: true, required: true },
   },
-  { timestamps: true, _id: false } // _id: false for embedded sub-documents
+  { timestamps: true, _id: false }
 );
 
 export default planSchema;

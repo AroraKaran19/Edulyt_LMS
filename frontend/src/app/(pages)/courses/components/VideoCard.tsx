@@ -1,10 +1,11 @@
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
-import { formatDuration } from "@/lib/formatDuration";
+import { formatDuration } from "@/lib/utils";
 import { cn } from "@/lib/utils";
-import { CourseModule } from "@/types";
+import { Content, CourseLesson, CourseModule } from "@/types";
 import Image from "next/image";
 import React, { useState } from "react";
 import { ChevronDown, ChevronUp, Play, Clock } from "lucide-react";
+import { LockIcon } from "../../../../../public/icons";
 
 const VideoCard = ({
   module,
@@ -19,17 +20,18 @@ const VideoCard = ({
 }) => {
   const [showLessons, setShowLessons] = useState(false);
 
-  const totalDuration = module.lessons?.reduce(
-    (moduleAcc, lesson) =>
-      moduleAcc +
-      (lesson.contents?.reduce((lessonAcc, content) => {
-        if (content.type === "video" && content.duration) {
-          return lessonAcc + (content.duration || 0);
-        }
-        return lessonAcc;
-      }, 0) || 0),
-    0
-  ) || 0;
+  const totalDuration =
+    (module.lessons as CourseLesson[])?.reduce(
+      (moduleAcc, lesson) =>
+        moduleAcc +
+        ((lesson.contents as Content[])?.reduce((lessonAcc, content) => {
+          if (content.type === "video" && content.duration) {
+            return lessonAcc + (content.duration || 0);
+          }
+          return lessonAcc;
+        }, 0) || 0),
+      0
+    ) || 0;
 
   return (
     <div
@@ -60,7 +62,7 @@ const VideoCard = ({
             <p className="chapter-number text-base text-gray-500">
               Module {index + 1}
             </p>
-            <p className="video-title text-lg font-bold break-words line-clamp-2">
+            <p className="video-title text-lg font-bold wrap-break-words line-clamp-2">
               {module.title}
             </p>
             <p className="video-description text-sm text-gray-500 line-clamp-3">
@@ -76,13 +78,7 @@ const VideoCard = ({
               glow={false}
             >
               <span className="flex items-center justify-center gap-2">
-                <Image
-                  src="/Lock.svg"
-                  alt="Lock Icon"
-                  width={20}
-                  height={20}
-                  className="size-5 lg:size-6"
-                />
+                <LockIcon className="size-5" />
                 <p>Play</p>
               </span>
             </OrangeButton>
@@ -96,7 +92,8 @@ const VideoCard = ({
         className="flex items-center justify-between w-full p-2 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
       >
         <span className="text-sm font-medium text-gray-700">
-          {showLessons ? "Hide" : "Show"} Lessons ({module.lessons?.length ?? 0})
+          {showLessons ? "Hide" : "Show"} Lessons ({module.lessons?.length ?? 0}
+          )
         </span>
         {showLessons ? (
           <ChevronUp className="w-4 h-4 text-gray-500" />
@@ -108,13 +105,14 @@ const VideoCard = ({
       {/* Lessons List */}
       {showLessons && (
         <div className="lessons-list space-y-2 pl-4 border-l-2 border-orange-200">
-          {module.lessons?.map((lesson, lessonIndex) => {
-            const lessonDuration = lesson.contents?.reduce((acc, content) => {
-              if (content.type === "video" && content.duration) {
-                return acc + content.duration;
-              }
-              return acc;
-            }, 0) || 0;
+          {(module.lessons as CourseLesson[])?.map((lesson, lessonIndex) => {
+            const lessonDuration =
+              (lesson.contents as Content[])?.reduce((acc, content) => {
+                if (content.type === "video" && content.duration) {
+                  return acc + content.duration;
+                }
+                return acc;
+              }, 0) || 0;
 
             return (
               <div
@@ -143,14 +141,8 @@ const VideoCard = ({
                       )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-1 text-xs text-gray-400">
-                    <Image
-                      src="/Lock.svg"
-                      alt="Locked"
-                      width={12}
-                      height={12}
-                      className="opacity-50"
-                    />
+                  <div className="flex items-center gap-1 text-xs">
+                    <LockIcon className="size-5 text-black" />
                   </div>
                 </div>
               </div>

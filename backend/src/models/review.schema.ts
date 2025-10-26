@@ -1,6 +1,6 @@
-import { Review } from "@/types";
+import { Review } from "../types/review";
 import mongoose from "mongoose";
-import { validateLinkedinUrl, validateReview, validateUrl } from "./validators";
+import { validateReview } from "./validators";
 
 // ===================
 // Review Schema
@@ -8,7 +8,11 @@ import { validateLinkedinUrl, validateReview, validateUrl } from "./validators";
 
 const reviewSchema = new mongoose.Schema<Review>(
   {
-    name: { type: String, required: true },
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      required: true,
+      ref: "User",
+    },
     rating: {
       type: Number,
       required: true,
@@ -20,25 +24,6 @@ const reviewSchema = new mongoose.Schema<Review>(
       max: [5, "Rating must be at most 5"],
     },
     comment: { type: String, required: true },
-    profileImage: {
-      type: String,
-      required: false,
-      validate: {
-        validator: validateUrl,
-        message: "Profile image must be a valid URL",
-      },
-    },
-    currentRole: { type: String, required: true, default: "" },
-    currentCompany: { type: String, required: true, default: "" },
-    linkedin: {
-      type: String,
-      required: false,
-      default: "",
-      validate: {
-        validator: validateLinkedinUrl,
-        message: "Linkedin must be a valid LinkedIn profile URL or empty",
-      },
-    },
     isActive: { type: Boolean, default: true, required: true },
     reviewableType: {
       type: String,
@@ -56,10 +41,11 @@ const reviewSchema = new mongoose.Schema<Review>(
 
 reviewSchema.index({ reviewableId: 1, isActive: 1 }); // For fetching active reviews by course
 reviewSchema.index({ rating: 1 }); // For sorting/filtering by rating
-reviewSchema.index({ name: 1 }); // For searching reviews by name
 reviewSchema.index({ comment: 1 }); // For searching reviews by comment
 
 reviewSchema.index({ createdAt: -1 }); // For listing reviews by creation date
 reviewSchema.index({ updatedAt: -1 }); // For listing reviews by update date
 
-export default reviewSchema;
+const ReviewModel = mongoose.model<Review>("Review", reviewSchema);
+
+export default ReviewModel;

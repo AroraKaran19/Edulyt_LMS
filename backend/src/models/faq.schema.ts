@@ -13,4 +13,12 @@ const faqSchema = new mongoose.Schema<FAQ>(
   { timestamps: true }
 );
 
+// indexes
+faqSchema.index({ question: 1, createdAt: -1 });
+faqSchema.index({ answer: 1, createdAt: -1 });
+faqSchema.index({ createdAt: -1 });
+faqSchema.index({ updatedAt: -1 });
+faqSchema.index({ question: 1, answer: 1, createdAt: -1 });
+faqSchema.index({ question: 1, answer: 1, updatedAt: -1 });
+
 export const FAQModel = mongoose.model<FAQ>("FAQ", faqSchema);

@@ -1,158 +1,241 @@
 import { Request, Response } from "express";
 import {
-  getAllCourses as getAllCoursesService,
-  getCourseUsingSlug as getCourseUsingSlugService,
-  getFeaturedCourses as getFeaturedCoursesService,
-  getCoursesUsingAudience as getCoursesUsingAudienceService,
-  getCoursesUsingCategory as getCoursesUsingCategoryService,
-  UpdateCourseMetadata as UpdateCourseMetadataService,
-  CreateCourseMetadata as CreateCourseMetadataService,
-  updateCourseStatusService,
-  getCoursesForAdminService,
-  getCourseByIdAdminService,
-  duplicateCourseService,
-  AddSingleCourseModule as AddSingleCourseModuleService,
-  UpdateSingleCourseModule as UpdateSingleCourseModuleService,
-  DeleteSingleCourseModule as DeleteSingleCourseModuleService,
-  AddSingleCourseLesson as AddSingleCourseLessonService,
-  UpdateSingleCourseLesson as UpdateSingleCourseLessonService,
-  DeleteSingleCourseLesson as DeleteSingleCourseLessonService,
-  AddSingleCourseContent as AddSingleCourseContentService,
-  UpdateSingleCourseContent as UpdateSingleCourseContentService,
-  DeleteSingleCourseContent as DeleteSingleCourseContentService,
-  UpdateCourseModuleReferences as UpdateCourseModuleReferencesService,
-  FinalizeCourseCreation as FinalizeCourseCreationService,
-} from "../services/course.service";
-import dotenv from "dotenv";
-import {
   AppError,
   asyncHandler,
   sendSuccessResponse,
 } from "../middlewares/error.middleware";
-dotenv.config();
+import {
+  CreateCourseLessonContentService,
+  CreateCourseLessonService,
+  CreateCourseMetadataService,
+  CreateCourseModuleService,
+  DeleteCourseLessonContentService,
+  DeleteCourseLessonService,
+  DeleteCourseModuleService,
+  DeleteCourseService,
+  DuplicateCourseService,
+  UpdateCourseLessonContentService,
+  UpdateCourseLessonService,
+  UpdateCourseMetadataService,
+  UpdateCourseModuleService,
+  UpdateCourseStatusService,
+  getAllCoursesService,
+  getCourseByIdService,
+  getCourseBySlugService,
+  getFeaturedCoursesService,
+  checkSlugAvailabilityService,
+} from "../services/course.services";
 
 export const getAllCourses = asyncHandler(
-  async (req: Request, res: Response): Promise<void> => {
-    const {
-      page = 1,
-      limit = 10,
-      search,
-      filters,
-      audienceFilter,
-      category,
-    } = req.query;
-    const courses = await getAllCoursesService(
+  async (req: Request, res: Response) => {
+    const { page = 1, limit = 10, search, categories, audience } = req.query;
+
+    if (Number(page) < 1 || Number(limit) < 1) {
+      throw new AppError("Page and limit must be positive numbers", 400);
+    }
+
+    const result = await getAllCoursesService(
       Number(page),
       Number(limit),
       search as string,
-      filters as string[],
-      audienceFilter as string,
-      category as string
+      categories as string,
+      audience as string,
+      false
     );
-    if (!courses || courses.courses.length === 0) {
-      sendSuccessResponse(
-        res,
-        { courses: [], total: 0, page: 1, totalPages: 0 },
-        "No courses found",
-        200
-      );
+    if (!result || result.courses.length === 0) {
+      sendSuccessResponse(res, [], "No courses found", 200);
       return;
     }
-    sendSuccessResponse(res, courses, "Courses retrieved successfully", 200);
-  }
-);
-
-export const getCourseUsingSlug = asyncHandler(
-  async (req: Request, res: Response): Promise<void> => {
-    const { slug } = req.params;
-    if (!slug) {
-      throw new AppError("Slug is required", 400);
-    }
-    const course = await getCourseUsingSlugService(slug);
-    if (!course) {
-      sendSuccessResponse(res, {}, "Course not found", 200);
-      return;
-    }
-    sendSuccessResponse(res, course, "Course retrieved successfully", 200);
+    sendSuccessResponse(res, result, "Courses retrieved successfully", 200);
     return;
   }
 );
 
 export const getFeaturedCourses = asyncHandler(
-  async (req: Request, res: Response): Promise<void> => {
-    const courses = await getFeaturedCoursesService();
-    if (!courses || courses.length === 0) {
+  async (req: Request, res: Response) => {
+    const { page = 1, limit = 10, search } = req.query;
+
+    if (Number(page) < 1 || Number(limit) < 1) {
+      throw new AppError("Page and limit must be positive numbers", 400);
+    }
+
+    const result = await getFeaturedCoursesService(
+      Number(page),
+      Number(limit),
+      search as string,
+      false
+    );
+    if (!result || result.courses.length === 0) {
       sendSuccessResponse(res, [], "No featured courses found", 200);
       return;
     }
-    sendSuccessResponse(res, courses, "Courses retrieved successfully", 200);
+    sendSuccessResponse(
+      res,
+      result,
+      "Featured courses retrieved successfully",
+      200
+    );
     return;
   }
 );
 
-export const getCoursesUsingAudience = asyncHandler(
-  async (req: Request, res: Response): Promise<void> => {
-    const { audience } = req.query;
-    if (!audience || typeof audience !== "string") {
-      throw new AppError("Audience is required", 400);
+export const getCoursesByAudience = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { page = 1, limit = 10, search, audience } = req.query;
+
+    if (
+      !audience ||
+      typeof audience !== "string" ||
+      !["college-students", "professionals"].includes(audience as string)
+    ) {
+      throw new AppError(
+        "Audience is required and must be either college-students or professionals",
+        400
+      );
     }
-    const courses = await getCoursesUsingAudienceService(audience);
-    if (!courses || courses.length === 0) {
-      sendSuccessResponse(res, [], "No courses found for this audience", 200);
+
+    if (Number(page) < 1 || Number(limit) < 1) {
+      throw new AppError("Page and limit must be positive numbers", 400);
+    }
+
+    const result = await getAllCoursesService(
+      Number(page),
+      Number(limit),
+      search as string,
+      undefined,
+      audience as string,
+      false
+    );
+    if (!result || result.courses.length === 0) {
+      sendSuccessResponse(res, [], "No courses found", 200);
       return;
     }
-    sendSuccessResponse(res, courses, "Courses retrieved successfully", 200);
+    sendSuccessResponse(res, result, "Courses retrieved successfully", 200);
     return;
   }
 );
 
-export const getCoursesUsingCategory = asyncHandler(
-  async (req: Request, res: Response): Promise<void> => {
-    const { category } = req.query;
+export const getCoursesByCategory = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { page = 1, limit = 10, search, category } = req.query;
+
     if (!category || typeof category !== "string") {
       throw new AppError("Category is required", 400);
     }
-    const courses = await getCoursesUsingCategoryService(category);
-    if (!courses || courses.length === 0) {
-      sendSuccessResponse(res, [], "No courses found for this category", 200);
+
+    if (Number(page) < 1 || Number(limit) < 1) {
+      throw new AppError("Page and limit must be positive numbers", 400);
+    }
+
+    const result = await getAllCoursesService(
+      Number(page),
+      Number(limit),
+      search as string,
+      category as string,
+      undefined,
+      false
+    );
+    if (!result || result.courses.length === 0) {
+      sendSuccessResponse(res, [], "No courses found", 200);
       return;
     }
-    sendSuccessResponse(res, courses, "Courses retrieved successfully", 200);
+    sendSuccessResponse(res, result, "Courses retrieved successfully", 200);
     return;
   }
 );
 
-export const updateCourseStatus = asyncHandler(
-  async (req: Request, res: Response): Promise<void> => {
+export const getCourseById = asyncHandler(
+  async (req: Request, res: Response) => {
     const { courseId } = req.params;
-    const { isActive } = req.body;
-    const result = await updateCourseStatusService(courseId, isActive);
-    sendSuccessResponse(res, result, "Course status updated successfully", 200);
-  }
-);
-
-export const updateCourseMetadata = asyncHandler(
-  async (req: Request, res: Response): Promise<void> => {
-    const { courseId } = req.params;
-    const updateData = req.body;
 
     if (!courseId) {
       throw new AppError("Course ID is required", 400);
     }
 
-    const result = await UpdateCourseMetadataService(courseId, updateData);
+    const result = await getCourseByIdService(courseId, false);
+    if (!result) {
+      sendSuccessResponse(res, [], "Course not found", 200);
+      return;
+    }
+    sendSuccessResponse(res, result, "Course retrieved successfully", 200);
+    return;
+  }
+);
 
-    sendSuccessResponse(
-      res,
-      result,
-      "Course metadata updated successfully",
-      200
+export const getCourseBySlug = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { slug } = req.params;
+    if (!slug) {
+      throw new AppError("Slug is required", 400);
+    }
+
+    const result = await getCourseBySlugService(slug, false);
+    if (!result) {
+      sendSuccessResponse(res, [], "Course not found", 200);
+      return;
+    }
+    sendSuccessResponse(res, result, "Course retrieved successfully", 200);
+    return;
+  }
+);
+
+export const getAdminCourses = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { page = 1, limit = 10, search, categories, audience } = req.query;
+
+    if (Number(page) < 1 || Number(limit) < 1) {
+      throw new AppError("Page and limit must be positive numbers", 400);
+    }
+
+    const result = await getAllCoursesService(
+      Number(page),
+      Number(limit),
+      search as string,
+      categories as string,
+      audience as string,
+      true
     );
+    sendSuccessResponse(res, result, "Courses retrieved successfully", 200);
+    return;
+  }
+);
+
+export const getAdminCourseById = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { courseId } = req.params;
+    if (!courseId) {
+      throw new AppError("Course ID is required", 400);
+    }
+
+    const result = await getCourseByIdService(courseId, true);
+    if (!result) {
+      sendSuccessResponse(res, [], "Course not found", 200);
+      return;
+    }
+    sendSuccessResponse(res, result, "Course retrieved successfully", 200);
+    return;
+  }
+);
+
+export const getAdminCourseBySlug = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { slug } = req.params;
+    if (!slug) {
+      throw new AppError("Slug is required", 400);
+    }
+
+    const result = await getCourseBySlugService(slug, true);
+    if (!result) {
+      sendSuccessResponse(res, [], "Course not found", 200);
+      return;
+    }
+    sendSuccessResponse(res, result, "Course retrieved successfully", 200);
+    return;
   }
 );
 
 export const createCourseMetadata = asyncHandler(
-  async (req: Request, res: Response): Promise<void> => {
+  async (req: Request, res: Response) => {
     const courseData = req.body;
 
     if (!courseData || Object.keys(courseData).length === 0) {
@@ -160,141 +243,95 @@ export const createCourseMetadata = asyncHandler(
     }
 
     const result = await CreateCourseMetadataService(courseData);
-
+    if (!result) {
+      throw new AppError("Failed to create course metadata", 500);
+    }
     sendSuccessResponse(
       res,
       result,
       "Course metadata created successfully",
       201
     );
+    return;
   }
 );
 
-export const getCoursesForAdmin = asyncHandler(
-  async (req: Request, res: Response): Promise<void> => {
-    const {
-      page = 1,
-      limit = 10,
-      search,
-      audienceFilter,
-      category,
-    } = req.query;
-    const courses = await getCoursesForAdminService(
-      Number(page),
-      Number(limit),
-      search as string,
-      category as string,
-      audienceFilter as string
-    );
-    if (!courses || courses.courses.length === 0) {
-      sendSuccessResponse(res, [], "No courses found", 200);
-      return;
-    }
-    sendSuccessResponse(res, { courses }, "Courses retrieved successfully", 200);
-  }
-);
-
-export const getCourseByIdAdmin = asyncHandler(
-  async (req: Request, res: Response): Promise<void> => {
-    const { courseId } = req.params;
-
-    if (!courseId) {
-      throw new AppError("Course ID is required", 400);
-    }
-
-    const course = await getCourseByIdAdminService(courseId);
-
-    if (!course) {
-      throw new AppError("Course not found", 404);
-    }
-
-    sendSuccessResponse(res, course, "Course retrieved successfully", 200);
-  }
-);
-
-export const duplicateCourse = asyncHandler(
-  async (req: Request, res: Response): Promise<void> => {
-    const { courseId } = req.params;
-    const result = await duplicateCourseService(courseId);
-    if (!result) {
-      throw new AppError("Failed to duplicate course", 500);
-    }
-    sendSuccessResponse(res, result, "Course duplicated successfully", 200);
-  }
-);
-
-export const updateCourseModuleReferences = asyncHandler(
-  async (req: Request, res: Response): Promise<void> => {
-    const { courseId } = req.params;
-    const { moduleIds } = req.body;
-
-    if (!courseId) {
-      throw new AppError("Course ID is required", 400);
-    }
-
-    if (!Array.isArray(moduleIds)) {
-      throw new AppError("moduleIds must be an array", 400);
-    }
-
-    const result = await UpdateCourseModuleReferencesService(
-      courseId,
-      moduleIds
-    );
-    sendSuccessResponse(
-      res,
-      result.message,
-      "Course module references updated successfully",
-      200
-    );
-  }
-);
-
-export const finalizeCourseCreation = asyncHandler(
-  async (req: Request, res: Response): Promise<void> => {
-    const { courseId } = req.params;
-
-    const result = await FinalizeCourseCreationService(courseId);
-    sendSuccessResponse(res, result.message, "Course finalized successfully", 200);
-  }
-);
-
-export const addSingleCourseModule = asyncHandler(
-  async (req: Request, res: Response): Promise<void> => {
+export const createCourseModule = asyncHandler(
+  async (req: Request, res: Response) => {
     const { courseId } = req.params;
     const moduleData = req.body;
 
-    if (!moduleData) {
+    if (!courseId) {
+      throw new AppError("Course ID is required", 400);
+    }
+
+    if (!moduleData || Object.keys(moduleData).length === 0) {
       throw new AppError("Module data is required", 400);
     }
 
-    // Only validate that the module data structure is present
-
-    const result = await AddSingleCourseModuleService(courseId, moduleData);
-    sendSuccessResponse(res, result.module, "Module added successfully", 201);
+    const result = await CreateCourseModuleService(courseId, moduleData);
+    if (!result) {
+      throw new AppError("Failed to create course module", 500);
+    }
+    sendSuccessResponse(res, result, "Course module created successfully", 201);
+    return;
   }
 );
 
-export const updateSingleCourseModule = asyncHandler(
-  async (req: Request, res: Response): Promise<void> => {
+export const updateCourseModule = asyncHandler(
+  async (req: Request, res: Response) => {
     const { courseId, moduleId } = req.params;
     const moduleData = req.body;
+
+    if (!courseId) {
+      throw new AppError("Course ID is required", 400);
+    }
 
     if (!moduleId) {
       throw new AppError("Module ID is required", 400);
     }
 
-    const result = await UpdateSingleCourseModuleService(
+    if (!moduleData || Object.keys(moduleData).length === 0) {
+      throw new AppError("Module data is required", 400);
+    }
+
+    const result = await UpdateCourseModuleService(
       courseId,
       moduleId,
       moduleData
     );
-    sendSuccessResponse(res, result.module, "Module updated successfully", 200);
+    if (!result) {
+      throw new AppError("Failed to update course module", 500);
+    }
+    sendSuccessResponse(res, result, "Course module updated successfully", 200);
+    return;
   }
 );
 
-export const deleteSingleCourseModule = asyncHandler(
-  async (req: Request, res: Response): Promise<void> => {
+export const deleteCourseModule = asyncHandler(
+  async (req: Request, res: Response) => {
     const { courseId, moduleId } = req.params;
+    if (!courseId) {
+      throw new AppError("Course ID is required", 400);
+    }
+
+    if (!moduleId) {
+      throw new AppError("Module ID is required", 400);
+    }
+
+    const result = await DeleteCourseModuleService(courseId, moduleId);
+    if (!result) {
+      throw new AppError("Failed to delete course module", 500);
+    }
+    sendSuccessResponse(res, null, "Course module deleted successfully", 200);
+    return;
+  }
+);
+
+export const createCourseLesson = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { courseId, moduleId } = req.params;
+    const lessonData = req.body;
 
     if (!courseId) {
       throw new AppError("Course ID is required", 400);
@@ -304,181 +341,315 @@ export const deleteSingleCourseModule = asyncHandler(
       throw new AppError("Module ID is required", 400);
     }
 
-    const result = await DeleteSingleCourseModuleService(courseId, moduleId);
-    sendSuccessResponse(res, result, "Module deleted successfully", 200);
+    if (!lessonData || Object.keys(lessonData).length === 0) {
+      throw new AppError("Lesson data is required", 400);
+    }
+
+    const result = await CreateCourseLessonService(
+      courseId,
+      moduleId,
+      lessonData
+    );
+    if (!result) {
+      throw new AppError("Failed to create course lesson", 500);
+    }
+    sendSuccessResponse(res, result, "Course lesson created successfully", 201);
+    return;
   }
 );
 
-// ===================
-// LESSON CONTROLLERS
-// ===================
-
-export const addSingleCourseLesson = asyncHandler(
-  async (req: Request, res: Response): Promise<void> => {
-    const { courseId, moduleId } = req.params;
+export const updateCourseLesson = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { courseId, moduleId, lessonId } = req.params;
     const lessonData = req.body;
+
+    if (!courseId) {
+      throw new AppError("Course ID is required", 400);
+    }
 
     if (!moduleId) {
       throw new AppError("Module ID is required", 400);
     }
 
-    if (!lessonData) {
+    if (!lessonId) {
+      throw new AppError("Lesson ID is required", 400);
+    }
+
+    if (!lessonData || Object.keys(lessonData).length === 0) {
       throw new AppError("Lesson data is required", 400);
     }
 
-    const result = await AddSingleCourseLessonService(
-      courseId,
-      moduleId,
-      lessonData
-    );
-    sendSuccessResponse(res, result.lesson, "Lesson added successfully", 201);
-  }
-);
-
-export const updateSingleCourseLesson = asyncHandler(
-  async (req: Request, res: Response): Promise<void> => {
-    const { courseId, moduleId, lessonId } = req.params;
-    const lessonData = req.body;
-
-    if (!moduleId || !lessonId) {
-      throw new AppError("Module ID and Lesson ID are required", 400);
-    }
-
-    const result = await UpdateSingleCourseLessonService(
+    const result = await UpdateCourseLessonService(
       courseId,
       moduleId,
       lessonId,
       lessonData
     );
-    sendSuccessResponse(res, result.lesson, "Lesson updated successfully", 200);
+    if (!result) {
+      throw new AppError("Failed to update course lesson", 500);
+    }
+    sendSuccessResponse(res, result, "Course lesson updated successfully", 200);
+    return;
   }
 );
 
-export const deleteSingleCourseLesson = asyncHandler(
-  async (req: Request, res: Response): Promise<void> => {
+export const deleteCourseLesson = asyncHandler(
+  async (req: Request, res: Response) => {
     const { courseId, moduleId, lessonId } = req.params;
 
-    if (!moduleId || !lessonId) {
-      throw new AppError("Module ID and Lesson ID are required", 400);
+    if (!courseId) {
+      throw new AppError("Course ID is required", 400);
     }
 
-    const result = await DeleteSingleCourseLessonService(
+    if (!moduleId) {
+      throw new AppError("Module ID is required", 400);
+    }
+
+    if (!lessonId) {
+      throw new AppError("Lesson ID is required", 400);
+    }
+
+    const result = await DeleteCourseLessonService(
       courseId,
       moduleId,
       lessonId
     );
-    sendSuccessResponse(res, result.message, "Lesson deleted successfully", 200);
+    if (!result) {
+      throw new AppError("Failed to delete course lesson", 500);
+    }
+    sendSuccessResponse(res, null, "Course lesson deleted successfully", 200);
+    return;
   }
 );
 
-// ===================
-// CONTENT CONTROLLERS
-// ===================
-
-export const addSingleCourseContent = asyncHandler(
-  async (req: Request, res: Response): Promise<void> => {
+export const createCourseLessonContent = asyncHandler(
+  async (req: Request, res: Response) => {
     const { courseId, moduleId, lessonId } = req.params;
     const contentData = req.body;
 
-    if (!moduleId || !lessonId) {
-      throw new AppError("Module ID and Lesson ID are required", 400);
+    if (!courseId) {
+      throw new AppError("Course ID is required", 400);
     }
 
-    if (!contentData) {
+    if (!moduleId) {
+      throw new AppError("Module ID is required", 400);
+    }
+
+    if (!lessonId) {
+      throw new AppError("Lesson ID is required", 400);
+    }
+
+    if (!contentData || Object.keys(contentData).length === 0) {
       throw new AppError("Content data is required", 400);
     }
 
-    const result = await AddSingleCourseContentService(
+    const result = await CreateCourseLessonContentService(
       courseId,
       moduleId,
       lessonId,
       contentData
     );
-    sendSuccessResponse(res, result.content, "Content added successfully", 201);
+    if (!result) {
+      throw new AppError("Failed to create course lesson content", 500);
+    }
+    sendSuccessResponse(
+      res,
+      result,
+      "Course lesson content created successfully",
+      201
+    );
+    return;
   }
 );
 
-export const updateSingleCourseContent = asyncHandler(
-  async (req: Request, res: Response): Promise<void> => {
+export const updateCourseLessonContent = asyncHandler(
+  async (req: Request, res: Response) => {
     const { courseId, moduleId, lessonId, contentId } = req.params;
     const contentData = req.body;
 
-    if (!moduleId || !lessonId || !contentId) {
-      throw new AppError(
-        "Module ID, Lesson ID, and Content ID are required",
-        400
-      );
+    if (!courseId) {
+      throw new AppError("Course ID is required", 400);
     }
 
-    const result = await UpdateSingleCourseContentService(
+    if (!moduleId) {
+      throw new AppError("Module ID is required", 400);
+    }
+
+    if (!lessonId) {
+      throw new AppError("Lesson ID is required", 400);
+    }
+
+    if (!contentId) {
+      throw new AppError("Content ID is required", 400);
+    }
+
+    if (!contentData || Object.keys(contentData).length === 0) {
+      throw new AppError("Content data is required", 400);
+    }
+
+    const result = await UpdateCourseLessonContentService(
       courseId,
       moduleId,
       lessonId,
       contentId,
       contentData
     );
-    sendSuccessResponse(res, result.content, "Content updated successfully", 200);
+    if (!result) {
+      throw new AppError("Failed to update course lesson content", 500);
+    }
+    sendSuccessResponse(
+      res,
+      result,
+      "Course lesson content updated successfully",
+      200
+    );
+    return;
   }
 );
 
-export const deleteSingleCourseContent = asyncHandler(
-  async (req: Request, res: Response): Promise<void> => {
+export const deleteCourseLessonContent = asyncHandler(
+  async (req: Request, res: Response) => {
     const { courseId, moduleId, lessonId, contentId } = req.params;
 
-    if (!moduleId || !lessonId || !contentId) {
-      throw new AppError(
-        "Module ID, Lesson ID, and Content ID are required",
-        400
-      );
+    if (!courseId) {
+      throw new AppError("Course ID is required", 400);
     }
 
-    const result = await DeleteSingleCourseContentService(
+    if (!moduleId) {
+      throw new AppError("Module ID is required", 400);
+    }
+
+    if (!lessonId) {
+      throw new AppError("Lesson ID is required", 400);
+    }
+
+    if (!contentId) {
+      throw new AppError("Content ID is required", 400);
+    }
+
+    const result = await DeleteCourseLessonContentService(
       courseId,
       moduleId,
       lessonId,
       contentId
     );
-    sendSuccessResponse(res, result.message, "Content deleted successfully", 200);
+    if (!result) {
+      throw new AppError("Failed to delete course lesson content", 500);
+    }
+    sendSuccessResponse(
+      res,
+      null,
+      "Course lesson content deleted successfully",
+      200
+    );
+    return;
   }
 );
 
-export const checkSlugAvailability = asyncHandler(
-  async (req: Request, res: Response): Promise<void> => {
-    const { slug } = req.params;
+export const duplicateCourse = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { courseId } = req.params;
+    if (!courseId) {
+      throw new AppError("Course ID is required", 400);
+    }
 
-    try {
-      const course = await getCourseUsingSlugService(slug);
+    const result = await DuplicateCourseService(courseId);
+    if (!result) {
+      throw new AppError("Failed to duplicate course", 500);
+    }
+    sendSuccessResponse(res, result, "Course duplicated successfully", 200);
+    return;
+  }
+);
 
-      if (course) {
-        // Course exists, slug is taken
-        sendSuccessResponse(
-          res,
-          {
-            available: false,
-            message: "Slug is already taken",
-          },
-          "Slug availability checked"
-        );
-      } else {
-        // Course doesn't exist, slug is available
-        sendSuccessResponse(
-          res,
-          {
-            available: true,
-            message: "Slug is available",
-          },
-          "Slug availability checked"
-        );
-      }
-    } catch (error) {
-      sendSuccessResponse(
-        res,
-        {
-          available: true,
-          message: "Slug is available",
-        },
-        "Slug availability checked"
+export const updateCourseStatus = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { courseId } = req.params;
+    const { status } = req.body;
+
+    if (!courseId) {
+      throw new AppError("Course ID is required", 400);
+    }
+
+    if (status === undefined || status === null || ![true, false].includes(status)) {
+      throw new AppError(
+        "Status is required and must be either true or false",
+        400
       );
     }
+
+    const result = await UpdateCourseStatusService(courseId, status);
+    if (!result) {
+      throw new AppError("Failed to update course status", 500);
+    }
+    sendSuccessResponse(res, result, "Course status updated successfully", 200);
+    return;
+  }
+);
+
+export const updateCourseMetadata = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { courseId } = req.params;
+    const courseData = req.body;
+
+    if (!courseId) {
+      throw new AppError("Course ID is required", 400);
+    }
+
+    if (!courseData || Object.keys(courseData).length === 0) {
+      throw new AppError("Course data is required", 400);
+    }
+
+    const result = await UpdateCourseMetadataService(courseId, courseData);
+    if (!result) {
+      throw new AppError("Failed to update course metadata", 500);
+    }
+    sendSuccessResponse(
+      res,
+      result,
+      "Course metadata updated successfully",
+      200
+    );
+    return;
+  }
+);
+
+export const deleteCourse = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { courseId } = req.params;
+    if (!courseId) {
+      throw new AppError("Course ID is required", 400);
+    }
+
+    const result = await DeleteCourseService(courseId);
+    if (!result) {
+      throw new AppError("Failed to delete course", 500);
+    }
+    sendSuccessResponse(res, null, "Course deleted successfully", 200);
+    return;
+  }
+);
+
+/**
+ * Check if a slug is available for use
+ * @route GET /api/courses/check-slug/:slug
+ * @access Public
+ */
+export const checkSlugAvailability = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { slug } = req.params;
+    const { excludeId } = req.query;
+
+    if (!slug) {
+      throw new AppError("Slug is required", 400);
+    }
+
+    const result = await checkSlugAvailabilityService(
+      slug,
+      excludeId as string
+    );
+
+    sendSuccessResponse(res, result, result.message, 200);
+    return;
   }
 );

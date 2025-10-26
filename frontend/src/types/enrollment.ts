@@ -1,42 +1,33 @@
 import { User, Course } from ".";
 
-export interface LessonProgress {
-  lessonId: string;
-  completed: boolean;
-  completedAt?: Date;
-  score?: number; // For quizzes
-  timeSpent?: number; // In seconds
-  lastAccessedAt?: Date;
+// Simplified progress structure
+export interface EnrollmentProgressSummary {
+  overallCompletion: number; // 0-100 percentage, computed from module progress
+  totalModules: number;
+  completedModules: number;
+  totalLessons: number;
+  completedLessons: number;
+  lastActivityAt?: Date;
 }
 
-export interface ModuleProgress {
+// Last accessed content (stored separately for performance)
+export interface LastContentAccessed {
   moduleId: string;
-  completion: number; // 0-100 percentage
-  lessons: LessonProgress[];
-  startedAt?: Date;
-  completedAt?: Date;
-}
-
-export interface EnrollmentProgress {
-  overallCompletion: number; // 0-100 percentage, precomputed
-  modules: ModuleProgress[];
-  lastContentAccessed?: {
-    moduleId: string;
-    lessonId: string;
-    contentId: string;
-    contentType: "video" | "quiz" | "document";
-    lastPosition?: number; // For videos
-    timestamp: Date;
-  };
+  lessonId: string;
+  contentId: string;
+  contentType: "video" | "quiz" | "document";
+  lastPosition?: number; // For videos
+  timestamp: Date;
 }
 
 export interface Enrollment {
   _id?: string;
-  userId: User["_id"];
-  courseId: Course["_id"];
+  userId: User | string;
+  courseId: Course | string;
   enrolledAt: Date;
   status: "active" | "completed" | "dropped" | "paused";
-  progress: EnrollmentProgress;
+  progress: EnrollmentProgressSummary; // Simplified progress summary
+  completedContents: string[]; // Array of completed content IDs
   lastUpdated: Date;
   
   // Optional metadata
@@ -56,10 +47,27 @@ export interface Enrollment {
   // Timestamps
   createdAt?: Date;
   updatedAt?: Date;
-  
-  // Populated fields
-  course?: Course;
-  user?: User;
+}
+
+// For detailed progress queries (when needed)
+export interface DetailedEnrollmentProgress {
+  enrollmentId: string;
+  progress: EnrollmentProgressSummary;
+  lastContentAccessed?: LastContentAccessed;
+  moduleProgress: Array<{
+    moduleId: string;
+    completion: number;
+    startedAt?: Date;
+    completedAt?: Date;
+    lessons: Array<{
+      lessonId: string;
+      completed: boolean;
+      completedAt?: Date;
+      score?: number;
+      timeSpent?: number;
+      lastAccessedAt?: Date;
+    }>;
+  }>;
 }
 
 // For bulk operations and analytics
@@ -92,70 +100,4 @@ export interface UserEnrollmentStats {
   averageCompletionRate: number;
   totalTimeSpent: number; // In seconds
   favoriteCategories: string[];
-}
-
-// API Response types
-export interface EnrollmentResponse {
-  success: boolean;
-  data?: {
-    enrollment: Enrollment;
-  };
-  message?: string;
-  error?: string;
-}
-
-export interface EnrollmentListResponse {
-  success: boolean;
-  data?: {
-    enrollments: Enrollment[];
-  };
-  message?: string;
-  error?: string;
-}
-
-export interface EnrollmentStatsResponse {
-  success: boolean;
-  data?: {
-    stats: EnrollmentStats | CourseEnrollmentStats | UserEnrollmentStats;
-  };
-  message?: string;
-  error?: string;
-}
-
-export interface EnrollmentCheckResponse {
-  success: boolean;
-  data?: {
-    isEnrolled: boolean;
-    enrollment: Enrollment | null;
-    status: string | null;
-  };
-  message?: string;
-  error?: string;
-}
-
-// Request types
-export interface CreateEnrollmentRequest {
-  courseId: string;
-  enrollmentSource?: "direct" | "gift" | "promotion";
-  giftFrom?: string;
-  promotionCode?: string;
-}
-
-export interface UpdateProgressRequest {
-  completed: boolean;
-  score?: number;
-  timeSpent?: number;
-}
-
-export interface UpdateStatusRequest {
-  status: "active" | "completed" | "dropped" | "paused";
-}
-
-// Query parameters
-export interface EnrollmentQueryParams {
-  status?: "active" | "completed" | "dropped" | "paused";
-  page?: number;
-  limit?: number;
-  sortBy?: "enrolledAt" | "lastUpdated" | "progress.overallCompletion";
-  sortOrder?: "asc" | "desc";
 }

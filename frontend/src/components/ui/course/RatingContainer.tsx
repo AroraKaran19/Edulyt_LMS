@@ -1,5 +1,4 @@
 import { Star } from "lucide-react";
-import React from "react";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 
@@ -8,11 +7,13 @@ const RatingContainer = ({
   totalRating,
   className,
   courseSlug,
+  reviewCountText,
 }: {
   reviewCount: number;
   totalRating: number;
   className?: string;
   courseSlug: string;
+  reviewCountText?: string;
 }) => {
   const router = useRouter();
 
@@ -34,7 +35,9 @@ const RatingContainer = ({
           <Star className="w-4 h-4 text-[#F7AD24]" fill="#F7AD24" />
           {totalRating} Rating
         </span>
-        <span className="font-normal text-gray-500 break-all">
+        <span
+          className={cn("font-normal text-gray-500 break-all", reviewCountText)}
+        >
           {reviewCount > 100
             ? `(more than ${reviewCount} reviews)`
             : reviewCount === 1

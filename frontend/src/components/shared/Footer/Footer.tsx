@@ -1,4 +1,3 @@
-import React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
@@ -153,7 +152,7 @@ const Footer = () => {
             <div className="space-y-3">
               {contactInfo.map((contact, index) => (
                 <div key={index} className="flex items-center gap-3">
-                  <contact.icon className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                  <contact.icon className="w-4 h-4 text-gray-400 shrink-0" />
                   <Link
                     href={contact.href}
                     target="_blank"

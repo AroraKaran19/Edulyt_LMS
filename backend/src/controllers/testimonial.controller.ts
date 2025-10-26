@@ -1,172 +1,180 @@
 import { Request, Response } from "express";
-import { asyncHandler, sendSuccessResponse } from "../middlewares/error.middleware";
 import {
-  getAllTestimonials,
-  getTestimonialById,
-  createTestimonial,
-  updateTestimonial,
-  deleteTestimonial,
-  getTestimonialsByIds,
-  getVerifiedTestimonials,
-} from "../services/testimonial.service";
+  asyncHandler,
+  sendSuccessResponse,
+  AppError,
+} from "../middlewares/error.middleware";
+import {
+  createTestimonialService,
+  deleteTestimonialService,
+  getAllTestimonialsService,
+  getTestimonialByIdService,
+  updateTestimonialService,
+} from "../services/testimonial.services";
 
-/**
- * Get all testimonials with pagination and search
- * @route GET /api/testimonials
- * @access Public
- * @param req Request object
- * @param res Response object
- */
-export const getAllTestimonialsController = asyncHandler(
+export const getAllTestimonials = asyncHandler(
   async (req: Request, res: Response) => {
-    const {
-      page = 1,
-      limit = 10,
-      search = ""
-    } = req.query;
+    const { page = 1, limit = 10, search = "" } = req.query;
+    const isAdmin = req.user?.userType === "admin";
 
-    const result = await getAllTestimonials(
+    if (Number(page) < 1 || Number(limit) < 1) {
+      throw new AppError("Page and limit must be positive numbers", 400);
+    }
+
+    const result = await getAllTestimonialsService(
       Number(page),
       Number(limit),
-      String(search)
+      String(search),
+      isAdmin
     );
 
-    sendSuccessResponse(
-      res,
-      result,
-      "Testimonials fetched successfully"
-    );
+    if (!result || result.testimonials.length === 0) {
+      sendSuccessResponse(res, [], "No testimonials found", 200);
+      return;
+    }
+
+    sendSuccessResponse(res, result, "Testimonials fetched successfully", 200);
+    return;
   }
 );
 
-/**
- * Get testimonial by ID
- * @route GET /api/testimonials/:id
- * @access Public
- * @param req Request object
- * @param res Response object
- */
-export const getTestimonialByIdController = asyncHandler(
+export const getTestimonialById = asyncHandler(
   async (req: Request, res: Response) => {
     const { id } = req.params;
-    const testimonial = await getTestimonialById(id);
+    const isAdmin = req.user?.userType === "admin";
+    
+    if (!id) {
+      throw new AppError("Testimonial ID is required", 400);
+    }
 
-    sendSuccessResponse(
-      res,
-      testimonial,
-      "Testimonial fetched successfully"
-    );
+    const result = await getTestimonialByIdService(id, isAdmin);
+    if (!result) {
+      sendSuccessResponse(res, [], "Testimonial not found", 200);
+      return;
+    }
+
+    sendSuccessResponse(res, result, "Testimonial fetched successfully", 200);
+    return;
   }
 );
 
-/**
- * Create a new testimonial
- * @route POST /api/testimonials
- * @access Admin
- * @param req Request object
- * @param res Response object
- */
-export const createTestimonialController = asyncHandler(
-  async (req: Request, res: Response) => {
-    const testimonialData = req.body;
-
-    const newTestimonial = await createTestimonial(testimonialData);
-
-    sendSuccessResponse(
-      res,
-      newTestimonial,
-      "Testimonial created successfully",
-      201
-    );
-  }
-);
-
-/**
- * Update an existing testimonial
- * @route PUT /api/testimonials/:id
- * @access Admin
- * @param req Request object
- * @param res Response object
- */
-export const updateTestimonialController = asyncHandler(
-  async (req: Request, res: Response) => {
-    const { id } = req.params;
-    const updateData = req.body;
-
-    const updatedTestimonial = await updateTestimonial(id, updateData);
-
-    sendSuccessResponse(
-      res,
-      updatedTestimonial,
-      "Testimonial updated successfully"
-    );
-  }
-);
-
-/**
- * Delete a testimonial
- * @route DELETE /api/testimonials/:id
- * @access Admin
- * @param req Request object
- * @param res Response object
- */
-export const deleteTestimonialController = asyncHandler(
-  async (req: Request, res: Response) => {
-    const { id } = req.params;
-    const result = await deleteTestimonial(id);
-
-    sendSuccessResponse(
-      res,
-      result,
-      "Testimonial deleted successfully"
-    );
-  }
-);
-
-/**
- * Get testimonials by IDs (for course testimonial selection)
- * @route POST /api/testimonials/by-ids
- * @access Public
- * @param req Request object
- * @param res Response object
- */
-export const getTestimonialsByIdsController = asyncHandler(
-  async (req: Request, res: Response) => {
-    const { ids } = req.body;
-
-    const testimonials = await getTestimonialsByIds(ids);
-
-    sendSuccessResponse(
-      res,
-      testimonials,
-      "Testimonials fetched successfully"
-    );
-  }
-);
-
-/**
- * Get verified testimonials only
- * @route GET /api/testimonials/verified
- * @access Public
- * @param req Request object
- * @param res Response object
- */
-export const getVerifiedTestimonialsController = asyncHandler(
+export const createTestimonial = asyncHandler(
   async (req: Request, res: Response) => {
     const {
-      page = 1,
-      limit = 10
-    } = req.query;
+      name,
+      currentRole,
+      currentCompany,
+      linkedin,
+      pastRole,
+      pastCompany,
+      college,
+      verified,
+      profileImage,
+    } = req.body;
 
-    const result = await getVerifiedTestimonials(
-      Number(page),
-      Number(limit)
-    );
+    if (
+      !name ||
+      !currentRole ||
+      !currentCompany ||
+      !linkedin ||
+      !pastRole ||
+      !pastCompany ||
+      !college
+    ) {
+      throw new AppError(
+        "Name, current role, current company, LinkedIn, past role, past company, and college are required",
+        400
+      );
+    }
 
-    sendSuccessResponse(
-      res,
-      result,
-      "Verified testimonials fetched successfully"
-    );
+    const result = await createTestimonialService({
+      name,
+      currentRole,
+      currentCompany,
+      linkedin,
+      pastRole,
+      pastCompany,
+      college,
+      verified,
+      profileImage,
+    });
+
+    if (!result) {
+      throw new AppError("Failed to create testimonial", 500);
+    }
+
+    sendSuccessResponse(res, result, "Testimonial created successfully", 201);
+    return;
+  }
+);
+
+export const updateTestimonial = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const {
+      name,
+      currentRole,
+      currentCompany,
+      linkedin,
+      pastRole,
+      pastCompany,
+      college,
+      verified,
+      profileImage,
+    } = req.body;
+
+    if (!id) {
+      throw new AppError("Testimonial ID is required", 400);
+    }
+
+    if (
+      !name &&
+      !currentRole &&
+      !currentCompany &&
+      !linkedin &&
+      !pastRole &&
+      !pastCompany &&
+      !college &&
+      verified === undefined &&
+      !profileImage
+    ) {
+      throw new AppError("At least one field is required for update", 400);
+    }
+
+    const result = await updateTestimonialService(id, {
+      name,
+      currentRole,
+      currentCompany,
+      linkedin,
+      pastRole,
+      pastCompany,
+      college,
+      verified,
+      profileImage,
+    });
+
+    if (!result) {
+      throw new AppError("Failed to update testimonial", 500);
+    }
+
+    sendSuccessResponse(res, result, "Testimonial updated successfully", 200);
+    return;
+  }
+);
+
+export const deleteTestimonial = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { id } = req.params;
+    if (!id) {
+      throw new AppError("Testimonial ID is required", 400);
+    }
+
+    const result = await deleteTestimonialService(id);
+    if (!result) {
+      throw new AppError("Failed to delete testimonial", 500);
+    }
+
+    sendSuccessResponse(res, result, "Testimonial deleted successfully", 200);
+    return;
   }
 );

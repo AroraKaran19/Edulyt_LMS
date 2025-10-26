@@ -55,22 +55,14 @@ export interface ReadingMaterial {
 // Base Content interface
 export interface BaseContent {
   _id?: string;
+  lessonId?: string; // Reference to parent lesson
+  moduleId?: string; // Reference to parent module
   title: string;
   description?: string;
   type: "video" | "quiz" | "document";
-  lessonId?: string; // Reference to parent lesson
   readingMaterials?: ReadingMaterial[];
-  isCompleted: boolean;
-  isActive?: boolean;
-  completedAt?: Date;
-  isLocked?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
-  // Upload tracking fields
-  videoS3Key?: string;
-  videoSource?: "upload" | "url";
-  thumbnailS3Key?: string;
-  thumbnailSource?: "upload" | "url";
 }
 
 // Video Content interface (extends BaseContent + Video fields)
@@ -79,8 +71,6 @@ export interface VideoContent extends BaseContent {
   sources: {
     quality: "1080p" | "720p" | "480p" | "360p";
     videoUrl: string;
-    videoSource?: "upload" | "url";
-    videoS3Key?: string;
   }[];
   thumbnailUrl?: string;
   duration?: number; // in seconds
@@ -109,15 +99,10 @@ export type Content = VideoContent | QuizContent | DocumentContent;
 
 export interface CourseLesson {
   _id?: string;
+  moduleId?: string; // Reference to the module this lesson belongs to
   title: string;
   description?: string;
-  contentIds: Content["_id"][];
-  contents?: Content[];
-  moduleId?: string; // Reference to parent module
-  isCompleted?: boolean;
-  isActive?: boolean;
-  completedAt?: Date;
-  isLocked?: boolean;
+  contents: Content[] | string[];
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -128,17 +113,12 @@ export interface CourseLesson {
 
 export interface CourseModule {
   _id?: string;
+  courseId: string; // Reference to the course this module belongs to
   title: string;
   thumbnailUrl: string; // Required in schema
-  thumbnailSource?: "upload" | "url"; // Track whether thumbnail came from upload or URL
-  thumbnailS3Key?: string; // S3 key for uploaded thumbnails
-  lessonIds: CourseLesson["_id"][];
-  lessons?: CourseLesson[];
+  lessons: CourseLesson[] | string[];
   description?: string;
-  isCompleted: boolean;
-  completedAt?: Date;
-  isActive: boolean;
-  isLocked?: boolean; // if the module is locked, the user cannot access the lessons
+  isActive?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -159,7 +139,6 @@ export interface Plan {
   features: PlanFeatures[];
   discount?: Discount;
   isPopular?: boolean;
-  trialDays?: number;
   isActive?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
@@ -169,16 +148,19 @@ export interface Plan {
 // Review Types
 // ===================
 
-export interface Testimonial
-  extends Omit<
-    Review,
-    "profileImage" | "rating" | "comment" | "reviewableId" | "reviewableType"
-  > {
+export interface Testimonial {
+  _id?: string;
+  name: string;
+  currentRole: string;
+  currentCompany: string;
+  linkedin: string;
   pastRole: string;
   pastCompany: string;
   college: string;
   verified?: boolean;
-  profileImage: string;
+  profileImage?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 // ===================
@@ -189,7 +171,7 @@ export interface Course {
   _id?: string;
   title: string;
   description: string;
-  shortDescription: string; // Required in schema
+  shortDescription: string;
   category: string;
   thumbnail: string;
   previewVideoUrl?: string;
@@ -213,11 +195,10 @@ export interface Course {
   duration: string; // like: 3 months, 1 year, 2 years, etc. (will not be accurate)
 
   // Content
-  moduleIds: CourseModule["_id"][];
-  modules?: CourseModule[];
+  modules?: CourseModule[] | string[];
 
   // Instructor
-  instructor: Instructor[]; // can be multiple instructors
+  instructor: Instructor[] | string[]; // can be multiple instructors
 
   // Pricing Plans
   plans: {
@@ -227,17 +208,17 @@ export interface Course {
   discount?: Discount;
 
   // Reviews
-  reviews: Review[];
-  testimonials: Testimonial[];
+  reviews: Review[] | string[];
+  testimonials: Testimonial[] | string[];
 
   // FAQs
-  faqs: FAQ[];
+  faqs: FAQ[] | string[];
 
   // Administrative
   isActive: boolean;
   createdAt?: Date;
   updatedAt?: Date;
-  createdBy?: User;
+  createdBy: User | string | null;
   tags?: string[];
   audience: "college-students" | "professionals";
 
@@ -256,10 +237,8 @@ export interface Course {
   // Language
   language: string;
 
-  // Curriculum - optional PDF document URL
+  // Curriculum
   curriculum?: string;
-
-  // brochure - optional PDF document URL
   brochure?: string;
 
   // Analytics

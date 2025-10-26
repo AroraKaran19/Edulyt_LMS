@@ -1,13 +1,5 @@
 import mongoose from "mongoose";
-
-export interface Category {
-  _id?: string;
-  name: string;
-  description?: string;
-  isActive: boolean;
-  createdAt?: Date;
-  updatedAt?: Date;
-}
+import { Category } from "../types";
 
 const categorySchema = new mongoose.Schema<Category>(
   {

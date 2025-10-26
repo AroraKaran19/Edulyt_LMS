@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import apiClient from "@/configs/apiConfig";
 
 // Types for upload responses
 export interface UploadResponse {
@@ -35,9 +36,6 @@ export const useUpload = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string>("");
 
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "";
-
-
   // Upload single file using presigned URL (replaces old multer upload)
   const uploadFile = useCallback(
     async (file: File, folderName: string): Promise<UploadResponse> => {
@@ -45,7 +43,6 @@ export const useUpload = () => {
     },
     []
   );
-
 
   // Upload course thumbnail with default folder
   const uploadCourseThumbnail = useCallback(
@@ -58,7 +55,27 @@ export const useUpload = () => {
     [uploadFile]
   );
 
+  // Upload video with default folder
+  const uploadVideo = useCallback(
+    async (
+      file: File,
+      folderName: string = "course-videos"
+    ): Promise<UploadResponse> => {
+      return uploadFile(file, folderName);
+    },
+    [uploadFile]
+  );
 
+  // Upload document with default folder
+  const uploadDocument = useCallback(
+    async (
+      file: File,
+      folderName: string = "course-documents"
+    ): Promise<UploadResponse> => {
+      return uploadFile(file, folderName);
+    },
+    [uploadFile]
+  );
 
   // Upload using presigned URL (for large files)
   const uploadWithPresignedUrl = useCallback(
@@ -67,25 +84,23 @@ export const useUpload = () => {
       setError("");
 
       try {
-        // Step 1: Get presigned URL from backend
-        const presignedResponse = await fetch(
-          `${baseUrl}/upload/presigned-url`,
+        // Step 1: Get presigned URL from backend using apiClient
+        const presignedResponse = await apiClient.post(
+          "/upload/presigned-url",
           {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              fileName: file.name,
-              fileType: file.type,
-              folderName,
-            }),
+            fileName: file.name,
+            fileType: file.type,
+            folderName,
           }
         );
 
-        const presignedData = await presignedResponse.json();
-
-        if (!presignedData.success) {
-          throw new Error(presignedData.error || "Failed to get presigned URL");
+        if (!presignedResponse.data.success) {
+          throw new Error(
+            presignedResponse.data.error || "Failed to get presigned URL"
+          );
         }
+
+        const presignedData = presignedResponse.data;
 
         // Step 2: Upload directly to S3
         const uploadResponse = await fetch(presignedData.data.presignedUrl, {
@@ -113,9 +128,11 @@ export const useUpload = () => {
             s3Key: presignedData.data.s3Key,
           },
         };
-      } catch (err) {
+      } catch (err: any) {
         const errorMessage =
-          err instanceof Error ? err.message : "Upload failed";
+          err?.response?.data?.error?.message ||
+          err?.message ||
+          "Upload failed";
         setError(errorMessage);
         return {
           success: false,
@@ -126,10 +143,10 @@ export const useUpload = () => {
         setIsUploading(false);
       }
     },
-    [baseUrl]
+    []
   );
 
-  // Delete file
+  // Delete file using apiClient
   const deleteFile = useCallback(
     async (s3Key: string): Promise<UploadResponse> => {
       setIsUploading(true);
@@ -137,20 +154,18 @@ export const useUpload = () => {
 
       try {
         const encodedS3Key = encodeURIComponent(s3Key);
-        const response = await fetch(`${baseUrl}/upload/${encodedS3Key}`, {
-          method: "DELETE",
-        });
+        const response = await apiClient.delete(`/upload/${encodedS3Key}`);
 
-        const result = await response.json();
-
-        if (!result.success) {
-          setError(result.error || result.message);
+        if (!response.data.success) {
+          setError(response.data.error || response.data.message);
         }
 
-        return result;
-      } catch (err) {
+        return response.data;
+      } catch (err: any) {
         const errorMessage =
-          err instanceof Error ? err.message : "Failed to delete file";
+          err?.response?.data?.error?.message ||
+          err?.message ||
+          "Failed to delete file";
         setError(errorMessage);
         return {
           success: false,
@@ -161,7 +176,7 @@ export const useUpload = () => {
         setIsUploading(false);
       }
     },
-    [baseUrl]
+    []
   );
 
   // File validation utility
@@ -194,6 +209,184 @@ export const useUpload = () => {
     []
   );
 
+  // Video file validation with duration check
+  const validateVideoFile = useCallback(
+    (
+      file: File,
+      maxSize: number = 500 * 1024 * 1024, // 500MB default for videos
+      maxDuration?: number // in seconds
+    ): { valid: boolean; error?: string } => {
+      const videoTypes = [
+        "video/mp4",
+        "video/avi",
+        "video/mov",
+        "video/wmv",
+        "video/flv",
+        "video/webm",
+        "video/mkv",
+      ];
+
+      if (!videoTypes.includes(file.type)) {
+        return {
+          valid: false,
+          error: `File type ${
+            file.type
+          } is not allowed. Allowed video types: ${videoTypes.join(", ")}`,
+        };
+      }
+
+      if (file.size > maxSize) {
+        const maxSizeMB = Math.round(maxSize / (1024 * 1024));
+        const fileSizeMB = Math.round(file.size / (1024 * 1024));
+        return {
+          valid: false,
+          error: `Video size ${fileSizeMB}MB exceeds maximum allowed size of ${maxSizeMB}MB`,
+        };
+      }
+
+      // Note: Duration validation would require additional processing
+      // This is a placeholder for future implementation
+      if (maxDuration) {
+        // TODO: Implement duration validation using video metadata
+        console.warn("Duration validation not yet implemented");
+      }
+
+      return { valid: true };
+    },
+    []
+  );
+
+  // Image file validation
+  const validateImageFile = useCallback(
+    (
+      file: File,
+      maxSize: number = 10 * 1024 * 1024, // 10MB default for images
+      maxDimensions?: { width: number; height: number }
+    ): { valid: boolean; error?: string } => {
+      const imageTypes = [
+        "image/jpeg",
+        "image/jpg",
+        "image/png",
+        "image/gif",
+        "image/webp",
+        "image/svg+xml",
+      ];
+
+      if (!imageTypes.includes(file.type)) {
+        return {
+          valid: false,
+          error: `File type ${
+            file.type
+          } is not allowed. Allowed image types: ${imageTypes.join(", ")}`,
+        };
+      }
+
+      if (file.size > maxSize) {
+        const maxSizeMB = Math.round(maxSize / (1024 * 1024));
+        const fileSizeMB = Math.round(file.size / (1024 * 1024));
+        return {
+          valid: false,
+          error: `Image size ${fileSizeMB}MB exceeds maximum allowed size of ${maxSizeMB}MB`,
+        };
+      }
+
+      // Note: Dimension validation would require additional processing
+      // This is a placeholder for future implementation
+      if (maxDimensions) {
+        // TODO: Implement dimension validation using image metadata
+        console.warn("Dimension validation not yet implemented");
+      }
+
+      return { valid: true };
+    },
+    []
+  );
+
+  // Document file validation
+  const validateDocumentFile = useCallback(
+    (
+      file: File,
+      maxSize: number = 50 * 1024 * 1024 // 50MB default for documents
+    ): { valid: boolean; error?: string } => {
+      const documentTypes = [
+        "application/pdf",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/vnd.ms-excel",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "application/vnd.ms-powerpoint",
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        "text/plain",
+        "text/csv",
+      ];
+
+      if (!documentTypes.includes(file.type)) {
+        return {
+          valid: false,
+          error: `File type ${
+            file.type
+          } is not allowed. Allowed document types: ${documentTypes.join(
+            ", "
+          )}`,
+        };
+      }
+
+      if (file.size > maxSize) {
+        const maxSizeMB = Math.round(maxSize / (1024 * 1024));
+        const fileSizeMB = Math.round(file.size / (1024 * 1024));
+        return {
+          valid: false,
+          error: `Document size ${fileSizeMB}MB exceeds maximum allowed size of ${maxSizeMB}MB`,
+        };
+      }
+
+      return { valid: true };
+    },
+    []
+  );
+
+  // Batch upload multiple files
+  const uploadMultipleFiles = useCallback(
+    async (
+      files: File[],
+      folderName: string
+    ): Promise<{
+      results: UploadResponse[];
+      successCount: number;
+      errorCount: number;
+    }> => {
+      setIsUploading(true);
+      setError("");
+
+      const results: UploadResponse[] = [];
+      let successCount = 0;
+      let errorCount = 0;
+
+      try {
+        // Upload files sequentially to avoid overwhelming the server
+        for (const file of files) {
+          const result = await uploadWithPresignedUrl(file, folderName);
+          results.push(result);
+
+          if (result.success) {
+            successCount++;
+          } else {
+            errorCount++;
+          }
+        }
+
+        return { results, successCount, errorCount };
+      } catch (err: any) {
+        const errorMessage = err?.message || "Batch upload failed";
+        setError(errorMessage);
+        return { results, successCount, errorCount };
+      } finally {
+        setIsUploading(false);
+      }
+    },
+    [uploadWithPresignedUrl]
+  );
+
   return {
     // State
     isUploading,
@@ -202,12 +395,18 @@ export const useUpload = () => {
     // Upload methods
     uploadFile,
     uploadCourseThumbnail,
+    uploadVideo,
+    uploadDocument,
+    uploadMultipleFiles,
 
     // Other methods
     deleteFile,
 
-    // Utilities
+    // Validation utilities
     validateFile,
+    validateVideoFile,
+    validateImageFile,
+    validateDocumentFile,
 
     // Reset error
     clearError: () => setError(""),

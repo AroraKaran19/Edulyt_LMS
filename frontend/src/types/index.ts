@@ -1,49 +1,39 @@
+export * from "./course";
+export * from "./user";
+export * from "./review";
+export * from "./faq";
+export * from "./affiliate";
+export * from "./enrollment";
+export * from "./affiliate";
+export * from "./category";
+export * from "./notes";
+export * from "./qna";
+export * from "./order";
+
 // ===================
 // Type Exports
 // ===================
 
 export interface Discount {
-    discount: "percentage" | "fixed";
-    startDate?: Date;
-    endDate?: Date;
-    value: number;
-    isActive?: boolean;
+  discount: "percentage" | "fixed";
+  startDate?: Date;
+  endDate?: Date;
+  value: number;
+  isActive?: boolean;
 }
 
 export interface NavItem {
-    label: string;
-    href: string;
-    isDashboard?: boolean;
-    featureBox?: string;
-    onMouseEnter?: () => void;
-    active?: boolean;
+  label: string;
+  href: string;
+  count?: number;
+  active?: boolean;
+  className?: string;
 }
 
 export interface Filter {
-    label: string;
+  label: string;
+  value: string;
+  featureBox?: {
     value: string;
-    featureBox?: {
-        value: string;
-    };
+  };
 }
-
-// User Types
-export * from "./user";
-
-// Course Types
-export * from "./course";
-
-// Review Types
-export * from "./review";
-
-// FAQ Types
-export * from "./faq";
-
-// Affiliate Types
-export * from "./affiliate";
-
-// Order Types
-export * from "./order";
-
-// Enrollment Types
-export * from "./enrollment";

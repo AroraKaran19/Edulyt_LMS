@@ -1,4 +1,3 @@
-import React from "react";
 import { cn } from "@/lib/utils";
 import { Discount } from "@/types";
 
@@ -9,9 +8,12 @@ const DiscountBadge = ({
   discount: Discount;
   className?: string;
 }) => {
-  const discountText = discount.discount === "percentage" 
-    ? `${discount.value}% off`
-    : `₹${discount.value} off`;
+  const discountText =
+    discount && discount.discount && discount.discount === "percentage"
+      ? `${discount.value}% off`
+      : discount && discount.value
+      ? `₹${discount.value} off`
+      : "";
 
   return (
     <div

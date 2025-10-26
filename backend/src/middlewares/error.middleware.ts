@@ -1,8 +1,5 @@
-import { Request, Response, NextFunction, response } from "express";
-import { MongoError } from "mongodb";
-import { Error as MongooseError } from "mongoose";
+import { Request, Response, NextFunction } from "express";
 
-// Define error types for better error handling
 interface CustomError extends Error {
   statusCode?: number;
   code?: string | number;
@@ -12,7 +9,6 @@ interface CustomError extends Error {
   value?: any;
 }
 
-// Standard error response interface
 interface ErrorResponse {
   success: boolean;
   error: {
@@ -27,7 +23,6 @@ interface ErrorResponse {
 
 /**
  * Global error handling middleware
- * Catches all errors and formats them into consistent responses
  */
 export const errorHandler = (
   err: CustomError,
@@ -38,7 +33,6 @@ export const errorHandler = (
   let error = { ...err };
   error.message = err.message;
 
-  // Log error for debugging (in development)
   if (process.env.NODE_ENV === "development") {
     console.error("Error Details:", {
       message: err.message,
@@ -146,7 +140,6 @@ export const errorHandler = (
   const statusCode = error.statusCode || 500;
   const message = error.message || "Internal Server Error";
 
-  // Determine error type
   let errorType = "ServerError";
   if (statusCode >= 400 && statusCode < 500) {
     errorType = "ClientError";
@@ -154,7 +147,6 @@ export const errorHandler = (
     errorType = "ServerError";
   }
 
-  // Create standardized error response
   const errorResponse: ErrorResponse = {
     success: false,
     error: {
@@ -173,7 +165,27 @@ export const errorHandler = (
     },
   };
 
-  // Send error response
+  // In production, ensure no sensitive information is leaked
+  const isDevelopment = process.env.NODE_ENV === "development";
+  if (!isDevelopment) {
+    // Override message for 500 errors to hide internal details
+    if (statusCode >= 500) {
+      errorResponse.error.message = "Internal Server Error";
+    }
+
+    // Remove any details that might have been added
+    delete errorResponse.error.details;
+
+    // Also sanitize the path to avoid exposing internal routes
+    if (
+      errorResponse.error.path.includes("node_modules") ||
+      errorResponse.error.path.includes("src/") ||
+      errorResponse.error.path.includes("backend")
+    ) {
+      errorResponse.error.path = "/";
+    }
+  }
+
   res.status(statusCode).json(errorResponse);
 };
 
@@ -202,7 +214,7 @@ export const notFoundHandler = (
 };
 
 /**
- * Create custom error with status code
+ * Custom error with status code
  */
 export class AppError extends Error {
   public statusCode: number;
@@ -226,7 +238,6 @@ export const sendSuccessResponse = (
   message: string = "Success",
   statusCode: number = 200
 ) => {
-
   res.status(statusCode).json({
     success: true,
     message,

@@ -2,8 +2,8 @@ import { User, Course } from ".";
 
 export interface VideoNote {
   _id?: string;
-  userId: string | User;
-  courseId: string | Course;
+  user: User["_id"];
+  courseId: Course["_id"];
   lessonId: string;
   contentId: string;
   content: string;

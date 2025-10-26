@@ -21,12 +21,17 @@ import { useFormContext, Controller } from "react-hook-form";
 
 const Screen6 = () => {
   // Form context
-  const { control, setValue, watch, formState: { errors } } = useFormContext();
-  
+  const {
+    control,
+    setValue,
+    watch,
+    formState: { errors },
+  } = useFormContext();
+
   // FAQ hook
   const {
-    fetchFAQs,
-    createFAQSimple,
+    getFAQs,
+    createFAQ,
     updateFAQ,
     deleteFAQ,
     isLoading,
@@ -35,7 +40,7 @@ const Screen6 = () => {
   } = useFAQ();
 
   // FAQ state management
-  const [faqs, setFaqs] = useState<(FAQ & { _id: string })[]>([]);
+  const [faqs, setFaqs] = useState<FAQ[] | null>(null);
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
@@ -48,9 +53,7 @@ const Screen6 = () => {
 
   // Edit FAQ modal state
   const [showEditModal, setShowEditModal] = useState(false);
-  const [editingFAQ, setEditingFAQ] = useState<(FAQ & { _id: string }) | null>(
-    null
-  );
+  const [editingFAQ, setEditingFAQ] = useState<FAQ | null>(null);
   const [updating, setUpdating] = useState(false);
 
   // Delete FAQ state
@@ -58,13 +61,13 @@ const Screen6 = () => {
 
   // Watch form values
   const faqsValue = watch("faqs") || [];
-  
+
   // Selected FAQs for the course - sync with form
   const [selectedFAQIds, setSelectedFAQIds] = useState<string[]>(faqsValue);
 
   // Expanded FAQ state for preview
   const [expandedFAQs, setExpandedFAQs] = useState<Set<string>>(new Set());
-  
+
   // Client-side mounting
   const [isMounted, setIsMounted] = useState(false);
 
@@ -102,24 +105,30 @@ const Screen6 = () => {
       if (isLoading) return;
 
       try {
-        const result = await fetchFAQs(pageNum, 10, searchDebounced);
+        const result = await getFAQs({
+          page: pageNum,
+          limit: 10,
+          search: searchDebounced,
+        });
 
-        if (reset) {
-          setFaqs(result.faqs);
-        } else {
-          setFaqs((prev) => [...prev, ...result.faqs]);
+        if (result) {
+          if (reset) {
+            setFaqs(result.faqs);
+          } else {
+            setFaqs((prev) => [...(prev || []), ...(result.faqs || [])]);
+          }
+
+          setHasMore(
+            result.faqs?.length === 10 &&
+              (faqs?.length || 0) + (result.faqs?.length || 0) < result.total
+          );
+          setPage(pageNum + 1);
         }
-
-        setHasMore(
-          result.faqs.length === 10 &&
-            faqs.length + result.faqs.length < result.total
-        );
-        setPage(pageNum + 1);
       } catch (error) {
         console.error("Error loading FAQs:", error);
       }
     },
-    [isLoading, searchDebounced, fetchFAQs, clearError]
+    [isLoading, searchDebounced, getFAQs, clearError, faqs?.length]
   );
 
   // Infinite scroll handler
@@ -159,11 +168,13 @@ const Screen6 = () => {
 
     setCreating(true);
     try {
-      const createdFAQ = await createFAQSimple(newFAQ);
-      setFaqs((prev) => [createdFAQ, ...prev]);
-      setNewFAQ({ question: "", answer: "" });
-      setShowCreateModal(false);
-      clearError(); // Clear any previous errors
+      const createdFAQ = await createFAQ(newFAQ);
+      if (createdFAQ) {
+        setFaqs((prev) => [createdFAQ, ...(prev || [])]);
+        setNewFAQ({ question: "", answer: "" });
+        setShowCreateModal(false);
+        clearError(); // Clear any previous errors
+      }
     } catch (error) {
       console.error("Error creating FAQ:", error);
       // Error is already handled by the hook
@@ -173,14 +184,19 @@ const Screen6 = () => {
   };
 
   // Handle edit FAQ
-  const handleEditFAQ = (faq: FAQ & { _id: string }) => {
+  const handleEditFAQ = (faq: FAQ) => {
     setEditingFAQ(faq);
     setShowEditModal(true);
   };
 
   // Handle update FAQ
   const handleUpdateFAQ = async () => {
-    if (!editingFAQ || !editingFAQ.question.trim() || !editingFAQ.answer.trim())
+    if (
+      !editingFAQ ||
+      !editingFAQ._id ||
+      !editingFAQ.question.trim() ||
+      !editingFAQ.answer.trim()
+    )
       return;
 
     setUpdating(true);
@@ -190,12 +206,10 @@ const Screen6 = () => {
         answer: editingFAQ.answer,
       });
 
-      if (result.success && result.data) {
+      if (result) {
         // Update the FAQ in the local state
         setFaqs((prev) =>
-          prev.map((faq) =>
-            faq._id === editingFAQ._id ? { ...result.data! } : faq
-          )
+          (prev || []).map((faq) => (faq._id === editingFAQ._id ? result : faq))
         );
         setShowEditModal(false);
         setEditingFAQ(null);
@@ -223,13 +237,13 @@ const Screen6 = () => {
     try {
       const result = await deleteFAQ(faqId);
 
-      if (result.success) {
+      if (result) {
         // Remove the FAQ from local state
-        setFaqs((prev) => prev.filter((faq) => faq._id !== faqId));
+        setFaqs((prev) => (prev || []).filter((faq) => faq._id !== faqId));
 
         // Calculate new selected FAQs
         const newSelected = selectedFAQIds.filter((id) => id !== faqId);
-        
+
         // Update both local state and form value
         setSelectedFAQIds(newSelected);
         setValue("faqs", newSelected, { shouldDirty: true, shouldTouch: true });
@@ -440,7 +454,7 @@ const Screen6 = () => {
       )}
 
       {/* Header Section */}
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-6 mb-6 border border-blue-100">
+      <div className="bg-linear-to-r from-blue-50 to-indigo-50 rounded-2xl p-6 mb-6 border border-blue-100">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-blue-500 rounded-lg">
@@ -490,7 +504,9 @@ const Screen6 = () => {
             </div>
             <div>
               <h4 className="text-red-800 font-semibold">Validation Error</h4>
-              <p className="text-red-700 text-sm">{String(errors.faqs?.message || '')}</p>
+              <p className="text-red-700 text-sm">
+                {String(errors.faqs?.message || "")}
+              </p>
             </div>
           </div>
         </div>
@@ -523,7 +539,9 @@ const Screen6 = () => {
         onScroll={handleScroll}
         style={{ scrollbarWidth: "thin" }}
       >
-        {faqs.map((faq) => {
+        {faqs?.map((faq) => {
+          if (!faq._id) return null; // Skip FAQs without ID
+
           const isSelected = selectedFAQIds.includes(faq._id);
           const isExpanded = expandedFAQs.has(faq._id);
 
@@ -542,7 +560,7 @@ const Screen6 = () => {
                   <input
                     type="checkbox"
                     checked={isSelected}
-                    onChange={() => handleFAQToggle(faq._id)}
+                    onChange={() => faq._id && handleFAQToggle(faq._id)}
                     className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
                   />
                 </div>
@@ -593,7 +611,7 @@ const Screen6 = () => {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleDeleteFAQ(faq._id);
+                          faq._id && handleDeleteFAQ(faq._id);
                         }}
                         disabled={deletingFAQId === faq._id}
                         className="text-gray-400 hover:text-red-600 p-1 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50"
@@ -610,7 +628,7 @@ const Screen6 = () => {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          toggleFAQExpansion(faq._id);
+                          faq._id && toggleFAQExpansion(faq._id);
                         }}
                         className="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100 transition-colors"
                         title={isExpanded ? "Collapse" : "Expand"}
@@ -648,14 +666,14 @@ const Screen6 = () => {
         )}
 
         {/* No More FAQs */}
-        {!hasMore && faqs.length > 0 && (
+        {!hasMore && faqs && faqs.length > 0 && (
           <div className="text-center py-6 text-gray-500 text-sm">
             No more FAQs to load
           </div>
         )}
 
         {/* No FAQs Found */}
-        {faqs.length === 0 && !isLoading && (
+        {faqs?.length === 0 && !isLoading && (
           <div className="text-center py-12">
             <HelpCircle className="w-12 h-12 mx-auto text-gray-300 mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">
@@ -676,18 +694,14 @@ const Screen6 = () => {
             </OrangeButton>
           </div>
         )}
-        
+
         {/* Hidden input for form validation */}
         <Controller
           name="faqs"
           control={control}
           rules={{ required: "At least one FAQ is required" }}
           render={({ field }) => (
-            <input
-              type="hidden"
-              {...field}
-              value={selectedFAQIds}
-            />
+            <input type="hidden" {...field} value={selectedFAQIds} />
           )}
         />
       </div>

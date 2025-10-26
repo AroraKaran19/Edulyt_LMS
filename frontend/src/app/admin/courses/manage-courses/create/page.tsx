@@ -1,10 +1,12 @@
 "use client";
-import React from "react";
 import Container from "@/app/admin/components/ui/Container";
 import { ArrowLeftIcon, ArrowRightIcon, BookOpenIcon } from "lucide-react";
-import { FlexBox, WhiteButton } from "@/components/ui";
+import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import { useRouter } from "next/navigation";
-import { CourseFormProvider, useCourseFormContext } from "@/contexts/CourseFormContext";
+import {
+  CourseFormProvider,
+  useCourseFormContext,
+} from "@/contexts/CourseFormContext";
 import Screen1 from "../components/shared/Screen1";
 import Screen2 from "../components/shared/Screen2";
 import Screen3 from "../components/shared/Screen3";
@@ -17,22 +19,52 @@ import Screen9 from "../components/shared/Screen9";
 import Screen10 from "../components/shared/Screen10";
 import Screen11 from "../components/shared/Screen11";
 import Screen12 from "../components/shared/Screen12";
-import StorageIndicator from "@/components/courseForm/StorageIndicator";
+import Screen13 from "../components/shared/Screen13";
+import StorageIndicator from "@/components/admin/courseForm/StorageIndicator";
 
 const CreateCoursePageContent = () => {
   const router = useRouter();
-  const { currentScreen, nextScreen, prevScreen, canGoNext, createCourse, isCreating } = useCourseFormContext();
+  const {
+    currentScreen,
+    nextScreen,
+    prevScreen,
+    canGoNext,
+    createCourse,
+    updateCourseMetadata,
+    isCreating,
+    isCourseCreated,
+    getCreatedCourseId,
+    clearCourseCreationStatus,
+  } = useCourseFormContext();
 
   const handleNext = async () => {
     if (currentScreen === 9) {
-      // On Screen9, create the course metadata instead of navigating
+      // On Screen9, create or update the course metadata based on creation status
       try {
-        await createCourse();
-        // Navigation will be handled by createCourse after successful creation
+        if (isCourseCreated()) {
+          // Course already exists, update it using the stored course ID
+          const courseId = getCreatedCourseId();
+          if (courseId) {
+            await updateCourseMetadata();
+            // Navigation will be handled by updateCourseMetadata after successful update
+          } else {
+            throw new Error(
+              "Course ID not found. Please try creating the course again."
+            );
+          }
+        } else {
+          // Course doesn't exist yet, create it
+          await createCourse();
+          // Navigation will be handled by createCourse after successful creation
+        }
       } catch (error) {
-        console.error("Failed to create course:", error);
+        console.error("Failed to process course:", error);
         // Error handling is done in Screen9
       }
+    } else if (currentScreen === 13) {
+      // On Screen13, finalize the course and redirect
+      clearCourseCreationStatus();
+      router.push("/admin/courses/manage-courses");
     } else {
       // For all other screens, use the validation-enabled nextScreen
       await nextScreen();
@@ -41,6 +73,8 @@ const CreateCoursePageContent = () => {
 
   const handlePrevious = () => {
     if (currentScreen === 1) {
+      // Clear course creation status when going back to courses dashboard
+      clearCourseCreationStatus();
       router.push("/admin/courses/manage-courses");
     } else {
       prevScreen();
@@ -48,12 +82,26 @@ const CreateCoursePageContent = () => {
   };
 
   return (
-    <FlexBox className="w-full h-full flex-col px-8 relative">
-      <Container
-        title="Create Course"
-        icon={BookOpenIcon}
-        className="rounded-t-none flex-shrink-0 h-fit mb-8"
-      />
+    <div className="flex w-full h-full flex-col px-8 relative">
+      <div className="flex items-center justify-between mb-8">
+        <Container
+          title="Create Course"
+          icon={BookOpenIcon}
+          className="rounded-t-none shrink-0 h-fit"
+        />
+        {isCourseCreated() && (
+          <WhiteButton
+            onClick={() => {
+              clearCourseCreationStatus();
+              // Reset form to first screen
+              window.location.reload();
+            }}
+            className="flex items-center gap-2 text-sm"
+          >
+            Start New Course
+          </WhiteButton>
+        )}
+      </div>
       <div className="flex-1 min-h-0 max-h-full">
         {currentScreen === 1 && <Screen1 />}
         {currentScreen === 2 && <Screen2 />}
@@ -67,6 +115,7 @@ const CreateCoursePageContent = () => {
         {currentScreen === 10 && <Screen10 />}
         {currentScreen === 11 && <Screen11 />}
         {currentScreen === 12 && <Screen12 />}
+        {currentScreen === 13 && <Screen13 />}
       </div>
       <div className="flex justify-between items-center h-fit p-4">
         <WhiteButton
@@ -74,10 +123,11 @@ const CreateCoursePageContent = () => {
           onClick={handlePrevious}
           disabled={isCreating}
         >
-          <ArrowLeftIcon className="size-4" /> {currentScreen === 1 ? "Back to Courses" : "Previous"}
+          <ArrowLeftIcon className="size-4" />{" "}
+          {currentScreen === 1 ? "Back to Courses" : "Previous"}
         </WhiteButton>
-        <WhiteButton 
-          className="flex gap-2 items-center" 
+        <WhiteButton
+          className="flex gap-2 items-center"
           onClick={handleNext}
           disabled={!canGoNext || isCreating}
         >
@@ -88,20 +138,32 @@ const CreateCoursePageContent = () => {
             </>
           ) : (
             <>
-              {currentScreen === 9 ? "Create Course Metadata" : currentScreen === 10 ? "Next Page" : currentScreen === 11 ? "Review Course" : "Next"} 
+              {currentScreen === 9
+                ? isCourseCreated()
+                  ? "Update Course Metadata"
+                  : "Create Course Metadata"
+                : currentScreen === 10
+                ? "Next Page"
+                : currentScreen === 11
+                ? "Review Course"
+                : currentScreen === 12
+                ? "Select Instructors"
+                : currentScreen === 13
+                ? "Finalize Course"
+                : "Next"}
               <ArrowRightIcon className="size-4" />
             </>
           )}
         </WhiteButton>
       </div>
       <StorageIndicator mode="create" />
-    </FlexBox>
+    </div>
   );
 };
 
 const CreateCoursePage = () => {
   return (
-    <CourseFormProvider options={{ mode: 'create', autoSave: true }}>
+    <CourseFormProvider options={{ mode: "create", autoSave: true }}>
       <CreateCoursePageContent />
     </CourseFormProvider>
   );

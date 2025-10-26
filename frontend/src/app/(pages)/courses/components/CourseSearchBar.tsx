@@ -1,28 +1,45 @@
 "use client";
 import { cn } from "@/lib/utils";
 import { Search } from "lucide-react";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 
 interface CourseSearchBarProps {
   search: string;
   onSearchChange: (search: string) => void;
+  onDebouncedSearch?: (search: string) => void;
+  debounceDelay?: number;
 }
 
 const CourseSearchBar = ({
   search,
   onSearchChange,
+  onDebouncedSearch,
+  debounceDelay = 500,
   ...props
 }: CourseSearchBarProps & {
   className?: string;
   style?: React.CSSProperties;
 }) => {
+  const [localSearch, setLocalSearch] = useState(search);
+
+  useEffect(() => {
+    setLocalSearch(search);
+  }, [search]);
+
   useEffect(() => {
     const debouncedSearch = setTimeout(() => {
-      // To Do: Implement debounced search
-    }, 500);
+      if (onDebouncedSearch) {
+        onDebouncedSearch(localSearch);
+      }
+    }, debounceDelay);
 
     return () => clearTimeout(debouncedSearch);
-  }, [search]);
+  }, [localSearch, onDebouncedSearch, debounceDelay]);
+
+  const handleSearchChange = (value: string) => {
+    setLocalSearch(value);
+    onSearchChange(value);
+  };
 
   return (
     <div
@@ -36,8 +53,8 @@ const CourseSearchBar = ({
         type="text"
         placeholder="Search course name by title or type"
         className="w-full h-full placeholder:text-black/30 bg-transparent outline-none"
-        value={search}
-        onChange={(e) => onSearchChange(e.target.value)}
+        value={localSearch}
+        onChange={(e) => handleSearchChange(e.target.value)}
       />
     </div>
   );

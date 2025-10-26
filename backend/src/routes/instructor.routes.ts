@@ -1,54 +1,37 @@
-import express from "express";
-import { InstructorController } from "../controllers/instructor.controller";
-import { verifyUser } from "../middlewares/auth.middleware";
+import { Router } from "express";
+import { verifyUser } from "../middlewares/user.middleware";
+import { verifyAdmin } from "../middlewares/admin.middleware";
+import {
+  getAllInstructors,
+  getInstructorById,
+  getInstructorsByIds,
+} from "../controllers/instructor.controller";
 
-const router = express.Router();
-const instructorController = new InstructorController();
+const router = Router();
+
+// Apply middleware to all routes
+router.use(verifyUser);
+router.use(verifyAdmin);
 
 /**
- * @route   POST /api/instructor/register
- * @desc    Register a new instructor (admin only)
- * @access  Private (admin)
- * @body    Instructor registration data
- * @return  Success/Error response
+ * @route   GET /api/instructors
+ * @desc    Get all instructors with pagination and search
+ * @access  Admin
  */
-router.post("/register", instructorController.registerInstructor);
+router.get("/", getAllInstructors);
 
 /**
- * @route   GET /api/instructor
- * @desc    Get all instructors with pagination and filtering
- * @access  Private (admin)
- * @query   page, limit, search, status, sortBy, sortOrder
- * @return  List of instructors with pagination info
- */
-router.get("/", verifyUser, instructorController.getAllInstructors);
-
-/**
- * @route   GET /api/instructor/:id
+ * @route   GET /api/instructors/:instructorId
  * @desc    Get instructor by ID
- * @access  Private (admin)
- * @params  id - Instructor ID
- * @return  Instructor details
+ * @access  Admin
  */
-router.get("/:id", verifyUser, instructorController.getInstructorById);
+router.get("/:instructorId", getInstructorById);
 
 /**
- * @route   PUT /api/instructor/:id
- * @desc    Update instructor by ID
- * @access  Private (admin)
- * @params  id - Instructor ID
- * @body    Updated instructor data
- * @return  Updated instructor details
+ * @route   POST /api/instructors/batch
+ * @desc    Get multiple instructors by IDs
+ * @access  Admin
  */
-router.put("/:id", verifyUser, instructorController.updateInstructor);
-
-/**
- * @route   DELETE /api/instructor/:id
- * @desc    Delete instructor by ID
- * @access  Private (admin)
- * @params  id - Instructor ID
- * @return  Success message
- */
-router.delete("/:id", verifyUser, instructorController.deleteInstructor);
+router.post("/batch", getInstructorsByIds);
 
 export default router;

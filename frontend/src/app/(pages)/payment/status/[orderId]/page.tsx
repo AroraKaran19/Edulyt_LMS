@@ -2,7 +2,6 @@
 import axios from "axios";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import FlexBox from "@/components/ui/FlexBox";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import Error from "@/components/ui/Error";
@@ -77,10 +76,7 @@ const StatusCard: React.FC<StatusCardProps> = ({
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <FlexBox
-        direction="col"
-        className="items-center gap-6 bg-white p-4 sm:p-6 md:p-8 rounded-2xl shadow-lg w-full max-w-md mx-auto"
-      >
+      <div className="flex flex-col items-center gap-6 bg-white p-4 sm:p-6 md:p-8 rounded-2xl shadow-lg w-full max-w-md mx-auto">
         {/* Icon */}
         <div
           className={`w-16 h-16 sm:w-20 sm:h-20 ${getVariantStyles()} rounded-full flex items-center justify-center`}
@@ -89,21 +85,18 @@ const StatusCard: React.FC<StatusCardProps> = ({
         </div>
 
         {/* Content */}
-        <FlexBox
-          direction="col"
-          className="items-center gap-2 text-center w-full"
-        >
+        <div className="flex flex-col items-center gap-2 text-center w-full">
           <h2 className="text-xl sm:text-2xl font-semibold text-gray-800 px-2">
             {title}
           </h2>
           <p className="text-gray-600 text-sm sm:text-base px-2">
             {description}
           </p>
-        </FlexBox>
+        </div>
 
         {/* Children (Payment Details, Buttons, etc.) */}
         <div className="w-full">{children}</div>
-      </FlexBox>
+      </div>
     </div>
   );
 };
@@ -155,17 +148,14 @@ const PaymentLoadingScreen = ({ pollingCount }: { pollingCount: number }) => {
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <FlexBox
-        direction="col"
-        className="items-center gap-4 sm:gap-6 max-w-md w-full"
-      >
+      <div className="flex flex-col items-center gap-4 sm:gap-6 max-w-md w-full">
         {/* Spinner */}
         <div className="relative">
           <Loader2 className="w-12 h-12 sm:w-16 sm:h-16 text-orange-500 animate-spin" />
         </div>
 
         {/* Loading Text */}
-        <FlexBox direction="col" className="items-center gap-2 text-center">
+        <div className="flex flex-col items-center gap-2 text-center">
           <h2 className="text-xl sm:text-2xl font-semibold text-gray-800 px-2">
             Processing Payment
           </h2>
@@ -180,7 +170,7 @@ const PaymentLoadingScreen = ({ pollingCount }: { pollingCount: number }) => {
               Taking longer than usual... Please don&apos;t close this page
             </p>
           )}
-        </FlexBox>
+        </div>
 
         {/* Progress Bar */}
         <div className="w-48 sm:w-64 bg-gray-200 rounded-full h-2">
@@ -195,7 +185,7 @@ const PaymentLoadingScreen = ({ pollingCount }: { pollingCount: number }) => {
           <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
           <span>Checking payment status...</span>
         </div>
-      </FlexBox>
+      </div>
     </div>
   );
 };
@@ -204,12 +194,9 @@ const PaymentLoadingScreen = ({ pollingCount }: { pollingCount: number }) => {
 const TokenValidationScreen = () => {
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <FlexBox
-        direction="col"
-        className="items-center gap-4 sm:gap-6 max-w-md w-full"
-      >
+      <div className="flex flex-col items-center gap-4 sm:gap-6 max-w-md w-full">
         <Loader2 className="w-12 h-12 sm:w-16 sm:h-16 text-orange-500 animate-spin" />
-        <FlexBox direction="col" className="items-center gap-2 text-center">
+        <div className="flex flex-col items-center gap-2 text-center">
           <h2 className="text-xl sm:text-2xl font-semibold text-gray-800 px-2">
             Validating Payment Token
           </h2>
@@ -219,8 +206,8 @@ const TokenValidationScreen = () => {
           <p className="text-sm text-gray-500 px-2">
             This ensures your payment is secure
           </p>
-        </FlexBox>
-      </FlexBox>
+        </div>
+      </div>
     </div>
   );
 };
@@ -316,7 +303,7 @@ const PaymentFailed = ({
         txnId={data.txnId}
       />
 
-      <FlexBox direction="col" className="w-full gap-3">
+      <div className="flex flex-col w-full gap-3">
         <OrangeButton
           className="w-full"
           onClick={() => router.push("/courses")}
@@ -326,7 +313,7 @@ const PaymentFailed = ({
         <WhiteButton className="w-full" onClick={() => router.push("/contact")}>
           Contact Support
         </WhiteButton>
-      </FlexBox>
+      </div>
     </StatusCard>
   );
 };
@@ -404,11 +391,11 @@ const InvalidTokenScreen = () => {
         Redirecting to home page in {countdown} seconds...
       </p>
 
-      <FlexBox direction="col" className="w-full gap-3">
+      <div className="flex flex-col w-full gap-3">
         <WhiteButton className="w-full" onClick={() => router.push("/contact")}>
           Contact Support
         </WhiteButton>
-      </FlexBox>
+      </div>
     </StatusCard>
   );
 };

@@ -1,4 +1,3 @@
-import FlexBox from "@/components/ui/FlexBox";
 import { cn } from "@/lib/utils";
 import React from "react";
 
@@ -11,20 +10,20 @@ interface CardProps {
 
 const Card = ({ title, count, className, icon }: CardProps) => {
   return (
-    <FlexBox
+    <div
       className={cn(
-        "py-2 px-2 w-full sm:w-[140px] lg:w-[150px] items-center gap-2 rounded-lg border border-gray-200 overflow-hidden",
+        "flex py-2 px-2.5 w-[138px] items-center gap-2 rounded-lg border border-gray-200 overflow-hidden",
         className
       )}
     >
       <div className="icon-container text-[#5D00FF] shrink-0 select-none">
         {icon && icon}
       </div>
-      <FlexBox className="flex-col text-black min-w-0 flex-1">
+      <div className="flex flex-col text-black min-w-0 flex-1">
         <span className="text-base sm:text-lg font-bold">{count || 0}</span>
         <h3 className="text-xs sm:text-sm font-normal truncate">{title}</h3>
-      </FlexBox>
-    </FlexBox>
+      </div>
+    </div>
   );
 };
 

@@ -24,8 +24,8 @@ export const validateLinkedinUrl = (url: string) => {
   );
 };
 
-export const validateReview = (review: Review) => {
-  return review.rating >= 1 && review.rating <= 5;
+export const validateReview = (rating: number) => {
+  return rating >= 1 && rating <= 5 && Number.isInteger(rating);
 };
 
 export const validateEmail = (email: string) => {
@@ -33,7 +33,7 @@ export const validateEmail = (email: string) => {
 };
 
 export const validatePhoneNumber = (phone: string) => {
-  if (!phone || phone.trim() === '') return true; // Allow empty strings for optional fields
+  if (!phone || phone.trim() === "") return true; // Allow empty strings for optional fields
   // Accept both +91XXXXXXXXXX and XXXXXXXXXX formats
   return /^(\+91[0-9]{10}|[0-9]{10})$/.test(phone);
 };

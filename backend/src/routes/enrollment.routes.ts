@@ -1,140 +1,128 @@
-import express from "express";
-import EnrollmentController from "../controllers/enrollment.controller";
-import { verifyUser } from "../middlewares/auth.middleware";
+import { Router } from "express";
+import { verifyUser } from "../middlewares/user.middleware";
 import {
-  validateCourseForEnrollment,
-  checkExistingEnrollment,
-  validateProgressUpdate,
-  validateStatusUpdate,
-  validateEnrollmentSource,
-} from "../middlewares/enrollment.middleware";
+  createEnrollment,
+  getEnrollment,
+  getUserEnrollments,
+  updateEnrollmentProgress,
+  updateEnrollmentStatus,
+  getEnrollmentStats,
+  getCourseEnrollmentStats,
+  getDetailedProgress,
+  issueCertificate,
+  getEnrollmentAnalytics,
+  deleteEnrollment,
+  pauseEnrollment,
+  resumeEnrollment,
+  getEnrollmentHistory,
+  checkEnrollment,
+} from "../controllers/enrollment.controller";
 
-const router = express.Router();
+const router = Router();
 
 /**
- * @route   POST /api/enrollment
+ * @route   POST /api/enrollments
  * @desc    Create a new enrollment
- * @access  Private (user)
- * @body    { courseId, enrollmentSource?, giftFrom?, promotionCode? }
- * @return  Enrollment object
+ * @access  User
  */
-router.post(
-  "/",
-  verifyUser,
-  validateCourseForEnrollment,
-  checkExistingEnrollment,
-  validateEnrollmentSource,
-  EnrollmentController.createEnrollment
-);
+router.post("/", verifyUser, createEnrollment);
 
 /**
- * @route   GET /api/enrollment/user
- * @desc    Get user's enrollments
- * @access  Private (user)
- * @query   status? (active, completed, dropped, paused)
- * @return  Array of enrollments
+ * @route   GET /api/enrollments/check/:courseId
+ * @desc    Check enrollment status for a course
+ * @access  User
  */
-router.get("/user", verifyUser, EnrollmentController.getUserEnrollments);
+router.get("/check/:courseId", verifyUser, checkEnrollment);
 
 /**
- * @route   GET /api/enrollment/course/:courseId
- * @desc    Get course enrollments (admin/instructor only)
- * @access  Private (admin/instructor)
- * @params  courseId - Course ID
- * @query   status? (active, completed, dropped, paused)
- * @return  Array of enrollments
+ * @route   GET /api/enrollments/user/:userId
+ * @desc    Get all enrollments for a user (use "me" for current user)
+ * @access  User
  */
-router.get("/course/:courseId", verifyUser, EnrollmentController.getCourseEnrollments);
+router.get("/user/:userId", verifyUser, getUserEnrollments);
 
 /**
- * @route   GET /api/enrollment/:courseId
- * @desc    Get specific enrollment for a course
- * @access  Private (user)
- * @params  courseId - Course ID
- * @return  Enrollment object
+ * @route   GET /api/enrollments/:enrollmentId
+ * @desc    Get specific enrollment details
+ * @access  User
  */
-router.get("/:courseId", verifyUser, EnrollmentController.getEnrollment);
+router.get("/:enrollmentId", verifyUser, getEnrollment);
 
 /**
- * @route   GET /api/enrollment/:courseId/check
- * @desc    Check if user is enrolled in a course
- * @access  Private (user)
- * @params  courseId - Course ID
- * @return  { isEnrolled: boolean, enrollment: object | null, status: string | null }
+ * @route   GET /api/enrollments/:enrollmentId/progress
+ * @desc    Get detailed progress for an enrollment
+ * @access  User
  */
-router.get("/:courseId/check", verifyUser, EnrollmentController.checkEnrollment);
+router.get("/:enrollmentId/progress", verifyUser, getDetailedProgress);
 
 /**
- * @route   PUT /api/enrollment/:courseId/modules/:moduleId/lessons/:lessonId/progress
- * @desc    Update enrollment progress for a specific lesson
- * @access  Private (user)
- * @params  courseId, moduleId, lessonId
- * @body    { completed: boolean, score?: number, timeSpent?: number }
- * @return  Updated enrollment object
+ * @route   PUT /api/enrollments/:enrollmentId/progress
+ * @desc    Update enrollment progress
+ * @access  User
  */
-router.put(
-  "/:courseId/modules/:moduleId/lessons/:lessonId/progress",
-  verifyUser,
-  validateProgressUpdate,
-  EnrollmentController.updateEnrollmentProgress
-);
+router.put("/:enrollmentId/progress", verifyUser, updateEnrollmentProgress);
 
 /**
- * @route   PUT /api/enrollment/:courseId/complete
- * @desc    Mark enrollment as completed
- * @access  Private (user)
- * @params  courseId - Course ID
- * @return  Updated enrollment object
- */
-router.put("/:courseId/complete", verifyUser, EnrollmentController.completeEnrollment);
-
-/**
- * @route   PUT /api/enrollment/:courseId/status
+ * @route   PUT /api/enrollments/:enrollmentId/status
  * @desc    Update enrollment status
- * @access  Private (user)
- * @params  courseId - Course ID
- * @body    { status: "active" | "completed" | "dropped" | "paused" }
- * @return  Updated enrollment object
+ * @access  User
  */
-router.put(
-  "/:courseId/status",
-  verifyUser,
-  validateStatusUpdate,
-  EnrollmentController.updateEnrollmentStatus
-);
+router.put("/:enrollmentId/status", verifyUser, updateEnrollmentStatus);
 
 /**
- * @route   GET /api/enrollment/stats/course/:courseId
- * @desc    Get course enrollment statistics
- * @access  Private (admin/instructor)
- * @params  courseId - Course ID
- * @return  Course enrollment statistics
+ * @route   PUT /api/enrollments/:enrollmentId/pause
+ * @desc    Pause an enrollment
+ * @access  User
  */
-router.get("/stats/course/:courseId", verifyUser, EnrollmentController.getCourseEnrollmentStats);
+router.put("/:enrollmentId/pause", verifyUser, pauseEnrollment);
 
 /**
- * @route   GET /api/enrollment/stats/user
+ * @route   PUT /api/enrollments/:enrollmentId/resume
+ * @desc    Resume a paused enrollment
+ * @access  User
+ */
+router.put("/:enrollmentId/resume", verifyUser, resumeEnrollment);
+
+/**
+ * @route   POST /api/enrollments/:enrollmentId/certificate
+ * @desc    Issue certificate for completed enrollment
+ * @access  User
+ */
+router.post("/:enrollmentId/certificate", verifyUser, issueCertificate);
+
+/**
+ * @route   GET /api/enrollments/stats/user/:userId
  * @desc    Get user enrollment statistics
- * @access  Private (user)
- * @return  User enrollment statistics
+ * @access  User
  */
-router.get("/stats/user", verifyUser, EnrollmentController.getUserEnrollmentStats);
+router.get("/stats/user/:userId", verifyUser, getEnrollmentStats);
 
 /**
- * @route   GET /api/enrollment/stats/overall
- * @desc    Get overall enrollment statistics (admin only)
- * @access  Private (admin)
- * @return  Overall enrollment statistics
+ * @route   GET /api/enrollments/stats/course/:courseId
+ * @desc    Get course enrollment statistics
+ * @access  User
  */
-router.get("/stats/overall", verifyUser, EnrollmentController.getOverallEnrollmentStats);
+router.get("/stats/course/:courseId", verifyUser, getCourseEnrollmentStats);
 
 /**
- * @route   DELETE /api/enrollment/:courseId
- * @desc    Delete enrollment
- * @access  Private (user)
- * @params  courseId - Course ID
- * @return  Deleted enrollment object
+ * @route   GET /api/enrollments/analytics/:userId
+ * @desc    Get detailed enrollment analytics for user
+ * @access  User
  */
-router.delete("/:courseId", verifyUser, EnrollmentController.deleteEnrollment);
+router.get("/analytics/:userId", verifyUser, getEnrollmentAnalytics);
+
+/**
+ * @route   GET /api/enrollments/history/:userId
+ * @desc    Get enrollment history for user
+ * @access  User
+ */
+router.get("/history/:userId", verifyUser, getEnrollmentHistory);
+
+/**
+ * @route   DELETE /api/enrollments/:enrollmentId
+ * @desc    Delete an enrollment (soft delete - mark as dropped)
+ * @access  User
+ */
+router.delete("/:enrollmentId", verifyUser, deleteEnrollment);
 
 export default router;

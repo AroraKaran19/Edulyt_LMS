@@ -1,6 +1,7 @@
 import React from "react";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { cn } from "@/lib/utils";
+import IndianFlagIcon from "../../../../public/icons/IndiaFlag";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -9,6 +10,7 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 
 interface InputProps {
   label?: string;
+  labelClassName?: string;
   placeholder?: string;
   type?: string;
   required?: boolean;
@@ -25,6 +27,7 @@ interface InputProps {
 
 const Input = ({
   label,
+  labelClassName,
   placeholder,
   type = "text",
   required = false,
@@ -43,11 +46,11 @@ const Input = ({
 }: InputProps) => {
   // Calculate character count
   const getCharacterCount = (text: string | number) => {
-    const stringValue = text ? String(text) : '';
+    const stringValue = text ? String(text) : "";
     return stringValue.length;
   };
 
-  const characterCount = getCharacterCount(value || '');
+  const characterCount = getCharacterCount(value || "");
   const isMinLengthMet = minLength ? characterCount >= minLength : true;
   const isMaxLengthExceeded = maxLength ? characterCount > maxLength : false;
 
@@ -56,7 +59,7 @@ const Input = ({
     if (onChange) {
       onChange(e);
     }
-    
+
     // Call setChange if provided
     if (setChange) {
       setChange(e.target.value);
@@ -73,11 +76,18 @@ const Input = ({
       )}
     >
       {label && (
-        <label className="font-medium text-black mb-2 block">
+        <label
+          className={cn("font-medium text-black mb-2 block", labelClassName)}
+        >
           {label} {required && <span className="text-red-500">*</span>}
         </label>
       )}
-      <div className="relative">
+      <div className="relative flex gap-2 items-center">
+        {type === "tel" && (
+          <div className="rounded-md border border-gray-300 bg-primary-500 flex items-center justify-center p-2">
+            <IndianFlagIcon className="size-7.5" />
+          </div>
+        )}
         <input
           type={type}
           placeholder={placeholder}
@@ -100,15 +110,21 @@ const Input = ({
           )}
           required={required}
           onChange={handleChange}
+          onKeyDown={props.onKeyDown}
+          onPaste={props.onPaste}
         />
         {showCharacterCount && (
           <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs bg-white px-1 rounded">
-            <div className={cn(
-              "text-right",
-              isMaxLengthExceeded ? "text-red-500" : 
-              !isMinLengthMet ? "text-orange-500" : 
-              "text-gray-500"
-            )}>
+            <div
+              className={cn(
+                "text-right",
+                isMaxLengthExceeded
+                  ? "text-red-500"
+                  : !isMinLengthMet
+                  ? "text-orange-500"
+                  : "text-gray-500"
+              )}
+            >
               {characterCount}
               {maxLength && `/${maxLength}`}
             </div>
@@ -117,12 +133,14 @@ const Input = ({
       </div>
       {minLength && !isMinLengthMet && (
         <div className="text-xs text-orange-500 mt-1">
-          Minimum {minLength} characters required ({minLength - characterCount} more needed)
+          Minimum {minLength} characters required ({minLength - characterCount}{" "}
+          more needed)
         </div>
       )}
       {maxLength && isMaxLengthExceeded && (
         <div className="text-xs text-red-500 mt-1">
-          Maximum {maxLength} characters exceeded (remove {characterCount - maxLength} characters)
+          Maximum {maxLength} characters exceeded (remove{" "}
+          {characterCount - maxLength} characters)
         </div>
       )}
     </div>

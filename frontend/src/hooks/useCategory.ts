@@ -1,281 +1,517 @@
 import { useState, useCallback } from "react";
+import apiClient from "@/configs/apiConfig";
+import { Category } from "@/types";
+import { toast } from "react-toastify";
 
-export interface Category {
-  _id: string;
-  name: string;
-  description?: string;
-  isActive: boolean;
-  createdAt?: string;
-  updatedAt?: string;
+// ===================
+// Filter Interfaces
+// ===================
+
+export interface CategoryFilters {
+  page?: number;
+  limit?: number;
+  search?: string;
+  isActive?: boolean;
+  sortBy?: "name" | "createdAt" | "updatedAt";
+  sortOrder?: "asc" | "desc";
 }
 
 export interface CategoryResponse {
-  success: boolean;
-  data?: Category | Category[];
-  message?: string;
-  error?: string;
+  categories: Category[];
+  total: number;
+  page: number;
+  totalPages: number;
 }
 
-export interface CategoryListResponse {
-  success: boolean;
-  data?: {
-    categories: Category[];
-    total: number;
-    page: number;
-    totalPages: number;
-  };
-  message?: string;
-  error?: string;
+export interface SingleCategoryResponse {
+  category: Category;
 }
+
+// ===================
+// Category Creation/Update Interfaces
+// ===================
+
+export interface CreateCategoryData {
+  name: string;
+  description?: string;
+}
+
+export interface UpdateCategoryData {
+  _id: string;
+  name?: string;
+  description?: string;
+  isActive?: boolean;
+}
+
+// ===================
+// Main Hook
+// ===================
 
 export const useCategory = () => {
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string>("");
+  const [error, setError] = useState<string | null>(null);
 
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "";
+  const clearError = useCallback(() => setError(null), []);
 
-  // Get all categories with pagination and filtering
-  const getAllCategories = useCallback(
-    async (
-      page: number = 1,
-      limit: number = 50,
-      search: string = "",
-      isActive?: boolean
-    ): Promise<CategoryListResponse> => {
+  const handleRequest = useCallback(
+    async <T>(
+      requestFn: () => Promise<T>,
+      errorMessage: string
+    ): Promise<T | null> => {
       setIsLoading(true);
-      setError("");
-
+      setError(null);
       try {
-        const params = new URLSearchParams({
-          page: page.toString(),
-          limit: limit.toString(),
-          search,
-        });
-
-        if (isActive !== undefined) {
-          params.append("isActive", isActive.toString());
-        }
-
-        const response = await fetch(`${baseUrl}/categories?${params}`);
-        const result = await response.json();
-
-        if (!result.success) {
-          setError(result.error || result.message);
-        }
-
-        return result;
-      } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : "Failed to fetch categories";
-        setError(errorMessage);
-        return {
-          success: false,
-          message: "Failed to fetch categories",
-          error: errorMessage,
-        };
+        const response = await requestFn();
+        return response;
+      } catch (err: any) {
+        const msg =
+          err?.response?.data?.error?.message || err?.message || errorMessage;
+        setError(msg);
+        return null;
       } finally {
         setIsLoading(false);
       }
     },
-    [baseUrl]
+    []
   );
 
-  // Get active categories only (for dropdowns)
+  // ===================
+  // Public Category Methods
+  // ===================
+
+  const getCategories = useCallback(
+    async (filters: CategoryFilters = {}): Promise<CategoryResponse | null> => {
+      return handleRequest(async () => {
+        const params = new URLSearchParams();
+        if (filters.page) params.append("page", filters.page.toString());
+        if (filters.limit) params.append("limit", filters.limit.toString());
+        if (filters.search) params.append("search", filters.search);
+        if (filters.isActive !== undefined)
+          params.append("isActive", filters.isActive.toString());
+        if (filters.sortBy) params.append("sortBy", filters.sortBy);
+        if (filters.sortOrder) params.append("sortOrder", filters.sortOrder);
+
+        const response = await apiClient.get(
+          `/categories?${params.toString()}`
+        );
+        if (response.data.success) {
+          return response.data.data;
+        } else {
+          throw new Error(
+            response.data.error?.message || "Failed to fetch categories"
+          );
+        }
+      }, "Failed to fetch categories");
+    },
+    [handleRequest]
+  );
+
   const getActiveCategories = useCallback(
-    async (): Promise<CategoryResponse> => {
-      setIsLoading(true);
-      setError("");
-
-      try {
-        const response = await fetch(`${baseUrl}/categories/active`);
-        const result = await response.json();
-
-        if (!result.success) {
-          setError(result.error || result.message);
-        }
-
-        return result;
-      } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : "Failed to fetch active categories";
-        setError(errorMessage);
-        return {
-          success: false,
-          message: "Failed to fetch active categories",
-          error: errorMessage,
-        };
-      } finally {
-        setIsLoading(false);
-      }
+    async (
+      filters: Omit<CategoryFilters, "isActive"> = {}
+    ): Promise<CategoryResponse | null> => {
+      return getCategories({ ...filters, isActive: true });
     },
-    [baseUrl]
+    [getCategories]
   );
 
-  // Create a new category
+  const getCategoryById = useCallback(
+    async (id: string): Promise<Category | null> => {
+      return handleRequest(async () => {
+        const response = await apiClient.get(`/categories/${id}`);
+        if (response.data.success) {
+          return response.data.data;
+        } else {
+          throw new Error(
+            response.data.error?.message || "Failed to fetch category"
+          );
+        }
+      }, "Failed to fetch category");
+    },
+    [handleRequest]
+  );
+
+  // ===================
+  // Admin Category Methods
+  // ===================
+
+  const getAdminCategories = useCallback(
+    async (filters: CategoryFilters = {}): Promise<CategoryResponse | null> => {
+      return handleRequest(async () => {
+        const params = new URLSearchParams();
+        if (filters.page) params.append("page", filters.page.toString());
+        if (filters.limit) params.append("limit", filters.limit.toString());
+        if (filters.search) params.append("search", filters.search);
+        if (filters.isActive !== undefined)
+          params.append("isActive", filters.isActive.toString());
+        if (filters.sortBy) params.append("sortBy", filters.sortBy);
+        if (filters.sortOrder) params.append("sortOrder", filters.sortOrder);
+
+        const response = await apiClient.get(
+          `/categories/admin?${params.toString()}`
+        );
+        if (response.data.success) {
+          return response.data.data;
+        } else {
+          throw new Error(
+            response.data.error?.message || "Failed to fetch admin categories"
+          );
+        }
+      }, "Failed to fetch admin categories");
+    },
+    [handleRequest]
+  );
+
+  const getAdminCategoryById = useCallback(
+    async (id: string): Promise<Category | null> => {
+      return handleRequest(async () => {
+        const response = await apiClient.get(`/categories/admin/${id}`);
+        if (response.data.success) {
+          return response.data.data;
+        } else {
+          throw new Error(
+            response.data.error?.message || "Failed to fetch admin category"
+          );
+        }
+      }, "Failed to fetch admin category");
+    },
+    [handleRequest]
+  );
+
   const createCategory = useCallback(
-    async (categoryData: {
-      name: string;
-      description?: string;
-    }): Promise<CategoryResponse> => {
-      setIsLoading(true);
-      setError("");
-
-      try {
-        const response = await fetch(`${baseUrl}/categories`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(categoryData),
-        });
-
-        const result = await response.json();
-
-        if (!result.success) {
-          setError(result.error || result.message);
+    async (data: CreateCategoryData): Promise<Category | null> => {
+      return handleRequest(async () => {
+        const response = await apiClient.post("/categories", data);
+        if (response.data.success) {
+          toast.success("Category created successfully");
+          return response.data.data;
+        } else {
+          toast.error(
+            response.data.error?.message || "Failed to create category"
+          );
+          throw new Error(
+            response.data.error?.message || "Failed to create category"
+          );
         }
-
-        return result;
-      } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : "Failed to create category";
-        setError(errorMessage);
-        return {
-          success: false,
-          message: "Failed to create category",
-          error: errorMessage,
-        };
-      } finally {
-        setIsLoading(false);
-      }
+      }, "Failed to create category");
     },
-    [baseUrl]
+    [handleRequest]
   );
 
-  // Update a category
   const updateCategory = useCallback(
     async (
-      categoryId: string,
-      updateData: {
-        name?: string;
-        description?: string;
-        isActive?: boolean;
-      }
-    ): Promise<CategoryResponse> => {
-      setIsLoading(true);
-      setError("");
-
-      try {
-        const response = await fetch(`${baseUrl}/categories/${categoryId}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(updateData),
-        });
-
-        const result = await response.json();
-
-        if (!result.success) {
-          setError(result.error || result.message);
+      id: string,
+      data: Partial<CreateCategoryData & { isActive?: boolean }>
+    ): Promise<Category | null> => {
+      return handleRequest(async () => {
+        const response = await apiClient.put(`/categories/${id}`, data);
+        if (response.data.success) {
+          toast.success("Category updated successfully");
+          return response.data.data;
+        } else {
+          toast.error(
+            response.data.error?.message || "Failed to update category"
+          );
+          throw new Error(
+            response.data.error?.message || "Failed to update category"
+          );
         }
-
-        return result;
-      } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : "Failed to update category";
-        setError(errorMessage);
-        return {
-          success: false,
-          message: "Failed to update category",
-          error: errorMessage,
-        };
-      } finally {
-        setIsLoading(false);
-      }
+      }, "Failed to update category");
     },
-    [baseUrl]
+    [handleRequest]
   );
 
-  // Delete a category
+  const updateCategoryStatus = useCallback(
+    async (id: string, isActive: boolean): Promise<Category | null> => {
+      return handleRequest(async () => {
+        const response = await apiClient.put(`/categories/${id}`, { isActive });
+        if (response.data.success) {
+          toast.success("Category status updated successfully");
+          return response.data.data;
+        } else {
+          toast.error(
+            response.data.error?.message || "Failed to update category status"
+          );
+          throw new Error(
+            response.data.error?.message || "Failed to update category status"
+          );
+        }
+      }, "Failed to update category status");
+    },
+    [handleRequest]
+  );
+
   const deleteCategory = useCallback(
-    async (categoryId: string): Promise<CategoryResponse> => {
+    async (id: string): Promise<boolean | null> => {
+      return handleRequest(async () => {
+        const response = await apiClient.delete(`/categories/${id}`);
+        if (response.data.success) {
+          toast.success("Category deleted successfully");
+          return response.data.success;
+        } else {
+          toast.error(
+            response.data.error?.message || "Failed to delete category"
+          );
+          throw new Error(
+            response.data.error?.message || "Failed to delete category"
+          );
+        }
+      }, "Failed to delete category");
+    },
+    [handleRequest]
+  );
+
+  // ===================
+  // Bulk Operations
+  // ===================
+
+  const bulkUpdateCategories = useCallback(
+    async (
+      updates: Array<{
+        id: string;
+        data: Partial<CreateCategoryData & { isActive?: boolean }>;
+      }>
+    ): Promise<{
+      success: number;
+      failed: number;
+      results: Array<{ id: string; success: boolean; error?: string }>;
+    }> => {
       setIsLoading(true);
-      setError("");
+      setError(null);
+
+      const results: Array<{ id: string; success: boolean; error?: string }> =
+        [];
+      let successCount = 0;
+      let failedCount = 0;
 
       try {
-        const response = await fetch(`${baseUrl}/categories/${categoryId}`, {
-          method: "DELETE",
-        });
-
-        const result = await response.json();
-
-        if (!result.success) {
-          setError(result.error || result.message);
+        for (const update of updates) {
+          try {
+            const result = await updateCategory(update.id, update.data);
+            if (result) {
+              results.push({ id: update.id, success: true });
+              successCount++;
+            } else {
+              results.push({
+                id: update.id,
+                success: false,
+                error: "Update failed",
+              });
+              failedCount++;
+            }
+          } catch (err: any) {
+            results.push({
+              id: update.id,
+              success: false,
+              error:
+                err?.response?.data?.error?.message ||
+                err?.message ||
+                "Update failed",
+            });
+            failedCount++;
+          }
         }
 
-        return result;
-      } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : "Failed to delete category";
+        return { success: successCount, failed: failedCount, results };
+      } catch (err: any) {
+        const errorMessage = err?.message || "Bulk update failed";
         setError(errorMessage);
-        return {
-          success: false,
-          message: "Failed to delete category",
-          error: errorMessage,
-        };
+        return { success: successCount, failed: failedCount, results };
       } finally {
         setIsLoading(false);
       }
     },
-    [baseUrl]
+    [updateCategory]
   );
 
-  // Get category by ID
-  const getCategoryById = useCallback(
-    async (categoryId: string): Promise<CategoryResponse> => {
+  const bulkDeleteCategories = useCallback(
+    async (
+      ids: string[]
+    ): Promise<{
+      success: number;
+      failed: number;
+      results: Array<{ id: string; success: boolean; error?: string }>;
+    }> => {
       setIsLoading(true);
-      setError("");
+      setError(null);
+
+      const results: Array<{ id: string; success: boolean; error?: string }> =
+        [];
+      let successCount = 0;
+      let failedCount = 0;
 
       try {
-        const response = await fetch(`${baseUrl}/categories/${categoryId}`);
-        const result = await response.json();
-
-        if (!result.success) {
-          setError(result.error || result.message);
+        for (const id of ids) {
+          try {
+            const result = await deleteCategory(id);
+            if (result) {
+              results.push({ id, success: true });
+              successCount++;
+            } else {
+              results.push({ id, success: false, error: "Delete failed" });
+              failedCount++;
+            }
+          } catch (err: any) {
+            results.push({
+              id,
+              success: false,
+              error:
+                err?.response?.data?.error?.message ||
+                err?.message ||
+                "Delete failed",
+            });
+            failedCount++;
+          }
         }
 
-        return result;
-      } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : "Failed to fetch category";
+        return { success: successCount, failed: failedCount, results };
+      } catch (err: any) {
+        const errorMessage = err?.message || "Bulk delete failed";
         setError(errorMessage);
-        return {
-          success: false,
-          message: "Failed to fetch category",
-          error: errorMessage,
-        };
+        return { success: successCount, failed: failedCount, results };
       } finally {
         setIsLoading(false);
       }
     },
-    [baseUrl]
+    [deleteCategory]
   );
 
-  // Clear error
-  const clearError = useCallback(() => {
-    setError("");
+  // ===================
+  // Utility Methods
+  // ===================
+
+  const validateCategory = useCallback(
+    (
+      data: Partial<CreateCategoryData>
+    ): { valid: boolean; errors: string[] } => {
+      const errors: string[] = [];
+
+      if (!data.name?.trim()) {
+        errors.push("Category name is required");
+      } else if (data.name.trim().length < 2) {
+        errors.push("Category name must be at least 2 characters long");
+      } else if (data.name.trim().length > 100) {
+        errors.push("Category name must be less than 100 characters");
+      }
+
+      if (data.description && data.description.length > 500) {
+        errors.push("Description must be less than 500 characters");
+      }
+
+      // Check for special characters in name
+      if (data.name && !/^[a-zA-Z0-9\s\-_&()]+$/.test(data.name.trim())) {
+        errors.push(
+          "Category name can only contain letters, numbers, spaces, hyphens, underscores, ampersands, and parentheses"
+        );
+      }
+
+      return {
+        valid: errors.length === 0,
+        errors,
+      };
+    },
+    []
+  );
+
+  const generateCategorySlug = useCallback((name: string): string => {
+    return name
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9\s-]/g, "") // Remove special characters
+      .replace(/\s+/g, "-") // Replace spaces with hyphens
+      .replace(/-+/g, "-") // Replace multiple hyphens with single hyphen
+      .replace(/^-|-$/g, ""); // Remove leading/trailing hyphens
   }, []);
 
+  const searchCategories = useCallback(
+    async (
+      query: string,
+      filters: Omit<CategoryFilters, "search"> = {}
+    ): Promise<CategoryResponse | null> => {
+      return getCategories({ ...filters, search: query });
+    },
+    [getCategories]
+  );
+
+  const getCategoriesByStatus = useCallback(
+    async (
+      isActive: boolean,
+      filters: Omit<CategoryFilters, "isActive"> = {}
+    ): Promise<CategoryResponse | null> => {
+      return getCategories({ ...filters, isActive });
+    },
+    [getCategories]
+  );
+
+  // ===================
+  // Statistics Methods
+  // ===================
+
+  const getCategoryStats = useCallback(async (): Promise<{
+    total: number;
+    active: number;
+    inactive: number;
+    recent: number; // Created in last 30 days
+  } | null> => {
+    return handleRequest(async () => {
+      const [allCategories, activeCategories, recentCategories] =
+        await Promise.all([
+          getAdminCategories({ limit: 1 }), // Just to get total count
+          getAdminCategories({ isActive: true, limit: 1 }), // Just to get active count
+          getAdminCategories({
+            limit: 1,
+            // Note: This would need backend support for date filtering
+          }),
+        ]);
+
+      if (!allCategories || !activeCategories) {
+        return null;
+      }
+
+      return {
+        total: allCategories.total,
+        active: activeCategories.total,
+        inactive: allCategories.total - activeCategories.total,
+        recent: 0, // Would need backend support for date filtering
+      };
+    }, "Failed to fetch category statistics");
+  }, [handleRequest, getAdminCategories]);
+
   return {
+    // State
     isLoading,
     error,
     clearError,
-    getAllCategories,
+
+    // Public Category Methods
+    getCategories,
     getActiveCategories,
+    getCategoryById,
+
+    // Admin Category Methods
+    getAdminCategories,
+    getAdminCategoryById,
     createCategory,
     updateCategory,
+    updateCategoryStatus,
     deleteCategory,
-    getCategoryById,
+
+    // Bulk Operations
+    bulkUpdateCategories,
+    bulkDeleteCategories,
+
+    // Utility Methods
+    validateCategory,
+    generateCategorySlug,
+    searchCategories,
+    getCategoriesByStatus,
+    getCategoryStats,
+
+    // Aliases for convenience
+    getAllCategories: getCategories,
+    getAllAdminCategories: getAdminCategories,
+    createCategoryAdmin: createCategory,
+    updateCategoryAdmin: updateCategory,
+    deleteCategoryAdmin: deleteCategory,
   };
 };

@@ -62,9 +62,6 @@ export interface BaseContent {
   description?: string;
   type: "video" | "quiz" | "document";
   readingMaterials?: ReadingMaterial[];
-  isCompleted: boolean;
-  completedAt?: Date;
-  isLocked?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -106,11 +103,7 @@ export interface CourseLesson {
   moduleId?: string; // Reference to the module this lesson belongs to
   title: string;
   description?: string;
-  contentIds: Content["_id"][];
-  contents?: Content[];
-  isCompleted?: boolean;
-  completedAt?: Date;
-  isLocked?: boolean;
+  contents: Content["_id"][];
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -124,13 +117,9 @@ export interface CourseModule {
   courseId: mongoose.Schema.Types.ObjectId; // Reference to the course this module belongs to
   title: string;
   thumbnailUrl: string; // Required in schema
-  lessonIds: CourseLesson["_id"][];
-  lessons?: CourseLesson[];
+  lessons: CourseLesson["_id"][];
   description?: string;
-  isCompleted: boolean;
-  completedAt?: Date;
   isActive?: boolean;
-  isLocked?: boolean; // if the module is locked, the user cannot access the lessons
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -151,7 +140,6 @@ export interface Plan {
   features: PlanFeatures[];
   discount?: Discount;
   isPopular?: boolean;
-  trialDays?: number;
   isActive?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
@@ -161,13 +149,19 @@ export interface Plan {
 // Review Types
 // ===================
 
-export interface Testimonial
-  extends Omit<Review, "profileImage" | "rating" | "comment" | "reviewableId" | "reviewableType"> {
+export interface Testimonial {
+  _id?: string;
+  name: string;
+  currentRole: string;
+  currentCompany: string;
+  linkedin: string;
   pastRole: string;
   pastCompany: string;
   college: string;
   verified?: boolean;
-  profileImage: string;
+  profileImage?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 // ===================
@@ -202,8 +196,7 @@ export interface Course {
   duration: string; // like: 3 months, 1 year, 2 years, etc. (will not be accurate)
 
   // Content
-  moduleIds: CourseModule["_id"][];
-  modules?: CourseModule[];
+  modules?: CourseModule["_id"][];
 
   // Instructor
   instructor: Instructor["_id"][]; // can be multiple instructors
@@ -244,7 +237,7 @@ export interface Course {
 
   // Language
   language: string;
-  
+
   // Curriculum
   curriculum?: string;
   brochure?: string;

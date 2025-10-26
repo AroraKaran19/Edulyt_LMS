@@ -1,5 +1,4 @@
 "use client";
-import FlexBox from "@/components/ui/FlexBox";
 import { cn } from "@/lib/utils";
 import { ChevronDownIcon } from "lucide-react";
 import Link from "next/link";
@@ -87,10 +86,10 @@ const SidebarMenuItem = ({
         onClick={() => handleSubmenuToggle(menuItem)}
         title={isCollapsed ? menuItem.label : undefined}
       >
-        <FlexBox className="admin-sidebar-menu-item w-full gap-2 items-center">
-          <FlexBox
+        <div className="flex admin-sidebar-menu-item w-full gap-2 items-center">
+          <div
             className={cn(
-              "gap-2 items-center",
+              "flex gap-2 items-center",
               isCollapsed ? "justify-center" : "w-full"
             )}
           >
@@ -117,7 +116,7 @@ const SidebarMenuItem = ({
             {!isCollapsed && (
               <span className="text-base font-medium">{menuItem.label}</span>
             )}
-          </FlexBox>
+          </div>
           {menuItem.submenu && !isCollapsed && (
             <ChevronDownIcon
               className={`size-5 transition-transform duration-300 ${
@@ -125,10 +124,10 @@ const SidebarMenuItem = ({
               }`}
             />
           )}
-        </FlexBox>
+        </div>
       </Link>
       {openSubmenus[menuItem.href] && menuItem.submenu && !isCollapsed && (
-        <FlexBox className="admin-sidebar-menu-item-submenu w-full flex-col gap-6 bg-white p-3 rounded-lg shadow-md animate-fade-from-top duration-300">
+        <div className="flex admin-sidebar-menu-item-submenu w-full flex-col gap-6 bg-white p-3 rounded-lg shadow-md animate-fade-from-top duration-300">
           {menuItem.submenu.map((submenu, index) => {
             const isSubmenuActive =
               pathname === submenu.href ||
@@ -154,7 +153,7 @@ const SidebarMenuItem = ({
               </Link>
             );
           })}
-        </FlexBox>
+        </div>
       )}
     </div>
   );

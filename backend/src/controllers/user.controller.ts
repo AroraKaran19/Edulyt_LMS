@@ -1,51 +1,99 @@
 import { Request, Response } from "express";
-import { AppError, asyncHandler } from "../middlewares/error.middleware";
-import { sendSuccessResponse } from "../middlewares/error.middleware";
-import { UserModel } from "../models/user.schema";
-import { getUserEnrollments } from "../services/enrollment.service";
+import {
+  asyncHandler,
+  sendSuccessResponse,
+  AppError,
+} from "../middlewares/error.middleware";
+import {
+  getUsersService,
+  getUserByIdService,
+  updateUserStatusService,
+  deleteUserService,
+  getUserStatsService,
+} from "../services/user.services";
 
-export const getEnrolledCourses = asyncHandler(
+export const getUsers = asyncHandler(async (req: Request, res: Response) => {
+  const { page = 1, limit = 10, search, userType, status } = req.query;
+
+  if (Number(page) < 1 || Number(limit) < 1) {
+    throw new AppError("Page and limit must be positive numbers", 400);
+  }
+
+  const result = await getUsersService({
+    page: Number(page),
+    limit: Number(limit),
+    search: search as string,
+    userType: userType as string,
+    status: status as string,
+  });
+
+  sendSuccessResponse(res, result, "Users fetched successfully", 200);
+});
+
+export const getUserById = asyncHandler(async (req: Request, res: Response) => {
+  const { userId } = req.params;
+
+  if (!userId) {
+    throw new AppError("User ID is required", 400);
+  }
+
+  const user = await getUserByIdService(userId);
+  if (!user) {
+    throw new AppError("User not found", 404);
+  }
+
+  sendSuccessResponse(res, user, "User fetched successfully", 200);
+});
+
+export const updateUserStatus = asyncHandler(
   async (req: Request, res: Response) => {
-    const { userId } = req.query;
-    const { status } = req.query;
-    
+    const { userId } = req.params;
+    const { status } = req.body;
+
     if (!userId) {
       throw new AppError("User ID is required", 400);
     }
-    
-    const enrollments = await getUserEnrollments(userId as string, status as string);
-    
-    sendSuccessResponse(
-      res,
-      { enrollments },
-      enrollments.length > 0
-        ? "Enrolled courses fetched successfully"
-        : "No enrolled courses found",
-      200
-    );
-  }
-);
 
-export const getUserProfile = asyncHandler(
-  async (req: Request, res: Response) => {
-    const userId = req.user?._id;
-
-    if (!userId) {
-      throw new AppError("User ID is required", 401);
+    if (!status || !["active", "inactive", "blocked"].includes(status)) {
+      throw new AppError("Status must be active, inactive, or blocked", 400);
     }
 
-    const user = await UserModel.findById(userId)
-      .select("-password -refreshTokens -__v")
-      .lean();
-
-    if (!user) {
+    const updatedUser = await updateUserStatusService(userId, status);
+    if (!updatedUser) {
       throw new AppError("User not found", 404);
     }
 
     sendSuccessResponse(
       res,
-      { user },
-      "User profile fetched successfully",
+      updatedUser,
+      "User status updated successfully",
+      200
+    );
+  }
+);
+
+export const deleteUser = asyncHandler(async (req: Request, res: Response) => {
+  const { userId } = req.params;
+
+  if (!userId) {
+    throw new AppError("User ID is required", 400);
+  }
+
+  const deletedUser = await deleteUserService(userId);
+  if (!deletedUser) {
+    throw new AppError("User not found", 404);
+  }
+
+  sendSuccessResponse(res, deletedUser, "User deleted successfully", 200);
+});
+
+export const getUserStats = asyncHandler(
+  async (req: Request, res: Response) => {
+    const stats = await getUserStatsService();
+    sendSuccessResponse(
+      res,
+      stats,
+      "User statistics fetched successfully",
       200
     );
   }

@@ -1,389 +1,628 @@
 import { useState, useCallback } from "react";
-import { Testimonial } from "@/types";
+import apiClient from "@/configs/apiConfig";
+import { toast } from "react-toastify";
+
+// Types for testimonial responses
+export interface Testimonial {
+  _id?: string;
+  name: string;
+  currentRole: string;
+  currentCompany: string;
+  linkedin: string;
+  pastRole: string;
+  pastCompany: string;
+  college: string;
+  verified?: boolean;
+  profileImage?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
 
 export interface TestimonialResponse {
   success: boolean;
-  data?: Testimonial & { _id: string };
-  message?: string;
+  message: string;
+  data?:
+    | Testimonial
+    | Testimonial[]
+    | {
+        testimonials: Testimonial[];
+        total: number;
+        page: number;
+        totalPages: number;
+      };
   error?: string;
-  errors?: string[];
 }
 
 export interface TestimonialListResponse {
-  success: boolean;
-  data?: {
-    testimonials: (Testimonial & { _id: string })[];
-    pagination: {
-      currentPage: number;
-      totalPages: number;
-      totalItems: number;
-      itemsPerPage: number;
-      hasNext: boolean;
-      hasPrev: boolean;
-    };
-  };
-  message?: string;
-  error?: string;
+  testimonials: Testimonial[];
+  total: number;
+  page: number;
+  totalPages: number;
 }
 
-export interface TestimonialsArrayResponse {
-  success: boolean;
-  data?: (Testimonial & { _id: string })[];
-  message?: string;
-  error?: string;
+export interface TestimonialFilters {
+  page?: number;
+  limit?: number;
+  search?: string;
+}
+
+export interface CreateTestimonialData {
+  name: string;
+  currentRole: string;
+  currentCompany: string;
+  linkedin: string;
+  pastRole: string;
+  pastCompany: string;
+  college: string;
+  verified?: boolean;
+  profileImage?: string;
+}
+
+export interface UpdateTestimonialData {
+  name?: string;
+  currentRole?: string;
+  currentCompany?: string;
+  linkedin?: string;
+  pastRole?: string;
+  pastCompany?: string;
+  college?: string;
+  verified?: boolean;
+  profileImage?: string;
 }
 
 export const useTestimonial = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>("");
 
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
-
-  /**
-   * Get all testimonials with pagination and search
-   */
-  const getAllTestimonials = useCallback(
+  // Get all testimonials with pagination and search
+  const getTestimonials = useCallback(
     async (
-      page: number = 1,
-      limit: number = 10,
-      search: string = ""
-    ): Promise<TestimonialListResponse> => {
+      filters: TestimonialFilters = {}
+    ): Promise<TestimonialListResponse | null> => {
       setIsLoading(true);
       setError("");
 
       try {
-        const params = new URLSearchParams({
-          page: page.toString(),
-          limit: limit.toString(),
-        });
+        const params = new URLSearchParams();
 
-        if (search.trim()) {
-          params.append("search", search.trim());
-        }
+        if (filters.page) params.append("page", filters.page.toString());
+        if (filters.limit) params.append("limit", filters.limit.toString());
+        if (filters.search) params.append("search", filters.search);
 
-        const response = await fetch(`${baseUrl}/testimonials?${params}`, {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        });
+        const response = await apiClient.get(
+          `/testimonials?${params.toString()}`
+        );
 
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const result: TestimonialListResponse = await response.json();
-
-        if (!result.success) {
-          setError(result.error || result.message || "Failed to fetch testimonials");
-        }
-
-        return result;
-      } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : "Failed to fetch testimonials";
-        setError(errorMessage);
-        return {
-          success: false,
-          message: "Failed to fetch testimonials",
-          error: errorMessage,
-        };
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [baseUrl]
-  );
-
-  /**
-   * Create a new testimonial
-   */
-  const createTestimonial = useCallback(
-    async (testimonialData: {
-      name: string;
-      currentRole: string;
-      currentCompany: string;
-      linkedin: string;
-      pastRole: string;
-      pastCompany: string;
-      college: string;
-      profileImage: string;
-      verified?: boolean;
-    }): Promise<TestimonialResponse> => {
-      setIsLoading(true);
-      setError("");
-
-      try {
-        const response = await fetch(`${baseUrl}/testimonials`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(testimonialData),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
+        if (response.data.success) {
+          return response.data.data;
+        } else {
           throw new Error(
-            errorData.message || `HTTP error! status: ${response.status}`
+            response.data.error?.message || "Failed to fetch testimonials"
           );
         }
-
-        const result: TestimonialResponse = await response.json();
-
-        if (!result.success) {
-          setError(result.error || result.message || "Failed to create testimonial");
-        }
-
-        return result;
-      } catch (err) {
+      } catch (err: any) {
         const errorMessage =
-          err instanceof Error ? err.message : "Failed to create testimonial";
+          err?.response?.data?.error?.message ||
+          err?.message ||
+          "Failed to fetch testimonials";
         setError(errorMessage);
-        return {
-          success: false,
-          message: "Failed to create testimonial",
-          error: errorMessage,
-        };
+        return null;
       } finally {
         setIsLoading(false);
       }
     },
-    [baseUrl]
+    []
   );
 
-  /**
-   * Update an existing testimonial
-   */
+  // Get testimonial by ID
+  const getTestimonialById = useCallback(
+    async (id: string): Promise<Testimonial | null> => {
+      setIsLoading(true);
+      setError("");
+
+      try {
+        const response = await apiClient.get(`/testimonials/${id}`);
+
+        if (response.data.success) {
+          return response.data.data;
+        } else {
+          throw new Error(
+            response.data.error?.message || "Failed to fetch testimonial"
+          );
+        }
+      } catch (err: any) {
+        const errorMessage =
+          err?.response?.data?.error?.message ||
+          err?.message ||
+          "Failed to fetch testimonial";
+        setError(errorMessage);
+        return null;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    []
+  );
+
+  // Create new testimonial (Admin only)
+  const createTestimonial = useCallback(
+    async (
+      testimonialData: CreateTestimonialData
+    ): Promise<Testimonial | null> => {
+      setIsLoading(true);
+      setError("");
+
+      try {
+        const response = await apiClient.post("/testimonials", testimonialData);
+
+        if (response.data.success) {
+          toast.success("Testimonial created successfully");
+          return response.data.data;
+        } else {
+          toast.error(
+            response.data.error?.message || "Failed to create testimonial"
+          );
+          throw new Error(
+            response.data.error?.message || "Failed to create testimonial"
+          );
+        }
+      } catch (err: any) {
+        const errorMessage =
+          err?.response?.data?.error?.message ||
+          err?.message ||
+          "Failed to create testimonial";
+        setError(errorMessage);
+        return null;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    []
+  );
+
+  // Update testimonial (Admin only)
   const updateTestimonial = useCallback(
     async (
       id: string,
-      updateData: Partial<Testimonial>
-    ): Promise<TestimonialResponse> => {
+      testimonialData: UpdateTestimonialData
+    ): Promise<Testimonial | null> => {
       setIsLoading(true);
       setError("");
 
       try {
-        const response = await fetch(`${baseUrl}/testimonials/${id}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(updateData),
-        });
+        const response = await apiClient.put(
+          `/testimonials/${id}`,
+          testimonialData
+        );
 
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
+        if (response.data.success) {
+          toast.success("Testimonial updated successfully");
+          return response.data.data;
+        } else {
+          toast.error(
+            response.data.error?.message || "Failed to update testimonial"
+          );
           throw new Error(
-            errorData.message || `HTTP error! status: ${response.status}`
+            response.data.error?.message || "Failed to update testimonial"
           );
         }
-
-        const result: TestimonialResponse = await response.json();
-
-        if (!result.success) {
-          setError(result.error || result.message || "Failed to update testimonial");
-        }
-
-        return result;
-      } catch (err) {
+      } catch (err: any) {
         const errorMessage =
-          err instanceof Error ? err.message : "Failed to update testimonial";
+          err?.response?.data?.error?.message ||
+          err?.message ||
+          "Failed to update testimonial";
         setError(errorMessage);
-        return {
-          success: false,
-          message: "Failed to update testimonial",
-          error: errorMessage,
-        };
+        return null;
       } finally {
         setIsLoading(false);
       }
     },
-    [baseUrl]
+    []
   );
 
-  /**
-   * Delete a testimonial
-   */
+  // Delete testimonial (Admin only)
   const deleteTestimonial = useCallback(
-    async (id: string): Promise<{ success: boolean; message?: string; error?: string }> => {
+    async (id: string): Promise<boolean> => {
       setIsLoading(true);
       setError("");
 
       try {
-        const response = await fetch(`${baseUrl}/testimonials/${id}`, {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        });
+        const response = await apiClient.delete(`/testimonials/${id}`);
 
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
+        if (response.data.success) {
+          toast.success("Testimonial deleted successfully");
+          return true;
+        } else {
+          toast.error(
+            response.data.error?.message || "Failed to delete testimonial"
+          );
           throw new Error(
-            errorData.message || `HTTP error! status: ${response.status}`
+            response.data.error?.message || "Failed to delete testimonial"
           );
         }
-
-        const result = await response.json();
-
-        if (!result.success) {
-          setError(result.error || result.message || "Failed to delete testimonial");
-        }
-
-        return result;
-      } catch (err) {
+      } catch (err: any) {
         const errorMessage =
-          err instanceof Error ? err.message : "Failed to delete testimonial";
+          err?.response?.data?.error?.message ||
+          err?.message ||
+          "Failed to delete testimonial";
         setError(errorMessage);
-        return {
-          success: false,
-          message: "Failed to delete testimonial",
-          error: errorMessage,
-        };
+        return false;
       } finally {
         setIsLoading(false);
       }
     },
-    [baseUrl]
+    []
   );
 
-  /**
-   * Get testimonial by ID
-   */
-  const getTestimonialById = useCallback(
-    async (id: string): Promise<TestimonialResponse> => {
-      setIsLoading(true);
-      setError("");
-
-      try {
-        const response = await fetch(`${baseUrl}/testimonials/${id}`, {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const result: TestimonialResponse = await response.json();
-
-        if (!result.success) {
-          setError(result.error || result.message || "Failed to fetch testimonial");
-        }
-
-        return result;
-      } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : "Failed to fetch testimonial";
-        setError(errorMessage);
-        return {
-          success: false,
-          message: "Failed to fetch testimonial",
-          error: errorMessage,
-        };
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [baseUrl]
-  );
-
-  /**
-   * Get testimonials by array of IDs
-   */
-  const getTestimonialsByIds = useCallback(
-    async (ids: string[]): Promise<TestimonialsArrayResponse> => {
-      setIsLoading(true);
-      setError("");
-
-      try {
-        const response = await fetch(`${baseUrl}/testimonials/by-ids`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ ids }),
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const result: TestimonialsArrayResponse = await response.json();
-
-        if (!result.success) {
-          setError(result.error || result.message || "Failed to fetch testimonials");
-        }
-
-        return result;
-      } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : "Failed to fetch testimonials";
-        setError(errorMessage);
-        return {
-          success: false,
-          message: "Failed to fetch testimonials",
-          error: errorMessage,
-        };
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [baseUrl]
-  );
-
-  /**
-   * Fetch testimonials with simplified return for UI components
-   * (matches the previous service function signature)
-   */
-  const fetchTestimonials = useCallback(
+  // Admin-specific methods
+  const getAdminTestimonials = useCallback(
     async (
-      page: number = 1,
-      limit: number = 10,
-      search: string = ""
-    ): Promise<{ testimonials: (Testimonial & { _id: string })[]; total: number }> => {
-      const result = await getAllTestimonials(page, limit, search);
-      
-      if (!result.success || !result.data) {
-        throw new Error(result.error || "Failed to fetch testimonials");
-      }
+      filters: TestimonialFilters = {}
+    ): Promise<TestimonialListResponse | null> => {
+      setIsLoading(true);
+      setError("");
 
-      return {
-        testimonials: result.data.testimonials,
-        total: result.data.pagination.totalItems,
-      };
+      try {
+        const params = new URLSearchParams();
+
+        if (filters.page) params.append("page", filters.page.toString());
+        if (filters.limit) params.append("limit", filters.limit.toString());
+        if (filters.search) params.append("search", filters.search);
+
+        const response = await apiClient.get(
+          `/testimonials/admin?${params.toString()}`
+        );
+
+        if (response.data.success) {
+          return response.data.data;
+        } else {
+          throw new Error(
+            response.data.error?.message || "Failed to fetch admin testimonials"
+          );
+        }
+      } catch (err: any) {
+        const errorMessage =
+          err?.response?.data?.error?.message ||
+          err?.message ||
+          "Failed to fetch admin testimonials";
+        setError(errorMessage);
+        return null;
+      } finally {
+        setIsLoading(false);
+      }
     },
-    [getAllTestimonials]
+    []
   );
 
-  /**
-   * Create testimonial with simplified return for UI components
-   * (matches the previous service function signature)
-   */
-  const createTestimonialSimple = useCallback(
-    async (testimonialData: {
-      name: string;
-      currentRole: string;
-      currentCompany: string;
-      linkedin: string;
-      pastRole: string;
-      pastCompany: string;
-      college: string;
-      profileImage: string;
-      verified?: boolean;
-    }): Promise<Testimonial & { _id: string }> => {
-      const result = await createTestimonial(testimonialData);
-      
-      if (!result.success || !result.data) {
-        throw new Error(result.error || "Failed to create testimonial");
+  const getAdminTestimonialById = useCallback(
+    async (id: string): Promise<Testimonial | null> => {
+      setIsLoading(true);
+      setError("");
+
+      try {
+        const response = await apiClient.get(`/testimonials/admin/${id}`);
+
+        if (response.data.success) {
+          return response.data.data;
+        } else {
+          throw new Error(
+            response.data.error?.message || "Failed to fetch admin testimonial"
+          );
+        }
+      } catch (err: any) {
+        const errorMessage =
+          err?.response?.data?.error?.message ||
+          err?.message ||
+          "Failed to fetch admin testimonial";
+        setError(errorMessage);
+        return null;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    []
+  );
+
+  const updateAdminTestimonial = useCallback(
+    async (
+      id: string,
+      testimonialData: UpdateTestimonialData
+    ): Promise<Testimonial | null> => {
+      setIsLoading(true);
+      setError("");
+
+      try {
+        const response = await apiClient.put(
+          `/testimonials/admin/${id}`,
+          testimonialData
+        );
+
+        if (response.data.success) {
+          toast.success("Admin testimonial updated successfully");
+          return response.data.data;
+        } else {
+          toast.error(
+            response.data.error?.message || "Failed to update admin testimonial"
+          );
+          throw new Error(
+            response.data.error?.message || "Failed to update admin testimonial"
+          );
+        }
+      } catch (err: any) {
+        const errorMessage =
+          err?.response?.data?.error?.message ||
+          err?.message ||
+          "Failed to update admin testimonial";
+        setError(errorMessage);
+        return null;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    []
+  );
+
+  const deleteAdminTestimonial = useCallback(
+    async (id: string): Promise<boolean> => {
+      setIsLoading(true);
+      setError("");
+
+      try {
+        const response = await apiClient.delete(`/testimonials/admin/${id}`);
+
+        if (response.data.success) {
+          toast.success("Admin testimonial deleted successfully");
+          return true;
+        } else {
+          toast.error(
+            response.data.error?.message || "Failed to delete admin testimonial"
+          );
+          throw new Error(
+            response.data.error?.message || "Failed to delete admin testimonial"
+          );
+        }
+      } catch (err: any) {
+        const errorMessage =
+          err?.response?.data?.error?.message ||
+          err?.message ||
+          "Failed to delete admin testimonial";
+        setError(errorMessage);
+        return false;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    []
+  );
+
+  // Utility functions
+  const searchTestimonials = useCallback(
+    async (
+      searchTerm: string,
+      page: number = 1,
+      limit: number = 10
+    ): Promise<TestimonialListResponse | null> => {
+      return getTestimonials({ search: searchTerm, page, limit });
+    },
+    [getTestimonials]
+  );
+
+  const getTestimonialsByPage = useCallback(
+    async (
+      page: number,
+      limit: number = 10
+    ): Promise<TestimonialListResponse | null> => {
+      return getTestimonials({ page, limit });
+    },
+    [getTestimonials]
+  );
+
+  // Get verified testimonials only
+  const getVerifiedTestimonials = useCallback(
+    async (
+      filters: Omit<TestimonialFilters, "search"> = {}
+    ): Promise<TestimonialListResponse | null> => {
+      return getTestimonials({ ...filters, search: "" });
+    },
+    [getTestimonials]
+  );
+
+  // Validation utilities
+  const validateTestimonial = useCallback(
+    (
+      testimonialData: CreateTestimonialData | UpdateTestimonialData
+    ): { valid: boolean; error?: string } => {
+      // Required fields for creation
+      if ("name" in testimonialData) {
+        if (!testimonialData.name || testimonialData.name.trim().length === 0) {
+          return {
+            valid: false,
+            error: "Name is required and cannot be empty",
+          };
+        }
+
+        if (testimonialData.name.length < 2) {
+          return {
+            valid: false,
+            error: "Name must be at least 2 characters long",
+          };
+        }
+
+        if (testimonialData.name.length > 100) {
+          return {
+            valid: false,
+            error: "Name must be less than 100 characters",
+          };
+        }
       }
 
-      return result.data;
+      if ("currentRole" in testimonialData) {
+        if (
+          !testimonialData.currentRole ||
+          testimonialData.currentRole.trim().length === 0
+        ) {
+          return {
+            valid: false,
+            error: "Current role is required and cannot be empty",
+          };
+        }
+
+        if (testimonialData.currentRole.length < 2) {
+          return {
+            valid: false,
+            error: "Current role must be at least 2 characters long",
+          };
+        }
+
+        if (testimonialData.currentRole.length > 100) {
+          return {
+            valid: false,
+            error: "Current role must be less than 100 characters",
+          };
+        }
+      }
+
+      if ("currentCompany" in testimonialData) {
+        if (
+          !testimonialData.currentCompany ||
+          testimonialData.currentCompany.trim().length === 0
+        ) {
+          return {
+            valid: false,
+            error: "Current company is required and cannot be empty",
+          };
+        }
+
+        if (testimonialData.currentCompany.length < 2) {
+          return {
+            valid: false,
+            error: "Current company must be at least 2 characters long",
+          };
+        }
+
+        if (testimonialData.currentCompany.length > 100) {
+          return {
+            valid: false,
+            error: "Current company must be less than 100 characters",
+          };
+        }
+      }
+
+      if ("linkedin" in testimonialData) {
+        if (
+          !testimonialData.linkedin ||
+          testimonialData.linkedin.trim().length === 0
+        ) {
+          return {
+            valid: false,
+            error: "LinkedIn profile is required and cannot be empty",
+          };
+        }
+
+        // Basic LinkedIn URL validation
+        const linkedinRegex =
+          /^https?:\/\/(www\.)?linkedin\.com\/in\/[a-zA-Z0-9-]+\/?$/;
+        if (!linkedinRegex.test(testimonialData.linkedin)) {
+          return {
+            valid: false,
+            error: "Please provide a valid LinkedIn profile URL",
+          };
+        }
+      }
+
+      if ("pastRole" in testimonialData) {
+        if (
+          !testimonialData.pastRole ||
+          testimonialData.pastRole.trim().length === 0
+        ) {
+          return {
+            valid: false,
+            error: "Past role is required and cannot be empty",
+          };
+        }
+
+        if (testimonialData.pastRole.length < 2) {
+          return {
+            valid: false,
+            error: "Past role must be at least 2 characters long",
+          };
+        }
+
+        if (testimonialData.pastRole.length > 100) {
+          return {
+            valid: false,
+            error: "Past role must be less than 100 characters",
+          };
+        }
+      }
+
+      if ("pastCompany" in testimonialData) {
+        if (
+          !testimonialData.pastCompany ||
+          testimonialData.pastCompany.trim().length === 0
+        ) {
+          return {
+            valid: false,
+            error: "Past company is required and cannot be empty",
+          };
+        }
+
+        if (testimonialData.pastCompany.length < 2) {
+          return {
+            valid: false,
+            error: "Past company must be at least 2 characters long",
+          };
+        }
+
+        if (testimonialData.pastCompany.length > 100) {
+          return {
+            valid: false,
+            error: "Past company must be less than 100 characters",
+          };
+        }
+      }
+
+      if ("college" in testimonialData) {
+        if (
+          !testimonialData.college ||
+          testimonialData.college.trim().length === 0
+        ) {
+          return {
+            valid: false,
+            error: "College is required and cannot be empty",
+          };
+        }
+
+        if (testimonialData.college.length < 2) {
+          return {
+            valid: false,
+            error: "College must be at least 2 characters long",
+          };
+        }
+
+        if (testimonialData.college.length > 100) {
+          return {
+            valid: false,
+            error: "College must be less than 100 characters",
+          };
+        }
+      }
+
+      if ("profileImage" in testimonialData && testimonialData.profileImage) {
+        // Basic URL validation for profile image
+        const urlRegex = /^https?:\/\/.+\.(jpg|jpeg|png|gif|webp)$/i;
+        if (!urlRegex.test(testimonialData.profileImage)) {
+          return {
+            valid: false,
+            error:
+              "Please provide a valid image URL (jpg, jpeg, png, gif, webp)",
+          };
+        }
+      }
+
+      return { valid: true };
     },
-    [createTestimonial]
+    []
   );
 
   return {
@@ -391,19 +630,26 @@ export const useTestimonial = () => {
     isLoading,
     error,
 
-    // Full API methods (with full response objects)
-    getAllTestimonials,
+    // Public methods
+    getTestimonials,
+    getTestimonialById,
+    searchTestimonials,
+    getTestimonialsByPage,
+    getVerifiedTestimonials,
+
+    // Admin methods
     createTestimonial,
     updateTestimonial,
     deleteTestimonial,
-    getTestimonialById,
-    getTestimonialsByIds,
+    getAdminTestimonials,
+    getAdminTestimonialById,
+    updateAdminTestimonial,
+    deleteAdminTestimonial,
 
-    // Simplified methods (for backward compatibility with existing components)
-    fetchTestimonials,
-    createTestimonialSimple,
+    // Utilities
+    validateTestimonial,
 
-    // Utility
+    // Reset error
     clearError: () => setError(""),
   };
 };

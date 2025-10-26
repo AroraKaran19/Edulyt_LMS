@@ -1,11 +1,7 @@
 import mongoose from "mongoose";
 import { Course } from "../types";
 import plansSchema from "./plans.schema";
-import {
-  validateAudience,
-  validatePlans,
-  validateUrl,
-} from "./validators";
+import { validateAudience, validatePlans, validateUrl } from "./validators";
 
 // ===================
 // Highlights Schema
@@ -14,9 +10,9 @@ import {
 const highlightSchema = new mongoose.Schema(
   {
     title: { type: String, required: true },
-    description: { 
-      type: String, 
-      required: true, 
+    description: {
+      type: String,
+      required: true,
     },
   },
   { _id: false }
@@ -149,6 +145,7 @@ const courseSchema = new mongoose.Schema<Course>(
       },
       required: false,
       default: null,
+      _id: false,
     },
     reviews: {
       type: [mongoose.Schema.Types.ObjectId],
@@ -156,20 +153,26 @@ const courseSchema = new mongoose.Schema<Course>(
       default: [],
       ref: "Review",
     },
-    testimonials: [{
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Testimonial",
-    }],
+    testimonials: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Testimonial",
+        default: [],
+      },
+    ],
 
-    faqs: [{
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "FAQ",
-    }],
+    faqs: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "FAQ",
+        default: [],
+      },
+    ],
 
     isActive: { type: Boolean, default: true },
     createdBy: {
       type: String,
-      // ref: "User",
+      ref: "User",
       required: false,
       default: null,
     },
@@ -197,11 +200,11 @@ const courseSchema = new mongoose.Schema<Course>(
     },
     keywords: { type: [String], required: false, default: [] },
     scholarship: { type: Boolean, default: false, required: true },
-    scholarshipDescription: { 
-      type: String, 
-      required: false, 
-      default: "", 
-      maxlength: 500 // Reasonable limit for scholarship description
+    scholarshipDescription: {
+      type: String,
+      required: false,
+      default: "",
+      maxlength: 500, // Reasonable limit for scholarship description
     },
     scholarshipRef: {
       type: mongoose.Schema.Types.ObjectId,
@@ -213,7 +216,7 @@ const courseSchema = new mongoose.Schema<Course>(
       type: String,
       required: false,
       validate: {
-        validator: function(value: string) {
+        validator: function (value: string) {
           // Allow empty strings or valid URLs
           return !value || validateUrl(value);
         },
@@ -224,7 +227,7 @@ const courseSchema = new mongoose.Schema<Course>(
       type: String,
       required: false,
       validate: {
-        validator: function(value: string) {
+        validator: function (value: string) {
           // Allow empty strings or valid URLs
           return !value || validateUrl(value);
         },
@@ -234,26 +237,22 @@ const courseSchema = new mongoose.Schema<Course>(
     language: {
       type: String,
       required: true,
-      enum: [
-        "en",
-        "es",
-        "fr",
-        "de",
-        "pt",
-        "it",
-        "ru",
-        "zh",
-        "ja",
-        "ko",
-        "hi",
-        "ar",
-      ],
       default: "en",
     },
     analytics: {
       type: analyticsSchema,
       required: false,
-      default: null,
+      default: {
+        totalRatings: 0,
+        totalReviews: 0,
+        totalEnrollments: 0,
+        activeEnrollments: 0,
+        completionRate: 0,
+        averageRating: 0,
+        averageCompletionTime: 0,
+        dropoffPoints: [],
+      },
+      _id: false,
     },
   },
   { timestamps: true }
@@ -269,14 +268,6 @@ courseSchema.index({ isFeatured: 1, isActive: 1 }); // For listing featured cour
 courseSchema.index({ createdAt: 1 }); // For listing courses by creation date
 courseSchema.index({ updatedAt: 1 }); // For listing courses by update date
 courseSchema.index({ title: "text" }); // For full-text search
-courseSchema.index({ analytics: 1 });
-courseSchema.index({ contentIds: 1 });
-courseSchema.index({ lessonIds: 1 });
-courseSchema.index({ modules: 1 });
-
-
-courseSchema.index({ createdAt: -1 }); // For listing courses by creation date
-courseSchema.index({ updatedAt: -1 }); // For listing courses by update date
 
 courseSchema.pre("save", function (next) {
   this.set("updatedAt", new Date());

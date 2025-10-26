@@ -26,7 +26,10 @@ const InstructorCard = ({
 
   const getSlug = () => {
     const name = getDisplayName();
-    return name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+    return name
+      .toLowerCase()
+      .replace(/\s+/g, "-")
+      .replace(/[^a-z0-9-]/g, "");
   };
 
   return (
@@ -43,7 +46,7 @@ const InstructorCard = ({
       <Image
         src={instructor.profilePicture || "/courseDefaultTestimonial.png"}
         alt={getDisplayName()}
-        className="size-5 rounded-full flex-shrink-0"
+        className="size-5 rounded-full shrink-0"
         width={20}
         height={20}
         draggable={false}

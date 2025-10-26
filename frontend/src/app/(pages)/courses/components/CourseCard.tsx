@@ -4,7 +4,8 @@ import InstructorCard from "@/components/ui/course/InstructorCard";
 import RatingContainer from "@/components/ui/course/RatingContainer";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import { cn } from "@/lib/utils";
-import { Course } from "@/types";
+import { calculateDiscountDisplay } from "@/lib/utils/discount";
+import { Course, Instructor } from "@/types";
 import { Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import React from "react";
@@ -17,27 +18,23 @@ const CourseCard = ({
   style?: React.CSSProperties;
 }) => {
   const router = useRouter();
+
+  // Get the base price (prefer essential, fallback to elite)
   const originalPrice =
     course.plans?.essential?.price || course.plans?.elite?.price || 0;
-  const hasActiveDiscount =
-    !!course.discount && course.discount.isActive && course.discount.value > 0;
-  let discountedPrice = originalPrice;
-  if (
-    course.discount &&
-    course.discount.isActive &&
-    course.discount.value > 0
-  ) {
-    if (course.discount.discount === "percentage") {
-      discountedPrice = Math.round(
-        originalPrice - (originalPrice * course.discount.value) / 100
-      );
-    } else if (course.discount.discount === "fixed") {
-      discountedPrice = Math.max(
-        0,
-        Math.round(originalPrice - course.discount.value)
-      );
-    }
-  }
+
+  // Determine which plan is being used for pricing
+  const selectedPlan = course.plans?.essential ? "essential" : "elite";
+  const planDiscount = course.plans?.[selectedPlan]?.discount;
+
+  // Calculate discount using the utility function
+  const discountInfo = calculateDiscountDisplay(
+    originalPrice,
+    planDiscount, // Plan-specific discount
+    course.discount // Course-wide discount
+  );
+
+  const hasActiveDiscount = !!discountInfo.discountLabel;
 
   return (
     <div
@@ -48,7 +45,7 @@ const CourseCard = ({
       )}
       style={props.style}
     >
-      <div className="course-image w-full md:w-2/5 rounded-2xl overflow-hidden relative flex-shrink-0">
+      <div className="course-image w-full md:w-2/5 rounded-2xl overflow-hidden relative shrink-0">
         <img
           src={course.thumbnail}
           alt={course?.title}
@@ -56,20 +53,22 @@ const CourseCard = ({
           draggable={false}
           loading="lazy"
         />
-        {course?.discount && course.discount.isActive && (
+        {hasActiveDiscount && (
           <DiscountBadge
-            discount={course.discount}
+            discount={course.discount!}
             className="absolute top-2 right-2"
           />
         )}
       </div>
       <div className="course-content w-full md:w-3/5 flex flex-col justify-between">
         {course?.isFeatured ? (
-          <BestsellerBadge enrollStudents={course?.analytics?.totalEnrollments || 0} />
+          <BestsellerBadge
+            enrollStudents={course?.analytics?.totalEnrollments || 0}
+          />
         ) : (
           <div className="w-full h-4" />
         )}
-        <p className="text-2xl font-bold mt-2 font-coolvetica select-none text-balance break-words line-clamp-2">
+        <p className="text-2xl font-bold mt-2 font-coolvetica select-none text-balance wrap-break-words line-clamp-2">
           {course?.title}
         </p>
         <RatingContainer
@@ -81,7 +80,12 @@ const CourseCard = ({
         <div className="instructors mt-2 flex gap-2 select-none mb-2 flex-col sm:flex-row items-start sm:items-center">
           {course?.instructor?.map((instructor, index) => {
             if (index < 2) {
-              return <InstructorCard key={index} instructor={instructor} />;
+              return (
+                <InstructorCard
+                  key={index}
+                  instructor={instructor as Instructor}
+                />
+              );
             }
           })}
           {course?.instructor?.length > 2 && (
@@ -98,7 +102,7 @@ const CourseCard = ({
             {hasActiveDiscount ? (
               <>
                 <span className="text-xl font-bold text-black">
-                  ₹{discountedPrice}
+                  ₹{discountInfo.discountPrice}
                 </span>
                 <p className="text-sm font-normal text-black line-through opacity-50">
                   ₹{originalPrice}

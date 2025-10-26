@@ -1,20 +1,19 @@
-import React from "react";
-import CourseEnrollCart from "./components/CourseEnrollCart";
 import { ENDPOINTS } from "@/constants/endpoints";
 import { fetcher } from "@/lib/utils";
 import { Course } from "@/types";
 import { AxiosError } from "axios";
-import { Error } from "@/components/ui";
+import Error from "@/components/ui/Error";
 import { AlertCircle } from "lucide-react";
+import CartForm from "./CartForm";
 
 async function fetchCourse(
   courseSlug: string
 ): Promise<{ status: number; course: Course | null }> {
   try {
-    const response = await fetcher(`${ENDPOINTS.courses.slug}/${courseSlug}`);
+    const response = await fetcher(`${ENDPOINTS.courses.bySlug}/${courseSlug}`);
     return {
-      status: response?.status,
-      course: response?.data || null,
+      status: response?.status || 500,
+      course: response?.data?.data || null,
     };
   } catch (error) {
     if (error instanceof AxiosError) {
@@ -68,9 +67,7 @@ const CartPage = async ({ searchParams }: CartPageProps) => {
     );
   }
 
-  return (
-    <CourseEnrollCart course={course} planType={planType || "essential"} />
-  );
+  return <CartForm course={course} planType={planType || "essential"} />;
 };
 
 export default CartPage;

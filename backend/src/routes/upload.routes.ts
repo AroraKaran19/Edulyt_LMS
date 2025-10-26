@@ -1,77 +1,40 @@
-import { Router } from 'express';
-import { UploadController } from '../controllers';
+import {
+  generatePresignedUrlController,
+  deleteFileController,
+  getValidationRulesController,
+  validateFileController,
+} from "../controllers/upload.controller";
+import { verifyUser } from "../middlewares/user.middleware";
+import { Router } from "express";
 
 const router = Router();
-const uploadController = new UploadController();
-
-// Multer-based upload routes removed - using only presigned URL uploads
 
 /**
  * @route   POST /api/upload/presigned-url
- * @desc    Generate presigned URL for direct S3 upload
- * @access  Public (should be protected with auth middleware in production)
- * @body    
- *   - fileName: Original file name
- *   - fileType: MIME type of the file
- *   - folderName: Name of the folder to create/use in S3 bucket
- * @example
- *   POST /api/upload/presigned-url
- *   Body: { 
- *     fileName: "image.jpg", 
- *     fileType: "image/jpeg", 
- *     folderName: "instructor-profiles" 
- *   }
+ * @desc    Generate presigned URL for file upload
+ * @access  User
  */
-router.post(
-  '/presigned-url', 
-  uploadController.generatePresignedUrl.bind(uploadController)
-);
-
-/**
- * @route   POST /api/upload/presigned-url/access
- * @desc    Generate presigned URL for secure file access
- * @access  Public (should be protected with auth middleware in production)
- * @body    
- *   - s3Key: S3 key of the file to access
- *   - expiresIn: Number of seconds until URL expires (default: 60)
- * @example
- *   POST /api/upload/presigned-url/access
- *   Body: { 
- *     s3Key: "course-videos/lesson1.mp4", 
- *     expiresIn: 3600 
- *   }
- */
-router.post(
-  '/presigned-url/access', 
-  uploadController.generateAccessPresignedUrl.bind(uploadController)
-);
+router.post("/presigned-url", verifyUser, generatePresignedUrlController);
 
 /**
  * @route   DELETE /api/upload/:s3Key
- * @desc    Delete file from S3
- * @access  Public (should be protected with auth middleware in production)
- * @params  
- *   - s3Key: S3 key of the file to delete (URL encoded)
- * @example
- *   DELETE /api/upload/course-thumbnails%2Fimage-123.jpg
+ * @desc    Delete a file from S3
+ * @access  User
  */
-router.delete(
-  '/:s3Key(*)', 
-  uploadController.deleteFile.bind(uploadController)
-);
+router.delete("/:s3Key", verifyUser, deleteFileController);
 
 /**
- * @route   GET /api/upload/:s3Key/info
- * @desc    Get file information
+ * @route   GET /api/upload/validation-rules/:folderName
+ * @desc    Get file validation rules for a specific folder
  * @access  Public
- * @params  
- *   - s3Key: S3 key of the file (URL encoded)
- * @example
- *   GET /api/upload/course-thumbnails%2Fimage-123.jpg/info
  */
-router.get(
-  '/:s3Key(*)/info', 
-  uploadController.getFileInfo.bind(uploadController)
-);
+router.get("/validation-rules/:folderName", getValidationRulesController);
+
+/**
+ * @route   POST /api/upload/validate
+ * @desc    Validate file before upload
+ * @access  Public
+ */
+router.post("/validate", validateFileController);
 
 export default router;

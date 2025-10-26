@@ -1,15 +1,14 @@
 "use client";
 import Container from "@/app/admin/components/ui/Container";
-import FlexBox from "@/components/ui/FlexBox";
 import Input from "@/components/ui/inputs/Input";
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import DropDown from "@/components/ui/dropdown/DropDown";
 import DateSelector from "@/components/ui/inputs/DateSelector";
 import { Plan, Discount, PlanFeatures } from "@/types";
 import { DollarSign, Percent, Plus, Trash2, List } from "lucide-react";
 import CheckBoxContainer from "@/components/ui/inputs/CheckBoxContainer";
-import { useFormContext } from "react-hook-form";
+import { useFormContext, Controller } from "react-hook-form";
 import { CourseFormData } from "@/types/courseForm";
 
 interface CourseState {
@@ -22,10 +21,12 @@ interface CourseState {
 
 const Screen5 = () => {
   const [isMounted, setIsMounted] = useState(false);
-  
+
   const {
     setValue,
     watch,
+    control,
+    formState: { errors },
   } = useFormContext<CourseFormData>();
 
   // Ensure component is mounted on client side
@@ -36,6 +37,25 @@ const Screen5 = () => {
   // Watch form values
   const plansValue = watch("plans") || {};
   const discountValue = watch("discount");
+
+  // Validation functions
+  const validateStartDate = (date: Date | undefined) => {
+    if (!date) return "Start date is required";
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (date < today) return "Start date cannot be before today";
+    return true;
+  };
+
+  const validateEndDate = (
+    endDate: Date | undefined,
+    startDate: Date | undefined
+  ) => {
+    if (!endDate) return "End date is required";
+    if (!startDate) return "Please select start date first";
+    if (endDate < startDate) return "End date cannot be before start date";
+    return true;
+  };
 
   // State management
   const [state, setState] = useState<CourseState>({
@@ -86,29 +106,29 @@ const Screen5 = () => {
   useEffect(() => {
     if (isMounted) {
       if (plansValue.essential) {
-        setState(prev => ({
+        setState((prev) => ({
           ...prev,
           plans: {
             ...prev.plans,
-            essential: plansValue.essential
-          }
+            essential: plansValue.essential,
+          },
         }));
         setShowEssentialPlan(true);
       }
       if (plansValue.elite) {
-        setState(prev => ({
+        setState((prev) => ({
           ...prev,
           plans: {
             ...prev.plans,
-            elite: plansValue.elite
-          }
+            elite: plansValue.elite,
+          },
         }));
         setShowElitePlan(true);
       }
       if (discountValue) {
-        setState(prev => ({
+        setState((prev) => ({
           ...prev,
-          discount: discountValue
+          discount: discountValue,
         }));
       }
     }
@@ -119,12 +139,12 @@ const Screen5 = () => {
     if (isMounted) {
       // Initialize essential plan if it exists in form data
       if (plansValue.essential) {
-        setState(prev => ({
+        setState((prev) => ({
           ...prev,
           plans: {
             ...prev.plans,
-            essential: plansValue.essential
-          }
+            essential: plansValue.essential,
+          },
         }));
         setShowEssentialPlan(true);
       } else {
@@ -143,26 +163,29 @@ const Screen5 = () => {
             endDate: new Date(),
           },
         };
-        setValue("plans.essential", defaultEssentialPlan, { shouldDirty: false, shouldTouch: false });
+        setValue("plans.essential", defaultEssentialPlan, {
+          shouldDirty: false,
+          shouldTouch: false,
+        });
       }
 
       // Initialize elite plan if it exists in form data
       if (plansValue.elite) {
-        setState(prev => ({
+        setState((prev) => ({
           ...prev,
           plans: {
             ...prev.plans,
-            elite: plansValue.elite
-          }
+            elite: plansValue.elite,
+          },
         }));
         setShowElitePlan(true);
       }
 
       // Initialize global discount if it exists
       if (discountValue) {
-        setState(prev => ({
+        setState((prev) => ({
           ...prev,
-          discount: discountValue
+          discount: discountValue,
         }));
       } else {
         // Initialize with default discount if none exists
@@ -173,7 +196,10 @@ const Screen5 = () => {
           startDate: new Date(),
           endDate: new Date(),
         };
-        setValue("discount", defaultDiscount, { shouldDirty: false, shouldTouch: false });
+        setValue("discount", defaultDiscount, {
+          shouldDirty: false,
+          shouldTouch: false,
+        });
       }
     }
   }, [isMounted, setValue]);
@@ -207,7 +233,10 @@ const Screen5 = () => {
           essential: newPlan,
         },
       }));
-      setValue("plans.essential", newPlan, { shouldDirty: true, shouldTouch: true });
+      setValue("plans.essential", newPlan, {
+        shouldDirty: true,
+        shouldTouch: true,
+      });
     } else if (planType === "elite") {
       setShowElitePlan(true);
       setState((prev) => ({
@@ -217,7 +246,10 @@ const Screen5 = () => {
           elite: newPlan,
         },
       }));
-      setValue("plans.elite", newPlan, { shouldDirty: true, shouldTouch: true });
+      setValue("plans.elite", newPlan, {
+        shouldDirty: true,
+        shouldTouch: true,
+      });
     }
   };
 
@@ -231,7 +263,10 @@ const Screen5 = () => {
           essential: undefined,
         },
       }));
-      setValue("plans.essential", undefined, { shouldDirty: true, shouldTouch: true });
+      setValue("plans.essential", undefined, {
+        shouldDirty: true,
+        shouldTouch: true,
+      });
     } else if (planType === "elite") {
       setShowElitePlan(false);
       setState((prev) => ({
@@ -241,7 +276,10 @@ const Screen5 = () => {
           elite: undefined,
         },
       }));
-      setValue("plans.elite", undefined, { shouldDirty: true, shouldTouch: true });
+      setValue("plans.elite", undefined, {
+        shouldDirty: true,
+        shouldTouch: true,
+      });
     }
   };
 
@@ -254,7 +292,7 @@ const Screen5 = () => {
       ...state.plans[planType],
       [field]: value,
     } as Plan;
-    
+
     setState((prev) => ({
       ...prev,
       plans: {
@@ -262,8 +300,11 @@ const Screen5 = () => {
         [planType]: updatedPlan,
       },
     }));
-    
-    setValue(`plans.${planType}`, updatedPlan, { shouldDirty: true, shouldTouch: true });
+
+    setValue(`plans.${planType}`, updatedPlan, {
+      shouldDirty: true,
+      shouldTouch: true,
+    });
   };
 
   const addFeatureToplan = (planType: "essential" | "elite") => {
@@ -284,8 +325,11 @@ const Screen5 = () => {
         [planType]: updatedPlan,
       },
     }));
-    
-    setValue(`plans.${planType}`, updatedPlan, { shouldDirty: true, shouldTouch: true });
+
+    setValue(`plans.${planType}`, updatedPlan, {
+      shouldDirty: true,
+      shouldTouch: true,
+    });
   };
 
   const removeFeatureFromPlan = (
@@ -294,7 +338,8 @@ const Screen5 = () => {
   ) => {
     const updatedPlan = {
       ...state.plans[planType],
-      features: state.plans[planType]?.features.filter((_, i) => i !== index) || [],
+      features:
+        state.plans[planType]?.features.filter((_, i) => i !== index) || [],
     } as Plan;
 
     setState((prev) => ({
@@ -304,8 +349,11 @@ const Screen5 = () => {
         [planType]: updatedPlan,
       },
     }));
-    
-    setValue(`plans.${planType}`, updatedPlan, { shouldDirty: true, shouldTouch: true });
+
+    setValue(`plans.${planType}`, updatedPlan, {
+      shouldDirty: true,
+      shouldTouch: true,
+    });
   };
 
   const updatePlanFeature = (
@@ -316,9 +364,10 @@ const Screen5 = () => {
   ) => {
     const updatedPlan = {
       ...state.plans[planType],
-      features: state.plans[planType]?.features.map((feature, i) =>
-        i === index ? { ...feature, [field]: value } : feature
-      ) || [],
+      features:
+        state.plans[planType]?.features.map((feature, i) =>
+          i === index ? { ...feature, [field]: value } : feature
+        ) || [],
     } as Plan;
 
     setState((prev) => ({
@@ -328,8 +377,11 @@ const Screen5 = () => {
         [planType]: updatedPlan,
       },
     }));
-    
-    setValue(`plans.${planType}`, updatedPlan, { shouldDirty: true, shouldTouch: true });
+
+    setValue(`plans.${planType}`, updatedPlan, {
+      shouldDirty: true,
+      shouldTouch: true,
+    });
   };
 
   const updateDiscount = (field: keyof Discount, value: any) => {
@@ -342,8 +394,11 @@ const Screen5 = () => {
       ...prev,
       discount: updatedDiscount,
     }));
-    
-    setValue("discount", updatedDiscount, { shouldDirty: true, shouldTouch: true });
+
+    setValue("discount", updatedDiscount, {
+      shouldDirty: true,
+      shouldTouch: true,
+    });
   };
 
   const updatePlanDiscount = (
@@ -366,8 +421,11 @@ const Screen5 = () => {
         [planType]: updatedPlan,
       },
     }));
-    
-    setValue(`plans.${planType}`, updatedPlan, { shouldDirty: true, shouldTouch: true });
+
+    setValue(`plans.${planType}`, updatedPlan, {
+      shouldDirty: true,
+      shouldTouch: true,
+    });
   };
 
   if (!isMounted) {
@@ -395,7 +453,7 @@ const Screen5 = () => {
       style={{ scrollbarWidth: "thin" }}
     >
       {/* Plans Section */}
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-6 mb-6 border border-blue-100">
+      <div className="bg-linear-to-r from-blue-50 to-indigo-50 rounded-2xl p-6 mb-6 border border-blue-100">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-blue-500 rounded-lg">
@@ -457,7 +515,7 @@ const Screen5 = () => {
               </div>
 
               <div className="space-y-6">
-                <FlexBox className="gap-6 flex-col md:flex-row">
+                <div className="flex gap-6 flex-col md:flex-row">
                   <div className="flex-1">
                     <Input
                       label="Plan Title"
@@ -489,10 +547,10 @@ const Screen5 = () => {
                       step="0.01"
                     />
                   </div>
-                </FlexBox>
+                </div>
 
                 {/* Plan Features Section */}
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-5 border border-blue-100">
+                <div className="bg-linear-to-r from-blue-50 to-indigo-50 rounded-xl p-5 border border-blue-100">
                   <div className="flex items-center justify-between mb-4">
                     <div>
                       <h5 className="text-sm font-semibold text-gray-800 mb-1">
@@ -579,7 +637,7 @@ const Screen5 = () => {
                 </div>
 
                 {/* Plan-specific Discount Section */}
-                <div className="bg-gradient-to-r from-amber-50 to-yellow-50 rounded-xl p-5 border border-amber-100">
+                <div className="bg-linear-to-r from-amber-50 to-yellow-50 rounded-xl p-5 border border-amber-100">
                   <div className="flex items-center justify-between mb-4">
                     <div>
                       <h5 className="text-sm font-semibold text-gray-800 mb-1">
@@ -594,15 +652,27 @@ const Screen5 = () => {
                       checked={
                         state.plans.essential.discount?.isActive || false
                       }
-                      onChange={(checked) =>
-                        updatePlanDiscount("essential", "isActive", checked)
-                      }
+                      onChange={(checked) => {
+                        if (checked) {
+                          updatePlanDiscount("essential", "isActive", true);
+                        } else {
+                          // Reset discount values when disabled
+                          const resetDiscount = {
+                            isActive: false,
+                            discount: "percentage" as "percentage" | "fixed",
+                            value: 0,
+                            startDate: new Date(),
+                            endDate: new Date(),
+                          };
+                          updatePlan("essential", "discount", resetDiscount);
+                        }
+                      }}
                     />
                   </div>
 
                   {state.plans.essential.discount?.isActive && (
                     <div className="bg-white p-4 rounded-lg border border-amber-200">
-                      <FlexBox className="gap-4 flex-col md:flex-row mb-4">
+                      <div className="flex gap-4 flex-col md:flex-row mb-4">
                         <div className="flex-1">
                           <DropDown
                             label="Discount Type"
@@ -659,33 +729,73 @@ const Screen5 = () => {
                             }
                           />
                         </div>
-                      </FlexBox>
+                      </div>
 
-                      <FlexBox className="gap-4 flex-col md:flex-row">
+                      <div className="flex gap-4 flex-col md:flex-row">
                         <div className="flex-1">
-                          <DateSelector
-                            label="Start Date"
-                            value={state.plans.essential.discount.startDate}
-                            onChange={(date) =>
-                              updatePlanDiscount("essential", "startDate", date)
-                            }
-                            className="w-full"
-                            required
+                          <Controller
+                            name="plans.essential.discount.startDate"
+                            control={control}
+                            rules={{
+                              required: "Start date is required",
+                              validate: validateStartDate,
+                            }}
+                            render={({ field }) => (
+                              <DateSelector
+                                {...field}
+                                label="Start Date"
+                                value={field.value}
+                                onChange={(date) => {
+                                  field.onChange(date);
+                                  updatePlanDiscount(
+                                    "essential",
+                                    "startDate",
+                                    date
+                                  );
+                                }}
+                                className="w-full"
+                                required
+                                minDate={new Date()}
+                              />
+                            )}
                           />
                         </div>
                         <div className="flex-1">
-                          <DateSelector
-                            label="End Date"
-                            value={state.plans.essential.discount.endDate}
-                            onChange={(date) =>
-                              updatePlanDiscount("essential", "endDate", date)
-                            }
-                            className="w-full"
-                            required
-                            minDate={new Date()}
+                          <Controller
+                            name="plans.essential.discount.endDate"
+                            control={control}
+                            rules={{
+                              required: "End date is required",
+                              validate: (endDate) =>
+                                validateEndDate(
+                                  endDate,
+                                  state.plans.essential?.discount?.startDate
+                                ),
+                            }}
+                            render={({ field }) => (
+                              <DateSelector
+                                {...field}
+                                label="End Date"
+                                value={field.value}
+                                onChange={(date) => {
+                                  field.onChange(date);
+                                  updatePlanDiscount(
+                                    "essential",
+                                    "endDate",
+                                    date
+                                  );
+                                }}
+                                className="w-full"
+                                required
+                                minDate={
+                                  state.plans.essential?.discount?.startDate ||
+                                  new Date()
+                                }
+                              />
+                            )}
                           />
                         </div>
-                      </FlexBox>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -725,7 +835,7 @@ const Screen5 = () => {
               </div>
 
               <div className="space-y-6">
-                <FlexBox className="gap-6 flex-col md:flex-row">
+                <div className="flex gap-6 flex-col md:flex-row">
                   <div className="flex-1">
                     <Input
                       label="Plan Title"
@@ -757,10 +867,10 @@ const Screen5 = () => {
                       step="0.01"
                     />
                   </div>
-                </FlexBox>
+                </div>
 
                 {/* Plan Features Section */}
-                <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-5 border border-purple-100">
+                <div className="bg-linear-to-r from-purple-50 to-pink-50 rounded-xl p-5 border border-purple-100">
                   <div className="flex items-center justify-between mb-4">
                     <div>
                       <h5 className="text-sm font-semibold text-gray-800 mb-1">
@@ -847,7 +957,7 @@ const Screen5 = () => {
                 </div>
 
                 {/* Plan-specific Discount Section */}
-                <div className="bg-gradient-to-r from-amber-50 to-yellow-50 rounded-xl p-5 border border-amber-100">
+                <div className="bg-linear-to-r from-amber-50 to-yellow-50 rounded-xl p-5 border border-amber-100">
                   <div className="flex items-center justify-between mb-4">
                     <div>
                       <h5 className="text-sm font-semibold text-gray-800 mb-1">
@@ -860,15 +970,27 @@ const Screen5 = () => {
                     <CheckBoxContainer
                       label="Enable Plan Discount"
                       checked={state.plans.elite.discount?.isActive || false}
-                      onChange={(checked) =>
-                        updatePlanDiscount("elite", "isActive", checked)
-                      }
+                      onChange={(checked) => {
+                        if (checked) {
+                          updatePlanDiscount("elite", "isActive", true);
+                        } else {
+                          // Reset discount values when disabled
+                          const resetDiscount = {
+                            isActive: false,
+                            discount: "percentage" as "percentage" | "fixed",
+                            value: 0,
+                            startDate: new Date(),
+                            endDate: new Date(),
+                          };
+                          updatePlan("elite", "discount", resetDiscount);
+                        }
+                      }}
                     />
                   </div>
 
                   {state.plans.elite.discount?.isActive && (
                     <div className="bg-white p-4 rounded-lg border border-amber-200">
-                      <FlexBox className="gap-4 flex-col md:flex-row mb-4">
+                      <div className="flex gap-4 flex-col md:flex-row mb-4">
                         <div className="flex-1">
                           <DropDown
                             label="Discount Type"
@@ -924,33 +1046,69 @@ const Screen5 = () => {
                             }
                           />
                         </div>
-                      </FlexBox>
+                      </div>
 
-                      <FlexBox className="gap-4 flex-col md:flex-row">
+                      <div className="flex gap-4 flex-col md:flex-row">
                         <div className="flex-1">
-                          <DateSelector
-                            label="Start Date"
-                            value={state.plans.elite.discount.startDate}
-                            onChange={(date) =>
-                              updatePlanDiscount("elite", "startDate", date)
-                            }
-                            className="w-full"
-                            required
+                          <Controller
+                            name="plans.elite.discount.startDate"
+                            control={control}
+                            rules={{
+                              required: "Start date is required",
+                              validate: validateStartDate,
+                            }}
+                            render={({ field }) => (
+                              <DateSelector
+                                {...field}
+                                label="Start Date"
+                                value={field.value}
+                                onChange={(date) => {
+                                  field.onChange(date);
+                                  updatePlanDiscount(
+                                    "elite",
+                                    "startDate",
+                                    date
+                                  );
+                                }}
+                                className="w-full"
+                                required
+                                minDate={new Date()}
+                              />
+                            )}
                           />
                         </div>
                         <div className="flex-1">
-                          <DateSelector
-                            label="End Date"
-                            value={state.plans.elite.discount.endDate}
-                            onChange={(date) =>
-                              updatePlanDiscount("elite", "endDate", date)
-                            }
-                            className="w-full"
-                            required
-                            minDate={new Date()}
+                          <Controller
+                            name="plans.elite.discount.endDate"
+                            control={control}
+                            rules={{
+                              required: "End date is required",
+                              validate: (endDate) =>
+                                validateEndDate(
+                                  endDate,
+                                  state.plans.elite?.discount?.startDate
+                                ),
+                            }}
+                            render={({ field }) => (
+                              <DateSelector
+                                {...field}
+                                label="End Date"
+                                value={field.value}
+                                onChange={(date) => {
+                                  field.onChange(date);
+                                  updatePlanDiscount("elite", "endDate", date);
+                                }}
+                                className="w-full"
+                                required
+                                minDate={
+                                  state.plans.elite?.discount?.startDate ||
+                                  new Date()
+                                }
+                              />
+                            )}
                           />
                         </div>
-                      </FlexBox>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -972,7 +1130,7 @@ const Screen5 = () => {
       </div>
 
       {/* Discount Section */}
-      <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-6 mb-6 border border-green-100">
+      <div className="bg-linear-to-r from-green-50 to-emerald-50 rounded-2xl p-6 mb-6 border border-green-100">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-green-500 rounded-lg">
@@ -990,13 +1148,34 @@ const Screen5 = () => {
           <CheckBoxContainer
             label="Enable Discount"
             checked={state.discount?.isActive || false}
-            onChange={(checked) => updateDiscount("isActive", checked)}
+            onChange={(checked) => {
+              if (checked) {
+                updateDiscount("isActive", true);
+              } else {
+                // Reset discount values when disabled
+                const resetDiscount = {
+                  isActive: false,
+                  discount: "percentage" as "percentage" | "fixed",
+                  value: 0,
+                  startDate: new Date(),
+                  endDate: new Date(),
+                };
+                setState((prev) => ({
+                  ...prev,
+                  discount: resetDiscount,
+                }));
+                setValue("discount", resetDiscount, {
+                  shouldDirty: true,
+                  shouldTouch: true,
+                });
+              }
+            }}
           />
         </div>
 
         {state.discount?.isActive && (
           <div className="bg-white p-6 rounded-xl border border-green-100 shadow-sm">
-            <FlexBox className="gap-6 flex-col md:flex-row mb-6">
+            <div className="flex gap-6 flex-col md:flex-row mb-6">
               <div className="flex-1">
                 <DropDown
                   label="Discount Type"
@@ -1035,29 +1214,59 @@ const Screen5 = () => {
                   }
                 />
               </div>
-            </FlexBox>
+            </div>
 
-            <FlexBox className="gap-6 flex-col md:flex-row">
+            <div className="flex gap-6 flex-col md:flex-row">
               <div className="flex-1">
-                <DateSelector
-                  label="Start Date"
-                  value={state.discount.startDate}
-                  onChange={(date) => updateDiscount("startDate", date)}
-                  className="w-full"
-                  required
+                <Controller
+                  name="discount.startDate"
+                  control={control}
+                  rules={{
+                    required: "Start date is required",
+                    validate: validateStartDate,
+                  }}
+                  render={({ field }) => (
+                    <DateSelector
+                      {...field}
+                      label="Start Date"
+                      value={field.value}
+                      onChange={(date) => {
+                        field.onChange(date);
+                        updateDiscount("startDate", date);
+                      }}
+                      className="w-full"
+                      required
+                      minDate={new Date()}
+                    />
+                  )}
                 />
               </div>
-                        <div className="flex-1">
-                          <DateSelector
-                            label="End Date"
-                            value={state.discount.endDate}
-                            onChange={(date) => updateDiscount("endDate", date)}
-                            className="w-full"
-                            required
-                            minDate={new Date()}
-                          />
-                        </div>
-            </FlexBox>
+              <div className="flex-1">
+                <Controller
+                  name="discount.endDate"
+                  control={control}
+                  rules={{
+                    required: "End date is required",
+                    validate: (endDate) =>
+                      validateEndDate(endDate, state.discount?.startDate),
+                  }}
+                  render={({ field }) => (
+                    <DateSelector
+                      {...field}
+                      label="End Date"
+                      value={field.value}
+                      onChange={(date) => {
+                        field.onChange(date);
+                        updateDiscount("endDate", date);
+                      }}
+                      className="w-full"
+                      required
+                      minDate={state.discount?.startDate || new Date()}
+                    />
+                  )}
+                />
+              </div>
+            </div>
           </div>
         )}
       </div>

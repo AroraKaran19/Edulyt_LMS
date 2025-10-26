@@ -1,6 +1,7 @@
 import React from "react";
 import { Course, Instructor } from "@/types";
 import { cn } from "@/lib/utils";
+import { calculateDiscountDisplay } from "@/lib/utils/discount";
 import { Plus } from "lucide-react";
 import BestsellerBadge from "@/components/ui/course/BestsellerBadge";
 import RatingContainer from "@/components/ui/course/RatingContainer";
@@ -17,32 +18,27 @@ const TopCourseCard = ({
   style?: React.CSSProperties;
 }) => {
   const router = useRouter();
-  const originalPrice =
-    course.plans?.essential?.price || course.plans?.elite?.price || 0;
-  const hasActiveDiscount =
-    !!course.discount && course.discount.isActive && course.discount.value > 0;
-  let discountedPrice = originalPrice;
-  if (
-    course.discount &&
-    course.discount.isActive &&
-    course.discount.value > 0
-  ) {
-    if (course.discount.discount === "percentage") {
-      discountedPrice = Math.round(
-        originalPrice - (originalPrice * course.discount.value) / 100
-      );
-    } else if (course.discount.discount === "fixed") {
-      discountedPrice = Math.max(
-        0,
-        Math.round(originalPrice - course.discount.value)
-      );
-    }
-  }
+  
+  // Get the base price (prefer essential, fallback to elite)
+  const originalPrice = course.plans?.essential?.price || course.plans?.elite?.price || 0;
+  
+  // Determine which plan is being used for pricing
+  const selectedPlan = course.plans?.essential ? "essential" : "elite";
+  const planDiscount = course.plans?.[selectedPlan]?.discount;
+  
+  // Calculate discount using the utility function
+  const discountInfo = calculateDiscountDisplay(
+    originalPrice,
+    planDiscount, // Plan-specific discount
+    course.discount // Course-wide discount
+  );
+  
+  const hasActiveDiscount = !!discountInfo.discountLabel;
 
   return (
     <div
       className={cn(
-        "top-course-card w-full bg-white rounded-2xl shadow-[0_0_2px_5px_rgba(247,113,36,0.3)] p-3 cursor-default flex flex-col",
+        "top-course-card select-none w-full bg-white rounded-2xl shadow-[0_0_2px_5px_rgba(247,113,36,0.3)] p-3 cursor-default flex flex-col",
         props.className
       )}
     >
@@ -54,16 +50,17 @@ const TopCourseCard = ({
           draggable={false}
           loading="lazy"
         />
-        {course.discount &&
-          course.discount.isActive &&
-          course.discount.value > 0 && (
-            <DiscountBadge
-              discount={course.discount}
-              className="absolute top-2 right-2"
-            />
-          )}
+        {hasActiveDiscount && (
+          <DiscountBadge
+            discount={course.discount!}
+            className="absolute top-2 right-2"
+          />
+        )}
       </div>
-      <BestsellerBadge enrollStudents={course.analytics?.totalEnrollments || 0} className="mt-3" />
+      <BestsellerBadge
+        enrollStudents={course.analytics?.totalEnrollments || 0}
+        className="mt-3"
+      />
       <p
         className={cn(
           "text-2xl font-bold mt-2 font-coolvetica select-none text-balance"
@@ -80,8 +77,8 @@ const TopCourseCard = ({
       <div
         className={cn("instructors mt-2 flex gap-2 items-center select-none")}
       >
-        {course.instructor.map(
-          (instructor: Instructor, index: number) => {
+        {(course.instructor as Instructor[]).map(
+          (instructor, index: number) => {
             if (index < 2) {
               return <InstructorCard key={index} instructor={instructor} />;
             }
@@ -101,7 +98,7 @@ const TopCourseCard = ({
           {hasActiveDiscount ? (
             <>
               <span className="text-xl font-bold text-black">
-                ₹{discountedPrice}
+                ₹{discountInfo.discountPrice}
               </span>
               <p className="text-sm font-normal text-black line-through opacity-50">
                 ₹{originalPrice}

@@ -1,171 +1,216 @@
 import { Request, Response } from "express";
 import {
-  PutObjectCommand,
-  DeleteObjectCommand,
-  GetObjectCommand,
-} from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { getS3Client, getBucketName } from "../config/s3";
-import { v4 as uuidv4 } from "uuid";
-import path from "path";
-import { asyncHandler, AppError, sendSuccessResponse } from "../middlewares/error.middleware";
+  asyncHandler,
+  sendSuccessResponse,
+} from "../middlewares/error.middleware";
+import {
+  generatePresignedUrl,
+  deleteFileFromS3,
+  validateFile,
+  getFileValidationRules,
+  PresignedUrlRequest,
+} from "../services/upload.services";
 
-export class UploadController {
-  /**
-   * Generate presigned URL for direct uploads
-   * @route POST /api/upload/presigned-url
-   * @access Public (need to be protected with auth middleware in production)
-   */
-  generatePresignedUrl = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    const { fileName, fileType, folderName } = req.body;
+/**
+ * Generate presigned URL for file upload
+ * @route POST /api/upload/presigned-url
+ * @access User
+ */
+export const generatePresignedUrlController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { fileName, fileType, folderName }: PresignedUrlRequest = req.body;
 
+    // Validate required fields
     if (!fileName || !fileType || !folderName) {
-      throw new AppError("fileName, fileType, and folderName are required", 400);
+      return res.status(400).json({
+        success: false,
+        error: {
+          message: "fileName, fileType, and folderName are required",
+          type: "ValidationError",
+          statusCode: 400,
+        },
+      });
     }
 
-    const s3Client = await getS3Client();
-    const bucketName = getBucketName();
-    const region = process.env.AWS_REGION;
+    // Get validation rules for the folder
+    const validationRules = getFileValidationRules(folderName);
 
-    if (!region) {
-      throw new AppError("AWS_REGION is not defined in environment variables", 500);
+    // Note: We can't validate file size here since we don't have the actual file
+    // The frontend should validate before calling this endpoint
+    if (!validationRules.allowedTypes.includes(fileType)) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          message: `File type ${fileType} is not allowed for folder ${folderName}. Allowed types: ${validationRules.allowedTypes.join(
+            ", "
+          )}`,
+          type: "ValidationError",
+          statusCode: 400,
+        },
+      });
     }
 
-    // Generate unique filename
-    const fileExtension = path.extname(fileName);
-    const baseName = path.basename(fileName, fileExtension);
-    const uniqueFileName = `${baseName}-${uuidv4()}${fileExtension}`;
+    try {
+      const presignedData = await generatePresignedUrl({
+        fileName,
+        fileType,
+        folderName,
+      });
 
-    // Create S3 key with folder structure
-    const s3Key = `${folderName}/${uniqueFileName}`;
-
-    // Generate presigned URL
-    const command = new PutObjectCommand({
-      Bucket: bucketName,
-      Key: s3Key,
-      ContentType: fileType,
-    });
-
-    const presignedUrl = await getSignedUrl(s3Client, command, {
-      expiresIn: 3600, // 1 hour
-    });
-
-    // Generate public URL with correct region
-    const publicUrl = `https://${bucketName}.s3.${region}.amazonaws.com/${s3Key}`;
-
-    const data = {
-      presignedUrl,
-      fileName: uniqueFileName,
-      publicUrl,
-      expiresIn: 3600,
-      folderName: folderName,
-      s3Key: s3Key,
-    };
-
-    sendSuccessResponse(res, data, "Presigned URL generated successfully");
-  });
-
-  /**
-   * Generate presigned URL for secure file access
-   * @route POST /api/upload/presigned-url/access
-   * @access Public (need to be protected with auth middleware in production)
-   */
-  generateAccessPresignedUrl = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    const { s3Key, expiresIn = 60 } = req.body;
-
-    if (!s3Key) {
-      throw new AppError("s3Key is required", 400);
+      return sendSuccessResponse(
+        res,
+        presignedData,
+        "Presigned URL generated successfully"
+      );
+    } catch (error) {
+      console.error("Error generating presigned URL:", error);
+      return res.status(500).json({
+        success: false,
+        error: {
+          message: "Failed to generate presigned URL",
+          type: "ServerError",
+          statusCode: 500,
+        },
+      });
     }
+  }
+);
 
-    const s3Client = await getS3Client();
-    const bucketName = getBucketName();
-
-    // Generate presigned URL for GET access
-    const command = new GetObjectCommand({
-      Bucket: bucketName,
-      Key: s3Key,
-    });
-
-    const presignedUrl = await getSignedUrl(s3Client, command, {
-      expiresIn: parseInt(expiresIn.toString()),
-    });
-
-    const data = {
-      presignedUrl,
-      s3Key,
-      expiresIn: parseInt(expiresIn.toString()),
-    };
-
-    sendSuccessResponse(res, data, "Access presigned URL generated successfully");
-  });
-
-  /**
-   * Delete file from S3
-   * @route DELETE /api/upload/:s3Key
-   * @access Public (need to be protected with auth middleware in production)
-   */
-  deleteFile = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+/**
+ * Delete a file from S3
+ * @route DELETE /api/upload/:s3Key
+ * @access User
+ */
+export const deleteFileController = asyncHandler(
+  async (req: Request, res: Response) => {
     const { s3Key } = req.params;
 
     if (!s3Key) {
-      throw new AppError("S3 key is required", 400);
+      return res.status(400).json({
+        success: false,
+        error: {
+          message: "S3 key is required",
+          type: "ValidationError",
+          statusCode: 400,
+        },
+      });
     }
 
-    const s3Client = await getS3Client();
-    const bucketName = getBucketName();
+    try {
+      await deleteFileFromS3(s3Key);
 
-    // Decode the S3 key (in case it was URL encoded)
-    const decodedS3Key = decodeURIComponent(s3Key);
+      return sendSuccessResponse(res, null, "File deleted successfully");
+    } catch (error) {
+      console.error("Error deleting file:", error);
+      return res.status(500).json({
+        success: false,
+        error: {
+          message: "Failed to delete file",
+          type: "ServerError",
+          statusCode: 500,
+        },
+      });
+    }
+  }
+);
 
-    const deleteCommand = new DeleteObjectCommand({
-      Bucket: bucketName,
-      Key: decodedS3Key,
-    });
+/**
+ * Get file validation rules for a specific folder
+ * @route GET /api/upload/validation-rules/:folderName
+ * @access Public
+ */
+export const getValidationRulesController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { folderName } = req.params;
 
-    await s3Client.send(deleteCommand);
-
-    const data = {
-      s3Key: decodedS3Key,
-    };
-
-    sendSuccessResponse(res, data, "File deleted successfully");
-  });
-
-  /**
-   * Get file information
-   * @route GET /api/upload/:s3Key/info
-   * @access Public
-   */
-  getFileInfo = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    const { s3Key } = req.params;
-
-    if (!s3Key) {
-      throw new AppError("S3 key is required", 400);
+    if (!folderName) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          message: "Folder name is required",
+          type: "ValidationError",
+          statusCode: 400,
+        },
+      });
     }
 
-    const bucketName = getBucketName();
-    const decodedS3Key = decodeURIComponent(s3Key);
-    const region = process.env.AWS_REGION;
+    try {
+      const rules = getFileValidationRules(folderName);
 
-    if (!region) {
-      throw new AppError("AWS_REGION is not defined in environment variables", 500);
+      return sendSuccessResponse(
+        res,
+        rules,
+        "Validation rules retrieved successfully"
+      );
+    } catch (error) {
+      console.error("Error getting validation rules:", error);
+      return res.status(500).json({
+        success: false,
+        error: {
+          message: "Failed to get validation rules",
+          type: "ServerError",
+          statusCode: 500,
+        },
+      });
+    }
+  }
+);
+
+/**
+ * Validate file before upload
+ * @route POST /api/upload/validate
+ * @access Public
+ */
+export const validateFileController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { fileType, fileSize, folderName } = req.body;
+
+    if (!fileType || !fileSize || !folderName) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          message: "fileType, fileSize, and folderName are required",
+          type: "ValidationError",
+          statusCode: 400,
+        },
+      });
     }
 
-    // Generate public URL with correct region
-    const publicUrl = `https://${bucketName}.s3.${region}.amazonaws.com/${decodedS3Key}`;
+    try {
+      const rules = getFileValidationRules(folderName);
+      const validation = validateFile(
+        fileType,
+        fileSize,
+        rules.allowedTypes,
+        rules.maxSize
+      );
 
-    // Extract folder name and file name from S3 key
-    const pathParts = decodedS3Key.split("/");
-    const fileName = pathParts[pathParts.length - 1];
-    const folderName = pathParts.slice(0, -1).join("/");
-
-    const data = {
-      s3Key: decodedS3Key,
-      fileName: fileName,
-      folderName: folderName,
-      url: publicUrl,
-    };
-
-    sendSuccessResponse(res, data, "File information retrieved successfully");
-  });
-}
+      if (validation.valid) {
+        return sendSuccessResponse(
+          res,
+          { valid: true },
+          "File validation passed"
+        );
+      } else {
+        return res.status(400).json({
+          success: false,
+          error: {
+            message: validation.error,
+            type: "ValidationError",
+            statusCode: 400,
+          },
+        });
+      }
+    } catch (error) {
+      console.error("Error validating file:", error);
+      return res.status(500).json({
+        success: false,
+        error: {
+          message: "Failed to validate file",
+          type: "ServerError",
+          statusCode: 500,
+        },
+      });
+    }
+  }
+);

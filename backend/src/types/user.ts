@@ -1,4 +1,4 @@
-import { Affiliate, Course, Review, PaymentOrder } from ".";
+import { Affiliate, Course, Review, PaymentOrder, Enrollment } from ".";
 
 export interface Collaborator extends User {
   totalReferrals: number;
@@ -26,6 +26,8 @@ export interface Instructor extends User {
 }
 
 export interface Student extends User {
+  enrollments: Enrollment["_id"][];
+
   collegeName?: string;
   passingYear?: number;
   areaOfInterest?: string;
@@ -68,6 +70,7 @@ export interface SocialProfiles {
     email?: string;
     image?: string;
     email_verified?: boolean;
+    access_token?: string;
   };
   linkedin?: {
     sub?: string;

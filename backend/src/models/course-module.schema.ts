@@ -52,14 +52,26 @@ const quizSchema = new mongoose.Schema<Quiz>(
             },
           },
           correctAnswer: { type: [String], required: true },
-          timeLimit: { type: Number, min: [0, "Time limit must be positive"] },
+          timeLimit: {
+            type: Number,
+            min: [0, "Time limit must be positive"],
+            required: false,
+          },
           _id: false,
         },
       ],
       required: true,
     },
-    passingScore: { type: Number, min: [0, "Passing score must be positive"] },
-    maxAttempts: { type: Number, min: [1, "Max attempts must be at least 1"] },
+    passingScore: {
+      type: Number,
+      min: [0, "Passing score must be positive"],
+      required: false,
+    },
+    maxAttempts: {
+      type: Number,
+      min: [1, "Max attempts must be at least 1"],
+      required: false,
+    },
   },
   { timestamps: true }
 );
@@ -94,7 +106,7 @@ const videoSchema = new mongoose.Schema<Video>(
     thumbnailUrl: {
       type: String,
       validate: {
-        validator: function(value: string) {
+        validator: function (value: string) {
           // Allow empty strings or valid URLs
           return !value || validateUrl(value);
         },
@@ -102,7 +114,12 @@ const videoSchema = new mongoose.Schema<Video>(
       },
       required: false,
     },
-    duration: { type: Number, min: [0, "Duration must be positive"] },
+    duration: {
+      type: Number,
+      min: [0, "Duration must be positive"],
+      required: true,
+      default: 0,
+    },
   },
   { timestamps: true }
 );
@@ -113,7 +130,14 @@ const videoSchema = new mongoose.Schema<Video>(
 
 const documentSchema = new mongoose.Schema<Document>(
   {
-    documentUrl: { type: String, required: true, validate: { validator: validateUrl, message: "Document URL must be a valid URL" } },
+    documentUrl: {
+      type: String,
+      required: true,
+      validate: {
+        validator: validateUrl,
+        message: "Document URL must be a valid URL",
+      },
+    },
   },
   { timestamps: true }
 );
@@ -124,26 +148,23 @@ const documentSchema = new mongoose.Schema<Document>(
 
 const contentSchema = new mongoose.Schema<Content>(
   {
-    lessonId: { 
-      type: mongoose.Schema.Types.ObjectId, 
-      ref: "CourseLesson", 
-      required: true 
+    lessonId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "CourseLesson",
+      required: true,
     },
-    moduleId: { 
-      type: mongoose.Schema.Types.ObjectId, 
-      ref: "CourseModule", 
-      required: true 
+    moduleId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "CourseModule",
+      required: true,
     },
     title: { type: String, required: true },
-    description: { 
-      type: String, 
-      maxlength: 500 // Reasonable limit for content description
+    description: {
+      type: String,
+      maxlength: 1500,
     },
     type: { type: String, required: true, enum: ["video", "quiz", "document"] },
     readingMaterials: [readingMaterialSchema],
-    isCompleted: { type: Boolean, default: false, required: true },
-    completedAt: { type: Date },
-    isLocked: { type: Boolean, default: false, required: true },
   },
   { timestamps: true, discriminatorKey: "type" }
 );
@@ -154,36 +175,31 @@ const contentSchema = new mongoose.Schema<Content>(
 
 const courseLessonSchema = new mongoose.Schema<CourseLesson>(
   {
-    moduleId: { 
-      type: mongoose.Schema.Types.ObjectId, 
-      ref: "CourseModule", 
-      required: true 
+    moduleId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "CourseModule",
+      required: true,
     },
     title: { type: String, required: true },
-    description: { 
-      type: String, 
-      maxlength: 500 // Reasonable limit for lesson description
+    description: {
+      type: String,
+      maxlength: 1500,
     },
-    contentIds: [
-      { type: mongoose.Schema.Types.ObjectId, ref: "Content", required: true },
+    contents: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Content",
+        required: false,
+        default: [],
+      },
     ],
-    isCompleted: { type: Boolean, default: false, required: true },
-    completedAt: { type: Date },
-    isLocked: { type: Boolean, default: false, required: true },
   },
-  { 
+  {
     timestamps: true,
     toJSON: { virtuals: true },
-    toObject: { virtuals: true }
+    toObject: { virtuals: true },
   }
 );
-
-// Virtual field for contents
-courseLessonSchema.virtual('contents', {
-  ref: 'Content',
-  localField: 'contentIds',
-  foreignField: '_id'
-});
 
 // ===================
 // Course Module Schema
@@ -191,10 +207,10 @@ courseLessonSchema.virtual('contents', {
 
 const courseModuleSchema = new mongoose.Schema<CourseModule>(
   {
-    courseId: { 
-      type: mongoose.Schema.Types.ObjectId, 
-      ref: "Course", 
-      required: true 
+    courseId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Course",
+      required: true,
     },
     title: { type: String, required: true },
     thumbnailUrl: {
@@ -205,38 +221,24 @@ const courseModuleSchema = new mongoose.Schema<CourseModule>(
         message: "Thumbnail must be a valid URL",
       },
     },
-    lessonIds: [
+    lessons: [
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "CourseLesson",
       },
     ],
-    description: { 
-      type: String, 
-      maxlength: 500 // Reasonable limit for module description
+    description: {
+      type: String,
+      maxlength: 1500,
     },
-    isCompleted: { type: Boolean, default: false, required: true },
-    completedAt: { type: Date },
-    isLocked: { type: Boolean, default: false, required: true },
     isActive: { type: Boolean, default: true, required: true },
   },
-  { 
+  {
     timestamps: true,
     toJSON: { virtuals: true },
-    toObject: { virtuals: true }
+    toObject: { virtuals: true },
   }
 );
-
-// ===================
-// Virtual Fields
-// ===================
-
-// Virtual field for lessons
-courseModuleSchema.virtual('lessons', {
-  ref: 'CourseLesson',
-  localField: 'lessonIds',
-  foreignField: '_id'
-});
 
 // ===================
 // Indexes
@@ -246,20 +248,10 @@ courseModuleSchema.virtual('lessons', {
 
 courseModuleSchema.index({ courseId: 1 }); // For finding modules by course
 courseModuleSchema.index({ courseId: 1, title: 1 }); // For searching modules by course and title
-courseModuleSchema.index({ title: 1, lessonIds: 1 }); // For searching modules by title and lesson IDs
+courseModuleSchema.index({ title: 1, lessons: 1 }); // For searching modules by title and lesson IDs
 courseModuleSchema.index({ isActive: 1 }); // For filtering active modules
 courseLessonSchema.index({ moduleId: 1, title: 1 }); // For searching lessons by module ID and title
-courseLessonSchema.index({ contentIds: 1 }); // For searching lessons by content IDs
-contentSchema.index({ type: 1 }); // For filtering content by type
-contentSchema.index({ isLocked: 1 }); // For filtering content by locked status
-contentSchema.index({ isActive: 1 }); // For filtering active content
-
-courseModuleSchema.index({ createdAt: -1 }); // For listing modules by creation date
-courseModuleSchema.index({ updatedAt: -1 }); // For listing modules by update date
-courseLessonSchema.index({ createdAt: -1 }); // For listing lessons by creation date
-courseLessonSchema.index({ updatedAt: -1 }); // For listing lessons by update date
-contentSchema.index({ createdAt: -1 }); // For listing content by creation date
-contentSchema.index({ updatedAt: -1 }); // For listing content by update date
+courseLessonSchema.index({ contents: 1 }); // For searching lessons by content IDs
 
 // ===================
 // Models
@@ -286,4 +278,7 @@ export const VideoContentModel = ContentModel.discriminator(
   videoSchema
 );
 export const QuizContentModel = ContentModel.discriminator("quiz", quizSchema);
-export const DocumentContentModel = ContentModel.discriminator("document", documentSchema);
+export const DocumentContentModel = ContentModel.discriminator(
+  "document",
+  documentSchema
+);

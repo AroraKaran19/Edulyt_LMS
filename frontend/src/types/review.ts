@@ -6,11 +6,11 @@ import { Course, Instructor, User } from ".";
 
 export interface Review {
   _id?: string;
-  userId: User;
+  userId: User | string;
   rating: number;
   comment: string;
   reviewableType: "Course" | "Instructor";
-  reviewableId: Course["_id"] | Instructor["_id"];
+  reviewableId: Course | Instructor | string; // will be the id of the course or instructor
   isActive: boolean;
   createdAt?: Date;
   updatedAt?: Date;

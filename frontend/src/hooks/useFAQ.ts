@@ -1,381 +1,406 @@
 import { useState, useCallback } from "react";
-import { FAQ } from "@/types";
+import apiClient from "@/configs/apiConfig";
+import { toast } from "react-toastify";
+
+// Types for FAQ responses
+export interface FAQ {
+  _id?: string;
+  question: string;
+  answer: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+  isActive?: boolean;
+}
 
 export interface FAQResponse {
   success: boolean;
-  data?: FAQ & { _id: string };
-  message?: string;
+  message: string;
+  data?:
+    | FAQ
+    | FAQ[]
+    | { faqs: FAQ[]; total: number; page: number; totalPages: number };
   error?: string;
-  errors?: string[];
 }
 
 export interface FAQListResponse {
-  success: boolean;
-  data?: {
-    faqs: (FAQ & { _id: string })[];
-    pagination: {
-      currentPage: number;
-      totalPages: number;
-      totalItems: number;
-      itemsPerPage: number;
-      hasNext: boolean;
-      hasPrev: boolean;
-    };
-  };
-  message?: string;
-  error?: string;
+  faqs: FAQ[];
+  total: number;
+  page: number;
+  totalPages: number;
 }
 
-export interface FAQsArrayResponse {
-  success: boolean;
-  data?: (FAQ & { _id: string })[];
-  message?: string;
-  error?: string;
+export interface FAQFilters {
+  page?: number;
+  limit?: number;
+  search?: string;
 }
 
 export const useFAQ = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>("");
 
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
-  if (!baseUrl) {
-    throw new Error("NEXT_PUBLIC_API_BASE_URL is not defined");
-  }
-
-  /**
-   * Get all FAQs with pagination and search
-   */
-  const getAllFAQs = useCallback(
-    async (
-      page: number = 1,
-      limit: number = 10,
-      search: string = ""
-    ): Promise<FAQListResponse> => {
+  // Get all FAQs with pagination and search
+  const getFAQs = useCallback(
+    async (filters: FAQFilters = {}): Promise<FAQListResponse | null> => {
       setIsLoading(true);
       setError("");
 
       try {
-        const params = new URLSearchParams({
-          page: page.toString(),
-          limit: limit.toString(),
-        });
+        const params = new URLSearchParams();
 
-        if (search.trim()) {
-          params.append("search", search.trim());
+        if (filters.page) params.append("page", filters.page.toString());
+        if (filters.limit) params.append("limit", filters.limit.toString());
+        if (filters.search) params.append("search", filters.search);
+
+        const response = await apiClient.get(`/faq?${params.toString()}`);
+
+        if (response.data.success) {
+          return response.data.data;
+        } else {
+          throw new Error(
+            response.data.error?.message || "Failed to fetch FAQs"
+          );
         }
-
-        const response = await fetch(`${baseUrl}/faqs?${params}`, {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const result: FAQListResponse = await response.json();
-
-        if (!result.success) {
-          setError(result.error || result.message || "Failed to fetch FAQs");
-        }
-
-        return result;
-      } catch (err) {
+      } catch (err: any) {
         const errorMessage =
-          err instanceof Error ? err.message : "Failed to fetch FAQs";
+          err?.response?.data?.error?.message ||
+          err?.message ||
+          "Failed to fetch FAQs";
         setError(errorMessage);
-        return {
-          success: false,
-          message: "Failed to fetch FAQs",
-          error: errorMessage,
-        };
+        return null;
       } finally {
         setIsLoading(false);
       }
     },
-    [baseUrl]
+    []
   );
 
-  /**
-   * Create a new FAQ
-   */
+  // Get FAQ by ID
+  const getFAQById = useCallback(async (id: string): Promise<FAQ | null> => {
+    setIsLoading(true);
+    setError("");
+
+    try {
+      const response = await apiClient.get(`/faq/${id}`);
+
+      if (response.data.success) {
+        return response.data.data;
+      } else {
+        throw new Error(response.data.error?.message || "Failed to fetch FAQ");
+      }
+    } catch (err: any) {
+      const errorMessage =
+        err?.response?.data?.error?.message ||
+        err?.message ||
+        "Failed to fetch FAQ";
+      setError(errorMessage);
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Create new FAQ (Admin only)
   const createFAQ = useCallback(
     async (faqData: {
       question: string;
       answer: string;
-    }): Promise<FAQResponse> => {
+    }): Promise<FAQ | null> => {
       setIsLoading(true);
       setError("");
 
       try {
-        const response = await fetch(`${baseUrl}/faqs`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(faqData),
-        });
+        const response = await apiClient.post("/faq", faqData);
 
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
+        if (response.data.success) {
+          toast.success("FAQ created successfully");
+          return response.data.data;
+        } else {
+          toast.error(response.data.error?.message || "Failed to create FAQ");
           throw new Error(
-            errorData.message || `HTTP error! status: ${response.status}`
+            response.data.error?.message || "Failed to create FAQ"
           );
         }
-
-        const result: FAQResponse = await response.json();
-
-        if (!result.success) {
-          setError(result.error || result.message || "Failed to create FAQ");
-        }
-
-        return result;
-      } catch (err) {
+      } catch (err: any) {
         const errorMessage =
-          err instanceof Error ? err.message : "Failed to create FAQ";
+          err?.response?.data?.error?.message ||
+          err?.message ||
+          "Failed to create FAQ";
         setError(errorMessage);
-        return {
-          success: false,
-          message: "Failed to create FAQ",
-          error: errorMessage,
-        };
+        return null;
       } finally {
         setIsLoading(false);
       }
     },
-    [baseUrl]
+    []
   );
 
-  /**
-   * Update an existing FAQ
-   */
+  // Update FAQ (Admin only)
   const updateFAQ = useCallback(
     async (
       id: string,
-      updateData: {
-        question?: string;
-        answer?: string;
-      }
-    ): Promise<FAQResponse> => {
+      faqData: { question?: string; answer?: string }
+    ): Promise<FAQ | null> => {
       setIsLoading(true);
       setError("");
 
       try {
-        const response = await fetch(`${baseUrl}/faqs/${id}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(updateData),
-        });
+        const response = await apiClient.put(`/faq/${id}`, faqData);
 
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
+        if (response.data.success) {
+          toast.success("FAQ updated successfully");
+          return response.data.data;
+        } else {
+          toast.error(response.data.error?.message || "Failed to update FAQ");
           throw new Error(
-            errorData.message || `HTTP error! status: ${response.status}`
+            response.data.error?.message || "Failed to update FAQ"
           );
         }
-
-        const result: FAQResponse = await response.json();
-
-        if (!result.success) {
-          setError(result.error || result.message || "Failed to update FAQ");
-        }
-
-        return result;
-      } catch (err) {
+      } catch (err: any) {
         const errorMessage =
-          err instanceof Error ? err.message : "Failed to update FAQ";
+          err?.response?.data?.error?.message ||
+          err?.message ||
+          "Failed to update FAQ";
         setError(errorMessage);
-        return {
-          success: false,
-          message: "Failed to update FAQ",
-          error: errorMessage,
-        };
+        return null;
       } finally {
         setIsLoading(false);
       }
     },
-    [baseUrl]
+    []
   );
 
-  /**
-   * Delete an FAQ
-   */
-  const deleteFAQ = useCallback(
-    async (id: string): Promise<{ success: boolean; message?: string; error?: string }> => {
+  // Delete FAQ (Admin only)
+  const deleteFAQ = useCallback(async (id: string): Promise<boolean> => {
+    setIsLoading(true);
+    setError("");
+
+    try {
+      const response = await apiClient.delete(`/faq/${id}`);
+
+      if (response.data.success) {
+        toast.success("FAQ deleted successfully");
+        return true;
+      } else {
+        toast.error(response.data.error?.message || "Failed to delete FAQ");
+        throw new Error(response.data.error?.message || "Failed to delete FAQ");
+      }
+    } catch (err: any) {
+      const errorMessage =
+        err?.response?.data?.error?.message ||
+        err?.message ||
+        "Failed to delete FAQ";
+      setError(errorMessage);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Admin-specific methods
+  const getAdminFAQs = useCallback(
+    async (filters: FAQFilters = {}): Promise<FAQListResponse | null> => {
       setIsLoading(true);
       setError("");
 
       try {
-        const response = await fetch(`${baseUrl}/faqs/${id}`, {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        });
+        const params = new URLSearchParams();
 
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
+        if (filters.page) params.append("page", filters.page.toString());
+        if (filters.limit) params.append("limit", filters.limit.toString());
+        if (filters.search) params.append("search", filters.search);
+
+        const response = await apiClient.get(`/faq/admin?${params.toString()}`);
+
+        if (response.data.success) {
+          return response.data.data;
+        } else {
           throw new Error(
-            errorData.message || `HTTP error! status: ${response.status}`
+            response.data.error?.message || "Failed to fetch admin FAQs"
           );
         }
-
-        const result = await response.json();
-
-        if (!result.success) {
-          setError(result.error || result.message || "Failed to delete FAQ");
-        }
-
-        return result;
-      } catch (err) {
+      } catch (err: any) {
         const errorMessage =
-          err instanceof Error ? err.message : "Failed to delete FAQ";
+          err?.response?.data?.error?.message ||
+          err?.message ||
+          "Failed to fetch admin FAQs";
         setError(errorMessage);
-        return {
-          success: false,
-          message: "Failed to delete FAQ",
-          error: errorMessage,
-        };
+        return null;
       } finally {
         setIsLoading(false);
       }
     },
-    [baseUrl]
+    []
   );
 
-  /**
-   * Get FAQ by ID
-   */
-  const getFAQById = useCallback(
-    async (id: string): Promise<FAQResponse> => {
+  const getAdminFAQById = useCallback(
+    async (id: string): Promise<FAQ | null> => {
       setIsLoading(true);
       setError("");
 
       try {
-        const response = await fetch(`${baseUrl}/faqs/${id}`, {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        });
+        const response = await apiClient.get(`/faq/admin/${id}`);
 
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+        if (response.data.success) {
+          return response.data.data;
+        } else {
+          throw new Error(
+            response.data.error?.message || "Failed to fetch admin FAQ"
+          );
         }
-
-        const result: FAQResponse = await response.json();
-
-        if (!result.success) {
-          setError(result.error || result.message || "Failed to fetch FAQ");
-        }
-
-        return result;
-      } catch (err) {
+      } catch (err: any) {
         const errorMessage =
-          err instanceof Error ? err.message : "Failed to fetch FAQ";
+          err?.response?.data?.error?.message ||
+          err?.message ||
+          "Failed to fetch admin FAQ";
         setError(errorMessage);
-        return {
-          success: false,
-          message: "Failed to fetch FAQ",
-          error: errorMessage,
-        };
+        return null;
       } finally {
         setIsLoading(false);
       }
     },
-    [baseUrl]
+    []
   );
 
-  /**
-   * Get FAQs by array of IDs
-   */
-  const getFAQsByIds = useCallback(
-    async (ids: string[]): Promise<FAQsArrayResponse> => {
-      setIsLoading(true);
-      setError("");
-
-      try {
-        const response = await fetch(`${baseUrl}/faqs/by-ids`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ ids }),
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const result: FAQsArrayResponse = await response.json();
-
-        if (!result.success) {
-          setError(result.error || result.message || "Failed to fetch FAQs");
-        }
-
-        return result;
-      } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : "Failed to fetch FAQs";
-        setError(errorMessage);
-        return {
-          success: false,
-          message: "Failed to fetch FAQs",
-          error: errorMessage,
-        };
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [baseUrl]
-  );
-
-  /**
-   * Fetch FAQs with simplified return for UI components
-   * (matches the previous service function signature)
-   */
-  const fetchFAQs = useCallback(
+  const updateAdminFAQ = useCallback(
     async (
-      page: number = 1,
-      limit: number = 10,
-      search: string = ""
-    ): Promise<{ faqs: (FAQ & { _id: string })[]; total: number }> => {
-      const result = await getAllFAQs(page, limit, search);
-      
-      if (!result.success || !result.data) {
-        throw new Error(result.error || "Failed to fetch FAQs");
-      }
+      id: string,
+      faqData: { question?: string; answer?: string }
+    ): Promise<FAQ | null> => {
+      setIsLoading(true);
+      setError("");
 
-      return {
-        faqs: result.data.faqs,
-        total: result.data.pagination.totalItems,
-      };
+      try {
+        const response = await apiClient.put(`/faq/admin/${id}`, faqData);
+
+        if (response.data.success) {
+          toast.success("FAQ updated successfully");
+          return response.data.data;
+        } else {
+          toast.error(
+            response.data.error?.message || "Failed to update admin FAQ"
+          );
+          throw new Error(
+            response.data.error?.message || "Failed to update admin FAQ"
+          );
+        }
+      } catch (err: any) {
+        const errorMessage =
+          err?.response?.data?.error?.message ||
+          err?.message ||
+          "Failed to update admin FAQ";
+        setError(errorMessage);
+        return null;
+      } finally {
+        setIsLoading(false);
+      }
     },
-    [getAllFAQs]
+    []
   );
 
-  /**
-   * Create FAQ with simplified return for UI components
-   * (matches the previous service function signature)
-   */
-  const createFAQSimple = useCallback(
-    async (faqData: {
-      question: string;
-      answer: string;
-    }): Promise<FAQ & { _id: string }> => {
-      const result = await createFAQ(faqData);
-      
-      if (!result.success || !result.data) {
-        throw new Error(result.error || "Failed to create FAQ");
+  const deleteAdminFAQ = useCallback(async (id: string): Promise<boolean> => {
+    setIsLoading(true);
+    setError("");
+
+    try {
+      const response = await apiClient.delete(`/faq/admin/${id}`);
+
+      if (response.data.success) {
+        toast.success("FAQ deleted successfully");
+        return true;
+      } else {
+        toast.error(
+          response.data.error?.message || "Failed to delete admin FAQ"
+        );
+        throw new Error(
+          response.data.error?.message || "Failed to delete admin FAQ"
+        );
+      }
+    } catch (err: any) {
+      const errorMessage =
+        err?.response?.data?.error?.message ||
+        err?.message ||
+        "Failed to delete admin FAQ";
+      setError(errorMessage);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Utility functions
+  const searchFAQs = useCallback(
+    async (
+      searchTerm: string,
+      page: number = 1,
+      limit: number = 10
+    ): Promise<FAQListResponse | null> => {
+      return getFAQs({ search: searchTerm, page, limit });
+    },
+    [getFAQs]
+  );
+
+  const getFAQsByPage = useCallback(
+    async (
+      page: number,
+      limit: number = 10
+    ): Promise<FAQListResponse | null> => {
+      return getFAQs({ page, limit });
+    },
+    [getFAQs]
+  );
+
+  // Validation utilities
+  const validateFAQ = useCallback(
+    (faqData: {
+      question?: string;
+      answer?: string;
+    }): { valid: boolean; error?: string } => {
+      if (!faqData.question || faqData.question.trim().length === 0) {
+        return {
+          valid: false,
+          error: "Question is required and cannot be empty",
+        };
       }
 
-      return result.data;
+      if (!faqData.answer || faqData.answer.trim().length === 0) {
+        return {
+          valid: false,
+          error: "Answer is required and cannot be empty",
+        };
+      }
+
+      if (faqData.question.length < 10) {
+        return {
+          valid: false,
+          error: "Question must be at least 10 characters long",
+        };
+      }
+
+      if (faqData.answer.length < 20) {
+        return {
+          valid: false,
+          error: "Answer must be at least 20 characters long",
+        };
+      }
+
+      if (faqData.question.length > 500) {
+        return {
+          valid: false,
+          error: "Question must be less than 500 characters",
+        };
+      }
+
+      if (faqData.answer.length > 2000) {
+        return {
+          valid: false,
+          error: "Answer must be less than 2000 characters",
+        };
+      }
+
+      return { valid: true };
     },
-    [createFAQ]
+    []
   );
 
   return {
@@ -383,19 +408,25 @@ export const useFAQ = () => {
     isLoading,
     error,
 
-    // Full API methods (with full response objects)
-    getAllFAQs,
+    // Public methods
+    getFAQs,
+    getFAQById,
+    searchFAQs,
+    getFAQsByPage,
+
+    // Admin methods
     createFAQ,
     updateFAQ,
     deleteFAQ,
-    getFAQById,
-    getFAQsByIds,
+    getAdminFAQs,
+    getAdminFAQById,
+    updateAdminFAQ,
+    deleteAdminFAQ,
 
-    // Simplified methods (for backward compatibility with existing components)
-    fetchFAQs,
-    createFAQSimple,
+    // Utilities
+    validateFAQ,
 
-    // Utility
+    // Reset error
     clearError: () => setError(""),
   };
 };

@@ -2,51 +2,41 @@ import mongoose from "mongoose";
 import {
   Enrollment,
   EnrollmentProgressSummary,
-} from "../types/enrollment";
+  LastContentAccessed,
+} from "../types";
 
-// Simplified enrollment progress sub-schema
-const enrollmentProgressSchema = new mongoose.Schema<EnrollmentProgressSummary>(
+// Enrollment Progress Summary Schema
+const enrollmentProgressSummarySchema =
+  new mongoose.Schema<EnrollmentProgressSummary>(
+    {
+      overallCompletion: { type: Number, default: 0, min: 0, max: 100 },
+      totalModules: { type: Number, default: 0 },
+      completedModules: { type: Number, default: 0 },
+      totalLessons: { type: Number, default: 0 },
+      completedLessons: { type: Number, default: 0 },
+      lastActivityAt: { type: Date, default: Date.now },
+    },
+    { _id: false }
+  );
+
+// Last Content Accessed Schema
+const lastContentAccessedSchema = new mongoose.Schema<LastContentAccessed>(
   {
-    overallCompletion: {
-      type: Number,
+    moduleId: { type: String, required: true },
+    lessonId: { type: String, required: true },
+    contentId: { type: String, required: true },
+    contentType: {
+      type: String,
       required: true,
-      default: 0,
-      min: 0,
-      max: 100,
+      enum: ["video", "quiz", "document"],
     },
-    totalModules: {
-      type: Number,
-      required: true,
-      default: 0,
-      min: 0,
-    },
-    completedModules: {
-      type: Number,
-      required: true,
-      default: 0,
-      min: 0,
-    },
-    totalLessons: {
-      type: Number,
-      required: true,
-      default: 0,
-      min: 0,
-    },
-    completedLessons: {
-      type: Number,
-      required: true,
-      default: 0,
-      min: 0,
-    },
-    lastActivityAt: {
-      type: Date,
-      required: false,
-    },
+    lastPosition: { type: Number, default: 0 }, // For videos
+    timestamp: { type: Date, default: Date.now },
   },
   { _id: false }
 );
 
-// Main enrollment schema
+// Main Enrollment Schema
 const enrollmentSchema = new mongoose.Schema<Enrollment>(
   {
     userId: {
@@ -65,6 +55,7 @@ const enrollmentSchema = new mongoose.Schema<Enrollment>(
       type: Date,
       required: true,
       default: Date.now,
+      index: true,
     },
     status: {
       type: String,
@@ -74,21 +65,26 @@ const enrollmentSchema = new mongoose.Schema<Enrollment>(
       index: true,
     },
     progress: {
-      type: enrollmentProgressSchema,
+      type: enrollmentProgressSummarySchema,
       required: true,
-      default: () => ({
+      default: {
         overallCompletion: 0,
         totalModules: 0,
         completedModules: 0,
         totalLessons: 0,
         completedLessons: 0,
-      }),
+        lastActivityAt: new Date(),
+      },
+    },
+    completedContents: {
+      type: [String],
+      default: [],
+      index: true,
     },
     lastUpdated: {
       type: Date,
       required: true,
       default: Date.now,
-      index: true,
     },
 
     // Optional metadata
@@ -98,19 +94,29 @@ const enrollmentSchema = new mongoose.Schema<Enrollment>(
       default: "direct",
     },
     giftFrom: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: false,
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
+      validate: {
+        validator: function (value: any) {
+          // Allow null, ObjectId, or string values
+          return (
+            value === null ||
+            mongoose.Types.ObjectId.isValid(value) ||
+            typeof value === "string"
+          );
+        },
+        message: "giftFrom must be null, a valid ObjectId, or a string",
+      },
     },
     promotionCode: {
       type: String,
-      required: false,
+      default: null,
     },
 
     // Completion tracking
     completedAt: {
       type: Date,
-      required: false,
+      default: null,
     },
     certificateIssued: {
       type: Boolean,
@@ -118,7 +124,7 @@ const enrollmentSchema = new mongoose.Schema<Enrollment>(
     },
     certificateIssuedAt: {
       type: Date,
-      required: false,
+      default: null,
     },
 
     // Analytics
@@ -129,83 +135,75 @@ const enrollmentSchema = new mongoose.Schema<Enrollment>(
     },
     lastActivityAt: {
       type: Date,
-      required: false,
+      default: Date.now,
+    },
+
+    // Last accessed content
+    lastContentAccessed: {
+      type: lastContentAccessedSchema,
+      default: null,
     },
   },
   {
     timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
   }
 );
 
-// Compound indexes for efficient queries
-enrollmentSchema.index({ userId: 1, courseId: 1 }, { unique: true }); // Prevent duplicate enrollments
-enrollmentSchema.index({ courseId: 1, status: 1 }); // Course enrollments by status
-enrollmentSchema.index({ userId: 1, status: 1 }); // User enrollments by status
-enrollmentSchema.index({ enrolledAt: -1 }); // Recent enrollments
-enrollmentSchema.index({ lastActivityAt: -1 }); // Recent activity
-enrollmentSchema.index({ "progress.overallCompletion": -1 }); // Sort by completion
+// Indexes for better performance
+enrollmentSchema.index({ userId: 1, courseId: 1 }, { unique: true });
+enrollmentSchema.index({ userId: 1, status: 1 });
+enrollmentSchema.index({ courseId: 1, status: 1 });
+enrollmentSchema.index({ enrolledAt: -1 });
+enrollmentSchema.index({ lastActivityAt: -1 });
+enrollmentSchema.index({ status: 1, enrolledAt: -1 });
 
-// Pre-save middleware to update lastUpdated
-enrollmentSchema.pre("save", function (next) {
-  this.lastUpdated = new Date();
+// Pre-update middleware
+enrollmentSchema.pre("findOneAndUpdate", function (next) {
+  this.set({ lastUpdated: new Date() });
   next();
 });
 
-// Pre-update middleware to update lastUpdated
-enrollmentSchema.pre(
-  ["findOneAndUpdate", "updateOne", "updateMany"],
-  function (next) {
-    this.set({ lastUpdated: new Date() });
-    next();
-  }
-);
-
-// Static methods for common queries
-enrollmentSchema.statics.findByUser = function (userId: string) {
-  return this.find({ userId }).populate("courseId", "title thumbnail category");
-};
-
-enrollmentSchema.statics.findByCourse = function (courseId: string) {
-  return this.find({ courseId }).populate(
-    "userId",
-    "firstName lastName email profilePicture"
-  );
+// Static methods
+enrollmentSchema.statics.findByUserAndCourse = function (
+  userId: string,
+  courseId: string
+) {
+  return this.findOne({ userId, courseId, status: { $ne: "dropped" } });
 };
 
 enrollmentSchema.statics.findActiveByUser = function (userId: string) {
-  return this.find({ userId, status: "active" }).populate(
-    "courseId",
-    "title thumbnail category"
-  );
+  return this.find({ userId, status: "active" });
 };
 
 enrollmentSchema.statics.findCompletedByUser = function (userId: string) {
-  return this.find({ userId, status: "completed" }).populate(
-    "courseId",
-    "title thumbnail category"
-  );
-};
-
-enrollmentSchema.statics.getEnrollmentStats = function (courseId: string) {
-  return this.aggregate([
-    { $match: { courseId: new mongoose.Types.ObjectId(courseId) } },
-    {
-      $group: {
-        _id: "$status",
-        count: { $sum: 1 },
-        avgCompletion: { $avg: "$progress.overallCompletion" },
-      },
-    },
-  ]);
+  return this.find({ userId, status: "completed" });
 };
 
 // Instance methods
+enrollmentSchema.methods.updateProgress = function (
+  progressData: Partial<EnrollmentProgressSummary>
+) {
+  this.progress = { ...this.progress, ...progressData };
+  this.lastActivityAt = new Date();
+  return this.save();
+};
+
 enrollmentSchema.methods.markAsCompleted = function () {
   this.status = "completed";
   this.completedAt = new Date();
   this.progress.overallCompletion = 100;
-  this.progress.completedModules = this.progress.totalModules;
-  this.progress.completedLessons = this.progress.totalLessons;
+  return this.save();
+};
+
+enrollmentSchema.methods.pause = function () {
+  this.status = "paused";
+  return this.save();
+};
+
+enrollmentSchema.methods.resume = function () {
+  this.status = "active";
   return this.save();
 };
 

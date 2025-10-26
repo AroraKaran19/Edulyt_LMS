@@ -6,7 +6,7 @@ import { useFormContext } from "react-hook-form";
 import { Controller } from "react-hook-form";
 import { CourseFormData } from "@/types/courseForm";
 import { useUpload } from "@/hooks/useUpload";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 const Screen3 = () => {
   const [isMounted, setIsMounted] = useState(false);

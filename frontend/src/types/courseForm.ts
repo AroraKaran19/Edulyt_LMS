@@ -97,6 +97,11 @@ export interface CourseFormContextType {
     skills: string[],
     category: string
   ) => string[];
+
+  // Course creation status
+  isCourseCreated: () => boolean;
+  getCreatedCourseId: () => string | null;
+  clearCourseCreationStatus: () => void;
 }
 
 // ===================
@@ -247,6 +252,11 @@ export interface UseCourseFormReturn {
     skills: string[],
     category: string
   ) => string[];
+
+  // Course creation status
+  isCourseCreated: () => boolean;
+  getCreatedCourseId: () => string | null;
+  clearCourseCreationStatus: () => void;
 }
 
 // ===================
@@ -290,12 +300,12 @@ export const SCREEN_CONFIG: Record<number, ScreenConfig> = {
   },
   3: {
     id: 3,
-    title: "Instructor Information",
-    description: "Add instructor details for your course",
+    title: "Course Media",
+    description: "Add course thumbnail and preview video",
     component: null as any,
-    validation: (data) => !!(data.instructor && data.instructor.length > 0),
-    requiredFields: ["instructor"],
-    optionalFields: [],
+    validation: (data) => !!data.thumbnail,
+    requiredFields: ["thumbnail"],
+    optionalFields: ["previewVideoUrl"],
   },
   4: {
     id: 4,
@@ -384,9 +394,18 @@ export const SCREEN_CONFIG: Record<number, ScreenConfig> = {
     requiredFields: [],
     optionalFields: [],
   },
+  13: {
+    id: 13,
+    title: "Instructor Selection",
+    description: "Select instructors for your course",
+    component: null as any,
+    validation: (data) => !!(data.instructor && data.instructor.length > 0),
+    requiredFields: ["instructor"],
+    optionalFields: [],
+  },
 };
 
-export const TOTAL_SCREENS = 12;
+export const TOTAL_SCREENS = 13;
 export const STORAGE_KEY = "course_form_data";
 export const DRAFT_KEY = "course_form_draft";
 export const VERSION = "1.0.0";

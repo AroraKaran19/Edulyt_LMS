@@ -1,236 +1,371 @@
-import { Request, Response } from "express";
-import { UserModel } from "../models/user.schema";
-import bcrypt from "bcryptjs";
-import dotenv from "dotenv";
-import { AuthService } from "../services/auth.service";
 import {
-  asyncHandler,
   AppError,
+  asyncHandler,
   sendSuccessResponse,
 } from "../middlewares/error.middleware";
-import { EnrollmentModel } from "../models/enrollment.schema";
+import { UserModel } from "../models";
+import { Request, Response } from "express";
+import jwt from "jsonwebtoken";
+import {
+  changeUserPassword,
+  loginUser,
+  registerUser,
+  resetUserPassword,
+} from "../services/auth.services";
+import bcrypt from "bcryptjs";
+import { Student, User } from "../types";
 
-dotenv.config();
+const detectDeviceType = (userAgent: string) => {
+  if (userAgent.includes("Mobile")) {
+    return "mobile";
+  } else if (userAgent.includes("Tablet")) {
+    return "tablet";
+  } else if (userAgent.includes("Desktop")) {
+    return "desktop";
+  } else {
+    return "web";
+  }
+};
 
-export class AuthController {
-  private authService: AuthService;
+const protectedUser = (user: User) => {
+  return {
+    _id: user._id,
+    email: user.email,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    userType: user.userType,
+    provider: user.provider,
+    profilePicture: user.profilePicture,
+    ...(user.userType === "student" && {
+      enrollments: (user as Student).enrollments,
+    }),
+  };
+};
 
-  constructor() {
-    this.authService = new AuthService();
+export const register = asyncHandler(async (req: Request, res: Response) => {
+  const {
+    email,
+    password,
+    confirmPassword,
+    userType = "student",
+    provider = "credentials",
+  } = req.body;
+
+  if (!email || !password || !confirmPassword) {
+    throw new AppError("All fields are required", 400);
   }
 
-  /**
-   * Extract device information from request
-   * @param req - Express request object
-   * @returns Device information object
-   */
-  private extractDeviceInfo(req: Request) {
-    return {
-      userAgent: req.get("User-Agent"),
-      ipAddress:
-        req.ip || req.connection.remoteAddress || req.socket.remoteAddress,
-      deviceType: undefined, // Will be auto-detected from user agent
-    };
+  if (password !== confirmPassword) {
+    throw new AppError("Passwords do not match", 400);
   }
 
-  register = asyncHandler(async (req: Request, res: Response) => {
-    const {
-      email,
-      password,
-      confirmPassword,
-      userType = "student",
-      instructorData,
-      ...additionalData
-    } = req.body;
+  const existingUser = await UserModel.findOne({ email });
+  if (existingUser) {
+    throw new AppError("User already exists", 400);
+  }
 
-    if (!email || !password || !confirmPassword) {
-      throw new AppError("All fields are required", 400);
-    }
+  const newUser = await registerUser({ email, password, userType, provider });
+  if (!newUser) {
+    throw new AppError("Failed to register user", 500);
+  }
 
-    const existingUser = await UserModel.findOne({ email });
-    if (existingUser) {
-      throw new AppError("Email already in use", 400);
-    }
+  const protectedNewUser = protectedUser(newUser);
 
-    if (password !== confirmPassword) {
-      throw new AppError("Passwords do not match", 400);
-    }
+  const accessToken = await generateAccessToken(newUser._id);
 
-    // Extract device information from request
-    const deviceInfo = this.extractDeviceInfo(req);
-
-    // Prepare additional data for the service
-    const serviceAdditionalData = {
-      ...additionalData,
-      instructorData,
-    };
-
-    const { user, accessToken, refreshToken } = await this.authService.register(
-      email,
-      password,
-      userType,
-      deviceInfo,
-      serviceAdditionalData
-    );
-
-    const data = {
-      user,
-      accessToken,
-      refreshToken,
-    };
-
-    sendSuccessResponse(res, data, "User created successfully", 201);
+  newUser.refreshTokens.push({
+    token: accessToken,
+    deviceInfo: {
+      userAgent: req.headers["user-agent"],
+      ipAddress: req.ip,
+      deviceType: detectDeviceType(req.headers["user-agent"] || ""),
+    },
+    createdAt: new Date(),
+    lastUsed: new Date(),
+    isActive: true,
+    expiresAt: new Date(Date.now() + 1 * 60 * 60 * 1000), // 1 hour from now
   });
+  await newUser.save();
 
-  /**
-   * Login a user
-   * @param req - Express request object
-   * @param res - Express response object
-   */
-  login = asyncHandler(async (req: Request, res: Response) => {
-    const { email, password } = req.body;
+  sendSuccessResponse(
+    res,
+    { user: protectedNewUser, accessToken },
+    "User registered successfully",
+    201
+  );
+});
 
-    if (!email || !password) {
-      throw new AppError("Email and password are required!", 400);
-    }
+export const login = asyncHandler(async (req: Request, res: Response) => {
+  const { email, password } = req.body;
 
-    const user = await UserModel.findOne({ email }).select("+password");
-    if (!user) {
-      throw new AppError("User not found!", 401);
-    }
+  if (!email || !password) {
+    throw new AppError("Email and password are required", 400);
+  }
 
-    // Check if user is registered with OAuth provider
-    if (user.provider !== "credentials") {
-      throw new AppError(
-        `User is registered with ${user.provider.toUpperCase()}!`,
-        401
-      );
-    }
+  const user = await loginUser(email, password);
+  if (!user) {
+    throw new AppError("Invalid credentials", 401);
+  }
 
-    // get enrolled courses list
-    const enrolledCourses = await EnrollmentModel.find({ userId: user._id });
+  const protectedLoggedInUser = protectedUser(user);
 
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!isPasswordValid) {
-      throw new AppError("Invalid credentials!", 401);
-    }
+  const accessToken = await generateAccessToken(user._id);
 
-    // Extract device information from request
-    const deviceInfo = this.extractDeviceInfo(req);
-
-    const { accessToken, refreshToken } = await this.authService.login(
-      email,
-      password,
-      deviceInfo
-    );
-
-    const data = {
-      user: { ...user.toObject(), enrolledCourses },
-      accessToken,
-      refreshToken,
-    };
-
-    sendSuccessResponse(res, data, "Login successful");
-  });
-
-  /**
-   * Login a user with OAuth
-   * @param req - Express request object
-   * @param res - Express response object
-   */
-  oauthSignIn = asyncHandler(async (req: Request, res: Response) => {
-    const {
-      email,
-      fullName,
-      provider,
-      userType = "student",
-      profilePicture,
-    } = req.body;
-
-    if (!email || !fullName || !provider) {
-      throw new AppError("All fields are required", 400);
-    }
-
-    // Only allow Google and LinkedIn for OAuth login
-    if (provider !== "google" && provider !== "linkedin") {
-      throw new AppError("Only Google and LinkedIn OAuth are supported", 400);
-    }
-
-    // Extract device information from request
-    const deviceInfo = this.extractDeviceInfo(req);
-
-    const user = await UserModel.findOne({ email });
-    if (!user) {
-      // Create a new user
-      const { user, accessToken, refreshToken } =
-        await this.authService.createUserWithOAuth(
-          email,
-          fullName,
-          provider,
-          userType,
-          profilePicture,
-          deviceInfo
-        );
-
-      // Fetch enrolled courses for new user (will be empty array for new users)
-      const enrolledCourses = await EnrollmentModel.find({ userId: user._id });
-
-      const data = {
-        user: { ...(user as any).toObject(), enrolledCourses },
-        accessToken,
-        refreshToken,
-      };
-
-      sendSuccessResponse(res, data, "User created successfully");
-      return;
-    }
-
-    // Check if user has the same OAuth provider
-    if (user.provider === provider) {
-      // Login the user
-      const { accessToken, refreshToken } = await this.authService.oauthSignIn(
-        email,
-        fullName,
-        provider,
-        deviceInfo
-      );
-
-      const enrolledCourses = await EnrollmentModel.find({ userId: user._id });
-
-      sendSuccessResponse(
-        res,
-        {
-          user: { ...user.toObject(), enrolledCourses },
-          accessToken,
-          refreshToken,
+  await UserModel.findByIdAndUpdate(user._id, {
+    $push: {
+      refreshTokens: {
+        token: accessToken,
+        deviceInfo: {
+          userAgent: req.headers["user-agent"],
+          ipAddress: req.ip,
+          deviceType: detectDeviceType(req.headers["user-agent"] || ""),
         },
-        "Login successful"
-      );
-    } else {
-      // return error
+      },
+    },
+    createdAt: new Date(),
+    lastUsed: new Date(),
+    isActive: true,
+    expiresAt: new Date(Date.now() + 1 * 60 * 60 * 1000), // 1 hour from now
+  });
+  sendSuccessResponse(
+    res,
+    { user: protectedLoggedInUser, accessToken },
+    "User logged in successfully"
+  );
+});
+
+export const oauthSignin = asyncHandler(async (req: Request, res: Response) => {
+  const { email, fullName, provider, providerDetails } = req.body;
+  if (!email || !fullName || !provider) {
+    throw new AppError("All fields are required", 400);
+  }
+  if (provider !== "google" && provider !== "linkedin") {
+    throw new AppError("Only Google and LinkedIn OAuth are supported", 400);
+  }
+
+  let user = await UserModel.findOne({ email });
+  if (!user) {
+    // create a new user
+
+    let accountDetails: User["accounts"]["google" | "linkedin"] = {};
+    if (provider === "google") {
+      accountDetails = {
+        id: providerDetails?.id,
+        name: providerDetails?.name,
+        email: providerDetails?.email,
+        image: providerDetails?.picture || providerDetails?.image,
+        email_verified: providerDetails?.email_verified,
+        access_token: providerDetails?.access_token,
+      };
+    } else if (provider === "linkedin") {
+      accountDetails = {
+        sub: providerDetails?.sub,
+        name: providerDetails?.name,
+        given_name: providerDetails?.given_name,
+        family_name: providerDetails?.family_name,
+        picture: providerDetails?.picture,
+        locale: providerDetails?.locale,
+        email: providerDetails?.email,
+        email_verified: providerDetails?.email_verified,
+        refreshToken: providerDetails?.refreshToken,
+        accessToken: providerDetails?.accessToken,
+      };
+    }
+
+    const hashedPassword = await bcrypt.hash(Math.random().toString(36), 10);
+    const newUser = await registerUser({
+      email,
+      password: hashedPassword,
+      provider,
+      profilePicture: providerDetails?.picture || providerDetails?.image,
+      accounts: {
+        [provider]: accountDetails,
+      },
+    });
+    user = newUser;
+  } else {
+    if (user.provider !== provider) {
       throw new AppError(
         "User already registered with different provider!",
         401
       );
     }
+  }
+
+  if (!user) {
+    throw new AppError("Failed to create user", 500);
+  }
+
+  const protectedOAuthUser = protectedUser(user);
+
+  const accessToken = await generateAccessToken(user._id);
+
+  await UserModel.findByIdAndUpdate(user._id, {
+    $push: {
+      refreshTokens: {
+        token: accessToken,
+        deviceInfo: {
+          userAgent: req.headers["user-agent"],
+          ipAddress: req.ip,
+          deviceType: detectDeviceType(req.headers["user-agent"] || ""),
+        },
+        createdAt: new Date(),
+        lastUsed: new Date(),
+        isActive: true,
+        expiresAt: new Date(Date.now() + 1 * 60 * 60 * 1000), // 1 hour from now
+      },
+    },
   });
+  sendSuccessResponse(
+    res,
+    { user: protectedOAuthUser, accessToken },
+    "User logged in successfully"
+  );
+});
 
-  /**
-   * Refresh a token
-   * @param req - Express request object
-   * @param res - Express response object
-   */
-  refreshToken = asyncHandler(async (req: Request, res: Response) => {
-    const { refreshToken } = req.body;
+export const refreshToken = asyncHandler(
+  async (req: Request, res: Response) => {
+    // User is already verified by middleware, get from req.user
+    const user = req.user;
 
-    if (!refreshToken) {
-      throw new AppError("Refresh token is required", 400);
+    if (!user) {
+      throw new AppError("User not found", 401);
     }
 
-    const { accessToken } = await this.authService.refreshToken(refreshToken);
+    // Generate new access token
+    const newAccessToken = await generateAccessToken(user._id!);
 
-    const data = { accessToken };
+    // Get the old access token from the request
+    const oldAccessToken = req.headers.authorization?.substring(7); // Remove 'Bearer ' prefix
 
-    sendSuccessResponse(res, data, "Token refreshed");
-  });
-}
+    if (oldAccessToken) {
+      // Deactivate the old token and add the new one
+      await UserModel.findByIdAndUpdate(
+        user._id,
+        {
+          $set: {
+            "refreshTokens.$[elem].isActive": false,
+            "refreshTokens.$[elem].lastUsed": new Date(),
+          },
+        },
+        {
+          arrayFilters: [{ "elem.token": oldAccessToken }],
+        }
+      );
+
+      // Add the new access token to the refreshTokens array
+      await UserModel.findByIdAndUpdate(user._id, {
+        $push: {
+          refreshTokens: {
+            token: newAccessToken,
+            deviceInfo: {
+              userAgent: req.headers["user-agent"],
+              ipAddress: req.ip,
+              deviceType: detectDeviceType(req.headers["user-agent"] || ""),
+            },
+            createdAt: new Date(),
+            lastUsed: new Date(),
+            isActive: true,
+            expiresAt: new Date(Date.now() + 1 * 60 * 60 * 1000), // 1 hour from now
+          },
+        },
+      });
+    }
+
+    sendSuccessResponse(
+      res,
+      { accessToken: newAccessToken },
+      "Token refreshed successfully"
+    );
+  }
+);
+
+export const generateAccessToken = async (userId: string) => {
+  if (!process.env.JWT_SECRET) {
+    throw new AppError("JWT_SECRET is not set", 500);
+  }
+  try {
+    return jwt.sign({ userId }, process.env.JWT_SECRET, {
+      expiresIn: "1h",
+    });
+  } catch (error) {
+    throw new AppError("Failed to generate access token", 500);
+  }
+};
+
+export const generateResetPasswordToken = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { email } = req.body;
+
+    if (!email) {
+      throw new AppError("Email is required", 400);
+    }
+
+    const user = await UserModel.findOne({ email });
+    if (!user) {
+      // If user not found, still send the fake confirmation
+      sendSuccessResponse(res, null, "Reset password link");
+      return;
+    }
+
+    const resetPasswordToken = generateResetUserPasswordToken(user._id, email);
+    if (!process.env.FRONTEND_URL) {
+      throw new AppError("FRONTEND_URL is not set", 500);
+    }
+
+    sendSuccessResponse(
+      res,
+      {
+        link: `${process.env.FRONTEND_URL}/reset-password?token=${resetPasswordToken}`,
+      },
+      "Reset password link"
+    );
+  }
+);
+
+export const resetPassword = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { newPassword, token } = req.body;
+
+    if (!newPassword || !token) {
+      throw new AppError("Invalid request", 400);
+    }
+
+    await resetUserPassword(token, newPassword);
+    sendSuccessResponse(res, null, "Password reset successfully");
+  }
+);
+
+export const generateResetUserPasswordToken = (
+  userId: string,
+  email: string
+) => {
+  if (!process.env.JWT_SECRET) {
+    throw new AppError("JWT_SECRET is not set", 500);
+  }
+  const resetPasswordToken = jwt.sign(
+    { userId, email },
+    process.env.JWT_SECRET,
+    { expiresIn: "10m" } // 10 minutes
+  );
+  return resetPasswordToken;
+};
+
+export const changePassword = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { newPassword, oldPassword } = req.body;
+    const userId = req.user?._id;
+
+    if (!userId) {
+      throw new AppError("User not found", 404);
+    }
+
+    if (!newPassword || !oldPassword) {
+      throw new AppError("Invalid request", 400);
+    }
+
+    await changeUserPassword(userId, newPassword, oldPassword);
+
+    sendSuccessResponse(res, null, "Password changed successfully");
+  }
+);

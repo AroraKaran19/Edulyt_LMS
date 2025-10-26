@@ -1,6 +1,5 @@
-import AdminTopHeader from '@/components/admin/AdminTopHeader'
-import InternshipsAnalytics from '@/components/admin/internships/InternshipsAnalytics'
-import React from 'react'
+import AdminTopHeader from "@/components/admin/AdminTopHeader";
+import InternshipsAnalytics from "@/components/admin/internships/InternshipsAnalytics";
 
 const page = () => {
   return (
@@ -10,7 +9,7 @@ const page = () => {
         <InternshipsAnalytics />
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default page
+export default page;

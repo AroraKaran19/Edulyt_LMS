@@ -2,14 +2,16 @@ import { Course, User } from "./";
 
 export interface PaymentOrder {
   _id?: string;
-	orderId: string;
   amount: number;
   currency: "INR";
-  userId: string | User;
-  courseId: string | Course;
+  userId: User | string;
+  courseId: Course | string;
   planType: "elite" | "essential";
-  paymentMethod: "phonepe";
-  paymentStatus: "pending" | "success" | "failed" | "processing";
+  paymentMethod: "paytm";
+  paymentMode: string;
+  txnId: string;
+  token: string;
+  paymentStatus: "pending" | "success" | "failed";
   createdAt?: Date;
   updatedAt?: Date;
 }

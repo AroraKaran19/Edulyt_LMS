@@ -1,16 +1,18 @@
 "use client";
-import { ChevronDown, Loader2 } from "lucide-react";
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { ChevronDown } from "lucide-react";
+import Loader from "@/components/ui/Loader";
+import { useState, useEffect, useCallback, useRef } from "react";
 import CourseSearchBar from "./CourseSearchBar";
-import { cn, fetcher, buildQueryString } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import FilterContainer from "./FilterContainer";
 import CourseCard from "./CourseCard";
-import { ENDPOINTS } from "@/constants/endpoints";
 import { getErrorUIConfig } from "@/configs/errorUIConfig";
 import Error from "@/components/ui/Error";
 import useSWR from "swr";
 import { Course } from "@/types";
 import { Filter } from "@/types";
+import { ENDPOINTS } from "@/constants/endpoints";
+import { fetcher } from "@/lib/utils";
 
 const CoursesSection = () => {
   // Local state management instead of context
@@ -22,8 +24,12 @@ const CoursesSection = () => {
   const [filterShown, setFilterShown] = useState(false);
   const [windowWidth, setWindowWidth] = useState(0);
   const [page, setPage] = useState(1);
+  const [allCourses, setAllCourses] = useState<Course[]>([]);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const lastLoadTimeRef = useRef(0);
+  const isLoadingRef = useRef(false);
 
-  // Define filters locally
   const filters: Filter[] = [
     { label: "All", value: "all" },
     { label: "Data Science", value: "data-science" },
@@ -32,76 +38,131 @@ const CoursesSection = () => {
     { label: "Web Development", value: "web-development" },
   ];
 
-  // Debounce search input
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(search);
-    }, 500); // 500ms delay
-
-    return () => clearTimeout(timer);
-  }, [search]);
-
-  // Reset page when debounced search changes
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch]);
+    setAllCourses([]);
+    setHasMore(true);
+  }, [debouncedSearch, selectedFilter]);
 
-  // Build complete URL with query string
-  const apiUrl = useMemo(() => {
-    const queryString = buildQueryString(debouncedSearch, selectedFilter, page);
-    return queryString
-      ? `${ENDPOINTS.courses.all}?${queryString}`
-      : ENDPOINTS.courses.all;
-  }, [debouncedSearch, selectedFilter, page]);
+  // Build API URL with filters and search
+  const buildApiUrl = useCallback(() => {
+    const params = new URLSearchParams();
+    params.append("page", page.toString());
+    params.append("limit", "10");
 
-  // SWR hook with dynamic URL
-  const { data, error, isLoading } = useSWR(apiUrl, fetcher, {
+    if (debouncedSearch) {
+      params.append("search", debouncedSearch);
+    }
+
+    // Convert selected filters to categories (excluding "all")
+    const categories = selectedFilter
+      .filter((filter) => filter.value !== "all")
+      .map((filter) => filter.value);
+
+    if (categories.length > 0) {
+      params.append("categories", categories.join(","));
+    }
+
+    const url = `${ENDPOINTS.courses.all}?${params.toString()}`;
+    return url;
+  }, [page, debouncedSearch, selectedFilter]);
+
+  const { data, error, isLoading } = useSWR(buildApiUrl(), fetcher, {
     revalidateOnFocus: false,
     revalidateOnReconnect: true,
-    errorRetryCount: 3,
     errorRetryInterval: 5000,
+    dedupingInterval: 1000 * 60, // 1 minutes
   });
 
-  const courses: Course[] = data?.data?.courses || [];
+  // Update allCourses when new data arrives
+  useEffect(() => {
+    if (data?.data?.data?.courses) {
+      const currentPage = data.data.data.page;
+      const totalPages = data.data.data.totalPages;
 
-  // Handle filter selection
+      if (currentPage === page) {
+        if (page === 1) {
+          setAllCourses(data.data.data.courses);
+        } else {
+          setAllCourses((prev) => [...prev, ...data.data.data.courses]);
+        }
+        setHasMore(currentPage < totalPages);
+        setIsLoadingMore(false);
+        isLoadingRef.current = false;
+      }
+    } else if (
+      data?.data?.data &&
+      Array.isArray(data.data.data) &&
+      data.data.data.length === 0
+    ) {
+      // Handle case when API returns empty array (no courses found)
+      setHasMore(false);
+      setIsLoadingMore(false);
+      isLoadingRef.current = false;
+    }
+  }, [data, page]);
+
+  // Load more function
+  const loadMore = useCallback(() => {
+    if (!isLoadingMore && hasMore && !isLoadingRef.current) {
+      isLoadingRef.current = true;
+      setIsLoadingMore(true);
+      setPage((prev) => prev + 1);
+    }
+  }, [isLoadingMore, hasMore]);
+
+  // Handle scroll for infinite loading
+  const handleScroll = useCallback(() => {
+    const { scrollTop, scrollHeight, clientHeight } = document.documentElement;
+    const isNearBottom = scrollTop + clientHeight >= scrollHeight - 100;
+    const now = Date.now();
+
+    if (
+      isNearBottom &&
+      hasMore &&
+      !isLoadingMore &&
+      now - lastLoadTimeRef.current > 1000
+    ) {
+      lastLoadTimeRef.current = now;
+      loadMore();
+    }
+  }, [hasMore, isLoadingMore, loadMore, page]);
+
+  // Attach scroll listener to window
+  useEffect(() => {
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [handleScroll]);
+
   const handleFilterClick = useCallback((filter: Filter) => {
     setSelectedFilter((prev) => {
       if (filter.value === "all") {
         return [filter];
       }
 
-      // Remove "all" if it exists and we're selecting a specific filter
       const withoutAll = prev.filter((f) => f.value !== "all");
 
-      // Check if filter is already selected
       const isSelected = withoutAll.some((f) => f.value === filter.value);
 
       if (isSelected) {
-        // Remove the filter
         const newFilters = withoutAll.filter((f) => f.value !== filter.value);
         return newFilters.length === 0
           ? [{ label: "All", value: "all" }]
           : newFilters;
       } else {
-        // Add the filter
         return [...withoutAll, filter];
       }
     });
 
-    // Reset page when filters change
     setPage(1);
   }, []);
 
-  // Handle search change (immediate UI update, debounced API call)
   const handleSearchChange = useCallback((newSearch: string) => {
     setSearch(newSearch);
-    // Note: debouncedSearch will be updated by useEffect after 500ms
   }, []);
 
-  // Handle load more
-  const handleLoadMore = useCallback(() => {
-    setPage((prev) => prev + 1);
+  const handleDebouncedSearch = useCallback((debouncedValue: string) => {
+    setDebouncedSearch(debouncedValue);
   }, []);
 
   useEffect(() => {
@@ -117,15 +178,10 @@ const CoursesSection = () => {
   const isMobile = windowWidth === 0 ? true : windowWidth <= 1046;
 
   const renderContent = () => {
-    if (isLoading) {
+    if (isLoading && allCourses.length === 0) {
       return (
-        <div className="col-span-full flex flex-col items-center justify-center py-16">
-          <Loader2 className="w-10 h-10 text-text-primary animate-spin" />
-          <p className="text-sm text-text-primary/50 text-center mt-4 animate-fade-in">
-            {search !== debouncedSearch
-              ? "Searching..."
-              : "Fetching the best courses for you..."}
-          </p>
+        <div className="w-full h-full flex items-center justify-center">
+          <Loader size="lg" variant="spinner" />
         </div>
       );
     }
@@ -146,13 +202,13 @@ const CoursesSection = () => {
       );
     }
 
-    if (!courses || courses.length === 0) {
+    if (!isLoading && allCourses.length === 0) {
       return (
         <div className="col-span-full flex flex-col items-center justify-center py-12">
           <p className="text-2xl font-bold text-text-primary font-coolvetica mb-2">
             No courses found
           </p>
-          <p className="text-lg text-text-primary/70 text-center break-words overflow-wrap-anywhere max-w-full">
+          <p className="text-lg text-text-primary/70 text-center wrap-break-words overflow-wrap-anywhere max-w-full">
             {debouncedSearch ? (
               <>
                 No results found for &quot;
@@ -174,14 +230,30 @@ const CoursesSection = () => {
       );
     }
 
-    return courses.map((course: Course, index: number) => (
-      <CourseCard
-        key={index}
-        course={course}
-        className="opacity-0 animate-course-card-fade-in"
-        style={{ animationDelay: `${index * 100}ms` }}
-      />
-    ));
+    return (
+      <div className="w-full h-full">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 auto-rows-fr">
+          {allCourses.map((course: Course, index: number) => (
+            <CourseCard
+              key={`${course._id || course.slug}-${index}`}
+              course={course}
+              className="opacity-0 animate-course-card-fade-in"
+              style={{ animationDelay: `${index * 100}ms` }}
+            />
+          ))}
+        </div>
+        {isLoadingMore && (
+          <div className="w-full flex items-center justify-center py-4">
+            <Loader
+              size="md"
+              variant="spinner"
+              text="Loading more courses..."
+              showText={true}
+            />
+          </div>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -195,7 +267,12 @@ const CoursesSection = () => {
         Explore more <span className="text-[#f77124]">Courses</span>
       </p>
       <div className="search-container w-full mt-6 flex gap-6 items-stretch flex-col md:flex-row">
-        <CourseSearchBar search={search} onSearchChange={handleSearchChange} />
+        <CourseSearchBar
+          search={search}
+          onSearchChange={handleSearchChange}
+          onDebouncedSearch={handleDebouncedSearch}
+          debounceDelay={500}
+        />
         <div
           className="courses-filter md:max-w-[190px] shrink-0 flex gap-2 items-center justify-center border border-black/10 rounded-xl p-2 shadow-[inset_0_-1px_2px_rgba(0,0,0,0.2)] px-8 relative cursor-pointer"
           onClick={() => setFilterShown(!filterShown)}
@@ -224,19 +301,9 @@ const CoursesSection = () => {
           handleFilterClick={handleFilterClick}
         />
       )}
-      <div className="courses-container w-full mt-6 md:mt-13 grid grid-cols-1 lg:grid-cols-2 gap-6 auto-rows-fr">
+      <div className="courses-container w-full mt-6 md:mt-13">
         {renderContent()}
       </div>
-      {!isLoading && courses.length > 8 && (
-        <div className="load-more-button w-full flex justify-center mt-5">
-          <button
-            className="w-full sm:w-1/3 font-bold text-sm px-8 py-4 bg-black text-white rounded-xl cursor-pointer"
-            onClick={handleLoadMore}
-          >
-            Load More
-          </button>
-        </div>
-      )}
     </section>
   );
 };

@@ -1,34 +1,40 @@
 "use client";
 import InstructorCard from "@/components/ui/course/InstructorCard";
-import FlexBox from "@/components/ui/FlexBox";
-import { Course } from "@/types";
+import { Course, CourseModule, Instructor } from "@/types";
+import { Enrollment } from "@/types/enrollment";
 import { Plus } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import React from "react";
 
-const CourseCard2 = ({ course }: { course: Course }) => {
+interface CourseCard2Props {
+  course: Course;
+  enrollment?: Enrollment;
+}
 
+const CourseCard2 = ({ course, enrollment }: CourseCard2Props) => {
   const router = useRouter();
 
-  const totalLessons = (course?.modules || []).reduce(
+  const totalLessons = ((course?.modules as CourseModule[]) || []).reduce(
     (acc, module) => acc + (module.lessons || []).length,
     0
   );
   const totalModules = (course?.modules || []).length;
 
+  const handleClick = () => {
+    if (course.slug) {
+      router.push(`/courses/${course.slug}/watch`);
+    }
+  };
+
   return (
-    <FlexBox
-      className="course-card-2 w-full h-full flex-col gap-4 border border-gray-200 rounded-lg p-3 cursor-pointer"
-      onClick={(e) => {
-        e.stopPropagation();
-        router.push(`/courses/${course.slug}/watch`);
-      }}
+    <div
+      className="flex course-card-2 w-full h-full flex-col gap-4 border border-gray-200 rounded-lg p-3 cursor-pointer hover:shadow-md transition-shadow"
+      onClick={handleClick}
     >
       <div className="image-container w-full relative">
         <Image
-          src={course.thumbnail}
-          alt={course.title}
+          src={course.thumbnail || "/courses-demo-image.png"}
+          alt={course.title || "Course thumbnail"}
           width={150}
           height={122}
           className="object-fill w-full max-h-[132px] aspect-video rounded-lg select-none"
@@ -44,21 +50,22 @@ const CourseCard2 = ({ course }: { course: Course }) => {
           </div>
         </div>
       </div>
-      <FlexBox className="w-full h-full flex-col gap-2">
+      <div className="flex w-full h-full flex-col gap-2">
         <h2 className="text-base font-bold line-clamp-1 text-ellipsis">
-          {course.title}
+          {course.title || "Untitled Course"}
         </h2>
         <div className="instructors flex gap-2">
-          {course.instructor.map(
-            (instructor, index) =>
-              index < 2 && (
-                <InstructorCard
-                  key={index}
-                  instructor={instructor}
-                />
-              )
+          {course.instructor && Array.isArray(course.instructor) ? (
+            course.instructor.slice(0, 2).map((instructor, index) => (
+              <InstructorCard
+                key={index}
+                instructor={instructor as Instructor}
+              />
+            ))
+          ) : (
+            <div className="text-xs text-gray-500">No instructors</div>
           )}
-          {course.instructor.length > 2 && (
+          {course.instructor && Array.isArray(course.instructor) && course.instructor.length > 2 && (
             <div className="instructor-count hidden sm:flex gap-0.25 items-center bg-[#EEEEEE] rounded-md p-1">
               <Plus className="w-3 h-3 text-text-primary" fill="#2B1508" />
               <span className="text-xs font-semibold text-text-primary">
@@ -67,8 +74,8 @@ const CourseCard2 = ({ course }: { course: Course }) => {
             </div>
           )}
         </div>
-      </FlexBox>
-    </FlexBox>
+      </div>
+    </div>
   );
 };
 

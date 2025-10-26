@@ -1,21 +1,21 @@
-import { User, Course } from ".";
+import { User, Course, CourseLesson, Content } from ".";
 
-export interface QnAQuestion {
+export interface QnAReply {
   _id?: string;
-  courseId: string | Course;
-  userId: string | User;
-  question: string;
-  isResolved: boolean;
+  userId: User["_id"];
+  message: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
 
-export interface QnAReply {
+export interface QnA {
   _id?: string;
-  questionId: string | QnAQuestion;
-  userId: string | User;
-  reply: string;
-  isInstructorReply: boolean;
+  courseId: Course["_id"];
+  lessonId: CourseLesson["_id"];
+  contentId: Content["_id"];
+  userId: User["_id"];
+  message: string;
+  replies: QnAReply[];
   createdAt?: Date;
   updatedAt?: Date;
 }

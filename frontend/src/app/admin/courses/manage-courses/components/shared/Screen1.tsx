@@ -1,7 +1,6 @@
 "use client";
 import Container from "@/app/admin/components/ui/Container";
 import { EditorHandle } from "@/components/shared/Editor/Editor";
-import { FlexBox } from "@/components/ui";
 import UploadMediaContainer from "@/components/ui/container/UploadMediaContainer";
 import DropDown from "@/components/ui/dropdown/DropDown";
 import CategoryInputWithManagement from "@/components/ui/inputs/CategoryInputWithManagement";
@@ -11,9 +10,9 @@ import { useUpload } from "@/hooks/useUpload";
 import { useFormContext } from "react-hook-form";
 import { Controller } from "react-hook-form";
 import { CourseFormData } from "@/types/courseForm";
-import { getTextFromHtml } from "@/utils/courseFormUtils";
 import dynamic from "next/dynamic";
 import { ChangeEvent, useRef, useEffect, useState } from "react";
+import { getTextFromHtml } from "@/lib/courseFormUtils";
 
 const RichTextEditor = dynamic(
   () => import("@/components/shared/Editor/Editor"),
@@ -34,11 +33,7 @@ const Screen1 = () => {
   useEffect(() => {
     setIsMounted(true);
   }, []);
-  const {
-    uploadFile,
-    isUploading,
-    error: uploadError,
-  } = useUpload();
+  const { uploadFile, isUploading, error: uploadError } = useUpload();
 
   // Watch form values
   const descriptionValue = watch("description");
@@ -57,16 +52,6 @@ const Screen1 = () => {
   const [brochureFolderName, setBrochureFolderName] = useState(
     "courses/new_course/brochure"
   );
-
-  // Language mapping for display
-  const languageMap: Record<string, string> = {
-    "en": "English (en)",
-    "hi": "Hindi (hi)",
-    "es": "Spanish (es)",
-    "fr": "French (fr)",
-    "de": "German (de)",
-    "zh": "Chinese (zh)",
-  };
 
   useEffect(() => {
     if (titleValue) {
@@ -103,9 +88,18 @@ const Screen1 = () => {
     try {
       const result = await uploadFile(file, folderName);
       if (result.success && result.data) {
-        setValue("curriculum", result.data.url, { shouldDirty: true, shouldTouch: true });
-        setValue("curriculumS3Key", result.data.s3Key, { shouldDirty: true, shouldTouch: true });
-        setValue("curriculumSource", "upload", { shouldDirty: true, shouldTouch: true });
+        setValue("curriculum", result.data.url, {
+          shouldDirty: true,
+          shouldTouch: true,
+        });
+        setValue("curriculumS3Key", result.data.s3Key, {
+          shouldDirty: true,
+          shouldTouch: true,
+        });
+        setValue("curriculumSource", "upload", {
+          shouldDirty: true,
+          shouldTouch: true,
+        });
         return result.data.url;
       }
       throw new Error(result.error || "Upload failed");
@@ -114,7 +108,10 @@ const Screen1 = () => {
       // Set form error for curriculum field
       setValue("curriculum", "", { shouldDirty: true, shouldTouch: true });
       setValue("curriculumS3Key", "", { shouldDirty: true, shouldTouch: true });
-      setValue("curriculumSource", "url", { shouldDirty: true, shouldTouch: true });
+      setValue("curriculumSource", "url", {
+        shouldDirty: true,
+        shouldTouch: true,
+      });
       throw error;
     }
   };
@@ -124,9 +121,18 @@ const Screen1 = () => {
     try {
       const result = await uploadFile(file, folderName);
       if (result.success && result.data) {
-        setValue("brochure", result.data.url, { shouldDirty: true, shouldTouch: true });
-        setValue("brochureS3Key", result.data.s3Key, { shouldDirty: true, shouldTouch: true });
-        setValue("brochureSource", "upload", { shouldDirty: true, shouldTouch: true });
+        setValue("brochure", result.data.url, {
+          shouldDirty: true,
+          shouldTouch: true,
+        });
+        setValue("brochureS3Key", result.data.s3Key, {
+          shouldDirty: true,
+          shouldTouch: true,
+        });
+        setValue("brochureSource", "upload", {
+          shouldDirty: true,
+          shouldTouch: true,
+        });
         return result.data.url;
       }
       throw new Error(result.error || "Upload failed");
@@ -135,7 +141,10 @@ const Screen1 = () => {
       // Set form error for brochure field
       setValue("brochure", "", { shouldDirty: true, shouldTouch: true });
       setValue("brochureS3Key", "", { shouldDirty: true, shouldTouch: true });
-      setValue("brochureSource", "url", { shouldDirty: true, shouldTouch: true });
+      setValue("brochureSource", "url", {
+        shouldDirty: true,
+        shouldTouch: true,
+      });
       throw error;
     }
   };
@@ -143,7 +152,10 @@ const Screen1 = () => {
   // Handle URL input changes
   const handleCurriculumUrlChange = (url: string) => {
     setValue("curriculum", url, { shouldDirty: true, shouldTouch: true });
-    setValue("curriculumSource", "url", { shouldDirty: true, shouldTouch: true });
+    setValue("curriculumSource", "url", {
+      shouldDirty: true,
+      shouldTouch: true,
+    });
     setValue("curriculumS3Key", "", { shouldDirty: true, shouldTouch: true });
   };
 
@@ -157,7 +169,10 @@ const Screen1 = () => {
   const handleCurriculumRemove = () => {
     setValue("curriculum", "", { shouldDirty: true, shouldTouch: true });
     setValue("curriculumS3Key", "", { shouldDirty: true, shouldTouch: true });
-    setValue("curriculumSource", "url", { shouldDirty: true, shouldTouch: true });
+    setValue("curriculumSource", "url", {
+      shouldDirty: true,
+      shouldTouch: true,
+    });
   };
 
   const handleBrochureRemove = () => {
@@ -256,7 +271,7 @@ const Screen1 = () => {
             />
           )}
         />
-        <FlexBox className="gap-4">
+        <div className="flex gap-4">
           <Controller
             name="category"
             control={control}
@@ -273,7 +288,9 @@ const Screen1 = () => {
             )}
           />
           {errors.category?.message && (
-            <p className="text-red-500 text-sm mt-1">{errors.category.message}</p>
+            <p className="text-red-500 text-sm mt-1">
+              {errors.category.message}
+            </p>
           )}
           <Controller
             name="audience"
@@ -286,10 +303,7 @@ const Screen1 = () => {
                 onChange={(e: ChangeEvent<HTMLSelectElement>) =>
                   field.onChange(e.target.value)
                 }
-                options={[
-                  "college-students",
-                  "professionals",
-                ]}
+                options={["college-students", "professionals"]}
                 error={errors.audience?.message}
                 required={true}
               />
@@ -300,30 +314,20 @@ const Screen1 = () => {
             control={control}
             rules={{ required: "Language is required" }}
             render={({ field }) => (
-              <DropDown
+              <Input
                 {...field}
                 label="Course Language"
-                value={languageMap[field.value] || field.value || "Select Language"}
-                onChange={(e: ChangeEvent<HTMLSelectElement>) => {
-                  // Extract language code from "English (en)" format
-                  const selectedValue = e.target.value;
-                  const languageCode = selectedValue.match(/\(([^)]+)\)$/)?.[1] || selectedValue;
-                  field.onChange(languageCode);
+                value={field.value || ""}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                  field.onChange(e.target.value);
                 }}
-                options={[
-                  "English (en)",
-                  "Hindi (hi)", 
-                  "Spanish (es)",
-                  "French (fr)",
-                  "German (de)",
-                  "Chinese (zh)",
-                ]}
+                placeholder="Enter course language (e.g., English, Hindi, Spanish)"
                 error={errors.language?.message}
                 required={true}
               />
             )}
           />
-        </FlexBox>
+        </div>
         <div>
           <RichTextEditor
             title="Course Description"
@@ -345,7 +349,7 @@ const Screen1 = () => {
               validate: (value) => {
                 if (!value) return "Course description is required";
                 const textContent = getTextFromHtml(value);
-                
+
                 if (textContent.length < 25) {
                   return "Description must be at least 25 characters";
                 }
@@ -378,7 +382,7 @@ const Screen1 = () => {
               validate: (value) => {
                 if (!value) return "Short description is required";
                 const textContent = getTextFromHtml(value);
-                
+
                 if (textContent.length < 10) {
                   return "Short description must be at least 10 characters";
                 }

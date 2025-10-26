@@ -1,4 +1,4 @@
-import { Affiliate, Course, Review, PaymentOrder } from ".";
+import { Affiliate, Course, Review, PaymentOrder, Enrollment } from ".";
 
 export interface Collaborator extends User {
   totalReferrals: number;
@@ -21,11 +21,12 @@ export interface Instructor extends User {
     description: string;
   }[];
   linkedinUrl?: string;
-  reviews: Review[];
-  ownedCourses: Course[];
+  reviews: Review[] | string[];
+  ownedCourses: Course[] | string[];
 }
 
 export interface Student extends User {
+  enrollments: Enrollment[] | string[];
   collegeName?: string;
   passingYear?: number;
   areaOfInterest?: string;
@@ -55,10 +56,10 @@ export interface Student extends User {
   };
 
   // Orders
-  orders: PaymentOrder["_id"][];
+  orders: PaymentOrder[] | string[];
 
-  // Pending payments (only for students)
-  pendingPayments: PaymentOrder["_id"][];
+  // Pending payments
+  pendingPayments: PaymentOrder[] | string[];
 }
 
 export interface SocialProfiles {
@@ -68,6 +69,7 @@ export interface SocialProfiles {
     email?: string;
     image?: string;
     email_verified?: boolean;
+    access_token?: string;
   };
   linkedin?: {
     sub?: string;

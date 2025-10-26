@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import DropDown from "@/components/ui/dropdown/DropDown";
 import NewSignupusersGraph from "../dashboard/NewSignupusersGraph";
@@ -340,7 +340,9 @@ const InternshipsAnalytics = () => {
                   <p className="text-[#475467] text-xs mb-1 font-medium">
                     Created On
                   </p>
-                  <p className="font-bold text-black text-sm">25 Jul&apos; 23</p>
+                  <p className="font-bold text-black text-sm">
+                    25 Jul&apos; 23
+                  </p>
                 </div>
                 <div className="hidden sm:block w-px h-8 bg-gray-300"></div>
                 <div className="text-left flex-1 sm:flex-none">
@@ -401,7 +403,9 @@ const InternshipsAnalytics = () => {
                   <p className="text-[#475467] text-xs mb-1 font-medium">
                     Created On
                   </p>
-                  <p className="font-bold text-black text-sm">25 Jul&apos; 23</p>
+                  <p className="font-bold text-black text-sm">
+                    25 Jul&apos; 23
+                  </p>
                 </div>
                 <div className="hidden sm:block w-px h-8 bg-gray-300"></div>
                 <div className="text-left flex-1 sm:flex-none">
@@ -462,7 +466,9 @@ const InternshipsAnalytics = () => {
                   <p className="text-[#475467] text-xs mb-1 font-medium">
                     Created On
                   </p>
-                  <p className="font-bold text-black text-sm">25 Jul&apos; 23</p>
+                  <p className="font-bold text-black text-sm">
+                    25 Jul&apos; 23
+                  </p>
                 </div>
                 <div className="hidden sm:block w-px h-8 bg-gray-300"></div>
                 <div className="text-left flex-1 sm:flex-none">

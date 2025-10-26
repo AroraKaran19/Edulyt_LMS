@@ -1,4 +1,3 @@
-import React from "react";
 import { Download, Share2, CheckCircle } from "lucide-react";
 import Image from "next/image";
 
@@ -40,7 +39,7 @@ const CertificateDetailPage = async ({
           {/* Left Column - Course Information */}
           <div className="space-y-2">
             {/* Completion Status */}
-            <div className="flex items-center gap-3 bg-gradient-to-r from-green-200 to-white rounded-xl p-1">
+            <div className="flex items-center gap-3 bg-linear-to-r from-green-200 to-white rounded-xl p-1">
               <CheckCircle className="w-6 h-6 text-[#12B669]" />
               <span className="text-lg font-semibold text-[#12B669] font-plus-jakarta ">
                 Completed on {certificate.completedDate}

@@ -1,103 +1,81 @@
-import { Router } from "express";
 import {
-  getAllFAQsController,
-  getFAQByIdController,
-  createFAQController,
-  updateFAQController,
-  deleteFAQController,
-  getFAQsByIdsController
+  createFAQ,
+  deleteFAQ,
+  getAllFAQ,
+  getFAQById,
+  updateFAQ,
 } from "../controllers/faq.controller";
-// import { verifyAdmin } from "../middlewares/admin.middleware";
+import { verifyAdmin } from "../middlewares/admin.middleware";
+import { verifyUser } from "../middlewares/user.middleware";
+import { Router } from "express";
 
 const router = Router();
 
 /**
  * @route   GET /api/faqs
- * @desc    Get all FAQs with pagination and search
+ * @desc    Get all FAQs
  * @access  Public
- * @params
- *   - page: Page number (default: 1)
- *   - limit: Items per page (default: 10, max: 100)
- *   - search: Search term for question and answer (optional)
- * @example
- *   GET /api/faqs?page=1&limit=10&search=access
  */
-router.get("/", getAllFAQsController);
+router.get("/", getAllFAQ);
 
 /**
  * @route   GET /api/faqs/:id
  * @desc    Get a FAQ by ID
  * @access  Public
- * @params
- *   - id: FAQ ID
- * @example
- *   GET /api/faqs/60f7b3b3b3b3b3b3b3b3b3b3
  */
-router.get("/:id", getFAQByIdController);
+router.get("/:id", getFAQById);
 
 /**
  * @route   POST /api/faqs
  * @desc    Create a new FAQ
  * @access  Admin
- * @body
- *   - question: FAQ question (required)
- *   - answer: FAQ answer (required)
- * @example
- *   POST /api/faqs
- *   {
- *     "question": "How long do I have access to the course?",
- *     "answer": "You have lifetime access to the course content."
- *   }
  */
-router.post("/", createFAQController);
-// For production, uncomment the line below to require admin authentication:
-// router.post("/", verifyAdmin, createFAQController);
+router.post("/", verifyUser, verifyAdmin, createFAQ);
 
 /**
  * @route   PUT /api/faqs/:id
- * @desc    Update an existing FAQ
+ * @desc    Update a FAQ
  * @access  Admin
- * @params
- *   - id: FAQ ID
- * @body
- *   - question: Updated FAQ question (optional)
- *   - answer: Updated FAQ answer (optional)
- * @example
- *   PUT /api/faqs/60f7b3b3b3b3b3b3b3b3b3b3
- *   {
- *     "question": "Updated question",
- *     "answer": "Updated answer"
- *   }
  */
-router.put("/:id", updateFAQController);
-// For production, uncomment the line below to require admin authentication:
-// router.put("/:id", verifyAdmin, updateFAQController);
+router.put("/:id", verifyUser, verifyAdmin, updateFAQ);
 
 /**
  * @route   DELETE /api/faqs/:id
- * @desc    Delete an FAQ
+ * @desc    Delete a FAQ
  * @access  Admin
- * @params
- *   - id: FAQ ID
- * @example
- *   DELETE /api/faqs/60f7b3b3b3b3b3b3b3b3b3b3
  */
-router.delete("/:id", deleteFAQController);
-// For production, uncomment the line below to require admin authentication:
-// router.delete("/:id", verifyAdmin, deleteFAQController);
+router.delete("/:id", verifyUser, verifyAdmin, deleteFAQ);
+
+// ===================
+// Admin Routes
+// ===================
 
 /**
- * @route   POST /api/faqs/by-ids
- * @desc    Get FAQs by array of IDs
- * @access  Public
- * @body
- *   - ids: Array of FAQ IDs
- * @example
- *   POST /api/faqs/by-ids
- *   {
- *     "ids": ["60f7b3b3b3b3b3b3b3b3b3b3", "60f7b3b3b3b3b3b3b3b3b3b4"]
- *   }
+ * @route   GET /api/admin/faqs
+ * @desc    Get all FAQs for admin (with full data)
+ * @access  Admin
  */
-router.post("/by-ids", getFAQsByIdsController);
+router.get("/admin", verifyUser, verifyAdmin, getAllFAQ);
+
+/**
+ * @route   GET /api/admin/faqs/:id
+ * @desc    Get a FAQ by ID for admin (with full data)
+ * @access  Admin
+ */
+router.get("/admin/:id", verifyUser, verifyAdmin, getFAQById);
+
+/**
+ * @route   PUT /api/admin/faqs/:id
+ * @desc    Update a FAQ (Admin can update any FAQ)
+ * @access  Admin
+ */
+router.put("/admin/:id", verifyUser, verifyAdmin, updateFAQ);
+
+/**
+ * @route   DELETE /api/admin/faqs/:id
+ * @desc    Delete a FAQ (Admin can delete any FAQ)
+ * @access  Admin
+ */
+router.delete("/admin/:id", verifyUser, verifyAdmin, deleteFAQ);
 
 export default router;

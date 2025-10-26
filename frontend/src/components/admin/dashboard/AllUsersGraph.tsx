@@ -11,46 +11,18 @@ import {
   Legend,
 } from "recharts";
 
-const AllUsersGraph = () => {
-  // const [isLoading, setIsLoading] = useState(true);
-  const [selectedTab, setSelectedTab] = useState("all"); // 'all', 'active', 'unactive'
-  // const router = useRouter();
-
-  // useEffect(() => {
-  //     const token = localStorage.getItem('adminToken')
-  //     if (!token) {
-  //         router.push('/admin/login')
-  //         return
-  //     }
-  //     setIsLoading(false);
-  // }, [router])
-
-  // if (isLoading) {
-  //     return (
-  //         <div className="flex w-full h-full bg-[#F8F8F8] items-center justify-center">
-  //             <div className="text-center">
-  //                 <div className="animate-spin rounded-full h-8 w-8 lg:h-12 lg:w-12 border-b-2 border-black mx-auto"></div>
-  //                 <p className="mt-2 lg:mt-4 text-black text-sm lg:text-base">Loading dashboard...</p>
-  //             </div>
-  //         </div>
-  //     )
-  // }
-
-  // Chart data matching the first image
-  const chartData = [
-    { year: 2019, Active: 2800, Unactive: 2200 },
-    { year: 2020, Active: 3000, Unactive: 2200 },
-    { year: 2021, Active: 3900, Unactive: 3500 },
-    { year: 2022, Active: 1800, Unactive: 700 },
-  ];
-
-  // Calculate counts for tabs
-  const totalCount = chartData.reduce(
-    (sum, item) => sum + item.Active + item.Unactive,
-    0
-  );
-  const activeCount = chartData.reduce((sum, item) => sum + item.Active, 0);
-  const unactiveCount = chartData.reduce((sum, item) => sum + item.Unactive, 0);
+const AllUsersGraph = ({
+  totalUsers,
+  activeUsers,
+  inactiveUsers,
+  chartData,
+}: {
+  totalUsers: number;
+  activeUsers: number;
+  inactiveUsers: number;
+  chartData: any[];
+}) => {
+  const [selectedTab, setSelectedTab] = useState("all");
 
   return (
     <div className="flex h-full w-full">
@@ -73,7 +45,7 @@ const AllUsersGraph = () => {
               >
                 All
                 <span className="bg-[#EFF4FF] rounded-full px-2 py-1 ml-1 text-sm text-[#6B7280]">
-                  {Math.round(totalCount / 1000)}k
+                  {totalUsers.toLocaleString()}
                 </span>
               </button>
               <button
@@ -88,7 +60,7 @@ const AllUsersGraph = () => {
               >
                 Active{" "}
                 <span className="bg-[#EFF4FF] rounded-full px-2 py-1 ml-1 text-sm text-[#6B7280]">
-                  {Math.round(activeCount / 1000)}k
+                  {activeUsers.toLocaleString()}
                 </span>
               </button>
               <button
@@ -103,7 +75,7 @@ const AllUsersGraph = () => {
               >
                 Unactive{" "}
                 <span className="bg-[#EFF4FF] rounded-full px-2 py-1 ml-1 text-sm text-[#6B7280]">
-                  {Math.round(unactiveCount / 1000)}k
+                  {inactiveUsers.toLocaleString()}
                 </span>
               </button>
             </div>
@@ -131,8 +103,8 @@ const AllUsersGraph = () => {
                           tick={{ fontSize: 10, fill: "#6B7280" }}
                           axisLine={false}
                           tickLine={false}
-                          domain={[0, 4000]}
-                          ticks={[0, 1000, 2000, 3000, 4000]}
+                          domain={[0, totalUsers]}
+                          ticks={[0, totalUsers]}
                         />
                         <Tooltip
                           content={({ active, payload }) => {

@@ -1,31 +1,37 @@
-import React, { Suspense } from "react";
+import React from "react";
 import DashboardNavbar from "./components/DashboardNavbar";
-import AuthGuard from "@/components/shared/AuthGuard";
-import { FullScreenLoader } from "@/components/ui";
 import { Metadata } from "next";
+import DashboardBanner from "./components/DashboardBanner";
+import AuthGuard from "@/app/providers/AuthGuard";
 
 export const metadata: Metadata = {
   title: "Dashboard | Airkrit",
   description: "Dashboard | Airkrit",
   keywords: ["Dashboard", "Airkrit", "Dashboard | Airkrit"],
+  openGraph: {
+    title: "Dashboard | Airkrit",
+    description: "Dashboard | Airkrit",
+    url: "https://www.airkrit.com/dashboard",
+    siteName: "Airkrit",
+    images: ["/logo.png"],
+  },
+  twitter: {
+    title: "Dashboard | Airkrit",
+    description: "Dashboard | Airkrit",
+    images: ["/logo.png"],
+    card: "summary_large_image",
+  },
 };
 
 const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
   return (
-    <Suspense
-      fallback={
-        <FullScreenLoader
-          text="Loading dashboard..."
-          variant="spinner"
-          size="lg"
-        />
-      }
-    >
-      <AuthGuard>
-        <DashboardNavbar />
-        <div className="pt-96 lg:pt-76 min-h-screen w-full">{children}</div>
-      </AuthGuard>
-    </Suspense>
+    <AuthGuard>
+      <DashboardNavbar />
+      <div className="pt-40 w-full">
+        <DashboardBanner />
+        <div className="px-10 lg:px-20 min-h-screen w-full">{children}</div>
+      </div>
+    </AuthGuard>
   );
 };
 

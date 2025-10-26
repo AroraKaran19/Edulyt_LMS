@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   BookOpen,
   Plus,
@@ -12,7 +12,6 @@ import {
   HelpCircle,
   FileText,
 } from "lucide-react";
-import { FlexBox } from "@/components/ui";
 import Container from "@/app/admin/components/ui/Container";
 import Input from "@/components/ui/inputs/Input";
 import TextArea from "@/components/ui/inputs/TextArea";
@@ -21,11 +20,7 @@ import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import UploadMediaContainer from "@/components/ui/container/UploadMediaContainer";
 import CheckBoxContainer from "@/components/ui/inputs/CheckBoxContainer";
 import { useUpload } from "@/hooks/useUpload";
-import { useCourses } from "@/hooks/useCourses";
-import {
-  getVideoDuration,
-  formatDuration,
-} from "@/utils/videoUtils";
+import { getVideoDuration, formatDuration } from "@/lib/utils/videoUtils";
 import {
   CourseModule,
   CourseLesson,
@@ -37,21 +32,52 @@ import {
 import { useCourseFormContext } from "@/contexts/CourseFormContext";
 import { useFormContext } from "react-hook-form";
 import { CourseFormData } from "@/types/courseForm";
+import { useCourse } from "@/hooks/useCourse";
 import { toast } from "react-toastify";
 
 const Screen11 = () => {
-  const { isEditMode, courseId } = useCourseFormContext();
+  const { isEditMode, courseId, getCreatedCourseId } = useCourseFormContext();
   const { watch } = useFormContext<CourseFormData>();
 
-  // Debug: Log courseId to see if it's available
+  // State to track the effective course ID
+  const [effectiveCourseId, setEffectiveCourseId] = useState<string | null>(
+    null
+  );
 
-  // LocalStorage key for modules
-  const modulesStorageKey = `course_modules_${isEditMode ? courseId : "new"}`;
+  // Update effective course ID when mode or courseId changes
+  useEffect(() => {
+    if (isEditMode) {
+      setEffectiveCourseId(courseId || null);
+    } else {
+      // Use the getCreatedCourseId function from context
+      const createdCourseId = getCreatedCourseId();
+      setEffectiveCourseId(createdCourseId);
+    }
+  }, [isEditMode, courseId, getCreatedCourseId]);
 
-  // Watch course title for dynamic folder naming
+  // Also check localStorage on component mount and when storage changes
+  useEffect(() => {
+    if (!isEditMode) {
+      const checkLocalStorage = () => {
+        const createdCourseId = getCreatedCourseId();
+        if (createdCourseId && createdCourseId !== effectiveCourseId) {
+          setEffectiveCourseId(createdCourseId);
+        }
+      };
+
+      // Listen for storage changes (when localStorage is updated from other tabs/components)
+      window.addEventListener("storage", checkLocalStorage);
+
+      return () => {
+        window.removeEventListener("storage", checkLocalStorage);
+      };
+    }
+  }, [isEditMode, effectiveCourseId, getCreatedCourseId]);
+
+  const modulesStorageKey = `course_modules_${effectiveCourseId || "new"}`;
+
   const titleValue = watch("title");
 
-  // Dynamic folder naming based on course title
   const [modulesFolderName, setModulesFolderName] = useState(
     "courses/new_course/modules"
   );
@@ -69,18 +95,18 @@ const Screen11 = () => {
 
   const { uploadFile } = useUpload();
   const {
-    addSingleCourseModule,
-    updateSingleCourseModule,
-    deleteSingleCourseModule,
-    addSingleCourseLesson,
-    updateSingleCourseLesson,
-    deleteSingleCourseLesson,
-    addSingleCourseContent,
-    updateSingleCourseContent,
-    deleteSingleCourseContent,
-    getCourseByIdAdmin,
+    createModule,
+    updateModule,
+    deleteModule,
+    createLesson,
+    updateLesson,
+    deleteLesson,
+    createContent,
+    updateContent,
+    deleteContent,
+    getCourseById,
     isLoading: isApiLoading,
-  } = useCourses();
+  } = useCourse();
 
   // LocalStorage helper functions
   const saveModulesToLocalStorage = (modules: CourseModule[]) => {
@@ -110,7 +136,7 @@ const Screen11 = () => {
       setIsLoadingModules(true);
 
       try {
-        if (isEditMode && courseId) {
+        if (isEditMode && effectiveCourseId) {
           // In edit mode, try to load from localStorage first, then from API if needed
           const storedModules = loadModulesFromLocalStorage();
           if (storedModules.length > 0) {
@@ -118,14 +144,14 @@ const Screen11 = () => {
           } else {
             // If no localStorage data, fetch from API
             try {
-              const response = await getCourseByIdAdmin(courseId);
-              if (response.success && response.data?.modules) {
-                initializeModulesFromCourseData(response.data);
+              const courseData = await getCourseById(effectiveCourseId);
+              if (courseData?.modules) {
+                initializeModulesFromCourseData(courseData);
               } else {
                 setModules([]);
               }
             } catch (apiError) {
-              console.error("Error fetching course data:", apiError);
+              console.error("Screen11: Error fetching course data:", apiError);
               setModules([]);
             }
           }
@@ -135,7 +161,7 @@ const Screen11 = () => {
           setModules(storedModules);
         }
       } catch (error) {
-        console.error("Error loading modules:", error);
+        console.error("Screen11: Error loading modules:", error);
         setModules([]);
       } finally {
         setIsLoadingModules(false);
@@ -143,7 +169,7 @@ const Screen11 = () => {
     };
 
     loadModules();
-  }, [isEditMode, courseId, modulesStorageKey, getCourseByIdAdmin]);
+  }, [isEditMode, effectiveCourseId, modulesStorageKey, getCourseById]);
 
   // Save modules to localStorage whenever modules change
   useEffect(() => {
@@ -151,15 +177,6 @@ const Screen11 = () => {
       saveModulesToLocalStorage(modules);
     }
   }, [modules, modulesStorageKey]);
-
-  // Clear localStorage when switching between create and edit modes
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      // Clear old localStorage data when mode changes
-      const oldKey = `course_modules_${isEditMode ? "new" : courseId}`;
-      localStorage.removeItem(oldKey);
-    }
-  }, [isEditMode, courseId]);
 
   // Function to initialize modules from course data
   const initializeModulesFromCourseData = (courseData: any) => {
@@ -313,8 +330,8 @@ const Screen11 = () => {
       return;
     }
 
-    if (!courseId) {
-      console.error("addModule - courseId is missing:", courseId);
+    if (!effectiveCourseId) {
+      console.error("addModule - courseId is missing:", effectiveCourseId);
       toast.error("Course ID is required to add a module");
       return;
     }
@@ -322,33 +339,25 @@ const Screen11 = () => {
     try {
       // Prepare module data for API
       const moduleData = {
+        courseId: effectiveCourseId,
         title: newModule.title,
         description: newModule.description,
         thumbnailUrl: newModule.thumbnailUrl,
-        thumbnailSource: newModule.thumbnailSource,
-        thumbnailS3Key: newModule.thumbnailS3Key,
-        isCompleted: false,
         isActive: newModule.isActive,
-        isLocked: false,
       };
 
       // Make API call to create module
-      const result = await addSingleCourseModule(courseId, moduleData);
+      const result = await createModule(moduleData);
 
-      if (result.success && result.data) {
+      if (result) {
         const selectedModule: CourseModule = {
-          _id: result.data._id,
-          title: result.data.title,
-          description: result.data.description,
-          thumbnailUrl: result.data.thumbnailUrl,
-          thumbnailSource: result.data.thumbnailSource || "url",
-          thumbnailS3Key: result.data.thumbnailS3Key || "",
-          lessonIds: result.data.lessonIds || [],
-          isCompleted: result.data.isCompleted || false,
-          isActive:
-            result.data.isActive !== undefined ? result.data.isActive : true,
-          isLocked: result.data.isLocked || false,
-          lessons: [],
+          _id: result._id,
+          courseId: effectiveCourseId,
+          title: result.title,
+          description: result.description,
+          thumbnailUrl: result.thumbnailUrl,
+          lessons: result.lessons || [],
+          isActive: result.isActive !== undefined ? result.isActive : true,
         };
 
         // Add module to local state
@@ -368,14 +377,14 @@ const Screen11 = () => {
           isActive: true,
         });
         setIsAddingModule(false);
+
+        toast.success("Module created successfully!");
       } else {
-        console.error(
-          "Failed to create module:",
-          result.error || result.message
-        );
+        toast.error("Failed to create module");
       }
     } catch (error) {
       console.error("Error creating module:", error);
+      toast.error("Error creating module");
     }
   };
 
@@ -384,7 +393,7 @@ const Screen11 = () => {
       return;
     }
 
-    if (!courseId || !editingModule._id) {
+    if (!effectiveCourseId || !editingModule._id) {
       console.error("Course ID and Module ID are required to edit a module");
       return;
     }
@@ -395,33 +404,26 @@ const Screen11 = () => {
         title: editingModule.title,
         description: editingModule.description,
         thumbnailUrl: editingModule.thumbnailUrl,
-        thumbnailSource: editingModule.thumbnailSource,
-        thumbnailS3Key: editingModule.thumbnailS3Key,
         isActive: editingModule.isActive,
       };
 
       // Make API call to update module
-      const result = await updateSingleCourseModule(
-        courseId,
-        editingModule._id,
-        moduleData
-      );
+      const result = await updateModule(editingModule._id, {
+        ...moduleData,
+        courseId: effectiveCourseId,
+      });
 
-      if (result.success && result.data) {
+      if (result) {
         // Update module in local state
         const updatedModules = modules.map((selectedModule) =>
           selectedModule._id === editingModule._id
             ? {
                 ...selectedModule,
-                title: result.data.title,
-                description: result.data.description,
-                thumbnailUrl: result.data.thumbnailUrl,
-                thumbnailSource: result.data.thumbnailSource || "url",
-                thumbnailS3Key: result.data.thumbnailS3Key || "",
+                title: result.title,
+                description: result.description,
+                thumbnailUrl: result.thumbnailUrl,
                 isActive:
-                  result.data.isActive !== undefined
-                    ? result.data.isActive
-                    : true,
+                  result.isActive !== undefined ? result.isActive : true,
               }
             : selectedModule
         );
@@ -441,19 +443,19 @@ const Screen11 = () => {
           isActive: true,
         });
         setIsEditingModule(false);
+
+        toast.success("Module updated successfully!");
       } else {
-        console.error(
-          "Failed to update module:",
-          result.error || result.message
-        );
+        toast.error("Failed to update module");
       }
     } catch (error) {
       console.error("Error updating module:", error);
+      toast.error("Error updating module");
     }
   };
 
-  const deleteModule = async (moduleId: string) => {
-    if (!courseId) {
+  const deleteModuleHandler = async (moduleId: string) => {
+    if (!effectiveCourseId) {
       toast.error("Course ID is required to delete a module");
       return;
     }
@@ -473,9 +475,9 @@ const Screen11 = () => {
 
     try {
       // Make API call to delete module
-      const result = await deleteSingleCourseModule(courseId, moduleId);
+      const result = await deleteModule(effectiveCourseId!, moduleId);
 
-      if (result.success) {
+      if (result) {
         // Remove module from local state
         const updatedModules = modules.filter(
           (selectedModule) => selectedModule._id !== moduleId
@@ -485,15 +487,13 @@ const Screen11 = () => {
         // Save to localStorage
         saveModulesToLocalStorage(updatedModules);
 
-        console.log("Module deleted successfully");
+        toast.success("Module deleted successfully");
       } else {
-        console.error(
-          "Failed to delete module:",
-          result.error || result.message
-        );
+        toast.error("Failed to delete module");
       }
     } catch (error) {
       console.error("Error deleting module:", error);
+      toast.error("Error deleting module");
     }
   };
 
@@ -503,8 +503,8 @@ const Screen11 = () => {
       title: selectedModule.title || "",
       description: selectedModule.description || "",
       thumbnailUrl: selectedModule.thumbnailUrl || "",
-      thumbnailSource: selectedModule.thumbnailSource || "url",
-      thumbnailS3Key: selectedModule.thumbnailS3Key || "",
+      thumbnailSource: "url",
+      thumbnailS3Key: "",
       isActive:
         selectedModule.isActive !== undefined ? selectedModule.isActive : true,
     });
@@ -522,36 +522,22 @@ const Screen11 = () => {
       return;
     }
 
-    if (!courseId) {
-      toast.error("Course ID is required to add a lesson");
-      return;
-    }
-
     try {
       // Prepare lesson data for API
       const lessonData = {
+        moduleId: moduleId,
         title: newLesson.title,
         description: newLesson.description,
-        isActive: newLesson.isActive,
       };
 
-      const result = await addSingleCourseLesson(
-        courseId,
-        moduleId,
-        lessonData
-      );
+      const result = await createLesson(effectiveCourseId!, lessonData);
 
-      if (result.success && result.data) {
+      if (result) {
         const lesson: CourseLesson = {
-          _id: result.data._id,
-          title: result.data.title,
-          description: result.data.description,
-          contentIds: result.data.contentIds || [],
+          _id: result._id,
+          title: result.title,
+          description: result.description,
           moduleId,
-          isCompleted: result.data.isCompleted || false,
-          isActive:
-            result.data.isActive !== undefined ? result.data.isActive : true,
-          isLocked: result.data.isLocked || false,
           contents: [],
         };
 
@@ -560,8 +546,10 @@ const Screen11 = () => {
           selectedModule._id === moduleId
             ? {
                 ...selectedModule,
-                lessons: [...(selectedModule.lessons || []), lesson],
-                lessonIds: [...selectedModule.lessonIds, lesson._id!],
+                lessons: [
+                  ...((selectedModule.lessons as CourseLesson[]) || []),
+                  lesson,
+                ],
               }
             : selectedModule
         );
@@ -572,14 +560,14 @@ const Screen11 = () => {
 
         setNewLesson({ title: "", description: "", isActive: true });
         setIsAddingLesson(false);
+
+        toast.success("Lesson created successfully!");
       } else {
-        console.error(
-          "Failed to create lesson:",
-          result.error || result.message
-        );
+        toast.error("Failed to create lesson");
       }
     } catch (error) {
       console.error("Error creating lesson:", error);
+      toast.error("Error creating lesson");
     }
   };
 
@@ -594,8 +582,8 @@ const Screen11 = () => {
       return;
     }
 
-    if (!courseId || !editingLesson._id) {
-      toast.error("Course ID and Lesson ID are required to edit a lesson");
+    if (!editingLesson._id) {
+      toast.error("Lesson ID is required to edit a lesson");
       return;
     }
 
@@ -603,33 +591,29 @@ const Screen11 = () => {
       const lessonData = {
         title: editingLesson.title,
         description: editingLesson.description,
-        isActive: editingLesson.isActive,
       };
 
       // Make API call to update lesson
-      const result = await updateSingleCourseLesson(
-        courseId,
+      const result = await updateLesson(
+        effectiveCourseId!,
         moduleId,
         editingLesson._id,
         lessonData
       );
 
-      if (result.success && result.data) {
+      if (result) {
         // Update lesson in local state
         const updatedModules = modules.map((selectedModule) =>
           selectedModule._id === moduleId
             ? {
                 ...selectedModule,
-                lessons: selectedModule.lessons?.map((lesson) =>
+                lessons: (selectedModule.lessons as CourseLesson[])?.map(
+                  (lesson) =>
                   lesson._id === editingLesson._id
                     ? {
                         ...lesson,
-                        title: result.data.title,
-                        description: result.data.description,
-                        isActive:
-                          result.data.isActive !== undefined
-                            ? result.data.isActive
-                            : true,
+                          title: result.title,
+                          description: result.description,
                       }
                     : lesson
                 ),
@@ -649,14 +633,14 @@ const Screen11 = () => {
           isActive: true,
         });
         setIsEditingLesson(false);
+
+        toast.success("Lesson updated successfully!");
       } else {
-        console.error(
-          "Failed to update lesson:",
-          result.error || result.message
-        );
+        toast.error("Failed to update lesson");
       }
     } catch (error) {
       console.error("Error updating lesson:", error);
+      toast.error("Error updating lesson");
     }
   };
 
@@ -665,7 +649,7 @@ const Screen11 = () => {
       _id: lesson._id || "",
       title: lesson.title || "",
       description: lesson.description || "",
-      isActive: lesson.isActive !== undefined ? lesson.isActive : true,
+      isActive: true,
     });
     setIsEditingLesson(true);
   };
@@ -702,11 +686,6 @@ const Screen11 = () => {
       return;
     }
 
-    if (!courseId) {
-      toast.error("Course ID is required to add content");
-      return;
-    }
-
     let contentData: any;
 
     if (newContent.type === "video") {
@@ -729,6 +708,7 @@ const Screen11 = () => {
         return;
       }
       contentData = {
+        lessonId: lessonId,
         title: newContent.title,
         description: newContent.description,
         type: "video",
@@ -736,15 +716,10 @@ const Screen11 = () => {
           {
             quality: "720p",
             videoUrl: newContent.videoUrl,
-            videoSource: newContent.videoSource,
-            videoS3Key: newContent.videoS3Key,
           },
         ],
         thumbnailUrl: newContent.videoThumbnailUrl,
         duration: Number(newContent.videoDuration),
-        isCompleted: false,
-        isActive: newContent.isActive,
-        isLocked: false,
       };
     } else if (newContent.type === "document") {
       if (!newContent.documentUrl.trim()) {
@@ -752,78 +727,61 @@ const Screen11 = () => {
         return;
       }
       contentData = {
+        lessonId: lessonId,
         title: newContent.title,
         description: newContent.description,
         type: "document",
         documentUrl: newContent.documentUrl,
-        isCompleted: false,
-        isActive: newContent.isActive,
-        isLocked: false,
       };
     } else {
       // Quiz content
       contentData = {
+        lessonId: lessonId,
         title: newContent.title,
         description: newContent.description,
         type: "quiz",
         questions: [],
-        isCompleted: false,
-        isActive: newContent.isActive,
-        isLocked: false,
       };
     }
 
     try {
       // Make API call to create content
-      const result = await addSingleCourseContent(
-        courseId,
+      const result = await createContent(
+        effectiveCourseId!,
         moduleId,
-        lessonId,
         contentData
       );
 
-      if (result.success && result.data) {
+      if (result) {
         let content: Content;
 
-        if (result.data.type === "video") {
+        if (result.type === "video") {
           content = {
-            _id: result.data._id,
-            title: result.data.title,
-            description: result.data.description,
+            _id: result._id,
+            title: result.title,
+            description: result.description,
             type: "video",
-            sources: result.data.sources || [],
-            thumbnailUrl: result.data.thumbnailUrl,
-            duration: result.data.duration || 0,
-            isCompleted: result.data.isCompleted || false,
-            isActive:
-              result.data.isActive !== undefined ? result.data.isActive : true,
-            isLocked: result.data.isLocked || false,
+            sources: result.sources || [],
+            thumbnailUrl: result.thumbnailUrl,
+            duration: result.duration || 0,
             lessonId,
           } as VideoContent;
-        } else if (result.data.type === "document") {
+        } else if (result.type === "document") {
           content = {
-            _id: result.data._id,
-            title: result.data.title,
-            description: result.data.description,
+            _id: result._id,
+            title: result.title,
+            description: result.description,
             type: "document",
-            documentUrl: result.data.documentUrl,
-            isCompleted: result.data.isCompleted || false,
-            isActive:
-              result.data.isActive !== undefined ? result.data.isActive : true,
-            isLocked: result.data.isLocked || false,
+            documentUrl: result.documentUrl,
             lessonId,
           } as DocumentContent;
         } else {
           content = {
-            _id: result.data._id,
-            title: result.data.title,
-            description: result.data.description,
+            _id: result._id,
+            title: result.title,
+            description: result.description,
             type: "quiz",
-            questions: result.data.questions || [],
-            isCompleted: result.data.isCompleted || false,
-            isActive:
-              result.data.isActive !== undefined ? result.data.isActive : true,
-            isLocked: result.data.isLocked || false,
+            questions: result.questions || [],
             lessonId,
           } as QuizContent;
         }
@@ -833,12 +791,15 @@ const Screen11 = () => {
           selectedModule._id === moduleId
             ? {
                 ...selectedModule,
-                lessons: selectedModule.lessons?.map((lesson) =>
+                lessons: (selectedModule.lessons as CourseLesson[])?.map(
+                  (lesson) =>
                   lesson._id === lessonId
                     ? {
                         ...lesson,
-                        contents: [...(lesson.contents || []), content],
-                        contentIds: [...lesson.contentIds, content._id!],
+                          contents: [
+                            ...((lesson.contents as Content[]) || []),
+                            content,
+                          ],
                       }
                     : lesson
                 ),
@@ -869,23 +830,18 @@ const Screen11 = () => {
         });
         setIsAddingContent(false);
         setContentTypeToAdd(null);
+
+        toast.success("Content created successfully!");
       } else {
-        console.error(
-          "Failed to create content:",
-          result.error || result.message
-        );
+        toast.error("Failed to create content");
       }
     } catch (error) {
       console.error("Error creating content:", error);
+      toast.error("Error creating content");
     }
   };
 
-  const deleteLesson = async (moduleId: string, lessonId: string) => {
-    if (!courseId) {
-      toast.error("Course ID is required to delete a lesson");
-      return;
-    }
-
+  const deleteLessonHandler = async (moduleId: string, lessonId: string) => {
     if (!lessonId) {
       toast.error("Lesson ID is required to delete a lesson");
       return;
@@ -901,23 +857,16 @@ const Screen11 = () => {
 
     try {
       // Make API call to delete lesson
-      const result = await deleteSingleCourseLesson(
-        courseId,
-        moduleId,
-        lessonId
-      );
+      const result = await deleteLesson(effectiveCourseId!, moduleId, lessonId);
 
-      if (result.success) {
+      if (result) {
         // Remove lesson from local state
         const updatedModules = modules.map((selectedModule) =>
           selectedModule._id === moduleId
             ? {
                 ...selectedModule,
-                lessons: selectedModule.lessons?.filter(
+                lessons: (selectedModule.lessons as CourseLesson[])?.filter(
                   (lesson) => lesson._id !== lessonId
-                ),
-                lessonIds: selectedModule.lessonIds.filter(
-                  (_id) => _id !== lessonId
                 ),
               }
             : selectedModule
@@ -927,15 +876,13 @@ const Screen11 = () => {
         // Save to localStorage
         saveModulesToLocalStorage(updatedModules);
 
-        console.log("Lesson deleted successfully");
+        toast.success("Lesson deleted successfully");
       } else {
-        console.error(
-          "Failed to delete lesson:",
-          result.error || result.message
-        );
+        toast.error("Failed to delete lesson");
       }
     } catch (error) {
       console.error("Error deleting lesson:", error);
+      toast.error("Error deleting lesson");
     }
   };
 
@@ -950,8 +897,8 @@ const Screen11 = () => {
       return;
     }
 
-    if (!courseId || !editingContent._id) {
-      toast.error("Course ID and Content ID are required to edit content");
+    if (!editingContent._id) {
+      toast.error("Content ID is required to edit content");
       return;
     }
 
@@ -984,15 +931,10 @@ const Screen11 = () => {
           {
             quality: "720p",
             videoUrl: editingContent.videoUrl,
-            videoSource: editingContent.videoSource,
-            videoS3Key: editingContent.videoS3Key,
           },
         ],
         thumbnailUrl: editingContent.videoThumbnailUrl,
         duration: Number(editingContent.videoDuration),
-        isCompleted: false,
-        isActive: editingContent.isActive,
-        isLocked: false,
       };
     } else if (editingContent.type === "document") {
       if (!editingContent.documentUrl.trim()) {
@@ -1004,9 +946,6 @@ const Screen11 = () => {
         description: editingContent.description,
         type: "document",
         documentUrl: editingContent.documentUrl,
-        isCompleted: false,
-        isActive: editingContent.isActive,
-        isLocked: false,
       };
     } else {
       // Quiz content
@@ -1015,52 +954,47 @@ const Screen11 = () => {
         description: editingContent.description,
         type: "quiz",
         questions: [],
-        isCompleted: false,
-        isActive: editingContent.isActive,
-        isLocked: false,
       };
     }
 
     try {
       // Make API call to update content
-      const result = await updateSingleCourseContent(
-        courseId,
+      const result = await updateContent(
+        effectiveCourseId!,
         moduleId,
         lessonId,
         editingContent._id,
         contentData
       );
 
-      if (result.success && result.data) {
+      if (result) {
         // Update content in local state
         const updatedModules = modules.map((selectedModule) =>
           selectedModule._id === moduleId
             ? {
                 ...selectedModule,
-                lessons: selectedModule.lessons?.map((lesson) =>
+                lessons: (selectedModule.lessons as CourseLesson[])?.map(
+                  (lesson) =>
                   lesson._id === lessonId
                     ? {
                         ...lesson,
-                        contents: lesson.contents?.map((content) =>
+                          contents: (lesson.contents as Content[])?.map(
+                            (content) =>
                           content._id === editingContent._id
                             ? {
                                 ...content,
-                                title: result.data.title,
-                                description: result.data.description,
-                                ...(result.data.type === "video" && {
-                                  sources: result.data.sources || [],
-                                  thumbnailUrl: result.data.thumbnailUrl,
-                                }),
-                                ...(result.data.type === "document" && {
-                                  documentUrl: result.data.documentUrl,
-                                }),
-                                ...(result.data.type === "quiz" && {
-                                  questions: result.data.questions || [],
-                                }),
-                                isActive:
-                                  result.data.isActive !== undefined
-                                    ? result.data.isActive
-                                    : true,
+                                    title: result.title,
+                                    description: result.description,
+                                    ...(result.type === "video" && {
+                                      sources: result.sources || [],
+                                      thumbnailUrl: result.thumbnailUrl,
+                                    }),
+                                    ...(result.type === "document" && {
+                                      documentUrl: result.documentUrl,
+                                    }),
+                                    ...(result.type === "quiz" && {
+                                      questions: result.questions || [],
+                                    }),
                               }
                             : content
                         ),
@@ -1094,14 +1028,14 @@ const Screen11 = () => {
           isActive: true,
         });
         setIsEditingContent(false);
+
+        toast.success("Content updated successfully!");
       } else {
-        console.error(
-          "Failed to update content:",
-          result.error || result.message
-        );
+        toast.error("Failed to update content");
       }
     } catch (error) {
       console.error("Error updating content:", error);
+      toast.error("Error updating content");
     }
   };
 
@@ -1112,8 +1046,8 @@ const Screen11 = () => {
       description: content.description || "",
       type: content.type || "video",
       videoUrl: (content as VideoContent).sources?.[0]?.videoUrl || "",
-      videoSource: (content as VideoContent).sources?.[0]?.videoSource || "url",
-      videoS3Key: (content as VideoContent).sources?.[0]?.videoS3Key || "",
+      videoSource: "url",
+      videoS3Key: "",
       videoThumbnailUrl: (content as VideoContent).thumbnailUrl || "",
       videoThumbnailSource: "url",
       videoThumbnailS3Key: "",
@@ -1123,21 +1057,16 @@ const Screen11 = () => {
       documentUrl: (content as DocumentContent).documentUrl || "",
       documentSource: "url",
       documentS3Key: "",
-      isActive: content.isActive !== undefined ? content.isActive : true,
+      isActive: true,
     });
     setIsEditingContent(true);
   };
 
-  const deleteContent = async (
+  const deleteContentHandler = async (
     moduleId: string,
     lessonId: string,
     contentId: string
   ) => {
-    if (!courseId) {
-      toast.error("Course ID is required to delete content");
-      return;
-    }
-
     if (
       !confirm(
         "Are you sure you want to delete this content? This action cannot be undone."
@@ -1148,28 +1077,26 @@ const Screen11 = () => {
 
     try {
       // Make API call to delete content
-      const result = await deleteSingleCourseContent(
-        courseId,
+      const result = await deleteContent(
+        effectiveCourseId!,
         moduleId,
         lessonId,
         contentId
       );
 
-      if (result.success) {
+      if (result) {
         // Remove content from local state
         const updatedModules = modules.map((selectedModule) =>
           selectedModule._id === moduleId
             ? {
                 ...selectedModule,
-                lessons: selectedModule.lessons?.map((lesson) =>
+                lessons: (selectedModule.lessons as CourseLesson[])?.map(
+                  (lesson) =>
                   lesson._id === lessonId
                     ? {
                         ...lesson,
-                        contents: lesson.contents?.filter(
+                          contents: (lesson.contents as Content[])?.filter(
                           (content) => content._id !== contentId
-                        ),
-                        contentIds: lesson.contentIds.filter(
-                          (_id) => _id !== contentId
                         ),
                       }
                     : lesson
@@ -1182,15 +1109,13 @@ const Screen11 = () => {
         // Save to localStorage
         saveModulesToLocalStorage(updatedModules);
 
-        console.log("Content deleted successfully");
+        toast.success("Content deleted successfully");
       } else {
-        console.error(
-          "Failed to delete content:",
-          result.error || result.message
-        );
+        toast.error("Failed to delete content");
       }
     } catch (error) {
       console.error("Error deleting content:", error);
+      toast.error("Error deleting content");
     }
   };
 
@@ -1453,7 +1378,7 @@ const Screen11 = () => {
             <h3 className="text-lg font-medium text-gray-800 mb-4">
               Add New Module
             </h3>
-            <FlexBox className="flex-col gap-4">
+            <div className="flex flex-col gap-4">
               <Input
                 label="Module Title"
                 placeholder="Enter module title"
@@ -1498,7 +1423,7 @@ const Screen11 = () => {
                   setNewModule({ ...newModule, isActive: checked })
                 }
               />
-            </FlexBox>
+            </div>
             <div className="flex gap-2 mt-4">
               <OrangeButton
                 onClick={addModule}
@@ -1540,7 +1465,7 @@ const Screen11 = () => {
             <h3 className="text-lg font-medium text-gray-800 mb-4">
               Edit Module
             </h3>
-            <FlexBox className="flex-col gap-4">
+            <div className="flex flex-col gap-4">
               <Input
                 label="Module Title"
                 placeholder="Enter module title"
@@ -1620,7 +1545,7 @@ const Screen11 = () => {
                   setEditingModule({ ...editingModule, isActive: checked })
                 }
               />
-            </FlexBox>
+            </div>
             <div className="flex gap-2 mt-4">
               <OrangeButton
                 onClick={editModule}
@@ -1660,7 +1585,7 @@ const Screen11 = () => {
 
         {/* Empty State - Only show when no modules exist */}
         {!isAddingModule && !isEditingModule && modules.length === 0 ? (
-          <FlexBox className="w-full flex-col items-center justify-center py-16 px-4 text-center">
+          <div className="w-full flex flex-col items-center justify-center py-16 px-4 text-center">
             <div className="relative mb-6">
               <div className="w-20 h-20 bg-gradient-to-br from-orange-100 to-orange-200 rounded-full flex items-center justify-center shadow-lg">
                 <BookOpen className="w-10 h-10 text-orange-500" />
@@ -1685,7 +1610,7 @@ const Screen11 = () => {
               <Plus className="w-5 h-5" />
               Create First Module
             </OrangeButton>
-          </FlexBox>
+          </div>
         ) : (
           /* Modules List - Only show when modules exist */
           <div className="space-y-4">
@@ -1744,7 +1669,9 @@ const Screen11 = () => {
                           <Edit3 className="w-4 h-4 text-gray-600" />
                         </button>
                         <button
-                          onClick={() => deleteModule(selectedModule._id!)}
+                          onClick={() =>
+                            deleteModuleHandler(selectedModule._id!)
+                          }
                           disabled={isApiLoading}
                           className="p-1 hover:bg-red-100 rounded disabled:opacity-50"
                         >
@@ -1779,7 +1706,7 @@ const Screen11 = () => {
                           <h4 className="text-lg font-medium text-gray-800 mb-4">
                             Add New Lesson
                           </h4>
-                          <FlexBox className="flex-col gap-4">
+                          <div className="flex flex-col gap-4">
                             <Input
                               label="Lesson Title"
                               placeholder="Enter lesson title"
@@ -1815,7 +1742,7 @@ const Screen11 = () => {
                                 })
                               }
                             />
-                          </FlexBox>
+                          </div>
                           <div className="flex gap-2 mt-4">
                             <OrangeButton
                               onClick={() => addLesson(selectedModule._id!)}
@@ -1852,7 +1779,7 @@ const Screen11 = () => {
                           <h4 className="text-lg font-medium text-gray-800 mb-4">
                             Edit Lesson
                           </h4>
-                          <FlexBox className="flex-col gap-4">
+                          <div className="flex flex-col gap-4">
                             <Input
                               label="Lesson Title"
                               placeholder="Enter lesson title"
@@ -1888,7 +1815,7 @@ const Screen11 = () => {
                                 })
                               }
                             />
-                          </FlexBox>
+                          </div>
                           <div className="flex gap-2 mt-4">
                             <OrangeButton
                               onClick={() => editLesson(selectedModule._id!)}
@@ -1930,7 +1857,8 @@ const Screen11 = () => {
                       {/* Lessons List */}
                       {!isAddingLesson && !isEditingLesson && (
                         <div className="space-y-3">
-                          {selectedModule.lessons?.map((lesson) => (
+                          {(selectedModule.lessons as CourseLesson[])?.map(
+                            (lesson) => (
                             <div
                               key={lesson._id}
                               className="bg-gray-50 rounded-lg border border-gray-200"
@@ -1968,7 +1896,9 @@ const Screen11 = () => {
                                       {lesson.contents?.length || 0} content
                                     </span>
                                     <button
-                                      onClick={() => startEditingLesson(lesson)}
+                                        onClick={() =>
+                                          startEditingLesson(lesson)
+                                        }
                                       disabled={isApiLoading}
                                       className="p-1 hover:bg-gray-200 rounded disabled:opacity-50"
                                     >
@@ -1976,7 +1906,7 @@ const Screen11 = () => {
                                     </button>
                                     <button
                                       onClick={() =>
-                                        deleteLesson(
+                                          deleteLessonHandler(
                                           selectedModule._id!,
                                           lesson._id!
                                         )
@@ -1998,7 +1928,8 @@ const Screen11 = () => {
                                     <h6 className="text-md font-medium text-gray-700">
                                       Content
                                     </h6>
-                                    {!isAddingContent && !isEditingContent && (
+                                      {!isAddingContent &&
+                                        !isEditingContent && (
                                       <div className="flex gap-2">
                                         <WhiteButton
                                           onClick={() =>
@@ -2054,7 +1985,8 @@ const Screen11 = () => {
                                                 : "bg-purple-100"
                                             }`}
                                           >
-                                            {editingContent.type === "video" ? (
+                                              {editingContent.type ===
+                                              "video" ? (
                                               <FileVideo className="w-3 h-3 text-green-600" />
                                             ) : editingContent.type ===
                                               "document" ? (
@@ -2066,7 +1998,7 @@ const Screen11 = () => {
                                         </div>
                                       </div>
 
-                                      <FlexBox className="flex-col gap-3">
+                                        <div className="flex flex-col gap-3">
                                         <Input
                                           label="Content Title"
                                           placeholder="Enter content title"
@@ -2110,11 +2042,15 @@ const Screen11 = () => {
                                               title="Video Content"
                                               description="Upload video file or add video URL"
                                               type="video"
-                                              mediaUrl={editingContent.videoUrl}
+                                                mediaUrl={
+                                                  editingContent.videoUrl
+                                                }
                                               mediaSource={
                                                 editingContent.videoSource
                                               }
-                                              s3Key={editingContent.videoS3Key}
+                                                s3Key={
+                                                  editingContent.videoS3Key
+                                                }
                                               folderName={contentFolderName}
                                               uploadContext={`${
                                                 editingContent.title ||
@@ -2180,7 +2116,8 @@ const Screen11 = () => {
                                               onChange={(e) =>
                                                 setEditingContent({
                                                   ...editingContent,
-                                                  videoDuration: e.target.value,
+                                                    videoDuration:
+                                                      e.target.value,
                                                 })
                                               }
                                               required
@@ -2190,7 +2127,8 @@ const Screen11 = () => {
                                         )}
 
                                         {/* Document Upload for Document Content */}
-                                        {editingContent.type === "document" && (
+                                          {editingContent.type ===
+                                            "document" && (
                                           <UploadMediaContainer
                                             title="Document Content"
                                             description="Upload document file or add document URL"
@@ -2201,10 +2139,13 @@ const Screen11 = () => {
                                             mediaSource={
                                               editingContent.documentSource
                                             }
-                                            s3Key={editingContent.documentS3Key}
+                                              s3Key={
+                                                editingContent.documentS3Key
+                                              }
                                             folderName={contentFolderName}
                                             uploadContext={`${
-                                              editingContent.title || "content"
+                                                editingContent.title ||
+                                                "content"
                                             }-${lesson.title || "lesson"}`}
                                             onFileUpload={
                                               handleContentDocumentUpload
@@ -2233,12 +2174,12 @@ const Screen11 = () => {
                                               </span>
                                             </div>
                                             <p className="text-sm text-purple-700">
-                                              Quiz questions and options will be
-                                              configured in the next step.
+                                                Quiz questions and options will
+                                                be configured in the next step.
                                             </p>
                                           </div>
                                         )}
-                                      </FlexBox>
+                                        </div>
 
                                       <div className="flex items-end gap-2 mt-4">
                                         <OrangeButton
@@ -2343,7 +2284,7 @@ const Screen11 = () => {
                                         </div>
                                       </div>
 
-                                      <FlexBox className="flex-col gap-3">
+                                        <div className="flex flex-col gap-3">
                                         <Input
                                           label="Content Title"
                                           placeholder="Enter content title"
@@ -2453,7 +2394,8 @@ const Screen11 = () => {
                                               onChange={(e) =>
                                                 setNewContent({
                                                   ...newContent,
-                                                  videoDuration: e.target.value,
+                                                    videoDuration:
+                                                      e.target.value,
                                                 })
                                               }
                                               required
@@ -2504,12 +2446,12 @@ const Screen11 = () => {
                                               </span>
                                             </div>
                                             <p className="text-sm text-purple-700">
-                                              Quiz questions and options will be
-                                              configured in the next step.
+                                                Quiz questions and options will
+                                                be configured in the next step.
                                             </p>
                                           </div>
                                         )}
-                                      </FlexBox>
+                                        </div>
 
                                       <div className="flex items-end gap-2 mt-4">
                                         <OrangeButton
@@ -2571,7 +2513,8 @@ const Screen11 = () => {
                                   {/* Content List */}
                                   {!isEditingContent && (
                                     <div className="space-y-2">
-                                      {lesson.contents?.map((content) => (
+                                        {(lesson.contents as Content[])?.map(
+                                          (content) => (
                                         <div
                                           key={content._id}
                                           className="bg-white rounded-lg p-3 border border-gray-200"
@@ -2588,7 +2531,8 @@ const Screen11 = () => {
                                                     : "bg-purple-100"
                                                 }`}
                                               >
-                                                {content.type === "video" ? (
+                                                    {content.type ===
+                                                    "video" ? (
                                                   <FileVideo className="w-3 h-3 text-green-600" />
                                                 ) : content.type ===
                                                   "document" ? (
@@ -2624,7 +2568,9 @@ const Screen11 = () => {
                                               </span>
                                               <button
                                                 onClick={() =>
-                                                  startEditingContent(content)
+                                                      startEditingContent(
+                                                        content
+                                                      )
                                                 }
                                                 disabled={isApiLoading}
                                                 className="p-1 hover:bg-gray-200 rounded disabled:opacity-50"
@@ -2633,7 +2579,7 @@ const Screen11 = () => {
                                               </button>
                                               <button
                                                 onClick={() =>
-                                                  deleteContent(
+                                                      deleteContentHandler(
                                                     selectedModule._id!,
                                                     lesson._id!,
                                                     content._id!
@@ -2654,19 +2600,21 @@ const Screen11 = () => {
                                                 <div className="relative">
                                                   <video
                                                     src={
-                                                      (content as VideoContent)
-                                                        .sources[0].videoUrl
+                                                          (
+                                                            content as VideoContent
+                                                          ).sources[0].videoUrl
                                                     }
                                                     className="w-full max-w-xs h-32 object-cover rounded border"
                                                     controls
                                                     poster={
-                                                      (content as VideoContent)
-                                                        .thumbnailUrl
+                                                          (
+                                                            content as VideoContent
+                                                          ).thumbnailUrl
                                                     }
                                                   />
                                                   {(content as VideoContent)
                                                     .thumbnailUrl && (
-                                                    <div className="absolute top-2 right-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
+                                                    <div className="absolute top-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
                                                       Thumbnail
                                                     </div>
                                                   )}
@@ -2697,13 +2645,15 @@ const Screen11 = () => {
                                               </div>
                                             )}
                                         </div>
-                                      ))}
+                                          )
+                                        )}
                                     </div>
                                   )}
                                 </div>
                               )}
                             </div>
-                          ))}
+                            )
+                          )}
                         </div>
                       )}
                     </div>

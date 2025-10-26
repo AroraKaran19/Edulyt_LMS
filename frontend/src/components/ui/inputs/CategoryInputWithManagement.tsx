@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useCategory } from "@/hooks/useCategory";
+import { Category } from "@/types";
 import { Plus, X, Edit3, Trash2, Check, AlertCircle } from "lucide-react";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
@@ -27,17 +28,11 @@ const CategoryInputWithManagement: React.FC<
     clearError,
   } = useCategory();
 
-  const [categories, setCategories] = useState<
-    Array<{ _id: string; name: string; description?: string }>
-  >([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [editingCategory, setEditingCategory] = useState<{
-    _id: string;
-    name: string;
-    description?: string;
-  } | null>(null);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [newCategory, setNewCategory] = useState({ name: "" });
   const [isCreating, setIsCreating] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -47,11 +42,14 @@ const CategoryInputWithManagement: React.FC<
   const loadCategories = useCallback(async () => {
     try {
       const result = await getActiveCategories();
-      if (result.success && result.data) {
-        setCategories(Array.isArray(result.data) ? result.data : []);
+      if (result && result.categories) {
+        setCategories(result.categories);
+      } else {
+        setCategories([]);
       }
     } catch (err) {
       console.error("Error loading categories:", err);
+      setCategories([]);
     }
   }, [getActiveCategories]);
 
@@ -78,13 +76,9 @@ const CategoryInputWithManagement: React.FC<
         name: newCategory.name.trim(),
       });
 
-      if (result.success && result.data) {
-        const newCategoryData = Array.isArray(result.data) ? result.data[0] : result.data;
-        setCategories((prev) => [
-          ...prev,
-          newCategoryData as { _id: string; name: string; description?: string },
-        ]);
-        setChange(newCategoryData.name);
+      if (result) {
+        setCategories((prev) => [...(prev || []), result]);
+        setChange(result.name);
         setNewCategory({ name: "" });
         setShowCreateModal(false);
         clearError();
@@ -97,11 +91,7 @@ const CategoryInputWithManagement: React.FC<
   };
 
   // Handle edit category
-  const handleEditCategory = (category: {
-    _id: string;
-    name: string;
-    description?: string;
-  }) => {
+  const handleEditCategory = (category: Category) => {
     setEditingCategory(category);
     setShowEditModal(true);
   };
@@ -110,6 +100,7 @@ const CategoryInputWithManagement: React.FC<
   const handleUpdateCategory = async () => {
     if (
       !editingCategory ||
+      !editingCategory._id ||
       !editingCategory.name ||
       !editingCategory.name.trim()
     )
@@ -121,17 +112,10 @@ const CategoryInputWithManagement: React.FC<
         name: editingCategory.name.trim(),
       });
 
-      if (result.success && result.data) {
-        const updatedCategoryData = Array.isArray(result.data) ? result.data[0] : result.data;
+      if (result) {
         setCategories((prev) =>
-          prev.map((cat) =>
-            cat._id === editingCategory._id
-              ? (updatedCategoryData as {
-                  _id: string;
-                  name: string;
-                  description?: string;
-                })
-              : cat
+          (prev || []).map((cat) =>
+            cat._id === editingCategory._id ? result : cat
           )
         );
         setShowEditModal(false);
@@ -162,8 +146,10 @@ const CategoryInputWithManagement: React.FC<
     try {
       const result = await deleteCategory(categoryId);
 
-      if (result.success) {
-        setCategories((prev) => prev.filter((cat) => cat._id !== categoryId));
+      if (result) {
+        setCategories((prev) =>
+          (prev || []).filter((cat) => cat._id !== categoryId)
+        );
         if (value === categoryName) {
           setChange("");
         }
@@ -233,57 +219,62 @@ const CategoryInputWithManagement: React.FC<
               <div className="w-5 h-5 border-2 border-orange-300 border-t-orange-600 rounded-full animate-spin mx-auto mb-2" />
               Loading categories...
             </div>
-          ) : categories.length > 0 ? (
+          ) : categories && categories.length > 0 ? (
             <div className="py-2">
-              {categories.map((category) => (
-                <div
-                  key={category._id}
-                  className="flex items-center justify-between px-4 py-3 hover:bg-gray-50 group"
-                >
-                  <button
-                    type="button"
-                    onClick={() => handleCategorySelect(category.name)}
-                    className="flex-1 text-left"
+              {categories?.map((category) => {
+                if (!category._id) return null; // Skip categories without ID
+
+                return (
+                  <div
+                    key={category._id}
+                    className="flex items-center justify-between px-4 py-3 hover:bg-gray-50 group"
                   >
-                    <div className="font-medium text-gray-900">
-                      {category.name}
-                    </div>
-                    {category.description && (
-                      <div className="text-sm text-gray-500">
-                        {category.description}
+                    <button
+                      type="button"
+                      onClick={() => handleCategorySelect(category.name)}
+                      className="flex-1 text-left"
+                    >
+                      <div className="font-medium text-gray-900">
+                        {category.name}
                       </div>
-                    )}
-                  </button>
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <div
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleEditCategory(category);
-                      }}
-                      className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded cursor-pointer"
-                      title="Edit category"
-                    >
-                      <Edit3 className="w-4 h-4" />
-                    </div>
-                    <div
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteCategory(category._id, category.name);
-                      }}
-                      className={`p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded cursor-pointer ${
-                        isDeleting === category._id ? "opacity-50" : ""
-                      }`}
-                      title="Delete category"
-                    >
-                      {isDeleting === category._id ? (
-                        <div className="w-4 h-4 border-2 border-red-300 border-t-red-600 rounded-full animate-spin" />
-                      ) : (
-                        <Trash2 className="w-4 h-4" />
+                      {category.description && (
+                        <div className="text-sm text-gray-500">
+                          {category.description}
+                        </div>
                       )}
+                    </button>
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEditCategory(category);
+                        }}
+                        className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded cursor-pointer"
+                        title="Edit category"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                      </div>
+                      <div
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          category._id &&
+                            handleDeleteCategory(category._id, category.name);
+                        }}
+                        className={`p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded cursor-pointer ${
+                          isDeleting === category._id ? "opacity-50" : ""
+                        }`}
+                        title="Delete category"
+                      >
+                        {isDeleting === category._id ? (
+                          <div className="w-4 h-4 border-2 border-red-300 border-t-red-600 rounded-full animate-spin" />
+                        ) : (
+                          <Trash2 className="w-4 h-4" />
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="p-4 text-center text-gray-500">
@@ -331,7 +322,6 @@ const CategoryInputWithManagement: React.FC<
                 placeholder="Enter category name"
                 required
               />
-
 
               {error && (
                 <div className="flex items-center gap-2 text-red-600 text-sm">
@@ -410,7 +400,6 @@ const CategoryInputWithManagement: React.FC<
                 placeholder="Enter category name"
                 required
               />
-
 
               {error && (
                 <div className="flex items-center gap-2 text-red-600 text-sm">

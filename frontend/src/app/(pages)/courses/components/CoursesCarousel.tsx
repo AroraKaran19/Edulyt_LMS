@@ -125,7 +125,7 @@ const CoursesCarousel = ({ courses }: { courses: Course[] }) => {
 
   return (
     <div className="courses-carousel flex flex-col gap-4 items-center">
-      <div className="w-full h-[500px] md:h-[520px] lg:h-[540px] flex items-center">
+      <div className="w-full flex items-center">
         <Swiper
           onSwiper={(swiper) => {
             swiperRef.current = swiper;
@@ -155,8 +155,9 @@ const CoursesCarousel = ({ courses }: { courses: Course[] }) => {
           }}
           initialSlide={courses.length > 3 ? 0 : 1}
           className={cn(
-            "w-full px-4 !py-4 sm:px-0 [&_.swiper-slide]:!flex [&_.swiper-slide]:!items-stretch [&_.swiper-slide]:!h-full"
+            "w-full px-4 py-4! sm:px-0 [&_.swiper-slide]:flex! [&_.swiper-slide]:items-stretch [&_.swiper-slide]:h-full cursor-grab active:cursor-grabbing [&_.swiper-container]:cursor-grab [&_.swiper-container]:active:cursor-grabbing [&_.swiper-wrapper]:cursor-grab [&_.swiper-wrapper]:active:cursor-grabbing"
           )}
+          style={{ cursor: "grab" }}
           breakpoints={{
             0: {
               slidesPerView: 1.2,
@@ -193,7 +194,7 @@ const CoursesCarousel = ({ courses }: { courses: Course[] }) => {
                         isActive,
                       "opacity-90": !isActive,
                     },
-                    "transition-all duration-300 ease-out"
+                    "h-full transition-all duration-300 ease-out"
                   )}
                 />
               )}

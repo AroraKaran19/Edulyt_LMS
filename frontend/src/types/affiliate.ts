@@ -1,11 +1,15 @@
-import { User } from ".";
+import { User } from "./user";
 
 export interface Affiliate {
-    _id?: string;
-    code: string;
-    createdBy: User;
-    totalReferrals: number;
-    users: User[];
-    createdAt?: Date;
-    updatedAt?: Date;
+  _id?: string;
+
+  code: string;
+  createdBy: User | string;
+
+  totalReferrals: number;
+
+  users: User[] | string[];
+
+  createdAt?: Date;
+  updatedAt?: Date;
 }

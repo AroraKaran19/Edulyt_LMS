@@ -1,7 +1,6 @@
 import "@/app/globals.css";
-import { ReduxProvider } from "@/store/Provider";
 import { Plus_Jakarta_Sans } from "next/font/google";
-import LayoutWrapper from "@/components/shared/LayoutWrapper";
+import LayoutWrapper from "@/app/LayoutWrapper";
 import { cn } from "@/lib/utils";
 import { Metadata } from "next";
 import Head from "next/head";
@@ -29,7 +28,7 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "/favicon.ico",
+        url: "/logo.png",
         width: 1200,
         height: 630,
       },
@@ -59,24 +58,25 @@ export default function RootLayout({
       <Head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       </Head>
-      <body className={cn(plusJakartaSans.className, "antialiased")} suppressHydrationWarning>
-        <ReduxProvider>
-          <LayoutWrapper>{children}</LayoutWrapper>
-          <ToastContainer
-            position="top-right"
-            autoClose={5000}
-            hideProgressBar={false}
-            newestOnTop={false}
-            closeOnClick={true}
-            rtl={false}
-            pauseOnFocusLoss={false}
-            draggable
-            pauseOnHover={false}
-            theme="light"
-            className="toast-container"
-            limit={2}
-          />
-        </ReduxProvider>
+      <body
+        className={cn(plusJakartaSans.className, "antialiased")}
+        suppressHydrationWarning
+      >
+        <LayoutWrapper>{children}</LayoutWrapper>
+        <ToastContainer
+          position="top-right"
+          autoClose={5000}
+          hideProgressBar={false}
+          newestOnTop={false}
+          closeOnClick={true}
+          rtl={false}
+          pauseOnFocusLoss={false}
+          draggable
+          pauseOnHover={false}
+          theme="light"
+          className="toast-container"
+          limit={2}
+        />
       </body>
     </html>
   );

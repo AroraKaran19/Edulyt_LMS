@@ -1,25 +1,38 @@
 "use client";
-import React from "react";
 import CoursesCarousel from "./CoursesCarousel";
-import { Loader2 } from "lucide-react";
+import Loader from "@/components/ui/Loader";
 import { getErrorUIConfig } from "@/configs/errorUIConfig";
 import Error from "@/components/ui/Error";
 import { Course } from "@/types";
-import { useGetFeaturedCoursesQuery } from "@/store/coursesApi";
 import { ERROR_TYPES } from "@/constants/error/statusCodes";
+import useSWR from "swr";
+import { ENDPOINTS } from "@/constants/endpoints";
+import { fetcher } from "@/lib/utils";
 
 const TopCoursesSection = () => {
-  const { data, error, isLoading } = useGetFeaturedCoursesQuery();
-  const courses: Course[] = data?.data?.courses || [];
+  const { data, error, isLoading } = useSWR(
+    ENDPOINTS.courses.featured,
+    fetcher,
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: true,
+      errorRetryInterval: 5000,
+      dedupingInterval: 1000 * 60, // 1 minutes
+    }
+  );
+
+  const courses: Course[] = data?.data?.data?.courses || [];
 
   const renderContent = () => {
     if (isLoading) {
       return (
         <div className="flex justify-center items-center h-64">
-          <div className="flex flex-col items-center gap-2">
-            <Loader2 className="w-8 h-8 animate-spin text-[#f77124]" />
-            <p className="text-gray-600">Loading courses...</p>
-          </div>
+          <Loader
+            size="lg"
+            variant="spinner"
+            text="Loading featured courses..."
+            showText={true}
+          />
         </div>
       );
     }
@@ -62,7 +75,7 @@ const TopCoursesSection = () => {
         you can Enroll now!
       </h2>
       <div className="top-courses-carousel w-full mt-10 relative">
-        <div className="hidden md:absolute w-full h-full bg-gradient-to-r from-white/40 via-transparent to-white/40 z-10 pointer-events-none" />
+        <div className="hidden md:absolute w-full h-full bg-linear-to-r from-white/40 via-transparent to-white/40 z-10 pointer-events-none" />
         {renderContent()}
       </div>
     </section>

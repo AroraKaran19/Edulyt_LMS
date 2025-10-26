@@ -29,16 +29,20 @@ interface ProfileImageProps {
   className: string;
 }
 
-const ProfileImage: React.FC<ProfileImageProps> = ({ src, name, className }) => {
+const ProfileImage: React.FC<ProfileImageProps> = ({
+  src,
+  name,
+  className,
+}) => {
   const [imageError, setImageError] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
 
   const getInitials = (fullName: string) => {
     return fullName
-      .split(' ')
-      .map(word => word.charAt(0).toUpperCase())
+      .split(" ")
+      .map((word) => word.charAt(0).toUpperCase())
       .slice(0, 2)
-      .join('');
+      .join("");
   };
 
   useEffect(() => {
@@ -63,7 +67,9 @@ const ProfileImage: React.FC<ProfileImageProps> = ({ src, name, className }) => 
 
   if (!src || imageError) {
     return (
-      <div className={`${className} bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm`}>
+      <div
+        className={`${className} bg-linear-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm`}
+      >
         {getInitials(name)}
       </div>
     );
@@ -72,14 +78,18 @@ const ProfileImage: React.FC<ProfileImageProps> = ({ src, name, className }) => 
   return (
     <div className="relative">
       {imageLoading && (
-        <div className={`${className} bg-gray-200 animate-pulse flex items-center justify-center`}>
+        <div
+          className={`${className} bg-gray-200 animate-pulse flex items-center justify-center`}
+        >
           <User className="w-6 h-6 text-gray-400" />
         </div>
       )}
       <img
         src={src}
         alt={name}
-        className={`${className} ${imageLoading ? 'opacity-0 absolute' : 'opacity-100'}`}
+        className={`${className} ${
+          imageLoading ? "opacity-0 absolute" : "opacity-100"
+        }`}
         onLoad={handleImageLoad}
         onError={handleImageError}
       />
@@ -89,11 +99,16 @@ const ProfileImage: React.FC<ProfileImageProps> = ({ src, name, className }) => 
 
 const Screen7 = () => {
   // Form context
-  const { control, setValue, watch, formState: { errors } } = useFormContext();
-  
   const {
-    fetchTestimonials,
-    createTestimonialSimple,
+    control,
+    setValue,
+    watch,
+    formState: { errors },
+  } = useFormContext();
+
+  const {
+    getTestimonials,
+    createTestimonial,
     updateTestimonial,
     deleteTestimonial,
     isLoading,
@@ -101,7 +116,7 @@ const Screen7 = () => {
     clearError,
   } = useTestimonial();
 
-  const [testimonials, setTestimonials] = useState<(Testimonial & { _id: string })[]>([]);
+  const [testimonials, setTestimonials] = useState<Testimonial[] | null>([]);
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
@@ -122,25 +137,35 @@ const Screen7 = () => {
   });
 
   const [showEditModal, setShowEditModal] = useState(false);
-  const [editingTestimonial, setEditingTestimonial] = useState<(Testimonial & { _id: string }) | null>(null);
+  const [editingTestimonial, setEditingTestimonial] =
+    useState<Testimonial | null>(null);
   const [updating, setUpdating] = useState(false);
 
-  const [deletingTestimonialId, setDeletingTestimonialId] = useState<string | null>(null);
+  const [deletingTestimonialId, setDeletingTestimonialId] = useState<
+    string | null
+  >(null);
 
   // Watch form values
   const testimonialsValue = watch("testimonials") || [];
-  
-  // Selected testimonials for the course - sync with form
-  const [selectedTestimonialIds, setSelectedTestimonialIds] = useState<string[]>(testimonialsValue);
 
-  const [expandedTestimonials, setExpandedTestimonials] = useState<Set<string>>(new Set());
-  
+  // Selected testimonials for the course - sync with form
+  const [selectedTestimonialIds, setSelectedTestimonialIds] =
+    useState<string[]>(testimonialsValue);
+
+  const [expandedTestimonials, setExpandedTestimonials] = useState<Set<string>>(
+    new Set()
+  );
+
   // Client-side mounting
   const [isMounted, setIsMounted] = useState(false);
 
   // Initialize selectedTestimonialIds from form value only once
   useEffect(() => {
-    if (isMounted && testimonialsValue.length > 0 && selectedTestimonialIds.length === 0) {
+    if (
+      isMounted &&
+      testimonialsValue.length > 0 &&
+      selectedTestimonialIds.length === 0
+    ) {
       setSelectedTestimonialIds(testimonialsValue);
     }
   }, [testimonialsValue, isMounted, selectedTestimonialIds.length]);
@@ -170,24 +195,40 @@ const Screen7 = () => {
       if (isLoading) return;
 
       try {
-        const result = await fetchTestimonials(pageNum, 10, searchDebounced);
+        const result = await getTestimonials({
+          page: pageNum,
+          limit: 10,
+          search: searchDebounced,
+        });
 
-        if (reset) {
-          setTestimonials(result.testimonials);
-        } else {
-          setTestimonials((prev) => [...prev, ...result.testimonials]);
+        if (result) {
+          if (reset) {
+            setTestimonials(result.testimonials);
+          } else {
+            setTestimonials((prev) => [
+              ...(prev || []),
+              ...(result.testimonials || []),
+            ]);
+          }
+
+          setHasMore(
+            result.testimonials?.length === 10 &&
+              (testimonials?.length || 0) + (result.testimonials?.length || 0) <
+                result.total
+          );
+          setPage(pageNum + 1);
         }
-
-        setHasMore(
-          result.testimonials.length === 10 &&
-            testimonials.length + result.testimonials.length < result.total
-        );
-        setPage(pageNum + 1);
       } catch (error) {
         console.error("Error loading testimonials:", error);
       }
     },
-    [isLoading, searchDebounced, fetchTestimonials, clearError]
+    [
+      isLoading,
+      searchDebounced,
+      getTestimonials,
+      clearError,
+      testimonials?.length,
+    ]
   );
 
   const handleScroll = useCallback(
@@ -210,36 +251,45 @@ const Screen7 = () => {
     loadTestimonials(1, true);
   }, []);
 
-
   const handleTestimonialToggle = (testimonialId: string) => {
     const newSelected = selectedTestimonialIds.includes(testimonialId)
       ? selectedTestimonialIds.filter((id: string) => id !== testimonialId)
       : [...selectedTestimonialIds, testimonialId];
 
     setSelectedTestimonialIds(newSelected);
-    setValue("testimonials", newSelected, { shouldDirty: true, shouldTouch: true });
+    setValue("testimonials", newSelected, {
+      shouldDirty: true,
+      shouldTouch: true,
+    });
   };
 
   const handleCreateTestimonial = async () => {
-    if (!newTestimonial.name.trim() || !newTestimonial.currentRole.trim() || !newTestimonial.currentCompany.trim()) return;
+    if (
+      !newTestimonial.name.trim() ||
+      !newTestimonial.currentRole.trim() ||
+      !newTestimonial.currentCompany.trim()
+    )
+      return;
 
     setCreating(true);
     try {
-      const createdTestimonial = await createTestimonialSimple(newTestimonial);
-      setTestimonials((prev) => [createdTestimonial, ...prev]);
-      setNewTestimonial({
-        name: "",
-        currentRole: "",
-        currentCompany: "",
-        linkedin: "",
-        pastRole: "",
-        pastCompany: "",
-        college: "",
-        profileImage: "",
-        verified: false,
-      });
-      setShowCreateModal(false);
-      clearError();
+      const createdTestimonial = await createTestimonial(newTestimonial);
+      if (createdTestimonial) {
+        setTestimonials((prev) => [createdTestimonial, ...(prev || [])]);
+        setNewTestimonial({
+          name: "",
+          currentRole: "",
+          currentCompany: "",
+          linkedin: "",
+          pastRole: "",
+          pastCompany: "",
+          college: "",
+          profileImage: "",
+          verified: false,
+        });
+        setShowCreateModal(false);
+        clearError();
+      }
     } catch (error) {
       console.error("Error creating testimonial:", error);
     } finally {
@@ -247,13 +297,19 @@ const Screen7 = () => {
     }
   };
 
-  const handleEditTestimonial = (testimonial: Testimonial & { _id: string }) => {
+  const handleEditTestimonial = (testimonial: Testimonial) => {
     setEditingTestimonial(testimonial);
     setShowEditModal(true);
   };
 
   const handleUpdateTestimonial = async () => {
-    if (!editingTestimonial || !editingTestimonial.name.trim() || !editingTestimonial.currentRole.trim()) return;
+    if (
+      !editingTestimonial ||
+      !editingTestimonial._id ||
+      !editingTestimonial.name.trim() ||
+      !editingTestimonial.currentRole.trim()
+    )
+      return;
 
     setUpdating(true);
     try {
@@ -269,11 +325,11 @@ const Screen7 = () => {
         verified: editingTestimonial.verified,
       });
 
-      if (result.success && result.data) {
+      if (result) {
         // Update the testimonial in the local state
         setTestimonials((prev) =>
-          prev.map((testimonial) =>
-            testimonial._id === editingTestimonial._id ? { ...result.data! } : testimonial
+          (prev || []).map((testimonial) =>
+            testimonial._id === editingTestimonial._id ? result : testimonial
           )
         );
         setShowEditModal(false);
@@ -288,7 +344,11 @@ const Screen7 = () => {
   };
 
   const handleDeleteTestimonial = async (testimonialId: string) => {
-    if (!confirm("Are you sure you want to delete this testimonial? This action cannot be undone.")) {
+    if (
+      !confirm(
+        "Are you sure you want to delete this testimonial? This action cannot be undone."
+      )
+    ) {
       return;
     }
 
@@ -296,16 +356,25 @@ const Screen7 = () => {
     try {
       const result = await deleteTestimonial(testimonialId);
 
-      if (result.success) {
-        setTestimonials((prev) => prev.filter((testimonial) => testimonial._id !== testimonialId));
-        
+      if (result) {
+        setTestimonials((prev) =>
+          (prev || []).filter(
+            (testimonial) => testimonial._id !== testimonialId
+          )
+        );
+
         // Calculate new selected testimonials
-        const newSelected = selectedTestimonialIds.filter((id) => id !== testimonialId);
-        
+        const newSelected = selectedTestimonialIds.filter(
+          (id) => id !== testimonialId
+        );
+
         // Update both local state and form value
         setSelectedTestimonialIds(newSelected);
-        setValue("testimonials", newSelected, { shouldDirty: true, shouldTouch: true });
-        
+        setValue("testimonials", newSelected, {
+          shouldDirty: true,
+          shouldTouch: true,
+        });
+
         clearError();
       }
     } catch (error) {
@@ -405,7 +474,10 @@ const Screen7 = () => {
                   label="Name"
                   value={newTestimonial.name}
                   onChange={(e) =>
-                    setNewTestimonial((prev) => ({ ...prev, name: e.target.value }))
+                    setNewTestimonial((prev) => ({
+                      ...prev,
+                      name: e.target.value,
+                    }))
                   }
                   placeholder="Enter full name"
                   required
@@ -415,7 +487,10 @@ const Screen7 = () => {
                   label="Profile Image URL"
                   value={newTestimonial.profileImage}
                   onChange={(e) =>
-                    setNewTestimonial((prev) => ({ ...prev, profileImage: e.target.value }))
+                    setNewTestimonial((prev) => ({
+                      ...prev,
+                      profileImage: e.target.value,
+                    }))
                   }
                   placeholder="https://example.com/profile.jpg"
                   required
@@ -425,7 +500,10 @@ const Screen7 = () => {
                   label="Current Role"
                   value={newTestimonial.currentRole}
                   onChange={(e) =>
-                    setNewTestimonial((prev) => ({ ...prev, currentRole: e.target.value }))
+                    setNewTestimonial((prev) => ({
+                      ...prev,
+                      currentRole: e.target.value,
+                    }))
                   }
                   placeholder="e.g., Senior Software Engineer"
                   required
@@ -435,7 +513,10 @@ const Screen7 = () => {
                   label="Current Company"
                   value={newTestimonial.currentCompany}
                   onChange={(e) =>
-                    setNewTestimonial((prev) => ({ ...prev, currentCompany: e.target.value }))
+                    setNewTestimonial((prev) => ({
+                      ...prev,
+                      currentCompany: e.target.value,
+                    }))
                   }
                   placeholder="e.g., Google"
                   required
@@ -445,7 +526,10 @@ const Screen7 = () => {
                   label="Past Role"
                   value={newTestimonial.pastRole}
                   onChange={(e) =>
-                    setNewTestimonial((prev) => ({ ...prev, pastRole: e.target.value }))
+                    setNewTestimonial((prev) => ({
+                      ...prev,
+                      pastRole: e.target.value,
+                    }))
                   }
                   placeholder="e.g., Junior Developer"
                   required
@@ -455,7 +539,10 @@ const Screen7 = () => {
                   label="Past Company"
                   value={newTestimonial.pastCompany}
                   onChange={(e) =>
-                    setNewTestimonial((prev) => ({ ...prev, pastCompany: e.target.value }))
+                    setNewTestimonial((prev) => ({
+                      ...prev,
+                      pastCompany: e.target.value,
+                    }))
                   }
                   placeholder="e.g., Startup Inc."
                   required
@@ -465,7 +552,10 @@ const Screen7 = () => {
                   label="College"
                   value={newTestimonial.college}
                   onChange={(e) =>
-                    setNewTestimonial((prev) => ({ ...prev, college: e.target.value }))
+                    setNewTestimonial((prev) => ({
+                      ...prev,
+                      college: e.target.value,
+                    }))
                   }
                   placeholder="e.g., Stanford University"
                   required
@@ -475,7 +565,10 @@ const Screen7 = () => {
                   label="LinkedIn Profile"
                   value={newTestimonial.linkedin}
                   onChange={(e) =>
-                    setNewTestimonial((prev) => ({ ...prev, linkedin: e.target.value }))
+                    setNewTestimonial((prev) => ({
+                      ...prev,
+                      linkedin: e.target.value,
+                    }))
                   }
                   placeholder="https://linkedin.com/in/username"
                   required
@@ -488,11 +581,17 @@ const Screen7 = () => {
                   id="verified"
                   checked={newTestimonial.verified}
                   onChange={(e) =>
-                    setNewTestimonial((prev) => ({ ...prev, verified: e.target.checked }))
+                    setNewTestimonial((prev) => ({
+                      ...prev,
+                      verified: e.target.checked,
+                    }))
                   }
                   className="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500 focus:ring-2"
                 />
-                <label htmlFor="verified" className="text-sm font-medium text-gray-700">
+                <label
+                  htmlFor="verified"
+                  className="text-sm font-medium text-gray-700"
+                >
                   Mark as verified testimonial
                 </label>
               </div>
@@ -508,9 +607,9 @@ const Screen7 = () => {
               <OrangeButton
                 onClick={handleCreateTestimonial}
                 disabled={
-                  !newTestimonial.name.trim() || 
-                  !newTestimonial.currentRole.trim() || 
-                  !newTestimonial.currentCompany.trim() || 
+                  !newTestimonial.name.trim() ||
+                  !newTestimonial.currentRole.trim() ||
+                  !newTestimonial.currentCompany.trim() ||
                   creating
                 }
                 className="flex items-center gap-2"
@@ -558,7 +657,7 @@ const Screen7 = () => {
                   label="Name"
                   value={editingTestimonial.name}
                   onChange={(e) =>
-                    setEditingTestimonial((prev) => 
+                    setEditingTestimonial((prev) =>
                       prev ? { ...prev, name: e.target.value } : null
                     )
                   }
@@ -570,7 +669,7 @@ const Screen7 = () => {
                   label="Profile Image URL"
                   value={editingTestimonial.profileImage}
                   onChange={(e) =>
-                    setEditingTestimonial((prev) => 
+                    setEditingTestimonial((prev) =>
                       prev ? { ...prev, profileImage: e.target.value } : null
                     )
                   }
@@ -582,7 +681,7 @@ const Screen7 = () => {
                   label="Current Role"
                   value={editingTestimonial.currentRole}
                   onChange={(e) =>
-                    setEditingTestimonial((prev) => 
+                    setEditingTestimonial((prev) =>
                       prev ? { ...prev, currentRole: e.target.value } : null
                     )
                   }
@@ -594,7 +693,7 @@ const Screen7 = () => {
                   label="Current Company"
                   value={editingTestimonial.currentCompany}
                   onChange={(e) =>
-                    setEditingTestimonial((prev) => 
+                    setEditingTestimonial((prev) =>
                       prev ? { ...prev, currentCompany: e.target.value } : null
                     )
                   }
@@ -606,7 +705,7 @@ const Screen7 = () => {
                   label="Past Role"
                   value={editingTestimonial.pastRole}
                   onChange={(e) =>
-                    setEditingTestimonial((prev) => 
+                    setEditingTestimonial((prev) =>
                       prev ? { ...prev, pastRole: e.target.value } : null
                     )
                   }
@@ -618,7 +717,7 @@ const Screen7 = () => {
                   label="Past Company"
                   value={editingTestimonial.pastCompany}
                   onChange={(e) =>
-                    setEditingTestimonial((prev) => 
+                    setEditingTestimonial((prev) =>
                       prev ? { ...prev, pastCompany: e.target.value } : null
                     )
                   }
@@ -630,7 +729,7 @@ const Screen7 = () => {
                   label="College"
                   value={editingTestimonial.college}
                   onChange={(e) =>
-                    setEditingTestimonial((prev) => 
+                    setEditingTestimonial((prev) =>
                       prev ? { ...prev, college: e.target.value } : null
                     )
                   }
@@ -642,7 +741,7 @@ const Screen7 = () => {
                   label="LinkedIn Profile"
                   value={editingTestimonial.linkedin}
                   onChange={(e) =>
-                    setEditingTestimonial((prev) => 
+                    setEditingTestimonial((prev) =>
                       prev ? { ...prev, linkedin: e.target.value } : null
                     )
                   }
@@ -657,13 +756,16 @@ const Screen7 = () => {
                   id="edit-verified"
                   checked={editingTestimonial.verified || false}
                   onChange={(e) =>
-                    setEditingTestimonial((prev) => 
+                    setEditingTestimonial((prev) =>
                       prev ? { ...prev, verified: e.target.checked } : null
                     )
                   }
                   className="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500 focus:ring-2"
                 />
-                <label htmlFor="edit-verified" className="text-sm font-medium text-gray-700">
+                <label
+                  htmlFor="edit-verified"
+                  className="text-sm font-medium text-gray-700"
+                >
                   Mark as verified testimonial
                 </label>
               </div>
@@ -682,8 +784,8 @@ const Screen7 = () => {
               <OrangeButton
                 onClick={handleUpdateTestimonial}
                 disabled={
-                  !editingTestimonial?.name.trim() || 
-                  !editingTestimonial?.currentRole.trim() || 
+                  !editingTestimonial?.name.trim() ||
+                  !editingTestimonial?.currentRole.trim() ||
                   updating
                 }
                 className="flex items-center gap-2"
@@ -714,7 +816,9 @@ const Screen7 = () => {
             </div>
             <div>
               <h4 className="text-red-800 font-semibold">Validation Error</h4>
-              <p className="text-red-700 text-sm">{String(errors.testimonials?.message || '')}</p>
+              <p className="text-red-700 text-sm">
+                {String(errors.testimonials?.message || "")}
+              </p>
             </div>
           </div>
         </div>
@@ -745,7 +849,9 @@ const Screen7 = () => {
         onScroll={handleScroll}
         style={{ scrollbarWidth: "thin" }}
       >
-        {testimonials.map((testimonial) => {
+        {testimonials?.map((testimonial) => {
+          if (!testimonial._id) return null; // Skip testimonials without ID
+
           const isSelected = selectedTestimonialIds.includes(testimonial._id);
           const isExpanded = expandedTestimonials.has(testimonial._id);
 
@@ -763,18 +869,27 @@ const Screen7 = () => {
                   <input
                     type="checkbox"
                     checked={isSelected}
-                    onChange={() => handleTestimonialToggle(testimonial._id)}
+                    onChange={() =>
+                      testimonial._id &&
+                      handleTestimonialToggle(testimonial._id)
+                    }
                     className="w-4 h-4 text-purple-600 bg-gray-100 border-gray-300 rounded focus:ring-purple-500 focus:ring-2"
                   />
                 </div>
 
-                <div className="flex-shrink-0">
-                   <ProfileImage 
-                     src={testimonial.profileImage}
-                     name={testimonial.name}
-                     className="w-12 h-12 rounded-full object-cover border-2 border-gray-200"
-                   />
-                 </div>
+                <div className="shrink-0">
+                  {testimonial.profileImage ? (
+                    <ProfileImage
+                      src={testimonial.profileImage}
+                      name={testimonial.name}
+                      className="w-12 h-12 rounded-full object-cover border-2 border-gray-200"
+                    />
+                  ) : (
+                    <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center text-gray-400 text-sm font-semibold">
+                      {testimonial.name.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                </div>
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-3">
@@ -783,18 +898,21 @@ const Screen7 = () => {
                         <h4 className="text-lg font-semibold text-gray-900">
                           {testimonial.name}
                         </h4>
-                         {testimonial.verified && (
-                           <div title="Verified">
-                             <ShieldCheck className="w-4 h-4 text-green-500" />
-                           </div>
-                         )}
+                        {testimonial.verified && (
+                          <div title="Verified">
+                            <ShieldCheck className="w-4 h-4 text-green-500" />
+                          </div>
+                        )}
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                         <div className="space-y-2">
                           <div className="flex items-center gap-2 text-sm text-gray-600">
                             <Building className="w-4 h-4" />
-                            <span>{testimonial.currentRole} at {testimonial.currentCompany}</span>
+                            <span>
+                              {testimonial.currentRole} at{" "}
+                              {testimonial.currentCompany}
+                            </span>
                           </div>
                           <div className="flex items-center gap-2 text-sm text-gray-600">
                             <GraduationCap className="w-4 h-4" />
@@ -806,14 +924,17 @@ const Screen7 = () => {
                           <div className="space-y-2">
                             <div className="flex items-center gap-2 text-sm text-gray-600">
                               <User className="w-4 h-4" />
-                              <span>Previously: {testimonial.pastRole} at {testimonial.pastCompany}</span>
+                              <span>
+                                Previously: {testimonial.pastRole} at{" "}
+                                {testimonial.pastCompany}
+                              </span>
                             </div>
                             <div className="flex items-center gap-2 text-sm text-gray-600">
                               <Linkedin className="w-4 h-4" />
-                              <a 
-                                href={testimonial.linkedin} 
-                                target="_blank" 
-                                rel="noopener noreferrer" 
+                              <a
+                                href={testimonial.linkedin}
+                                target="_blank"
+                                rel="noopener noreferrer"
                                 className="text-blue-600 hover:text-blue-800"
                               >
                                 LinkedIn Profile
@@ -825,11 +946,17 @@ const Screen7 = () => {
 
                       <div className="flex items-center gap-4 text-xs text-gray-500">
                         <span>
-                          Created: {new Date(testimonial.createdAt!).toLocaleDateString()}
+                          Created:{" "}
+                          {new Date(
+                            testimonial.createdAt!
+                          ).toLocaleDateString()}
                         </span>
                         {testimonial.updatedAt && (
                           <span>
-                            Updated: {new Date(testimonial.updatedAt).toLocaleDateString()}
+                            Updated:{" "}
+                            {new Date(
+                              testimonial.updatedAt
+                            ).toLocaleDateString()}
                           </span>
                         )}
                       </div>
@@ -850,7 +977,8 @@ const Screen7 = () => {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleDeleteTestimonial(testimonial._id);
+                          testimonial._id &&
+                            handleDeleteTestimonial(testimonial._id);
                         }}
                         disabled={deletingTestimonialId === testimonial._id}
                         className="text-gray-400 hover:text-red-600 p-1 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50"
@@ -866,7 +994,8 @@ const Screen7 = () => {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          toggleTestimonialExpansion(testimonial._id);
+                          testimonial._id &&
+                            toggleTestimonialExpansion(testimonial._id);
                         }}
                         className="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100 transition-colors"
                         title={isExpanded ? "Collapse" : "Expand"}
@@ -901,17 +1030,19 @@ const Screen7 = () => {
           </div>
         )}
 
-        {!hasMore && testimonials.length > 0 && (
+        {!hasMore && testimonials && testimonials.length > 0 && (
           <div className="text-center py-6 text-gray-500 text-sm">
             No more testimonials to load
           </div>
         )}
 
-        {testimonials.length === 0 && !isLoading && (
+        {testimonials && testimonials.length === 0 && !isLoading && (
           <div className="text-center py-12">
             <Users className="w-12 h-12 mx-auto text-gray-300 mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">
-              {searchTerm ? "No testimonials found" : "No testimonials available"}
+              {searchTerm
+                ? "No testimonials found"
+                : "No testimonials available"}
             </h3>
             <p className="text-gray-500 mb-6">
               {searchTerm
@@ -928,18 +1059,14 @@ const Screen7 = () => {
             </OrangeButton>
           </div>
         )}
-        
+
         {/* Hidden input for form validation */}
         <Controller
           name="testimonials"
           control={control}
           rules={{ required: "At least one testimonial is required" }}
           render={({ field }) => (
-            <input
-              type="hidden"
-              {...field}
-              value={selectedTestimonialIds}
-            />
+            <input type="hidden" {...field} value={selectedTestimonialIds} />
           )}
         />
       </div>

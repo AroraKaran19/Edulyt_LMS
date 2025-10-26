@@ -1,122 +1,121 @@
 import { Request, Response } from "express";
 import {
-  getAllCategories,
-  getActiveCategories,
-  createCategory,
-  updateCategory,
-  deleteCategory,
-  getCategoryById,
-} from "../services/category.service";
-import {
-  AppError,
   asyncHandler,
   sendSuccessResponse,
+  AppError,
 } from "../middlewares/error.middleware";
+import {
+  createCategoryService,
+  deleteCategoryService,
+  getAllCategoriesService,
+  getCategoryByIdService,
+  updateCategoryService,
+} from "../services/category.services";
 
-/**
- * Get all categories with pagination and filtering
- */
-export const getAllCategoriesController = asyncHandler(
-  async (req: Request, res: Response): Promise<void> => {
-    const {
-      page = 1,
-      limit = 50,
-      search = "",
-      isActive,
-    } = req.query;
+export const getAllCategories = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { page = 1, limit = 10, search = "" } = req.query;
+    const isAdmin = req.user?.userType === "admin";
 
-    const result = await getAllCategories(
+    if (Number(page) < 1 || Number(limit) < 1) {
+      throw new AppError("Page and limit must be positive numbers", 400);
+    }
+
+    const result = await getAllCategoriesService(
       Number(page),
       Number(limit),
-      search as string,
-      isActive !== undefined ? isActive === "true" : undefined
+      String(search),
+      isAdmin
     );
 
-    sendSuccessResponse(res, result.data, result.message, 200);
+    if (!result || result.categories.length === 0) {
+      sendSuccessResponse(res, [], "No categories found", 200);
+      return;
+    }
+
+    sendSuccessResponse(res, result, "Categories fetched successfully", 200);
+    return;
   }
 );
 
-/**
- * Get active categories only (for dropdowns)
- */
-export const getActiveCategoriesController = asyncHandler(
-  async (req: Request, res: Response): Promise<void> => {
-    const result = await getActiveCategories();
-    sendSuccessResponse(res, result.data, result.message, 200);
+export const getCategoryById = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const isAdmin = req.user?.userType === "admin";
+    
+    if (!id) {
+      throw new AppError("Category ID is required", 400);
+    }
+
+    const result = await getCategoryByIdService(id, isAdmin);
+    if (!result) {
+      sendSuccessResponse(res, [], "Category not found", 200);
+      return;
+    }
+
+    sendSuccessResponse(res, result, "Category fetched successfully", 200);
+    return;
   }
 );
 
-/**
- * Create a new category
- */
-export const createCategoryController = asyncHandler(
-  async (req: Request, res: Response): Promise<void> => {
+export const createCategory = asyncHandler(
+  async (req: Request, res: Response) => {
     const { name, description } = req.body;
-
-    if (!name || !name.trim()) {
+    if (!name) {
       throw new AppError("Category name is required", 400);
     }
 
-    const result = await createCategory({
-      name: name.trim(),
-      description: description?.trim(),
+    const result = await createCategoryService(name, description);
+    if (!result) {
+      throw new AppError("Failed to create category", 500);
+    }
+
+    sendSuccessResponse(res, result, "Category created successfully", 201);
+    return;
+  }
+);
+
+export const updateCategory = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const { name, description, isActive } = req.body;
+    if (!id) {
+      throw new AppError("Category ID is required", 400);
+    }
+    if (!name && !description && isActive === undefined) {
+      throw new AppError(
+        "At least one field (name, description, or isActive) is required",
+        400
+      );
+    }
+
+    const result = await updateCategoryService(id, {
+      name,
+      description,
+      isActive,
     });
+    if (!result) {
+      throw new AppError("Failed to update category", 500);
+    }
 
-    sendSuccessResponse(res, result.data, result.message, 201);
+    sendSuccessResponse(res, result, "Category updated successfully", 200);
+    return;
   }
 );
 
-/**
- * Update a category
- */
-export const updateCategoryController = asyncHandler(
-  async (req: Request, res: Response): Promise<void> => {
-    const { categoryId } = req.params;
-    const updateData = req.body;
-
-    if (!categoryId) {
+export const deleteCategory = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { id } = req.params;
+    if (!id) {
       throw new AppError("Category ID is required", 400);
     }
 
-    // Clean up the update data
-    const cleanedData: any = {};
-    if (updateData.name) cleanedData.name = updateData.name.trim();
-    if (updateData.description !== undefined) cleanedData.description = updateData.description?.trim();
-    if (updateData.isActive !== undefined) cleanedData.isActive = updateData.isActive;
-
-    const result = await updateCategory(categoryId, cleanedData);
-    sendSuccessResponse(res, result.data, result.message, 200);
-  }
-);
-
-/**
- * Delete a category
- */
-export const deleteCategoryController = asyncHandler(
-  async (req: Request, res: Response): Promise<void> => {
-    const { categoryId } = req.params;
-
-    if (!categoryId) {
-      throw new AppError("Category ID is required", 400);
+    const result = await deleteCategoryService(id);
+    if (!result) {
+      throw new AppError("Failed to delete category", 500);
     }
 
-    const result = await deleteCategory(categoryId);
-    sendSuccessResponse(res, null, result.message, 200);
-  }
-);
-
-/**
- * Get category by ID
- */
-export const getCategoryByIdController = asyncHandler(
-  async (req: Request, res: Response): Promise<void> => {
-    const { categoryId } = req.params;
-
-    if (!categoryId) {
-      throw new AppError("Category ID is required", 400);
-    }
-
-    const result = await getCategoryById(categoryId);
-    sendSuccessResponse(res, result.data, result.message, 200);
+    sendSuccessResponse(res, result, "Category deleted successfully", 200);
+    return;
   }
 );
