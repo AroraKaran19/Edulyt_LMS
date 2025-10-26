@@ -34,7 +34,6 @@ export const authOptions: NextAuthOptions = {
             email: credentials.email,
             password: credentials.password,
           });
-          console.log("response", response);
 
           // Return both user data and access token
           return {

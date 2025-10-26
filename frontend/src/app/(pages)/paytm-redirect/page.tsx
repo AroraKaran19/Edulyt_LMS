@@ -44,6 +44,24 @@ const PaymentRedirectContent = () => {
   }, [orderIdFromParams, searchParams, router]);
 
   useEffect(() => {
+    // Early check for payment token before loading Paytm script
+    const paymentToken = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("paymentToken="))
+      ?.split("=")[1];
+
+    if (!paymentToken) {
+      console.error("Payment token not found in cookies");
+      setPaymentStatus("Payment token not found. Redirecting back...");
+      setIsRedirecting(true);
+
+      // Redirect back after a short delay
+      setTimeout(() => {
+        router.back();
+      }, 2000);
+      return;
+    }
+
     if (orderIdToBeUsed) {
       // Load Paytm CheckoutJS script dynamically
       const script = document.createElement("script");
@@ -53,23 +71,73 @@ const PaymentRedirectContent = () => {
 
       script.onload = async () => {
         try {
-          // get token from cookies "paymentToken"
+          // get token from cookies "paymentToken" (already checked above, but keeping for safety)
           const paymentToken = document.cookie
             .split("; ")
             .find((row) => row.startsWith("paymentToken="))
             ?.split("=")[1];
 
-          if (!paymentToken) {
-            console.error("Payment token not found in cookies");
-            setPaymentStatus("Payment token not found. Please try again.");
+          // Validate required data
+          if (!paymentToken || !orderIdToBeUsed) {
+            console.error("Payment token or order ID not found");
+            setPaymentStatus("Required data not found. Redirecting back...");
+            setIsRedirecting(true);
+
+            // Redirect back after a short delay
+            setTimeout(() => {
+              router.back();
+            }, 2000);
             return;
           }
 
-          if (!orderIdToBeUsed) {
-            console.error("Order ID not found");
-            setPaymentStatus("Order ID not found. Please try again.");
+          // Validate Paytm MID environment variable
+          const paytmMid = process.env.NEXT_PUBLIC_PAYTM_MID;
+          if (!paytmMid) {
+            console.error("Paytm MID not configured");
+            setPaymentStatus(
+              "Payment configuration error. Redirecting back..."
+            );
+            setIsRedirecting(true);
+
+            setTimeout(() => {
+              router.back();
+            }, 2000);
             return;
           }
+
+          // Validate token format (should be a string and not empty)
+          if (typeof paymentToken !== "string" || paymentToken.trim() === "") {
+            console.error("Invalid payment token format");
+            setPaymentStatus("Invalid payment token. Redirecting back...");
+            setIsRedirecting(true);
+
+            setTimeout(() => {
+              router.back();
+            }, 2000);
+            return;
+          }
+
+          // Validate orderId format
+          if (
+            typeof orderIdToBeUsed !== "string" ||
+            orderIdToBeUsed.trim() === ""
+          ) {
+            console.error("Invalid order ID format");
+            setPaymentStatus("Invalid order ID. Redirecting back...");
+            setIsRedirecting(true);
+
+            setTimeout(() => {
+              router.back();
+            }, 2000);
+            return;
+          }
+
+          console.log("Paytm configuration data:", {
+            orderId: orderIdToBeUsed,
+            tokenLength: paymentToken.length,
+            tokenType: "TXN_TOKEN",
+            paytmMid: paytmMid,
+          });
 
           const config = {
             flow: "DEFAULT",
@@ -80,9 +148,9 @@ const PaymentRedirectContent = () => {
               amount: "1",
             },
             handler: {
-              notifyMerchant: function (eventName: string) {
-                // Clear payment token from cookies on any event
-                
+              notifyMerchant: function (eventName: string, data: any) {
+                console.log("Paytm event:", eventName, "Data:", data);
+
                 // Handle APP_CLOSED event
                 if (eventName === "APP_CLOSED") {
                   setPaymentStatus("Redirecting back...");
@@ -99,35 +167,80 @@ const PaymentRedirectContent = () => {
 
           // Initialize Paytm CheckoutJS
           if (window.Paytm && window.Paytm.CheckoutJS) {
-            window.Paytm.CheckoutJS.onLoad(function () {
-              window.Paytm?.CheckoutJS?.init(config)
-                .then(() => {
-                  window.Paytm?.CheckoutJS?.invoke();
-                  // Clear payment token from cookies after successful initialization
-                  document.cookie = "paymentToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-                })
-                .catch((error: any) => {
-                  console.error("Paytm init error:", error);
-                  setPaymentStatus(
-                    "Payment initialization failed. Please try again."
-                  );
-                });
-            });
+            try {
+              window.Paytm.CheckoutJS.onLoad(function () {
+                console.log("Paytm CheckoutJS loaded, initializing...");
+
+                window.Paytm?.CheckoutJS?.init(config)
+                  .then(() => {
+                    console.log("Paytm CheckoutJS initialized successfully");
+                    window.Paytm?.CheckoutJS?.invoke();
+                    // Clear payment token from cookies after successful initialization
+                    document.cookie =
+                      "paymentToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+                  })
+                  .catch((error: any) => {
+                    console.error("Paytm init error:", error);
+                    console.error("Error details:", {
+                      message: error.message,
+                      stack: error.stack,
+                      config: config,
+                    });
+                    setPaymentStatus(
+                      "Payment initialization failed. Redirecting back..."
+                    );
+                    setIsRedirecting(true);
+
+                    setTimeout(() => {
+                      router.back();
+                    }, 2000);
+                  });
+              });
+            } catch (error) {
+              console.error("Error setting up Paytm onLoad:", error);
+              setPaymentStatus("Payment setup failed. Redirecting back...");
+              setIsRedirecting(true);
+
+              setTimeout(() => {
+                router.back();
+              }, 2000);
+            }
           } else {
             console.error("Paytm CheckoutJS not available");
+            console.error("Window.Paytm:", window.Paytm);
             setPaymentStatus(
-              "Payment service not available. Please try again."
+              "Payment service not available. Redirecting back..."
             );
+            setIsRedirecting(true);
+
+            setTimeout(() => {
+              router.back();
+            }, 2000);
           }
         } catch (error) {
           console.error("Error in Paytm script onload:", error);
-          setPaymentStatus("Payment error occurred. Please try again.");
+          console.error("Error details:", {
+            message: error instanceof Error ? error.message : "Unknown error",
+            stack: error instanceof Error ? error.stack : undefined,
+          });
+          setPaymentStatus("Payment error occurred. Redirecting back...");
+          setIsRedirecting(true);
+
+          setTimeout(() => {
+            router.back();
+          }, 2000);
         }
       };
 
       script.onerror = () => {
         console.error("Failed to load Paytm script");
-        setPaymentStatus("Failed to load payment service. Please try again.");
+        console.error("Script URL:", script.src);
+        setPaymentStatus("Failed to load payment service. Redirecting back...");
+        setIsRedirecting(true);
+
+        setTimeout(() => {
+          router.back();
+        }, 2000);
       };
 
       document.body.appendChild(script);
@@ -136,8 +249,7 @@ const PaymentRedirectContent = () => {
 
   // Cleanup function to clear payment token when component unmounts
   useEffect(() => {
-    return () => {
-    };
+    return () => {};
   }, []);
 
   return (
@@ -150,13 +262,12 @@ const PaymentRedirectContent = () => {
           {paymentStatus}
         </h1>
         {isRedirecting && (
-          <div className="bg-gradient-to-r from-[#F77124] to-[#E65A1A] rounded-2xl p-4">
+          <div className="bg-linear-to-r from-[#F77124] to-[#E65A1A] rounded-2xl p-4">
             <p className="text-white text-sm font-semibold">
               You will be redirected shortly...
             </p>
           </div>
         )}
-
       </div>
     </div>
   );

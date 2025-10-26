@@ -1,8 +1,7 @@
+import { redirect } from "next/navigation";
 
 const HomePage = () => {
-  return (
-    <div>HomePage</div>
-  )
-}
+  return redirect("/courses");
+};
 
-export default HomePage
+export default HomePage;
