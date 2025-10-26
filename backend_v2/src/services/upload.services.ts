@@ -1,0 +1,234 @@
+import { getS3Client, getBucketName } from "../config/s3";
+import { PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { v4 as uuidv4 } from "uuid";
+import { AppError } from "../middlewares/error.middleware";
+
+export interface PresignedUrlRequest {
+  fileName: string;
+  fileType: string;
+  folderName: string;
+}
+
+export interface PresignedUrlResponse {
+  presignedUrl: string;
+  fileName: string;
+  publicUrl: string;
+  expiresIn: number;
+  folderName: string;
+  s3Key: string;
+}
+
+export interface UploadResponse {
+  success: boolean;
+  message: string;
+  data?: PresignedUrlResponse;
+  error?: string;
+}
+
+/**
+ * Generate a presigned URL for uploading files to S3
+ * @param request - Upload request parameters
+ * @returns Presigned URL response
+ */
+export const generatePresignedUrl = async (
+  request: PresignedUrlRequest
+): Promise<PresignedUrlResponse> => {
+  try {
+    const s3Client = await getS3Client();
+    const bucketName = getBucketName();
+
+    // Generate unique file name to avoid conflicts
+    const fileExtension = request.fileName.split(".").pop();
+    const uniqueFileName = `${uuidv4()}.${fileExtension}`;
+    const s3Key = `${request.folderName}/${uniqueFileName}`;
+
+    // Create the command for putting an object
+    const command = new PutObjectCommand({
+      Bucket: bucketName,
+      Key: s3Key,
+      ContentType: request.fileType,
+      Metadata: {
+        originalName: request.fileName,
+        folderName: request.folderName,
+      },
+    });
+
+    // Generate presigned URL (expires in 1 hour)
+    const presignedUrl = await getSignedUrl(s3Client, command, {
+      expiresIn: 3600, // 1 hour
+    });
+
+    // Generate public URL
+    const publicUrl = `https://${bucketName}.s3.amazonaws.com/${s3Key}`;
+
+    return {
+      presignedUrl,
+      fileName: uniqueFileName,
+      publicUrl,
+      expiresIn: 3600,
+      folderName: request.folderName,
+      s3Key,
+    };
+  } catch (error) {
+    console.error("Error generating presigned URL:", error);
+    throw new AppError("Failed to generate presigned URL", 500);
+  }
+};
+
+/**
+ * Delete a file from S3
+ * @param s3Key - S3 key of the file to delete
+ * @returns Success response
+ */
+export const deleteFileFromS3 = async (s3Key: string): Promise<void> => {
+  try {
+    const s3Client = await getS3Client();
+    const bucketName = getBucketName();
+
+    const command = new DeleteObjectCommand({
+      Bucket: bucketName,
+      Key: s3Key,
+    });
+
+    await s3Client.send(command);
+  } catch (error) {
+    console.error("Error deleting file from S3:", error);
+    throw new AppError("Failed to delete file", 500);
+  }
+};
+
+/**
+ * Validate file type and size
+ * @param fileType - MIME type of the file
+ * @param fileSize - Size of the file in bytes
+ * @param allowedTypes - Array of allowed MIME types
+ * @param maxSize - Maximum file size in bytes
+ * @returns Validation result
+ */
+export const validateFile = (
+  fileType: string,
+  fileSize: number,
+  allowedTypes: string[],
+  maxSize: number
+): { valid: boolean; error?: string } => {
+  if (!allowedTypes.includes(fileType)) {
+    return {
+      valid: false,
+      error: `File type ${fileType} is not allowed. Allowed types: ${allowedTypes.join(
+        ", "
+      )}`,
+    };
+  }
+
+  if (fileSize > maxSize) {
+    const maxSizeMB = Math.round(maxSize / (1024 * 1024));
+    const fileSizeMB = Math.round(fileSize / (1024 * 1024));
+    return {
+      valid: false,
+      error: `File size ${fileSizeMB}MB exceeds maximum allowed size of ${maxSizeMB}MB`,
+    };
+  }
+
+  return { valid: true };
+};
+
+/**
+ * Get file validation rules based on folder name
+ * @param folderName - Name of the folder
+ * @returns Validation rules
+ */
+export const getFileValidationRules = (
+  folderName: string
+): {
+  allowedTypes: string[];
+  maxSize: number;
+} => {
+  const rules: { [key: string]: { allowedTypes: string[]; maxSize: number } } =
+    {
+      "course-thumbnails": {
+        allowedTypes: ["image/jpeg", "image/jpg", "image/png", "image/webp"],
+        maxSize: 10 * 1024 * 1024, // 10MB
+      },
+      "course-videos": {
+        allowedTypes: [
+          "video/mp4",
+          "video/avi",
+          "video/mov",
+          "video/wmv",
+          "video/webm",
+          "video/mkv",
+        ],
+        maxSize: 500 * 1024 * 1024, // 500MB
+      },
+      "course-documents": {
+        allowedTypes: [
+          "application/pdf",
+          "application/msword",
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          "application/vnd.ms-excel",
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          "application/vnd.ms-powerpoint",
+          "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+          "text/plain",
+          "text/csv",
+        ],
+        maxSize: 50 * 1024 * 1024, // 50MB
+      },
+      "user-avatars": {
+        allowedTypes: ["image/jpeg", "image/jpg", "image/png", "image/webp"],
+        maxSize: 5 * 1024 * 1024, // 5MB
+      },
+      general: {
+        allowedTypes: [
+          "image/jpeg",
+          "image/jpg",
+          "image/png",
+          "image/webp",
+          "application/pdf",
+          "text/plain",
+        ],
+        maxSize: 100 * 1024 * 1024, // 100MB
+      },
+    };
+
+  // Handle dynamic course folder structure
+  if (folderName.includes("/modules")) {
+    // Course module thumbnails
+    return rules["course-thumbnails"];
+  } else if (folderName.includes("/preview_video")) {
+    // Course preview videos
+    return rules["course-videos"];
+  } else if (folderName.includes("/content")) {
+    // Course content - allow all types (videos, documents, images)
+    return {
+      allowedTypes: [
+        // Images
+        "image/jpeg",
+        "image/jpg", 
+        "image/png",
+        "image/webp",
+        // Videos
+        "video/mp4",
+        "video/avi",
+        "video/mov",
+        "video/wmv",
+        "video/webm",
+        "video/mkv",
+        // Documents
+        "application/pdf",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/vnd.ms-excel",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "application/vnd.ms-powerpoint",
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        "text/plain",
+        "text/csv",
+      ],
+      maxSize: 1500 * 1024 * 1024, // 1500MB (same as videos)
+    };
+  }
+
+  return rules[folderName] || rules["general"];
+};

@@ -1,8 +1,25 @@
+"use client";
 import ProgressChart from "@/components/ui/charts/ProgressChart";
 import { CircleAlert } from "lucide-react";
 import Image from "next/image";
+import useDashboardStats from "@/hooks/useDashboardStats";
+import Loader from "@/components/ui/Loader";
 
 const GoalsSection = () => {
+  const { stats, isLoading } = useDashboardStats();
+
+  if (isLoading) {
+    return (
+      <div className="flex w-full flex-col h-max gap-4 sm:gap-5 md:gap-6 border border-gray-200 rounded-lg p-3 sm:p-4 md:p-5">
+        <Loader size="sm" variant="spinner" />
+      </div>
+    );
+  }
+
+  const dailyGoalPercentage = stats.dailyGoal.target > 0 
+    ? Math.round((stats.dailyGoal.completed / stats.dailyGoal.target) * 100)
+    : 0;
+
   return (
     <div className="flex w-full flex-col h-max gap-4 sm:gap-5 md:gap-6 border border-gray-200 rounded-lg p-3 sm:p-4 md:p-5">
       <div className="flex w-full justify-between items-center">
@@ -14,7 +31,7 @@ const GoalsSection = () => {
       <div className="flex w-full flex-col items-center h-max gap-3 sm:gap-4">
         <div className="flex progress-chart-goal h-full relative">
           <ProgressChart
-            percentage={50}
+            percentage={dailyGoalPercentage}
             primaryColor="#0DCD90"
             secondaryColor="#DADADA"
             size={100}
@@ -40,15 +57,23 @@ const GoalsSection = () => {
           </span>
           <div className="h-full w-0.5 bg-gray-200 shrink-0" />
           <span className="text-xs sm:text-sm font-semibold text-black">
-            4/10{" "}
+            {stats.dailyGoal.completed}/{stats.dailyGoal.target}{" "}
             <span className="text-xs font-normal text-[#667085]">
               episodes done
             </span>
           </span>
         </div>
         <p className="text-xs font-normal text-[#667085] text-center">
-          Your longest streak is 2 days
+          Your longest streak is {stats.dailyGoal.streak} days
         </p>
+        <div className="mt-2 text-center">
+          <p className="text-xs text-gray-500">
+            Overall Progress: {stats.totalProgress}%
+          </p>
+          <p className="text-xs text-gray-500">
+            Courses: {stats.completedCourses}/{stats.totalCourses} completed
+          </p>
+        </div>
       </div>
     </div>
   );

@@ -56,7 +56,7 @@ const TabSwitcher = ({ tabs, className }: TabSwitcherProps) => {
             className={cn(
               "tab-switcher-tab w-7/10 md:w-full shrink-0 md:shrink cursor-pointer rounded-full flex flex-wrap items-center justify-center py-2 md:py-4 px-2",
               {
-                "bg-gradient-to-r from-[#F5691D] to-[#F9792A]": activeTab === tab,
+                "bg-linear-to-r from-[#F5691D] to-[#F9792A]": activeTab === tab,
               },
               "transition-colors duration-200 ease-in-out gap-2"
             )}

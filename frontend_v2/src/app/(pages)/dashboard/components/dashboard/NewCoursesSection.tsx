@@ -1,9 +1,50 @@
+"use client";
 import { Course } from "@/types";
 import { ArrowRight } from "lucide-react";
 import CoursesCard2 from "./ui/CourseCard2";
+import useUserEnrollments from "@/hooks/useUserEnrollments";
+import { Enrollment } from "@/types/enrollment";
+import { useEffect, useState } from "react";
+import Loader from "@/components/ui/Loader";
+import Error from "@/components/ui/Error";
+import { AlertCircle } from "lucide-react";
 
 const NewCoursesSection = () => {
-  const courses: Course[] = [];
+  const { getUserEnrollments, isLoading, error } = useUserEnrollments();
+  const [newCourses, setNewCourses] = useState<Enrollment[]>([]);
+
+  useEffect(() => {
+    const fetchNewCourses = async () => {
+      const result = await getUserEnrollments({
+        page: 1,
+        limit: 8,
+        sortBy: "recent", // Most recently enrolled courses
+      });
+
+      if (result) {
+        // Get the most recent enrollments (newly enrolled)
+        setNewCourses(result.enrollments.slice(0, 8));
+      }
+    };
+
+    fetchNewCourses();
+  }, [getUserEnrollments]);
+
+  if (isLoading) {
+    return <Loader size="lg" variant="spinner" />;
+  }
+
+  if (error) {
+    return (
+      <Error
+        icon={AlertCircle}
+        iconSize="lg"
+        iconColor="text-red-500"
+        title="Error"
+        description="Error loading new courses"
+      />
+    );
+  }
 
   return (
     <div className="flex w-full h-full flex-col gap-3 sm:gap-4">
@@ -15,9 +56,20 @@ const NewCoursesSection = () => {
         </div>
       </div>
       <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
-        {[...courses, ...courses].slice(0, 8).map((course, index) => (
-          <CoursesCard2 key={`${course._id}-${index}`} course={course} />
-        ))}
+        {newCourses.length > 0 ? (
+          newCourses.map((enrollment, index) => (
+            <CoursesCard2 
+              key={`${enrollment._id}-${index}`} 
+              course={enrollment.courseId as Course}
+              enrollment={enrollment}
+            />
+          ))
+        ) : (
+          <div className="col-span-full text-center py-8 text-gray-500">
+            <p className="text-sm">No enrolled courses yet</p>
+            <p className="text-xs mt-1">Enroll in courses to see them here</p>
+          </div>
+        )}
       </div>
     </div>
   );

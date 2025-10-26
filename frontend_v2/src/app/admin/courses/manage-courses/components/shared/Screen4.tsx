@@ -1,11 +1,11 @@
 "use client";
 import Container from "@/app/admin/components/ui/Container";
-import { FlexBox, OrangeButton } from "@/components/ui";
+import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import Input from "@/components/ui/inputs/Input";
 import TagInput from "@/components/ui/inputs/TagInput";
 import { Course } from "@/types";
 import { StarIcon, PlusIcon, TrashIcon } from "lucide-react";
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useFormContext } from "react-hook-form";
 import { Controller } from "react-hook-form";
 import { CourseFormData } from "@/types/courseForm";
@@ -13,7 +13,7 @@ import { CourseFormData } from "@/types/courseForm";
 const Screen4 = () => {
   const [isMounted, setIsMounted] = useState(false);
   const [highlights, setHighlights] = useState<Course["highlights"]>([]);
-  
+
   const {
     control,
     formState: { errors },
@@ -40,7 +40,10 @@ const Screen4 = () => {
   const addHighlight = () => {
     const newHighlights = [...highlights, { title: "", description: "" }];
     setHighlights(newHighlights);
-    setValue("highlights", newHighlights, { shouldDirty: true, shouldTouch: true });
+    setValue("highlights", newHighlights, {
+      shouldDirty: true,
+      shouldTouch: true,
+    });
   };
 
   // Update a highlight
@@ -53,14 +56,20 @@ const Screen4 = () => {
       i === index ? { ...highlight, [field]: value } : highlight
     );
     setHighlights(updatedHighlights);
-    setValue("highlights", updatedHighlights, { shouldDirty: true, shouldTouch: true });
+    setValue("highlights", updatedHighlights, {
+      shouldDirty: true,
+      shouldTouch: true,
+    });
   };
 
   // Remove a highlight
   const removeHighlight = (index: number) => {
     const updatedHighlights = highlights.filter((_, i) => i !== index);
     setHighlights(updatedHighlights);
-    setValue("highlights", updatedHighlights, { shouldDirty: true, shouldTouch: true });
+    setValue("highlights", updatedHighlights, {
+      shouldDirty: true,
+      shouldTouch: true,
+    });
   };
 
   if (!isMounted) {
@@ -89,7 +98,7 @@ const Screen4 = () => {
         description="Add compelling highlights that showcase the value of your course"
         className="h-full w-full border-none shadow-none pb-0 relative"
       >
-        <div className="absolute right-0 top-0 z-[9999]">
+        <div className="absolute right-0 top-0 z-9999">
           <button
             onClick={addHighlight}
             className="w-fit p-3 bg-orange-500 text-white rounded-full shadow-lg hover:bg-orange-600 transition-all duration-200 cursor-pointer"
@@ -98,23 +107,23 @@ const Screen4 = () => {
             <PlusIcon className="w-5 h-5" />
           </button>
         </div>
-        <FlexBox className="w-full h-full flex-col gap-4 max-h-[350px] overflow-y-auto">
+        <div className="flex w-full h-full flex-col gap-4 max-h-[350px] overflow-y-auto">
           {highlights.length > 0 ? (
-            <FlexBox className="w-full flex-col gap-6">
+            <div className="flex w-full flex-col gap-6">
               {highlights.map((highlight, index) => (
-                <FlexBox
+                <div
                   key={index}
-                  className="w-full flex-col gap-4 p-6 border border-gray-200 rounded-xl bg-gradient-to-br from-white to-gray-50 shadow-sm hover:shadow-md transition-all duration-200 group"
+                  className="flex w-full flex-col gap-4 p-6 border border-gray-200 rounded-xl bg-linear-to-br from-white to-gray-50 shadow-sm hover:shadow-md transition-all duration-200 group"
                 >
-                  <FlexBox className="w-full justify-between items-start">
-                    <FlexBox className="items-center gap-3">
+                  <div className="flex w-full justify-between items-start">
+                    <div className="flex items-center gap-3">
                       <div className="w-8 h-8 bg-orange-500 text-white rounded-full flex items-center justify-center text-sm font-semibold">
                         {index + 1}
                       </div>
                       <h4 className="text-base font-semibold text-gray-800">
                         Highlight {index + 1}
                       </h4>
-                    </FlexBox>
+                    </div>
                     <button
                       onClick={() => removeHighlight(index)}
                       className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all duration-200 opacity-0 group-hover:opacity-100"
@@ -122,7 +131,7 @@ const Screen4 = () => {
                     >
                       <TrashIcon className="w-4 h-4" />
                     </button>
-                  </FlexBox>
+                  </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Input
@@ -151,13 +160,13 @@ const Screen4 = () => {
                       />
                     </div>
                   </div>
-                </FlexBox>
+                </div>
               ))}
-            </FlexBox>
+            </div>
           ) : (
-            <FlexBox className="w-full flex-col items-center justify-center py-16 px-4 text-center">
+            <div className="flex w-full flex-col items-center justify-center py-16 px-4 text-center">
               <div className="relative mb-6">
-                <div className="w-20 h-20 bg-gradient-to-br from-orange-100 to-orange-200 rounded-full flex items-center justify-center shadow-lg">
+                <div className="w-20 h-20 bg-linear-to-br from-orange-100 to-orange-200 rounded-full flex items-center justify-center shadow-lg">
                   <StarIcon className="w-10 h-10 text-orange-500" />
                 </div>
                 <div className="absolute -top-1 -right-1 w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center">
@@ -178,9 +187,9 @@ const Screen4 = () => {
                 <PlusIcon className="w-5 h-5" />
                 Add First Highlight
               </OrangeButton>
-            </FlexBox>
+            </div>
           )}
-        </FlexBox>
+        </div>
       </Container>
       <Container
         description="List the key features and benefits that come with your course"

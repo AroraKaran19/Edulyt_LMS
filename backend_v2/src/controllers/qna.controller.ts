@@ -70,17 +70,17 @@ export const createQnA = asyncHandler(async (req: Request, res: Response) => {
   const { courseId, lessonId, contentId, message } = req.body;
   const user = req.user;
 
-  if (!courseId || !lessonId || !contentId || !user?._id || !message) {
+  if (!courseId || !user?._id || !message) {
     throw new AppError(
-      "Course ID, lesson ID, content ID, user ID, and message are required",
+      "Course ID, user ID, and message are required",
       400
     );
   }
 
   const result = await createQnAService({
     courseId,
-    lessonId,
-    contentId,
+    lessonId: lessonId || null,
+    contentId: contentId || null,
     userId: user._id,
     message,
   });

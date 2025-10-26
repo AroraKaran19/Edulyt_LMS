@@ -11,8 +11,8 @@ export interface QnAReply {
 export interface QnA {
   _id?: string;
   courseId: Course | string;
-  lessonId: CourseLesson | string;
-  contentId: Content | string;
+  lessonId: CourseLesson | string | null;
+  contentId: Content | string | null;
   userId: User | string;
   message: string;
   replies: QnAReply[];

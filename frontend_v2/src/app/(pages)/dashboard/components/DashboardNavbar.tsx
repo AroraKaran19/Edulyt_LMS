@@ -5,9 +5,21 @@ import Searchbar2 from "@/components/ui/Searchbar2";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import useDashboardStats from "@/hooks/useDashboardStats";
+import { useEffect, useState } from "react";
 
 const DashboardNavbar = () => {
   const pathname = usePathname();
+  const { stats, isLoading } = useDashboardStats();
+  const [courseCount, setCourseCount] = useState(0);
+  const [certificateCount, setCertificateCount] = useState(0);
+
+  useEffect(() => {
+    if (!isLoading && stats) {
+      setCourseCount(stats.totalCourses);
+      setCertificateCount(stats.completedCourses);
+    }
+  }, [stats, isLoading]);
 
   const navItems = [
     {
@@ -17,14 +29,12 @@ const DashboardNavbar = () => {
     {
       label: "My Courses",
       href: "/dashboard/courses",
+      count: courseCount,
     },
-    // {
-    //   label: "My Applications",
-    //   href: "/dashboard/applications",
-    // },
     {
       label: "Certificates",
       href: "/dashboard/certificates",
+      count: certificateCount,
     },
   ];
 
@@ -66,11 +76,23 @@ const DashboardNavbar = () => {
               href={item.href}
               key={index}
               className={cn(
-                "text-text-primary text-sm font-medium px-5 py-2.5 rounded-full transition-colors duration-200 ease-in-out",
+                "text-text-primary text-sm font-medium px-5 py-2.5 rounded-full transition-colors duration-200 ease-in-out flex items-center gap-2",
                 pathname === item.href && "bg-[#FFE9DB] text-orange-600"
               )}
             >
-              {item.label}
+              <span>{item.label}</span>
+              {item.count !== undefined && (
+                <span
+                  className={cn(
+                    "text-xs px-2 py-0.5 rounded-full font-semibold",
+                    pathname === item.href
+                      ? "bg-orange-500 text-white"
+                      : "bg-gray-200 text-gray-700"
+                  )}
+                >
+                  {isLoading ? "..." : item.count}
+                </span>
+              )}
             </Link>
           ))}
         </nav>

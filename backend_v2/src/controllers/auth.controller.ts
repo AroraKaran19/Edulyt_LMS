@@ -13,7 +13,7 @@ import {
   resetUserPassword,
 } from "../services/auth.services";
 import bcrypt from "bcryptjs";
-import { User } from "../types";
+import { Student, User } from "../types";
 
 const detectDeviceType = (userAgent: string) => {
   if (userAgent.includes("Mobile")) {
@@ -36,6 +36,9 @@ const protectedUser = (user: User) => {
     userType: user.userType,
     provider: user.provider,
     profilePicture: user.profilePicture,
+    ...(user.userType === "student" && {
+      enrollments: (user as Student).enrollments,
+    }),
   };
 };
 
@@ -132,12 +135,7 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const oauthSignin = asyncHandler(async (req: Request, res: Response) => {
-  const {
-    email,
-    fullName,
-    provider,
-    providerDetails,
-  } = req.body;
+  const { email, fullName, provider, providerDetails } = req.body;
   if (!email || !fullName || !provider) {
     throw new AppError("All fields are required", 400);
   }
@@ -256,25 +254,22 @@ export const refreshToken = asyncHandler(
       );
 
       // Add the new access token to the refreshTokens array
-      await UserModel.findByIdAndUpdate(
-        user._id,
-        {
-          $push: {
-            refreshTokens: {
-              token: newAccessToken,
-              deviceInfo: {
-                userAgent: req.headers["user-agent"],
-                ipAddress: req.ip,
-                deviceType: detectDeviceType(req.headers["user-agent"] || ""),
-              },
-              createdAt: new Date(),
-              lastUsed: new Date(),
-              isActive: true,
-              expiresAt: new Date(Date.now() + 1 * 60 * 60 * 1000), // 1 hour from now
+      await UserModel.findByIdAndUpdate(user._id, {
+        $push: {
+          refreshTokens: {
+            token: newAccessToken,
+            deviceInfo: {
+              userAgent: req.headers["user-agent"],
+              ipAddress: req.ip,
+              deviceType: detectDeviceType(req.headers["user-agent"] || ""),
             },
+            createdAt: new Date(),
+            lastUsed: new Date(),
+            isActive: true,
+            expiresAt: new Date(Date.now() + 1 * 60 * 60 * 1000), // 1 hour from now
           },
-        }
-      );
+        },
+      });
     }
 
     sendSuccessResponse(

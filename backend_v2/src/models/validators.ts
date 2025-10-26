@@ -24,8 +24,8 @@ export const validateLinkedinUrl = (url: string) => {
   );
 };
 
-export const validateReview = (review: Review) => {
-  return review.rating >= 1 && review.rating <= 5;
+export const validateReview = (rating: number) => {
+  return rating >= 1 && rating <= 5 && Number.isInteger(rating);
 };
 
 export const validateEmail = (email: string) => {

@@ -5,6 +5,7 @@ import { Content, CourseLesson, CourseModule } from "@/types";
 import Image from "next/image";
 import React, { useState } from "react";
 import { ChevronDown, ChevronUp, Play, Clock } from "lucide-react";
+import { LockIcon } from "../../../../../public/icons";
 
 const VideoCard = ({
   module,
@@ -77,13 +78,7 @@ const VideoCard = ({
               glow={false}
             >
               <span className="flex items-center justify-center gap-2">
-                <Image
-                  src="/Lock.svg"
-                  alt="Lock Icon"
-                  width={20}
-                  height={20}
-                  className="size-5 lg:size-6"
-                />
+                <LockIcon className="size-5" />
                 <p>Play</p>
               </span>
             </OrangeButton>
@@ -146,14 +141,8 @@ const VideoCard = ({
                       )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-1 text-xs text-gray-400">
-                    <Image
-                      src="/Lock.svg"
-                      alt="Locked"
-                      width={12}
-                      height={12}
-                      className="opacity-50"
-                    />
+                  <div className="flex items-center gap-1 text-xs">
+                    <LockIcon className="size-5 text-black" />
                   </div>
                 </div>
               </div>

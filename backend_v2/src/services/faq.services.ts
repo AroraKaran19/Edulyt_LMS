@@ -16,10 +16,6 @@ export const getAllFAQsService = async (
 
   let filters: any = {};
 
-  // Active filter - only show active items for non-admin users
-  if (!isAdmin) {
-    filters.isActive = true;
-  }
 
   // Search filter
   if (search) {
@@ -51,9 +47,8 @@ export const getFAQByIdService = async (
   isAdmin?: boolean
 ): Promise<FAQ | null> => {
   const faq = await FAQModel.findById(id)
-    .where(isAdmin ? {} : { isActive: true })
     .lean()
-    .select("-__v");
+    .select(isAdmin ? "-__v" : "");
 
   if (!faq) {
     return null;

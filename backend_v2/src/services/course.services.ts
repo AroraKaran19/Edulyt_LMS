@@ -219,6 +219,20 @@ export const CreateCourseModuleService = async (
   };
   const module = new CourseModuleModel(cleanedModuleData);
   const savedModule = await module.save();
+
+  if (!savedModule) {
+    return null;
+  }
+
+  // Add module ID to course's modules array
+  await CourseModel.findByIdAndUpdate(
+    courseId,
+    {
+      $push: { modules: savedModule._id },
+      updatedAt: new Date(),
+    }
+  );
+
   return savedModule as CourseModule;
 };
 
@@ -438,7 +452,7 @@ export const CreateCourseLessonContentService = async (
       _id: lessonId,
       moduleId: module._id,
     },
-    { $push: { contentIds: savedContent._id }, updatedAt: new Date() }
+    { $push: { contents: savedContent._id }, updatedAt: new Date() }
   );
   return savedContent as Content;
 };
@@ -518,7 +532,7 @@ export const DeleteCourseLessonContentService = async (
       _id: lessonId,
       moduleId: module._id,
     },
-    { $pull: { contentIds: contentId }, updatedAt: new Date() }
+    { $pull: { contents: contentId }, updatedAt: new Date() }
   );
   return true;
 };
@@ -623,4 +637,75 @@ export const DeleteCourseService = async (
   }
 
   return true;
+};
+
+/**
+ * Check if a slug is available for use
+ * @param slug - The slug to check
+ * @param excludeId - Optional course ID to exclude from check (for updates)
+ * @returns Object with availability status
+ */
+export const checkSlugAvailabilityService = async (
+  slug: string,
+  excludeId?: string
+): Promise<{ available: boolean; message: string }> => {
+  try {
+    // Basic slug validation
+    if (!slug || slug.trim().length === 0) {
+      return {
+        available: false,
+        message: "Slug cannot be empty",
+      };
+    }
+
+    // Check slug format (alphanumeric, hyphens, underscores only)
+    const slugRegex = /^[a-zA-Z0-9-_]+$/;
+    if (!slugRegex.test(slug)) {
+      return {
+        available: false,
+        message: "Slug can only contain letters, numbers, hyphens, and underscores",
+      };
+    }
+
+    // Check slug length
+    if (slug.length < 3) {
+      return {
+        available: false,
+        message: "Slug must be at least 3 characters long",
+      };
+    }
+
+    if (slug.length > 50) {
+      return {
+        available: false,
+        message: "Slug must be less than 50 characters",
+      };
+    }
+
+    // Check if slug exists in database
+    const query: any = { slug };
+    if (excludeId) {
+      query._id = { $ne: excludeId };
+    }
+
+    const existingCourse = await CourseModel.findOne(query).select("_id slug");
+
+    if (existingCourse) {
+      return {
+        available: false,
+        message: "This slug is already taken",
+      };
+    }
+
+    return {
+      available: true,
+      message: "Slug is available",
+    };
+  } catch (error) {
+    console.error("Error checking slug availability:", error);
+    return {
+      available: false,
+      message: "Error checking slug availability",
+    };
+  }
 };

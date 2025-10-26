@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useRef, forwardRef, useImperativeHandle, useState } from "react";
+import { useEffect, useRef, forwardRef, useImperativeHandle, useState } from "react";
 import Quill from "quill";
 import "quill/dist/quill.snow.css";
 import { cn } from "@/lib/utils";

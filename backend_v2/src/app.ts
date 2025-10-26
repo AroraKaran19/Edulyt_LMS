@@ -13,7 +13,12 @@ import {
   testimonialRoutes,
   categoryRoutes,
   qnaRoutes,
+  enrollmentRoutes,
+  userRoutes,
   adminRoutes,
+  uploadRoutes,
+  instructorRoutes,
+  reviewRoutes,
 } from "./routes";
 
 dotenv.config();
@@ -46,7 +51,12 @@ app.use("/api/testimonials", testimonialRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/qna", qnaRoutes);
 app.use("/api/orders", orderRoutes);
+app.use("/api/enrollments", enrollmentRoutes);
+app.use("/api/users", userRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/upload", uploadRoutes);
+app.use("/api/instructors", instructorRoutes);
+app.use("/api", reviewRoutes);
 
 app.use(notFoundHandler); // Handle 404 errors
 app.use(errorHandler); // Handle all other errors

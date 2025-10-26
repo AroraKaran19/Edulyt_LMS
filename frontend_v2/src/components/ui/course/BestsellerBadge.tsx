@@ -1,5 +1,4 @@
 import { cn } from "@/lib/utils";
-import React from "react";
 
 const BestsellerBadge = ({
   enrollStudents,
@@ -36,7 +35,7 @@ const BestsellerBadge = ({
       </span>
       <span
         className={cn(
-          "text-[#f7ad2499] text-[10px] leading-none sm:text-xs font-bold break-words max-w-full",
+          "text-[#f7ad2499] text-[10px] leading-none sm:text-xs font-bold wrap-break-words max-w-full",
           text2ClassName
         )}
       >

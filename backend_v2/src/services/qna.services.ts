@@ -47,8 +47,8 @@ export const getAllQnAsService = async (
   }
 
   const qnas = await QnAModel.find(filters)
-    .populate("userId", isAdmin ? "-__v" : "name email profileImage")
-    .populate("replies.userId", isAdmin ? "-__v" : "name email profileImage")
+    .populate("userId", isAdmin ? "-__v" : "name email profilePicture")
+    .populate("replies.userId", isAdmin ? "-__v" : "name email profilePicture")
     .skip(skip)
     .limit(limit)
     .sort({ createdAt: -1 });
@@ -70,8 +70,8 @@ export const getQnAByIdService = async (
 ): Promise<QnA | null> => {
   const qna = await QnAModel.findById(id)
     .where(isAdmin ? {} : { isActive: true })
-    .populate("userId", isAdmin ? "-__v" : "name email profileImage")
-    .populate("replies.userId", isAdmin ? "-__v" : "name email profileImage");
+    .populate("userId", isAdmin ? "-__v" : "name email profilePicture")
+    .populate("replies.userId", isAdmin ? "-__v" : "name email profilePicture");
 
   if (!qna) {
     return null;
@@ -82,8 +82,8 @@ export const getQnAByIdService = async (
 
 export const createQnAService = async (qnaData: {
   courseId: string;
-  lessonId: string;
-  contentId: string;
+  lessonId: string | null;
+  contentId: string | null;
   userId: string;
   message: string;
 }): Promise<QnA | null> => {
@@ -94,10 +94,10 @@ export const createQnAService = async (qnaData: {
     return null;
   }
 
-  // Populate user data
+  // Populate user data with name and profilePicture
   const populatedQnA = await QnAModel.findById(savedQnA._id).populate(
     "userId",
-    "-__v"
+    "name email profilePicture"
   );
 
   return populatedQnA as QnA;
@@ -112,8 +112,8 @@ export const updateQnAService = async (
     new: true,
     runValidators: true,
   })
-    .populate("userId", isAdmin ? "-__v" : "name email profileImage")
-    .populate("replies.userId", isAdmin ? "-__v" : "name email profileImage");
+    .populate("userId", isAdmin ? "-__v" : "name email profilePicture")
+    .populate("replies.userId", isAdmin ? "-__v" : "name email profilePicture");
 
   if (!qna) {
     return null;
@@ -141,8 +141,8 @@ export const addReplyToQnAService = async (
 
   // Get the updated QnA with populated data
   const updatedQnA = await QnAModel.findById(qnaId)
-    .populate("userId", "-__v")
-    .populate("replies.userId", "-__v");
+    .populate("userId", "name email profilePicture")
+    .populate("replies.userId", "name email profilePicture");
 
   return updatedQnA;
 };
@@ -156,8 +156,8 @@ export const removeReplyFromQnAService = async (
 
   // Get the updated QnA with populated data
   const updatedQnA = await QnAModel.findById(qnaId)
-    .populate("userId", "-__v")
-    .populate("replies.userId", "-__v");
+    .populate("userId", "name email profilePicture")
+    .populate("replies.userId", "name email profilePicture");
 
   return updatedQnA as QnA;
 };

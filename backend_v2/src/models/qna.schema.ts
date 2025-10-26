@@ -33,12 +33,12 @@ const qnaSchema = new mongoose.Schema<QnA>(
     lessonId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "CourseLesson",
-      required: true,
+      required: false,
     },
     contentId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Content",
-      required: true,
+      required: false,
     },
     userId: {
       type: mongoose.Schema.Types.ObjectId,

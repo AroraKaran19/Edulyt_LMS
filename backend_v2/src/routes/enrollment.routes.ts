@@ -14,7 +14,8 @@ import {
   deleteEnrollment,
   pauseEnrollment,
   resumeEnrollment,
-  getEnrollmentHistory
+  getEnrollmentHistory,
+  checkEnrollment,
 } from "../controllers/enrollment.controller";
 
 const router = Router();
@@ -27,8 +28,15 @@ const router = Router();
 router.post("/", verifyUser, createEnrollment);
 
 /**
+ * @route   GET /api/enrollments/check/:courseId
+ * @desc    Check enrollment status for a course
+ * @access  User
+ */
+router.get("/check/:courseId", verifyUser, checkEnrollment);
+
+/**
  * @route   GET /api/enrollments/user/:userId
- * @desc    Get all enrollments for a user
+ * @desc    Get all enrollments for a user (use "me" for current user)
  * @access  User
  */
 router.get("/user/:userId", verifyUser, getUserEnrollments);

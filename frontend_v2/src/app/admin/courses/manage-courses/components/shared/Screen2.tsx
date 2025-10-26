@@ -1,15 +1,14 @@
 "use client";
 import Container from "@/app/admin/components/ui/Container";
 import { EditorHandle } from "@/components/shared/Editor/Editor";
-import { FlexBox } from "@/components/ui";
 import DropDown from "@/components/ui/dropdown/DropDown";
 import TagInput from "@/components/ui/inputs/TagInput";
 import { useFormContext } from "react-hook-form";
 import { Controller } from "react-hook-form";
 import { CourseFormData } from "@/types/courseForm";
-import { getTextFromHtml } from "@/utils/courseFormUtils";
+import { getTextFromHtml } from "@/lib/courseFormUtils";
 import dynamic from "next/dynamic";
-import React, { ChangeEvent, useRef, useEffect, useState } from "react";
+import { ChangeEvent, useRef, useEffect, useState } from "react";
 
 const RichTextEditor = dynamic(
   () => import("@/components/shared/Editor/Editor"),
@@ -20,7 +19,7 @@ const Screen2 = () => {
   const [isMounted, setIsMounted] = useState(false);
   const whatYouWillLearnEditorRef = useRef<EditorHandle | null>(null);
   const whoShouldJoinEditorRef = useRef<EditorHandle | null>(null);
-  
+
   const {
     control,
     formState: { errors },
@@ -107,7 +106,7 @@ const Screen2 = () => {
               validate: (value) => {
                 if (!value) return "What you will learn is required";
                 const textContent = getTextFromHtml(value);
-                
+
                 if (textContent.length < 25) {
                   return "What you will learn must be at least 25 characters";
                 }
@@ -152,7 +151,7 @@ const Screen2 = () => {
             />
           )}
         />
-        <FlexBox className="gap-4">
+        <div className="flex gap-4">
           <Controller
             name="skillLevel"
             control={control}
@@ -178,7 +177,20 @@ const Screen2 = () => {
               <DropDown
                 {...field}
                 label="Course Duration"
-                options={["1 Month", "2 Months", "3 Months", "4 Months", "5 Months", "6 Months", "7 Months", "8 Months", "9 Months", "10 Months", "11 Months", "12 Months"]}
+                options={[
+                  "1 Month",
+                  "2 Months",
+                  "3 Months",
+                  "4 Months",
+                  "5 Months",
+                  "6 Months",
+                  "7 Months",
+                  "8 Months",
+                  "9 Months",
+                  "10 Months",
+                  "11 Months",
+                  "12 Months",
+                ]}
                 onChange={(e: ChangeEvent<HTMLSelectElement>) =>
                   field.onChange(e.target.value)
                 }
@@ -187,7 +199,7 @@ const Screen2 = () => {
               />
             )}
           />
-        </FlexBox>
+        </div>
         <div>
           <RichTextEditor
             title="Who Should Join This Course"
@@ -209,7 +221,7 @@ const Screen2 = () => {
               validate: (value) => {
                 if (!value) return "Who should join this course is required";
                 const textContent = getTextFromHtml(value);
-                
+
                 if (textContent.length < 25) {
                   return "Who should join this course must be at least 25 characters";
                 }

@@ -18,8 +18,8 @@ const CoursePage = ({ course }: { course: Course }) => {
   const [isEnrollmentModalOpen, setIsEnrollmentModalOpen] = useState(false);
 
   // Generate presigned URL for preview video if it's an S3 key
-  const previewVideoUrl = course?.previewVideoUrl;
-  const isS3Key = previewVideoUrl && !previewVideoUrl.startsWith("http");
+  // const previewVideoUrl = course?.previewVideoUrl;
+  // const isS3Key = previewVideoUrl && !previewVideoUrl.startsWith("http");
 
   if (!course) return null;
 

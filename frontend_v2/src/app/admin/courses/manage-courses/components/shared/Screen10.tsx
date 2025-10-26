@@ -1,13 +1,11 @@
-import React from "react";
 import { CheckCircle, ArrowRight } from "lucide-react";
-import { FlexBox } from "@/components/ui";
 import { useCourseFormContext } from "@/contexts/CourseFormContext";
 
 const Screen10 = () => {
   const { isEditMode } = useCourseFormContext();
 
   return (
-    <FlexBox className="w-full h-full flex-col items-center justify-center gap-8 p-8">
+    <div className="flex w-full h-full flex-col items-center justify-center gap-8 p-8">
       <div className="flex flex-col items-center gap-4 text-center">
         <CheckCircle className="w-20 h-20 text-green-500" />
         <h1 className="text-3xl font-bold text-text-primary">
@@ -41,7 +39,7 @@ const Screen10 = () => {
           <ArrowRight className="w-4 h-4" />
         </div>
       </div>
-    </FlexBox>
+    </div>
   );
 };
 

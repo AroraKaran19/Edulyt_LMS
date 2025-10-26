@@ -38,7 +38,7 @@ export const getAllFAQ = asyncHandler(async (req: Request, res: Response) => {
 
 export const getFAQById = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
-  const isAdmin = req.user?.userType === "admin";
+  const isAdmin = req.user?.userType === "admin" || false;
   
   if (!id) {
     throw new AppError("FAQ ID is required", 400);

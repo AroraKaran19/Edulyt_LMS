@@ -25,6 +25,7 @@ import {
   updateCourseMetadata,
   updateCourseModule,
   updateCourseStatus,
+  checkSlugAvailability,
 } from "../controllers/course.controller";
 
 const router = Router();
@@ -70,6 +71,13 @@ router.get("/id/:courseId", getCourseById);
  * @access  Public
  */
 router.get("/slug/:slug", getCourseBySlug);
+
+/**
+ * @route   GET /api/courses/check-slug/:slug
+ * @desc    Check if a slug is available for use
+ * @access  Public
+ */
+router.get("/check-slug/:slug", checkSlugAvailability);
 
 /**
  * @route   GET /api/courses/admin

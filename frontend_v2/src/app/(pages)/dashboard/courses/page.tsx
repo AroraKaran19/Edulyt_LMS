@@ -5,6 +5,8 @@ import ImageComponent from "@/components/ui/ImageComponent";
 import { Course } from "@/types";
 import EmptyState from "../components/applications/EmptyState";
 import { cn } from "@/lib/utils";
+import useUserEnrollments from "@/hooks/useUserEnrollments";
+import { Enrollment } from "@/types/enrollment";
 
 const tabs = [
   { label: "All" },
@@ -42,6 +44,69 @@ const CoursesPage = () => {
   const [selectedSort, setSelectedSort] = useState(sortOptions[0]);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isSortOpen, setIsSortOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const {
+    getUserEnrollments,
+    isLoading,
+    error,
+    calculateProgress,
+    shouldShowCertificate,
+  } = useUserEnrollments();
+
+  const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
+  const [totalPages, setTotalPages] = useState(0);
+  const [total, setTotal] = useState(0);
+
+  // Fetch enrollments
+  const fetchEnrollments = useCallback(async () => {
+    const status =
+      activeTab === "All"
+        ? undefined
+        : activeTab === "In Progress"
+        ? "active"
+        : activeTab === "Completed"
+        ? "completed"
+        : undefined;
+
+    const result = await getUserEnrollments({
+      page: currentPage,
+      limit: 12,
+      status,
+      search: search || undefined,
+      sortBy: selectedSort.value as
+        | "recent"
+        | "progress-desc"
+        | "progress-asc"
+        | "name-asc"
+        | "name-desc"
+        | "duration-asc"
+        | "duration-desc",
+    });
+
+    if (result) {
+      setEnrollments(result.enrollments);
+      setTotalPages(result.totalPages);
+      setTotal(result.total);
+    }
+  }, [activeTab, currentPage, search, selectedSort.value, getUserEnrollments]);
+
+  // Fetch enrollments when dependencies change
+  useEffect(() => {
+    fetchEnrollments();
+  }, [fetchEnrollments]);
+
+  // Handle tab change
+  const handleTabChange = useCallback((tab: string) => {
+    setActiveTab(tab);
+    setCurrentPage(1); // Reset to first page when changing tabs
+  }, []);
+
+  // Handle search change
+  const handleSearchChange = useCallback((value: string) => {
+    setSearch(value);
+    setCurrentPage(1); // Reset to first page when searching
+  }, []);
 
   // Handle filter selection
   const handleFilterClick = useCallback(
@@ -104,18 +169,24 @@ const CoursesPage = () => {
     return () => document.removeEventListener("click", handleClickOutside);
   }, []);
 
-  // Mock data - replace with actual courses array
-  const courses = Array.from({ length: 0 }, (_, idx) => {
-    const course: Course = {} as Course;
-    const progress = [0, 12, 100][idx % 3];
-    const showCertificate = progress === 100;
-    return { course, progress, showCertificate };
-  });
-
   return (
     <div className="py-4">
-      {/* Conditional rendering based on courses array length */}
-      {courses.length === 0 ? (
+      {/* Conditional rendering based on enrollments array length */}
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
+        </div>
+      ) : error ? (
+        <div className="text-center py-12">
+          <p className="text-red-500 mb-4">Error: {error}</p>
+          <button
+            onClick={fetchEnrollments}
+            className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition"
+          >
+            Retry
+          </button>
+        </div>
+      ) : enrollments.length === 0 ? (
         <EmptyState
           title="Courses"
           description="No courses found! Buy courses to get courses."
@@ -140,7 +211,7 @@ const CoursesPage = () => {
                           ? "bg-orange-500 text-white shadow"
                           : "text-black hover:bg-gray-200"
                       }`}
-                      onClick={() => setActiveTab(tab.label)}
+                      onClick={() => handleTabChange(tab.label)}
                     >
                       {tab.label}
                     </button>
@@ -154,7 +225,7 @@ const CoursesPage = () => {
                       type="text"
                       placeholder="Search a course by its name, title or author name"
                       value={search}
-                      onChange={(e) => setSearch(e.target.value)}
+                      onChange={(e) => handleSearchChange(e.target.value)}
                       className="placeholder:text-[#0000003D] placeholder:text-xs w-full sm:w-[280px] md:w-[349px] h-10 sm:h-12 px-3 sm:px-4 pr-10 sm:pr-12 bg-[#F5F5F5] rounded-xl border border-[#00000026] text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 shadow-[0px_4px_4px_0px_#00000012_inset]"
                     />
                     <button
@@ -280,148 +351,182 @@ const CoursesPage = () => {
 
           {/* Courses Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
-            {courses.map(({ course, progress, showCertificate }, idx) => (
-              <div
-                key={`${course._id}-${idx}`}
-                className="bg-white border border-[#0000001F] rounded-xl flex flex-col justify-between p-3 sm:p-4 w-full shadow-sm hover:shadow-md transition-shadow"
-              >
-                <div>
-                  <div className="relative w-full  rounded-xl overflow-hidden mb-2 sm:mb-3">
-                    <ImageComponent
-                      src="/courses-demo-image.png"
-                      alt="certificate"
-                      width={300}
-                      height={226}
-                      className="w-full h-full object-contain"
-                    />
-                    <div className="absolute top-2 sm:top-3 left-2 sm:left-3 bg-[#00000078] text-white text-xs px-2 sm:px-3 py-1 rounded-full flex gap-1 font-medium">
-                      <span className="hidden sm:inline">5 Episodes</span>
-                      <span className="sm:hidden">5 Ep</span>
-                      <span>•</span>
-                      <span className="hidden sm:inline">4 Modules</span>
-                      <span className="sm:hidden">4 Mod</span>
+            {enrollments.map((enrollment, idx) => {
+              const course = enrollment.courseId as Course; // Backend populates courseId as Course object
+              const progress = calculateProgress(enrollment);
+              const showCertificate = shouldShowCertificate(enrollment);
+
+              return (
+                <div
+                  key={`${course._id}-${idx}`}
+                  className="bg-white border border-[#0000001F] rounded-xl flex flex-col justify-between p-3 sm:p-4 w-full shadow-sm hover:shadow-md transition-shadow"
+                >
+                  <div>
+                    <div className="relative w-full  rounded-xl overflow-hidden mb-2 sm:mb-3">
+                      <ImageComponent
+                        src={course.thumbnail || "/courses-demo-image.png"}
+                        alt={course.title || "Course thumbnail"}
+                        width={300}
+                        height={226}
+                        className="w-full h-full object-contain"
+                      />
+                      <div className="absolute top-2 sm:top-3 left-2 sm:left-3 bg-[#00000078] text-white text-xs px-2 sm:px-3 py-1 rounded-full flex gap-1 font-medium">
+                        <span className="hidden sm:inline">
+                          {course.duration || "N/A"} Duration
+                        </span>
+                        <span className="sm:hidden">
+                          {course.duration || "N/A"}
+                        </span>
+                        <span>•</span>
+                        <span className="hidden sm:inline">
+                          {course.category || "Course"}
+                        </span>
+                        <span className="sm:hidden">
+                          {course.category || "Course"}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="font-extrabold text-xs sm:text-sm mb-2 text-black line-clamp-2">
+                      {course.title || "Untitled Course"}
+                    </div>
+                    <div className="flex gap-1 sm:gap-2 overflow-x-auto">
+                      {course.instructor && Array.isArray(course.instructor) ? (
+                        course.instructor
+                          .slice(0, 2)
+                          .map((instructor: any, instructorIdx: number) => (
+                            <div
+                              key={instructorIdx}
+                              className="bg-[#EEEEEE] rounded-[34px] p-[2px] border-2 border-white flex items-center gap-1 sm:gap-2 shrink-0"
+                            >
+                              <ImageComponent
+                                src={instructor.profilePicture || "/user.svg"}
+                                alt={instructor.firstName || "Instructor"}
+                                width={20}
+                                height={20}
+                                className="sm:w-6 sm:h-6 rounded-full border border-white"
+                              />
+                              <span className="text-xs sm:text-sm text-gray-700 font-medium hidden sm:inline">
+                                {instructor.firstName || "Instructor"}
+                              </span>
+                              <span className="text-xs sm:text-sm text-gray-700 font-medium sm:hidden">
+                                {instructor.firstName?.charAt(0) || "I"}
+                              </span>
+                            </div>
+                          ))
+                      ) : (
+                        <div className="bg-[#EEEEEE] rounded-[34px] p-[2px] border-2 border-white flex items-center gap-1 sm:gap-2 shrink-0">
+                          <ImageComponent
+                            src="/user.svg"
+                            alt="Instructor"
+                            width={20}
+                            height={20}
+                            className="sm:w-6 sm:h-6 rounded-full border border-white"
+                          />
+                          <span className="text-xs sm:text-sm text-gray-700 font-medium">
+                            Instructor
+                          </span>
+                        </div>
+                      )}
+                      {course.instructor &&
+                        Array.isArray(course.instructor) &&
+                        course.instructor.length > 2 && (
+                          <div className="bg-[#EEEEEE] rounded-[34px] p-[2px] border-2 border-white flex items-center gap-1 sm:gap-2 shrink-0">
+                            <span className="text-xs sm:text-sm text-gray-700 font-medium m-[2px]">
+                              +{course.instructor.length - 2}
+                            </span>
+                          </div>
+                        )}
                     </div>
                   </div>
-                  <div className="font-extrabold text-xs sm:text-sm mb-2 text-black line-clamp-2">
-                    Data Science: Zero to Hundred
-                  </div>
-                  <div className="flex gap-1 sm:gap-2 overflow-x-auto">
-                    <div className="bg-[#EEEEEE] rounded-[34px] p-[2px] border-2 border-white flex items-center gap-1 sm:gap-2 shrink-0">
-                      <ImageComponent
-                        src="/user.svg"
-                        alt="user"
-                        width={20}
-                        height={20}
-                        className="sm:w-6 sm:h-6 rounded-full border border-white"
-                      />
-                      <span className="text-xs sm:text-sm text-gray-700 font-medium hidden sm:inline">
-                        John Doe
+
+                  <div className="flex items-center gap-2 sm:gap-3 pt-2 sm:pt-3">
+                    {/* Circular progress bar */}
+                    <div className="relative w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center">
+                      <svg
+                        className="w-8 h-8 sm:w-10 sm:h-10 -rotate-90deg"
+                        viewBox="0 0 40 40"
+                      >
+                        <circle
+                          cx="20"
+                          cy="20"
+                          r="18"
+                          fill="none"
+                          stroke="#F3F4F6"
+                          strokeWidth="4"
+                        />
+                        <circle
+                          cx="20"
+                          cy="20"
+                          r="18"
+                          fill="none"
+                          stroke={
+                            progress === 100
+                              ? "#22C55E"
+                              : progress > 0
+                              ? "#A259FF"
+                              : "#E5E7EB"
+                          }
+                          strokeWidth="4"
+                          strokeDasharray={2 * Math.PI * 18}
+                          strokeDashoffset={
+                            2 * Math.PI * 18 * (1 - progress / 100)
+                          }
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                    </div>
+
+                    <div className="flex flex-col">
+                      <span className="text-xs font-bold text-black">
+                        {progress}%
                       </span>
-                      <span className="text-xs sm:text-sm text-gray-700 font-medium sm:hidden">
-                        JD
+                      <span className="text-[8px] sm:text-[10px] font-medium text-[#00000080]">
+                        Your progress
                       </span>
                     </div>
-                    <div className="bg-[#EEEEEE] rounded-[34px] p-[2px] border-2 border-white flex items-center gap-1 sm:gap-2 shrink-0">
-                      <ImageComponent
-                        src="/user.svg"
-                        alt="user"
-                        width={20}
-                        height={20}
-                        className="sm:w-6 sm:h-6 rounded-full border border-white"
-                      />
-                      <span className="text-xs sm:text-sm text-gray-700 font-medium hidden sm:inline">
-                        John Doe
-                      </span>
-                      <span className="text-xs sm:text-sm text-gray-700 font-medium sm:hidden">
-                        JD
-                      </span>
-                    </div>
-                    <div className="bg-[#EEEEEE] rounded-[34px] p-[2px] border-2 border-white flex items-center gap-1 sm:gap-2 shrink-0">
-                      <span className="text-xs sm:text-sm text-gray-700 font-medium m-[2px]">
-                        +1
-                      </span>
-                    </div>
+
+                    <div className="flex-1" />
+
+                    {progress === 100 && showCertificate ? (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          window.open(`/courses/${course.slug}/watch`, "_blank")
+                        }
+                        className="flex items-center gap-1 sm:gap-2 bg-linear-to-b from-[#F5691D] to-[#F9792A] text-white rounded-lg px-2 sm:px-2 py-1.5 sm:py-2 text-[10px] font-semibold hover:from-[#F5691D] hover:to-[#F9792A] transition cursor-pointer border border-[#00000021] shadow-[0px_0px_0px_4px_rgba(246,140,34,0.22),0px_0px_0px_2px_rgba(246,140,34,0.22)]"
+                      >
+                        <Download size={14} className="sm:w-4 sm:h-4" />
+                        <span className="hidden sm:inline">
+                          Download certificate
+                        </span>
+                        <span className="sm:hidden">Download</span>
+                      </button>
+                    ) : progress > 0 ? (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          window.open(`/courses/${course.slug}/watch`, "_blank")
+                        }
+                        className="flex items-center gap-1 sm:gap-2 bg-white border border-[#00000021] text-[#656565] rounded-lg px-2 sm:px-4 py-1.5 sm:py-2 text-xs font-bold hover:bg-gray-100 transition cursor-pointer shadow-[0px_-3px_3.7px_0px_#0146E721_inset]"
+                      >
+                        Continue
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          window.open(`/courses/${course.slug}/watch`, "_blank")
+                        }
+                        className="flex items-center gap-1 sm:gap-2 bg-white border border-[#00000021] text-[#656565] rounded-lg px-2 sm:px-4 py-1.5 sm:py-2 text-xs font-bold hover:bg-gray-100 transition cursor-pointer shadow-[0px_-3px_3.7px_0px_#0146E721_inset]"
+                      >
+                        <span className="hidden sm:inline">Start watching</span>
+                        <span className="sm:hidden">Start</span>
+                      </button>
+                    )}
                   </div>
                 </div>
-
-                <div className="flex items-center gap-2 sm:gap-3 pt-2 sm:pt-3">
-                  {/* Circular progress bar */}
-                  <div className="relative w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center">
-                    <svg
-                      className="w-8 h-8 sm:w-10 sm:h-10 -rotate-90deg"
-                      viewBox="0 0 40 40"
-                    >
-                      <circle
-                        cx="20"
-                        cy="20"
-                        r="18"
-                        fill="none"
-                        stroke="#F3F4F6"
-                        strokeWidth="4"
-                      />
-                      <circle
-                        cx="20"
-                        cy="20"
-                        r="18"
-                        fill="none"
-                        stroke={
-                          progress === 100
-                            ? "#22C55E"
-                            : progress > 0
-                            ? "#A259FF"
-                            : "#E5E7EB"
-                        }
-                        strokeWidth="4"
-                        strokeDasharray={2 * Math.PI * 18}
-                        strokeDashoffset={
-                          2 * Math.PI * 18 * (1 - progress / 100)
-                        }
-                        strokeLinecap="round"
-                      />
-                    </svg>
-                  </div>
-
-                  <div className="flex flex-col">
-                    <span className="text-xs font-bold text-black">
-                      {progress}%
-                    </span>
-                    <span className="text-[8px] sm:text-[10px] font-medium text-[#00000080]">
-                      Your progress
-                    </span>
-                  </div>
-
-                  <div className="flex-1" />
-
-                  {progress === 100 && showCertificate ? (
-                    <button
-                      type="button"
-                      className="flex items-center gap-1 sm:gap-2 bg-linear-to-b from-[#F5691D] to-[#F9792A] text-white rounded-lg px-2 sm:px-2 py-1.5 sm:py-2 text-[10px] font-semibold hover:from-[#F5691D] hover:to-[#F9792A] transition cursor-pointer border border-[#00000021] shadow-[0px_0px_0px_4px_rgba(246,140,34,0.22),0px_0px_0px_2px_rgba(246,140,34,0.22)]"
-                    >
-                      <Download size={14} className="sm:w-4 sm:h-4" />
-                      <span className="hidden sm:inline">
-                        Download certificate
-                      </span>
-                      <span className="sm:hidden">Download</span>
-                    </button>
-                  ) : progress > 0 ? (
-                    <button
-                      type="button"
-                      className="flex items-center gap-1 sm:gap-2 bg-white border border-[#00000021] text-[#656565] rounded-lg px-2 sm:px-4 py-1.5 sm:py-2 text-xs font-bold hover:bg-gray-100 transition cursor-pointer shadow-[0px_-3px_3.7px_0px_#0146E721_inset]"
-                    >
-                      Continue
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      className="flex items-center gap-1 sm:gap-2 bg-white border border-[#00000021] text-[#656565] rounded-lg px-2 sm:px-4 py-1.5 sm:py-2 text-xs font-bold hover:bg-gray-100 transition cursor-pointer shadow-[0px_-3px_3.7px_0px_#0146E721_inset]"
-                    >
-                      <span className="hidden sm:inline">Start watching</span>
-                      <span className="sm:hidden">Start</span>
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </>
       )}

@@ -1,6 +1,12 @@
 import { calculateFinalDiscountedPrice } from "../utils/lib/calculateDiscount";
 import { AppError } from "../middlewares/error.middleware";
-import { OrderModel, CourseModel, UserModel, StudentModel } from "../models";
+import {
+  OrderModel,
+  CourseModel,
+  UserModel,
+  StudentModel,
+  EnrollmentModel,
+} from "../models";
 import jwt from "jsonwebtoken";
 import { generatePaytmChecksum } from "../utils/lib/generatePaytmChecksum";
 import axios from "axios";
@@ -11,6 +17,48 @@ const updatePendingPayments = async (userId: string, updateOperation: any) => {
 
   if (user.userType === "student") {
     await StudentModel.findByIdAndUpdate(userId, updateOperation);
+  }
+};
+
+// Create enrollment after successful payment
+const createEnrollmentAfterPayment = async (order: any) => {
+  try {
+    // Check if enrollment already exists
+    const existingEnrollment = await EnrollmentModel.findOne({
+      userId: order.userId,
+      courseId: order.courseId,
+      status: { $ne: "dropped" },
+    });
+
+    if (existingEnrollment) {
+      console.log("Enrollment already exists for this user and course");
+      return existingEnrollment;
+    }
+
+    // Create new enrollment
+    const enrollment = new EnrollmentModel({
+      userId: order.userId,
+      courseId: order.courseId,
+      enrolledAt: new Date(),
+      status: "active",
+      enrollmentSource: "direct",
+      progress: {
+        overallCompletion: 0,
+        totalModules: 0,
+        completedModules: 0,
+        totalLessons: 0,
+        completedLessons: 0,
+        lastActivityAt: new Date(),
+      },
+      lastUpdated: new Date(),
+      totalTimeSpent: 0,
+    });
+
+    const savedEnrollment = await enrollment.save();
+    return savedEnrollment;
+  } catch (error) {
+    console.error("Failed to create enrollment after payment:", error);
+    throw new AppError("Failed to create enrollment after payment", 500);
   }
 };
 
@@ -213,6 +261,9 @@ export const verifyPayment = async (token: string) => {
     await CourseModel.findByIdAndUpdate(order.courseId, {
       $inc: { enrollments: 1 },
     });
+
+    // Create enrollment after successful payment
+    await createEnrollmentAfterPayment(order);
   } else if (status.data.body.resultInfo.resultStatus === "TXN_FAILURE") {
     order.paymentStatus = "failed";
     await order.save();
@@ -308,6 +359,9 @@ const handleSuccessfulPayment = async (order: any, txnId: string) => {
   await CourseModel.findByIdAndUpdate(order.courseId, {
     $inc: { enrollments: 1 },
   });
+
+  // Create enrollment after successful payment
+  await createEnrollmentAfterPayment(order);
 };
 
 const handleFailedPayment = async (order: any) => {

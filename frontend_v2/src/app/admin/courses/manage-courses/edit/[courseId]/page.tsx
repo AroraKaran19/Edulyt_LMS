@@ -1,10 +1,12 @@
 "use client";
-import React from "react";
 import Container from "@/app/admin/components/ui/Container";
 import { ArrowLeftIcon, ArrowRightIcon, BookOpenIcon } from "lucide-react";
-import { FlexBox, WhiteButton } from "@/components/ui";
+import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import { useParams, useRouter } from "next/navigation";
-import { CourseFormProvider, useCourseFormContext } from "@/contexts/CourseFormContext";
+import {
+  CourseFormProvider,
+  useCourseFormContext,
+} from "@/contexts/CourseFormContext";
 import Screen1 from "../../components/shared/Screen1";
 import Screen2 from "../../components/shared/Screen2";
 import Screen3 from "../../components/shared/Screen3";
@@ -17,11 +19,19 @@ import Screen9 from "../../components/shared/Screen9";
 import Screen10 from "../../components/shared/Screen10";
 import Screen11 from "../../components/shared/Screen11";
 import Screen12 from "../../components/shared/Screen12";
-import StorageIndicator from "@/components/courseForm/StorageIndicator";
+import Screen13 from "../../components/shared/Screen13";
+import StorageIndicator from "@/components/admin/courseForm/StorageIndicator";
 
 const EditCoursePageContent = ({ courseId }: { courseId: string }) => {
   const router = useRouter();
-  const { currentScreen, nextScreen, prevScreen, canGoNext, updateCourseMetadata, isUpdating } = useCourseFormContext();
+  const {
+    currentScreen,
+    nextScreen,
+    prevScreen,
+    canGoNext,
+    updateCourseMetadata,
+    isUpdating,
+  } = useCourseFormContext();
 
   const handleNext = async () => {
     if (currentScreen === 9) {
@@ -32,6 +42,15 @@ const EditCoursePageContent = ({ courseId }: { courseId: string }) => {
       } catch (error) {
         console.error("Failed to update course metadata:", error);
         // Error handling is done in Screen9
+      }
+    } else if (currentScreen === 13) {
+      // On Screen13, save changes and redirect to manage courses
+      try {
+        await updateCourseMetadata();
+        router.push("/admin/courses/manage-courses");
+      } catch (error) {
+        console.error("Failed to save course changes:", error);
+        // Error handling is done in Screen13
       }
     } else {
       // For all other screens, use the validation-enabled nextScreen
@@ -48,11 +67,11 @@ const EditCoursePageContent = ({ courseId }: { courseId: string }) => {
   };
 
   return (
-    <FlexBox className="w-full h-full flex-col px-8 relative">
+    <div className="flex w-full h-full flex-col px-8 relative">
       <Container
         title="Edit Course"
         icon={BookOpenIcon}
-        className="rounded-t-none flex-shrink-0 h-fit mb-8"
+        className="rounded-t-none shrink-0 h-fit mb-8"
       />
       <div className="flex-1 min-h-0 max-h-full">
         {currentScreen === 1 && <Screen1 />}
@@ -67,6 +86,7 @@ const EditCoursePageContent = ({ courseId }: { courseId: string }) => {
         {currentScreen === 10 && <Screen10 />}
         {currentScreen === 11 && <Screen11 />}
         {currentScreen === 12 && <Screen12 />}
+        {currentScreen === 13 && <Screen13 />}
       </div>
       <div className="flex justify-between items-center h-fit p-4">
         <WhiteButton
@@ -74,10 +94,11 @@ const EditCoursePageContent = ({ courseId }: { courseId: string }) => {
           onClick={handlePrevious}
           disabled={isUpdating}
         >
-          <ArrowLeftIcon className="size-4" /> {currentScreen === 1 ? "Back to Courses" : "Previous"}
+          <ArrowLeftIcon className="size-4" />{" "}
+          {currentScreen === 1 ? "Back to Courses" : "Previous"}
         </WhiteButton>
-        <WhiteButton 
-          className="flex gap-2 items-center" 
+        <WhiteButton
+          className="flex gap-2 items-center"
           onClick={handleNext}
           disabled={!canGoNext || isUpdating}
         >
@@ -88,14 +109,24 @@ const EditCoursePageContent = ({ courseId }: { courseId: string }) => {
             </>
           ) : (
             <>
-              {currentScreen === 9 ? "Update Course Metadata" : currentScreen === 10 ? "Next Page" : currentScreen === 11 ? "Review Course" : "Next"} 
+              {currentScreen === 9
+                ? "Update Course Metadata"
+                : currentScreen === 10
+                ? "Next Page"
+                : currentScreen === 11
+                ? "Review Course"
+                : currentScreen === 12
+                ? "Select Instructors"
+                : currentScreen === 13
+                ? "Save Changes"
+                : "Next"}
               <ArrowRightIcon className="size-4" />
             </>
           )}
         </WhiteButton>
       </div>
       <StorageIndicator mode="edit" courseId={courseId} />
-    </FlexBox>
+    </div>
   );
 };
 
@@ -103,11 +134,11 @@ const EditCoursePage = () => {
   const { courseId } = useParams();
 
   return (
-    <CourseFormProvider 
-      options={{ 
-        mode: 'edit', 
-        courseId: courseId as string, 
-        autoSave: true 
+    <CourseFormProvider
+      options={{
+        mode: "edit",
+        courseId: courseId as string,
+        autoSave: true,
       }}
     >
       <EditCoursePageContent courseId={courseId as string} />

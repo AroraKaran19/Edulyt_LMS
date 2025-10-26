@@ -71,27 +71,27 @@ router.delete("/:qnaId/reply/:replyId", verifyUser, removeReply);
  * @desc    Get all QnAs for admin (with full data)
  * @access  Admin
  */
-router.get("/admin", verifyAdmin, getAllQnAs);
+router.get("/admin", verifyUser, verifyAdmin, getAllQnAs);
 
 /**
  * @route   GET /api/admin/qnas/:id
  * @desc    Get a QnA by ID for admin (with full data)
  * @access  Admin
  */
-router.get("/admin/:id", verifyAdmin, getQnAById);
+router.get("/admin/:id", verifyUser, verifyAdmin, getQnAById);
 
 /**
  * @route   PUT /api/admin/qnas/:id
  * @desc    Update a QnA (Admin can update any QnA)
  * @access  Admin
  */
-router.put("/admin/:id", verifyAdmin, updateQnA);
+router.put("/admin/:id", verifyUser, verifyAdmin, updateQnA);
 
 /**
  * @route   DELETE /api/admin/qnas/:id
  * @desc    Delete a QnA (Admin can delete any QnA)
  * @access  Admin
  */
-router.delete("/admin/:id", verifyAdmin, deleteQnA);
+router.delete("/admin/:id", verifyUser, verifyAdmin, deleteQnA);
 
 export default router;

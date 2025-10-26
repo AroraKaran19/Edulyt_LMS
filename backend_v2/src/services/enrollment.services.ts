@@ -1,5 +1,6 @@
 import { AppError } from "../middlewares/error.middleware";
 import { EnrollmentModel } from "../models/enrollment.schema";
+import { StudentModel } from "../models";
 import {
   Enrollment,
   EnrollmentProgressSummary,
@@ -47,6 +48,14 @@ export const CreateEnrollmentService = async (enrollmentData: {
     });
 
     const savedEnrollment = await enrollment.save();
+
+    // Add enrollment ID to student's enrollments array
+    await StudentModel.findByIdAndUpdate(
+      enrollmentData.userId,
+      { $push: { enrollments: savedEnrollment._id } },
+      { new: true }
+    );
+
     return savedEnrollment as Enrollment;
   } catch (error) {
     if (error instanceof AppError) {
@@ -91,7 +100,9 @@ export const GetUserEnrollmentsService = async (
   userId: string,
   status?: string,
   page: number = 1,
-  limit: number = 10
+  limit: number = 10,
+  search?: string,
+  sortBy?: string
 ): Promise<{
   enrollments: Enrollment[];
   total: number;
@@ -109,21 +120,66 @@ export const GetUserEnrollmentsService = async (
       filters.status = status;
     }
 
+    // Build sort object based on sortBy parameter
+    let sortObj: any = { enrolledAt: -1 }; // Default sort
+    if (sortBy) {
+      switch (sortBy) {
+        case "recent":
+          sortObj = { enrolledAt: -1 };
+          break;
+        case "progress-desc":
+          sortObj = { "progress.overallCompletion": -1 };
+          break;
+        case "progress-asc":
+          sortObj = { "progress.overallCompletion": 1 };
+          break;
+        case "name-asc":
+          sortObj = { "courseId.title": 1 };
+          break;
+        case "name-desc":
+          sortObj = { "courseId.title": -1 };
+          break;
+        case "duration-asc":
+          sortObj = { "courseId.duration": 1 };
+          break;
+        case "duration-desc":
+          sortObj = { "courseId.duration": -1 };
+          break;
+        default:
+          sortObj = { enrolledAt: -1 };
+      }
+    }
+
     const enrollments = await EnrollmentModel.find(filters)
-      .populate(
-        "courseId",
-        "title thumbnail description category duration slug instructor plans analytics isFeatured isCertified"
-      )
-      .sort({ enrolledAt: -1 })
+      .populate({
+        path: "courseId",
+        select:
+          "title thumbnail description category duration slug instructor plans analytics isFeatured isCertified",
+        match: search
+          ? {
+              $or: [
+                { title: { $regex: search, $options: "i" } },
+                { description: { $regex: search, $options: "i" } },
+                { category: { $regex: search, $options: "i" } },
+              ],
+            }
+          : {},
+      })
+      .sort(sortObj)
       .skip(skip)
       .limit(limit)
       .lean();
+
+    // Filter out enrollments where courseId is null (due to search match)
+    const filteredEnrollments = enrollments.filter(
+      (enrollment) => enrollment.courseId
+    );
 
     const total = await EnrollmentModel.countDocuments(filters);
     const totalPages = Math.ceil(total / limit);
 
     return {
-      enrollments: enrollments as Enrollment[],
+      enrollments: filteredEnrollments as Enrollment[],
       total,
       totalPages,
       page,
@@ -169,10 +225,20 @@ export const UpdateEnrollmentProgressService = async (
       lastActivityAt: new Date(),
     };
 
-    // If lesson completed, update counters
+    // Handle completed content
+    let updatedCompletedContents = [...(enrollment.completedContents || [])];
+    
+    if (progressData.completed && progressData.contentId) {
+      // Add content ID to completed list if not already there
+      if (!updatedCompletedContents.includes(progressData.contentId)) {
+        updatedCompletedContents.push(progressData.contentId);
+      }
+    }
+
+    // Update progress summary
     if (progressData.completed) {
       updatedProgress.completedLessons += 1;
-      // Recalculate overall completion
+      // Recalculate overall completion based on completed contents
       if (updatedProgress.totalLessons > 0) {
         updatedProgress.overallCompletion =
           (updatedProgress.completedLessons / updatedProgress.totalLessons) *
@@ -189,6 +255,7 @@ export const UpdateEnrollmentProgressService = async (
       enrollmentId,
       {
         progress: updatedProgress,
+        completedContents: updatedCompletedContents,
         lastContentAccessed,
         lastUpdated: new Date(),
         lastActivityAt: new Date(),

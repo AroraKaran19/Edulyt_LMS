@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Container from "@/app/admin/components/ui/Container";
 import {
   CheckCircle,
@@ -17,17 +17,15 @@ import {
   Loader2,
 } from "lucide-react";
 import { useFormContext } from "react-hook-form";
-import { transformFormDataToCourse } from "@/utils/courseFormUtils";
+import { transformFormDataToCourse } from "@/lib/courseFormUtils";
 import { useCourseFormContext } from "@/contexts/CourseFormContext";
 
 const Screen9 = () => {
   // Form context
-  const {
-    watch,
-  } = useFormContext();
+  const { watch } = useFormContext();
 
   // Course form context for loading states
-  const { isCreating, isUpdating } = useCourseFormContext();
+  const { isCreating, isUpdating, isCourseCreated } = useCourseFormContext();
 
   // Watch all form values
   const formData = watch();
@@ -35,12 +33,10 @@ const Screen9 = () => {
   // Client-side mounting state
   const [isMounted, setIsMounted] = useState(false);
 
-
   // Client-side mounting
   useEffect(() => {
     setIsMounted(true);
   }, []);
-
 
   // Transform form data to course object for validation and display
   const course = useMemo(() => {
@@ -166,8 +162,6 @@ const Screen9 = () => {
     };
   }, [course]);
 
-
-
   const getColorClasses = (color: string, isValid: boolean) => {
     const colorMap = {
       orange: isValid ? "bg-orange-500" : "bg-orange-100",
@@ -188,8 +182,16 @@ const Screen9 = () => {
   if (!isMounted) {
     return (
       <Container
-        title="Review & Create Course Metadata (Screen 9)"
-        description="Review all course information before creating the course metadata. Modules can be added later."
+        title={
+          isCourseCreated()
+            ? "Review & Update Course Metadata (Screen 9)"
+            : "Review & Create Course Metadata (Screen 9)"
+        }
+        description={
+          isCourseCreated()
+            ? "Review and update your course information. The course has been created and can be updated."
+            : "Review all course information before creating the course metadata. Modules can be added later."
+        }
         className="h-full w-full max-h-full overflow-y-auto flex flex-col"
         classNameBody="flex flex-col gap-6"
         style={{ scrollbarWidth: "thin" }}
@@ -223,10 +225,9 @@ const Screen9 = () => {
               </span>
             </div>
             <p className="text-sm text-gray-500 text-center max-w-md">
-              {isCreating 
+              {isCreating
                 ? "Please wait while we create your course metadata. This may take a few moments."
-                : "Please wait while we update your course metadata. This may take a few moments."
-              }
+                : "Please wait while we update your course metadata. This may take a few moments."}
             </p>
           </div>
         </div>
@@ -236,23 +237,30 @@ const Screen9 = () => {
 
   return (
     <Container
-      title="Review & Create Course Metadata"
-      description="Review all course information before creating the course metadata. Modules can be added later."
+      title={
+        isCourseCreated()
+          ? "Review & Update Course Metadata"
+          : "Review & Create Course Metadata"
+      }
+      description={
+        isCourseCreated()
+          ? "Review and update your course information. The course has been created and can be updated."
+          : "Review all course information before creating the course metadata. Modules can be added later."
+      }
       className="h-full w-full max-h-full overflow-y-auto flex flex-col"
       classNameBody="flex flex-col gap-6"
       style={{ scrollbarWidth: "thin" }}
     >
-
       {/* Publishing Notice */}
       <Container
         title="Important Notice"
         description="Please read this carefully before proceeding"
         icon={AlertCircle}
-        className="mb-6 h-fit shadow-none border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50"
+        className="mb-6 h-fit shadow-none border-amber-200 bg-linear-to-r from-amber-50 to-orange-50"
         classNameBody="flex flex-col gap-4 overflow-visible"
       >
         <div className="flex items-start gap-4 p-4 bg-white rounded-xl border-2 border-amber-200 shadow-sm">
-          <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
+          <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center shrink-0 mt-1">
             <Zap className="w-6 h-6 text-amber-600" />
           </div>
           <div className="flex-1">
@@ -260,8 +268,10 @@ const Screen9 = () => {
               Course Will Be Published Automatically
             </h4>
             <p className="text-amber-700 text-sm leading-relaxed mb-3">
-              Creating course metadata will automatically <strong>publish your course</strong> and make it visible to students. 
-              Make sure all information is accurate and complete before proceeding.
+              Creating course metadata will automatically{" "}
+              <strong>publish your course</strong> and make it visible to
+              students. Make sure all information is accurate and complete
+              before proceeding.
             </p>
             <div className="flex items-center gap-2 text-sm text-amber-600">
               <CheckCircle className="w-4 h-4" />
@@ -302,8 +312,8 @@ const Screen9 = () => {
             <div
               className={`h-3 rounded-full transition-all duration-500 ${
                 allValid
-                  ? "bg-gradient-to-r from-orange-500 to-orange-600"
-                  : "bg-gradient-to-r from-orange-500 to-orange-500"
+                  ? "bg-linear-to-r from-orange-500 to-orange-600"
+                  : "bg-linear-to-r from-orange-500 to-orange-500"
               }`}
               style={{
                 width: `${(validChecks.length / requiredChecks.length) * 100}%`,
@@ -374,7 +384,7 @@ const Screen9 = () => {
         </div>
 
         {!allValid && (
-          <div className="mt-6 p-4 bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-yellow-200 rounded-xl shadow-md">
+          <div className="mt-6 p-4 bg-linear-to-r from-yellow-50 to-orange-50 border-2 border-yellow-200 rounded-xl shadow-md">
             <div className="flex items-center gap-3 text-yellow-800">
               <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
                 <AlertCircle className="w-6 h-6 text-yellow-600" />
@@ -382,8 +392,9 @@ const Screen9 = () => {
               <div>
                 <span className="font-semibold text-lg">Action Required</span>
                 <div className="text-sm mt-1">
-                  Please complete all required fields above before publishing your
-                  course. Each section marked with a red icon needs attention.
+                  Please complete all required fields above before publishing
+                  your course. Each section marked with a red icon needs
+                  attention.
                 </div>
               </div>
             </div>
@@ -402,7 +413,7 @@ const Screen9 = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Course Details */}
           <div className="space-y-6">
-            <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-5">
+            <div className="bg-linear-to-r from-gray-50 to-gray-100 rounded-xl p-5">
               <h4 className="text-xl font-bold text-gray-800 mb-3">
                 {course?.title || "Untitled Course"}
               </h4>

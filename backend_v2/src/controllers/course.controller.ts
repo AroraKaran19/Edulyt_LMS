@@ -23,6 +23,7 @@ import {
   getCourseByIdService,
   getCourseBySlugService,
   getFeaturedCoursesService,
+  checkSlugAvailabilityService,
 } from "../services/course.services";
 
 export const getAllCourses = asyncHandler(
@@ -235,7 +236,7 @@ export const getAdminCourseBySlug = asyncHandler(
 
 export const createCourseMetadata = asyncHandler(
   async (req: Request, res: Response) => {
-    const { courseData } = req.body;
+    const courseData = req.body;
 
     if (!courseData || Object.keys(courseData).length === 0) {
       throw new AppError("Course data is required", 400);
@@ -258,7 +259,7 @@ export const createCourseMetadata = asyncHandler(
 export const createCourseModule = asyncHandler(
   async (req: Request, res: Response) => {
     const { courseId } = req.params;
-    const { moduleData } = req.body;
+    const moduleData = req.body;
 
     if (!courseId) {
       throw new AppError("Course ID is required", 400);
@@ -280,7 +281,7 @@ export const createCourseModule = asyncHandler(
 export const updateCourseModule = asyncHandler(
   async (req: Request, res: Response) => {
     const { courseId, moduleId } = req.params;
-    const { moduleData } = req.body;
+    const moduleData = req.body;
 
     if (!courseId) {
       throw new AppError("Course ID is required", 400);
@@ -330,7 +331,7 @@ export const deleteCourseModule = asyncHandler(
 export const createCourseLesson = asyncHandler(
   async (req: Request, res: Response) => {
     const { courseId, moduleId } = req.params;
-    const { lessonData } = req.body;
+    const lessonData = req.body;
 
     if (!courseId) {
       throw new AppError("Course ID is required", 400);
@@ -360,7 +361,7 @@ export const createCourseLesson = asyncHandler(
 export const updateCourseLesson = asyncHandler(
   async (req: Request, res: Response) => {
     const { courseId, moduleId, lessonId } = req.params;
-    const { lessonData } = req.body;
+    const lessonData = req.body;
 
     if (!courseId) {
       throw new AppError("Course ID is required", 400);
@@ -424,7 +425,7 @@ export const deleteCourseLesson = asyncHandler(
 export const createCourseLessonContent = asyncHandler(
   async (req: Request, res: Response) => {
     const { courseId, moduleId, lessonId } = req.params;
-    const { contentData } = req.body;
+    const contentData = req.body;
 
     if (!courseId) {
       throw new AppError("Course ID is required", 400);
@@ -464,7 +465,7 @@ export const createCourseLessonContent = asyncHandler(
 export const updateCourseLessonContent = asyncHandler(
   async (req: Request, res: Response) => {
     const { courseId, moduleId, lessonId, contentId } = req.params;
-    const { contentData } = req.body;
+    const contentData = req.body;
 
     if (!courseId) {
       throw new AppError("Course ID is required", 400);
@@ -570,7 +571,7 @@ export const updateCourseStatus = asyncHandler(
       throw new AppError("Course ID is required", 400);
     }
 
-    if (!status || ![true, false].includes(status)) {
+    if (status === undefined || status === null || ![true, false].includes(status)) {
       throw new AppError(
         "Status is required and must be either true or false",
         400
@@ -581,7 +582,7 @@ export const updateCourseStatus = asyncHandler(
     if (!result) {
       throw new AppError("Failed to update course status", 500);
     }
-    sendSuccessResponse(res, null, "Course status updated successfully", 200);
+    sendSuccessResponse(res, result, "Course status updated successfully", 200);
     return;
   }
 );
@@ -589,7 +590,7 @@ export const updateCourseStatus = asyncHandler(
 export const updateCourseMetadata = asyncHandler(
   async (req: Request, res: Response) => {
     const { courseId } = req.params;
-    const { courseData } = req.body;
+    const courseData = req.body;
 
     if (!courseId) {
       throw new AppError("Course ID is required", 400);
@@ -625,6 +626,30 @@ export const deleteCourse = asyncHandler(
       throw new AppError("Failed to delete course", 500);
     }
     sendSuccessResponse(res, null, "Course deleted successfully", 200);
+    return;
+  }
+);
+
+/**
+ * Check if a slug is available for use
+ * @route GET /api/courses/check-slug/:slug
+ * @access Public
+ */
+export const checkSlugAvailability = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { slug } = req.params;
+    const { excludeId } = req.query;
+
+    if (!slug) {
+      throw new AppError("Slug is required", 400);
+    }
+
+    const result = await checkSlugAvailabilityService(
+      slug,
+      excludeId as string
+    );
+
+    sendSuccessResponse(res, result, result.message, 200);
     return;
   }
 );

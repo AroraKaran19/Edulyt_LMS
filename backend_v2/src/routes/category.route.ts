@@ -1,3 +1,4 @@
+import { verifyUser } from "../middlewares/user.middleware";
 import {
   createCategory,
   deleteCategory,
@@ -29,21 +30,21 @@ router.get("/:id", getCategoryById);
  * @desc    Create a new category
  * @access  Admin
  */
-router.post("/", verifyAdmin, createCategory);
+router.post("/", verifyUser, verifyAdmin, createCategory);
 
 /**
  * @route   PUT /api/categories/:id
  * @desc    Update a category
  * @access  Admin
  */
-router.put("/:id", verifyAdmin, updateCategory);
+router.put("/:id", verifyUser, verifyAdmin, updateCategory);
 
 /**
  * @route   DELETE /api/categories/:id
  * @desc    Delete a category
  * @access  Admin
  */
-router.delete("/:id", verifyAdmin, deleteCategory);
+router.delete("/:id", verifyUser, verifyAdmin, deleteCategory);
 
 // ===================
 // Admin Routes
@@ -54,27 +55,27 @@ router.delete("/:id", verifyAdmin, deleteCategory);
  * @desc    Get all categories for admin (with full data)
  * @access  Admin
  */
-router.get("/admin", verifyAdmin, getAllCategories);
+router.get("/admin", verifyUser, verifyAdmin, getAllCategories);
 
 /**
  * @route   GET /api/admin/categories/:id
  * @desc    Get a category by ID for admin (with full data)
  * @access  Admin
  */
-router.get("/admin/:id", verifyAdmin, getCategoryById);
+router.get("/admin/:id", verifyUser, verifyAdmin, getCategoryById);
 
 /**
  * @route   PUT /api/admin/categories/:id
  * @desc    Update a category (Admin can update any category)
  * @access  Admin
  */
-router.put("/admin/:id", verifyAdmin, updateCategory);
+router.put("/admin/:id", verifyUser, verifyAdmin, updateCategory);
 
 /**
  * @route   DELETE /api/admin/categories/:id
  * @desc    Delete a category (Admin can delete any category)
  * @access  Admin
  */
-router.delete("/admin/:id", verifyAdmin, deleteCategory);
+router.delete("/admin/:id", verifyUser, verifyAdmin, deleteCategory);
 
 export default router;

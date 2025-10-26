@@ -1,4 +1,3 @@
-import FlexBox from "@/components/ui/FlexBox";
 import { cn } from "@/lib/utils";
 import React from "react";
 
@@ -26,18 +25,18 @@ const Container = ({
       )}
       {...props}
     >
-      <FlexBox className="container-header h-fit w-full gap-4 items-center mb-4">
+      <div className="flex container-header h-fit w-full gap-4 items-center mb-4">
         {icon && (
-          <FlexBox className="container-header-icon p-3 shrink-0 bg-orange-500 text-white rounded-lg">
+          <div className="flex container-header-icon p-3 shrink-0 bg-orange-500 text-white rounded-lg">
             {React.createElement(icon, { className: "size-6" })}
-          </FlexBox>
+          </div>
         )}
-        <FlexBox className="container-header-content w-full flex flex-col justify-center">
+        <div className="container-header-content w-full flex flex-col justify-center">
           <h2 className="text-xl font-semibold">{title}</h2>
           <p className="text-sm text-gray-500">{description}</p>
-        </FlexBox>
-      </FlexBox>
-      <FlexBox
+        </div>
+      </div>
+      <div
         className={cn(
           "container-body w-full flex-1 gap-4 overflow-y-auto",
           classNameBody
@@ -45,7 +44,7 @@ const Container = ({
         style={{ scrollbarWidth: "thin" }}
       >
         {children}
-      </FlexBox>
+      </div>
     </section>
   );
 };

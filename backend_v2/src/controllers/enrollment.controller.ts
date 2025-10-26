@@ -20,19 +20,56 @@ import {
   ResumeEnrollmentService,
   GetEnrollmentHistoryService,
 } from "../services/enrollment.services";
-import { 
-  Enrollment, 
-  EnrollmentProgressSummary, 
+import { EnrollmentModel } from "../models/enrollment.schema";
+import {
+  Enrollment,
+  EnrollmentProgressSummary,
   DetailedEnrollmentProgress,
   UserEnrollmentStats,
   CourseEnrollmentStats,
-  LastContentAccessed 
+  LastContentAccessed,
 } from "../types";
 
 // Create new enrollment
 export const createEnrollment = asyncHandler(
   async (req: Request, res: Response) => {
     const { courseId, enrollmentSource, promotionCode, giftFrom } = req.body;
+    const currentUserId = req.user?._id;
+
+    if (!currentUserId) {
+      throw new AppError("User ID is required", 400);
+    }
+
+    if (!courseId) {
+      throw new AppError("Course ID is required", 400);
+    }
+
+    // Determine the actual user being enrolled and who is gifting
+    const userId = req.body.userId || currentUserId; // Allow admin to enroll other users
+    const actualGiftFrom =
+      enrollmentSource === "gift" ? currentUserId : giftFrom;
+
+    const enrollmentData = {
+      userId,
+      courseId,
+      enrollmentSource: enrollmentSource || "direct",
+      promotionCode,
+      giftFrom: actualGiftFrom,
+    };
+
+    const result = await CreateEnrollmentService(enrollmentData);
+    if (!result) {
+      throw new AppError("Failed to create enrollment", 500);
+    }
+
+    sendSuccessResponse(res, result, "Enrollment created successfully", 201);
+  }
+);
+
+// Check enrollment status for a course
+export const checkEnrollment = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { courseId } = req.params;
     const userId = req.user?._id;
 
     if (!userId) {
@@ -43,20 +80,30 @@ export const createEnrollment = asyncHandler(
       throw new AppError("Course ID is required", 400);
     }
 
-    const enrollmentData = {
+    // Check if user is enrolled in this course
+    const enrollment = await EnrollmentModel.findOne({
       userId,
       courseId,
-      enrollmentSource: enrollmentSource || "direct",
-      promotionCode,
-      giftFrom,
+      status: { $ne: "dropped" },
+    }).populate(
+      "courseId",
+      "title thumbnail description category slug duration instructor plans analytics isFeatured isCertified"
+    );
+
+    const enrollmentStatus = {
+      isEnrolled: !!enrollment,
+      enrollment: enrollment || null,
+      status: enrollment?.status || null,
+      canAccess:
+        enrollment?.status === "active" || enrollment?.status === "completed",
     };
 
-    const result = await CreateEnrollmentService(enrollmentData);
-    if (!result) {
-      throw new AppError("Failed to create enrollment", 500);
-    }
-
-    sendSuccessResponse(res, result, "Enrollment created successfully", 201);
+    sendSuccessResponse(
+      res,
+      enrollmentStatus,
+      "Enrollment status checked successfully",
+      200
+    );
   }
 );
 
@@ -82,10 +129,20 @@ export const getEnrollment = asyncHandler(
 export const getUserEnrollments = asyncHandler(
   async (req: Request, res: Response) => {
     const { userId } = req.params;
-    const { status, page = 1, limit = 10 } = req.query;
+    const { status, page = 1, limit = 10, search, sortBy } = req.query;
 
-    if (!userId) {
-      throw new AppError("User ID is required", 400);
+    // Handle "me" route - use current user's ID
+    let targetUserId: string;
+    if (userId === "me") {
+      if (!req.user?._id) {
+        throw new AppError("User not authenticated", 401);
+      }
+      targetUserId = req.user._id;
+    } else {
+      if (!userId) {
+        throw new AppError("User ID is required", 400);
+      }
+      targetUserId = userId;
     }
 
     if (Number(page) < 1 || Number(limit) < 1) {
@@ -93,13 +150,20 @@ export const getUserEnrollments = asyncHandler(
     }
 
     const result = await GetUserEnrollmentsService(
-      userId,
+      targetUserId,
       status as string,
       Number(page),
-      Number(limit)
+      Number(limit),
+      search as string,
+      sortBy as string
     );
 
-    sendSuccessResponse(res, result, "User enrollments retrieved successfully", 200);
+    sendSuccessResponse(
+      res,
+      result,
+      "User enrollments retrieved successfully",
+      200
+    );
   }
 );
 
@@ -107,14 +171,14 @@ export const getUserEnrollments = asyncHandler(
 export const updateEnrollmentProgress = asyncHandler(
   async (req: Request, res: Response) => {
     const { enrollmentId } = req.params;
-    const { 
-      moduleId, 
-      lessonId, 
-      contentId, 
-      contentType, 
+    const {
+      moduleId,
+      lessonId,
+      contentId,
+      contentType,
       lastPosition,
       completed,
-      timeSpent 
+      timeSpent,
     } = req.body;
 
     if (!enrollmentId) {
@@ -131,12 +195,20 @@ export const updateEnrollmentProgress = asyncHandler(
       timeSpent,
     };
 
-    const result = await UpdateEnrollmentProgressService(enrollmentId, progressData);
+    const result = await UpdateEnrollmentProgressService(
+      enrollmentId,
+      progressData
+    );
     if (!result) {
       throw new AppError("Failed to update enrollment progress", 500);
     }
 
-    sendSuccessResponse(res, result, "Enrollment progress updated successfully", 200);
+    sendSuccessResponse(
+      res,
+      result,
+      "Enrollment progress updated successfully",
+      200
+    );
   }
 );
 
@@ -150,7 +222,10 @@ export const updateEnrollmentStatus = asyncHandler(
       throw new AppError("Enrollment ID is required", 400);
     }
 
-    if (!status || !["active", "completed", "dropped", "paused"].includes(status)) {
+    if (
+      !status ||
+      !["active", "completed", "dropped", "paused"].includes(status)
+    ) {
       throw new AppError("Valid status is required", 400);
     }
 
@@ -159,7 +234,12 @@ export const updateEnrollmentStatus = asyncHandler(
       throw new AppError("Failed to update enrollment status", 500);
     }
 
-    sendSuccessResponse(res, result, "Enrollment status updated successfully", 200);
+    sendSuccessResponse(
+      res,
+      result,
+      "Enrollment status updated successfully",
+      200
+    );
   }
 );
 
@@ -231,7 +311,12 @@ export const getEnrollmentStats = asyncHandler(
       throw new AppError("Failed to get enrollment statistics", 500);
     }
 
-    sendSuccessResponse(res, result, "Enrollment statistics retrieved successfully", 200);
+    sendSuccessResponse(
+      res,
+      result,
+      "Enrollment statistics retrieved successfully",
+      200
+    );
   }
 );
 
@@ -249,7 +334,12 @@ export const getCourseEnrollmentStats = asyncHandler(
       throw new AppError("Failed to get course enrollment statistics", 500);
     }
 
-    sendSuccessResponse(res, result, "Course enrollment statistics retrieved successfully", 200);
+    sendSuccessResponse(
+      res,
+      result,
+      "Course enrollment statistics retrieved successfully",
+      200
+    );
   }
 );
 
@@ -267,7 +357,12 @@ export const getDetailedProgress = asyncHandler(
       throw new AppError("Failed to get detailed progress", 500);
     }
 
-    sendSuccessResponse(res, result, "Detailed progress retrieved successfully", 200);
+    sendSuccessResponse(
+      res,
+      result,
+      "Detailed progress retrieved successfully",
+      200
+    );
   }
 );
 
@@ -286,7 +381,12 @@ export const getEnrollmentAnalytics = asyncHandler(
       throw new AppError("Failed to get enrollment analytics", 500);
     }
 
-    sendSuccessResponse(res, result, "Enrollment analytics retrieved successfully", 200);
+    sendSuccessResponse(
+      res,
+      result,
+      "Enrollment analytics retrieved successfully",
+      200
+    );
   }
 );
 
@@ -310,7 +410,12 @@ export const getEnrollmentHistory = asyncHandler(
       Number(limit)
     );
 
-    sendSuccessResponse(res, result, "Enrollment history retrieved successfully", 200);
+    sendSuccessResponse(
+      res,
+      result,
+      "Enrollment history retrieved successfully",
+      200
+    );
   }
 );
 

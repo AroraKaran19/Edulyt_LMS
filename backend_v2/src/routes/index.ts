@@ -6,7 +6,11 @@ import testimonialRoutes from "./testimonial.route";
 import categoryRoutes from "./category.route";
 import qnaRoutes from "./qna.route";
 import enrollmentRoutes from "./enrollment.routes";
+import userRoutes from "./user.routes";
 import adminRoutes from "./admin.routes";
+import uploadRoutes from "./upload.routes";
+import instructorRoutes from "./instructor.routes";
+import reviewRoutes from "./review.routes";
 
 export {
   authRoutes,
@@ -17,5 +21,9 @@ export {
   categoryRoutes,
   qnaRoutes,
   enrollmentRoutes,
+  userRoutes,
   adminRoutes,
+  uploadRoutes,
+  instructorRoutes,
+  reviewRoutes,
 };

@@ -27,6 +27,7 @@ export interface Enrollment {
   enrolledAt: Date;
   status: "active" | "completed" | "dropped" | "paused";
   progress: EnrollmentProgressSummary; // Simplified progress summary
+  completedContents: string[]; // Array of completed content IDs
   lastUpdated: Date;
   
   // Optional metadata

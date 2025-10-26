@@ -27,11 +27,12 @@ export interface Enrollment {
   enrolledAt: Date;
   status: "active" | "completed" | "dropped" | "paused";
   progress: EnrollmentProgressSummary; // Simplified progress summary
+  completedContents: string[]; // Array of completed content IDs
   lastUpdated: Date;
   
   // Optional metadata
   enrollmentSource?: "direct" | "gift" | "promotion";
-  giftFrom?: User["_id"]; // If enrolled via gift
+  giftFrom?: User["_id"] | string; // If enrolled via gift (can be user ID or system string)
   promotionCode?: string; // If enrolled via promotion
   
   // Completion tracking
@@ -42,6 +43,9 @@ export interface Enrollment {
   // Analytics
   totalTimeSpent?: number; // In seconds
   lastActivityAt?: Date;
+  
+  // Last accessed content
+  lastContentAccessed?: LastContentAccessed;
   
   // Timestamps
   createdAt?: Date;

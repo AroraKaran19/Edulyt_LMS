@@ -1,6 +1,6 @@
 import Container from "@/app/admin/components/ui/Container";
 import Input from "@/components/ui/inputs/Input";
-import React, { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import TextArea from "@/components/ui/inputs/TextArea";
 import TagInput from "@/components/ui/inputs/TagInput";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
@@ -14,16 +14,24 @@ import {
   XCircle,
   Loader2,
 } from "lucide-react";
-import { checkSlug } from "@/utils/checkSlug";
 import { useFormContext, Controller } from "react-hook-form";
 import { useCourseFormContext } from "@/contexts/CourseFormContext";
-import { getTextFromHtml } from "@/utils/courseFormUtils";
+import { getTextFromHtml } from "@/lib/courseFormUtils";
+import { useSlugCheck } from "@/hooks/useSlugCheck";
 
 const Screen8 = () => {
   // Form context
   const { control, setValue, watch } = useFormContext();
   const { isEditMode } = useCourseFormContext();
-  
+
+  // Slug check hook
+  const {
+    checkSlugAvailability,
+    validateSlugFormat,
+    generateSlug,
+    isChecking: isSlugChecking,
+  } = useSlugCheck();
+
   const [isGenerating, setIsGenerating] = useState(false);
 
   // Watch form values
@@ -59,29 +67,46 @@ const Screen8 = () => {
   });
 
   // Debounced slug validation
-  const validateSlug = useCallback(async (slug: string) => {
-    if (!slug || slug.trim().length === 0) {
-      setSlugValidation({
-        isChecking: false,
-        isAvailable: null,
-        message: "",
-      });
-      return;
-    }
+  const validateSlug = useCallback(
+    async (slug: string) => {
+      if (!slug || slug.trim().length === 0) {
+        setSlugValidation({
+          isChecking: false,
+          isAvailable: null,
+          message: "",
+        });
+        return;
+      }
 
-    setSlugValidation((prev) => ({
-      ...prev,
-      isChecking: true,
-      message: "Checking availability...",
-    }));
+      // Use the hook's validation function
+      const formatValidation = validateSlugFormat(slug);
+      if (!formatValidation.valid) {
+        setSlugValidation({
+          isChecking: false,
+          isAvailable: false,
+          message: formatValidation.message,
+        });
+        return;
+      }
 
-    const result = await checkSlug(slug);
-    setSlugValidation({
-      isChecking: false,
-      isAvailable: result.available,
-      message: result.message,
-    });
-  }, []);
+      // Use the hook's availability check
+      const result = await checkSlugAvailability(slug);
+      if (result) {
+        setSlugValidation({
+          isChecking: false,
+          isAvailable: result.available,
+          message: result.message,
+        });
+      } else {
+        setSlugValidation({
+          isChecking: false,
+          isAvailable: false,
+          message: "Failed to check slug availability",
+        });
+      }
+    },
+    [checkSlugAvailability, validateSlugFormat]
+  );
 
   // Debounce slug validation (skip in edit mode)
   useEffect(() => {
@@ -102,16 +127,7 @@ const Screen8 = () => {
       // Simulate API call delay
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
-      // Generate slug from course title
-      const generateSlug = (title: string) => {
-        return title
-          .toLowerCase()
-          .replace(/[^a-z0-9\s-]/g, "") // Remove special characters
-          .replace(/\s+/g, "-") // Replace spaces with hyphens
-          .replace(/-+/g, "-") // Replace multiple hyphens with single
-          .trim();
-      };
-
+      // Generate slug from course title using hook
       const slug = generateSlug(title || "course");
 
       // Generate meta title based on course title and category
@@ -123,18 +139,19 @@ const Screen8 = () => {
       const getPlainText = (html: string) => getTextFromHtml(html || "");
       const shortDescText = getPlainText(shortDescription || "");
       const descText = getPlainText(description || "");
-      
+
       const baseDescription = shortDescText || descText || "Learn";
       const fullDescription = `${baseDescription} in this comprehensive ${
         category?.toLowerCase() || "course"
       }. Perfect for ${
         audience === "college-students" ? "college students" : "professionals"
       }. Enroll now and advance your career!`;
-      
+
       // Truncate to 160 characters for optimal SEO
-      const metaDescription = fullDescription.length > 160 
-        ? fullDescription.substring(0, 157) + "..."
-        : fullDescription;
+      const metaDescription =
+        fullDescription.length > 160
+          ? fullDescription.substring(0, 157) + "..."
+          : fullDescription;
 
       // Generate keywords based on course content (max 10)
       const baseKeywords = [
@@ -158,9 +175,18 @@ const Screen8 = () => {
 
       // Update the form state
       setValue("slug", slug, { shouldDirty: true, shouldTouch: true });
-      setValue("metaTitle", metaTitle, { shouldDirty: true, shouldTouch: true });
-      setValue("metaDescription", metaDescription, { shouldDirty: true, shouldTouch: true });
-      setValue("keywords", allKeywords, { shouldDirty: true, shouldTouch: true });
+      setValue("metaTitle", metaTitle, {
+        shouldDirty: true,
+        shouldTouch: true,
+      });
+      setValue("metaDescription", metaDescription, {
+        shouldDirty: true,
+        shouldTouch: true,
+      });
+      setValue("keywords", allKeywords, {
+        shouldDirty: true,
+        shouldTouch: true,
+      });
 
       // Validate the generated slug (only in create mode)
       if (!isEditMode) {
@@ -181,8 +207,6 @@ const Screen8 = () => {
       setIsGenerating(false);
     }
   };
-
-
 
   // Show loading during SSR
   if (!isMounted) {
@@ -241,14 +265,13 @@ const Screen8 = () => {
         </OrangeButton>
       </div>
 
-
       {/* SEO Content */}
       <div
         className="flex-1 overflow-y-auto space-y-6 pr-2"
         style={{ scrollbarWidth: "thin" }}
       >
         {/* URL Slug Section */}
-        <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-6 border border-green-100">
+        <div className="bg-linear-to-r from-green-50 to-emerald-50 rounded-2xl p-6 border border-green-100">
           <div className="flex items-center gap-3 mb-6">
             <div className="p-2 bg-green-500 rounded-lg">
               <Globe className="w-5 h-5 text-white" />
@@ -289,7 +312,7 @@ const Screen8 = () => {
               {/* Validation Icon */}
               {slug && slug.trim().length > 0 && !isEditMode && (
                 <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                  {slugValidation.isChecking ? (
+                  {isSlugChecking ? (
                     <Loader2 className="w-4 h-4 text-gray-400 animate-spin" />
                   ) : slugValidation.isAvailable === true ? (
                     <CheckCircle className="w-4 h-4 text-green-500" />
@@ -314,7 +337,7 @@ const Screen8 = () => {
                       : "text-gray-500"
                   }`}
                 >
-                  {slugValidation.isChecking ? (
+                  {isSlugChecking ? (
                     <Loader2 className="w-3 h-3 animate-spin" />
                   ) : slugValidation.isAvailable === true ? (
                     <CheckCircle className="w-3 h-3" />
@@ -343,7 +366,7 @@ const Screen8 = () => {
         </div>
 
         {/* Meta Title Section */}
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-100">
+        <div className="bg-linear-to-r from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-100">
           <div className="flex items-center gap-3 mb-6">
             <div className="p-2 bg-blue-500 rounded-lg">
               <FileText className="w-5 h-5 text-white" />
@@ -379,7 +402,7 @@ const Screen8 = () => {
         </div>
 
         {/* Meta Description Section */}
-        <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-6 border border-purple-100">
+        <div className="bg-linear-to-r from-purple-50 to-pink-50 rounded-2xl p-6 border border-purple-100">
           <div className="flex items-center gap-3 mb-6">
             <div className="p-2 bg-purple-500 rounded-lg">
               <Globe className="w-5 h-5 text-white" />
@@ -418,7 +441,7 @@ const Screen8 = () => {
         </div>
 
         {/* Keywords Section */}
-        <div className="bg-gradient-to-r from-orange-50 to-yellow-50 rounded-2xl p-6 border border-orange-100">
+        <div className="bg-linear-to-r from-orange-50 to-yellow-50 rounded-2xl p-6 border border-orange-100">
           <div className="flex items-center gap-3 mb-6">
             <div className="p-2 bg-orange-500 rounded-lg">
               <Tag className="w-5 h-5 text-white" />
@@ -472,7 +495,7 @@ const Screen8 = () => {
         </div>
 
         {/* SEO Preview Section */}
-        <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl p-6 border border-gray-200">
+        <div className="bg-linear-to-r from-gray-50 to-gray-100 rounded-2xl p-6 border border-gray-200">
           <div className="flex items-center gap-3 mb-6">
             <div className="p-2 bg-gray-500 rounded-lg">
               <Search className="w-5 h-5 text-white" />
