@@ -9,14 +9,20 @@ export const calculateDiscountDisplay = (
   discountLabel: string;
   discountType: string;
   discountValue: number;
+  isActive: boolean;
 } => {
   let finalPrice = planPrice;
   let discountLabel = "";
   let discountType = "";
   let discountValue = 0;
+  let isActive = false;
 
-  // Apply plan discount first (only if it exists and is active)
+  // Apply plan discount first (calculate regardless of date for display)
   if (planDiscount?.value && planDiscount.isActive) {
+    // Check if discount is within date range
+    const isPlanDiscountActive = (!planDiscount.startDate || new Date(planDiscount.startDate) <= new Date()) &&
+      (!planDiscount.endDate || new Date(planDiscount.endDate) >= new Date());
+    
     if (planDiscount.discount === "fixed") {
       finalPrice -= planDiscount.value;
       discountValue = planDiscount.value;
@@ -29,10 +35,16 @@ export const calculateDiscountDisplay = (
       discountType = "percentage";
       discountLabel = `${planDiscount.value}% off`;
     }
+    
+    isActive = isPlanDiscountActive;
   }
 
-  // Apply course discount on the already discounted price (only if it exists and is active)
+  // Apply course discount on the already discounted price (calculate regardless of date for display)
   if (courseDiscount?.value && courseDiscount.isActive) {
+    // Check if discount is within date range
+    const isCourseDiscountActive = (!courseDiscount.startDate || new Date(courseDiscount.startDate) <= new Date()) &&
+      (!courseDiscount.endDate || new Date(courseDiscount.endDate) >= new Date());
+    
     if (courseDiscount.discount === "fixed") {
       finalPrice -= courseDiscount.value;
       // Update label to show combined discount
@@ -51,6 +63,8 @@ export const calculateDiscountDisplay = (
         discountLabel = `${courseDiscount.value}% off`;
       }
     }
+    
+    isActive = isActive || isCourseDiscountActive;
   }
 
   return {
@@ -58,5 +72,6 @@ export const calculateDiscountDisplay = (
     discountLabel: discountLabel || "",
     discountType: discountType || "",
     discountValue: discountValue || 0,
+    isActive: isActive,
   };
 };

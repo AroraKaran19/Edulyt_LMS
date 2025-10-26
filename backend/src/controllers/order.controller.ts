@@ -65,11 +65,12 @@ export const createOrder = asyncHandler(async (req: Request, res: Response) => {
   res.cookie("paymentToken", order.token, {
     httpOnly: false,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
+    sameSite: "lax",
     path: "/",
     maxAge: 1000 * 60 * 5, // 5 minutes
+    domain: process.env.NODE_ENV === "production" ? ".airkrit.com" : undefined, // Set domain only in production
   });
-  sendSuccessResponse(res, null, "Order created successfully", 201);
+  sendSuccessResponse(res, order, "Order created successfully", 201);
   return;
 });
 

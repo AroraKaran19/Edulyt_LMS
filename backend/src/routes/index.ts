@@ -11,6 +11,8 @@ import adminRoutes from "./admin.routes";
 import uploadRoutes from "./upload.routes";
 import instructorRoutes from "./instructor.routes";
 import reviewRoutes from "./review.routes";
+import webhookRoutes from "./webhook.routes";
+import paymentRoutes from "./payment.routes";
 
 export {
   authRoutes,
@@ -26,4 +28,6 @@ export {
   uploadRoutes,
   instructorRoutes,
   reviewRoutes,
+  webhookRoutes,
+  paymentRoutes,
 };

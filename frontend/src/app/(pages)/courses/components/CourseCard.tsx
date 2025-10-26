@@ -34,7 +34,11 @@ const CourseCard = ({
     course.discount // Course-wide discount
   );
 
-  const hasActiveDiscount = !!discountInfo.discountLabel;
+  // Show discount badge only if course.discount exists AND is active
+  const hasActiveDiscount = !!course.discount && discountInfo.isActive;
+  
+  // Show discounted price if either plan discount OR course discount exists
+  const hasAnyDiscount = !!discountInfo.discountLabel;
 
   return (
     <div
@@ -99,7 +103,7 @@ const CourseCard = ({
         </div>
         <div className="mt-auto flex flex-col sm:flex-row gap-2 sm:items-center select-none">
           <div className="pricing flex flex-row lg:flex-col xl:flex-row gap-2 sm:items-center flex-wrap">
-            {hasActiveDiscount ? (
+            {hasAnyDiscount ? (
               <>
                 <span className="text-xl font-bold text-black">
                   ₹{discountInfo.discountPrice}

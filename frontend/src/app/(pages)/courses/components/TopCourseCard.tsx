@@ -18,22 +18,27 @@ const TopCourseCard = ({
   style?: React.CSSProperties;
 }) => {
   const router = useRouter();
-  
+
   // Get the base price (prefer essential, fallback to elite)
-  const originalPrice = course.plans?.essential?.price || course.plans?.elite?.price || 0;
-  
+  const originalPrice =
+    course.plans?.essential?.price || course.plans?.elite?.price || 0;
+
   // Determine which plan is being used for pricing
   const selectedPlan = course.plans?.essential ? "essential" : "elite";
   const planDiscount = course.plans?.[selectedPlan]?.discount;
-  
+
   // Calculate discount using the utility function
   const discountInfo = calculateDiscountDisplay(
     originalPrice,
     planDiscount, // Plan-specific discount
     course.discount // Course-wide discount
   );
+
+  // Show discount badge only if course.discount exists AND is active
+  const hasActiveDiscount = !!course.discount && discountInfo.isActive;
   
-  const hasActiveDiscount = !!discountInfo.discountLabel;
+  // Show discounted price if either plan discount OR course discount exists
+  const hasAnyDiscount = !!discountInfo.discountLabel;
 
   return (
     <div
@@ -77,14 +82,15 @@ const TopCourseCard = ({
       <div
         className={cn("instructors mt-2 flex gap-2 items-center select-none")}
       >
-        {(course.instructor as Instructor[]).map(
-          (instructor, index: number) => {
-            if (index < 2) {
-              return <InstructorCard key={index} instructor={instructor} />;
+        {course.instructor &&
+          (course.instructor as Instructor[]).map(
+            (instructor, index: number) => {
+              if (index < 2) {
+                return <InstructorCard key={index} instructor={instructor} />;
+              }
             }
-          }
-        )}
-        {course.instructor.length > 2 && (
+          )}
+        {course.instructor && course.instructor.length > 2 && (
           <div className="instructor flex items-center bg-[#EEEEEE] rounded-full p-1">
             <Plus className="w-3 h-3 text-text-primary" fill="#2B1508" />
             <p className="text-xs font-bold text-text-primary">
@@ -95,7 +101,7 @@ const TopCourseCard = ({
       </div>
       <div className="price mt-auto flex flex-col sm:flex-row gap-2 sm:items-center select-none">
         <div className="pricing flex flex-row lg:flex-col xl:flex-row gap-2 sm:items-center flex-wrap">
-          {hasActiveDiscount ? (
+          {hasAnyDiscount ? (
             <>
               <span className="text-xl font-bold text-black">
                 ₹{discountInfo.discountPrice}

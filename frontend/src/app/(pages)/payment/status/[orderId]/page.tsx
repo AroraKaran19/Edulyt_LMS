@@ -1,5 +1,4 @@
 "use client";
-import axios from "axios";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
@@ -12,14 +11,13 @@ import {
   AlertCircle,
   Loader2,
 } from "lucide-react";
+import apiClient from "@/configs/apiConfig";
 
 const checkPaymentStatus = async (orderId: string) => {
   try {
-    const checkOrderStatus = await axios.get(
-      `${process.env.NEXT_PUBLIC_API_BASE_URL}/payment/status/${orderId}`
-    );
+    const checkOrderStatus = await apiClient.get(`/payment/status/${orderId}`);
     if (checkOrderStatus.status === 200 || checkOrderStatus.status === 304) {
-      return checkOrderStatus.data;
+      return checkOrderStatus.data.data;
     } else {
       return null;
     }
@@ -31,11 +29,9 @@ const checkPaymentStatus = async (orderId: string) => {
 
 const verifyToken = async (token: string) => {
   try {
-    const response = await axios.get(
-      `${process.env.NEXT_PUBLIC_API_BASE_URL}/payment/verify-token/${token}`
-    );
+    const response = await apiClient.get(`/payment/verify-token/${token}`);
     if (response.status === 200) {
-      return response.data.decoded;
+      return response.data.data.decoded; // Extract decoded from wrapped response
     } else {
       return null;
     }

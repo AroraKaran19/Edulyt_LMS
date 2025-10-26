@@ -34,7 +34,7 @@ export const getAllCoursesService = async (
   }
   if (categories) {
     // Handle multiple categories separated by commas
-    const categoryList = categories.split(',').map(cat => cat.trim());
+    const categoryList = categories.split(",").map((cat) => cat.trim());
     if (categoryList.length === 1) {
       // Single category - use exact match for better performance
       filters.category = categoryList[0];
@@ -47,17 +47,56 @@ export const getAllCoursesService = async (
     filters.audience = { $regex: audience, $options: "i" };
   }
 
-  const courses = await CourseModel.find(filters)
-    .skip(skip)
-    .limit(limit)
-    .select(
-      isAdmin
-        ? "-__v"
-        : "title description thumbnail instructor analytics plans.elite.price plans.elite.discount plans.essential.price plans.essential.discount discount isFeatured slug "
-    )
-    .populate("instructor", "firstName lastName email profilePicture")
-    .sort({ createdAt: -1 })
-    .lean();
+  // Use aggregation pipeline for random sorting
+  const courses = await CourseModel.aggregate([
+    { $match: filters },
+    { $addFields: { randomSort: { $rand: {} } } },
+    { $sort: { randomSort: 1 } },
+    { $skip: skip },
+    { $limit: limit },
+    {
+      $lookup: {
+        from: "users",
+        localField: "instructor",
+        foreignField: "_id",
+        as: "instructor",
+        pipeline: [
+          {
+            $project: {
+              firstName: 1,
+              lastName: 1,
+              email: 1,
+              profilePicture: 1,
+            },
+          },
+        ],
+      },
+    },
+    {
+      $unwind: {
+        path: "$instructor",
+        preserveNullAndEmptyArrays: true,
+      },
+    },
+    {
+      $project: isAdmin
+        ? { __v: 0 }
+        : {
+            title: 1,
+            description: 1,
+            thumbnail: 1,
+            instructor: 1,
+            analytics: 1,
+            "plans.elite.price": 1,
+            "plans.elite.discount": 1,
+            "plans.essential.price": 1,
+            "plans.essential.discount": 1,
+            discount: 1,
+            isFeatured: 1,
+            slug: 1,
+          },
+    },
+  ]);
 
   const total = await CourseModel.countDocuments(filters);
   const totalPages = Math.ceil(total / limit);
@@ -91,17 +130,55 @@ export const getFeaturedCoursesService = async (
     ];
   }
 
-  const courses = await CourseModel.find(filters)
-    .skip(skip)
-    .limit(limit)
-    .select(
-      isAdmin
-        ? "-__v"
-        : "title description thumbnail instructor analytics plans.elite.price plans.elite.discount plans.essential.price plans.essential.discount discount slug"
-    )
-    .populate("instructor", "firstName lastName email profilePicture")
-    .sort({ createdAt: -1 })
-    .lean();
+  // Use aggregation pipeline for random sorting
+  const courses = await CourseModel.aggregate([
+    { $match: filters },
+    { $addFields: { randomSort: { $rand: {} } } },
+    { $sort: { randomSort: 1 } },
+    { $skip: skip },
+    { $limit: limit },
+    {
+      $lookup: {
+        from: "users",
+        localField: "instructor",
+        foreignField: "_id",
+        as: "instructor",
+        pipeline: [
+          {
+            $project: {
+              firstName: 1,
+              lastName: 1,
+              email: 1,
+              profilePicture: 1,
+            },
+          },
+        ],
+      },
+    },
+    {
+      $unwind: {
+        path: "$instructor",
+        preserveNullAndEmptyArrays: true,
+      },
+    },
+    {
+      $project: isAdmin
+        ? { __v: 0 }
+        : {
+            title: 1,
+            description: 1,
+            thumbnail: 1,
+            instructor: 1,
+            analytics: 1,
+            "plans.elite.price": 1,
+            "plans.elite.discount": 1,
+            "plans.essential.price": 1,
+            "plans.essential.discount": 1,
+            discount: 1,
+            slug: 1,
+          },
+    },
+  ]);
 
   const total = await CourseModel.countDocuments(filters);
   const totalPages = Math.ceil(total / limit);
@@ -225,13 +302,10 @@ export const CreateCourseModuleService = async (
   }
 
   // Add module ID to course's modules array
-  await CourseModel.findByIdAndUpdate(
-    courseId,
-    {
-      $push: { modules: savedModule._id },
-      updatedAt: new Date(),
-    }
-  );
+  await CourseModel.findByIdAndUpdate(courseId, {
+    $push: { modules: savedModule._id },
+    updatedAt: new Date(),
+  });
 
   return savedModule as CourseModule;
 };
@@ -663,7 +737,8 @@ export const checkSlugAvailabilityService = async (
     if (!slugRegex.test(slug)) {
       return {
         available: false,
-        message: "Slug can only contain letters, numbers, hyphens, and underscores",
+        message:
+          "Slug can only contain letters, numbers, hyphens, and underscores",
       };
     }
 

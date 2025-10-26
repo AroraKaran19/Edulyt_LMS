@@ -55,6 +55,13 @@ const createEnrollmentAfterPayment = async (order: any) => {
     });
 
     const savedEnrollment = await enrollment.save();
+
+    // Add enrollment to user's enrollments array
+    await StudentModel.findByIdAndUpdate(order.userId, {
+      $push: { enrollments: savedEnrollment._id },
+    });
+
+    console.log(`✅ Added course to user's enrollments: ${savedEnrollment._id}`);
     return savedEnrollment;
   } catch (error) {
     console.error("Failed to create enrollment after payment:", error);
@@ -135,7 +142,7 @@ export const createOrderService = async (
   });
 
   const paymentGatewayToken = generatePaymentGatewayToken(order._id.toString());
-  const redirectUrl = `${process.env.FRONTEND_URL}/payment/status?token=${paymentGatewayToken}`;
+  const redirectUrl = `${process.env.FRONTEND_URL}/payment/status/${order._id.toString()}?token=${paymentGatewayToken}`;
 
   const body = {
     requestType: "Payment",
@@ -148,6 +155,11 @@ export const createOrderService = async (
   };
 
   const checksum = await generatePaytmChecksum(body);
+  
+  if (!checksum) {
+    throw new AppError("Failed to generate Paytm checksum", 500);
+  }
+
   const response = await axios.post(
     `https://secure.paytmpayments.com/theia/api/v1/initiateTransaction?mid=${
       process.env.PAYTM_MID
@@ -173,6 +185,10 @@ export const createOrderService = async (
     throw new AppError("Error initiating transaction", 500);
   }
 
+  if (!response.data.body?.txnToken) {
+    throw new AppError("Invalid response from Paytm - no transaction token", 500);
+  }
+
   order.token = response.data.body.txnToken; // Paytm's transaction token
   await order.save();
 
@@ -181,6 +197,7 @@ export const createOrderService = async (
   });
 
   return {
+    _id: order._id.toString(),
     token: response.data.body.txnToken,
   };
 };

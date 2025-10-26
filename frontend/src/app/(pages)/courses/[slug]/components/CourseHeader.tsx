@@ -21,10 +21,14 @@ const CourseHeader = ({
   course,
   isEnrollmentModalOpen,
   setIsEnrollmentModalOpen,
+  isEnrolled = false,
+  isCheckingEnrollment = false,
 }: {
   course: Course;
   isEnrollmentModalOpen?: boolean;
   setIsEnrollmentModalOpen?: (open: boolean) => void;
+  isEnrolled?: boolean;
+  isCheckingEnrollment?: boolean;
 }) => {
   const [isEnquiryModalOpen, setIsEnquiryModalOpen] = useState(false);
   const [localIsEnrollmentModalOpen, setLocalIsEnrollmentModalOpen] =
@@ -120,12 +124,28 @@ const CourseHeader = ({
               )}
             {course?.isActive && (
               <div className="flex gap-5">
-                <OrangeButton
-                  className="font-bold text-sm md:text-base"
-                  onClick={() => setIsEnrollmentModalOpen?.(true)}
-                >
-                  Enroll Now
-                </OrangeButton>
+                {isCheckingEnrollment ? (
+                  <OrangeButton
+                    className="font-bold text-sm md:text-base opacity-50 cursor-not-allowed"
+                    disabled
+                  >
+                    Checking...
+                  </OrangeButton>
+                ) : !isEnrolled ? (
+                  <OrangeButton
+                    className="font-bold text-sm md:text-base"
+                    onClick={() => setIsEnrollmentModalOpen?.(true)}
+                  >
+                    Enroll Now
+                  </OrangeButton>
+                ) : (
+                  <OrangeButton
+                    className="font-bold text-sm md:text-base"
+                    onClick={() => router.push(`/courses/${course.slug}/watch`)}
+                  >
+                    Continue Learning
+                  </OrangeButton>
+                )}
                 <WhiteButton
                   glow
                   className="font-bold lg:hidden text-sm md:text-base"

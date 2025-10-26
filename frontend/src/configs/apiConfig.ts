@@ -9,6 +9,7 @@ import { getSession } from "next-auth/react";
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
   timeout: 10000, // 10 seconds timeout
+  withCredentials: true, // Enable cookies for cross-origin requests
   headers: {
     "Content-Type": "application/json",
   },

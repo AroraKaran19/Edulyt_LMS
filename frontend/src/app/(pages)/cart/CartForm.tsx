@@ -14,6 +14,7 @@ import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import CheckBoxContainer from "@/components/ui/inputs/CheckBoxContainer";
 import useAuth from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
+import { toast } from "react-toastify";
 
 interface EnrollmentFormData {
   name: string;
@@ -497,9 +498,7 @@ const CartForm = ({
                           onClick={async () => {
                             // Ensure user is authenticated and has an ID
                             if (!user?._id) {
-                              alert(
-                                "User authentication required. Please log in again."
-                              );
+                              toast.error("User authentication required. Please log in again.");
                               router.push("/login");
                               return;
                             }
@@ -518,10 +517,11 @@ const CartForm = ({
                                 "/orders",
                                 orderData
                               );
-                              const order = response.data;
+                              const order = response.data.data;
 
-                              // Redirect to payment page with order ID
-                              window.location.href = `/payment?orderId=${order.data._id}&courseId=${course._id}&planType=${planType}`;
+                              // Redirect to paytm-redirect page with order ID
+                              // The backend sets a paymentToken cookie which will be used by paytm-redirect page
+                              window.location.href = `/paytm-redirect?orderId=${order._id}`;
                             } catch (error: any) {
                               console.error("Error creating order:", error);
 
@@ -537,8 +537,8 @@ const CartForm = ({
                                 errorMessage = error.message;
                               }
 
-                              // You can add a toast notification here
-                              alert(errorMessage);
+                              // Show error message as toast notification
+                              toast.error(errorMessage);
                             } finally {
                               setIsCreatingOrder(false);
                             }

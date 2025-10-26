@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Course, Testimonial } from "@/types";
 import { cn } from "@/lib/utils";
 import CourseHeader from "./components/CourseHeader";
@@ -13,9 +13,49 @@ import CurriculumSection from "./components/CurriculumSection";
 import FAQSection from "./components/FAQSection";
 import VideoPlayer from "@/components/ui/VideoPlayer";
 import EnquiryForm from "./components/EnquiryForm";
+import { useSession } from "next-auth/react";
+import useEnrollment from "@/hooks/useEnrollment";
 
 const CoursePage = ({ course }: { course: Course }) => {
   const [isEnrollmentModalOpen, setIsEnrollmentModalOpen] = useState(false);
+  const [isEnrolled, setIsEnrolled] = useState(false);
+  const [isCheckingEnrollment, setIsCheckingEnrollment] = useState(true);
+  
+  const { data: session, status } = useSession();
+  const { checkEnrollment } = useEnrollment();
+
+  // Check enrollment status when user is authenticated
+  useEffect(() => {
+    const checkUserEnrollment = async () => {
+      if (status === "loading") return;
+      
+      if (status === "unauthenticated") {
+        setIsEnrolled(false);
+        setIsCheckingEnrollment(false);
+        return;
+      }
+
+      if (!course._id) {
+        setIsEnrolled(false);
+        setIsCheckingEnrollment(false);
+        return;
+      }
+
+      try {
+        const result = await checkEnrollment({ courseId: course._id });
+        if (result) {
+          setIsEnrolled(result.isEnrolled);
+        }
+      } catch (error) {
+        console.error("Failed to check enrollment:", error);
+        setIsEnrolled(false);
+      } finally {
+        setIsCheckingEnrollment(false);
+      }
+    };
+
+    checkUserEnrollment();
+  }, [session, status, course._id, checkEnrollment]);
 
   // Generate presigned URL for preview video if it's an S3 key
   // const previewVideoUrl = course?.previewVideoUrl;
@@ -66,6 +106,8 @@ const CoursePage = ({ course }: { course: Course }) => {
           course={course}
           isEnrollmentModalOpen={isEnrollmentModalOpen}
           setIsEnrollmentModalOpen={setIsEnrollmentModalOpen}
+          isEnrolled={isEnrolled}
+          isCheckingEnrollment={isCheckingEnrollment}
         />
       </div>
       {course?.scholarship && <ScholarshipBanner course={course} />}
