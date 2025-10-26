@@ -37,12 +37,14 @@ const RegisterPage = () => {
     try {
       const result = await signIn(provider, {
         callbackUrl,
-        redirect: true,
+        redirect: false, // Don't redirect automatically
       });
       if (result?.error) {
         toast.error(result?.error as string);
       } else if (result?.ok) {
         toast.success("Welcome to Airkrit!");
+        // Redirect manually after successful signup
+        window.location.href = callbackUrl;
       }
     } catch (error) {
       toast.error(
@@ -58,29 +60,46 @@ const RegisterPage = () => {
     e.preventDefault();
     try {
       setLoading(true);
-      const response = await apiClient.post("/auth/register", {
-        email,
-        password,
-        confirmPassword,
-        userType: "student",
-        provider: "credentials",
-      });
-      if (response.status === 201) {
-        toast.success("Registration successful!");
-        signIn("credentials", {
+      
+      // First, try to register with the backend
+      try {
+        const response = await apiClient.post("/auth/register", {
           email,
           password,
-          redirect: true,
-          callbackUrl,
+          confirmPassword,
+          userType: "student",
+          provider: "credentials",
         });
-      } else {
-        toast.error((response.data as any)?.error?.message);
+        
+        if (response.status === 201) {
+          toast.success("Registration successful!");
+          
+          // If registration succeeds, proceed with NextAuth signIn
+          const result = await signIn("credentials", {
+            email,
+            password,
+            redirect: false, // Don't redirect automatically
+            callbackUrl,
+          });
+          
+          if (result?.error) {
+            toast.error("Registration successful but login failed. Please try logging in manually.");
+          } else if (result?.ok) {
+            toast.success("Welcome to Airkrit!");
+            // Redirect manually after successful signup and login
+            window.location.href = callbackUrl;
+          }
+        } else {
+          toast.error((response.data as any)?.error?.message || "Registration failed. Please try again.");
+        }
+      } catch (apiError: any) {
+        // If API call fails, show the specific error message
+        const errorMessage = apiError?.response?.data?.error?.message || "Registration failed. Please try again.";
+        toast.error(errorMessage);
+        return;
       }
     } catch (error) {
-      toast.error(
-        (error as any)?.response?.data?.error?.message ||
-          "Something went wrong. Please try again."
-      );
+      toast.error("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }

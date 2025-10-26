@@ -28,7 +28,7 @@ export const authOptions: NextAuthOptions = {
       authorize: async (credentials) => {
         try {
           if (!credentials?.email || !credentials?.password) {
-            throw new Error("Email and password are required");
+            return null;
           }
           const response = await apiClient.post("/auth/login", {
             email: credentials.email,
@@ -40,8 +40,11 @@ export const authOptions: NextAuthOptions = {
             ...response.data?.data?.user,
             accessToken: response.data?.data?.accessToken,
           };
-        } catch (error) {
-          throw new Error((error as any)?.response?.data?.error?.message);
+        } catch (error: any) {
+          // Return null to prevent redirect to error page
+          // The error will be handled by the signIn function in the login page
+          console.error("Auth error:", error?.response?.data?.error?.message || error.message);
+          return null;
         }
       },
     }),

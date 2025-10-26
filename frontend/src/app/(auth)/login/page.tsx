@@ -8,6 +8,7 @@ import React, { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "react-toastify";
 import { signIn } from "next-auth/react";
+import apiClient from "@/configs/apiConfig";
 
 const LoginPage = () => {
   const [email, setEmail] = useState("");
@@ -47,24 +48,36 @@ const LoginPage = () => {
     e.preventDefault();
     try {
       setLoading(true);
+      
+      // First, try to get the specific error message from the backend
+      try {
+        await apiClient.post("/auth/login", {
+          email,
+          password,
+        });
+      } catch (apiError: any) {
+        // If API call fails, show the specific error message
+        const errorMessage = apiError?.response?.data?.error?.message || "Login failed. Please try again.";
+        toast.error(errorMessage);
+        return;
+      }
+      
+      // If API call succeeds, proceed with NextAuth signIn
       const result = await signIn("credentials", {
         email,
         password,
-        redirect: true,
+        redirect: false, // Don't redirect automatically
         callbackUrl,
       });
 
       if (result?.error) {
-        toast.error("Invalid credentials. Please try again.");
+        toast.error("Authentication failed. Please try again.");
       } else if (result?.ok) {
         toast.success("Login successful!");
         router.push(callbackUrl);
       }
     } catch (error) {
-      toast.error(
-        (error as any)?.response?.data?.error?.message ||
-          "Something went wrong. Please try again."
-      );
+      toast.error("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
