@@ -112,6 +112,11 @@ const enrollmentSchema = new mongoose.Schema<Enrollment>(
       type: String,
       default: null,
     },
+    planType: {
+      type: String,
+      enum: ["elite", "essential"],
+      default: "essential",
+    },
 
     // Completion tracking
     completedAt: {

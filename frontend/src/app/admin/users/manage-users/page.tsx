@@ -30,6 +30,7 @@ const ManageUsersPage = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<"elite" | "essential" | null>(null);
   const [showGiftModal, setShowGiftModal] = useState(false);
   const [showUserDetails, setShowUserDetails] = useState(false);
 
@@ -88,25 +89,40 @@ const ManageUsersPage = () => {
 
   // Handle course gifting
   const handleGiftCourse = async () => {
-    if (!selectedUser || !selectedCourse) {
-      toast.error("Please select both user and course");
+    if (!selectedUser || !selectedCourse || !selectedPlan) {
+      toast.error("Please select user, course, and plan type");
       return;
     }
 
-    const result = await giftCourse({
-      userId: selectedUser._id!,
-      courseId: selectedCourse._id!,
-    });
+    // Check if the selected plan exists for the course
+    if (!selectedCourse.plans[selectedPlan]) {
+      toast.error(`Selected plan (${selectedPlan}) is not available for this course`);
+      return;
+    }
 
-    if (result) {
-      toast.success(
-        `Successfully gifted ${selectedCourse.title} to ${
-          selectedUser.firstName || "Unknown"
-        } ${selectedUser.lastName || "User"}`
-      );
-      setShowGiftModal(false);
-      setSelectedUser(null);
-      setSelectedCourse(null);
+    try {
+      const result = await giftCourse({
+        userId: selectedUser._id!,
+        courseId: selectedCourse._id!,
+        planType: selectedPlan,
+      });
+
+      if (result) {
+        toast.success(
+          `Successfully gifted ${selectedCourse.title} (${selectedPlan} plan) to ${
+            selectedUser.firstName || "Unknown"
+          } ${selectedUser.lastName || "User"}`
+        );
+        setShowGiftModal(false);
+        setSelectedUser(null);
+        setSelectedCourse(null);
+        setSelectedPlan(null);
+      }
+    } catch (error: any) {
+      // Handle the specific error message from the backend
+      const errorMessage = error.message || "Failed to gift course. Please try again.";
+      toast.error(errorMessage);
+      console.error("Gift course error:", error);
     }
   };
 
@@ -405,18 +421,59 @@ const ManageUsersPage = () => {
                   Select Course
                 </label>
                 <Select
-                  options={courses.map((course) => ({
-                    value: course._id!,
-                    label: course.title,
-                  }))}
+                  options={courses.map((course) => {
+                    const elitePlan = course.plans.elite;
+                    const essentialPlan = course.plans.essential;
+                    let planInfo = "";
+                    
+                    if (elitePlan && essentialPlan) {
+                      planInfo = ` (Elite: ₹${elitePlan.price}, Essential: ₹${essentialPlan.price})`;
+                    } else if (elitePlan) {
+                      planInfo = ` (Elite: ₹${elitePlan.price})`;
+                    } else if (essentialPlan) {
+                      planInfo = ` (Essential: ₹${essentialPlan.price})`;
+                    }
+                    
+                    return {
+                      value: course._id!,
+                      label: `${course.title}${planInfo}`,
+                    };
+                  })}
                   value={selectedCourse?._id || ""}
                   onChange={(courseId: string) => {
                     const course = courses.find((c) => c._id === courseId);
                     setSelectedCourse(course || null);
+                    setSelectedPlan(null); // Reset plan selection when course changes
                   }}
                   placeholder="Choose a course"
                 />
               </div>
+
+              {/* Plan Selection */}
+              {selectedCourse && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Select Plan Type
+                  </label>
+                  <Select
+                    options={[
+                      ...(selectedCourse.plans.elite ? [{
+                        value: "elite",
+                        label: `Elite Plan - ₹${selectedCourse.plans.elite.price}`,
+                      }] : []),
+                      ...(selectedCourse.plans.essential ? [{
+                        value: "essential", 
+                        label: `Essential Plan - ₹${selectedCourse.plans.essential.price}`,
+                      }] : []),
+                    ]}
+                    value={selectedPlan || ""}
+                    onChange={(planType: string) => {
+                      setSelectedPlan(planType as "elite" | "essential");
+                    }}
+                    placeholder="Choose a plan"
+                  />
+                </div>
+              )}
             </div>
 
             <div className="flex justify-end gap-3 mt-6">
@@ -426,13 +483,14 @@ const ManageUsersPage = () => {
                   setShowGiftModal(false);
                   setSelectedUser(null);
                   setSelectedCourse(null);
+                  setSelectedPlan(null);
                 }}
               >
                 Cancel
               </Button>
               <OrangeButton
                 onClick={handleGiftCourse}
-                disabled={!selectedUser || !selectedCourse || isLoading}
+                disabled={!selectedUser || !selectedCourse || !selectedPlan || isLoading}
               >
                 {isLoading ? "Gifting..." : "Gift Course"}
               </OrangeButton>

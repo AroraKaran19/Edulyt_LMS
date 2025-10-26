@@ -45,7 +45,7 @@ const GuidanceContainer = () => {
           isActive: index === newIndex,
         }));
       });
-    }, 3000); // Change every 3 seconds for smoother experience
+    }, 5000); // Change every 5 seconds for smoother experience
 
     return () => clearInterval(interval);
   }, []);

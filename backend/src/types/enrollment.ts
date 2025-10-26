@@ -33,7 +33,8 @@ export interface Enrollment {
   // Optional metadata
   enrollmentSource?: "direct" | "gift" | "promotion";
   giftFrom?: User["_id"] | string; // If enrolled via gift (can be user ID or system string)
-  promotionCode?: string; // If enrolled via promotion
+  promotionCode?: string;
+  planType?: "elite" | "essential"; // If enrolled via promotion
   
   // Completion tracking
   completedAt?: Date;

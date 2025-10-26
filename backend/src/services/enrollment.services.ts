@@ -18,6 +18,7 @@ export const CreateEnrollmentService = async (enrollmentData: {
   enrollmentSource?: "direct" | "gift" | "promotion";
   promotionCode?: string;
   giftFrom?: string;
+  planType?: "elite" | "essential";
 }): Promise<Enrollment | null> => {
   try {
     // Check if enrollment already exists

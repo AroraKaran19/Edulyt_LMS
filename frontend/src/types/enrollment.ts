@@ -34,6 +34,7 @@ export interface Enrollment {
   enrollmentSource?: "direct" | "gift" | "promotion";
   giftFrom?: User["_id"]; // If enrolled via gift
   promotionCode?: string; // If enrolled via promotion
+  planType?: "elite" | "essential"; // Plan type for the enrollment
   
   // Completion tracking
   completedAt?: Date;

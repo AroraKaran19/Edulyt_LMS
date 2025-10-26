@@ -33,7 +33,7 @@ import {
 // Create new enrollment
 export const createEnrollment = asyncHandler(
   async (req: Request, res: Response) => {
-    const { courseId, enrollmentSource, promotionCode, giftFrom } = req.body;
+    const { courseId, enrollmentSource, promotionCode, giftFrom, planType } = req.body;
     const currentUserId = req.user?._id;
 
     if (!currentUserId) {
@@ -55,6 +55,7 @@ export const createEnrollment = asyncHandler(
       enrollmentSource: enrollmentSource || "direct",
       promotionCode,
       giftFrom: actualGiftFrom,
+      planType: planType || "essential", // Default to essential if not specified
     };
 
     const result = await CreateEnrollmentService(enrollmentData);
