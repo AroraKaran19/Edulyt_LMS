@@ -4,11 +4,11 @@ import {
   CourseModel,
   UserModel,
   StudentModel,
-  EnrollmentModel,
 } from "../models";
 import { generatePaytmChecksum } from "../utils/lib/generatePaytmChecksum";
 import axios from "axios";
 import { AppError } from "../middlewares/error.middleware";
+import { createEnrollmentAfterPayment } from "./order.services";
 
 /**
  * Update pending payments for a user
@@ -22,58 +22,6 @@ const updatePendingPayments = async (userId: string, updateOperation: any) => {
   }
 };
 
-/**
- * Create enrollment after successful payment
- */
-const createEnrollmentAfterPayment = async (order: any) => {
-  try {
-    // Check if enrollment already exists
-    const existingEnrollment = await EnrollmentModel.findOne({
-      userId: order.userId,
-      courseId: order.courseId,
-      status: { $ne: "dropped" },
-    });
-
-    if (existingEnrollment) {
-      console.log("Enrollment already exists for this user and course");
-      return existingEnrollment;
-    }
-
-    // Create new enrollment
-    const enrollment = new EnrollmentModel({
-      userId: order.userId,
-      courseId: order.courseId,
-      enrolledAt: new Date(),
-      status: "active",
-      enrollmentSource: "direct",
-      progress: {
-        overallCompletion: 0,
-        totalModules: 0,
-        completedModules: 0,
-        totalLessons: 0,
-        completedLessons: 0,
-        lastActivityAt: new Date(),
-      },
-      lastUpdated: new Date(),
-      totalTimeSpent: 0,
-    });
-
-    const savedEnrollment = await enrollment.save();
-
-    // Add enrollment to user's enrollments array
-    await StudentModel.findByIdAndUpdate(order.userId, {
-      $push: { enrollments: savedEnrollment._id },
-    });
-
-    console.log(
-      `✅ Added course to user's enrollments: ${savedEnrollment._id}`
-    );
-    return savedEnrollment;
-  } catch (error) {
-    console.error("Error creating enrollment:", error);
-    throw error;
-  }
-};
 
 /**
  * Check payment status for all pending orders
@@ -157,7 +105,6 @@ const verifyOrderPayment = async (order: any) => {
     if (resultStatus === "TXN_SUCCESS") {
       // Payment successful
       await handleSuccessfulPayment(order, statusResponse.data.body);
-      console.log(`✅ Payment successful for order ${order._id}`);
     } else if (resultStatus === "TXN_FAILURE") {
       // Payment failed
       await handleFailedPayment(order);
@@ -176,6 +123,7 @@ const verifyOrderPayment = async (order: any) => {
  */
 const handleSuccessfulPayment = async (order: any, paytmResponse: any) => {
   try {
+    
     // Update order status
     order.paymentStatus = "success";
     order.paymentMode = paytmResponse.paymentMode;
@@ -192,13 +140,18 @@ const handleSuccessfulPayment = async (order: any, paytmResponse: any) => {
       $inc: { enrollments: 1 },
     });
 
-    // Create enrollment
-    await createEnrollmentAfterPayment(order);
+    // Create enrollment after successful payment
+    try {
+      await createEnrollmentAfterPayment(order);
+    } catch (enrollmentError) {
+      console.error(`Failed to create enrollment for order ${order._id}:`, enrollmentError);
+      // Don't throw here as payment is already successful
+      // The enrollment can be created manually later if needed
+    }
 
-    console.log(`✅ Successfully processed payment for order ${order._id}`);
   } catch (error) {
     console.error(
-      `❌ Error processing successful payment for order ${order._id}:`,
+      `Error processing successful payment for order ${order._id}:`,
       error
     );
   }
@@ -218,12 +171,9 @@ const handleFailedPayment = async (order: any) => {
       $pull: { pendingPayments: order._id.toString() },
     });
 
-    console.log(
-      `✅ Successfully processed failed payment for order ${order._id}`
-    );
   } catch (error) {
     console.error(
-      `❌ Error processing failed payment for order ${order._id}:`,
+      `Error processing failed payment for order ${order._id}:`,
       error
     );
   }

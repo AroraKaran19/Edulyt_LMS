@@ -1,10 +1,13 @@
 import { Request, Response } from "express";
 import { asyncHandler } from "../middlewares/error.middleware";
 import { AppError, sendSuccessResponse } from "../middlewares/error.middleware";
-import { OrderModel } from "../models";
+import { OrderModel, CourseModel, StudentModel } from "../models";
 import { generatePaytmChecksum } from "../utils/lib/generatePaytmChecksum";
 import axios from "axios";
-import { verifyPaymentGatewayToken } from "../services/order.services";
+import {
+  verifyPaymentGatewayToken,
+  createEnrollmentAfterPayment,
+} from "../services/order.services";
 
 /**
  * @route   GET /api/payment/status/:orderId
@@ -98,9 +101,38 @@ export const getPaymentStatus = asyncHandler(
         order.paymentMode = statusResponse.data.body.paymentMode;
         order.txnId = statusResponse.data.body.txnId;
         await order.save();
+
+        // Remove from pending payments
+        await StudentModel.findByIdAndUpdate(order.userId, {
+          $pull: { pendingPayments: order._id.toString() },
+        });
+
+        // Increment course enrollments
+        await CourseModel.findByIdAndUpdate(order.courseId, {
+          $inc: { enrollments: 1 },
+        });
+
+        // Create enrollment after successful payment
+        try {
+          await createEnrollmentAfterPayment(order);
+        } catch (enrollmentError) {
+          console.error(
+            `Failed to create enrollment for order ${order._id}:`,
+            enrollmentError
+          );
+          // Don't throw here as payment is already successful
+          // The enrollment can be created manually later if needed
+        }
       } else if (resultStatus === "TXN_FAILURE") {
+        console.log(`Payment failed for order: ${order._id}`);
+
         order.paymentStatus = "failed";
         await order.save();
+
+        // Remove from pending payments
+        await StudentModel.findByIdAndUpdate(order.userId, {
+          $pull: { pendingPayments: order._id.toString() },
+        });
       }
 
       const paymentData = {

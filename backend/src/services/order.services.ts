@@ -21,8 +21,9 @@ const updatePendingPayments = async (userId: string, updateOperation: any) => {
 };
 
 // Create enrollment after successful payment
-const createEnrollmentAfterPayment = async (order: any) => {
+export const createEnrollmentAfterPayment = async (order: any) => {
   try {
+    
     // Check if enrollment already exists
     const existingEnrollment = await EnrollmentModel.findOne({
       userId: order.userId,
@@ -31,14 +32,27 @@ const createEnrollmentAfterPayment = async (order: any) => {
     });
 
     if (existingEnrollment) {
-      console.log("Enrollment already exists for this user and course");
+      console.log(`Enrollment already exists for user ${order.userId} and course ${order.courseId}: ${existingEnrollment._id}`);
       return existingEnrollment;
+    }
+
+    // Verify user exists and is a student
+    const user = await StudentModel.findById(order.userId);
+    if (!user) {
+      throw new AppError(`Student not found with ID: ${order.userId}`, 404);
+    }
+
+    // Verify course exists
+    const course = await CourseModel.findById(order.courseId);
+    if (!course) {
+      throw new AppError(`Course not found with ID: ${order.courseId}`, 404);
     }
 
     // Create new enrollment
     const enrollment = new EnrollmentModel({
       userId: order.userId,
       courseId: order.courseId,
+      planType: order.planType, // Include planType from order
       enrolledAt: new Date(),
       status: "active",
       enrollmentSource: "direct",
@@ -57,14 +71,26 @@ const createEnrollmentAfterPayment = async (order: any) => {
     const savedEnrollment = await enrollment.save();
 
     // Add enrollment to user's enrollments array
-    await StudentModel.findByIdAndUpdate(order.userId, {
-      $push: { enrollments: savedEnrollment._id },
-    });
+    const updatedUser = await StudentModel.findByIdAndUpdate(
+      order.userId, 
+      { $push: { enrollments: savedEnrollment._id } },
+      { new: true }
+    );
 
-    console.log(`✅ Added course to user's enrollments: ${savedEnrollment._id}`);
+    if (!updatedUser) {
+      console.error(`Failed to update user ${order.userId} with enrollment ${savedEnrollment._id}`);
+      // Rollback enrollment creation
+      await EnrollmentModel.findByIdAndDelete(savedEnrollment._id);
+      throw new AppError("Failed to update user with enrollment", 500);
+    }
+
+    
     return savedEnrollment;
   } catch (error) {
     console.error("Failed to create enrollment after payment:", error);
+    if (error instanceof AppError) {
+      throw error;
+    }
     throw new AppError("Failed to create enrollment after payment", 500);
   }
 };
@@ -266,6 +292,8 @@ export const verifyPayment = async (token: string) => {
   }
 
   if (status.data.body.resultInfo.resultStatus === "TXN_SUCCESS") {
+    console.log(`✅ Payment successful for order: ${order._id}`);
+    
     order.paymentStatus = "success";
     order.paymentMode = status.data.body.paymentMode;
     order.txnId = status.data.body.txnId;
@@ -280,7 +308,14 @@ export const verifyPayment = async (token: string) => {
     });
 
     // Create enrollment after successful payment
-    await createEnrollmentAfterPayment(order);
+    try {
+      await createEnrollmentAfterPayment(order);
+      console.log(`🎓 Enrollment created successfully for order: ${order._id}`);
+    } catch (enrollmentError) {
+      console.error(`❌ Failed to create enrollment for order ${order._id}:`, enrollmentError);
+      // Don't throw here as payment is already successful
+      // The enrollment can be created manually later if needed
+    }
   } else if (status.data.body.resultInfo.resultStatus === "TXN_FAILURE") {
     order.paymentStatus = "failed";
     await order.save();
@@ -364,6 +399,8 @@ export const processWebhook = async (webhookData: any) => {
 };
 
 const handleSuccessfulPayment = async (order: any, txnId: string) => {
+  console.log(`✅ Processing successful payment for order: ${order._id}`);
+  
   order.paymentStatus = "success";
   order.txnId = txnId;
   order.paymentMode = "online";
@@ -378,7 +415,14 @@ const handleSuccessfulPayment = async (order: any, txnId: string) => {
   });
 
   // Create enrollment after successful payment
-  await createEnrollmentAfterPayment(order);
+  try {
+    await createEnrollmentAfterPayment(order);
+    console.log(`🎓 Enrollment created successfully for order: ${order._id}`);
+  } catch (enrollmentError) {
+    console.error(`❌ Failed to create enrollment for order ${order._id}:`, enrollmentError);
+    // Don't throw here as payment is already successful
+    // The enrollment can be created manually later if needed
+  }
 };
 
 const handleFailedPayment = async (order: any) => {

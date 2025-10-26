@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from "react";
 import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { isAxiosError } from "axios";
 import { toast } from "react-toastify";
 import Link from "next/link";
 import { Eye, EyeOff, Lock, Mail, ArrowLeft } from "lucide-react";
@@ -17,46 +16,52 @@ const AdminLoginPage = () => {
   const [loading, setLoading] = useState(false);
   const [isClient, setIsClient] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [loginSuccess, setLoginSuccess] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
     setIsClient(true);
   }, []);
 
+  // Handle admin role checking after successful login
+  useEffect(() => {
+    if (loginSuccess && session?.user) {
+      const user = session.user as any;
+      if (user?.userType === "admin" || user?.userType === "super-admin") {
+        toast.success("Admin login successful!");
+        router.push("/admin/dashboard");
+      } else {
+        toast.error("Access denied. Admin privileges required.");
+        // Sign out the user since they don't have admin access
+        signIn("signout");
+        router.push("/login");
+      }
+      setLoginSuccess(false); // Reset the flag
+    }
+  }, [session, loginSuccess, router]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     try {
-      const res = await signIn("credentials", {
+      setLoading(true);
+
+      // Use NextAuth's credentials provider directly (same as regular login)
+      const result = await signIn("credentials", {
         email,
         password,
-        redirect: false,
+        redirect: false, // Don't redirect automatically
+        callbackUrl: "/admin/dashboard",
       });
-      if (res?.status === 200) {
-        if (session?.user) {
-          const user = session.user as any;
-          if (user?.role === "admin") {
-            router.push("/admin/dashboard");
-          } else {
-            toast.error("Access denied. Admin privileges required.");
-            router.push("/auth/login");
-          }
-        }
-      } else {
-        toast.error(
-          (res?.error as string) || "Login failed. Please try again."
-        );
+
+      if (result?.error) {
+        toast.error("Invalid credentials. Please check your email and password.");
+      } else if (result?.ok) {
+        // Set flag to trigger admin role checking in useEffect
+        setLoginSuccess(true);
       }
     } catch (error) {
-      if (isAxiosError(error)) {
-        toast.error(
-          (error.response?.data.message as string) ||
-            "Login failed. Please try again."
-        );
-      } else {
-        toast.error("Something went wrong. Please try again.");
-        console.error("Admin login error:", error);
-      }
+      toast.error("Something went wrong. Please try again.");
+      console.error("Admin login error:", error);
     } finally {
       setLoading(false);
     }
@@ -65,7 +70,7 @@ const AdminLoginPage = () => {
   // Prevent hydration mismatch by not rendering form until client-side
   if (!isClient) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#F8F9FA] to-[#E9ECEF] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-linear-to-br from-[#F8F9FA] to-[#E9ECEF] flex items-center justify-center p-4">
         <div className="w-full max-w-md">
           <div className="bg-white rounded-2xl shadow-xl p-8">
             <div className="animate-pulse">
@@ -83,12 +88,12 @@ const AdminLoginPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#F8F9FA] to-[#E9ECEF] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-linear-to-br from-[#F8F9FA] to-[#E9ECEF] flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Back to regular login */}
         <div className="mb-6">
           <Link
-            href="/auth/login"
+            href="/login"
             className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />

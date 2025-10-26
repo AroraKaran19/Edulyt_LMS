@@ -7,11 +7,17 @@ import {
   updateUserStatus,
   deleteUser,
   getUserStats,
+  updateUserProfile,
+  getCurrentUserProfile,
 } from "../controllers/user.controller";
 
 const router = Router();
 
-// Apply admin middleware to all routes
+// User profile routes (only require user authentication)
+router.get("/profile", verifyUser, getCurrentUserProfile);
+router.put("/profile", verifyUser, updateUserProfile);
+
+// Admin routes (require both user and admin authentication)
 router.use(verifyUser);
 router.use(verifyAdmin);
 

@@ -10,6 +10,8 @@ import {
   updateUserStatusService,
   deleteUserService,
   getUserStatsService,
+  updateUserProfileService,
+  getCurrentUserProfileService,
 } from "../services/user.services";
 
 export const getUsers = asyncHandler(async (req: Request, res: Response) => {
@@ -94,6 +96,46 @@ export const getUserStats = asyncHandler(
       res,
       stats,
       "User statistics fetched successfully",
+      200
+    );
+  }
+);
+
+export const getCurrentUserProfile = asyncHandler(
+  async (req: Request, res: Response) => {
+    const userId = req.user?._id;
+
+    if (!userId) {
+      throw new AppError("User ID not found", 400);
+    }
+
+    const user = await getCurrentUserProfileService(userId);
+    if (!user) {
+      throw new AppError("User not found", 404);
+    }
+
+    sendSuccessResponse(res, user, "Profile fetched successfully", 200);
+  }
+);
+
+export const updateUserProfile = asyncHandler(
+  async (req: Request, res: Response) => {
+    const userId = req.user?._id;
+    const updateData = req.body;
+
+    if (!userId) {
+      throw new AppError("User ID not found", 400);
+    }
+
+    const updatedUser = await updateUserProfileService(userId, updateData);
+    if (!updatedUser) {
+      throw new AppError("User not found", 404);
+    }
+
+    sendSuccessResponse(
+      res,
+      updatedUser,
+      "Profile updated successfully",
       200
     );
   }

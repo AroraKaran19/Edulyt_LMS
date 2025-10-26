@@ -142,3 +142,29 @@ export const getUserStatsService = async () => {
     recentUsersPeriod: "30 days",
   };
 };
+
+export const getCurrentUserProfileService = async (
+  userId: string
+): Promise<User | null> => {
+  const user = await UserModel.findById(userId)
+    .select("-password -refreshTokens -__v")
+    .lean();
+
+  return user as User | null;
+};
+
+export const updateUserProfileService = async (
+  userId: string,
+  updateData: Partial<User>
+): Promise<User | null> => {
+  // Remove sensitive fields that shouldn't be updated via profile
+  const { password, refreshTokens, _id, createdAt, ...allowedFields } = updateData;
+  
+  const user = await UserModel.findByIdAndUpdate(
+    userId,
+    { ...allowedFields, updatedAt: new Date() },
+    { new: true, runValidators: true }
+  ).select("-password -refreshTokens -__v");
+
+  return user as User | null;
+};
