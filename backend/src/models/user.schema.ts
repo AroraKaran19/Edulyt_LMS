@@ -146,6 +146,7 @@ const userSchema = new mongoose.Schema<User>(
     accounts: {
       type: socialProfilesSchema,
       required: true,
+      default: {},
     },
     dob: { type: Date, required: false },
     permissions: {

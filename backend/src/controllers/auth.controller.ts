@@ -64,7 +64,20 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
     throw new AppError("User already exists", 400);
   }
 
-  const newUser = await registerUser({ email, password, userType, provider });
+  // Extract firstName and lastName from email for credentials registration
+  const emailParts = email.split('@')[0];
+  const nameParts = emailParts.split('.');
+  const firstName = nameParts[0] || emailParts;
+  const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+
+  const newUser = await registerUser({ 
+    email, 
+    password, 
+    userType, 
+    provider,
+    firstName,
+    lastName
+  });
   if (!newUser) {
     throw new AppError("Failed to register user", 500);
   }

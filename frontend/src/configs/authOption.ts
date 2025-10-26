@@ -34,6 +34,7 @@ export const authOptions: NextAuthOptions = {
             email: credentials.email,
             password: credentials.password,
           });
+          console.log("response", response);
 
           // Return both user data and access token
           return {
@@ -41,9 +42,11 @@ export const authOptions: NextAuthOptions = {
             accessToken: response.data?.data?.accessToken,
           };
         } catch (error: any) {
-          // Return null to prevent redirect to error page
-          // The error will be handled by the signIn function in the login page
+          // Log the error for debugging
           console.error("Auth error:", error?.response?.data?.error?.message || error.message);
+          
+          // Return null to indicate authentication failure
+          // NextAuth will handle this and return an error in the signIn result
           return null;
         }
       },

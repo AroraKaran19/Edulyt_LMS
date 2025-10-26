@@ -114,7 +114,10 @@ const handler = NextAuth({
       if (account?.provider === "google" || account?.provider === "linkedin") {
         return true;
       }
-      throw new Error("Only Google and LinkedIn OAuth are supported");
+      if (account?.provider === "credentials") {
+        return true; // Allow credentials login
+      }
+      throw new Error("Only Google, LinkedIn OAuth and credentials are supported");
     },
   },
 });

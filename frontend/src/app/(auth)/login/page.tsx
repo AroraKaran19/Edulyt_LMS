@@ -48,21 +48,8 @@ const LoginPage = () => {
     e.preventDefault();
     try {
       setLoading(true);
-      
-      // First, try to get the specific error message from the backend
-      try {
-        await apiClient.post("/auth/login", {
-          email,
-          password,
-        });
-      } catch (apiError: any) {
-        // If API call fails, show the specific error message
-        const errorMessage = apiError?.response?.data?.error?.message || "Login failed. Please try again.";
-        toast.error(errorMessage);
-        return;
-      }
-      
-      // If API call succeeds, proceed with NextAuth signIn
+
+      // Use NextAuth's credentials provider directly
       const result = await signIn("credentials", {
         email,
         password,
@@ -71,7 +58,9 @@ const LoginPage = () => {
       });
 
       if (result?.error) {
-        toast.error("Authentication failed. Please try again.");
+        toast.error(
+          "Invalid credentials. Please check your email and password."
+        );
       } else if (result?.ok) {
         toast.success("Login successful!");
         router.push(callbackUrl);
