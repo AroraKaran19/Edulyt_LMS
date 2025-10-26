@@ -555,10 +555,10 @@ const PreviewCourse = ({ course }: { course: Course }) => {
         />
       ),
     },
-    {
-      label: "Notes",
-      component: <Notes />,
-    },
+    // {
+    //   label: "Notes",
+    //   component: <Notes />,
+    // },
   ];
 
   // Show loading state while initializing

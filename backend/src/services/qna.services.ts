@@ -19,10 +19,6 @@ export const getAllQnAsService = async (
 
   let filters: any = {};
 
-  if (!isAdmin) {
-    filters.isActive = true;
-  }
-
 
   if (search) {
     filters.$or = [
@@ -69,7 +65,6 @@ export const getQnAByIdService = async (
   isAdmin?: boolean
 ): Promise<QnA | null> => {
   const qna = await QnAModel.findById(id)
-    .where(isAdmin ? {} : { isActive: true })
     .populate("userId", isAdmin ? "-__v" : "name email profilePicture")
     .populate("replies.userId", isAdmin ? "-__v" : "name email profilePicture");
 
