@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   keywords: ["Cancellation & Refund Policy", "Airkrit"],
   robots: "index, follow",
   icons: {
-    icon: "/logo.png",
+    icon: "https://www.airkrit.com/logo.png",
   },
   openGraph: {
     title: "Cancellation & Refund Policy | Airkrit",
@@ -15,13 +15,13 @@ export const metadata: Metadata = {
     type: "website",
     url: "https://www.airkrit.com/cancellation-refund-policy",
     siteName: "Airkrit",
-    images: [{ url: "/logo.png" }],
+    images: [{ url: "https://www.airkrit.com/logo.png" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "Cancellation & Refund Policy | Airkrit",
     description: "Cancellation & Refund Policy | Airkrit",
-    images: [{ url: "/logo.png" }],
+    images: [{ url: "https://www.airkrit.com/logo.png" }],
   },
 };
 

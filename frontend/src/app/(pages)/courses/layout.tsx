@@ -10,6 +10,7 @@ export const metadata: Metadata = {
       ? "https://www.airkrit.com/courses"
       : "http://localhost:3000/courses"
   ),
+  keywords: ["Courses", "Airkrit India", "Online Courses", "Learn Online"],
   openGraph: {
     title: "Courses | Airkrit India",
     description:
@@ -19,7 +20,7 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "/logo.png",
+        url: "https://www.airkrit.com/logo.png",
         width: 1200,
         height: 630,
       },
@@ -32,7 +33,7 @@ export const metadata: Metadata = {
       "Explore our wide range of courses and find the perfect one for you.",
     images: [
       {
-        url: "/logo.png",
+        url: "https://www.airkrit.com/logo.png",
         width: 1200,
         height: 630,
       },

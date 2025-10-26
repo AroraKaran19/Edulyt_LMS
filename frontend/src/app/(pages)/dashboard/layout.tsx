@@ -13,12 +13,12 @@ export const metadata: Metadata = {
     description: "Dashboard | Airkrit",
     url: "https://www.airkrit.com/dashboard",
     siteName: "Airkrit",
-    images: ["/logo.png"],
+    images: ["https://www.airkrit.com/logo.png"],
   },
   twitter: {
     title: "Dashboard | Airkrit",
     description: "Dashboard | Airkrit",
-    images: ["/logo.png"],
+    images: ["https://www.airkrit.com/logo.png"],
     card: "summary_large_image",
   },
 };

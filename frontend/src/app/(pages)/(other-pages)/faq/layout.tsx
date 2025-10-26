@@ -13,14 +13,14 @@ export const metadata: Metadata = {
     type: "website",
     url: "https://airkrit.com/faq",
     siteName: "Airkrit",
-    images: [{ url: "/logo.png" }],
+    images: [{ url: "https://www.airkrit.com/logo.png" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "Frequently Asked Questions - Airkrit",
     description:
       "Find answers to common questions about Airkrit courses, enrollment, payments, and more.",
-    images: [{ url: "/logo.png" }],
+    images: [{ url: "https://www.airkrit.com/logo.png" }],
   },
 };
 

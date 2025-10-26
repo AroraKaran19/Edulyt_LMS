@@ -28,7 +28,7 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "/logo.png",
+        url: "https://www.airkrit.com/logo.png",
         width: 1200,
         height: 630,
       },
@@ -40,7 +40,7 @@ export const metadata: Metadata = {
     description: "Educational platform for learning and growth",
     images: [
       {
-        url: "/logo.png",
+        url: "https://www.airkrit.com/logo.png",
         width: 1200,
         height: 630,
       },

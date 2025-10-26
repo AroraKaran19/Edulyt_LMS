@@ -19,7 +19,7 @@ const RegisterPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const searchParams = useSearchParams();
-  
+
   // Get callbackUrl from URL parameters, default to /dashboard
   const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
 
@@ -60,7 +60,7 @@ const RegisterPage = () => {
     e.preventDefault();
     try {
       setLoading(true);
-      
+
       // First, try to register with the backend
       try {
         const response = await apiClient.post("/auth/register", {
@@ -70,10 +70,10 @@ const RegisterPage = () => {
           userType: "student",
           provider: "credentials",
         });
-        
+
         if (response.status === 201) {
           toast.success("Registration successful!");
-          
+
           // If registration succeeds, proceed with NextAuth signIn
           const result = await signIn("credentials", {
             email,
@@ -81,20 +81,27 @@ const RegisterPage = () => {
             redirect: false, // Don't redirect automatically
             callbackUrl,
           });
-          
+
           if (result?.error) {
-            toast.error("Registration successful but login failed. Please try logging in manually.");
+            toast.error(
+              "Registration successful but login failed. Please try logging in manually."
+            );
           } else if (result?.ok) {
             toast.success("Welcome to Airkrit!");
             // Redirect manually after successful signup and login
             window.location.href = callbackUrl;
           }
         } else {
-          toast.error((response.data as any)?.error?.message || "Registration failed. Please try again.");
+          toast.error(
+            (response.data as any)?.error?.message ||
+              "Registration failed. Please try again."
+          );
         }
       } catch (apiError: any) {
         // If API call fails, show the specific error message
-        const errorMessage = apiError?.response?.data?.error?.message || "Registration failed. Please try again.";
+        const errorMessage =
+          apiError?.response?.data?.error?.message ||
+          "Registration failed. Please try again.";
         toast.error(errorMessage);
         return;
       }

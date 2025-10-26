@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   ],
   robots: "index, follow",
   icons: {
-    icon: "/logo.png",
+    icon: "https://www.airkrit.com/logo.png",
   },
   openGraph: {
     title: "Privacy Policy | Airkrit",
@@ -21,13 +21,13 @@ export const metadata: Metadata = {
     type: "website",
     url: "https://www.airkrit.com/privacy-policy",
     siteName: "Airkrit",
-    images: [{ url: "/logo.png" }],
+    images: [{ url: "https://www.airkrit.com/logo.png" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "Privacy Policy | Airkrit",
     description: "Privacy Policy | Airkrit",
-    images: [{ url: "/logo.png" }],
+    images: [{ url: "https://www.airkrit.com/logo.png" }],
   },
 };
 
