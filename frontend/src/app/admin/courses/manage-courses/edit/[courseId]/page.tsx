@@ -7,6 +7,7 @@ import {
   CourseFormProvider,
   useCourseFormContext,
 } from "@/contexts/CourseFormContext";
+import { cleanupStorageForCourse } from "@/lib/courseFormUtils";
 import Screen1 from "../../components/shared/Screen1";
 import Screen2 from "../../components/shared/Screen2";
 import Screen3 from "../../components/shared/Screen3";
@@ -38,6 +39,8 @@ const EditCoursePageContent = ({ courseId }: { courseId: string }) => {
       // On Screen9, update the course metadata instead of navigating
       try {
         await updateCourseMetadata();
+        // Clean up edit mode localStorage after successful update on Screen9
+        cleanupStorageForCourse(courseId);
         // Navigation will be handled by updateCourseMetadata after successful update
       } catch (error) {
         console.error("Failed to update course metadata:", error);
@@ -47,6 +50,8 @@ const EditCoursePageContent = ({ courseId }: { courseId: string }) => {
       // On Screen13, save changes and redirect to manage courses
       try {
         await updateCourseMetadata();
+        // Clean up edit mode localStorage after successful update
+        cleanupStorageForCourse(courseId);
         router.push("/admin/courses/manage-courses");
       } catch (error) {
         console.error("Failed to save course changes:", error);
@@ -60,6 +65,8 @@ const EditCoursePageContent = ({ courseId }: { courseId: string }) => {
 
   const handlePrevious = () => {
     if (currentScreen === 1) {
+      // Clean up edit mode localStorage when leaving edit page
+      cleanupStorageForCourse(courseId);
       router.push("/admin/courses/manage-courses");
     } else {
       prevScreen();

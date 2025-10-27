@@ -185,11 +185,8 @@ const Screen13 = () => {
 
   // Handle finalize course
   const handleFinalizeCourse = () => {
-    // Clear localStorage for course creation
-    clearCourseCreationStatus();
-
-    // Redirect to manage courses
-    router.push("/admin/courses/manage-courses");
+    // Note: localStorage clearing and navigation is handled by the parent page
+    // This function is no longer needed as the parent handles it
   };
 
   // Show loading during SSR

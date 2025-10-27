@@ -159,7 +159,7 @@ export const getFileValidationRules = (
           "video/webm",
           "video/mkv",
         ],
-        maxSize: 500 * 1024 * 1024, // 500MB
+        maxSize: 10 * 1024 * 1024 * 1024, // 10GB
       },
       "course-documents": {
         allowedTypes: [
@@ -173,7 +173,7 @@ export const getFileValidationRules = (
           "text/plain",
           "text/csv",
         ],
-        maxSize: 50 * 1024 * 1024, // 50MB
+        maxSize: 500 * 1024 * 1024, // 500MB
       },
       "user-avatars": {
         allowedTypes: ["image/jpeg", "image/jpg", "image/png", "image/webp"],
@@ -226,7 +226,7 @@ export const getFileValidationRules = (
         "text/plain",
         "text/csv",
       ],
-      maxSize: 1500 * 1024 * 1024, // 1500MB (same as videos)
+      maxSize: 10 * 1024 * 1024 * 1024, // 10GB for course content videos
     };
   }
 

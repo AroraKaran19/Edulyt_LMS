@@ -213,7 +213,7 @@ export const useUpload = () => {
   const validateVideoFile = useCallback(
     (
       file: File,
-      maxSize: number = 500 * 1024 * 1024, // 500MB default for videos
+      maxSize: number = 10 * 1024 * 1024 * 1024, // 10GB default for videos
       maxDuration?: number // in seconds
     ): { valid: boolean; error?: string } => {
       const videoTypes = [

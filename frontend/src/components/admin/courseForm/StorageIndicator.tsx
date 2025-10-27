@@ -64,40 +64,8 @@ const StorageIndicator: React.FC<StorageIndicatorProps> = ({
     };
   }, [isMounted, mode, courseId, storageInfo?.key]);
 
-  // Don't render anything on server-side or before mounting
-  if (!isMounted || !storageInfo?.hasData || !isVisible) {
-    return null;
-  }
-
-  const formatLastSaved = (lastSaved: string) => {
-    const date = new Date(lastSaved);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-
-    if (diffMins < 1) return "Just now";
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h ago`;
-    return date.toLocaleDateString();
-  };
-
-  return (
-    <div className={`fixed bottom-4 right-4 z-50 ${className}`}>
-      <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3 flex items-center gap-2 text-sm">
-        <CheckCircle className="w-4 h-4 text-green-500" />
-        <div className="flex flex-col">
-          <span className="text-gray-700 font-medium">
-            {mode === "create" ? "Draft saved" : "Changes saved"}
-          </span>
-          {storageInfo.lastSaved && (
-            <span className="text-gray-500 text-xs">
-              {formatLastSaved(storageInfo.lastSaved)}
-            </span>
-          )}
-        </div>
-      </div>
-    </div>
-  );
+  // Always return null to hide the popup
+  return null;
 };
 
 export default StorageIndicator;

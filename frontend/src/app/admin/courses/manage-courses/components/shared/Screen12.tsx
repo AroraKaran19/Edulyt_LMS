@@ -20,6 +20,7 @@ import { CourseFormData } from "@/types/courseForm";
 import { useCourseFormContext } from "@/contexts/CourseFormContext";
 import { CourseModule, CourseLesson, Content } from "@/types/course";
 import { useCourse } from "@/hooks/useCourse";
+import { getModulesStorageKey, loadModulesFromStorage } from "@/lib/courseFormUtils";
 
 const Screen12 = () => {
   const { watch } = useFormContext<CourseFormData>();
@@ -45,8 +46,12 @@ const Screen12 = () => {
     }
   }, [isEditMode, courseId, getCreatedCourseId]);
 
-  // LocalStorage key for modules
-  const modulesStorageKey = `course_modules_${effectiveCourseId || "new"}`;
+  // Get modules storage key using the utility function
+  const modulesStorageKey = getModulesStorageKey(
+    isEditMode ? "edit" : "create",
+    courseId,
+    effectiveCourseId || undefined
+  );
 
   const [modules, setModules] = useState<CourseModule[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -55,9 +60,15 @@ const Screen12 = () => {
   useEffect(() => {
     const loadModules = async () => {
       try {
-        const stored = localStorage.getItem(modulesStorageKey);
-        if (stored) {
-          setModules(JSON.parse(stored));
+        // Use centralized utility to load modules
+        const storedModules = loadModulesFromStorage(
+          isEditMode ? "edit" : "create",
+          courseId,
+          effectiveCourseId || undefined
+        );
+        
+        if (storedModules.length > 0) {
+          setModules(storedModules);
         } else if (isEditMode && effectiveCourseId) {
           // If no localStorage data in edit mode, try to fetch from API
           try {

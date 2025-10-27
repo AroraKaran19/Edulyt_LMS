@@ -32,6 +32,7 @@ const CreateCoursePageContent = () => {
     createCourse,
     updateCourseMetadata,
     isCreating,
+    isUpdating,
     isCourseCreated,
     getCreatedCourseId,
     clearCourseCreationStatus,
@@ -62,9 +63,16 @@ const CreateCoursePageContent = () => {
         // Error handling is done in Screen9
       }
     } else if (currentScreen === 13) {
-      // On Screen13, finalize the course and redirect
-      clearCourseCreationStatus();
-      router.push("/admin/courses/manage-courses");
+      // On Screen13, update course metadata with instructors and then finalize
+      try {
+        await updateCourseMetadata();
+        // Only clear after successful update
+        clearCourseCreationStatus();
+        router.push("/admin/courses/manage-courses");
+      } catch (error) {
+        console.error("Failed to finalize course:", error);
+        // Error handling is done in updateCourseMetadata
+      }
     } else {
       // For all other screens, use the validation-enabled nextScreen
       await nextScreen();
@@ -129,12 +137,17 @@ const CreateCoursePageContent = () => {
         <WhiteButton
           className="flex gap-2 items-center"
           onClick={handleNext}
-          disabled={!canGoNext || isCreating}
+          disabled={!canGoNext || isCreating || isUpdating}
         >
           {isCreating ? (
             <>
               <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin" />
               Creating Course...
+            </>
+          ) : isUpdating ? (
+            <>
+              <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin" />
+              {currentScreen === 13 ? "Finalizing Course..." : "Updating..."}
             </>
           ) : (
             <>

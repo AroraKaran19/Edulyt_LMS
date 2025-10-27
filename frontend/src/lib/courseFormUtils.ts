@@ -106,12 +106,19 @@ export const transformFormDataToCourse = (
       (id) => id && id.trim().length > 0 && isValidObjectId(id.trim())
     ) || [];
 
+  // Validate instructors - they should be an array of IDs
+  const validInstructors =
+    formData.instructor?.filter(
+      (id) => id && typeof id === 'string' && id.trim().length > 0 && isValidObjectId(id.trim())
+    ) || [];
+
   return {
     ...courseData,
     language: validLanguage, // Ensure language is always a valid code
-    // Only include valid ObjectIds for testimonials and FAQs
+    // Only include valid ObjectIds for testimonials, FAQs, and instructors
     testimonials: validTestimonials,
     faqs: validFaqs,
+    instructor: validInstructors,
   } as any; // Type assertion to handle FAQ[] vs string[] mismatch
 };
 
@@ -270,6 +277,190 @@ export const getDraftKey = (
     return `course_form_draft_edit_${courseId}`;
   }
   return DRAFT_KEY; // Default create mode key
+};
+
+export const getModulesStorageKey = (
+  mode: "create" | "edit",
+  courseId?: string,
+  effectiveCourseId?: string
+): string => {
+  // Use effectiveCourseId if provided (for create mode after course creation)
+  if (effectiveCourseId) {
+    return `course_modules_${effectiveCourseId}`;
+  }
+  
+  // For edit mode, use courseId directly
+  if (mode === "edit" && courseId) {
+    return `course_modules_${courseId}`;
+  }
+  
+  // For create mode before course creation
+  return "course_modules_new";
+};
+
+/**
+ * Clean up localStorage for a specific course
+ * This should be called when leaving edit mode or finalizing course creation
+ */
+export const cleanupCourseStorage = (
+  mode: "create" | "edit",
+  courseId?: string,
+  effectiveCourseId?: string
+): void => {
+  if (typeof window === "undefined") return;
+
+  try {
+    // Clear form storage
+    const storageKey = getStorageKey(mode, courseId);
+    const draftKey = getDraftKey(mode, courseId);
+    localStorage.removeItem(storageKey);
+    localStorage.removeItem(draftKey);
+
+    // Clear modules storage
+    const modulesKey = getModulesStorageKey(mode, courseId, effectiveCourseId);
+    localStorage.removeItem(modulesKey);
+
+    console.log(`Cleaned up storage for ${mode} mode${courseId ? ` courseId: ${courseId}` : ""}`);
+  } catch (error) {
+    console.error("Failed to cleanup course storage:", error);
+  }
+};
+
+/**
+ * Clean up all course-related localStorage keys
+ * Use with caution - this will remove ALL course data
+ */
+export const cleanupAllCourseStorage = (): void => {
+  if (typeof window === "undefined") return;
+
+  try {
+    const keysToRemove: string[] = [];
+    
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (
+        key &&
+        (key.startsWith("course_form_") || 
+         key.startsWith("course_modules_") ||
+         key === "createdCourseId" ||
+         key === "courseCreationTimestamp")
+      ) {
+        keysToRemove.push(key);
+      }
+    }
+    
+    keysToRemove.forEach((key) => localStorage.removeItem(key));
+    console.log(`Cleaned up ${keysToRemove.length} course-related localStorage keys`);
+  } catch (error) {
+    console.error("Failed to cleanup all course storage:", error);
+  }
+};
+
+/**
+ * Clean up storage for a specific course by ID
+ */
+export const cleanupStorageForCourse = (courseId: string): void => {
+  if (typeof window === "undefined") return;
+
+  try {
+    const keys = [
+      `course_form_edit_${courseId}`,
+      `course_form_draft_edit_${courseId}`,
+      `course_modules_${courseId}`,
+    ];
+
+    keys.forEach((key) => localStorage.removeItem(key));
+    console.log(`Cleaned up storage for course: ${courseId}`);
+  } catch (error) {
+    console.error("Failed to cleanup storage for course:", error);
+  }
+};
+
+/**
+ * Get all course IDs from localStorage
+ */
+export const getAllCourseIdsFromStorage = (): string[] => {
+  if (typeof window === "undefined") return [];
+
+  try {
+    const courseIds = new Set<string>();
+
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key) {
+        // Extract course ID from various key patterns
+        const editMatch = key.match(/course_form_edit_([^_]+)$/);
+        if (editMatch) {
+          courseIds.add(editMatch[1]);
+          continue;
+        }
+
+        const modulesMatch = key.match(/course_modules_([^_]+)$/);
+        if (modulesMatch && modulesMatch[1] !== "new") {
+          courseIds.add(modulesMatch[1]);
+        }
+      }
+    }
+
+    return Array.from(courseIds);
+  } catch (error) {
+    console.error("Failed to get course IDs from storage:", error);
+    return [];
+  }
+};
+
+// ===================
+// Module Storage Functions
+// ===================
+
+export const saveModulesToStorage = (
+  modules: any[],
+  mode: "create" | "edit",
+  courseId?: string,
+  effectiveCourseId?: string
+): void => {
+  if (typeof window === "undefined") return;
+
+  try {
+    const storageKey = getModulesStorageKey(mode, courseId, effectiveCourseId);
+    localStorage.setItem(storageKey, JSON.stringify(modules));
+    console.log(`Saved modules to storage: ${storageKey}`);
+  } catch (error) {
+    console.error("Failed to save modules to storage:", error);
+  }
+};
+
+export const loadModulesFromStorage = (
+  mode: "create" | "edit",
+  courseId?: string,
+  effectiveCourseId?: string
+): any[] => {
+  if (typeof window === "undefined") return [];
+
+  try {
+    const storageKey = getModulesStorageKey(mode, courseId, effectiveCourseId);
+    const stored = localStorage.getItem(storageKey);
+    return stored ? JSON.parse(stored) : [];
+  } catch (error) {
+    console.error("Failed to load modules from storage:", error);
+    return [];
+  }
+};
+
+export const clearModulesFromStorage = (
+  mode: "create" | "edit",
+  courseId?: string,
+  effectiveCourseId?: string
+): void => {
+  if (typeof window === "undefined") return;
+
+  try {
+    const storageKey = getModulesStorageKey(mode, courseId, effectiveCourseId);
+    localStorage.removeItem(storageKey);
+    console.log(`Cleared modules from storage: ${storageKey}`);
+  } catch (error) {
+    console.error("Failed to clear modules from storage:", error);
+  }
 };
 
 // ===================
@@ -661,7 +852,7 @@ export const sanitizeFormData = (formData: CourseFormData): CourseFormData => {
       formData.careerPaths?.filter((path) => path.trim().length > 0) || [],
     instructor:
       formData.instructor?.filter(
-        (inst) => (inst as any).name?.trim().length > 0
+        (id) => id && typeof id === 'string' && id.trim().length > 0
       ) || [],
     testimonials:
       formData.testimonials?.filter((id) => id.trim().length > 0) || [],

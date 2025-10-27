@@ -25,6 +25,7 @@ import {
   saveDraftToStorage,
   saveFormDataToStorage,
   isFormDataComplete,
+  cleanupStorageForCourse,
 } from "@/lib/courseFormUtils";
 import { toast } from "react-toastify";
 import { Course } from "@/types";
@@ -466,7 +467,12 @@ export const useCourseForm = (
       setUpdateError("");
 
       const formData = getValues();
+      
+      // Debug: Log instructor data at each step
+      console.log("📋 Raw formData.instructor:", formData.instructor);
+      
       const sanitizedData = sanitizeFormData(formData);
+      console.log("🧹 Sanitized instructor:", sanitizedData.instructor);
 
       // Validate all screens
       const validation = validateAllScreens(sanitizedData);
@@ -481,6 +487,9 @@ export const useCourseForm = (
 
       // Transform to course data
       const courseData = transformFormDataToCourse(sanitizedData);
+      
+      // Debug: Log instructor data
+      console.log("✅ Final instructor data being sent:", courseData.instructor);
 
       // Update course metadata
       const response = await updateCourseMetadata(targetCourseId!, courseData);
@@ -549,32 +558,26 @@ export const useCourseForm = (
   const clearCourseCreationStatus = useCallback((): void => {
     if (typeof window === "undefined") return;
     
+    // Get created course ID before clearing it
+    const createdCourseId = localStorage.getItem("createdCourseId");
+    
     // Clear course creation status
     localStorage.removeItem("createdCourseId");
     localStorage.removeItem("courseCreationTimestamp");
     
-    // Clear form data and draft
+    // Clear form data and draft for create mode only
     localStorage.removeItem("course_form_data");
     localStorage.removeItem("course_form_draft");
     
-    // Clear course modules data for the created course
-    const createdCourseId = localStorage.getItem("createdCourseId");
+    // Also clear any edit-mode keys for this course using the centralized utility
     if (createdCourseId) {
-      localStorage.removeItem(`course_modules_${createdCourseId}`);
+      cleanupStorageForCourse(createdCourseId);
     }
     
-    // Also clear any "new" course modules data
+    // Also clear any "new" course modules data (for ongoing creation)
     localStorage.removeItem("course_modules_new");
     
-    // Clear any other course-related localStorage keys
-    const keysToRemove = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && (key.startsWith("course_modules_") || key.startsWith("course_form_"))) {
-        keysToRemove.push(key);
-      }
-    }
-    keysToRemove.forEach(key => localStorage.removeItem(key));
+    console.log(`Cleared creation status for course: ${createdCourseId || "new"}`);
   }, []);
 
   // ===================
