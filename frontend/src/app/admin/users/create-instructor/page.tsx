@@ -18,6 +18,8 @@ import {
   Save,
 } from "lucide-react";
 import apiClient from "@/configs/apiConfig";
+import { useUpload } from "@/hooks/useUpload";
+import UploadMediaContainer from "@/components/ui/container/UploadMediaContainer";
 
 interface CreateInstructorFormData {
   // Basic Info
@@ -58,6 +60,12 @@ const CreateInstructorPage = () => {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [experienceCount, setExperienceCount] = useState(1);
+  const [profilePictureUrl, setProfilePictureUrl] = useState<string>("");
+  const [profilePictureS3Key, setProfilePictureS3Key] = useState<string>("");
+  const [isUploadingProfilePicture, setIsUploadingProfilePicture] =
+    useState(false);
+
+  const { uploadFile } = useUpload();
 
   const {
     register,
@@ -81,6 +89,34 @@ const CreateInstructorPage = () => {
 
   const password = watch("password");
 
+  // Handle profile picture upload
+  const handleProfilePictureUpload = async (
+    file: File,
+    folderName: string
+  ): Promise<string> => {
+    setIsUploadingProfilePicture(true);
+    try {
+      const result = await uploadFile(file, folderName);
+      if (result.success && result.data) {
+        setProfilePictureUrl(result.data.url);
+        setProfilePictureS3Key(result.data.s3Key);
+        return result.data.url;
+      } else {
+        throw new Error(result.error || "Failed to upload profile picture");
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Failed to upload profile picture");
+      throw error;
+    } finally {
+      setIsUploadingProfilePicture(false);
+    }
+  };
+
+  const handleProfilePictureRemove = () => {
+    setProfilePictureUrl("");
+    setProfilePictureS3Key("");
+  };
+
   const onSubmit = async (data: CreateInstructorFormData) => {
     setIsSubmitting(true);
 
@@ -95,6 +131,7 @@ const CreateInstructorPage = () => {
         userType: "instructor",
         provider: "credentials",
         phone: data.phone,
+        profilePicture: profilePictureUrl || undefined,
         address: {
           address: data.address,
           city: data.city,
@@ -155,7 +192,7 @@ const CreateInstructorPage = () => {
     });
   };
 
-  const removeExperience = (index: number) => {
+  const removeExperience = () => {
     if (experienceCount > 1) {
       setExperienceCount((prev) => prev - 1);
     }
@@ -321,6 +358,35 @@ const CreateInstructorPage = () => {
               )}
             </div>
           </div>
+        </div>
+
+        {/* Profile Picture */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+              <User className="w-5 h-5 text-purple-600" />
+            </div>
+            <h2 className="text-xl font-semibold text-gray-900">
+              Profile Picture
+            </h2>
+          </div>
+
+          <UploadMediaContainer
+            title="Upload Profile Picture"
+            description="Add a professional profile picture for the instructor (recommended: 512x512px)"
+            type="image"
+            mediaUrl={profilePictureUrl}
+            mediaSource={profilePictureUrl ? "upload" : undefined}
+            s3Key={profilePictureS3Key}
+            maxSize={10}
+            acceptedFormats={[".jpg", ".jpeg", ".png", ".gif", ".webp"]}
+            onFileRemove={handleProfilePictureRemove}
+            onFileUpload={handleProfilePictureUpload}
+            isUploading={isUploadingProfilePicture}
+            folderName="instructor-profiles"
+            showConfirmation={false}
+            usePresignedUrl={false}
+          />
         </div>
 
         {/* Professional Information */}
@@ -525,7 +591,7 @@ const CreateInstructorPage = () => {
                   {experienceCount > 1 && (
                     <button
                       type="button"
-                      onClick={() => removeExperience(index)}
+                      onClick={() => removeExperience()}
                       className="text-red-600 hover:text-red-700 text-sm"
                     >
                       Remove

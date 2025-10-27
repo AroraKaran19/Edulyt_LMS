@@ -107,12 +107,7 @@ export const getPaymentStatus = asyncHandler(
           $pull: { pendingPayments: order._id.toString() },
         });
 
-        // Increment course enrollments
-        await CourseModel.findByIdAndUpdate(order.courseId, {
-          $inc: { enrollments: 1 },
-        });
-
-        // Create enrollment after successful payment
+        // Create enrollment after successful payment (this will update analytics)
         try {
           await createEnrollmentAfterPayment(order);
         } catch (enrollmentError) {
@@ -124,7 +119,6 @@ export const getPaymentStatus = asyncHandler(
           // The enrollment can be created manually later if needed
         }
       } else if (resultStatus === "TXN_FAILURE") {
-        console.log(`Payment failed for order: ${order._id}`);
 
         order.paymentStatus = "failed";
         await order.save();

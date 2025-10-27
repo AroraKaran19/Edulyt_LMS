@@ -35,12 +35,6 @@ apiClient.interceptors.request.use(
 // Response interceptor for comprehensive error handling
 apiClient.interceptors.response.use(
   (response) => {
-    // Check if server sent a new access token in headers
-    const newAccessToken = response.headers['x-new-access-token'];
-    if (newAccessToken) {
-      console.log('New access token received from server');
-      // Note: NextAuth will handle session updates automatically
-    }
     return response;
   },
   async (error) => {
@@ -51,8 +45,6 @@ apiClient.interceptors.response.use(
       // Backend responded with a status code out of the 2xx range
       const status = error.response.status;
       const data = error.response.data;
-
-      console.log("Backend Error:", status, data);
 
       // Handle 401 Unauthorized - token might be expired
       if (status === 401 && !originalRequest._retry) {
@@ -99,13 +91,6 @@ apiClient.interceptors.response.use(
       error.serverMessage = data?.message || "Server error occurred";
     } else if (error.request) {
       // Request was made but no response received
-      console.log("Request Error Details:", {
-        readyState: error.request.readyState,
-        status: error.request.status,
-        responseURL: error.request.responseURL,
-        timeout: error.request.timeout,
-      });
-
       // Use helper function to detect server down (with internet check)
       const serverDown = await isServerDown(error);
 

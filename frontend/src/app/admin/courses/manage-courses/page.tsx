@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useCourse } from "@/hooks/useCourse";
 import { Course } from "@/types/course";
@@ -10,20 +10,17 @@ import {
   Plus,
   Eye,
   Edit3,
-  ToggleLeft,
-  ToggleRight,
+  Trash2,
   Calendar,
   Users,
   BookOpen,
-  Star,
-  Filter,
-  ChevronLeft,
-  ChevronRight,
 } from "lucide-react";
 
 const ManageCoursesPage = () => {
   const router = useRouter();
-  const { getAdminCourses, updateCourseStatus, isLoading } = useCourse();
+  const { getAdminCourses, updateCourseStatus, deleteCourse, isLoading } =
+    useCourse();
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // State management
   const [courses, setCourses] = useState<Course[]>([]);
@@ -32,10 +29,14 @@ const ManageCoursesPage = () => {
   const [totalCourses, setTotalCourses] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
+  const [courseToDelete, setCourseToDelete] = useState<Course | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
-  // Load courses
+  // Load courses (with appending for infinite scroll)
   const loadCourses = useCallback(
-    async (page: number = 1, search: string = "") => {
+    async (page: number = 1, search: string = "", append: boolean = false) => {
       try {
         const response = await getAdminCourses({
           page,
@@ -46,14 +47,26 @@ const ManageCoursesPage = () => {
         });
 
         if (response) {
-          setCourses(response.courses);
+          if (append) {
+            // Append new courses to existing ones
+            setCourses((prev) => [...prev, ...response.courses]);
+          } else {
+            // Replace courses (initial load or search)
+            setCourses(response.courses);
+          }
+
           setTotalPages(response.totalPages);
           setTotalCourses(response.total);
           setCurrentPage(page);
+
+          // Update hasMore flag
+          setHasMore(page < response.totalPages);
         }
       } catch (error) {
         console.error("Failed to load courses:", error);
         toast.error("Failed to load courses");
+      } finally {
+        setIsLoadingMore(false);
       }
     },
     [getAdminCourses]
@@ -68,17 +81,37 @@ const ManageCoursesPage = () => {
   const handleSearch = useCallback(
     (value: string) => {
       setSearchTerm(value);
-      loadCourses(1, value);
+      setHasMore(true);
+      loadCourses(1, value, false);
     },
     [loadCourses]
   );
 
-  // Handle page change
-  const handlePageChange = useCallback(
-    (page: number) => {
-      loadCourses(page, searchTerm);
+  // Handle infinite scroll
+  const handleScroll = useCallback(
+    (e: React.UIEvent<HTMLDivElement>) => {
+      const container = e.currentTarget;
+      const scrollTop = container.scrollTop;
+      const scrollHeight = container.scrollHeight;
+      const clientHeight = container.clientHeight;
+
+      // Trigger when user is 300px from bottom
+      const distanceFromBottom = scrollHeight - (scrollTop + clientHeight);
+
+      if (distanceFromBottom < 300 && hasMore && !isLoadingMore && !isLoading) {
+        setIsLoadingMore(true);
+        loadCourses(currentPage + 1, searchTerm, true);
+      }
     },
-    [loadCourses, searchTerm]
+    [
+      hasMore,
+      isLoadingMore,
+      isLoading,
+      currentPage,
+      searchTerm,
+      loadCourses,
+      totalPages,
+    ]
   );
 
   // Handle status toggle
@@ -125,6 +158,30 @@ const ManageCoursesPage = () => {
     }
   };
 
+  // Handle delete course
+  const handleDeleteCourse = async () => {
+    if (!courseToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      const success = await deleteCourse(courseToDelete._id || "");
+      if (success) {
+        // Remove course from list
+        setCourses((prev) =>
+          prev.filter((course) => course._id !== courseToDelete._id)
+        );
+        setTotalCourses((prev) => prev - 1);
+        toast.success("Course deleted successfully");
+        setCourseToDelete(null);
+      }
+    } catch (error) {
+      console.error("Failed to delete course:", error);
+      toast.error("Failed to delete course");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   // Format date
   const formatDate = (date: Date | string) => {
     return new Date(date).toLocaleDateString("en-US", {
@@ -142,7 +199,11 @@ const ManageCoursesPage = () => {
   };
 
   return (
-    <div className="w-full min-h-screen bg-gray-50 p-6 overflow-y-auto">
+    <div
+      ref={scrollContainerRef}
+      onScroll={handleScroll}
+      className="w-full min-h-screen bg-gray-50 p-6 overflow-y-auto"
+    >
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-6">
@@ -154,7 +215,7 @@ const ManageCoursesPage = () => {
           </div>
           <button
             onClick={() => router.push("/admin/courses/manage-courses/create")}
-            className="flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg transition-colors"
+            className="flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg transition-colors cursor-pointer"
           >
             <Plus className="w-5 h-5" />
             Create Course
@@ -183,9 +244,9 @@ const ManageCoursesPage = () => {
         <>
           {/* Courses Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
-            {courses.map((course) => (
+            {courses.map((course, index) => (
               <div
-                key={course._id}
+                key={index}
                 className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow duration-200"
               >
                 {/* Course Thumbnail */}
@@ -229,9 +290,12 @@ const ManageCoursesPage = () => {
                     {course.title}
                   </h3>
 
-                  <p className="text-gray-600 text-sm mb-3 line-clamp-2">
-                    {course.shortDescription || course.description}
-                  </p>
+                  <p
+                    className="text-gray-600 text-sm mb-3 line-clamp-2"
+                    dangerouslySetInnerHTML={{
+                      __html: course.shortDescription || course.description,
+                    }}
+                  />
 
                   {/* Course Meta */}
                   <div className="flex items-center gap-4 text-xs text-gray-500 mb-4">
@@ -271,6 +335,15 @@ const ManageCoursesPage = () => {
                       >
                         <Edit3 className="w-4 h-4" />
                         Edit
+                      </button>
+
+                      {/* Delete Course */}
+                      <button
+                        onClick={() => setCourseToDelete(course)}
+                        className="flex items-center justify-center gap-2 px-3 py-2 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors border border-red-200"
+                        title="Delete Course"
+                      >
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
 
@@ -345,7 +418,7 @@ const ManageCoursesPage = () => {
                   onClick={() =>
                     router.push("/admin/courses/manage-courses/create")
                   }
-                  className="inline-flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg transition-colors"
+                  className="inline-flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg transition-colors cursor-pointer"
                 >
                   <Plus className="w-5 h-5" />
                   Create Course
@@ -354,48 +427,77 @@ const ManageCoursesPage = () => {
             </div>
           )}
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-2">
-              <button
-                onClick={() => handlePageChange(currentPage - 1)}
-                disabled={currentPage === 1}
-                className="flex items-center gap-1 px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <ChevronLeft className="w-4 h-4" />
-                Previous
-              </button>
-
-              <div className="flex items-center gap-1">
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  const page = i + 1;
-                  return (
-                    <button
-                      key={page}
-                      onClick={() => handlePageChange(page)}
-                      className={`px-3 py-2 text-sm rounded-lg transition-colors ${
-                        currentPage === page
-                          ? "bg-orange-600 text-white"
-                          : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-                      }`}
-                    >
-                      {page}
-                    </button>
-                  );
-                })}
+          {/* Infinite Scroll Loading Indicator */}
+          {isLoadingMore && (
+            <div className="flex items-center justify-center py-8">
+              <div className="flex items-center gap-3 text-gray-500">
+                <div className="w-5 h-5 border-2 border-gray-300 border-t-orange-600 rounded-full animate-spin" />
+                Loading more courses...
               </div>
+            </div>
+          )}
 
-              <button
-                onClick={() => handlePageChange(currentPage + 1)}
-                disabled={currentPage === totalPages}
-                className="flex items-center gap-1 px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Next
-                <ChevronRight className="w-4 h-4" />
-              </button>
+          {/* No More Courses Message */}
+          {!hasMore && courses.length > 0 && (
+            <div className="text-center py-6 text-gray-500 text-sm">
+              No more courses to load
             </div>
           )}
         </>
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      {courseToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                <Trash2 className="w-6 h-6 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Delete Course
+                </h3>
+                <p className="text-sm text-gray-600">
+                  This action cannot be undone
+                </p>
+              </div>
+            </div>
+
+            <p className="text-gray-700 mb-6">
+              Are you sure you want to delete{" "}
+              <strong>"{courseToDelete.title}"</strong>? This will permanently
+              delete the course, all its modules, lessons, and content.
+            </p>
+
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setCourseToDelete(null)}
+                disabled={isDeleting}
+                className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteCourse}
+                disabled={isDeleting}
+                className="flex-1 px-4 py-2 text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {isDeleting ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    Delete
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

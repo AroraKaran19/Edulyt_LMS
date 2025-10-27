@@ -135,12 +135,7 @@ const handleSuccessfulPayment = async (order: any, paytmResponse: any) => {
       $pull: { pendingPayments: order._id.toString() },
     });
 
-    // Increment course enrollments
-    await CourseModel.findByIdAndUpdate(order.courseId, {
-      $inc: { enrollments: 1 },
-    });
-
-    // Create enrollment after successful payment
+    // Create enrollment after successful payment (this will update analytics)
     try {
       await createEnrollmentAfterPayment(order);
     } catch (enrollmentError) {

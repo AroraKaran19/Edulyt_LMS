@@ -67,7 +67,6 @@ export const useCourseForm = (
 
   const createCourseMetadata = useCallback(
     async (courseData: Partial<Course>): Promise<any> => {
-      console.log("courseData", courseData);
 
       const response = await apiClient.post("/courses/metadata", courseData);
       return response.data;
@@ -468,12 +467,7 @@ export const useCourseForm = (
 
       const formData = getValues();
       
-      // Debug: Log instructor data at each step
-      console.log("📋 Raw formData.instructor:", formData.instructor);
-      
       const sanitizedData = sanitizeFormData(formData);
-      console.log("🧹 Sanitized instructor:", sanitizedData.instructor);
-
       // Validate all screens
       const validation = validateAllScreens(sanitizedData);
       if (!validation.isValid) {
@@ -488,9 +482,6 @@ export const useCourseForm = (
       // Transform to course data
       const courseData = transformFormDataToCourse(sanitizedData);
       
-      // Debug: Log instructor data
-      console.log("✅ Final instructor data being sent:", courseData.instructor);
-
       // Update course metadata
       const response = await updateCourseMetadata(targetCourseId!, courseData);
 
@@ -545,7 +536,6 @@ export const useCourseForm = (
     const twentyFourHours = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
 
     const isRecent = now - timestamp < twentyFourHours;
-    console.log("Course creation check:", { timestamp, now, isRecent });
 
     return isRecent;
   }, []);
@@ -577,7 +567,6 @@ export const useCourseForm = (
     // Also clear any "new" course modules data (for ongoing creation)
     localStorage.removeItem("course_modules_new");
     
-    console.log(`Cleared creation status for course: ${createdCourseId || "new"}`);
   }, []);
 
   // ===================

@@ -1,6 +1,6 @@
 import { AppError } from "../middlewares/error.middleware";
 import { EnrollmentModel } from "../models/enrollment.schema";
-import { StudentModel } from "../models";
+import { StudentModel, CourseModel, UserModel } from "../models";
 import {
   Enrollment,
   EnrollmentProgressSummary,
@@ -56,6 +56,53 @@ export const CreateEnrollmentService = async (enrollmentData: {
       { $push: { enrollments: savedEnrollment._id } },
       { new: true }
     );
+
+    // Update course analytics (total enrollments and active enrollments)
+    await CourseModel.findByIdAndUpdate(
+      enrollmentData.courseId,
+      {
+        $inc: { 
+          "analytics.totalEnrollments": 1,
+          "analytics.activeEnrollments": 1,
+          enrollments: 1
+        }
+      },
+      { new: true }
+    );
+
+    // Get course to access instructors
+    const course = await CourseModel.findById(enrollmentData.courseId);
+    
+    if (course && course.instructor) {
+      // Extract instructor IDs
+      const instructorIds: string[] = [];
+      
+      if (Array.isArray(course.instructor)) {
+        for (const instructor of course.instructor) {
+          if (typeof instructor === 'string') {
+            instructorIds.push(instructor);
+          } else if (instructor && typeof instructor === 'object' && '_id' in instructor) {
+            instructorIds.push((instructor as any)._id.toString());
+          }
+        }
+      } else {
+        const instructor = course.instructor as any;
+        if (typeof instructor === 'string') {
+          instructorIds.push(instructor);
+        } else if (instructor && typeof instructor === 'object' && '_id' in instructor) {
+          instructorIds.push(instructor._id.toString());
+        }
+      }
+      
+      // Update totalStudents for each instructor
+      for (const instructorId of instructorIds) {
+        await UserModel.findByIdAndUpdate(
+          instructorId,
+          { $inc: { totalStudents: 1 } },
+          { new: true }
+        );
+      }
+    }
 
     return savedEnrollment as Enrollment;
   } catch (error) {

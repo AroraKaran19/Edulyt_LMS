@@ -4,6 +4,7 @@ import {
   CourseLessonModel,
   CourseModel,
   CourseModuleModel,
+  UserModel,
 } from "../models";
 import { Content, Course, CourseLesson, CourseModule } from "../types";
 import mongoose from "mongoose";
@@ -14,7 +15,9 @@ export const getAllCoursesService = async (
   search: string,
   categories?: string,
   audience?: string,
-  isAdmin?: boolean
+  isAdmin?: boolean,
+  sortBy: string = "updatedAt",
+  sortOrder: string = "desc"
 ): Promise<{
   courses: Course[];
   total: number;
@@ -47,11 +50,16 @@ export const getAllCoursesService = async (
     filters.audience = { $regex: audience, $options: "i" };
   }
 
-  // Use aggregation pipeline for random sorting
+  // Build sort object
+  const sortField = sortBy || "updatedAt";
+  const sortDirection = sortOrder === "asc" ? 1 : -1;
+  const sortObject: any = {};
+  sortObject[sortField] = sortDirection;
+
+  // Use aggregation pipeline with proper sorting
   const courses = await CourseModel.aggregate([
     { $match: filters },
-    { $addFields: { randomSort: { $rand: {} } } },
-    { $sort: { randomSort: 1 } },
+    { $sort: sortObject },
     { $skip: skip },
     { $limit: limit },
     {
@@ -67,15 +75,10 @@ export const getAllCoursesService = async (
               lastName: 1,
               email: 1,
               profilePicture: 1,
+              _id: 1,
             },
           },
         ],
-      },
-    },
-    {
-      $unwind: {
-        path: "$instructor",
-        preserveNullAndEmptyArrays: true,
       },
     },
     {
@@ -150,15 +153,10 @@ export const getFeaturedCoursesService = async (
               lastName: 1,
               email: 1,
               profilePicture: 1,
+              _id: 1,
             },
           },
         ],
-      },
-    },
-    {
-      $unwind: {
-        path: "$instructor",
-        preserveNullAndEmptyArrays: true,
       },
     },
     {
@@ -671,6 +669,54 @@ export const UpdateCourseMetadataService = async (
     throw new AppError("Course not found", 404);
   }
 
+  // Update instructor ownedCourses if instructors are being updated
+  if (courseData.instructor && Array.isArray(courseData.instructor)) {
+    // Get the old course data to compare
+    const oldCourse = await CourseModel.findById(courseId);
+
+    if (oldCourse) {
+      const oldInstructorIds = (oldCourse.instructor || []).map((inst: any) => {
+        return typeof inst === "object" && inst._id
+          ? inst._id.toString()
+          : inst.toString();
+      });
+
+      const newInstructorIds = courseData.instructor.map((inst: any) => {
+        return typeof inst === "object" && inst._id
+          ? inst._id.toString()
+          : inst.toString();
+      });
+
+      // Find instructors that are being added
+      const instructorsToAdd = newInstructorIds.filter(
+        (id) => !oldInstructorIds.includes(id)
+      );
+
+      // Add course to newly added instructors' ownedCourses
+      for (const instructorId of instructorsToAdd) {
+        await UserModel.findByIdAndUpdate(
+          instructorId,
+          { $addToSet: { ownedCourses: courseId } },
+          { new: true }
+        );
+      }
+
+      // Find instructors that are being removed
+      const instructorsToRemove = oldInstructorIds.filter(
+        (id) => !newInstructorIds.includes(id)
+      );
+
+      // Remove course from removed instructors' ownedCourses
+      for (const instructorId of instructorsToRemove) {
+        await UserModel.findByIdAndUpdate(
+          instructorId,
+          { $pull: { ownedCourses: courseId } },
+          { new: true }
+        );
+      }
+    }
+  }
+
   return updatedCourse as Course;
 };
 
@@ -703,6 +749,48 @@ export const DeleteCourseService = async (
   await CourseModuleModel.deleteMany({
     courseId: courseId,
   });
+
+  // Delete all reviews for this course
+  await mongoose.model("Review").deleteMany({
+    reviewableId: courseId,
+    reviewableType: "Course",
+  });
+
+  // Remove course from instructors' ownedCourses
+  if (course.instructor) {
+    // Extract instructor IDs and handle both arrays and single instructor
+    const instructorIds: string[] = [];
+
+    if (Array.isArray(course.instructor)) {
+      for (const instructor of course.instructor) {
+        if (!instructor) continue;
+
+        if (typeof instructor === "object" && "_id" in instructor) {
+          instructorIds.push(String((instructor as any)._id));
+        } else {
+          instructorIds.push(String(instructor));
+        }
+      }
+    } else {
+      const instructor = course.instructor;
+      if (typeof instructor === "object" && instructor && "_id" in instructor) {
+        instructorIds.push(String((instructor as any)._id));
+      } else {
+        instructorIds.push(String(instructor));
+      }
+    }
+
+    // Remove course from each instructor's ownedCourses
+    for (const instructorId of instructorIds) {
+      await UserModel.findByIdAndUpdate(
+        instructorId,
+        { $pull: { ownedCourses: courseId } },
+        { new: true }
+      );
+    }
+  }
+
+  // Delete the course
   const deletedCourse = await CourseModel.findOneAndDelete({ _id: courseId });
 
   // Only check if the main course was deleted successfully

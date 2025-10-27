@@ -1,5 +1,40 @@
-import { ReviewModel } from "../models";
+import { ReviewModel, CourseModel } from "../models";
 import { Review } from "../types/review";
+
+// Helper function to calculate and update course analytics
+const updateCourseAnalytics = async (courseId: string): Promise<void> => {
+  // Use aggregation for better performance
+  const stats = await ReviewModel.aggregate([
+    {
+      $match: {
+        reviewableId: courseId,
+        reviewableType: "Course",
+        isActive: true,
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        averageRating: { $avg: "$rating" },
+        totalReviews: { $sum: 1 },
+      },
+    },
+  ]);
+
+  const analytics = stats[0] || { averageRating: 0, totalReviews: 0 };
+
+  await CourseModel.findByIdAndUpdate(
+    courseId,
+    {
+      $set: {
+        "analytics.averageRating":
+          Math.round(analytics.averageRating * 10) / 10,
+        "analytics.totalReviews": analytics.totalReviews,
+      },
+    },
+    { new: true }
+  );
+};
 
 export const getAllReviewsService = async (
   page: number,
@@ -103,6 +138,21 @@ export const createReviewService = async (reviewData: {
     return null;
   }
 
+  // If this is a course review, update course analytics and add review to course
+  if (reviewData.reviewableType === "Course") {
+    // Add review ID to course
+    await CourseModel.findByIdAndUpdate(
+      reviewData.reviewableId,
+      {
+        $push: { reviews: savedReview._id },
+      },
+      { new: true }
+    );
+
+    // Recalculate and update all analytics using aggregation
+    await updateCourseAnalytics(reviewData.reviewableId);
+  }
+
   // Populate user data
   const populatedReview = await ReviewModel.findById(savedReview._id)
     .populate("userId", "name email profilePicture")
@@ -124,6 +174,9 @@ export const updateReviewService = async (
     query.userId = userId;
   }
 
+  // Get the review before updating to check if it's for a course
+  const oldReview = await ReviewModel.findById(id);
+
   const review = await ReviewModel.findOneAndUpdate(query, updateData, {
     new: true,
     runValidators: true,
@@ -133,6 +186,16 @@ export const updateReviewService = async (
 
   if (!review) {
     return null;
+  }
+
+  // If rating was updated and it's a course review, recalculate analytics
+  if (
+    oldReview &&
+    updateData.rating &&
+    oldReview.reviewableType === "Course" &&
+    oldReview.reviewableId
+  ) {
+    await updateCourseAnalytics(oldReview.reviewableId);
   }
 
   return review as Review;
@@ -150,10 +213,29 @@ export const deleteReviewService = async (
     query.userId = userId;
   }
 
-  const review = await ReviewModel.findOneAndDelete(query);
+  // Get the review before deleting to update course analytics
+  const review = await ReviewModel.findOne(query);
 
   if (!review) {
     return null;
+  }
+
+  // Delete the review
+  await ReviewModel.findOneAndDelete(query);
+
+  // If this is a course review, update course analytics
+  if (review.reviewableType === "Course" && review.reviewableId) {
+    // Remove review ID from course
+    await CourseModel.findByIdAndUpdate(
+      review.reviewableId,
+      {
+        $pull: { reviews: review._id },
+      },
+      { new: true }
+    );
+
+    // Recalculate and update all analytics using aggregation
+    await updateCourseAnalytics(review.reviewableId);
   }
 
   return review as Review;

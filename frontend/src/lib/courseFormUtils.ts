@@ -320,7 +320,6 @@ export const cleanupCourseStorage = (
     const modulesKey = getModulesStorageKey(mode, courseId, effectiveCourseId);
     localStorage.removeItem(modulesKey);
 
-    console.log(`Cleaned up storage for ${mode} mode${courseId ? ` courseId: ${courseId}` : ""}`);
   } catch (error) {
     console.error("Failed to cleanup course storage:", error);
   }
@@ -350,7 +349,6 @@ export const cleanupAllCourseStorage = (): void => {
     }
     
     keysToRemove.forEach((key) => localStorage.removeItem(key));
-    console.log(`Cleaned up ${keysToRemove.length} course-related localStorage keys`);
   } catch (error) {
     console.error("Failed to cleanup all course storage:", error);
   }
@@ -370,7 +368,6 @@ export const cleanupStorageForCourse = (courseId: string): void => {
     ];
 
     keys.forEach((key) => localStorage.removeItem(key));
-    console.log(`Cleaned up storage for course: ${courseId}`);
   } catch (error) {
     console.error("Failed to cleanup storage for course:", error);
   }
@@ -424,7 +421,6 @@ export const saveModulesToStorage = (
   try {
     const storageKey = getModulesStorageKey(mode, courseId, effectiveCourseId);
     localStorage.setItem(storageKey, JSON.stringify(modules));
-    console.log(`Saved modules to storage: ${storageKey}`);
   } catch (error) {
     console.error("Failed to save modules to storage:", error);
   }
@@ -457,7 +453,6 @@ export const clearModulesFromStorage = (
   try {
     const storageKey = getModulesStorageKey(mode, courseId, effectiveCourseId);
     localStorage.removeItem(storageKey);
-    console.log(`Cleared modules from storage: ${storageKey}`);
   } catch (error) {
     console.error("Failed to clear modules from storage:", error);
   }
