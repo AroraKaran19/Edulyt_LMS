@@ -19,7 +19,8 @@ export default function LayoutWrapper({
     !pathname.startsWith("/admin") &&
     !pathname.startsWith("/login") &&
     !pathname.startsWith("/register") &&
-    !pathname.startsWith("/payment/status");
+    !pathname.startsWith("/payment/status") &&
+    !pathname.startsWith("/forgot-password");
 
   useEffect(() => {
     setIsMounted(true);

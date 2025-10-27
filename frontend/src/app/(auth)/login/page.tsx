@@ -195,6 +195,11 @@ const LoginPage = () => {
           Sign up
         </Link>
       </p>
+      <span className="text-sm text-gray-500 text-center font-bold self-center">
+        <Link href="/forgot-password" className="text-orange-500 font-bold">
+          Forgot password?
+        </Link>
+      </span>
     </>
   );
 };

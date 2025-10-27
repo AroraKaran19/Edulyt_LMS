@@ -49,6 +49,9 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
     confirmPassword,
     userType = "student",
     provider = "credentials",
+    firstName,
+    lastName,
+    ...restData
   } = req.body;
 
   if (!email || !password || !confirmPassword) {
@@ -64,19 +67,25 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
     throw new AppError("User already exists", 400);
   }
 
-  // Extract firstName and lastName from email for credentials registration
-  const emailParts = email.split('@')[0];
-  const nameParts = emailParts.split('.');
-  const firstName = nameParts[0] || emailParts;
-  const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+  // Use firstName and lastName from request body if provided, otherwise extract from email
+  let finalFirstName = firstName;
+  let finalLastName = lastName;
+  
+  if (!finalFirstName || !finalLastName) {
+    const emailParts = email.split('@')[0];
+    const nameParts = emailParts.split('.');
+    finalFirstName = finalFirstName || nameParts[0] || emailParts;
+    finalLastName = finalLastName || (nameParts.length > 1 ? nameParts.slice(1).join(' ') : '');
+  }
 
   const newUser = await registerUser({ 
     email, 
     password, 
     userType, 
     provider,
-    firstName,
-    lastName
+    firstName: finalFirstName,
+    lastName: finalLastName,
+    ...restData // Spread any additional fields (phone, address, bio, etc.)
   });
   if (!newUser) {
     throw new AppError("Failed to register user", 500);
