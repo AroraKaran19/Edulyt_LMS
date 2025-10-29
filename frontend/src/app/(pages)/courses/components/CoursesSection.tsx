@@ -29,6 +29,7 @@ const CoursesSection = () => {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const lastLoadTimeRef = useRef(0);
   const isLoadingRef = useRef(false);
+  const coursesSectionRef = useRef<HTMLElement>(null);
 
   const filters: Filter[] = [
     { label: "All", value: "all" },
@@ -113,8 +114,13 @@ const CoursesSection = () => {
 
   // Handle scroll for infinite loading
   const handleScroll = useCallback(() => {
-    const { scrollTop, scrollHeight, clientHeight } = document.documentElement;
-    const isNearBottom = scrollTop + clientHeight >= scrollHeight - 100;
+    if (!coursesSectionRef.current) return;
+
+    const coursesSection = coursesSectionRef.current;
+    const coursesSectionBottom =
+      coursesSection.offsetTop + coursesSection.offsetHeight;
+    const windowBottom = window.scrollY + window.innerHeight;
+    const isNearBottom = windowBottom >= coursesSectionBottom - 100;
     const now = Date.now();
 
     if (
@@ -257,7 +263,10 @@ const CoursesSection = () => {
   };
 
   return (
-    <section className="courses-section w-full bg-white rounded-2xl py-10 px-4 flex flex-col items-center sm:px-[15%] md:px-[10%] xl:px-[15%]">
+    <section
+      ref={coursesSectionRef}
+      className="courses-section w-full bg-white rounded-2xl py-10 px-4 flex flex-col items-center sm:px-[15%] md:px-[10%] xl:px-[15%]"
+    >
       <p
         className={cn(
           "courses-section-header w-full text-[44px] font-normal text-text-primary font-coolvetica",

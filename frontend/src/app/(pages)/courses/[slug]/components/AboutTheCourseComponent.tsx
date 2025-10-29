@@ -42,7 +42,7 @@ const AboutTheCourseComponent = ({ course }: { course: Course }) => {
       >
         <CourseTitle title="What will you learn?" />
         <div
-          className="text-base font-normal prose prose-sm max-w-none"
+          className="text-base font-normal prose prose-sm max-w-none [&_ul]:list-disc [&_ul]:list-inside [&_ul]:ml-4 [&_ol]:list-disc [&_ol]:list-inside [&_ol]:ml-4 [&_li]:list-item [&_li]:mb-1"
           dangerouslySetInnerHTML={{
             __html: course?.whatYouWillLearn,
           }}
@@ -93,6 +93,24 @@ const AboutTheCourseComponent = ({ course }: { course: Course }) => {
           ))}
         </div>
       </section>
+      {course?.prerequisites && course?.prerequisites.length > 0 && (
+        <section
+          id="prerequisites"
+          className="prerequisites w-full flex flex-col gap-6"
+        >
+          <CourseTitle title="Pre-requisites" />
+          <ul className="prerequisites-list list-disc list-inside ml-4 space-y-2">
+            {course.prerequisites.map((prerequisite: string, index: number) => (
+              <li
+                key={index}
+                className="prerequisite-item text-base font-normal"
+              >
+                {prerequisite}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       <section
         id="career-growth"
         className="career-growth w-full flex flex-col lg:mt-5 gap-6"

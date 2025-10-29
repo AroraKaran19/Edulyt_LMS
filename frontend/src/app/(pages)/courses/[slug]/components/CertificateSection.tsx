@@ -90,7 +90,7 @@ const CertificateSection = ({
             .
           </h2>
           <div
-            className="text-white text-sm md:text-base font-extrabold italic text-center md:text-left text-wrap wrap-break-words prose prose-sm max-w-none prose-invert"
+            className="text-white text-sm md:text-base font-normal text-wrap wrap-break-words prose prose-sm max-w-none prose-invert [&_ul]:list-disc [&_ul]:list-inside [&_ul]:ml-4 [&_ol]:list-inside [&_ol]:ml-4 [&_li]:list-item [&_li]:mb-1"
             dangerouslySetInnerHTML={{ __html: course.whoShouldJoin || "" }}
           />
         </div>

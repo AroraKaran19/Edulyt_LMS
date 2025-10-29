@@ -1,5 +1,5 @@
 import VideoCard from "@/app/(pages)/courses/components/VideoCard";
-import { CourseModule } from "@/types";
+import { CourseLesson, CourseModule } from "@/types";
 import { BookOpen } from "lucide-react";
 
 const VideoShowcase = ({ modules }: { modules: CourseModule[] | [] }) => {
@@ -12,21 +12,26 @@ const VideoShowcase = ({ modules }: { modules: CourseModule[] | [] }) => {
             <div className="flex items-center gap-2 text-gray-600">
               <BookOpen className="w-5 h-5" />
               <span className="text-sm font-medium">
-                {modules.length} Module{modules.length !== 1 ? "s" : ""}{" "}
-                Available
+                {modules
+                  .map((module) => module.lessons.length)
+                  .reduce((acc, curr) => acc + curr, 0)}{" "}
+                Lesson{modules.length !== 1 ? "s" : ""} Available
               </span>
             </div>
           </div>
 
-          {/* Module cards */}
+          {/* Lesson cards */}
           <div className="space-y-4">
-            {modules.map((module, index) => (
-              <VideoCard
-                key={module._id || index}
-                module={module}
-                index={index}
-              />
-            ))}
+            {modules.map((courseModule: CourseModule, index: number) =>
+              courseModule.lessons.map((lesson: CourseLesson | string) => (
+                <VideoCard
+                  key={index}
+                  currentModuleImage={courseModule.thumbnailUrl}
+                  lesson={lesson as CourseLesson}
+                  index={index}
+                />
+              ))
+            )}
           </div>
         </>
       ) : (

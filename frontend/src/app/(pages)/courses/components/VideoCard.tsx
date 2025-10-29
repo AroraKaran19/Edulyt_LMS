@@ -1,37 +1,42 @@
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import { formatDuration } from "@/lib/utils";
 import { cn } from "@/lib/utils";
-import { Content, CourseLesson, CourseModule } from "@/types";
-import Image from "next/image";
+import { Content, CourseLesson, VideoContent } from "@/types";
 import React, { useState } from "react";
-import { ChevronDown, ChevronUp, Play, Clock } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  Play,
+  Clock,
+  HelpCircle,
+  FileText,
+} from "lucide-react";
 import { LockIcon } from "../../../../../public/icons";
+import ImageComponent from "@/components/ui/ImageComponent";
 
 const VideoCard = ({
-  module,
+  lesson,
   index,
+  currentModuleImage,
   ...props
 }: {
-  module: CourseModule;
+  lesson: CourseLesson;
+  currentModuleImage: string;
   index: number;
 } & {
   className?: string;
   style?: React.CSSProperties;
 }) => {
-  const [showLessons, setShowLessons] = useState(false);
-
   const totalDuration =
-    (module.lessons as CourseLesson[])?.reduce(
-      (moduleAcc, lesson) =>
-        moduleAcc +
-        ((lesson.contents as Content[])?.reduce((lessonAcc, content) => {
-          if (content.type === "video" && content.duration) {
-            return lessonAcc + (content.duration || 0);
-          }
-          return lessonAcc;
-        }, 0) || 0),
-      0
-    ) || 0;
+    lesson.contents?.reduce((acc, content) => {
+      if (
+        (content as VideoContent).type === "video" &&
+        (content as VideoContent).duration
+      ) {
+        return acc + ((content as VideoContent).duration || 0);
+      }
+      return acc;
+    }, 0) || 0;
 
   return (
     <div
@@ -40,12 +45,12 @@ const VideoCard = ({
         props.className
       )}
     >
-      {/* Module Header */}
+      {/* Lesson Header */}
       <div className="flex flex-col md:flex-row items-stretch gap-4">
         <div className="video-thumbnail w-full max-h-[200px] md:max-h-auto md:w-1/3 rounded-2xl overflow-hidden relative aspect-video">
-          <Image
-            src={module.thumbnailUrl || "/CourseCardDemo.jpg"}
-            alt={module.title}
+          <ImageComponent
+            src={currentModuleImage || "/CourseCardDemo.jpg"}
+            alt={`${lesson.title} Image`}
             fill
             quality={100}
             className="w-full h-full object-cover select-none"
@@ -53,7 +58,8 @@ const VideoCard = ({
           />
           <div className="video-play-button absolute top-3 left-3 bg-white/80 rounded-lg p-1 flex items-center justify-center">
             <span className="text-sm md:text-base font-bold text-black">
-              {module.lessons?.length ?? 0} Lessons
+              {lesson.contents?.length ?? 0} Content
+              {lesson.contents?.length !== 1 ? "s" : ""}
             </span>
           </div>
         </div>
@@ -63,10 +69,10 @@ const VideoCard = ({
               Module {index + 1}
             </p>
             <p className="video-title text-lg font-bold wrap-break-words line-clamp-2">
-              {module.title}
+              {lesson.title}
             </p>
             <p className="video-description text-sm text-gray-500 line-clamp-3">
-              {module.description}
+              {lesson.description}
             </p>
             <p className="video-duration text-sm text-gray-500 mt-auto">
               {formatDuration(totalDuration)}
@@ -86,70 +92,52 @@ const VideoCard = ({
         </div>
       </div>
 
-      {/* Lessons Toggle Button */}
-      <button
-        onClick={() => setShowLessons(!showLessons)}
-        className="flex items-center justify-between w-full p-2 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
-      >
-        <span className="text-sm font-medium text-gray-700">
-          {showLessons ? "Hide" : "Show"} Lessons ({module.lessons?.length ?? 0}
-          )
-        </span>
-        {showLessons ? (
-          <ChevronUp className="w-4 h-4 text-gray-500" />
-        ) : (
-          <ChevronDown className="w-4 h-4 text-gray-500" />
-        )}
-      </button>
+      {/* Content List */}
+      <div className="lessons-list space-y-2 pl-4 border-l-2 border-orange-200">
+        {(lesson.contents as Content[])?.map((content, contentIndex) => {
+          const contentDuration = (content as VideoContent).duration || 0;
 
-      {/* Lessons List */}
-      {showLessons && (
-        <div className="lessons-list space-y-2 pl-4 border-l-2 border-orange-200">
-          {(module.lessons as CourseLesson[])?.map((lesson, lessonIndex) => {
-            const lessonDuration =
-              (lesson.contents as Content[])?.reduce((acc, content) => {
-                if (content.type === "video" && content.duration) {
-                  return acc + content.duration;
-                }
-                return acc;
-              }, 0) || 0;
-
-            return (
-              <div
-                key={lesson._id || lessonIndex}
-                className="lesson-item p-3 bg-white border border-gray-100 rounded-lg hover:border-orange-200 transition-colors"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
+          return (
+            <div
+              key={contentIndex}
+              className="content-item p-3 bg-white border border-gray-100 rounded-lg hover:border-orange-200 transition-colors"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    {content.type === "video" ? (
                       <Play className="w-4 h-4 text-orange-500" />
-                      <h4 className="text-sm font-medium text-gray-800">
-                        Lesson {lessonIndex + 1}: {lesson.title}
-                      </h4>
-                    </div>
-                    {lesson.description && (
-                      <p className="text-xs text-gray-600 mb-2 line-clamp-2">
-                        {lesson.description}
-                      </p>
+                    ) : content.type === "quiz" ? (
+                      <HelpCircle className="w-4 h-4 text-orange-500" />
+                    ) : (
+                      <FileText className="w-4 h-4 text-orange-500" />
                     )}
-                    <div className="flex items-center gap-4 text-xs text-gray-500">
-                      {lessonDuration > 0 && (
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          {formatDuration(lessonDuration)}
-                        </span>
-                      )}
-                    </div>
+                    <h4 className="text-sm font-medium text-gray-800">
+                      {content.title}
+                    </h4>
                   </div>
-                  <div className="flex items-center gap-1 text-xs">
-                    <LockIcon className="size-5 text-black" />
+                  {content.description && (
+                    <p className="text-xs text-gray-600 mb-2 line-clamp-2">
+                      {content.description}
+                    </p>
+                  )}
+                  <div className="flex items-center gap-4 text-xs text-gray-500">
+                    {contentDuration > 0 && (
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {formatDuration(contentDuration)}
+                      </span>
+                    )}
                   </div>
                 </div>
+                <div className="flex items-center gap-1 text-xs">
+                  <LockIcon className="size-5 text-black" />
+                </div>
               </div>
-            );
-          })}
-        </div>
-      )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 };

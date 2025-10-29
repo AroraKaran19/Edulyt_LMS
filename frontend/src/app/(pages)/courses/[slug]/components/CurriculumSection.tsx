@@ -43,6 +43,21 @@ const CurriculumSection = ({ course }: { course: Course }) => {
   return (
     <SectionContainer id="curriculum">
       <CourseTitle title="Curriculum" className="text-4xl text-text-primary" />
+      {course.features && course.features.length > 0 && (
+        <div className="course-features-container w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 select-none">
+          {course.features.map((feature: string, index: number) => (
+            <div
+              key={index}
+              className="feature-item bg-linear-to-r from-orange-50 to-orange-100 border border-orange-200 rounded-lg px-3 py-2 sm:px-4 sm:py-3 text-sm sm:text-base font-medium text-gray-800 shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105"
+            >
+              <span className="flex items-center gap-2">
+                <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-orange-500 rounded-full shrink-0"></div>
+                <span className="leading-tight">{feature}</span>
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
       <div className="course-information-container w-full flex gap-4 flex-col md:flex-row">
         {courseInformation.map((info) => (
           <div
@@ -58,7 +73,7 @@ const CurriculumSection = ({ course }: { course: Course }) => {
       </div>
       <div
         className="text-sm md:text-base text-center prose prose-sm max-w-none"
-        dangerouslySetInnerHTML={{ __html: course.description || "" }}
+        dangerouslySetInnerHTML={{ __html: course.shortDescription || "" }}
       />
       {course.curriculum && course.curriculum !== "" && (
         <OrangeButton

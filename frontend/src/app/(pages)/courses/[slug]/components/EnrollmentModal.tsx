@@ -125,6 +125,7 @@ const EnrollmentModal: React.FC<EnrollmentModalProps> = ({
                   minutes={discountCountdown?.minutes || 0}
                   seconds={discountCountdown?.seconds || 0}
                   className={`${plusJakartaSans.className} text-sm md:text-base`}
+                  discountClassname="justify-center!"
                 />
               </div>
             )}

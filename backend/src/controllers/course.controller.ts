@@ -14,6 +14,7 @@ import {
   DeleteCourseModuleService,
   DeleteCourseService,
   DuplicateCourseService,
+  DuplicateCourseMetadataService,
   UpdateCourseLessonContentService,
   UpdateCourseLessonService,
   UpdateCourseMetadataService,
@@ -560,6 +561,22 @@ export const duplicateCourse = asyncHandler(
       throw new AppError("Failed to duplicate course", 500);
     }
     sendSuccessResponse(res, result, "Course duplicated successfully", 200);
+    return;
+  }
+);
+
+export const duplicateCourseMetadata = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { courseId } = req.params;
+    if (!courseId) {
+      throw new AppError("Course ID is required", 400);
+    }
+
+    const result = await DuplicateCourseMetadataService(courseId);
+    if (!result) {
+      throw new AppError("Failed to duplicate course metadata", 500);
+    }
+    sendSuccessResponse(res, result, "Course metadata duplicated successfully", 200);
     return;
   }
 );

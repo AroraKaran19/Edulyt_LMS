@@ -20,7 +20,7 @@ const CoursePage = ({ course }: { course: Course }) => {
   const [isEnrollmentModalOpen, setIsEnrollmentModalOpen] = useState(false);
   const [isEnrolled, setIsEnrolled] = useState(false);
   const [isCheckingEnrollment, setIsCheckingEnrollment] = useState(true);
-  
+
   const { data: session, status } = useSession();
   const { checkEnrollment } = useEnrollment();
 
@@ -28,7 +28,7 @@ const CoursePage = ({ course }: { course: Course }) => {
   useEffect(() => {
     const checkUserEnrollment = async () => {
       if (status === "loading") return;
-      
+
       if (status === "unauthenticated") {
         setIsEnrolled(false);
         setIsCheckingEnrollment(false);

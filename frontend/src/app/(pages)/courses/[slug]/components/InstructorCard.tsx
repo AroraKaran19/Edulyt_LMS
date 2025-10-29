@@ -25,9 +25,18 @@ const InstructorCard = ({
     return "Instructor";
   };
 
+  const getSlug = () => {
+    return `${instructor.firstName}${
+      instructor.lastName ? "-" + instructor.lastName : ""
+    }`
+      .toLowerCase()
+      .replace(/\s+/g, "-")
+      .replace(/[^a-z0-9-]/g, "");
+  };
+
   return (
     <Link
-      href={`/instructors/${instructor._id}`}
+      href={`/instructor/${getSlug()}`}
       className={cn(
         "instructor-card h-full bg-white rounded-2xl flex flex-col p-3 border-2 border-gray-200 gap-2 hover:border-[#f77124] hover:shadow-[0_0_2px_3px_rgba(233,117,0,0.5)] hover:bg-linear-to-br from-white to-[#f77124]/5 transition-all duration-300 ease-in-out",
         props.className
@@ -37,15 +46,24 @@ const InstructorCard = ({
       title={`Click to view ${getDisplayName()}'s profile`}
     >
       <div className="card-top w-full flex items-center gap-2 lg:gap-4 justify-center">
-        <div className="instructor-image min-w-[30px] max-h-[50px] lg:max-h-[100px] aspect-square rounded-full flex items-center justify-center shrink-0">
-          <Image
-            src={instructor.profilePicture || "/courseDefaultTestimonial.png"}
-            alt={getDisplayName()}
-            width={100}
-            height={100}
-            draggable={false}
-            className="object-cover select-none rounded-full"
-          />
+        <div className="instructor-image min-w-[30px] h-[50px] lg:h-[100px] aspect-square rounded-full flex items-center justify-center shrink-0">
+          {instructor.profilePicture ? (
+            <Image
+              src={instructor.profilePicture}
+              alt={getDisplayName()}
+              width={100}
+              height={100}
+              draggable={false}
+              className="object-cover select-none rounded-full"
+            />
+          ) : (
+            <div className="w-full h-full select-none rounded-full bg-linear-to-br from-orange-400 to-orange-600 flex items-center justify-center">
+              <span className="text-white text-lg font-bold">
+                {getDisplayName().charAt(0)}
+                {getDisplayName().split(" ").slice(1).join(" ").charAt(0)}
+              </span>
+            </div>
+          )}
         </div>
         <div className="instructor-details w-max text-base font-medium text-black flex flex-col gap-1">
           <p className="instructor-name text-xs sm:text-sm lg:text-base font-bold flex items-center gap-4">

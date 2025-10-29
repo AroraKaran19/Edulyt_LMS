@@ -7,13 +7,19 @@ import { Loader2 } from "lucide-react";
 import { getErrorUIConfig } from "@/configs/errorUIConfig";
 import Error from "@/components/ui/Error";
 import { Course } from "@/types";
+import { fetcher } from "@/lib/utils";
 
 const VerticalCarousel = () => {
   const [isHovered, setIsHovered] = useState(false);
 
-  const courses: Course[] = [];
-  const isLoading = false;
-  const error = null;
+  const { data, error, isLoading } = useSWR(ENDPOINTS.courses.all, fetcher, {
+    revalidateOnFocus: false,
+    revalidateOnReconnect: true,
+    errorRetryInterval: 5000,
+    dedupingInterval: 1000 * 60 * 5, // 5 minutes
+  });
+
+  const courses: Course[] = data?.data?.data?.courses || [];
   // Calculate animation speed based on course count
   const animationClass = useMemo(() => {
     const courseCount = courses.length;

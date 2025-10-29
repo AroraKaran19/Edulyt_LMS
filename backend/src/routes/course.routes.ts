@@ -11,6 +11,7 @@ import {
   deleteCourseLessonContent,
   deleteCourseModule,
   duplicateCourse,
+  duplicateCourseMetadata,
   getAdminCourseById,
   getAdminCourseBySlug,
   getAdminCourses,
@@ -226,6 +227,18 @@ router.post(
   verifyUser,
   verifyAdmin,
   duplicateCourse
+);
+
+/**
+ * @route   POST /api/courses/admin/duplicate-metadata/:courseId
+ * @desc    Duplicate course metadata only (excluding bound relationships)
+ * @access  Admin
+ */
+router.post(
+  "/admin/duplicate-metadata/:courseId",
+  verifyUser,
+  verifyAdmin,
+  duplicateCourseMetadata
 );
 
 /**

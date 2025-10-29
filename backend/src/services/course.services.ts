@@ -638,6 +638,76 @@ export const DuplicateCourseService = async (
   return savedCourse as Course;
 };
 
+export const DuplicateCourseMetadataService = async (
+  courseId: string
+): Promise<Course | null> => {
+  const course = await CourseModel.findById(courseId);
+  if (!course) {
+    throw new AppError("Course not found", 404);
+  }
+
+  const courseData = course.toObject();
+
+  // Fields to exclude (bound relationships and system fields)
+  const excludedFields = [
+    "_id",
+    "createdAt",
+    "updatedAt",
+    "modules", // Bound relationship
+    "instructor", // Bound relationship
+    "reviews", // Bound relationship (excluded)
+    "testimonials", // Bound relationship
+    "faqs", // Bound relationship (Q&A excluded)
+    "scholarshipRef", // Bound relationship
+    "createdBy", // System field
+    "analytics", // Should be reset for new course
+    "slug", // Will be generated based on title
+  ];
+
+  // Create metadata-only copy
+  const metadataOnly: any = {};
+
+  // Copy only metadata fields
+  Object.keys(courseData).forEach((key) => {
+    if (!excludedFields.includes(key)) {
+      metadataOnly[key] = courseData[key];
+    }
+  });
+
+  // Modify specific fields for the duplicate
+  metadataOnly.title = `${metadataOnly.title} (Copy)`;
+  metadataOnly.isActive = false;
+  metadataOnly.isFeatured = false;
+  metadataOnly.isCertified = false;
+  metadataOnly.scholarship = false;
+
+  // Reset analytics to default values
+  metadataOnly.analytics = {
+    totalRatings: 0,
+    totalReviews: 0,
+    totalEnrollments: 0,
+    activeEnrollments: 0,
+    completionRate: 0,
+    averageRating: 0,
+    averageCompletionTime: 0,
+    dropoffPoints: [],
+  };
+
+  // Initialize empty arrays for bound relationships
+  metadataOnly.modules = [];
+  metadataOnly.instructor = [];
+  metadataOnly.testimonials = [];
+
+  const duplicatedCourse = new CourseModel(metadataOnly);
+  const savedCourse = await duplicatedCourse.save();
+
+  if (!savedCourse) {
+    throw new AppError("Failed to duplicate course metadata", 500);
+  }
+
+  return savedCourse as Course;
+};
+
 export const UpdateCourseStatusService = async (
   courseId: string,
   status: boolean
