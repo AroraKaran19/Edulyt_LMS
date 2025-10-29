@@ -21,7 +21,7 @@ const CartFormHeader = ({
   handleStepClick: (index: number) => void;
 }) => {
   return (
-    <div className="cart-header w-full flex flex-col gap-5 lg:flex-row items-center bg-white px-2.25 py-2.5 rounded-3xl overflow-x-auto">
+    <div className="cart-header h-full w-full flex flex-col gap-5 lg:flex-row items-center bg-white px-2.25 py-2.5 rounded-3xl overflow-x-auto">
       <div className="w-full flex items-center overflow-x-auto">
         {cartSteps.map((step, index) => (
           <Fragment key={index}>

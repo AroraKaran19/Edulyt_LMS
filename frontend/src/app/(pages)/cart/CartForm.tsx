@@ -10,6 +10,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import z from "zod";
 import Input from "@/components/ui/inputs/Input";
+import CollegeSelect from "@/components/ui/inputs/CollegeSelect";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import CheckBoxContainer from "@/components/ui/inputs/CheckBoxContainer";
 import useAuth from "@/hooks/useAuth";
@@ -79,6 +80,7 @@ const CartForm = ({
     handleSubmit,
     formState: { errors, isSubmitting, isValid },
     watch,
+    setValue,
     trigger,
   } = useForm<EnrollmentFormData>({
     resolver: zodResolver(
@@ -146,40 +148,19 @@ const CartForm = ({
     }
   };
 
-  // Auto-advance to next step when form becomes valid
-  useEffect(() => {
-    const currentActiveIndex = cartSteps.findIndex((step) => step.isActive);
-    const currentStep = cartSteps[currentActiveIndex];
-
-    if (currentStep?.title === "Application" && isValid && !isSubmitting) {
-      // Move to next step after a short delay
-      const timer = setTimeout(() => {
-        setCartSteps((prev) =>
-          prev.map((step, i) => ({
-            ...step,
-            isActive: i === currentActiveIndex + 1,
-            completed: i === currentActiveIndex ? true : step.completed,
-          }))
-        );
-      }, 500);
-
-      return () => clearTimeout(timer);
-    }
-  }, [isValid, isSubmitting, cartSteps]);
-
   return (
-    <div className="w-full min-h-[calc(100dvh-78px)] flex flex-col lg:flex-row gap-6 items-start p-6 bg-[#f3f3f3]">
-      <div className="w-full lg:w-1/3 min-h-0 max-h-[632px] lg:max-w-xl bg-white rounded-2xl p-1 order-2 xl:order-1">
+    <div className="w-full min-h-[calc(100dvh-78px)] grid grid-cols-1 lg:grid-cols-[minmax(auto,540px)_1fr] gap-6 items-start p-6 bg-[#f3f3f3]">
+      <div className="w-full order-2 lg:order-1 bg-white rounded-2xl p-1 lg:sticky lg:top-21">
         <CourseCardHolder course={course} />
       </div>
-      <div className="w-full flex flex-col gap-6 order-1 xl:order-2">
+      <div className="w-full flex flex-col gap-6 order-1 lg:order-2">
         <CartFormHeader
           course={course}
           cartSteps={cartSteps}
           handleStepClick={handleStepClick}
         />
         <div className="w-full h-full flex gap-6">
-          <div className="w-full lg:min-w-[520px] h-full bg-white rounded-2xl p-6">
+          <div className="w-full lg:min-w-[550px] h-full bg-white rounded-2xl p-6">
             {(() => {
               const activeStep = cartSteps.find((step) => step.isActive);
               switch (activeStep?.title) {
@@ -283,19 +264,14 @@ const CartForm = ({
                             To enroll you have to enter your education details
                           </span>
                         </div>
-                        <Input
+                        <CollegeSelect
                           label="College Name"
-                          labelClassName="text-base text-text-primary font-bold"
-                          placeholder="Enter your college name"
                           required
-                          {...register("collegeName")}
-                          className={errors.collegeName ? "border-red-500" : ""}
+                          placeholder="Search and select your college"
+                          value={watch("collegeName")}
+                          onChange={(value) => setValue("collegeName", value)}
+                          error={errors.collegeName?.message}
                         />
-                        {errors.collegeName && (
-                          <p className="text-red-500 text-sm">
-                            {errors.collegeName.message}
-                          </p>
-                        )}
                         <Input
                           label="Degree Name"
                           labelClassName="text-base text-text-primary font-bold"
@@ -498,7 +474,9 @@ const CartForm = ({
                           onClick={async () => {
                             // Ensure user is authenticated and has an ID
                             if (!user?._id) {
-                              toast.error("User authentication required. Please log in again.");
+                              toast.error(
+                                "User authentication required. Please log in again."
+                              );
                               router.push("/login");
                               return;
                             }
@@ -556,7 +534,7 @@ const CartForm = ({
               }
             })()}
           </div>
-          <div className="hidden lg:block w-full max-w-[630px] h-full bg-white rounded-2xl shrink">
+          <div className="hidden lg:block lg:sticky lg:top-21 w-full lg:min-w-[200px] max-w-[630px] h-max bg-white rounded-2xl shrink">
             <GuidanceContainer />
           </div>
         </div>

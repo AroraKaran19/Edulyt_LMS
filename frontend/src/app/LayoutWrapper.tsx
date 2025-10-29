@@ -35,7 +35,7 @@ export default function LayoutWrapper({
       {visibleLayout && <Navbar />}
       <main
         className={cn(
-          "flex min-h-screen flex-col pt-[78px] relative overflow-hidden",
+          "flex min-h-screen flex-col pt-[78px] relative",
           !visibleLayout && "pt-0"
         )}
       >
