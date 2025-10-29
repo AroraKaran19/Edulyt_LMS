@@ -71,25 +71,8 @@ export const transformFormDataToCourse = (
   void isEditMode;
   void courseId;
 
-  // Language mapping for validation and transformation
-  const languageMap: Record<string, string> = {
-    English: "en",
-    Spanish: "es",
-    French: "fr",
-    German: "de",
-    Chinese: "zh",
-    Hindi: "hi",
-    Portuguese: "pt",
-    Italian: "it",
-    Russian: "ru",
-    Japanese: "ja",
-    Korean: "ko",
-    Arabic: "ar",
-  };
-
-  // Transform language to valid code if needed
-  const validLanguage =
-    languageMap[courseData.language] || courseData.language || "en";
+  // Use the language as provided (full name)
+  const validLanguage = courseData.language || "English";
 
   // Validate ObjectIds for testimonials and FAQs
   const isValidObjectId = (id: string): boolean => {
@@ -114,7 +97,7 @@ export const transformFormDataToCourse = (
 
   return {
     ...courseData,
-    language: validLanguage, // Ensure language is always a valid code
+    language: validLanguage, // Ensure language is always provided (full name)
     // Only include valid ObjectIds for testimonials, FAQs, and instructors
     testimonials: validTestimonials,
     faqs: validFaqs,

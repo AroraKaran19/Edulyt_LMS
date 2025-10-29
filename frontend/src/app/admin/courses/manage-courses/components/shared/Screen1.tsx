@@ -314,14 +314,13 @@ const Screen1 = () => {
             control={control}
             rules={{ required: "Language is required" }}
             render={({ field }) => (
-              <Input
+              <DropDown
                 {...field}
                 label="Course Language"
-                value={field.value || ""}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                  field.onChange(e.target.value);
-                }}
-                placeholder="Enter course language (e.g., English, Hindi, Spanish)"
+                onChange={(e: ChangeEvent<HTMLSelectElement>) =>
+                  field.onChange(e.target.value)
+                }
+                options={["English", "Hindi"]}
                 error={errors.language?.message}
                 required={true}
               />
@@ -367,7 +366,7 @@ const Screen1 = () => {
             ref={shortDescriptionEditorRef}
             rows={2}
             minLength={10}
-            maxLength={100}
+            maxLength={300}
             showWordCount={true}
             className="w-full max-w-full"
             initialHtml={shortDescriptionValue || ""}
@@ -386,8 +385,8 @@ const Screen1 = () => {
                 if (textContent.length < 10) {
                   return "Short description must be at least 10 characters";
                 }
-                if (textContent.length > 200) {
-                  return "Short description must be less than 200 characters";
+                if (textContent.length > 300) {
+                  return "Short description must be less than 300 characters";
                 }
                 return true;
               },

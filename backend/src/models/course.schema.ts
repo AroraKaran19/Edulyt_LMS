@@ -70,7 +70,7 @@ const courseSchema = new mongoose.Schema<Course>(
       required: true,
       trim: true,
       minlength: 10,
-      maxlength: 160,
+      maxlength: 300,
     },
     category: {
       type: String,
@@ -237,7 +237,8 @@ const courseSchema = new mongoose.Schema<Course>(
     language: {
       type: String,
       required: true,
-      default: "en",
+      enum: ["English", "Hindi"],
+      default: "English",
     },
     analytics: {
       type: analyticsSchema,
