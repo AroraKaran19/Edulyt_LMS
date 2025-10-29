@@ -64,7 +64,7 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
 
   const existingUser = await UserModel.findOne({ email });
   if (existingUser) {
-    throw new AppError("User already exists", 400);
+    throw new AppError("User already exists!", 400);
   }
 
   // Use firstName and lastName from request body if provided, otherwise extract from email

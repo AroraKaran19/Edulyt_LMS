@@ -19,7 +19,7 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
       <SidebarProvider>
         <div className="flex w-full h-screen">
           {showLayout && <SidebarContainer />}
-          <div className="flex w-full h-full">{children}</div>
+          <div className="flex w-full h-full overflow-auto">{children}</div>
         </div>
       </SidebarProvider>
     </AuthGuard>

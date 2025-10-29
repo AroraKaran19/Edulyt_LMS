@@ -131,10 +131,54 @@ const ProfilePage = () => {
     fetchProfile();
   }, []);
 
+  // Handle phone number input filtering
+  const handlePhoneInput = (field: string, inputValue: string) => {
+    // Only allow digits and + symbol
+    const filteredValue = inputValue.replace(/[^\d+]/g, "");
+
+    let formattedValue = "";
+
+    if (filteredValue.length === 0) {
+      formattedValue = "";
+    } else if (filteredValue.startsWith("+91")) {
+      // Extract digits after +91
+      const digits = filteredValue.slice(3).replace(/\D/g, "");
+      // Limit to 12 digits after +91
+      formattedValue = "+91" + digits.slice(0, 12);
+    } else if (filteredValue.startsWith("+")) {
+      // Handle cases like +9, +919, etc.
+      const afterPlus = filteredValue.slice(1);
+      if (afterPlus.startsWith("91")) {
+        const digits = afterPlus.slice(2).replace(/\D/g, "");
+        formattedValue = "+91" + digits.slice(0, 12);
+      } else if (afterPlus.startsWith("9")) {
+        // User typed +9, assume they want +91
+        const digits = afterPlus.slice(1).replace(/\D/g, "");
+        formattedValue = "+91" + digits.slice(0, 12);
+      } else {
+        formattedValue = "+91";
+      }
+    } else {
+      // No + at start, add +91 prefix
+      const digits = filteredValue.replace(/\D/g, "");
+      formattedValue = "+91" + digits.slice(0, 12);
+    }
+
+    return formattedValue;
+  };
+
   const handleInputChange = (
     field: string,
     value: string | number | Date | undefined
   ) => {
+    // Handle phone number input restrictions
+    if (
+      (field === "phone" || field === "whatsappNumber") &&
+      typeof value === "string"
+    ) {
+      value = handlePhoneInput(field, value);
+    }
+
     setFormData((prev) => ({
       ...prev,
       [field]: value,
@@ -830,24 +874,78 @@ const ProfilePage = () => {
                   className="opacity-75 select-none!"
                   error={errors.email}
                 />
-                <Input
-                  label="Phone Number"
-                  type="tel"
-                  placeholder="Enter your phone number"
-                  value={formData.phone || ""}
-                  onChange={(e) => handleInputChange("phone", e.target.value)}
-                  error={errors.phone}
-                />
-                <Input
-                  label="WhatsApp Number"
-                  type="tel"
-                  placeholder="Enter your WhatsApp number"
-                  value={formData.whatsappNumber || ""}
-                  onChange={(e) =>
-                    handleInputChange("whatsappNumber", e.target.value)
-                  }
-                  error={errors.whatsappNumber}
-                />
+                <div>
+                  <Input
+                    label="Phone Number"
+                    type="tel"
+                    placeholder="+91XXXXXXXXXX"
+                    value={formData.phone || ""}
+                    onChange={(e) => handleInputChange("phone", e.target.value)}
+                    error={errors.phone}
+                    maxLength={15}
+                    onKeyPress={(e: React.KeyboardEvent<HTMLInputElement>) => {
+                      // Only allow digits and + symbol
+                      if (
+                        !/[\d+]/.test(e.key) &&
+                        ![
+                          "Backspace",
+                          "Delete",
+                          "Tab",
+                          "Escape",
+                          "Enter",
+                          "ArrowLeft",
+                          "ArrowRight",
+                          "ArrowUp",
+                          "ArrowDown",
+                        ].includes(e.key)
+                      ) {
+                        e.preventDefault();
+                      }
+                    }}
+                  />
+                  {!errors.phone && (
+                    <p className="mt-1 text-xs text-gray-500">
+                      Format: +91 followed by 10-12 digits (e.g., +919876543210)
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <Input
+                    label="WhatsApp Number"
+                    type="tel"
+                    placeholder="+91XXXXXXXXXX"
+                    value={formData.whatsappNumber || ""}
+                    onChange={(e) =>
+                      handleInputChange("whatsappNumber", e.target.value)
+                    }
+                    error={errors.whatsappNumber}
+                    maxLength={15}
+                    onKeyPress={(e: React.KeyboardEvent<HTMLInputElement>) => {
+                      // Only allow digits and + symbol
+                      if (
+                        !/[\d+]/.test(e.key) &&
+                        ![
+                          "Backspace",
+                          "Delete",
+                          "Tab",
+                          "Escape",
+                          "Enter",
+                          "ArrowLeft",
+                          "ArrowRight",
+                          "ArrowUp",
+                          "ArrowDown",
+                        ].includes(e.key)
+                      ) {
+                        e.preventDefault();
+                      }
+                    }}
+                  />
+                  {!errors.whatsappNumber && (
+                    <p className="mt-1 text-xs text-gray-500">
+                      Format: +91 followed by 10-12 digits (e.g., +919876543210)
+                    </p>
+                  )}
+                </div>
                 <DateSelector
                   label="Date of Birth"
                   placeholder="Select your date of birth"
