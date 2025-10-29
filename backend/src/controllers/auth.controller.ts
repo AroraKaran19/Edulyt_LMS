@@ -185,21 +185,25 @@ export const oauthSignin = asyncHandler(async (req: Request, res: Response) => {
         name: providerDetails?.name,
         given_name: providerDetails?.given_name,
         family_name: providerDetails?.family_name,
-        picture: providerDetails?.picture,
+        image: providerDetails?.image,
         locale: providerDetails?.locale,
+        providerAccountId: providerDetails?.providerAccountId,
+        id_token: providerDetails?.id_token,
         email: providerDetails?.email,
         email_verified: providerDetails?.email_verified,
-        refreshToken: providerDetails?.refreshToken,
-        accessToken: providerDetails?.accessToken,
+        accessToken: providerDetails?.access_token,
       };
     }
 
     const hashedPassword = await bcrypt.hash(Math.random().toString(36), 10);
     const newUser = await registerUser({
       email,
+      firstName: providerDetails?.name?.split(" ")[0] || "",
+      lastName: providerDetails?.name?.split(" ")[1] || "",
       password: hashedPassword,
       provider,
       profilePicture: providerDetails?.picture || providerDetails?.image,
+      userType: "student",
       accounts: {
         [provider]: accountDetails,
       },

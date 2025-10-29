@@ -42,8 +42,11 @@ export const authOptions: NextAuthOptions = {
           };
         } catch (error: any) {
           // Log the error for debugging
-          console.error("Auth error:", error?.response?.data?.error?.message || error.message);
-          
+          console.error(
+            "Auth error:",
+            error?.response?.data?.error?.message || error.message
+          );
+
           // Return null to indicate authentication failure
           // NextAuth will handle this and return an error in the signIn result
           return null;
@@ -58,7 +61,26 @@ export const authOptions: NextAuthOptions = {
       clientId: process.env.NEXT_PUBLIC_LINKEDIN_CLIENT_ID!,
       clientSecret: process.env.NEXT_PUBLIC_LINKEDIN_CLIENT_SECRET!,
       authorization: {
-        params: { scope: "r_liteprofile r_emailaddress" },
+        params: {
+          scope: "openid profile email",
+        },
+      },
+      token: {
+        url: "https://www.linkedin.com/oauth/v2/accessToken",
+      },
+      userinfo: {
+        url: "https://api.linkedin.com/v2/userinfo",
+      },
+      issuer: "https://www.linkedin.com",
+      wellKnown:
+        "https://www.linkedin.com/oauth/.well-known/openid-configuration",
+      async profile(profile, tokens) {
+        return {
+          id: profile.sub, // map sub → id
+          name: profile.name || `${profile.given_name} ${profile.family_name}`,
+          email: profile.email,
+          image: profile.picture,
+        };
       },
     }),
   ],

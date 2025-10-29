@@ -20,41 +20,12 @@ const linkedinSchema = new mongoose.Schema(
     name: { type: String, required: false },
     given_name: { type: String, required: false },
     family_name: { type: String, required: false },
-    picture: { type: String, required: false },
+    image: { type: String, required: false },
     locale: { type: String, required: false },
+    providerAccountId: { type: String, required: false },
     email: { type: String, required: false },
     email_verified: { type: Boolean, required: false },
-    refreshToken: { type: String, required: false },
-    accessToken: { type: String, required: false },
-  },
-  { _id: false }
-);
-
-const githubSchema = new mongoose.Schema(
-  {
-    name: { type: String, required: true },
-    login: { type: String, required: true },
-    id: { type: Number, required: true },
-    node_id: { type: String, required: true },
-    avatar_url: { type: String, required: true },
-    gravatar_id: { type: String, required: true },
-    html_url: { type: String, required: true },
-    starred_url: { type: String, required: true },
-    type: { type: String, required: true },
-    user_view_type: { type: String, required: true },
-    site_admin: { type: Boolean, required: true },
-    company: { type: String, required: true },
-    blog: { type: String, required: true },
-    location: { type: String, required: true },
-    email: { type: String, required: false },
-    bio: { type: String, required: true },
-    public_repos: { type: Number, required: true },
-    public_gists: { type: Number, required: true },
-    followers: { type: Number, required: true },
-    following: { type: Number, required: true },
-    created_at: { type: String, required: true },
-    updated_at: { type: String, required: true },
-    refreshToken: { type: String, required: false },
+    id_token: { type: String, required: false },
     accessToken: { type: String, required: false },
   },
   { _id: false }
@@ -64,7 +35,7 @@ const socialProfilesSchema = new mongoose.Schema(
   {
     google: { type: googleSchema, required: false },
     linkedin: { type: linkedinSchema, required: false },
-    github: { type: githubSchema, required: false },
+    github: { type: String, required: false },
     instagram: { type: String, required: false },
   },
   { _id: false }

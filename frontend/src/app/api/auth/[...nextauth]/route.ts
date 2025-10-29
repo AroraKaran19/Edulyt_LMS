@@ -10,13 +10,17 @@ import NextAuth from "next-auth";
  */
 async function refreshAccessToken(token: any) {
   try {
-    const response = await apiClient.post("/auth/refresh-token", {
-      accessToken: token.accessToken,
-    }, {
-      headers: {
-        Authorization: `Bearer ${token.accessToken}`,
+    const response = await apiClient.post(
+      "/auth/refresh-token",
+      {
+        accessToken: token.accessToken,
       },
-    });
+      {
+        headers: {
+          Authorization: `Bearer ${token.accessToken}`,
+        },
+      }
+    );
 
     const refreshedTokens = response.data.data;
 
@@ -38,7 +42,13 @@ async function refreshAccessToken(token: any) {
 const handler = NextAuth({
   ...authOptions,
   callbacks: {
-    async jwt({ token, user, account, profile }) {
+    async jwt({ token, user, account, profile, trigger, session }) {
+      // Handle session update
+      if (trigger === "update" && session) {
+        // Update the token with new session data
+        return { ...token, ...session };
+      }
+
       // Initial sign in
       if (user && account) {
         // Handle OAuth sign in
@@ -87,16 +97,18 @@ const handler = NextAuth({
 
       // Access token has expired, try to refresh it
       const refreshedToken = await refreshAccessToken(token);
-      
+
       // If refresh failed, return token with error
       if (refreshedToken.error) {
-        console.error("Token refresh failed, user will need to re-authenticate");
+        console.error(
+          "Token refresh failed, user will need to re-authenticate"
+        );
         return {
           ...token,
           error: "RefreshAccessTokenError",
         };
       }
-      
+
       return refreshedToken;
     },
     async session({ session, token }) {
@@ -117,7 +129,9 @@ const handler = NextAuth({
       if (account?.provider === "credentials") {
         return true; // Allow credentials login
       }
-      throw new Error("Only Google, LinkedIn OAuth and credentials are supported");
+      throw new Error(
+        "Only Google, LinkedIn OAuth and credentials are supported"
+      );
     },
   },
 });

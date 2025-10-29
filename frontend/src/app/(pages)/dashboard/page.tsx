@@ -14,7 +14,7 @@ const UserDashboard = async () => {
       <div className="flex w-full lg:w-2/8 flex-col gap-6">
         <AvgTimeSection />
         <GoalsSection />
-        <Leaderboard />
+        {/* <Leaderboard /> */}
       </div>
     </div>
   );

@@ -5,6 +5,7 @@ import Input from "@/components/ui/inputs/Input";
 import Select from "@/components/ui/inputs/Select";
 import DateSelector from "@/components/ui/inputs/DateSelector";
 import CollegeSelect from "@/components/ui/inputs/CollegeSelect";
+import { useUpload } from "@/hooks/useUpload";
 import {
   Camera,
   ChevronLeftIcon,
@@ -21,6 +22,7 @@ import {
 import { toast } from "react-toastify";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { User, Student, Instructor, Collaborator } from "@/types/user";
 import Modal from "@/components/ui/Modal";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
@@ -59,7 +61,15 @@ const ProfilePage = () => {
     confirm: false,
   });
   const [updatingPassword, setUpdatingPassword] = useState(false);
+
+  // Profile image upload states
+  const [profileImageUrl, setProfileImageUrl] = useState<string>("");
+  const [profileImageS3Key, setProfileImageS3Key] = useState<string>("");
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+
   const router = useRouter();
+  const { data: session, update: updateSession } = useSession();
+  const { uploadFile, deleteFile, validateImageFile } = useUpload();
 
   const fetchProfile = async () => {
     try {
@@ -101,6 +111,12 @@ const ProfilePage = () => {
           );
           setSavedExperiences(existingExperienceIndices);
           setExistingExperiences(existingExperienceIndices);
+        }
+
+        // Set profile image if available
+        if (userData.profilePicture) {
+          setProfileImageUrl(userData.profilePicture);
+          // Note: s3Key is not stored in the database for profilePicture
         }
       }
     } catch (error) {
@@ -334,6 +350,91 @@ const ProfilePage = () => {
     }));
   };
 
+  // Handle profile image upload
+  const handleImageUpload = async (file: File) => {
+    // Validate image file
+    const validation = validateImageFile(file, 5 * 1024 * 1024); // 5MB max
+    if (!validation.valid) {
+      toast.error(validation.error || "Invalid image file");
+      return;
+    }
+
+    setIsUploadingImage(true);
+
+    try {
+      // Delete old image if exists
+      if (profileImageS3Key) {
+        await deleteFile(profileImageS3Key);
+      }
+
+      // Upload new image
+      const result = await uploadFile(file, "profile-images");
+
+      if (result.success && result.data) {
+        setProfileImageUrl(result.data.url);
+        setProfileImageS3Key(result.data.s3Key);
+
+        // Update user profile with new image
+        const updateData = {
+          profilePicture: result.data.url,
+        };
+
+        await apiClient.put("/users/me", updateData);
+
+        // Update session with new profile picture
+        if (updateSession) {
+          await updateSession({
+            profilePicture: result.data.url,
+          });
+        }
+
+        toast.success("Profile image updated successfully!");
+      } else {
+        toast.error(result.error || "Failed to upload image");
+      }
+    } catch (error: any) {
+      console.error("Error uploading image:", error);
+      toast.error("Failed to upload image. Please try again.");
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  // Handle image removal
+  const handleImageRemove = async () => {
+    if (!profileImageS3Key) return;
+
+    setIsUploadingImage(true);
+
+    try {
+      // Delete from S3
+      await deleteFile(profileImageS3Key);
+
+      // Update user profile to remove image
+      const updateData = {
+        profilePicture: "",
+      };
+
+      await apiClient.put("/users/me", updateData);
+
+      // Update session to remove profile picture
+      if (updateSession) {
+        await updateSession({
+          profilePicture: "",
+        });
+      }
+
+      setProfileImageUrl("");
+      setProfileImageS3Key("");
+      toast.success("Profile image removed successfully!");
+    } catch (error: any) {
+      console.error("Error removing image:", error);
+      toast.error("Failed to remove image. Please try again.");
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
   // Validation functions
   const validateEmail = (email: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -489,6 +590,18 @@ const ProfilePage = () => {
           setExistingExperiences(allExperienceIndices);
         }
 
+        // Update session with new user data
+        if (updateSession) {
+          await updateSession({
+            firstName: updatedUserData.firstName,
+            lastName: updatedUserData.lastName,
+            email: updatedUserData.email,
+            phone: updatedUserData.phone,
+            profilePicture: updatedUserData.profilePicture,
+            userType: updatedUserData.userType,
+          });
+        }
+
         toast.success("Profile updated successfully!");
       }
     } catch (error: any) {
@@ -553,9 +666,9 @@ const ProfilePage = () => {
           <div className="w-full flex flex-col items-center">
             <div className="relative group">
               <div className="w-48 h-48 rounded-full overflow-hidden bg-linear-to-br from-orange-100 to-orange-200 border-4 border-white shadow-lg">
-                {formData.profilePicture ? (
+                {profileImageUrl ? (
                   <img
-                    src={formData.profilePicture}
+                    src={profileImageUrl}
                     alt="Profile"
                     className="w-full h-full object-cover"
                   />
@@ -571,15 +684,50 @@ const ProfilePage = () => {
               </div>
 
               {/* Hover Overlay */}
-              <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 cursor-pointer">
+              <div
+                className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 cursor-pointer"
+                onClick={() =>
+                  document.getElementById("profile-image-input")?.click()
+                }
+              >
                 <div className="text-white text-center">
-                  <Camera className="w-8 h-8 mx-auto mb-2" />
+                  {isUploadingImage ? (
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-2"></div>
+                  ) : (
+                    <Camera className="w-8 h-8 mx-auto mb-2" />
+                  )}
                   <span className="text-sm font-medium select-none">
-                    Update Image
+                    {isUploadingImage ? "Uploading..." : "Update Image"}
                   </span>
                 </div>
               </div>
+
+              {/* Hidden file input */}
+              <input
+                id="profile-image-input"
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    handleImageUpload(file);
+                  }
+                }}
+                className="hidden"
+                disabled={isUploadingImage}
+              />
             </div>
+
+            {/* Remove Image Button */}
+            {profileImageUrl && (
+              <button
+                onClick={handleImageRemove}
+                disabled={isUploadingImage}
+                className="mt-3 px-3 py-1 text-xs text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isUploadingImage ? "Removing..." : "Remove Image"}
+              </button>
+            )}
 
             <div className="mt-6 w-full">
               <h2 className="text-xl font-semibold text-gray-900 text-center">
@@ -607,13 +755,15 @@ const ProfilePage = () => {
             <div
               className={`mt-6 w-full flex flex-col gap-4 text-sm font-semibold ${plusJakartaSans.className}`}
             >
-              <button
-                onClick={() => setShowPasswordModal(true)}
-                className="w-full bg-[#FF4500] flex gap-2 items-center justify-center px-6 py-3 text-white rounded-2xl shadow-[inset_0_-2px_4px_0_rgba(0,0,0,0.3)] cursor-pointer hover:bg-[#E03E00] transition-colors"
-              >
-                <Lock className="size-4 stroke-3" />
-                <span>Change Password</span>
-              </button>
+              {formData.provider === "credentials" && (
+                <button
+                  onClick={() => setShowPasswordModal(true)}
+                  className="w-full bg-[#FF4500] flex gap-2 items-center justify-center px-6 py-3 text-white rounded-2xl shadow-[inset_0_-2px_4px_0_rgba(0,0,0,0.3)] cursor-pointer hover:bg-[#E03E00] transition-colors"
+                >
+                  <Lock className="size-4 stroke-3" />
+                  <span>Change Password</span>
+                </button>
+              )}
               {formData.provider !== "linkedin" &&
                 formData.accounts &&
                 !formData.accounts?.linkedin && (
@@ -677,7 +827,7 @@ const ProfilePage = () => {
                   value={formData.email || ""}
                   onChange={(e) => handleInputChange("email", e.target.value)}
                   disabled
-                  className="opacity-75"
+                  className="opacity-75 select-none!"
                   error={errors.email}
                 />
                 <Input

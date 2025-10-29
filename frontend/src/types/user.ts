@@ -79,41 +79,16 @@ export interface SocialProfiles {
     name?: string;
     given_name?: string;
     family_name?: string;
-    picture?: string;
+    image?: string;
     locale?: string;
+    providerAccountId?: string;
     email?: string;
     email_verified?: boolean;
+    id_token?: string;
 
-    refreshToken?: string;
     accessToken?: string;
   };
-  github?: {
-    name: string;
-    login: string;
-    id: number;
-    node_id: string;
-    avatar_url: string;
-    gravatar_id: string;
-    html_url: string;
-    starred_url: string;
-    type: string;
-    user_view_type: string;
-    site_admin: boolean;
-    company: string;
-    blog: string;
-    location: string;
-    email?: string;
-    bio: string;
-    public_repos: number;
-    public_gists: number;
-    followers: number;
-    following: number;
-    created_at: string;
-    updated_at: string;
-
-    refreshToken?: string;
-    accessToken?: string;
-  };
+  github?: string;
   instagram?: string;
 }
 
