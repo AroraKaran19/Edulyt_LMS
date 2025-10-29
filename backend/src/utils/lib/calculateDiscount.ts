@@ -26,42 +26,53 @@ export const calculateDiscountedPrice = (
 };
 
 /**
- * Calculate the final price after applying both course and plan discounts
- * First applies course-level discount, then plan-level discount
+ * Calculate the final price after applying both course and plan discounts simultaneously
+ * Both discounts are calculated on the original price and then combined
  *
  * @param planPrice - The original plan price
  * @param courseDiscount - The course-level discount configuration
  * @param planDiscount - The plan-level discount configuration
- * @returns The final discounted price after applying both discounts
+ * @returns The final discounted price after applying both discounts simultaneously
  *
  * @example
  * // Plan price: ₹100
  * // Course discount: 20% off
  * // Plan discount: ₹10 off
- * // Result: ₹100 -> ₹80 (after course discount) -> ₹70 (after plan discount)
+ * // Result: ₹100 - (₹20 + ₹10) = ₹70
  *
  * @example
  * // Plan price: ₹100
  * // Course discount: ₹15 off
  * // Plan discount: 10% off
- * // Result: ₹100 -> ₹85 (after course discount) -> ₹76.5 (after plan discount)
+ * // Result: ₹100 - (₹15 + ₹10) = ₹75
  */
 export const calculateFinalDiscountedPrice = (
   planPrice: number,
   courseDiscount?: Discount,
   planDiscount?: Discount
 ): number => {
-  // First apply course-level discount
-  const priceAfterCourseDiscount = calculateDiscountedPrice(
-    planPrice,
-    courseDiscount
-  );
+  let totalDiscountAmount = 0;
 
-  // Then apply plan-level discount on the already discounted price
-  const finalPrice = calculateDiscountedPrice(
-    priceAfterCourseDiscount,
-    planDiscount
-  );
+  // Calculate course discount on original price
+  if (courseDiscount && courseDiscount.isActive) {
+    if (courseDiscount.discount === "percentage") {
+      totalDiscountAmount += (planPrice * courseDiscount.value) / 100;
+    } else {
+      totalDiscountAmount += courseDiscount.value;
+    }
+  }
 
-  return Math.round(finalPrice);
+  // Calculate plan discount on original price (simultaneously)
+  if (planDiscount && planDiscount.isActive) {
+    if (planDiscount.discount === "percentage") {
+      totalDiscountAmount += (planPrice * planDiscount.value) / 100;
+    } else {
+      totalDiscountAmount += planDiscount.value;
+    }
+  }
+
+  // Calculate final price by subtracting total discount from original price
+  const finalPrice = planPrice - totalDiscountAmount;
+
+  return Math.round(Math.max(0, finalPrice)); // Ensure price doesn't go below 0
 };

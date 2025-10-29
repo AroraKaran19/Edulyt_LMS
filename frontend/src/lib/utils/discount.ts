@@ -11,26 +11,26 @@ export const calculateDiscountDisplay = (
   discountValue: number;
   isActive: boolean;
 } => {
-  let finalPrice = planPrice;
+  let totalDiscountAmount = 0;
   let discountLabel = "";
   let discountType = "";
   let discountValue = 0;
   let isActive = false;
 
-  // Apply plan discount first (calculate regardless of date for display)
+  // Calculate plan discount on original price
   if (planDiscount?.value && planDiscount.isActive) {
     // Check if discount is within date range
     const isPlanDiscountActive = (!planDiscount.startDate || new Date(planDiscount.startDate) <= new Date()) &&
       (!planDiscount.endDate || new Date(planDiscount.endDate) >= new Date());
     
     if (planDiscount.discount === "fixed") {
-      finalPrice -= planDiscount.value;
+      totalDiscountAmount += planDiscount.value;
       discountValue = planDiscount.value;
       discountType = "fixed";
       discountLabel = `₹${planDiscount.value} off`;
     } else {
       const planDiscountAmount = (planPrice * planDiscount.value) / 100;
-      finalPrice -= planDiscountAmount;
+      totalDiscountAmount += planDiscountAmount;
       discountValue = planDiscount.value;
       discountType = "percentage";
       discountLabel = `${planDiscount.value}% off`;
@@ -39,14 +39,14 @@ export const calculateDiscountDisplay = (
     isActive = isPlanDiscountActive;
   }
 
-  // Apply course discount on the already discounted price (calculate regardless of date for display)
+  // Calculate course discount on original price (simultaneously)
   if (courseDiscount?.value && courseDiscount.isActive) {
     // Check if discount is within date range
     const isCourseDiscountActive = (!courseDiscount.startDate || new Date(courseDiscount.startDate) <= new Date()) &&
       (!courseDiscount.endDate || new Date(courseDiscount.endDate) >= new Date());
     
     if (courseDiscount.discount === "fixed") {
-      finalPrice -= courseDiscount.value;
+      totalDiscountAmount += courseDiscount.value;
       // Update label to show combined discount
       if (discountLabel) {
         discountLabel += ` + ₹${courseDiscount.value} off`;
@@ -54,8 +54,8 @@ export const calculateDiscountDisplay = (
         discountLabel = `₹${courseDiscount.value} off`;
       }
     } else {
-      const courseDiscountAmount = (finalPrice * courseDiscount.value) / 100;
-      finalPrice -= courseDiscountAmount;
+      const courseDiscountAmount = (planPrice * courseDiscount.value) / 100;
+      totalDiscountAmount += courseDiscountAmount;
       // Update label to show combined discount
       if (discountLabel) {
         discountLabel += ` + ${courseDiscount.value}% off`;
@@ -66,6 +66,9 @@ export const calculateDiscountDisplay = (
     
     isActive = isActive || isCourseDiscountActive;
   }
+
+  // Calculate final price by subtracting total discount from original price
+  const finalPrice = planPrice - totalDiscountAmount;
 
   return {
     discountPrice: Math.round(Math.max(0, finalPrice)) || 0, // Ensure price doesn't go below 0
