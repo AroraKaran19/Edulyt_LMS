@@ -42,7 +42,7 @@ const CurriculumSection = ({ course }: { course: Course }) => {
 
   return (
     <SectionContainer id="curriculum">
-      <CourseTitle title="Curriculum" className="text-4xl text-text-primary" />
+      <CourseTitle title="Course Features" className="text-4xl text-text-primary" />
       {course.features && course.features.length > 0 && (
         <div className="course-features-container w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 select-none">
           {course.features.map((feature: string, index: number) => (
