@@ -50,16 +50,33 @@ export const getAllCoursesService = async (
     filters.audience = { $regex: audience, $options: "i" };
   }
 
-  // Build sort object
-  const sortField = sortBy || "updatedAt";
-  const sortDirection = sortOrder === "asc" ? 1 : -1;
-  const sortObject: any = {};
-  sortObject[sortField] = sortDirection;
+  // Build aggregation pipeline
+  const pipeline: any[] = [{ $match: filters }];
+
+  // For regular users, add random field for random sorting
+  // For admin, sort by updatedAt
+  if (!isAdmin) {
+    // Add a random field for sorting
+    pipeline.push({
+      $addFields: {
+        _randomSort: { $rand: {} },
+      },
+    });
+    // Sort by random value
+    pipeline.push({
+      $sort: { _randomSort: 1 },
+    });
+  } else {
+    // For admin, always sort by updatedAt
+    const sortDirection = sortOrder === "asc" ? 1 : -1;
+    pipeline.push({
+      $sort: { updatedAt: sortDirection },
+    });
+  }
 
   // Use aggregation pipeline with proper sorting
   const courses = await CourseModel.aggregate([
-    { $match: filters },
-    { $sort: sortObject },
+    ...pipeline,
     { $skip: skip },
     { $limit: limit },
     {
@@ -83,7 +100,23 @@ export const getAllCoursesService = async (
     },
     {
       $project: isAdmin
-        ? { __v: 0 }
+        ? {
+            _id: 1,
+            title: 1,
+            shortDescription: 1,
+            description: 1,
+            thumbnail: 1,
+            isActive: 1,
+            isFeatured: 1,
+            audience: 1,
+            slug: 1,
+            analytics: {
+              totalRatings: 1,
+              totalReviews: 1,
+            },
+            updatedAt: 1,
+            createdAt: 1,
+          }
         : {
             title: 1,
             description: 1,
@@ -609,6 +642,45 @@ export const DeleteCourseLessonContentService = async (
   return true;
 };
 
+/**
+ * Generate a slug from a title (similar to frontend sanitizeSlug)
+ */
+const generateSlugFromTitle = (title: string): string => {
+  return title
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+};
+
+/**
+ * Generate a unique slug by checking if it exists and appending a number if needed
+ */
+const generateUniqueSlug = async (baseSlug: string): Promise<string> => {
+  let slug = baseSlug;
+  let counter = 1;
+
+  while (true) {
+    const existingCourse = await CourseModel.findOne({ slug }).select("_id");
+    if (!existingCourse) {
+      return slug;
+    }
+    // If slug exists, append counter
+    slug = `${baseSlug}-${counter}`;
+    counter++;
+    // Safety check to prevent infinite loop
+    if (counter > 1000) {
+      // Fallback to timestamp-based slug
+      slug = `${baseSlug}-${Date.now()}`;
+      break;
+    }
+  }
+
+  return slug;
+};
+
 export const DuplicateCourseService = async (
   courseId: string
 ): Promise<Course | null> => {
@@ -622,14 +694,56 @@ export const DuplicateCourseService = async (
   delete (cleanedCourseData as any)._id;
   delete (cleanedCourseData as any).createdAt;
   delete (cleanedCourseData as any).updatedAt;
+  delete (cleanedCourseData as any).slug; // Will be regenerated based on new title
+  delete (cleanedCourseData as any).metaTitle; // SEO metadata - should be regenerated
+  delete (cleanedCourseData as any).metaDescription; // SEO metadata - should be regenerated
+  delete (cleanedCourseData as any).keywords; // SEO metadata - should be regenerated
 
   cleanedCourseData.title = `${cleanedCourseData.title} (Copy)`;
   cleanedCourseData.isActive = false;
   cleanedCourseData.isFeatured = false;
   cleanedCourseData.createdBy = undefined;
 
-  const duplicatedCourse = new CourseModel(cleanedCourseData);
-  const savedCourse = await duplicatedCourse.save();
+  // Generate unique slug and save with retry loop to handle race conditions
+  const baseSlug = generateSlugFromTitle(cleanedCourseData.title);
+  let savedCourse: any = null;
+  let attempts = 0;
+  const maxAttempts = 5;
+
+  while (!savedCourse && attempts < maxAttempts) {
+    try {
+      // Generate a unique slug for this attempt
+      cleanedCourseData.slug = await generateUniqueSlug(
+        attempts === 0 ? baseSlug : `${baseSlug}-${Date.now()}-${attempts}`
+      );
+
+      const duplicatedCourse = new CourseModel(cleanedCourseData);
+      savedCourse = await duplicatedCourse.save();
+
+      if (!savedCourse) {
+        throw new AppError("Failed to duplicate course", 500);
+      }
+    } catch (error: any) {
+      // Check if error is due to duplicate slug (unique constraint violation)
+      if (
+        error.code === 11000 ||
+        error.name === "MongoServerError" ||
+        (error.message && error.message.includes("duplicate key"))
+      ) {
+        attempts++;
+        if (attempts >= maxAttempts) {
+          throw new AppError(
+            "Failed to generate unique slug after multiple attempts",
+            500
+          );
+        }
+        // Continue loop to retry with new slug
+        continue;
+      }
+      // For other errors, throw immediately
+      throw error;
+    }
+  }
 
   if (!savedCourse) {
     throw new AppError("Failed to duplicate course", 500);
@@ -662,6 +776,9 @@ export const DuplicateCourseMetadataService = async (
     "createdBy", // System field
     "analytics", // Should be reset for new course
     "slug", // Will be generated based on title
+    "metaTitle", // SEO metadata - should be regenerated
+    "metaDescription", // SEO metadata - should be regenerated
+    "keywords", // SEO metadata - should be regenerated
   ];
 
   // Create metadata-only copy
@@ -698,8 +815,46 @@ export const DuplicateCourseMetadataService = async (
   metadataOnly.instructor = [];
   metadataOnly.testimonials = [];
 
-  const duplicatedCourse = new CourseModel(metadataOnly);
-  const savedCourse = await duplicatedCourse.save();
+  // Generate unique slug and save with retry loop to handle race conditions
+  const baseSlug = generateSlugFromTitle(metadataOnly.title);
+  let savedCourse: any = null;
+  let attempts = 0;
+  const maxAttempts = 5;
+
+  while (!savedCourse && attempts < maxAttempts) {
+    try {
+      // Generate a unique slug for this attempt
+      metadataOnly.slug = await generateUniqueSlug(
+        attempts === 0 ? baseSlug : `${baseSlug}-${Date.now()}-${attempts}`
+      );
+
+      const duplicatedCourse = new CourseModel(metadataOnly);
+      savedCourse = await duplicatedCourse.save();
+
+      if (!savedCourse) {
+        throw new AppError("Failed to duplicate course metadata", 500);
+      }
+    } catch (error: any) {
+      // Check if error is due to duplicate slug (unique constraint violation)
+      if (
+        error.code === 11000 ||
+        error.name === "MongoServerError" ||
+        (error.message && error.message.includes("duplicate key"))
+      ) {
+        attempts++;
+        if (attempts >= maxAttempts) {
+          throw new AppError(
+            "Failed to generate unique slug after multiple attempts",
+            500
+          );
+        }
+        // Continue loop to retry with new slug
+        continue;
+      }
+      // For other errors, throw immediately
+      throw error;
+    }
+  }
 
   if (!savedCourse) {
     throw new AppError("Failed to duplicate course metadata", 500);

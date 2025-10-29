@@ -437,7 +437,9 @@ export const useCourse = () => {
   const duplicateCourse = useCallback(
     async (id: string): Promise<Course | null> => {
       return handleRequest(async () => {
-        const response = await apiClient.post(`/courses/${id}/duplicate`);
+        const response = await apiClient.post(
+          `/courses/admin/duplicate-metadata/${id}`
+        );
         return response.data.data;
       }, "Failed to duplicate course");
     },

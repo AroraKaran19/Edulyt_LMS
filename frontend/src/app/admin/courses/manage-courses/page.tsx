@@ -14,12 +14,22 @@ import {
   Calendar,
   Users,
   BookOpen,
+  MoreVertical,
+  Copy,
+  Languages,
+  Star,
 } from "lucide-react";
+import OrangeButton from "@/components/ui/buttons/OrangeButton";
 
 const ManageCoursesPage = () => {
   const router = useRouter();
-  const { getAdminCourses, updateCourseStatus, deleteCourse, isLoading } =
-    useCourse();
+  const {
+    getAdminCourses,
+    updateCourseStatus,
+    deleteCourse,
+    duplicateCourse,
+    isLoading,
+  } = useCourse();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // State management
@@ -33,6 +43,10 @@ const ManageCoursesPage = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [duplicatingCourseId, setDuplicatingCourseId] = useState<string | null>(
+    null
+  );
 
   // Load courses (with appending for infinite scroll)
   const loadCourses = useCallback(
@@ -147,6 +161,7 @@ const ManageCoursesPage = () => {
   // Handle view course
   const handleViewCourse = (slug: string) => {
     if (slug) {
+      setOpenMenuId(null);
       window.open(`/courses/${slug}`, "_blank");
     }
   };
@@ -154,9 +169,54 @@ const ManageCoursesPage = () => {
   // Handle edit course
   const handleEditCourse = (courseId: string) => {
     if (courseId) {
+      setOpenMenuId(null);
       router.push(`/admin/courses/manage-courses/edit/${courseId}`);
     }
   };
+
+  // Handle duplicate course
+  const handleDuplicateCourse = async (courseId: string) => {
+    if (!courseId) return;
+
+    setOpenMenuId(null);
+    setDuplicatingCourseId(courseId);
+
+    try {
+      const duplicatedCourse = await duplicateCourse(courseId);
+      if (duplicatedCourse && duplicatedCourse._id) {
+        toast.success("Course duplicated successfully!");
+        // Navigate to edit page for the duplicated course
+        router.push(
+          `/admin/courses/manage-courses/edit/${duplicatedCourse._id}`
+        );
+      } else {
+        toast.error("Failed to duplicate course");
+      }
+    } catch (error) {
+      console.error("Failed to duplicate course:", error);
+      toast.error("Failed to duplicate course");
+    } finally {
+      setDuplicatingCourseId(null);
+    }
+  };
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        openMenuId &&
+        !(event.target as HTMLElement).closest(".course-menu")
+      ) {
+        setOpenMenuId(null);
+      }
+    };
+
+    if (openMenuId) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () =>
+        document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [openMenuId]);
 
   // Handle delete course
   const handleDeleteCourse = async () => {
@@ -213,13 +273,13 @@ const ManageCoursesPage = () => {
               {totalCourses} {totalCourses === 1 ? "course" : "courses"} total
             </p>
           </div>
-          <button
+          <OrangeButton
             onClick={() => router.push("/admin/courses/manage-courses/create")}
-            className="flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg transition-colors cursor-pointer"
+            className="flex items-center gap-2"
           >
             <Plus className="w-5 h-5" />
             Create Course
-          </button>
+          </OrangeButton>
         </div>
 
         {/* Search Bar */}
@@ -247,10 +307,10 @@ const ManageCoursesPage = () => {
             {courses.map((course, index) => (
               <div
                 key={index}
-                className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow duration-200"
+                className="bg-white rounded-xl flex flex-col border border-gray-200 hover:shadow-lg transition-shadow duration-200"
               >
                 {/* Course Thumbnail */}
-                <div className="relative h-48 bg-gray-100">
+                <div className="relative h-48 bg-gray-100 shrink-0">
                   {course.thumbnail ? (
                     <img
                       src={course.thumbnail}
@@ -285,7 +345,7 @@ const ManageCoursesPage = () => {
                 </div>
 
                 {/* Course Content */}
-                <div className="p-4">
+                <div className="p-4 flex flex-col h-full">
                   <h3 className="font-semibold text-gray-900 text-lg mb-2 line-clamp-2">
                     {course.title}
                   </h3>
@@ -298,7 +358,7 @@ const ManageCoursesPage = () => {
                   />
 
                   {/* Course Meta */}
-                  <div className="flex items-center gap-4 text-xs text-gray-500 mb-4">
+                  <div className="flex items-center gap-4 text-xs text-gray-500 mb-4 flex-wrap">
                     <div className="flex items-center gap-1">
                       <Calendar className="w-3 h-3" />
                       {formatDate(
@@ -307,44 +367,101 @@ const ManageCoursesPage = () => {
                     </div>
                     <div className="flex items-center gap-1">
                       <Users className="w-3 h-3" />
-                      {course.audience === "college-students"
-                        ? "Students"
-                        : "Professionals"}
+                      <span className="">
+                        Audience:{" "}
+                        {course.audience === "college-students"
+                          ? "College Students"
+                          : "Professionals"}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Star className="w-3 h-3 text-[#F7AD24]" fill="#F7AD24" />
+                      <span className="">
+                        Rating {course.analytics?.totalRatings || 0}/5 (
+                        {course.analytics?.totalReviews || 0} reviews)
+                      </span>
                     </div>
                   </div>
 
                   {/* Actions */}
-                  <div className="space-y-3">
-                    {/* Action Buttons */}
-                    <div className="flex items-center gap-2">
-                      {/* View Course */}
-                      <button
-                        onClick={() => handleViewCourse(course.slug)}
-                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors border border-gray-200"
-                        title="View Course"
-                      >
-                        <Eye className="w-4 h-4" />
-                        View
-                      </button>
+                  <div className="space-y-3 mt-auto">
+                    {/* Menu Button and Dropdown */}
+                    <div className="flex items-center justify-end">
+                      {/* Menu Button */}
+                      <div className="relative course-menu">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOpenMenuId(
+                              openMenuId === course._id
+                                ? null
+                                : course._id || null
+                            );
+                          }}
+                          className="flex items-center justify-center gap-2 px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors border border-gray-200 cursor-pointer"
+                          title="More options"
+                        >
+                          <MoreVertical className="w-4 h-4" />
+                        </button>
 
-                      {/* Edit Course */}
-                      <button
-                        onClick={() => handleEditCourse(course._id || "")}
-                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors border border-gray-200"
-                        title="Edit Course"
-                      >
-                        <Edit3 className="w-4 h-4" />
-                        Edit
-                      </button>
-
-                      {/* Delete Course */}
-                      <button
-                        onClick={() => setCourseToDelete(course)}
-                        className="flex items-center justify-center gap-2 px-3 py-2 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors border border-red-200"
-                        title="Delete Course"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                        {/* Dropdown Menu */}
+                        {openMenuId === course._id && (
+                          <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50 overflow-hidden">
+                            <button
+                              onClick={() => {
+                                setOpenMenuId(null);
+                                handleViewCourse(course.slug);
+                              }}
+                              className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors text-left cursor-pointer"
+                            >
+                              <Eye className="w-4 h-4 text-gray-500" />
+                              View Course
+                            </button>
+                            <button
+                              onClick={() =>
+                                handleDuplicateCourse(course._id || "")
+                              }
+                              disabled={duplicatingCourseId === course._id}
+                              className={`w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors text-left ${
+                                duplicatingCourseId === course._id
+                                  ? "opacity-50 cursor-not-allowed"
+                                  : "cursor-pointer"
+                              }`}
+                            >
+                              {duplicatingCourseId === course._id ? (
+                                <>
+                                  <div className="w-4 h-4 border-2 border-gray-500 border-t-transparent rounded-full animate-spin" />
+                                  Duplicating...
+                                </>
+                              ) : (
+                                <>
+                                  <Copy className="w-4 h-4 text-gray-500" />
+                                  Duplicate Course
+                                </>
+                              )}
+                            </button>
+                            <button
+                              onClick={() => handleEditCourse(course._id || "")}
+                              className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors text-left cursor-pointer"
+                            >
+                              <Edit3 className="w-4 h-4 text-gray-500" />
+                              Edit Course
+                            </button>
+                            <div className="border-t border-gray-200">
+                              <button
+                                onClick={() => {
+                                  setOpenMenuId(null);
+                                  setCourseToDelete(course);
+                                }}
+                                className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors text-left cursor-pointer"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                                Delete Course
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     {/* Status Toggle */}
@@ -448,7 +565,7 @@ const ManageCoursesPage = () => {
 
       {/* Delete Confirmation Dialog */}
       {courseToDelete && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
@@ -474,14 +591,14 @@ const ManageCoursesPage = () => {
               <button
                 onClick={() => setCourseToDelete(null)}
                 disabled={isDeleting}
-                className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50"
+                className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 onClick={handleDeleteCourse}
                 disabled={isDeleting}
-                className="flex-1 px-4 py-2 text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex-1 px-4 py-2 text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
               >
                 {isDeleting ? (
                   <>
