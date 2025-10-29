@@ -9,15 +9,17 @@ import {
   getUserStats,
   updateUserProfile,
   getCurrentUserProfile,
+  changeUserPassword,
 } from "../controllers/user.controller";
 
 const router = Router();
 
-// User profile routes (only require user authentication)
-router.get("/profile", verifyUser, getCurrentUserProfile);
-router.put("/profile", verifyUser, updateUserProfile);
+// User profile routes
+router.get("/me", verifyUser, getCurrentUserProfile);
+router.put("/me", verifyUser, updateUserProfile);
+router.put("/change-password", verifyUser, changeUserPassword);
 
-// Admin routes (require both user and admin authentication)
+// Admin routes 
 router.use(verifyUser);
 router.use(verifyAdmin);
 

@@ -4,6 +4,7 @@ import Image from "next/image";
 import useDashboardStats from "@/hooks/useDashboardStats";
 import { useSession } from "next-auth/react";
 import Loader from "@/components/ui/Loader";
+import { usePathname } from "next/navigation";
 
 const DashboardBanner = () => {
   const { data: session } = useSession();

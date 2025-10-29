@@ -1,8 +1,8 @@
 import React from "react";
 import DashboardNavbar from "./components/DashboardNavbar";
 import { Metadata } from "next";
-import DashboardBanner from "./components/DashboardBanner";
 import AuthGuard from "@/app/providers/AuthGuard";
+import LayoutManager from "./LayoutManager";
 
 export const metadata: Metadata = {
   title: "Dashboard | Airkrit",
@@ -27,10 +27,7 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
   return (
     <AuthGuard>
       <DashboardNavbar />
-      <div className="pt-40 w-full">
-        <DashboardBanner />
-        <div className="px-10 lg:px-20 min-h-screen w-full">{children}</div>
-      </div>
+      <LayoutManager>{children}</LayoutManager>
     </AuthGuard>
   );
 };

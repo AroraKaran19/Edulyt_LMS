@@ -1,5 +1,7 @@
-import { UserModel } from "../models";
+import { InstructorModel, StudentModel, UserModel } from "../models";
 import { User } from "../types/user";
+import { AppError } from "../middlewares/error.middleware";
+import bcrypt from "bcrypt";
 
 export interface GetUsersParams {
   page: number;
@@ -146,10 +148,18 @@ export const getUserStatsService = async () => {
 export const getCurrentUserProfileService = async (
   userId: string
 ): Promise<User | null> => {
-  const user = await UserModel.findById(userId)
-    .select("-password -refreshTokens -__v")
-    .lean();
-
+  const excludedFields =
+    "-__v -permissions -refreshTokens -pendingPayments -orders -status -affiliation -updatedAt";
+  let user = await UserModel.findById(userId).select(excludedFields).lean();
+  if (!user) {
+    return null;
+  }
+  const type = user.userType;
+  if (type === "student") {
+    user = await StudentModel.findById(userId).select(excludedFields).lean();
+  } else if (type === "instructor") {
+    user = await InstructorModel.findById(userId).select(excludedFields).lean();
+  }
   return user as User | null;
 };
 
@@ -158,13 +168,84 @@ export const updateUserProfileService = async (
   updateData: Partial<User>
 ): Promise<User | null> => {
   // Remove sensitive fields that shouldn't be updated via profile
-  const { password, refreshTokens, _id, createdAt, ...allowedFields } = updateData;
-  
-  const user = await UserModel.findByIdAndUpdate(
-    userId,
-    { ...allowedFields, updatedAt: new Date() },
-    { new: true, runValidators: true }
-  ).select("-password -refreshTokens -__v");
+  const { password, refreshTokens, _id, createdAt, ...allowedFields } =
+    updateData;
 
-  return user as User | null;
+  // First get the user to determine their type
+  const existingUser = await UserModel.findById(userId).select("userType");
+  if (!existingUser) {
+    return null;
+  }
+
+  let updatedUser;
+
+  // Update using the appropriate model based on user type
+  if (existingUser.userType === "student") {
+    updatedUser = await StudentModel.findByIdAndUpdate(
+      userId,
+      { ...allowedFields, updatedAt: new Date() },
+      { new: true, runValidators: true }
+    ).select("-password -refreshTokens -__v");
+  } else if (existingUser.userType === "instructor") {
+    updatedUser = await InstructorModel.findByIdAndUpdate(
+      userId,
+      { ...allowedFields, updatedAt: new Date() },
+      { new: true, runValidators: true }
+    ).select("-password -refreshTokens -__v");
+  } else {
+    // For other user types (collaborator, admin, etc.), use base UserModel
+    updatedUser = await UserModel.findByIdAndUpdate(
+      userId,
+      { ...allowedFields, updatedAt: new Date() },
+      { new: true, runValidators: true }
+    ).select("-password -refreshTokens -__v");
+  }
+
+  return updatedUser as User | null;
+};
+
+export const changeUserPasswordService = async (
+  userId: string,
+  currentPassword: string,
+  newPassword: string
+): Promise<boolean> => {
+  // Get user with password field
+  const user = await UserModel.findById(userId).select("+password");
+  if (!user) {
+    throw new AppError("User not found", 404);
+  }
+
+  // Verify current password
+  const isCurrentPasswordValid = await bcrypt.compare(
+    currentPassword,
+    user.password
+  );
+  if (!isCurrentPasswordValid) {
+    throw new AppError("Current password is incorrect", 400);
+  }
+
+  // Check if new password is different from current
+  const isSamePassword = await bcrypt.compare(newPassword, user.password);
+  if (isSamePassword) {
+    throw new AppError(
+      "New password must be different from current password",
+      400
+    );
+  }
+
+  // Hash new password
+  const saltRounds = 10;
+  const hashedNewPassword = await bcrypt.hash(newPassword, saltRounds);
+
+  // Update password
+  await UserModel.findByIdAndUpdate(
+    userId,
+    {
+      password: hashedNewPassword,
+      updatedAt: new Date(),
+    },
+    { new: true }
+  );
+
+  return true;
 };

@@ -76,6 +76,7 @@ export default function RootLayout({
           theme="light"
           className="toast-container"
           limit={2}
+          style={{ zIndex: 99999 }}
         />
       </body>
     </html>

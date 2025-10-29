@@ -77,7 +77,11 @@ const CertificateSection = ({
   }
 
   return (
-    <SectionContainer id="plans" className="bg-text-primary xl:px-20!">
+    <SectionContainer id="plans" className="bg-text-primary xl:px-20! relative">
+      <div
+        className="background w-full h-full absolute top-0 left-0"
+        style={{ backgroundImage: "url('/background-1.svg')" }}
+      ></div>
       <div className="plans-header w-full flex flex-col md:flex-row items-center justify-stretch gap-4">
         <div className="header-left w-full md:w-2/3 flex flex-col gap-2">
           <h2 className="font-normal font-coolvetica text-white text-2xl md:text-4xl text-center md:text-left">

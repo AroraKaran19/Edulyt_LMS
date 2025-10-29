@@ -12,6 +12,7 @@ import {
   getUserStatsService,
   updateUserProfileService,
   getCurrentUserProfileService,
+  changeUserPasswordService,
 } from "../services/user.services";
 
 export const getUsers = asyncHandler(async (req: Request, res: Response) => {
@@ -136,6 +137,34 @@ export const updateUserProfile = asyncHandler(
       res,
       updatedUser,
       "Profile updated successfully",
+      200
+    );
+  }
+);
+
+export const changeUserPassword = asyncHandler(
+  async (req: Request, res: Response) => {
+    const userId = req.user?._id;
+    const { currentPassword, newPassword } = req.body;
+
+    if (!userId) {
+      throw new AppError("User ID not found", 400);
+    }
+
+    if (!currentPassword || !newPassword) {
+      throw new AppError("Current password and new password are required", 400);
+    }
+
+    if (newPassword.length < 6) {
+      throw new AppError("New password must be at least 6 characters long", 400);
+    }
+
+    const result = await changeUserPasswordService(userId, currentPassword, newPassword);
+    
+    sendSuccessResponse(
+      res,
+      null,
+      "Password updated successfully",
       200
     );
   }
