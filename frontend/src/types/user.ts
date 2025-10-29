@@ -28,6 +28,9 @@ export interface Instructor extends User {
 export interface Student extends User {
   enrollments: Enrollment[] | string[];
   collegeName?: string;
+  degreeName?: string;
+  fatherOccupation?: string;
+  experienceLevel?: string;
   passingYear?: number;
   areaOfInterest?: string;
   experience?: {

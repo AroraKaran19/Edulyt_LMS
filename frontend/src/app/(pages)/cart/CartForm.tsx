@@ -1,5 +1,5 @@
 "use client";
-import { Course } from "@/types";
+import { Course, Student } from "@/types";
 import CourseCardHolder from "./components/CourseCardHolder";
 import { useState, useEffect } from "react";
 import { calculateDiscountDisplay } from "@/lib/utils/discount";
@@ -97,15 +97,14 @@ const CartForm = ({
       })
     ),
     defaultValues: {
-      name:
-        user?.firstName && user?.lastName
-          ? `${user.firstName} ${user.lastName}`
-          : "",
+      name: user.firstName
+        ? `${user.firstName} ${user.lastName}`
+        : (user as any).name,
       email: user?.email || "",
       phone: user?.phone || "",
-      collegeName: "",
-      degreeName: "",
-      fatherOccupation: "",
+      collegeName: (user as Student).collegeName || "",
+      degreeName: (user as Student).degreeName || "",
+      fatherOccupation: (user as Student).fatherOccupation || "",
       termsAndConditions: false,
     },
   });

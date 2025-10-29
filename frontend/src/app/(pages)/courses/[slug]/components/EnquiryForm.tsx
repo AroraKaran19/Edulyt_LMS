@@ -6,7 +6,8 @@ import { MessageSquare, Send, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
-import { Course } from "@/types";
+import { Course, Student } from "@/types";
+import useAuth from "@/hooks/useAuth";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -177,12 +178,19 @@ const Select = ({
 
 const EnquiryForm = ({ course }: { course: Course }) => {
   const [isMounted, setIsMounted] = useState(false);
+  const { user, isAuthenticated } = useAuth();
   const [formData, setFormData] = useState<EnquiryFormData>({
-    name: "",
-    email: "",
-    phoneNumber: "",
-    fatherOccupation: "",
-    experience: "",
+    name: isAuthenticated
+      ? user?.firstName
+        ? `${user?.firstName} ${user?.lastName}`
+        : (user as any).name || ""
+      : "",
+    email: isAuthenticated ? user?.email || "" : "",
+    phoneNumber: isAuthenticated ? user?.phone || "" : "",
+    fatherOccupation: isAuthenticated
+      ? (user as Student).fatherOccupation || ""
+      : "",
+    experience: isAuthenticated ? (user as Student).experienceLevel || "" : "",
     courseName: course.title,
   });
 

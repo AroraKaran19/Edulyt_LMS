@@ -267,6 +267,9 @@ const studentSchema = new mongoose.Schema<Student>({
     default: [],
   },
   collegeName: { type: String, required: false },
+  degreeName: { type: String, required: false },
+  fatherOccupation: { type: String, required: false },
+  experienceLevel: { type: String, required: false },
   passingYear: {
     type: Number,
     required: false,

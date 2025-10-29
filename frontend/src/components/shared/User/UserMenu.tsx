@@ -144,7 +144,7 @@ const UserMenu = () => {
 
   return (
     <div
-      className="user-icon flex gap-2 items-center cursor-pointer relative"
+      className="user flex gap-2 items-center cursor-pointer relative"
       onClick={() => setIsUserOpen(!isUserOpen)}
     >
       {user.profilePicture ? (
@@ -159,7 +159,7 @@ const UserMenu = () => {
         />
       ) : (
         <div className="size-9 rounded-md bg-gray-100 flex items-center justify-center">
-          <span className="text-gray-500 text-xs font-bold">
+          <span className="text-gray-500 text-xs font-bold select-none">
             {user?.firstName && user?.lastName
               ? `${user.firstName.charAt(0).toUpperCase()}${user.lastName
                   .charAt(0)
@@ -179,7 +179,7 @@ const UserMenu = () => {
         </span>
       </div>
       {isUserOpen && (
-        <div className="hidden lg:block user-menu absolute w-full top-full mt-1.5 right-0 text-text-primary rounded-xl shadow-2xl z-50 bg-white">
+        <div className="hidden lg:block user-menu absolute min-w-full w-max top-full mt-1.5 right-0 text-text-primary rounded-xl shadow-[0px_0px_24px_4px_rgba(0,0,0,0.1)] z-50 bg-white">
           <div className="bg-linear-to-r from-gray-50 to-gray-100/30 rounded-lg">
             {userMenuItems.map((item, index) => {
               if (item.label === "Logout") {

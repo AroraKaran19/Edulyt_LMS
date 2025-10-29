@@ -29,6 +29,9 @@ export interface Student extends User {
   enrollments: Enrollment["_id"][];
 
   collegeName?: string;
+  degreeName?: string;
+  fatherOccupation?: string;
+  experienceLevel?: string;
   passingYear?: number;
   areaOfInterest?: string;
   experience?: {
