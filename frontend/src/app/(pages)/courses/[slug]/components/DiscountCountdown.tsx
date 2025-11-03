@@ -80,11 +80,35 @@ const DiscountCountdown = ({
     ? countdown
     : { days, hours, minutes, seconds };
 
-  return mounted &&
-    discount &&
-    discount.isActive &&
-    discount.endDate &&
-    new Date(discount.endDate) > new Date() ? (
+  // Check if discount should be displayed based on displayTime and resetAfter
+  // Discount cycles every resetAfter seconds starting from displayTime
+  const isDiscountActive = discount && discount.isActive && discount.displayTime && discount.resetAfter ? (() => {
+    const now = new Date();
+    const [displayHour, displayMin, displaySec] = discount.displayTime.split(':').map(Number);
+    const displayTimeInSeconds = displayHour * 3600 + displayMin * 60 + displaySec;
+    const currentTimeInSeconds = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+    
+    // Calculate how many seconds have passed since the last cycle start
+    // Cycles repeat every resetAfter seconds, starting from displayTime each day
+    const totalSecondsInDay = 86400;
+    
+    // Calculate position in current cycle
+    let secondsSinceCycleStart: number;
+    if (currentTimeInSeconds < displayTimeInSeconds) {
+      // We're before the first cycle start today, so we're in a cycle from yesterday
+      const secondsFromYesterday = totalSecondsInDay - displayTimeInSeconds;
+      const totalSecondsSinceCycleStart = secondsFromYesterday + currentTimeInSeconds;
+      secondsSinceCycleStart = totalSecondsSinceCycleStart % discount.resetAfter;
+    } else {
+      // We're after displayTime today
+      secondsSinceCycleStart = (currentTimeInSeconds - displayTimeInSeconds) % discount.resetAfter;
+    }
+    
+    // Check if we're within the active window (first resetAfter seconds of each cycle)
+    return secondsSinceCycleStart < discount.resetAfter;
+  })() : false;
+
+  return mounted && discount && discount.isActive && isDiscountActive ? (
     <div
       className={cn(
         "discount-countdown flex flex-col gap-2 text-base",

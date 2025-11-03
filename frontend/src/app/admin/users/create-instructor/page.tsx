@@ -294,12 +294,11 @@ const CreateInstructorPage = () => {
       errors.push("End date must be after start date");
     }
 
-    if (
-      experience.description &&
-      experience.description.trim().length > 0 &&
-      experience.description.trim().length < 10
-    ) {
-      errors.push("Description must be at least 10 characters if provided");
+    // Description is required in backend schema
+    if (!experience.description || experience.description.trim().length === 0) {
+      errors.push("Description is required");
+    } else if (experience.description.trim().length < 10) {
+      errors.push("Description must be at least 10 characters");
     }
 
     return { isValid: errors.length === 0, errors };
@@ -404,14 +403,20 @@ const CreateInstructorPage = () => {
         "Current company must be at least 2 characters if provided";
     }
 
-    // Experience validation
+    // Experience validation - only validate saved experiences
     if (formData.previousExperience && formData.previousExperience.length > 0) {
       formData.previousExperience.forEach((experience, index) => {
-        const validation = validateExperience(experience);
-        if (!validation.isValid) {
-          validation.errors.forEach((error, errorIndex) => {
-            newErrors[`previousExperience.${index}.error${errorIndex}`] = error;
-          });
+        // Only validate if it's a saved experience
+        if (savedExperiences.includes(index)) {
+          const validation = validateExperience(experience);
+          if (!validation.isValid) {
+            validation.errors.forEach((error, errorIndex) => {
+              newErrors[`previousExperience.${index}.error${errorIndex}`] = error;
+            });
+          }
+        } else {
+          // If experience is not saved, add error
+          newErrors[`previousExperience.${index}.unsaved`] = "Please save this experience before submitting";
         }
       });
     }
@@ -432,22 +437,65 @@ const CreateInstructorPage = () => {
     setIsSubmitting(true);
 
     try {
+      // Filter out incomplete experiences - only include saved experiences
+      // Backend schema requires: companyName, position, duration (from/to), description
+      const validExperiences = (formData.previousExperience || [])
+        .filter((exp, index) => {
+          // Only include experiences that are saved
+          if (!savedExperiences.includes(index)) {
+            return false;
+          }
+          // Validate required fields
+          return (
+            exp.companyName?.trim() &&
+            exp.position?.trim() &&
+            exp.duration?.from &&
+            exp.duration?.to &&
+            exp.description?.trim()
+          );
+        })
+        .map((exp) => ({
+          companyName: exp.companyName.trim(),
+          position: exp.position.trim(),
+          description: exp.description.trim(),
+          duration: {
+            from: exp.duration.from instanceof Date 
+              ? exp.duration.from.toISOString() 
+              : new Date(exp.duration.from).toISOString(),
+            to: exp.duration.to instanceof Date 
+              ? exp.duration.to.toISOString() 
+              : new Date(exp.duration.to).toISOString(),
+          },
+        }));
+
       // Prepare data for API
-      const submitData = {
+      const submitData: any = {
         ...formData,
         userType: "instructor",
         provider: "credentials",
         // Convert dates to ISO strings
-        dob: formData.dob?.toISOString(),
-        previousExperience:
-          formData.previousExperience?.map((exp) => ({
-            ...exp,
-            duration: {
-              from: exp.duration?.from?.toISOString(),
-              to: exp.duration?.to?.toISOString(),
-            },
-          })) || [],
+        dob: formData.dob ? (formData.dob instanceof Date ? formData.dob.toISOString() : new Date(formData.dob).toISOString()) : undefined,
+        // Only send valid, complete experiences
+        previousExperience: validExperiences.length > 0 ? validExperiences : undefined,
       };
+
+      // Remove confirmPassword - backend doesn't need it in userData
+      delete submitData.confirmPassword;
+
+      // Remove empty address object if all fields are empty
+      if (submitData.address && 
+          (!submitData.address.address?.trim() && !submitData.address.city?.trim() && 
+           !submitData.address.state?.trim() && !submitData.address.country?.trim() && 
+           !submitData.address.pincode?.trim())) {
+        delete submitData.address;
+      }
+
+      // Remove undefined/null fields (but keep empty strings for optional fields)
+      Object.keys(submitData).forEach(key => {
+        if (submitData[key] === undefined || submitData[key] === null) {
+          delete submitData[key];
+        }
+      });
 
       const response = await apiClient.post("/auth/register", submitData);
 
@@ -458,7 +506,21 @@ const CreateInstructorPage = () => {
     } catch (error: any) {
       console.error("Error creating instructor:", error);
 
-      if (error.response?.data?.error?.message) {
+      // Handle validation errors from backend
+      if (error.response?.status === 400) {
+        const errorMessage = error.response?.data?.error?.message || 
+                           error.response?.data?.message || 
+                           "Validation failed. Please check all fields.";
+        
+        // Check if it's a Mongoose validation error
+        if (error.response?.data?.error?.details?.validationErrors) {
+          const validationErrors = error.response.data.error.details.validationErrors;
+          const errorMessages = Object.values(validationErrors).flat();
+          toast.error(`Validation errors: ${errorMessages.join(", ")}`);
+        } else {
+          toast.error(errorMessage);
+        }
+      } else if (error.response?.data?.error?.message) {
         toast.error(error.response.data.error.message);
       } else if (error.response?.data?.message) {
         toast.error(error.response.data.message);
@@ -1049,6 +1111,11 @@ const ExperienceSection = ({
                         {errors[`previousExperience.${index}.description`] && (
                           <p className="mt-1 text-sm text-red-500">
                             {errors[`previousExperience.${index}.description`]}
+                          </p>
+                        )}
+                        {errors[`previousExperience.${index}.unsaved`] && (
+                          <p className="mt-1 text-sm text-red-500">
+                            {errors[`previousExperience.${index}.unsaved`]}
                           </p>
                         )}
                       </div>

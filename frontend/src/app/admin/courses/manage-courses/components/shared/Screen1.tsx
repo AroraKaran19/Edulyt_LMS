@@ -260,6 +260,10 @@ const Screen1 = () => {
               value: 5,
               message: "Title must be at least 5 characters",
             },
+            maxLength: {
+              value: 100,
+              message: "Title must be less than 100 characters",
+            },
           }}
           render={({ field }) => (
             <Input
@@ -350,10 +354,10 @@ const Screen1 = () => {
                 const textContent = getTextFromHtml(value);
 
                 if (textContent.length < 25) {
-                  return "Description must be at least 25 characters";
+                  return "Description must be at least 25 characters long";
                 }
-                if (textContent.length > 2000) {
-                  return "Description must be less than 2000 characters";
+                if (textContent.length > 1000) {
+                  return "Description must be less than 1000 characters";
                 }
                 return true;
               },

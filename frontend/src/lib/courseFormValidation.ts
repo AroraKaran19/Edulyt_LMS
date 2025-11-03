@@ -165,32 +165,18 @@ export const validatePlanDiscount = (discount: any, planName: string): string[] 
       errors.push(`${planName} percentage discount cannot exceed 100%`);
     }
 
-    // Validate dates
-    if (!discount.startDate) {
-      errors.push(`${planName} discount start date is required when discount is active`);
-    }
-
-    if (!discount.endDate) {
-      errors.push(`${planName} discount end date is required when discount is active`);
-    } else {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0); // Reset time to start of day
-      
-      const endDate = new Date(discount.endDate);
-      endDate.setHours(0, 0, 0, 0); // Reset time to start of day
-
-      if (endDate < today) {
-        errors.push(`${planName} discount end date must be today or later`);
+    // Validate displayTime format (hh:mm:ss)
+    if (discount.displayTime) {
+      const timeRegex = /^([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$/;
+      if (!timeRegex.test(discount.displayTime)) {
+        errors.push(`${planName} discount display time must be in hh:mm:ss format (e.g., 14:30:00)`);
       }
     }
 
-    // Validate start date is before end date
-    if (discount.startDate && discount.endDate) {
-      const startDate = new Date(discount.startDate);
-      const endDate = new Date(discount.endDate);
-      
-      if (startDate >= endDate) {
-        errors.push(`${planName} discount start date must be before end date`);
+    // Validate resetAfter
+    if (discount.resetAfter !== undefined && discount.resetAfter !== null) {
+      if (discount.resetAfter < 0) {
+        errors.push(`${planName} discount reset after must be 0 or greater`);
       }
     }
   }
@@ -281,32 +267,18 @@ export const validateDiscount = (discount: any): string[] => {
       errors.push("Course percentage discount cannot exceed 100%");
     }
 
-    // Validate dates
-    if (!discount.startDate) {
-      errors.push("Course discount start date is required when discount is active");
-    }
-
-    if (!discount.endDate) {
-      errors.push("Course discount end date is required when discount is active");
-    } else {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0); // Reset time to start of day
-      
-      const endDate = new Date(discount.endDate);
-      endDate.setHours(0, 0, 0, 0); // Reset time to start of day
-
-      if (endDate < today) {
-        errors.push("Course discount end date must be today or later");
+    // Validate displayTime format (hh:mm:ss)
+    if (discount.displayTime) {
+      const timeRegex = /^([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$/;
+      if (!timeRegex.test(discount.displayTime)) {
+        errors.push("Course discount display time must be in hh:mm:ss format (e.g., 14:30:00)");
       }
     }
 
-    // Validate start date is before end date
-    if (discount.startDate && discount.endDate) {
-      const startDate = new Date(discount.startDate);
-      const endDate = new Date(discount.endDate);
-      
-      if (startDate >= endDate) {
-        errors.push("Course discount start date must be before end date");
+    // Validate resetAfter
+    if (discount.resetAfter !== undefined && discount.resetAfter !== null) {
+      if (discount.resetAfter < 0) {
+        errors.push("Course discount reset after must be 0 or greater");
       }
     }
   }

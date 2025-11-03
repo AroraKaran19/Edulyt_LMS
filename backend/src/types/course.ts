@@ -131,6 +131,7 @@ export interface CourseModule {
 export interface PlanFeatures {
   title: string;
   provided: boolean;
+  showHover?: string;
 }
 
 export interface Plan {

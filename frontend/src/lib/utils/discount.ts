@@ -19,9 +19,27 @@ export const calculateDiscountDisplay = (
 
   // Calculate plan discount on original price
   if (planDiscount?.value && planDiscount.isActive) {
-    // Check if discount is within date range
-    const isPlanDiscountActive = (!planDiscount.startDate || new Date(planDiscount.startDate) <= new Date()) &&
-      (!planDiscount.endDate || new Date(planDiscount.endDate) >= new Date());
+    // Check if discount should be displayed based on displayTime and resetAfter
+    let isPlanDiscountActive = true;
+    if (planDiscount.displayTime && planDiscount.resetAfter) {
+      const now = new Date();
+      const [displayHour, displayMin, displaySec] = planDiscount.displayTime.split(':').map(Number);
+      const displayTimeInSeconds = displayHour * 3600 + displayMin * 60 + displaySec;
+      const currentTimeInSeconds = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+      
+      const totalSecondsInDay = 86400;
+      
+      let secondsSinceCycleStart: number;
+      if (currentTimeInSeconds < displayTimeInSeconds) {
+        const secondsFromYesterday = totalSecondsInDay - displayTimeInSeconds;
+        const totalSecondsSinceCycleStart = secondsFromYesterday + currentTimeInSeconds;
+        secondsSinceCycleStart = totalSecondsSinceCycleStart % planDiscount.resetAfter;
+      } else {
+        secondsSinceCycleStart = (currentTimeInSeconds - displayTimeInSeconds) % planDiscount.resetAfter;
+      }
+      
+      isPlanDiscountActive = secondsSinceCycleStart < planDiscount.resetAfter;
+    }
     
     if (planDiscount.discount === "fixed") {
       totalDiscountAmount += planDiscount.value;
@@ -41,9 +59,27 @@ export const calculateDiscountDisplay = (
 
   // Calculate course discount on original price (simultaneously)
   if (courseDiscount?.value && courseDiscount.isActive) {
-    // Check if discount is within date range
-    const isCourseDiscountActive = (!courseDiscount.startDate || new Date(courseDiscount.startDate) <= new Date()) &&
-      (!courseDiscount.endDate || new Date(courseDiscount.endDate) >= new Date());
+    let isCourseDiscountActive = true;
+    if (courseDiscount.displayTime && courseDiscount.resetAfter) {
+      const now = new Date();
+      const [displayHour, displayMin, displaySec] = courseDiscount.displayTime.split(':').map(Number);
+      const displayTimeInSeconds = displayHour * 3600 + displayMin * 60 + displaySec;
+      const currentTimeInSeconds = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+      
+      const totalSecondsInDay = 86400;
+      
+      let secondsSinceCycleStart: number;
+      if (currentTimeInSeconds < displayTimeInSeconds) {
+        const secondsFromYesterday = totalSecondsInDay - displayTimeInSeconds;
+        const totalSecondsSinceCycleStart = secondsFromYesterday + currentTimeInSeconds;
+        secondsSinceCycleStart = totalSecondsSinceCycleStart % courseDiscount.resetAfter;
+      } else {
+        // We're after displayTime today
+        secondsSinceCycleStart = (currentTimeInSeconds - displayTimeInSeconds) % courseDiscount.resetAfter;
+      }
+      
+      isCourseDiscountActive = secondsSinceCycleStart < courseDiscount.resetAfter;
+    }
     
     if (courseDiscount.discount === "fixed") {
       totalDiscountAmount += courseDiscount.value;

@@ -2,8 +2,8 @@
 
 export interface Discount {
   discount: "percentage" | "fixed";
-  startDate?: Date;
-  endDate?: Date;
+  displayTime?: string; // Time in hh:mm:ss format when discount should be displayed
+  resetAfter?: number; // Time in seconds after which discount resets
   value: number;
   isActive?: boolean;
 }

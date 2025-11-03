@@ -149,27 +149,27 @@ export const transformCourseToFormData = (
                   ? {
                       ...course.plans.essential.discount,
                       isActive: true, // Set to true if discount exists
-                      startDate: course.plans.essential.discount.startDate
-                        ? new Date(course.plans.essential.discount.startDate)
-                        : course.discount?.startDate
-                        ? new Date(course.discount.startDate)
-                        : new Date(),
-                      endDate: course.plans.essential.discount.endDate
-                        ? new Date(course.plans.essential.discount.endDate)
-                        : course.discount?.endDate
-                        ? new Date(course.discount.endDate)
-                        : new Date(),
+                      displayTime: course.plans.essential.discount.displayTime
+                        ? course.plans.essential.discount.displayTime
+                        : course.discount?.displayTime
+                        ? course.discount.displayTime
+                        : "00:00:00",
+                      resetAfter: course.plans.essential.discount.resetAfter !== undefined
+                        ? course.plans.essential.discount.resetAfter
+                        : course.discount?.resetAfter !== undefined
+                        ? course.discount.resetAfter
+                        : 0,
                     }
                   : {
                       isActive: false,
                       discount: "percentage",
                       value: 0,
-                      startDate: course.discount?.startDate
-                        ? new Date(course.discount.startDate)
-                        : new Date(),
-                      endDate: course.discount?.endDate
-                        ? new Date(course.discount.endDate)
-                        : new Date(),
+                      displayTime: course.discount?.displayTime
+                        ? course.discount.displayTime
+                        : "00:00:00",
+                      resetAfter: course.discount?.resetAfter !== undefined
+                        ? course.discount.resetAfter
+                        : 0,
                     },
               }
             : undefined,
@@ -180,27 +180,27 @@ export const transformCourseToFormData = (
                   ? {
                       ...course.plans.elite.discount,
                       isActive: true, // Set to true if discount exists
-                      startDate: course.plans.elite.discount.startDate
-                        ? new Date(course.plans.elite.discount.startDate)
-                        : course.discount?.startDate
-                        ? new Date(course.discount.startDate)
-                        : new Date(),
-                      endDate: course.plans.elite.discount.endDate
-                        ? new Date(course.plans.elite.discount.endDate)
-                        : course.discount?.endDate
-                        ? new Date(course.discount.endDate)
-                        : new Date(),
+                      displayTime: course.plans.elite.discount.displayTime
+                        ? course.plans.elite.discount.displayTime
+                        : course.discount?.displayTime
+                        ? course.discount.displayTime
+                        : "00:00:00",
+                      resetAfter: course.plans.elite.discount.resetAfter !== undefined
+                        ? course.plans.elite.discount.resetAfter
+                        : course.discount?.resetAfter !== undefined
+                        ? course.discount.resetAfter
+                        : 0,
                     }
                   : {
                       isActive: false,
                       discount: "percentage",
                       value: 0,
-                      startDate: course.discount?.startDate
-                        ? new Date(course.discount.startDate)
-                        : new Date(),
-                      endDate: course.discount?.endDate
-                        ? new Date(course.discount.endDate)
-                        : new Date(),
+                      displayTime: course.discount?.displayTime
+                        ? course.discount.displayTime
+                        : "00:00:00",
+                      resetAfter: course.discount?.resetAfter !== undefined
+                        ? course.discount.resetAfter
+                        : 0,
                     },
               }
             : undefined,
@@ -215,19 +215,15 @@ export const transformCourseToFormData = (
       ? {
           ...course.discount,
           isActive: course.discount.isActive || false,
-          startDate: course.discount.startDate
-            ? new Date(course.discount.startDate)
-            : new Date(),
-          endDate: course.discount.endDate
-            ? new Date(course.discount.endDate)
-            : new Date(),
+          displayTime: course.discount.displayTime || "00:00:00",
+          resetAfter: course.discount.resetAfter !== undefined ? course.discount.resetAfter : 0,
         }
       : {
           isActive: false,
           discount: "percentage",
           value: 0,
-          startDate: new Date(),
-          endDate: new Date(),
+          displayTime: "00:00:00",
+          resetAfter: 0,
         },
 
     // Navigation & State

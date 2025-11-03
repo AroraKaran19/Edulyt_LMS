@@ -132,8 +132,26 @@ const courseSchema = new mongoose.Schema<Course>(
     },
     discount: {
       type: {
-        startDate: { type: Date, required: false, default: null },
-        endDate: { type: Date, required: false, default: null },
+        displayTime: { 
+          type: String, 
+          required: false, 
+          default: null,
+          validate: {
+            validator: function(value: string) {
+              if (!value) return true; // Allow empty/null
+              // Validate hh:mm:ss format
+              const timeRegex = /^([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$/;
+              return timeRegex.test(value);
+            },
+            message: "Display time must be in hh:mm:ss format (e.g., 14:30:00)"
+          }
+        },
+        resetAfter: { 
+          type: Number, 
+          required: false, 
+          default: null,
+          min: [0, "Reset after must be a positive number"]
+        },
         value: { type: Number, required: false, default: 0 },
         discount: {
           type: String,

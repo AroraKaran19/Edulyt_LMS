@@ -115,8 +115,8 @@ const EnrollmentModal: React.FC<EnrollmentModalProps> = ({
           {course?.discount &&
             course.discount.isActive &&
             course.discount.value > 0 &&
-            course.discount.endDate &&
-            new Date(course.discount.endDate).getTime() > Date.now() && (
+            course.discount.displayTime &&
+            course.discount.resetAfter !== undefined && (
               <div className="w-full flex justify-center mt-2">
                 <DiscountCountdown
                   discount={course.discount}

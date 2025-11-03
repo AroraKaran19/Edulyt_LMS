@@ -21,8 +21,6 @@ const DashboardNavbar = () => {
     }
   }, [stats, isLoading]);
 
-  if (pathname === "/dashboard/profile") return null;
-
   const navItems = [
     {
       label: "Home",

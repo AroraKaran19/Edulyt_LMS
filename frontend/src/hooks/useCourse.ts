@@ -70,8 +70,8 @@ export interface CreateCourseData {
       }[];
       discount?: {
         discount: "percentage" | "fixed";
-        startDate?: Date;
-        endDate?: Date;
+        displayTime?: string;
+        resetAfter?: number;
         value: number;
         isActive?: boolean;
       };
@@ -88,8 +88,8 @@ export interface CreateCourseData {
       }[];
       discount?: {
         discount: "percentage" | "fixed";
-        startDate?: Date;
-        endDate?: Date;
+        displayTime?: string;
+        resetAfter?: number;
         value: number;
         isActive?: boolean;
       };
@@ -99,8 +99,8 @@ export interface CreateCourseData {
   };
   discount?: {
     discount: "percentage" | "fixed";
-    startDate?: Date;
-    endDate?: Date;
+    displayTime?: string;
+    resetAfter?: number;
     value: number;
     isActive?: boolean;
   };
