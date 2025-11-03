@@ -209,8 +209,8 @@ const Screen5 = () => {
         isActive: false,
         discount: "percentage" as "percentage" | "fixed",
         value: 0,
-        startDate: new Date(),
-        endDate: new Date(),
+        displayTime: "00:00:00",
+        resetAfter: 0,
       },
     };
 
