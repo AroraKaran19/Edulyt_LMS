@@ -49,8 +49,8 @@ export const validateShortDescription = (
     errors.push("Short description is required");
   } else if (textContent.length < 10) {
     errors.push("Short description must be at least 10 characters");
-  } else if (textContent.length > 100) {
-    errors.push("Short description must be less than 100 characters");
+  } else if (textContent.length > 300) {
+    errors.push("Short description must be less than 300 characters");
   }
 
   return errors;
