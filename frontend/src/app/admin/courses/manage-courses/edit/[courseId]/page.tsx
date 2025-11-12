@@ -1,7 +1,8 @@
 "use client";
 import Container from "@/app/admin/components/ui/Container";
-import { ArrowLeftIcon, ArrowRightIcon, BookOpenIcon } from "lucide-react";
+import { ArrowLeftIcon, ArrowRightIcon, BookOpenIcon, BookOpen, Users } from "lucide-react";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
+import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import { useParams, useRouter } from "next/navigation";
 import {
   CourseFormProvider,
@@ -22,6 +23,7 @@ import Screen11 from "../../components/shared/Screen11";
 import Screen12 from "../../components/shared/Screen12";
 import Screen13 from "../../components/shared/Screen13";
 import StorageIndicator from "@/components/admin/courseForm/StorageIndicator";
+import { toast } from "react-toastify";
 
 const EditCoursePageContent = ({ courseId }: { courseId: string }) => {
   const router = useRouter();
@@ -32,6 +34,7 @@ const EditCoursePageContent = ({ courseId }: { courseId: string }) => {
     canGoNext,
     updateCourseMetadata,
     isUpdating,
+    goToScreen,
   } = useCourseFormContext();
 
   const handleNext = async () => {
@@ -73,13 +76,68 @@ const EditCoursePageContent = ({ courseId }: { courseId: string }) => {
     }
   };
 
+  // Handle instant navigation to Modules (Screen 11)
+  const handleNavigateToModules = async () => {
+    try {
+      // Save metadata before navigating
+      await updateCourseMetadata();
+      toast.success("Course metadata saved successfully");
+      goToScreen(11);
+    } catch (error) {
+      console.error("Failed to save metadata before navigation:", error);
+      toast.error("Failed to save metadata. Please try again.");
+    }
+  };
+
+  // Handle instant navigation to Instructors (Screen 12)
+  const handleNavigateToInstructors = async () => {
+    try {
+      // Save metadata before navigating
+      await updateCourseMetadata();
+      toast.success("Course metadata saved successfully");
+      goToScreen(13);
+    } catch (error) {
+      console.error("Failed to save metadata before navigation:", error);
+      toast.error("Failed to save metadata. Please try again.");
+    }
+  };
+
   return (
     <div className="flex w-full h-full flex-col px-8 relative">
-      <Container
-        title="Edit Course"
-        icon={BookOpenIcon}
-        className="rounded-t-none shrink-0 h-fit mb-8"
-      />
+      <div className="flex flex-col items-center gap-5 mb-4">
+        <Container
+          title="Edit Course"
+          icon={BookOpenIcon}
+          className="rounded-t-none shrink-0 h-fit"
+        />
+        {/* Instant Navigation Buttons */}
+        <div className="flex items-center gap-5 w-full justify-center">
+          <OrangeButton
+            onClick={handleNavigateToModules}
+            disabled={isUpdating || currentScreen === 11}
+            className={`flex items-center gap-2 cursor-pointer ${
+              currentScreen === 11 ? "opacity-60" : ""
+            }`}
+            glow={false}
+          >
+            <BookOpen className="w-4 h-4" />
+            Modules
+            {currentScreen === 11 && " (Current)"}
+          </OrangeButton>
+          <OrangeButton
+            onClick={handleNavigateToInstructors}
+            disabled={isUpdating || currentScreen === 12}
+            className={`flex items-center gap-2 cursor-pointer ${
+              currentScreen === 12 ? "opacity-60" : ""
+            }`}
+            glow={false}
+          >
+            <Users className="w-4 h-4" />
+            Instructors
+            {currentScreen === 12 && " (Current)"}
+          </OrangeButton>
+        </div>
+      </div>
       <div className="flex-1 min-h-0 max-h-full">
         {currentScreen === 1 && <Screen1 />}
         {currentScreen === 2 && <Screen2 />}

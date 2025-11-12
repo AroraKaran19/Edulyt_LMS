@@ -122,6 +122,13 @@ export const transformCourseToFormData = (
     faqs: Array.isArray(course.faqs)
       ? course.faqs.map((f: any) => (typeof f === "string" ? f : f._id || ""))
       : [],
+    
+    // Convert instructors to string array (IDs) - handle both populated objects and string IDs
+    instructor: Array.isArray(course.instructor)
+      ? course.instructor.map((i: any) =>
+          typeof i === "string" ? i : i._id || ""
+        ).filter((id: string) => id && id.trim().length > 0)
+      : [],
 
     // Map media fields and set appropriate sources
     thumbnail: course.thumbnail || "",

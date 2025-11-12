@@ -169,6 +169,12 @@ export const useCourseForm = (
 
         if (localData) {
           // Merge API data with localStorage data, prioritizing localStorage for certain fields
+          // For instructor, prioritize API data if local data is empty or invalid
+          const hasValidLocalInstructors = 
+            Array.isArray(localData.instructor) && 
+            localData.instructor.length > 0 &&
+            localData.instructor.every((id: any) => typeof id === 'string' && id.trim().length > 0);
+          
           const mergedData = {
             ...localData,
             ...apiFormData,
@@ -182,6 +188,8 @@ export const useCourseForm = (
             curriculumS3Key:
               localData.curriculumS3Key || apiFormData.curriculumS3Key,
             brochureS3Key: localData.brochureS3Key || apiFormData.brochureS3Key,
+            // Preserve instructor from API if local data doesn't have valid instructors
+            instructor: hasValidLocalInstructors ? localData.instructor : apiFormData.instructor,
             // Preserve form state from localStorage
             currentScreen: localData.currentScreen || apiFormData.currentScreen,
             completedScreens: localData.completedScreens || apiFormData.completedScreens,
@@ -319,6 +327,17 @@ export const useCourseForm = (
   const prevScreen = useCallback(() => {
     setCurrentScreen((prev) => Math.max(prev - 1, 1));
   }, []);
+
+  const goToScreen = useCallback((screen: number) => {
+    // Validate screen number is within valid range
+    if (screen >= 1 && screen <= 13) {
+      setCurrentScreen(screen);
+      // Also update the form data's currentScreen field for persistence
+      setValue("currentScreen", screen);
+    } else {
+      console.warn(`Invalid screen number: ${screen}. Must be between 1 and 13.`);
+    }
+  }, [setValue]);
 
   // ===================
   // Course Actions
@@ -594,7 +613,7 @@ export const useCourseForm = (
     // Navigation
     nextScreen,
     prevScreen,
-    goToScreen: () => {},
+    goToScreen,
     canGoNext,
     canGoPrev: currentScreen > 1,
 
