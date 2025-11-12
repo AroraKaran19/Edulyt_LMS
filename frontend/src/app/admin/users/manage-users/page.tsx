@@ -28,13 +28,19 @@ const ManageUsersPage = () => {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<"elite" | "essential" | null>(null);
   const [showGiftModal, setShowGiftModal] = useState(false);
   const [showUserDetails, setShowUserDetails] = useState(false);
+  const [giftStep, setGiftStep] = useState<1 | 2 | 3>(1);
+  const [allStudents, setAllStudents] = useState<User[]>([]);
+  const [loadingStudents, setLoadingStudents] = useState(false);
+  const [userEnrollments, setUserEnrollments] = useState<Record<string, string[]>>({});
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [isGifting, setIsGifting] = useState(false);
 
-  const { getUsers, updateUserStatus, giftCourse, isLoading } =
+  const { getUsers, updateUserStatus, giftCourse, isLoading, getUserEnrollments } =
     useUserManagement();
   const { getCourses } = useCourseManagement();
 
@@ -75,6 +81,53 @@ const ManageUsersPage = () => {
     fetchCourses();
   }, []);
 
+  // Fetch all students for gift modal
+  const fetchAllStudents = async () => {
+    setLoadingStudents(true);
+    try {
+      const result = await getUsers({
+        page: 1,
+        limit: 1000, // Get all students
+        userType: "student", // Only students can receive courses
+      });
+
+      if (result) {
+        setAllStudents(result.users);
+        // Fetch enrollments for all students
+        const enrollmentsMap: Record<string, string[]> = {};
+        await Promise.all(
+          result.users.map(async (user) => {
+            if (user._id) {
+              const enrollments = await getUserEnrollments(user._id, { limit: 1000 });
+              if (enrollments) {
+                enrollmentsMap[user._id] = enrollments.enrollments.map((e: any) => 
+                  typeof e === 'string' ? e : (e.courseId?._id || e.courseId || e._id)
+                );
+              }
+            }
+          })
+        );
+        setUserEnrollments(enrollmentsMap);
+      }
+    } catch (error) {
+      console.error("Error fetching students:", error);
+      toast.error("Failed to load students");
+    } finally {
+      setLoadingStudents(false);
+    }
+  };
+
+  // Get available users (excluding those who already own the course)
+  const getAvailableUsers = () => {
+    if (!selectedCourse) return allStudents;
+    
+    return allStudents.filter((user) => {
+      if (!user._id) return false;
+      const userCourseIds = userEnrollments[user._id] || [];
+      return !userCourseIds.includes(selectedCourse._id || "");
+    });
+  };
+
   // Handle user status update
   const handleStatusUpdate = async (
     userId: string,
@@ -89,8 +142,8 @@ const ManageUsersPage = () => {
 
   // Handle course gifting
   const handleGiftCourse = async () => {
-    if (!selectedUser || !selectedCourse || !selectedPlan) {
-      toast.error("Please select user, course, and plan type");
+    if (!selectedCourse || !selectedPlan || selectedUsers.length === 0) {
+      toast.error("Please select course, plan type, and at least one user");
       return;
     }
 
@@ -100,30 +153,87 @@ const ManageUsersPage = () => {
       return;
     }
 
+    setIsGifting(true);
     try {
-      const result = await giftCourse({
-        userId: selectedUser._id!,
-        courseId: selectedCourse._id!,
-        planType: selectedPlan,
-      });
+      let successCount = 0;
+      let failCount = 0;
+      const errors: string[] = [];
 
-      if (result) {
-        toast.success(
-          `Successfully gifted ${selectedCourse.title} (${selectedPlan} plan) to ${
-            selectedUser.firstName || "Unknown"
-          } ${selectedUser.lastName || "User"}`
-        );
-        setShowGiftModal(false);
-        setSelectedUser(null);
-        setSelectedCourse(null);
-        setSelectedPlan(null);
+      // Gift course to all selected users
+      for (const userId of selectedUsers) {
+        try {
+          const result = await giftCourse({
+            userId,
+            courseId: selectedCourse._id!,
+            planType: selectedPlan,
+          });
+
+          if (result) {
+            successCount++;
+          } else {
+            failCount++;
+          }
+        } catch (error: any) {
+          failCount++;
+          const user = allStudents.find((u) => u._id === userId);
+          const userName = user 
+            ? `${user.firstName || "Unknown"} ${user.lastName || "User"}`
+            : userId;
+          errors.push(`${userName}: ${error.message || "Failed to gift course"}`);
+        }
       }
+
+      if (successCount > 0) {
+        toast.success(
+          `Successfully gifted ${selectedCourse.title} (${selectedPlan} plan) to ${successCount} user(s)`
+        );
+      }
+
+      if (failCount > 0) {
+        toast.error(`Failed to gift course to ${failCount} user(s). ${errors.join("; ")}`);
+      }
+
+      // Reset and close modal
+      setShowGiftModal(false);
+      setSelectedUsers([]);
+      setSelectedCourse(null);
+      setSelectedPlan(null);
+      setGiftStep(1);
     } catch (error: any) {
-      // Handle the specific error message from the backend
       const errorMessage = error.message || "Failed to gift course. Please try again.";
       toast.error(errorMessage);
       console.error("Gift course error:", error);
+    } finally {
+      setIsGifting(false);
     }
+  };
+
+  // Handle modal open
+  const handleOpenGiftModal = () => {
+    setShowGiftModal(true);
+    setGiftStep(1);
+    setSelectedUsers([]);
+    setSelectedCourse(null);
+    setSelectedPlan(null);
+    fetchAllStudents();
+  };
+
+  // Handle course selection (step 1 -> step 2)
+  const handleCourseSelect = (courseId: string) => {
+    const course = courses.find((c) => c._id === courseId);
+    setSelectedCourse(course || null);
+    setSelectedPlan(null);
+    setSelectedUsers([]);
+    if (course && course.plans && (course.plans.elite || course.plans.essential)) {
+      setGiftStep(2);
+    }
+  };
+
+  // Handle plan selection (step 2 -> step 3)
+  const handlePlanSelect = (planType: string) => {
+    setSelectedPlan(planType as "elite" | "essential");
+    setSelectedUsers([]);
+    setGiftStep(3);
   };
 
   // Get status badge color
@@ -208,8 +318,8 @@ const ManageUsersPage = () => {
 
           {/* Gift Course Button */}
           <OrangeButton
-            onClick={() => setShowGiftModal(true)}
-            className="flex items-center gap-2"
+            onClick={handleOpenGiftModal}
+            className="flex items-center gap-2 cursor-pointer"
           >
             <Gift className="w-4 h-4" />
             Gift Course
@@ -303,6 +413,7 @@ const ManageUsersPage = () => {
                           setSelectedUser(user);
                           setShowUserDetails(true);
                         }}
+                        className="cursor-pointer"
                       >
                         <Eye className="w-4 h-4" />
                       </Button>
@@ -335,6 +446,7 @@ const ManageUsersPage = () => {
                 variant="outline"
                 onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
                 disabled={currentPage === 1}
+                className={currentPage === 1 ? "cursor-not-allowed" : "cursor-pointer"}
               >
                 Previous
               </Button>
@@ -344,6 +456,7 @@ const ManageUsersPage = () => {
                   setCurrentPage((prev) => Math.min(prev + 1, totalPages))
                 }
                 disabled={currentPage === totalPages}
+                className={currentPage === totalPages ? "cursor-not-allowed" : "cursor-pointer"}
               >
                 Next
               </Button>
@@ -364,7 +477,7 @@ const ManageUsersPage = () => {
                       setCurrentPage((prev) => Math.max(prev - 1, 1))
                     }
                     disabled={currentPage === 1}
-                    className="rounded-l-md"
+                    className={`rounded-l-md ${currentPage === 1 ? "cursor-not-allowed" : "cursor-pointer"}`}
                   >
                     Previous
                   </Button>
@@ -374,7 +487,7 @@ const ManageUsersPage = () => {
                       setCurrentPage((prev) => Math.min(prev + 1, totalPages))
                     }
                     disabled={currentPage === totalPages}
-                    className="rounded-r-md"
+                    className={`rounded-r-md ${currentPage === totalPages ? "cursor-not-allowed" : "cursor-pointer"}`}
                   >
                     Next
                   </Button>
@@ -388,70 +501,94 @@ const ManageUsersPage = () => {
       {/* Gift Course Modal */}
       {showGiftModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              Gift Course to User
-            </h3>
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Gift Course to Users
+              </h3>
+              <button
+                onClick={() => {
+                  setShowGiftModal(false);
+                  setSelectedUsers([]);
+                  setSelectedCourse(null);
+                  setSelectedPlan(null);
+                  setGiftStep(1);
+                }}
+                className="text-gray-400 hover:text-gray-600 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Step Indicator */}
+            <div className="flex items-center justify-center mb-6">
+              <div className="flex items-center">
+                <div className={`flex items-center justify-center w-8 h-8 rounded-full ${
+                  giftStep >= 1 ? 'bg-orange-500 text-white' : 'bg-gray-200 text-gray-600'
+                }`}>
+                  1
+                </div>
+                <div className={`w-16 h-1 ${giftStep >= 2 ? 'bg-orange-500' : 'bg-gray-200'}`} />
+                <div className={`flex items-center justify-center w-8 h-8 rounded-full ${
+                  giftStep >= 2 ? 'bg-orange-500 text-white' : 'bg-gray-200 text-gray-600'
+                }`}>
+                  2
+                </div>
+                <div className={`w-16 h-1 ${giftStep >= 3 ? 'bg-orange-500' : 'bg-gray-200'}`} />
+                <div className={`flex items-center justify-center w-8 h-8 rounded-full ${
+                  giftStep >= 3 ? 'bg-orange-500 text-white' : 'bg-gray-200 text-gray-600'
+                }`}>
+                  3
+                </div>
+              </div>
+            </div>
 
             <div className="space-y-4">
-              {/* User Selection */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Select User
-                </label>
-                <Select
-                  options={users.map((user) => ({
-                    value: user._id!,
-                    label: `${user.firstName || "Unknown"} ${
-                      user.lastName || "User"
-                    } (${user.email})`,
-                  }))}
-                  value={selectedUser?._id || ""}
-                  onChange={(userId: string) => {
-                    const user = users.find((u) => u._id === userId);
-                    setSelectedUser(user || null);
-                  }}
-                  placeholder="Choose a user"
-                />
-              </div>
-
-              {/* Course Selection */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Select Course
-                </label>
-                <Select
-                  options={courses.map((course) => {
-                    const elitePlan = course.plans?.elite;
-                    const essentialPlan = course.plans?.essential;
-                    let planInfo = "";
-                    
-                    if (elitePlan && essentialPlan) {
-                      planInfo = ` (Elite: ₹${elitePlan.price}, Essential: ₹${essentialPlan.price})`;
-                    } else if (elitePlan) {
-                      planInfo = ` (Elite: ₹${elitePlan.price})`;
-                    } else if (essentialPlan) {
-                      planInfo = ` (Essential: ₹${essentialPlan.price})`;
-                    }
-                    
-                    return {
-                      value: course._id!,
-                      label: `${course.title}${planInfo}`,
-                    };
-                  })}
-                  value={selectedCourse?._id || ""}
-                  onChange={(courseId: string) => {
-                    const course = courses.find((c) => c._id === courseId);
-                    setSelectedCourse(course || null);
-                    setSelectedPlan(null); // Reset plan selection when course changes
-                  }}
-                  placeholder="Choose a course"
-                />
-              </div>
-
-              {/* Plan Selection */}
-              {selectedCourse && selectedCourse.plans && (
+              {/* Step 1: Course Selection */}
+              {giftStep === 1 && (
                 <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Select Course
+                  </label>
+                  <Select
+                    options={courses.map((course) => {
+                      const elitePlan = course.plans?.elite;
+                      const essentialPlan = course.plans?.essential;
+                      let planInfo = "";
+                      
+                      if (elitePlan && essentialPlan) {
+                        planInfo = ` (Elite: ₹${elitePlan.price}, Essential: ₹${essentialPlan.price})`;
+                      } else if (elitePlan) {
+                        planInfo = ` (Elite: ₹${elitePlan.price})`;
+                      } else if (essentialPlan) {
+                        planInfo = ` (Essential: ₹${essentialPlan.price})`;
+                      }
+                      
+                      return {
+                        value: course._id!,
+                        label: `${course.title}${planInfo}`,
+                      };
+                    })}
+                    value={selectedCourse?._id || ""}
+                    onChange={handleCourseSelect}
+                    placeholder="Choose a course"
+                  />
+                  {selectedCourse && (!selectedCourse.plans || (!selectedCourse.plans.elite && !selectedCourse.plans.essential)) && (
+                    <p className="mt-2 text-sm text-red-500">
+                      This course doesn't have any plans available.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Step 2: Plan Selection */}
+              {giftStep === 2 && selectedCourse && selectedCourse.plans && (selectedCourse.plans.elite || selectedCourse.plans.essential) && (
+                <div>
+                  <div className="mb-4">
+                    <p className="text-sm text-gray-600">
+                      Selected Course: <span className="font-medium">{selectedCourse.title}</span>
+                    </p>
+                  </div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Select Plan Type
                   </label>
@@ -467,33 +604,148 @@ const ManageUsersPage = () => {
                       }] : []),
                     ]}
                     value={selectedPlan || ""}
-                    onChange={(planType: string) => {
-                      setSelectedPlan(planType as "elite" | "essential");
-                    }}
+                    onChange={handlePlanSelect}
                     placeholder="Choose a plan"
                   />
                 </div>
               )}
+
+              {/* Step 3: User Selection (Multi-select) */}
+              {giftStep === 3 && selectedCourse && selectedPlan && (
+                <div>
+                  <div className="mb-4">
+                    <p className="text-sm text-gray-600">
+                      Course: <span className="font-medium">{selectedCourse.title}</span> | 
+                      Plan: <span className="font-medium capitalize">{selectedPlan}</span>
+                    </p>
+                  </div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Select Users (Multiple selection)
+                  </label>
+                  {loadingStudents ? (
+                    <div className="text-center py-4">
+                      <p className="text-gray-500">Loading users...</p>
+                    </div>
+                  ) : (
+                    <div className="border border-gray-300 rounded-lg max-h-64 overflow-y-auto">
+                      {getAvailableUsers().length === 0 ? (
+                        <div className="p-4 text-center text-gray-500">
+                          <p>No available users. All users already own this course.</p>
+                        </div>
+                      ) : (
+                        <div className="divide-y divide-gray-200">
+                          {getAvailableUsers().map((user) => (
+                            <label
+                              key={user._id}
+                              className="flex items-center p-3 hover:bg-gray-50 cursor-pointer"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={selectedUsers.includes(user._id || "")}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedUsers([...selectedUsers, user._id || ""]);
+                                  } else {
+                                    setSelectedUsers(selectedUsers.filter((id) => id !== user._id));
+                                  }
+                                }}
+                                className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
+                              />
+                              <div className="ml-3 flex-1">
+                                <div className="text-sm font-medium text-gray-900">
+                                  {user.firstName || "Unknown"} {user.lastName || "User"}
+                                </div>
+                                <div className="text-sm text-gray-500">{user.email}</div>
+                              </div>
+                            </label>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {selectedUsers.length > 0 && (
+                    <p className="mt-2 text-sm text-gray-600">
+                      {selectedUsers.length} user(s) selected
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
 
-            <div className="flex justify-end gap-3 mt-6">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setShowGiftModal(false);
-                  setSelectedUser(null);
-                  setSelectedCourse(null);
-                  setSelectedPlan(null);
-                }}
-              >
-                Cancel
-              </Button>
-              <OrangeButton
-                onClick={handleGiftCourse}
-                disabled={!selectedUser || !selectedCourse || !selectedPlan || isLoading}
-              >
-                {isLoading ? "Gifting..." : "Gift Course"}
-              </OrangeButton>
+            <div className="flex justify-between gap-3 mt-6">
+              <div>
+                {giftStep > 1 && (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      if (giftStep === 3) {
+                        setGiftStep(2);
+                        setSelectedUsers([]);
+                      } else if (giftStep === 2) {
+                        setGiftStep(1);
+                        setSelectedPlan(null);
+                        setSelectedUsers([]);
+                      }
+                    }}
+                    className="cursor-pointer"
+                  >
+                    Back
+                  </Button>
+                )}
+              </div>
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowGiftModal(false);
+                    setSelectedUsers([]);
+                    setSelectedCourse(null);
+                    setSelectedPlan(null);
+                    setGiftStep(1);
+                  }}
+                  className="cursor-pointer"
+                >
+                  Cancel
+                </Button>
+                {giftStep === 3 ? (
+                  <OrangeButton
+                    onClick={handleGiftCourse}
+                    disabled={selectedUsers.length === 0 || isGifting || isLoading}
+                    className={selectedUsers.length === 0 || isGifting || isLoading ? "cursor-not-allowed" : "cursor-pointer"}
+                  >
+                    {isGifting || isLoading ? (
+                      <span className="flex items-center gap-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        Gifting...
+                      </span>
+                    ) : (
+                      `Gift to ${selectedUsers.length} User(s)`
+                    )}
+                  </OrangeButton>
+                ) : (
+                  <OrangeButton
+                    onClick={() => {
+                      if (giftStep === 1 && selectedCourse && selectedCourse.plans && (selectedCourse.plans.elite || selectedCourse.plans.essential)) {
+                        setGiftStep(2);
+                      } else if (giftStep === 2 && selectedPlan) {
+                        setGiftStep(3);
+                      }
+                    }}
+                    disabled={
+                      (giftStep === 1 && (!selectedCourse || !selectedCourse.plans || (!selectedCourse.plans.elite && !selectedCourse.plans.essential))) ||
+                      (giftStep === 2 && !selectedPlan)
+                    }
+                    className={
+                      (giftStep === 1 && (!selectedCourse || !selectedCourse.plans || (!selectedCourse.plans.elite && !selectedCourse.plans.essential))) ||
+                      (giftStep === 2 && !selectedPlan)
+                        ? "cursor-not-allowed"
+                        : "cursor-pointer"
+                    }
+                  >
+                    Next
+                  </OrangeButton>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -572,6 +824,7 @@ const ManageUsersPage = () => {
                   setShowUserDetails(false);
                   setSelectedUser(null);
                 }}
+                className="cursor-pointer"
               >
                 Close
               </Button>

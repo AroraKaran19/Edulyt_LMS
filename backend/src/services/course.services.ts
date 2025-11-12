@@ -116,6 +116,7 @@ export const getAllCoursesService = async (
             isFeatured: 1,
             audience: 1,
             slug: 1,
+            plans: 1,
             analytics: {
               totalRatings: 1,
               totalReviews: 1,
