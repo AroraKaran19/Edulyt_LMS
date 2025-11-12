@@ -22,6 +22,7 @@ interface InputProps {
   minLength?: number;
   maxLength?: number;
   showCharacterCount?: boolean;
+  error?: string;
   [key: string]: any; // For other HTML input attributes
 }
 
@@ -42,6 +43,7 @@ const Input = ({
   minLength,
   maxLength,
   showCharacterCount = false,
+  error,
   ...props
 }: InputProps) => {
   // Calculate character count
@@ -99,14 +101,17 @@ const Input = ({
           maxLength={maxLength}
           {...props}
           className={cn(
-            "w-full px-4 py-3.5 border border-gray-300 rounded-xl bg-white text-black",
+            "w-full px-4 py-3.5 border rounded-xl bg-white text-black",
             "focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500",
-            "hover:border-orange-400 hover:shadow-sm",
+            "hover:shadow-sm",
             "transition-all duration-200 ease-in-out outline-none",
             "disabled:opacity-50 disabled:cursor-not-allowed",
             "shadow-sm hover:shadow-md",
             variant === "small" && "text-xs py-2 px-3",
-            showCharacterCount && "pr-12" // Add right padding when character count is shown
+            showCharacterCount && "pr-12", // Add right padding when character count is shown
+            error 
+              ? "border-red-500 hover:border-red-500 focus:border-red-500 focus:ring-red-500/20" 
+              : "border-gray-300 hover:border-orange-400"
           )}
           required={required}
           onChange={handleChange}
@@ -142,6 +147,9 @@ const Input = ({
           Maximum {maxLength} characters exceeded (remove{" "}
           {characterCount - maxLength} characters)
         </div>
+      )}
+      {error && (
+        <p className="mt-1 text-sm text-red-500">{error}</p>
       )}
     </div>
   );

@@ -28,6 +28,12 @@ export const getAllCoursesService = async (
   const skip = (page - 1) * limit;
 
   let filters: any = {};
+  
+  // Active filter - only show active courses for non-admin users
+  if (!isAdmin) {
+    filters.isActive = true;
+  }
+  
   if (search) {
     filters.$or = [
       { title: { $regex: search, $options: "i" } },

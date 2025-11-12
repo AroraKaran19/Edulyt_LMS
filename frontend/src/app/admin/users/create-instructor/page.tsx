@@ -179,6 +179,23 @@ const CreateInstructorPage = () => {
         previousExperience: updatedExperiences,
       };
     });
+
+    // Clear error when user starts typing/editing
+    setErrors((prev) => {
+      const errorKey = `previousExperience.${index}.${field}`;
+      const durationErrorKey = `previousExperience.${index}.duration`;
+      const unsavedErrorKey = `previousExperience.${index}.unsaved`;
+      
+      // Only update if there are errors to clear
+      if (prev[errorKey] || prev[durationErrorKey] || prev[unsavedErrorKey]) {
+        const newErrors = { ...prev };
+        delete newErrors[errorKey];
+        delete newErrors[durationErrorKey];
+        delete newErrors[unsavedErrorKey];
+        return newErrors;
+      }
+      return prev;
+    });
   };
 
   // Add new experience
@@ -410,9 +427,25 @@ const CreateInstructorPage = () => {
         if (savedExperiences.includes(index)) {
           const validation = validateExperience(experience);
           if (!validation.isValid) {
-            validation.errors.forEach((error, errorIndex) => {
-              newErrors[`previousExperience.${index}.error${errorIndex}`] = error;
-            });
+            // Map validation errors to specific fields
+            if (!experience.companyName || experience.companyName.trim().length < 2) {
+              newErrors[`previousExperience.${index}.companyName`] = "Company name must be at least 2 characters";
+            }
+            if (!experience.position || experience.position.trim().length < 2) {
+              newErrors[`previousExperience.${index}.position`] = "Position must be at least 2 characters";
+            }
+            if (!experience.duration?.from || !experience.duration?.to) {
+              newErrors[`previousExperience.${index}.duration`] = "Both start and end dates are required";
+            } else if (
+              new Date(experience.duration.from) >= new Date(experience.duration.to)
+            ) {
+              newErrors[`previousExperience.${index}.duration`] = "End date must be after start date";
+            }
+            if (!experience.description || experience.description.trim().length === 0) {
+              newErrors[`previousExperience.${index}.description`] = "Description is required";
+            } else if (experience.description.trim().length < 10) {
+              newErrors[`previousExperience.${index}.description`] = "Description must be at least 10 characters";
+            }
           }
         } else {
           // If experience is not saved, add error
@@ -477,10 +510,8 @@ const CreateInstructorPage = () => {
         dob: formData.dob ? (formData.dob instanceof Date ? formData.dob.toISOString() : new Date(formData.dob).toISOString()) : undefined,
         // Only send valid, complete experiences
         previousExperience: validExperiences.length > 0 ? validExperiences : undefined,
+        // Keep confirmPassword - backend needs it for validation
       };
-
-      // Remove confirmPassword - backend doesn't need it in userData
-      delete submitData.confirmPassword;
 
       // Remove empty address object if all fields are empty
       if (submitData.address && 
@@ -512,11 +543,45 @@ const CreateInstructorPage = () => {
                            error.response?.data?.message || 
                            "Validation failed. Please check all fields.";
         
-        // Check if it's a Mongoose validation error
+        // Check if it's a Mongoose validation error with field-specific errors
         if (error.response?.data?.error?.details?.validationErrors) {
           const validationErrors = error.response.data.error.details.validationErrors;
-          const errorMessages = Object.values(validationErrors).flat();
-          toast.error(`Validation errors: ${errorMessages.join(", ")}`);
+          const backendErrors: Record<string, string> = {};
+          
+          // Map backend validation errors to form fields
+          Object.keys(validationErrors).forEach((field) => {
+            const fieldErrors = validationErrors[field];
+            if (Array.isArray(fieldErrors) && fieldErrors.length > 0) {
+              // Map common field names
+              const fieldMap: Record<string, string> = {
+                'email': 'email',
+                'password': 'password',
+                'firstName': 'firstName',
+                'lastName': 'lastName',
+                'phone': 'phone',
+                'whatsappNumber': 'whatsappNumber',
+                'linkedinUrl': 'linkedinUrl',
+                'bio': 'bio',
+                'currentPosition': 'currentPosition',
+                'currentCompany': 'currentCompany',
+                'dob': 'dob',
+              };
+              
+              const mappedField = fieldMap[field] || field;
+              backendErrors[mappedField] = Array.isArray(fieldErrors) 
+                ? fieldErrors[0] 
+                : String(fieldErrors);
+            }
+          });
+          
+          // Set errors in form state
+          if (Object.keys(backendErrors).length > 0) {
+            setErrors(backendErrors);
+            toast.error("Please fix the validation errors in the form");
+          } else {
+            const errorMessages = Object.values(validationErrors).flat();
+            toast.error(`Validation errors: ${errorMessages.join(", ")}`);
+          }
         } else {
           toast.error(errorMessage);
         }
@@ -1059,6 +1124,11 @@ const ExperienceSection = ({
                             )
                           }
                         />
+                        {errors[`previousExperience.${index}.duration`] && (
+                          <p className="mt-1 text-sm text-red-500">
+                            {errors[`previousExperience.${index}.duration`]}
+                          </p>
+                        )}
                       </div>
 
                       {/* Duration To */}

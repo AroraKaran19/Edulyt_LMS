@@ -95,7 +95,7 @@ const ManageUsersPage = () => {
     }
 
     // Check if the selected plan exists for the course
-    if (!selectedCourse.plans[selectedPlan]) {
+    if (!selectedCourse.plans || !selectedCourse.plans[selectedPlan]) {
       toast.error(`Selected plan (${selectedPlan}) is not available for this course`);
       return;
     }
@@ -422,8 +422,8 @@ const ManageUsersPage = () => {
                 </label>
                 <Select
                   options={courses.map((course) => {
-                    const elitePlan = course.plans.elite;
-                    const essentialPlan = course.plans.essential;
+                    const elitePlan = course.plans?.elite;
+                    const essentialPlan = course.plans?.essential;
                     let planInfo = "";
                     
                     if (elitePlan && essentialPlan) {
@@ -450,18 +450,18 @@ const ManageUsersPage = () => {
               </div>
 
               {/* Plan Selection */}
-              {selectedCourse && (
+              {selectedCourse && selectedCourse.plans && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Select Plan Type
                   </label>
                   <Select
                     options={[
-                      ...(selectedCourse.plans.elite ? [{
+                      ...(selectedCourse.plans?.elite ? [{
                         value: "elite",
                         label: `Elite Plan - ₹${selectedCourse.plans.elite.price}`,
                       }] : []),
-                      ...(selectedCourse.plans.essential ? [{
+                      ...(selectedCourse.plans?.essential ? [{
                         value: "essential", 
                         label: `Essential Plan - ₹${selectedCourse.plans.essential.price}`,
                       }] : []),

@@ -65,8 +65,6 @@ const handler = NextAuth({
               },
             });
 
-            console.log("response", response.data?.data);
-
             if (response.status === 200) {
               const { user: userData, accessToken } = response.data.data;
               return {
