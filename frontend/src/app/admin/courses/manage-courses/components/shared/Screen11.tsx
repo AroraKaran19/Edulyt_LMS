@@ -1455,7 +1455,7 @@ const Screen11 = () => {
                     Uploading Thumbnail...
                   </>
                 ) : (
-                  "Add Module"
+                  "Save Module"
                 )}
               </OrangeButton>
               <WhiteButton
@@ -1769,7 +1769,7 @@ const Screen11 = () => {
                                   Creating Lesson...
                                 </>
                               ) : (
-                                "Add Lesson"
+                                "Save Lesson"
                               )}
                             </OrangeButton>
                             <WhiteButton
