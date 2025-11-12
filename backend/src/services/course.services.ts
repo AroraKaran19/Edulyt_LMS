@@ -891,9 +891,28 @@ export const UpdateCourseMetadataService = async (
   courseId: string,
   courseData: any
 ): Promise<Course | null> => {
+  // Filter out undefined and null values to prevent overwriting existing data
+  // Also explicitly exclude modules from metadata updates to preserve existing modules
+  const cleanedData: any = { updatedAt: new Date() };
+  
+  // Fields that should never be updated via metadata endpoint
+  const excludedFields = ['modules', '_id'];
+  
+  Object.keys(courseData).forEach((key) => {
+    // Skip excluded fields (like modules) - metadata updates shouldn't touch these
+    if (excludedFields.includes(key)) {
+      return;
+    }
+    
+    // Only include fields that are explicitly provided and not null/undefined
+    if (courseData[key] !== undefined && courseData[key] !== null) {
+      cleanedData[key] = courseData[key];
+    }
+  });
+
   const updatedCourse = await CourseModel.findOneAndUpdate(
     { _id: courseId },
-    { ...courseData, updatedAt: new Date() },
+    cleanedData,
     { new: true, runValidators: true }
   );
 
