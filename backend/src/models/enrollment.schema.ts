@@ -3,6 +3,9 @@ import {
   Enrollment,
   EnrollmentProgressSummary,
   LastContentAccessed,
+  PartialAccessControl,
+  ModuleAccessControl,
+  LessonAccessControl,
 } from "../types";
 
 // Enrollment Progress Summary Schema
@@ -32,6 +35,36 @@ const lastContentAccessedSchema = new mongoose.Schema<LastContentAccessed>(
     },
     lastPosition: { type: Number, default: 0 }, // For videos
     timestamp: { type: Date, default: Date.now },
+  },
+  { _id: false }
+);
+
+// Partial Access Control Schemas
+const lessonAccessControlSchema = new mongoose.Schema<LessonAccessControl>(
+  {
+    lessonId: { type: String, required: true },
+    accessibleContentIds: { type: [String], default: [] },
+  },
+  { _id: false }
+);
+
+const moduleAccessControlSchema = new mongoose.Schema<ModuleAccessControl>(
+  {
+    moduleId: { type: String, required: true },
+    accessibleLessons: { type: [lessonAccessControlSchema], default: [] },
+  },
+  { _id: false }
+);
+
+const partialAccessControlSchema = new mongoose.Schema<PartialAccessControl>(
+  {
+    accessibleModules: { type: [moduleAccessControlSchema], default: [] },
+    accessType: {
+      type: String,
+      required: true,
+      enum: ["full", "partial"],
+      default: "partial",
+    },
   },
   { _id: false }
 );
@@ -116,6 +149,12 @@ const enrollmentSchema = new mongoose.Schema<Enrollment>(
       type: String,
       enum: ["elite", "essential"],
       default: "essential",
+    },
+
+    // Partial access control (for admin-controlled access)
+    accessControl: {
+      type: partialAccessControlSchema,
+      default: null,
     },
 
     // Completion tracking

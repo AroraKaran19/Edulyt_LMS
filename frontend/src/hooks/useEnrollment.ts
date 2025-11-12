@@ -6,11 +6,14 @@ export interface CheckEnrollmentParams {
   courseId: string;
 }
 
+import { PartialAccessControl } from "@/types/enrollment";
+
 export interface EnrollmentStatus {
   isEnrolled: boolean;
   enrollment?: Enrollment;
   status?: "active" | "completed" | "dropped" | "paused";
   canAccess: boolean;
+  accessControl?: PartialAccessControl | null;
 }
 
 const useEnrollment = () => {

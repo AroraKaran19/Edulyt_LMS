@@ -10,6 +10,55 @@ export interface EnrollmentProgressSummary {
   lastActivityAt?: Date;
 }
 
+// ===================
+// Partial Access Control Types
+// ===================
+
+/**
+ * Defines which content items (videos, quizzes, documents) a user can access within a lesson
+ */
+export interface LessonAccessControl {
+  lessonId: string;
+  /**
+   * Array of content IDs the user can access within this lesson
+   * If undefined or empty array, user has access to all contents in the lesson
+   */
+  accessibleContentIds?: string[];
+}
+
+/**
+ * Defines which lessons and their contents a user can access within a module
+ */
+export interface ModuleAccessControl {
+  moduleId: string;
+  /**
+   * Array of lessons the user can access within this module
+   * Each lesson can have specific content restrictions
+   * If undefined or empty array, user has access to all lessons in the module
+   */
+  accessibleLessons?: LessonAccessControl[];
+}
+
+/**
+ * Partial access control for an enrollment
+ * If undefined or null, the user has full access to the entire course
+ * If provided, it specifies exactly which modules, lessons, and contents are accessible
+ */
+export interface PartialAccessControl {
+  /**
+   * Array of modules the user can access
+   * Each module can have specific lesson and content restrictions
+   * If undefined or empty array, user has access to all modules in the course
+   */
+  accessibleModules?: ModuleAccessControl[];
+  
+  /**
+   * Access type: 'full' means full course access, 'partial' means restricted access
+   * This is a convenience field for quick checks
+   */
+  accessType: "full" | "partial";
+}
+
 // Last accessed content (stored separately for performance)
 export interface LastContentAccessed {
   moduleId: string;
@@ -35,6 +84,11 @@ export interface Enrollment {
   giftFrom?: User["_id"] | string; // If enrolled via gift (can be user ID or system string)
   promotionCode?: string;
   planType?: "elite" | "essential"; // If enrolled via promotion
+  
+  // Partial access control (for admin-controlled access)
+  // If undefined or null, user has full access to the entire course
+  // If provided, specifies which modules, lessons, and contents are accessible
+  accessControl?: PartialAccessControl;
   
   // Completion tracking
   completedAt?: Date;

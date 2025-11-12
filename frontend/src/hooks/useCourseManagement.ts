@@ -71,7 +71,7 @@ const useCourseManagement = () => {
     async (courseId: string): Promise<Course | null> => {
       return handleRequest(
         async () => {
-          const response = await apiClient.get(`/courses/admin/${courseId}`);
+          const response = await apiClient.get(`/courses/admin/id/${courseId}`);
           return response.data.data;
         },
         "Failed to fetch course"

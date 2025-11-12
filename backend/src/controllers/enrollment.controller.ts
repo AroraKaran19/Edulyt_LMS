@@ -33,7 +33,7 @@ import {
 // Create new enrollment
 export const createEnrollment = asyncHandler(
   async (req: Request, res: Response) => {
-    const { courseId, enrollmentSource, promotionCode, giftFrom, planType } = req.body;
+    const { courseId, enrollmentSource, promotionCode, giftFrom, planType, accessControl } = req.body;
     const currentUserId = req.user?._id;
 
     if (!currentUserId) {
@@ -49,7 +49,7 @@ export const createEnrollment = asyncHandler(
     const actualGiftFrom =
       enrollmentSource === "gift" ? currentUserId : giftFrom;
 
-    const enrollmentData = {
+    const enrollmentData: any = {
       userId,
       courseId,
       enrollmentSource: enrollmentSource || "direct",
@@ -57,6 +57,11 @@ export const createEnrollment = asyncHandler(
       giftFrom: actualGiftFrom,
       planType: planType || "essential", // Default to essential if not specified
     };
+
+    // Include accessControl if provided
+    if (accessControl) {
+      enrollmentData.accessControl = accessControl;
+    }
 
     const result = await CreateEnrollmentService(enrollmentData);
     if (!result) {
@@ -86,10 +91,12 @@ export const checkEnrollment = asyncHandler(
       userId,
       courseId,
       status: { $ne: "dropped" },
-    }).populate(
-      "courseId",
-      "title thumbnail description category slug duration instructor plans analytics isFeatured isCertified"
-    );
+    })
+      .populate(
+        "courseId",
+        "title thumbnail description category slug duration instructor plans analytics isFeatured isCertified"
+      )
+      .select("status accessControl"); // Include accessControl in the response
 
     const enrollmentStatus = {
       isEnrolled: !!enrollment,
@@ -97,6 +104,7 @@ export const checkEnrollment = asyncHandler(
       status: enrollment?.status || null,
       canAccess:
         enrollment?.status === "active" || enrollment?.status === "completed",
+      accessControl: enrollment?.accessControl || null, // Include accessControl
     };
 
     sendSuccessResponse(

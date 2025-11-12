@@ -8,11 +8,25 @@ import { Lock, AlertCircle, Loader2 } from "lucide-react";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import { Button } from "@/components/ui/buttons/button";
 import { toast } from "react-toastify";
+import { createContext, useContext } from "react";
+import { PartialAccessControl } from "@/types/enrollment";
 
 interface EnrollmentGuardProps {
   course: Course;
   children: React.ReactNode;
 }
+
+export interface EnrollmentContextValue {
+  enrollment: any;
+  accessControl: PartialAccessControl | null | undefined;
+}
+
+const EnrollmentContext = createContext<EnrollmentContextValue | null>(null);
+
+export const useEnrollmentContext = () => {
+  const context = useContext(EnrollmentContext);
+  return context;
+};
 
 const EnrollmentGuard = ({ course, children }: EnrollmentGuardProps) => {
   const { data: session, status } = useSession();
@@ -24,6 +38,7 @@ const EnrollmentGuard = ({ course, children }: EnrollmentGuardProps) => {
     enrollment?: any;
     status?: string;
     canAccess: boolean;
+    accessControl?: PartialAccessControl | null;
   } | null>(null);
   const [isCheckingEnrollment, setIsCheckingEnrollment] = useState(true);
 
@@ -185,8 +200,17 @@ const EnrollmentGuard = ({ course, children }: EnrollmentGuardProps) => {
     );
   }
 
-  // User has access - render the course content
-  return <>{children}</>;
+  // User has access - render the course content with enrollment context
+  return (
+    <EnrollmentContext.Provider
+      value={{
+        enrollment: enrollmentStatus?.enrollment,
+        accessControl: enrollmentStatus?.accessControl || null,
+      }}
+    >
+      {children}
+    </EnrollmentContext.Provider>
+  );
 };
 
 export default EnrollmentGuard;

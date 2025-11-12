@@ -8,6 +8,7 @@ import {
   UserEnrollmentStats,
   CourseEnrollmentStats,
   LastContentAccessed,
+  PartialAccessControl,
 } from "../types";
 import mongoose from "mongoose";
 
@@ -19,6 +20,7 @@ export const CreateEnrollmentService = async (enrollmentData: {
   promotionCode?: string;
   giftFrom?: string;
   planType?: "elite" | "essential";
+  accessControl?: PartialAccessControl;
 }): Promise<Enrollment | null> => {
   try {
     // Check if enrollment already exists
@@ -46,6 +48,8 @@ export const CreateEnrollmentService = async (enrollmentData: {
       },
       lastUpdated: new Date(),
       totalTimeSpent: 0,
+      // Include accessControl if provided, otherwise it will be undefined (full access)
+      accessControl: enrollmentData.accessControl || undefined,
     });
 
     const savedEnrollment = await enrollment.save();

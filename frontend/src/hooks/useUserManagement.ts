@@ -2,7 +2,7 @@ import { useState, useCallback } from "react";
 import apiClient from "@/configs/apiConfig";
 import { User } from "@/types/user";
 import { Course } from "@/types/course";
-import { Enrollment } from "@/types/enrollment";
+import { Enrollment, PartialAccessControl } from "@/types/enrollment";
 
 export interface GetUsersParams {
   page?: number;
@@ -24,6 +24,7 @@ export interface GiftCourseData {
   courseId: string;
   planType: "elite" | "essential";
   message?: string;
+  accessControl?: PartialAccessControl;
 }
 
 const useUserManagement = () => {
@@ -103,12 +104,19 @@ const useUserManagement = () => {
   const giftCourse = useCallback(
     async (data: GiftCourseData): Promise<Enrollment | null> => {
       try {
-        const response = await apiClient.post("/enrollments", {
+        const requestBody: any = {
           userId: data.userId,
           courseId: data.courseId,
           planType: data.planType,
           enrollmentSource: "gift",
-        });
+        };
+
+        // Only include accessControl if it's provided
+        if (data.accessControl) {
+          requestBody.accessControl = data.accessControl;
+        }
+
+        const response = await apiClient.post("/enrollments", requestBody);
         return response.data.data;
       } catch (error: any) {
         // Extract the specific error message from the backend
