@@ -21,6 +21,7 @@ import {
   reviewRoutes,
   webhookRoutes,
   paymentRoutes,
+  liveClassesRoutes,
 } from "./routes";
 
 dotenv.config();
@@ -61,6 +62,7 @@ app.use("/api/instructors", instructorRoutes);
 app.use("/api", reviewRoutes);
 app.use("/api/webhook", webhookRoutes);
 app.use("/api/payment", paymentRoutes);
+app.use("/api/live-classes", liveClassesRoutes);
 
 app.use(notFoundHandler); // Handle 404 errors
 app.use(errorHandler); // Handle all other errors

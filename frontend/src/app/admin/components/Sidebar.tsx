@@ -40,6 +40,10 @@ const AdminSidebar = ({ isCollapsed, setIsCollapsed }: AdminSidebarProps) => {
           label: "Manage Courses",
           href: "/admin/courses/manage-courses",
         },
+        {
+          label: "Live Classes",
+          href: "/admin/courses/live-classes",
+        },
       ],
     },
     {

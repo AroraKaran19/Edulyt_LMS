@@ -39,7 +39,7 @@ const UserMenu = () => {
     {
       label: "Profile",
       icon: User,
-      href: "/admin/profile",
+      href: "/dashboard/profile",
     },
     {
       label: "Logout",

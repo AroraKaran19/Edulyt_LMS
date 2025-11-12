@@ -13,6 +13,7 @@ import instructorRoutes from "./instructor.routes";
 import reviewRoutes from "./review.routes";
 import webhookRoutes from "./webhook.routes";
 import paymentRoutes from "./payment.routes";
+import liveClassesRoutes from "./live-classes.routes";
 
 export {
   authRoutes,
@@ -30,4 +31,5 @@ export {
   reviewRoutes,
   webhookRoutes,
   paymentRoutes,
+  liveClassesRoutes,
 };

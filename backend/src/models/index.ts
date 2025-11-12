@@ -22,6 +22,7 @@ import TestimonialModel from "./testimonial.schema";
 import { FAQModel } from "./faq.schema";
 import ReviewModel from "./review.schema";
 import { EnrollmentModel } from "./enrollment.schema";
+import LiveClassModel from "./live-classes.schema";
 
 export {
   UserModel,
@@ -46,4 +47,5 @@ export {
   FAQModel,
   ReviewModel,
   EnrollmentModel,
+  LiveClassModel,
 };

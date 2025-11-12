@@ -9,6 +9,7 @@ export * from "./category";
 export * from "./notes";
 export * from "./qna";
 export * from "./order";
+export * from "./live-classes";
 
 // ===================
 // Type Exports
