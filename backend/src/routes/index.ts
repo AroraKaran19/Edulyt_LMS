@@ -14,6 +14,7 @@ import reviewRoutes from "./review.routes";
 import webhookRoutes from "./webhook.routes";
 import paymentRoutes from "./payment.routes";
 import liveClassesRoutes from "./live-classes.routes";
+import authenticationMediaRoutes from "./authentication-media.routes";
 
 export {
   authRoutes,
@@ -32,4 +33,5 @@ export {
   webhookRoutes,
   paymentRoutes,
   liveClassesRoutes,
+  authenticationMediaRoutes,
 };

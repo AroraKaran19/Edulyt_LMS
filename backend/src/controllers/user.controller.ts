@@ -13,6 +13,7 @@ import {
   updateUserProfileService,
   getCurrentUserProfileService,
   changeUserPasswordService,
+  adminChangeUserPasswordService,
 } from "../services/user.services";
 
 export const getUsers = asyncHandler(async (req: Request, res: Response) => {
@@ -165,6 +166,67 @@ export const changeUserPassword = asyncHandler(
       res,
       null,
       "Password updated successfully",
+      200
+    );
+  }
+);
+
+/**
+ * Admin endpoint to update any user's profile
+ */
+export const adminUpdateUser = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { userId } = req.params;
+    const updateData = req.body;
+
+    if (!userId) {
+      throw new AppError("User ID is required", 400);
+    }
+
+    // Remove sensitive fields that shouldn't be updated
+    const { password, refreshTokens, _id, createdAt, permissions, ...allowedFields } =
+      updateData;
+
+    const updatedUser = await updateUserProfileService(userId, allowedFields);
+    if (!updatedUser) {
+      throw new AppError("User not found", 404);
+    }
+
+    sendSuccessResponse(
+      res,
+      updatedUser,
+      "User updated successfully",
+      200
+    );
+  }
+);
+
+/**
+ * Admin endpoint to change any user's password
+ */
+export const adminChangeUserPassword = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { userId } = req.params;
+    const { newPassword } = req.body;
+
+    if (!userId) {
+      throw new AppError("User ID is required", 400);
+    }
+
+    if (!newPassword) {
+      throw new AppError("New password is required", 400);
+    }
+
+    if (newPassword.length < 6) {
+      throw new AppError("Password must be at least 6 characters long", 400);
+    }
+
+    await adminChangeUserPasswordService(userId, newPassword);
+    
+    sendSuccessResponse(
+      res,
+      null,
+      "User password updated successfully",
       200
     );
   }

@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import Container from "@/app/admin/components/ui/Container";
+import UploadMediaContainer from "@/components/ui/container/UploadMediaContainer";
 import {
   Plus,
   Search,
@@ -22,6 +23,7 @@ import {
 import { Testimonial } from "@/types";
 import { useTestimonial } from "@/hooks/useTestimonial";
 import { useFormContext, Controller } from "react-hook-form";
+import { useUpload } from "@/hooks/useUpload";
 
 interface ProfileImageProps {
   src: string;
@@ -116,6 +118,8 @@ const Screen7 = () => {
     clearError,
   } = useTestimonial();
 
+  const { uploadFile, isUploading: isUploadingLogo } = useUpload();
+
   const [testimonials, setTestimonials] = useState<Testimonial[] | null>([]);
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(1);
@@ -132,6 +136,11 @@ const Screen7 = () => {
     pastRole: "",
     pastCompany: "",
     college: "",
+    collegeUrl: "",
+    collegeProfileUrl: "",
+    companyUrl: "",
+    companyProfileUrl: "",
+    companyLogo: "",
     profileImage: "",
     verified: false,
   });
@@ -263,6 +272,71 @@ const Screen7 = () => {
     });
   };
 
+  // Handle company logo upload for new testimonial
+  const handleCompanyLogoUpload = async (file: File, folderName: string) => {
+    try {
+      const result = await uploadFile(file, folderName);
+      if (result.success && result.data?.url) {
+        setNewTestimonial((prev) => ({
+          ...prev,
+          companyLogo: result.data!.url,
+        }));
+        return result.data.url;
+      }
+      throw new Error(result.error || "Upload failed");
+    } catch (error) {
+      console.error("Failed to upload company logo:", error);
+      throw error;
+    }
+  };
+
+  // Handle company logo URL submission for new testimonial
+  const handleCompanyLogoUrlChange = (url: string) => {
+    setNewTestimonial((prev) => ({
+      ...prev,
+      companyLogo: url,
+    }));
+  };
+
+  // Handle company logo remove for new testimonial
+  const handleCompanyLogoRemove = () => {
+    setNewTestimonial((prev) => ({
+      ...prev,
+      companyLogo: "",
+    }));
+  };
+
+  // Handle company logo upload for editing testimonial
+  const handleEditCompanyLogoUpload = async (file: File, folderName: string) => {
+    try {
+      const result = await uploadFile(file, folderName);
+      if (result.success && result.data?.url) {
+        setEditingTestimonial((prev) =>
+          prev ? { ...prev, companyLogo: result.data!.url } : null
+        );
+        return result.data.url;
+      }
+      throw new Error(result.error || "Upload failed");
+    } catch (error) {
+      console.error("Failed to upload company logo:", error);
+      throw error;
+    }
+  };
+
+  // Handle company logo URL submission for editing testimonial
+  const handleEditCompanyLogoUrlChange = (url: string) => {
+    setEditingTestimonial((prev) =>
+      prev ? { ...prev, companyLogo: url } : null
+    );
+  };
+
+  // Handle company logo remove for editing testimonial
+  const handleEditCompanyLogoRemove = () => {
+    setEditingTestimonial((prev) =>
+      prev ? { ...prev, companyLogo: "" } : null
+    );
+  };
+
   const handleCreateTestimonial = async () => {
     if (
       !newTestimonial.name.trim() ||
@@ -284,6 +358,11 @@ const Screen7 = () => {
           pastRole: "",
           pastCompany: "",
           college: "",
+          collegeUrl: "",
+          collegeProfileUrl: "",
+          companyUrl: "",
+          companyProfileUrl: "",
+          companyLogo: "",
           profileImage: "",
           verified: false,
         });
@@ -321,6 +400,11 @@ const Screen7 = () => {
         pastRole: editingTestimonial.pastRole,
         pastCompany: editingTestimonial.pastCompany,
         college: editingTestimonial.college,
+        collegeUrl: editingTestimonial.collegeUrl,
+        collegeProfileUrl: editingTestimonial.collegeProfileUrl,
+        companyUrl: editingTestimonial.companyUrl,
+        companyProfileUrl: editingTestimonial.companyProfileUrl,
+        companyLogo: editingTestimonial.companyLogo,
         profileImage: editingTestimonial.profileImage,
         verified: editingTestimonial.verified,
       });
@@ -523,7 +607,7 @@ const Screen7 = () => {
                 />
 
                 <Input
-                  label="Past Role"
+                  label="Past Course/Role"
                   value={newTestimonial.pastRole}
                   onChange={(e) =>
                     setNewTestimonial((prev) => ({
@@ -536,7 +620,7 @@ const Screen7 = () => {
                 />
 
                 <Input
-                  label="Past Company"
+                  label="Past College/Company"
                   value={newTestimonial.pastCompany}
                   onChange={(e) =>
                     setNewTestimonial((prev) => ({
@@ -549,7 +633,7 @@ const Screen7 = () => {
                 />
 
                 <Input
-                  label="College"
+                  label="Tagline"
                   value={newTestimonial.college}
                   onChange={(e) =>
                     setNewTestimonial((prev) => ({
@@ -572,6 +656,75 @@ const Screen7 = () => {
                   }
                   placeholder="https://linkedin.com/in/username"
                   required
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Input
+                  label="College URL"
+                  value={newTestimonial.collegeUrl}
+                  onChange={(e) =>
+                    setNewTestimonial((prev) => ({
+                      ...prev,
+                      collegeUrl: e.target.value,
+                    }))
+                  }
+                  placeholder="https://example.com/college"
+                />
+
+                <Input
+                  label="College Profile URL"
+                  value={newTestimonial.collegeProfileUrl}
+                  onChange={(e) =>
+                    setNewTestimonial((prev) => ({
+                      ...prev,
+                      collegeProfileUrl: e.target.value,
+                    }))
+                  }
+                  placeholder="https://example.com/college/profile"
+                />
+
+                <Input
+                  label="Company URL"
+                  value={newTestimonial.companyUrl}
+                  onChange={(e) =>
+                    setNewTestimonial((prev) => ({
+                      ...prev,
+                      companyUrl: e.target.value,
+                    }))
+                  }
+                  placeholder="https://example.com/company"
+                />
+
+                <Input
+                  label="Company Profile URL"
+                  value={newTestimonial.companyProfileUrl}
+                  onChange={(e) =>
+                    setNewTestimonial((prev) => ({
+                      ...prev,
+                      companyProfileUrl: e.target.value,
+                    }))
+                  }
+                  placeholder="https://example.com/company/profile"
+                />
+
+              </div>
+
+              <div className="w-full">
+                <UploadMediaContainer
+                  type="image"
+                  folderName="testimonials/company_logos"
+                  mediaUrl={newTestimonial.companyLogo}
+                  mediaSource={newTestimonial.companyLogo ? "url" : undefined}
+                  onFileUpload={handleCompanyLogoUpload}
+                  onFileRemove={handleCompanyLogoRemove}
+                  onUrlSubmit={handleCompanyLogoUrlChange}
+                  allowUrlInput
+                  maxSize={5}
+                  acceptedFormats={[".jpg", ".jpeg", ".png", ".webp", ".gif"]}
+                  isUploading={isUploadingLogo}
+                  title="Company Logo"
+                  description="Upload or provide URL for company logo"
                 />
               </div>
 
@@ -702,7 +855,7 @@ const Screen7 = () => {
                 />
 
                 <Input
-                  label="Past Role"
+                  label="Past Course/Role"
                   value={editingTestimonial.pastRole}
                   onChange={(e) =>
                     setEditingTestimonial((prev) =>
@@ -714,7 +867,7 @@ const Screen7 = () => {
                 />
 
                 <Input
-                  label="Past Company"
+                  label="Past College/Company"
                   value={editingTestimonial.pastCompany}
                   onChange={(e) =>
                     setEditingTestimonial((prev) =>
@@ -726,7 +879,7 @@ const Screen7 = () => {
                 />
 
                 <Input
-                  label="College"
+                  label="Tagline"
                   value={editingTestimonial.college}
                   onChange={(e) =>
                     setEditingTestimonial((prev) =>
@@ -747,6 +900,71 @@ const Screen7 = () => {
                   }
                   placeholder="https://linkedin.com/in/username"
                   required
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Input
+                  label="College URL"
+                  value={editingTestimonial.collegeUrl || ""}
+                  onChange={(e) =>
+                    setEditingTestimonial((prev) =>
+                      prev ? { ...prev, collegeUrl: e.target.value } : null
+                    )
+                  }
+                  placeholder="https://example.com/college"
+                />
+
+                <Input
+                  label="College Profile URL"
+                  value={editingTestimonial.collegeProfileUrl || ""}
+                  onChange={(e) =>
+                    setEditingTestimonial((prev) =>
+                      prev ? { ...prev, collegeProfileUrl: e.target.value } : null
+                    )
+                  }
+                  placeholder="https://example.com/college/profile"
+                />
+
+                <Input
+                  label="Company URL"
+                  value={editingTestimonial.companyUrl || ""}
+                  onChange={(e) =>
+                    setEditingTestimonial((prev) =>
+                      prev ? { ...prev, companyUrl: e.target.value } : null
+                    )
+                  }
+                  placeholder="https://example.com/company"
+                />
+
+                <Input
+                  label="Company Profile URL"
+                  value={editingTestimonial.companyProfileUrl || ""}
+                  onChange={(e) =>
+                    setEditingTestimonial((prev) =>
+                      prev ? { ...prev, companyProfileUrl: e.target.value } : null
+                    )
+                  }
+                  placeholder="https://example.com/company/profile"
+                />
+
+              </div>
+
+              <div className="w-full">
+                <UploadMediaContainer
+                  type="image"
+                  folderName="testimonials/company_logos"
+                  mediaUrl={editingTestimonial.companyLogo || ""}
+                  mediaSource={editingTestimonial.companyLogo ? "url" : undefined}
+                  onFileUpload={handleEditCompanyLogoUpload}
+                  onFileRemove={handleEditCompanyLogoRemove}
+                  onUrlSubmit={handleEditCompanyLogoUrlChange}
+                  allowUrlInput
+                  maxSize={5}
+                  acceptedFormats={[".jpg", ".jpeg", ".png", ".webp", ".gif"]}
+                  isUploading={isUploadingLogo}
+                  title="Company Logo"
+                  description="Upload or provide URL for company logo"
                 />
               </div>
 

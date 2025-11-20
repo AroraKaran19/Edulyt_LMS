@@ -69,9 +69,32 @@ export const getUsersService = async (
 export const getUserByIdService = async (
   userId: string
 ): Promise<User | null> => {
-  const user = await UserModel.findById(userId)
-    .select("-password -refreshTokens -__v")
+  // First get the user to determine their type
+  const baseUser = await UserModel.findById(userId)
+    .select("userType")
     .lean();
+  
+  if (!baseUser) {
+    return null;
+  }
+
+  let user;
+
+  // Fetch from the appropriate model based on user type
+  if (baseUser.userType === "student") {
+    user = await StudentModel.findById(userId)
+      .select("-password -refreshTokens -__v")
+      .lean();
+  } else if (baseUser.userType === "instructor") {
+    user = await InstructorModel.findById(userId)
+      .select("-password -refreshTokens -__v")
+      .lean();
+  } else {
+    // For other user types (collaborator, admin, etc.), use base UserModel
+    user = await UserModel.findById(userId)
+      .select("-password -refreshTokens -__v")
+      .lean();
+  }
 
   return user as User | null;
 };
@@ -231,6 +254,41 @@ export const changeUserPasswordService = async (
       "New password must be different from current password",
       400
     );
+  }
+
+  // Hash new password
+  const saltRounds = 10;
+  const hashedNewPassword = await bcrypt.hash(newPassword, saltRounds);
+
+  // Update password
+  await UserModel.findByIdAndUpdate(
+    userId,
+    {
+      password: hashedNewPassword,
+      updatedAt: new Date(),
+    },
+    { new: true }
+  );
+
+  return true;
+};
+
+/**
+ * Admin service to change any user's password without requiring current password
+ */
+export const adminChangeUserPasswordService = async (
+  userId: string,
+  newPassword: string
+): Promise<boolean> => {
+  // Get user to verify existence
+  const user = await UserModel.findById(userId);
+  if (!user) {
+    throw new AppError("User not found", 404);
+  }
+
+  // Validate password length
+  if (newPassword.length < 6) {
+    throw new AppError("Password must be at least 6 characters long", 400);
   }
 
   // Hash new password

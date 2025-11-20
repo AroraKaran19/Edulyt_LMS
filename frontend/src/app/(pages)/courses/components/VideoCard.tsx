@@ -66,7 +66,7 @@ const VideoCard = ({
         <div className="video-content w-full md:w-2/3 flex flex-col md:flex-row gap-2 shrink-0">
           <div className="text-content w-full md:w-2/3 flex flex-col gap-2">
             <p className="chapter-number text-base text-gray-500">
-              Module {index + 1}
+              Lesson {index + 1}
             </p>
             <p className="video-title text-lg font-bold wrap-break-words line-clamp-2">
               {lesson.title}

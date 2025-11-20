@@ -52,7 +52,7 @@ export const getAllCoursesService = async (
       filters.category = { $in: categoryList };
     }
   }
-  if (audience) {
+  if (audience && !isAdmin) {
     filters.audience = { $regex: audience, $options: "i" };
   }
 

@@ -22,6 +22,7 @@ import {
   webhookRoutes,
   paymentRoutes,
   liveClassesRoutes,
+  authenticationMediaRoutes,
 } from "./routes";
 
 dotenv.config();
@@ -63,6 +64,7 @@ app.use("/api", reviewRoutes);
 app.use("/api/webhook", webhookRoutes);
 app.use("/api/payment", paymentRoutes);
 app.use("/api/live-classes", liveClassesRoutes);
+app.use("/api/authentication-media", authenticationMediaRoutes);
 
 app.use(notFoundHandler); // Handle 404 errors
 app.use(errorHandler); // Handle all other errors

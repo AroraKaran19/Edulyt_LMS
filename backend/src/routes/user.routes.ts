@@ -10,6 +10,8 @@ import {
   updateUserProfile,
   getCurrentUserProfile,
   changeUserPassword,
+  adminUpdateUser,
+  adminChangeUserPassword,
 } from "../controllers/user.controller";
 
 const router = Router();
@@ -38,11 +40,25 @@ router.get("/admin", getUsers);
 router.get("/admin/:userId", getUserById);
 
 /**
+ * @route   PUT /api/users/admin/:userId
+ * @desc    Update any user's profile (handles all user types)
+ * @access  Admin
+ */
+router.put("/admin/:userId", adminUpdateUser);
+
+/**
  * @route   PUT /api/users/admin/:userId/status
  * @desc    Update user status
  * @access  Admin
  */
 router.put("/admin/:userId/status", updateUserStatus);
+
+/**
+ * @route   PUT /api/users/admin/:userId/password
+ * @desc    Change any user's password (admin only, no current password required)
+ * @access  Admin
+ */
+router.put("/admin/:userId/password", adminChangeUserPassword);
 
 /**
  * @route   DELETE /api/users/admin/:userId

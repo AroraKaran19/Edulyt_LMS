@@ -1,6 +1,6 @@
 "use client";
 import { cn } from "@/lib/utils";
-import { Discount } from "@/types";
+import { CourseDiscount } from "@/types";
 import React, { useEffect, useState } from "react";
 
 const DiscountCountdown = ({
@@ -12,7 +12,7 @@ const DiscountCountdown = ({
   discountClassname,
   ...props
 }: {
-  discount?: Discount;
+  discount?: CourseDiscount;
   days: number;
   hours: number;
   minutes: number;
@@ -34,6 +34,11 @@ const DiscountCountdown = ({
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Update countdown when initial values change
+  useEffect(() => {
+    setCountdown({ days, hours, minutes, seconds });
+  }, [days, hours, minutes, seconds]);
 
   useEffect(() => {
     if (!mounted) return; // Don't start countdown until mounted
@@ -73,48 +78,33 @@ const DiscountCountdown = ({
       });
     }, 1000);
     return () => clearInterval(interval);
-  }, [mounted, days, hours, minutes, seconds]);
+  }, [mounted]);
 
   // Show initial values during SSR and until mounted
   const displayCountdown = mounted
     ? countdown
     : { days, hours, minutes, seconds };
 
-  // Check if discount should be displayed based on displayTime and resetAfter
-  // Discount cycles every resetAfter seconds starting from displayTime
-  const isDiscountActive = discount && discount.isActive && discount.displayTime && discount.resetAfter ? (() => {
-    const now = new Date();
-    const [displayHour, displayMin, displaySec] = discount.displayTime.split(':').map(Number);
-    const displayTimeInSeconds = displayHour * 3600 + displayMin * 60 + displaySec;
-    const currentTimeInSeconds = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
-    
-    // Calculate how many seconds have passed since the last cycle start
-    // Cycles repeat every resetAfter seconds, starting from displayTime each day
-    const totalSecondsInDay = 86400;
-    
-    // Calculate position in current cycle
-    let secondsSinceCycleStart: number;
-    if (currentTimeInSeconds < displayTimeInSeconds) {
-      // We're before the first cycle start today, so we're in a cycle from yesterday
-      const secondsFromYesterday = totalSecondsInDay - displayTimeInSeconds;
-      const totalSecondsSinceCycleStart = secondsFromYesterday + currentTimeInSeconds;
-      secondsSinceCycleStart = totalSecondsSinceCycleStart % discount.resetAfter;
-    } else {
-      // We're after displayTime today
-      secondsSinceCycleStart = (currentTimeInSeconds - displayTimeInSeconds) % discount.resetAfter;
-    }
-    
-    // Check if we're within the active window (first resetAfter seconds of each cycle)
-    return secondsSinceCycleStart < discount.resetAfter;
-  })() : false;
+  const shouldShowCountdown = 
+    discount && 
+    discount.isActive && 
+    discount.startTime && 
+    discount.endTime &&
+    days >= 0 && 
+    hours >= 0 && 
+    minutes >= 0 && 
+    seconds >= 0;
 
-  return mounted && discount && discount.isActive && isDiscountActive ? (
+  if (!shouldShowCountdown) return null;
+
+  return (
     <div
       className={cn(
         "discount-countdown flex flex-col gap-2 text-base",
         props.className
       )}
     >
+      {/* Line 1: Discount Badge */}
       {discount && (
         <div
           className={cn(
@@ -129,21 +119,38 @@ const DiscountCountdown = ({
           </span>
         </div>
       )}
-      <p className="font-medium text-text-primary flex flex-wrap gap-2 justify-center md:justify-start">
-        <span>Limited Offer Ends In</span>
-        <span className="underline">
-          {displayCountdown.days > 0 ? `${displayCountdown.days} D : ` : ""}
-          {displayCountdown.hours > 0 ? `${displayCountdown.hours} Hr : ` : ""}
-          {displayCountdown.minutes > 0
-            ? `${displayCountdown.minutes} Min : `
-            : ""}
-          {displayCountdown.seconds > 0
-            ? `${displayCountdown.seconds} Sec`
-            : ""}
-        </span>
+      
+      {/* Line 2: Status Text */}
+      <p className="font-medium text-text-primary text-center md:text-left">
+        {(() => {
+          // Determine if we're before start time or during discount period
+          const now = new Date();
+          const [startHour, startMin] = discount!.startTime!.split(':').map(Number);
+          const currentHour = now.getHours();
+          const currentMin = now.getMinutes();
+          const currentTimeInMinutes = currentHour * 60 + currentMin;
+          const startTimeInMinutes = startHour * 60 + startMin;
+          
+          // Check if we're before start time
+          const isBeforeStart = currentTimeInMinutes < startTimeInMinutes;
+          
+          return isBeforeStart ? "Discount Starts In" : "Limited Offer Ends In";
+        })()}
+      </p>
+      
+      {/* Line 3: Countdown Time */}
+      <p className="font-medium text-text-primary text-center md:text-left underline">
+        {displayCountdown.days > 0 ? `${displayCountdown.days} D : ` : ""}
+        {displayCountdown.hours > 0 ? `${displayCountdown.hours} Hr : ` : ""}
+        {displayCountdown.minutes > 0
+          ? `${displayCountdown.minutes} Min : `
+          : ""}
+        {displayCountdown.seconds > 0
+          ? `${displayCountdown.seconds} Sec`
+          : ""}
       </p>
     </div>
-  ) : null;
+  );
 };
 
 export default DiscountCountdown;

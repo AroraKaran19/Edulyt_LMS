@@ -74,6 +74,12 @@ export const transformFormDataToCourse = (
   // Use the language as provided (full name)
   const validLanguage = courseData.language || "English";
 
+  // Validate audience field
+  const validAudience = 
+    courseData.audience === "college-students" || courseData.audience === "professionals"
+      ? courseData.audience
+      : "college-students"; // Default to college-students if invalid
+
   // Validate ObjectIds for testimonials and FAQs
   const isValidObjectId = (id: string): boolean => {
     return /^[0-9a-fA-F]{24}$/.test(id);
@@ -98,6 +104,7 @@ export const transformFormDataToCourse = (
   return {
     ...courseData,
     language: validLanguage, // Ensure language is always provided (full name)
+    audience: validAudience, // Ensure audience is always valid
     // Only include valid ObjectIds for testimonials, FAQs, and instructors
     testimonials: validTestimonials,
     faqs: validFaqs,
@@ -156,27 +163,15 @@ export const transformCourseToFormData = (
                   ? {
                       ...course.plans.essential.discount,
                       isActive: true, // Set to true if discount exists
-                      displayTime: course.plans.essential.discount.displayTime
-                        ? course.plans.essential.discount.displayTime
-                        : course.discount?.displayTime
-                        ? course.discount.displayTime
-                        : "00:00:00",
-                      resetAfter: course.plans.essential.discount.resetAfter !== undefined
-                        ? course.plans.essential.discount.resetAfter
-                        : course.discount?.resetAfter !== undefined
-                        ? course.discount.resetAfter
-                        : 0,
+                      startDate: course.plans.essential.discount.startDate || undefined,
+                      endDate: course.plans.essential.discount.endDate || undefined,
                     }
                   : {
                       isActive: false,
                       discount: "percentage",
                       value: 0,
-                      displayTime: course.discount?.displayTime
-                        ? course.discount.displayTime
-                        : "00:00:00",
-                      resetAfter: course.discount?.resetAfter !== undefined
-                        ? course.discount.resetAfter
-                        : 0,
+                      startDate: undefined,
+                      endDate: undefined,
                     },
               }
             : undefined,
@@ -187,27 +182,15 @@ export const transformCourseToFormData = (
                   ? {
                       ...course.plans.elite.discount,
                       isActive: true, // Set to true if discount exists
-                      displayTime: course.plans.elite.discount.displayTime
-                        ? course.plans.elite.discount.displayTime
-                        : course.discount?.displayTime
-                        ? course.discount.displayTime
-                        : "00:00:00",
-                      resetAfter: course.plans.elite.discount.resetAfter !== undefined
-                        ? course.plans.elite.discount.resetAfter
-                        : course.discount?.resetAfter !== undefined
-                        ? course.discount.resetAfter
-                        : 0,
+                      startDate: course.plans.elite.discount.startDate || undefined,
+                      endDate: course.plans.elite.discount.endDate || undefined,
                     }
                   : {
                       isActive: false,
                       discount: "percentage",
                       value: 0,
-                      displayTime: course.discount?.displayTime
-                        ? course.discount.displayTime
-                        : "00:00:00",
-                      resetAfter: course.discount?.resetAfter !== undefined
-                        ? course.discount.resetAfter
-                        : 0,
+                      startDate: undefined,
+                      endDate: undefined,
                     },
               }
             : undefined,
@@ -222,15 +205,15 @@ export const transformCourseToFormData = (
       ? {
           ...course.discount,
           isActive: course.discount.isActive || false,
-          displayTime: course.discount.displayTime || "00:00:00",
-          resetAfter: course.discount.resetAfter !== undefined ? course.discount.resetAfter : 0,
+          startTime: course.discount.startTime || "00:00",
+          endTime: course.discount.endTime || "23:00",
         }
       : {
           isActive: false,
           discount: "percentage",
           value: 0,
-          displayTime: "00:00:00",
-          resetAfter: 0,
+          startTime: "00:00",
+          endTime: "23:00",
         },
 
     // Navigation & State
@@ -676,7 +659,7 @@ export const getInitialFormData = (
     whoShouldJoin: "",
     prerequisites: [],
     duration: "",
-    language: "en",
+    language: "English",
     instructor: [],
     plans: {},
     discount: undefined,
@@ -813,7 +796,7 @@ export const sanitizeFormData = (formData: CourseFormData): CourseFormData => {
     skillLevel: formData.skillLevel?.trim() || "",
     whoShouldJoin: formData.whoShouldJoin?.trim() || "",
     duration: formData.duration?.trim() || "",
-    language: formData.language?.trim() || "en",
+    language: formData.language?.trim() || "English",
     skills: formData.skills?.filter((skill) => skill.trim().length > 0) || [],
     keywords:
       formData.keywords?.filter((keyword) => keyword.trim().length > 0) || [],

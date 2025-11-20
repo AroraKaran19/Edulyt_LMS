@@ -12,6 +12,11 @@ export interface Testimonial {
   pastRole: string;
   pastCompany: string;
   college: string;
+  collegeUrl?: string;
+  collegeProfileUrl?: string;
+  companyUrl?: string;
+  companyProfileUrl?: string;
+  companyLogo?: string;
   verified?: boolean;
   profileImage?: string;
   createdAt?: Date;
@@ -54,6 +59,11 @@ export interface CreateTestimonialData {
   pastRole: string;
   pastCompany: string;
   college: string;
+  collegeUrl?: string;
+  collegeProfileUrl?: string;
+  companyUrl?: string;
+  companyProfileUrl?: string;
+  companyLogo?: string;
   verified?: boolean;
   profileImage?: string;
 }
@@ -66,6 +76,11 @@ export interface UpdateTestimonialData {
   pastRole?: string;
   pastCompany?: string;
   college?: string;
+  collegeUrl?: string;
+  collegeProfileUrl?: string;
+  companyUrl?: string;
+  companyProfileUrl?: string;
+  companyLogo?: string;
   verified?: boolean;
   profileImage?: string;
 }
@@ -537,21 +552,21 @@ export const useTestimonial = () => {
         ) {
           return {
             valid: false,
-            error: "Past role is required and cannot be empty",
+            error: "Past Course/Role is required and cannot be empty",
           };
         }
 
         if (testimonialData.pastRole.length < 2) {
           return {
             valid: false,
-            error: "Past role must be at least 2 characters long",
+            error: "Past Course/Role must be at least 2 characters long",
           };
         }
 
         if (testimonialData.pastRole.length > 100) {
           return {
             valid: false,
-            error: "Past role must be less than 100 characters",
+            error: "Past Course/Role must be less than 100 characters",
           };
         }
       }
@@ -563,21 +578,21 @@ export const useTestimonial = () => {
         ) {
           return {
             valid: false,
-            error: "Past company is required and cannot be empty",
+            error: "Past College/Company is required and cannot be empty",
           };
         }
 
         if (testimonialData.pastCompany.length < 2) {
           return {
             valid: false,
-            error: "Past company must be at least 2 characters long",
+            error: "Past College/Company must be at least 2 characters long",
           };
         }
 
         if (testimonialData.pastCompany.length > 100) {
           return {
             valid: false,
-            error: "Past company must be less than 100 characters",
+            error: "Past College/Company must be less than 100 characters",
           };
         }
       }
@@ -589,21 +604,21 @@ export const useTestimonial = () => {
         ) {
           return {
             valid: false,
-            error: "College is required and cannot be empty",
+            error: "Tagline is required and cannot be empty",
           };
         }
 
         if (testimonialData.college.length < 2) {
           return {
             valid: false,
-            error: "College must be at least 2 characters long",
+            error: "Tagline must be at least 2 characters long",
           };
         }
 
         if (testimonialData.college.length > 100) {
           return {
             valid: false,
-            error: "College must be less than 100 characters",
+            error: "Tagline must be less than 100 characters",
           };
         }
       }
@@ -617,6 +632,30 @@ export const useTestimonial = () => {
             error:
               "Please provide a valid image URL (jpg, jpeg, png, gif, webp)",
           };
+        }
+      }
+
+      // Validate URL fields if provided
+      const urlFields = [
+        { field: "collegeUrl", label: "College URL" },
+        { field: "collegeProfileUrl", label: "College Profile URL" },
+        { field: "companyUrl", label: "Company URL" },
+        { field: "companyProfileUrl", label: "Company Profile URL" },
+        { field: "companyLogo", label: "Company Logo URL" },
+      ];
+
+      for (const { field, label } of urlFields) {
+        if (field in testimonialData && testimonialData[field as keyof typeof testimonialData]) {
+          const url = testimonialData[field as keyof typeof testimonialData] as string;
+          if (url && url.trim().length > 0) {
+            const urlRegex = /^https?:\/\/.+/i;
+            if (!urlRegex.test(url)) {
+              return {
+                valid: false,
+                error: `${label} must be a valid URL starting with http:// or https://`,
+              };
+            }
+          }
         }
       }
 

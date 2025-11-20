@@ -14,43 +14,74 @@ export const calculateDiscountTime = (course: Course) => {
     !course?.discount ||
     !course.discount.isActive ||
     course.discount.value <= 0 ||
-    !course.discount.displayTime ||
-    course.discount.resetAfter === undefined
+    !course.discount.startTime ||
+    !course.discount.endTime
   )
     return null;
 
   const now = new Date();
-  const [displayHour, displayMin, displaySec] = course.discount.displayTime.split(':').map(Number);
-  const displayTimeInSeconds = displayHour * 3600 + displayMin * 60 + displaySec;
-  const currentTimeInSeconds = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
-  
-  // Calculate how many seconds have passed since the last cycle start
-  // Cycles repeat every resetAfter seconds, starting from displayTime each day
-  const totalSecondsInDay = 86400;
-  
-  // Calculate position in current cycle
-  let secondsSinceCycleStart: number;
-  if (currentTimeInSeconds < displayTimeInSeconds) {
-    // We're before the first cycle start today, so we're in a cycle from yesterday
-    const secondsFromYesterday = totalSecondsInDay - displayTimeInSeconds;
-    const totalSecondsSinceCycleStart = secondsFromYesterday + currentTimeInSeconds;
-    secondsSinceCycleStart = totalSecondsSinceCycleStart % course.discount.resetAfter;
+  const [startHour, startMin] = course.discount.startTime
+    .split(":")
+    .map(Number);
+  const [endHour, endMin] = course.discount.endTime.split(":").map(Number);
+
+  const currentHour = now.getHours();
+  const currentMin = now.getMinutes();
+  const currentSec = now.getSeconds();
+  const currentTimeInMinutes = currentHour * 60 + currentMin;
+  const currentTimeInSeconds = currentTimeInMinutes * 60 + currentSec;
+  const startTimeInMinutes = startHour * 60 + startMin;
+  const endTimeInMinutes = endHour * 60 + endMin;
+
+  let totalSecondsRemaining: number;
+
+  if (startTimeInMinutes <= endTimeInMinutes) {
+    // Normal case: start time is before end time (e.g., 05:00 to 17:00)
+    if (currentTimeInMinutes < startTimeInMinutes) {
+      // Before start time: countdown to start time today
+      const startTimeInSeconds = startTimeInMinutes * 60;
+      totalSecondsRemaining = startTimeInSeconds - currentTimeInSeconds;
+    } else if (
+      currentTimeInMinutes >= startTimeInMinutes &&
+      currentTimeInMinutes <= endTimeInMinutes
+    ) {
+      // During discount period: countdown to end time
+      const endTimeInSeconds = endTimeInMinutes * 60;
+      totalSecondsRemaining = endTimeInSeconds - currentTimeInSeconds;
+    } else {
+      // After end time: countdown to start time tomorrow
+      const secondsUntilMidnight = 24 * 60 * 60 - currentTimeInSeconds;
+      const startTimeInSeconds = startTimeInMinutes * 60;
+      totalSecondsRemaining = secondsUntilMidnight + startTimeInSeconds;
+    }
   } else {
-    // We're after displayTime today
-    secondsSinceCycleStart = (currentTimeInSeconds - displayTimeInSeconds) % course.discount.resetAfter;
+    // Edge case: time range spans midnight (e.g., 22:00 to 06:00)
+    // Active period: 22:00-23:59 (today) OR 00:00-06:00 (tomorrow)
+    if (currentTimeInMinutes >= startTimeInMinutes) {
+      // We're in the first part (before midnight, e.g., 22:00-23:59)
+      // Countdown to end time tomorrow (06:00)
+      const secondsUntilMidnight = 24 * 60 * 60 - currentTimeInSeconds;
+      const endTimeInSeconds = endTimeInMinutes * 60;
+      totalSecondsRemaining = secondsUntilMidnight + endTimeInSeconds;
+    } else if (currentTimeInMinutes < endTimeInMinutes) {
+      // We're in the second part (after midnight, e.g., 00:00-06:00)
+      // Countdown to end time today (06:00)
+      const endTimeInSeconds = endTimeInMinutes * 60;
+      totalSecondsRemaining = endTimeInSeconds - currentTimeInSeconds;
+    } else {
+      // We're between end time and start time (e.g., 06:00-22:00)
+      // Countdown to start time today (22:00)
+      const startTimeInSeconds = startTimeInMinutes * 60;
+      totalSecondsRemaining = startTimeInSeconds - currentTimeInSeconds;
+    }
   }
-  
-  // Check if discount is currently active (within resetAfter window)
-  const isActive = secondsSinceCycleStart < course.discount.resetAfter;
-  
-  if (!isActive) return null;
 
-  // Calculate time until the next reset (end of current active window)
-  const timeUntilReset = course.discount.resetAfter - secondsSinceCycleStart;
+  // Ensure non-negative
+  if (totalSecondsRemaining <= 0) return null;
 
-  const hours = Math.floor(timeUntilReset / 3600);
-  const minutes = Math.floor((timeUntilReset % 3600) / 60);
-  const seconds = timeUntilReset % 60;
+  const hours = Math.floor(totalSecondsRemaining / 3600);
+  const minutes = Math.floor((totalSecondsRemaining % 3600) / 60);
+  const seconds = totalSecondsRemaining % 60;
 
   return {
     days: 0,

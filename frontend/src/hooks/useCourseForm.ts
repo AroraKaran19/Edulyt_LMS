@@ -512,7 +512,7 @@ export const useCourseForm = (
       }
 
       toast.success(
-        "Course Successfully Updated!\n\nYour course metadata has been updated and changes are now live. Students will see the updated information."
+        "Course Successfully Updated!\n\nYour course metadata has been updated!"
       );
 
       // Navigate to Screen10 on success

@@ -110,8 +110,6 @@ const IndividualCoursePage = async ({
     );
   }
 
-  console.log(course);
-
   return <CoursePage course={course} />;
 };
 

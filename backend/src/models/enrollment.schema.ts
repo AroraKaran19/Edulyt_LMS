@@ -6,6 +6,7 @@ import {
   PartialAccessControl,
   ModuleAccessControl,
   LessonAccessControl,
+  ContentCompletion,
 } from "../types";
 
 // Enrollment Progress Summary Schema
@@ -21,6 +22,23 @@ const enrollmentProgressSummarySchema =
     },
     { _id: false }
   );
+
+// Content Completion Schema
+const contentCompletionSchema = new mongoose.Schema<ContentCompletion>(
+  {
+    contentId: { type: String, required: true, index: true },
+    completedAt: { type: Date, required: true, default: Date.now },
+    moduleId: { type: String, required: false },
+    lessonId: { type: String, required: false },
+    contentType: {
+      type: String,
+      required: false,
+      enum: ["video", "quiz", "document"],
+    },
+    timeSpent: { type: Number, default: 0 }, // Time spent in minutes
+  },
+  { _id: false }
+);
 
 // Last Content Accessed Schema
 const lastContentAccessedSchema = new mongoose.Schema<LastContentAccessed>(
@@ -110,9 +128,8 @@ const enrollmentSchema = new mongoose.Schema<Enrollment>(
       },
     },
     completedContents: {
-      type: [String],
+      type: [contentCompletionSchema],
       default: [],
-      index: true,
     },
     lastUpdated: {
       type: Date,
@@ -202,6 +219,7 @@ enrollmentSchema.index({ courseId: 1, status: 1 });
 enrollmentSchema.index({ enrolledAt: -1 });
 enrollmentSchema.index({ lastActivityAt: -1 });
 enrollmentSchema.index({ status: 1, enrolledAt: -1 });
+enrollmentSchema.index({ "completedContents.contentId": 1 }); // Index for querying completed content
 
 // Pre-update middleware
 enrollmentSchema.pre("findOneAndUpdate", function (next) {

@@ -15,12 +15,22 @@ export * from "./live-classes";
 // Type Exports
 // ===================
 
+// Discount for plans and other entities (uses date range)
 export interface Discount {
   discount: "percentage" | "fixed";
-  displayTime?: string; // Time in hh:mm:ss format when discount should be displayed
-  resetAfter?: number; // Time in seconds after which discount resets
   value: number;
-  isActive?: boolean;
+  startDate?: Date;
+  endDate?: Date;
+  isActive: boolean;
+}
+
+// Discount for courses (uses time range within a day)
+export interface CourseDiscount {
+  discount: "percentage" | "fixed";
+  value: number;
+  startTime?: string; // Time in HH:mm format (e.g., "12:00" for 12 AM)
+  endTime?: string; // Time in HH:mm format (e.g., "23:00" for 11 PM)
+  isActive: boolean;
 }
 
 export interface NavItem {

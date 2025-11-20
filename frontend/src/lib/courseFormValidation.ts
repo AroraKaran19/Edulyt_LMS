@@ -101,8 +101,8 @@ export const validateMetaTitle = (metaTitle: string): string[] => {
 
   if (!metaTitle || metaTitle.trim().length === 0) {
     errors.push("Meta title is required");
-  } else if (metaTitle.trim().length > 60) {
-    errors.push("Meta title should be less than 60 characters for SEO");
+  } else if (metaTitle.trim().length > 100) {
+    errors.push("Meta title should be less than 100 characters for SEO");
   }
 
   return errors;
@@ -165,18 +165,21 @@ export const validatePlanDiscount = (discount: any, planName: string): string[] 
       errors.push(`${planName} percentage discount cannot exceed 100%`);
     }
 
-    // Validate displayTime format (hh:mm:ss)
-    if (discount.displayTime) {
-      const timeRegex = /^([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$/;
-      if (!timeRegex.test(discount.displayTime)) {
-        errors.push(`${planName} discount display time must be in hh:mm:ss format (e.g., 14:30:00)`);
+    // Validate startDate and endDate
+    if (discount.startDate && discount.endDate) {
+      const startDate = new Date(discount.startDate);
+      const endDate = new Date(discount.endDate);
+      
+      if (isNaN(startDate.getTime())) {
+        errors.push(`${planName} discount start date must be a valid date`);
       }
-    }
-
-    // Validate resetAfter
-    if (discount.resetAfter !== undefined && discount.resetAfter !== null) {
-      if (discount.resetAfter < 0) {
-        errors.push(`${planName} discount reset after must be 0 or greater`);
+      
+      if (isNaN(endDate.getTime())) {
+        errors.push(`${planName} discount end date must be a valid date`);
+      }
+      
+      if (!isNaN(startDate.getTime()) && !isNaN(endDate.getTime()) && endDate <= startDate) {
+        errors.push(`${planName} discount end date must be after start date`);
       }
     }
   }
@@ -267,18 +270,31 @@ export const validateDiscount = (discount: any): string[] => {
       errors.push("Course percentage discount cannot exceed 100%");
     }
 
-    // Validate displayTime format (hh:mm:ss)
-    if (discount.displayTime) {
-      const timeRegex = /^([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$/;
-      if (!timeRegex.test(discount.displayTime)) {
-        errors.push("Course discount display time must be in hh:mm:ss format (e.g., 14:30:00)");
+    // Validate startTime format (HH:mm)
+    if (discount.startTime) {
+      const timeRegex = /^([0-1][0-9]|2[0-3]):[0-5][0-9]$/;
+      if (!timeRegex.test(discount.startTime)) {
+        errors.push("Course discount start time must be in HH:mm format (e.g., 12:00 for 12 AM, 23:00 for 11 PM)");
       }
     }
 
-    // Validate resetAfter
-    if (discount.resetAfter !== undefined && discount.resetAfter !== null) {
-      if (discount.resetAfter < 0) {
-        errors.push("Course discount reset after must be 0 or greater");
+    // Validate endTime format (HH:mm)
+    if (discount.endTime) {
+      const timeRegex = /^([0-1][0-9]|2[0-3]):[0-5][0-9]$/;
+      if (!timeRegex.test(discount.endTime)) {
+        errors.push("Course discount end time must be in HH:mm format (e.g., 12:00 for 12 AM, 23:00 for 11 PM)");
+      }
+    }
+
+    // Validate that endTime is after startTime if both are provided
+    if (discount.startTime && discount.endTime) {
+      const [startHours, startMinutes] = discount.startTime.split(':').map(Number);
+      const [endHours, endMinutes] = discount.endTime.split(':').map(Number);
+      const startTotalMinutes = startHours * 60 + startMinutes;
+      const endTotalMinutes = endHours * 60 + endMinutes;
+      
+      if (endTotalMinutes <= startTotalMinutes) {
+        errors.push("Course discount end time must be after start time");
       }
     }
   }
@@ -323,6 +339,29 @@ export const validateScreen1 = (
   if (shortDescriptionErrors.length > 0) {
     errors.push(...shortDescriptionErrors);
     missingFields.push("shortDescription");
+  }
+
+  // Audience validation
+  if (!data.audience || data.audience.trim().length === 0) {
+    errors.push("Target audience is required");
+    missingFields.push("audience");
+  } else if (
+    data.audience !== "college-students" &&
+    data.audience !== "professionals"
+  ) {
+    errors.push(
+      "Target audience must be either 'college-students' or 'professionals'"
+    );
+    missingFields.push("audience");
+  }
+
+  // Language validation
+  if (!data.language || data.language.trim().length === 0) {
+    errors.push("Course language is required");
+    missingFields.push("language");
+  } else if (data.language !== "English" && data.language !== "Hindi") {
+    errors.push("Course language must be either 'English' or 'Hindi'");
+    missingFields.push("language");
   }
 
   return {

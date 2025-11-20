@@ -68,6 +68,11 @@ export const createTestimonial = asyncHandler(
       pastRole,
       pastCompany,
       college,
+      collegeUrl,
+      collegeProfileUrl,
+      companyUrl,
+      companyProfileUrl,
+      companyLogo,
       verified,
       profileImage,
     } = req.body;
@@ -95,6 +100,11 @@ export const createTestimonial = asyncHandler(
       pastRole,
       pastCompany,
       college,
+      collegeUrl,
+      collegeProfileUrl,
+      companyUrl,
+      companyProfileUrl,
+      companyLogo,
       verified,
       profileImage,
     });
@@ -119,6 +129,11 @@ export const updateTestimonial = asyncHandler(
       pastRole,
       pastCompany,
       college,
+      collegeUrl,
+      collegeProfileUrl,
+      companyUrl,
+      companyProfileUrl,
+      companyLogo,
       verified,
       profileImage,
     } = req.body;
@@ -135,6 +150,11 @@ export const updateTestimonial = asyncHandler(
       !pastRole &&
       !pastCompany &&
       !college &&
+      collegeUrl === undefined &&
+      collegeProfileUrl === undefined &&
+      companyUrl === undefined &&
+      companyProfileUrl === undefined &&
+      companyLogo === undefined &&
       verified === undefined &&
       !profileImage
     ) {
@@ -149,6 +169,11 @@ export const updateTestimonial = asyncHandler(
       pastRole,
       pastCompany,
       college,
+      collegeUrl,
+      collegeProfileUrl,
+      companyUrl,
+      companyProfileUrl,
+      companyLogo,
       verified,
       profileImage,
     });

@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { Discount, FAQ, Instructor, Review, User } from ".";
+import { Discount, CourseDiscount, FAQ, Instructor, Review, User } from ".";
 
 // ===================
 // Document Types
@@ -159,6 +159,11 @@ export interface Testimonial {
   pastRole: string;
   pastCompany: string;
   college: string;
+  collegeUrl?: string;
+  collegeProfileUrl?: string;
+  companyUrl?: string;
+  companyProfileUrl?: string;
+  companyLogo?: string;
   verified?: boolean;
   profileImage?: string;
   createdAt?: Date;
@@ -207,7 +212,7 @@ export interface Course {
     elite?: Plan;
     essential?: Plan;
   };
-  discount?: Discount;
+  discount?: CourseDiscount;
 
   // Reviews
   reviews: Review["_id"][];

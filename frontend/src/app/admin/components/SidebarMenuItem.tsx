@@ -7,7 +7,7 @@ import React, { useState, useEffect } from "react";
 import Image from "next/image";
 
 interface MenuItem {
-  icon?: React.ComponentType<{ className?: string }>;
+  icon?: React.ReactNode;
   iconSrc?: string;
   label: string;
   href: string;
@@ -58,6 +58,8 @@ const SidebarMenuItem = ({
         return "/admin/internships/manage-internships";
       } else if (item.href === "/admin/users") {
         return "/admin/users/manage-users";
+      } else if (item.href === "/admin/settings") {
+        return "/admin/settings/authentication-media";
       }
     }
     return item.href;
@@ -93,15 +95,7 @@ const SidebarMenuItem = ({
               isCollapsed ? "justify-center" : "w-full"
             )}
           >
-            {menuItem.icon && (
-              <menuItem.icon
-                className={cn("size-6", {
-                  "fill-white":
-                    isActiveRoute(menuItem.href) &&
-                    menuItem.href === "/admin/courses",
-                })}
-              />
-            )}
+            {menuItem.icon && menuItem.icon}
             {menuItem.iconSrc && (
               <Image
                 src={menuItem.iconSrc}

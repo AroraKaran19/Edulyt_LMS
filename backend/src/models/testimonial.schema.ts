@@ -1,6 +1,6 @@
 import mongoose, { Schema } from "mongoose";
 import { Testimonial } from "../types/course";
-import { validateLinkedinUrl } from "./validators";
+import { validateLinkedinUrl, validateUrl } from "./validators";
 
 const testimonialSchema = new Schema<Testimonial>(
   {
@@ -18,6 +18,56 @@ const testimonialSchema = new Schema<Testimonial>(
     pastRole: { type: String, required: true },
     pastCompany: { type: String, required: true },
     college: { type: String, required: true },
+    collegeUrl: {
+      type: String,
+      required: false,
+      validate: {
+        validator: function (value: string) {
+          return !value || validateUrl(value);
+        },
+        message: "College URL must be a valid URL",
+      },
+    },
+    collegeProfileUrl: {
+      type: String,
+      required: false,
+      validate: {
+        validator: function (value: string) {
+          return !value || validateUrl(value);
+        },
+        message: "College Profile URL must be a valid URL",
+      },
+    },
+    companyUrl: {
+      type: String,
+      required: false,
+      validate: {
+        validator: function (value: string) {
+          return !value || validateUrl(value);
+        },
+        message: "Company URL must be a valid URL",
+      },
+    },
+    companyProfileUrl: {
+      type: String,
+      required: false,
+      validate: {
+        validator: function (value: string) {
+          return !value || validateUrl(value);
+        },
+        message: "Company Profile URL must be a valid URL",
+      },
+    },
+    companyLogo: {
+      type: String,
+      required: false,
+      validate: {
+        validator: function (value: string) {
+          return !value || validateUrl(value);
+        },
+        message: "Company Logo must be a valid URL",
+      },
+    },
     verified: { type: Boolean, default: false },
     profileImage: { type: String, required: false },
   },

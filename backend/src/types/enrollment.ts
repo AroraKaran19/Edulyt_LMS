@@ -1,5 +1,15 @@
 import { User, Course } from ".";
 
+// Content completion tracking with timestamp
+export interface ContentCompletion {
+  contentId: string;
+  completedAt: Date;
+  moduleId?: string;
+  lessonId?: string;
+  contentType?: "video" | "quiz" | "document";
+  timeSpent?: number; // Time spent on this content in minutes
+}
+
 // Simplified progress structure
 export interface EnrollmentProgressSummary {
   overallCompletion: number; // 0-100 percentage, computed from module progress
@@ -76,7 +86,7 @@ export interface Enrollment {
   enrolledAt: Date;
   status: "active" | "completed" | "dropped" | "paused";
   progress: EnrollmentProgressSummary; // Simplified progress summary
-  completedContents: string[]; // Array of completed content IDs
+  completedContents: ContentCompletion[]; // Array of completed content with timestamps
   lastUpdated: Date;
   
   // Optional metadata

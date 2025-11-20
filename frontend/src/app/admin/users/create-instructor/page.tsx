@@ -14,8 +14,15 @@ import {
   Save,
   Edit3,
   Check,
+  Camera,
+  User as UserIcon,
+  Lock,
+  MapPin,
+  UserCircle,
+  Sparkles,
 } from "lucide-react";
 import { User, Instructor } from "@/types/user";
+import { useUpload } from "@/hooks/useUpload";
 
 // Combine User and Instructor types with form-specific fields
 type InstructorFormData = Omit<
@@ -39,6 +46,12 @@ const CreateInstructorPage = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Profile image upload states
+  const [profileImageUrl, setProfileImageUrl] = useState<string>("");
+  const [profileImageS3Key, setProfileImageS3Key] = useState<string>("");
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const { uploadFile, deleteFile, validateImageFile } = useUpload();
+
   const [formData, setFormData] = useState<Partial<InstructorFormData>>({
     firstName: "",
     lastName: "",
@@ -50,6 +63,7 @@ const CreateInstructorPage = () => {
     dob: undefined,
     userType: "instructor",
     provider: "credentials",
+    profilePicture: "",
     address: {
       address: "",
       city: "",
@@ -148,6 +162,70 @@ const CreateInstructorPage = () => {
 
   // Experience management states (for save/edit functionality)
   const [savedExperiences, setSavedExperiences] = useState<number[]>([]);
+
+  // Handle profile image upload
+  const handleImageUpload = async (file: File) => {
+    // Validate image file
+    const validation = validateImageFile(file, 5 * 1024 * 1024); // 5MB max
+    if (!validation.valid) {
+      toast.error(validation.error || "Invalid image file");
+      return;
+    }
+
+    setIsUploadingImage(true);
+
+    try {
+      // Delete old image if exists
+      if (profileImageS3Key) {
+        await deleteFile(profileImageS3Key);
+      }
+
+      // Upload new image
+      const result = await uploadFile(file, "profile-images");
+
+      if (result.success && result.data) {
+        const { url, s3Key } = result.data;
+        setProfileImageUrl(url);
+        setProfileImageS3Key(s3Key);
+        setFormData((prev) => ({
+          ...prev,
+          profilePicture: url,
+        }));
+        toast.success("Profile image uploaded successfully!");
+      } else {
+        toast.error(result.error || "Failed to upload image");
+      }
+    } catch (error: any) {
+      console.error("Error uploading image:", error);
+      toast.error("Failed to upload image. Please try again.");
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  // Handle image removal
+  const handleImageRemove = async () => {
+    if (!profileImageUrl && !profileImageS3Key) return;
+
+    try {
+      // Delete from S3 if we have the key
+      if (profileImageS3Key) {
+        await deleteFile(profileImageS3Key);
+      }
+
+      setProfileImageUrl("");
+      setProfileImageS3Key("");
+      setFormData((prev) => ({
+        ...prev,
+        profilePicture: "",
+      }));
+
+      toast.success("Profile image removed successfully!");
+    } catch (error: any) {
+      console.error("Error removing image:", error);
+      toast.error("Failed to remove image. Please try again.");
+    }
+  };
 
   // Handle experience changes
   const handleExperienceChange = (
@@ -506,6 +584,8 @@ const CreateInstructorPage = () => {
         ...formData,
         userType: "instructor",
         provider: "credentials",
+        // Include profile picture if uploaded
+        profilePicture: profileImageUrl || formData.profilePicture || undefined,
         // Convert dates to ISO strings
         dob: formData.dob ? (formData.dob instanceof Date ? formData.dob.toISOString() : new Date(formData.dob).toISOString()) : undefined,
         // Only send valid, complete experiences
@@ -598,25 +678,117 @@ const CreateInstructorPage = () => {
   };
 
   return (
-    <div className="w-full mx-auto p-6">
-      <div className="bg-white rounded-2xl shadow-lg p-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Create New Instructor
-          </h1>
-          <p className="text-gray-600">
-            Fill in the details to create a new instructor account
-          </p>
-        </div>
+    <div className="w-full mx-auto p-4 sm:p-6 lg:p-8 min-h-screen bg-linear-to-br from-gray-50 via-orange-50/30 to-gray-50">
+      <div className="mx-auto">
+        <div className="bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden">
+          {/* Header with linear */}
+          <div className="bg-linear-to-r from-orange-500 via-orange-600 to-orange-500 p-8 text-white">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="p-2 bg-white/20 rounded-xl backdrop-blur-sm">
+                <UserCircle className="w-8 h-8" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold mb-1">
+                  Create New Instructor
+                </h1>
+                <p className="text-orange-50 text-sm">
+                  Fill in the details to create a new instructor account
+                </p>
+              </div>
+            </div>
+          </div>
 
-        <form onSubmit={handleSubmit} className="space-y-8">
+          <div className="p-6 sm:p-8 lg:p-10">
+
+        <form onSubmit={handleSubmit} className="space-y-10">
           {/* Basic Information */}
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">
-              Basic Information
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="bg-linear-to-br from-gray-50 to-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+            <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-200">
+              <div className="p-2 bg-orange-100 rounded-lg">
+                <UserIcon className="w-5 h-5 text-orange-600" />
+              </div>
+              <h2 className="text-xl font-bold text-gray-900">
+                Basic Information
+              </h2>
+            </div>
+            
+            {/* Profile Image Upload */}
+            <div className="mb-8 flex flex-col items-center md:items-start">
+              <label className="block text-sm font-semibold text-gray-700 mb-4">
+                Profile Picture <span className="text-gray-400 font-normal">(Optional)</span>
+              </label>
+              <div className="relative group">
+                <div className="w-36 h-36 rounded-full overflow-hidden bg-linear-to-br from-orange-100 via-orange-200 to-orange-300 border-4 border-white shadow-xl ring-4 ring-orange-100 transition-all duration-300 group-hover:ring-orange-200 group-hover:scale-105">
+                  {profileImageUrl ? (
+                    <img
+                      src={profileImageUrl}
+                      alt="Profile"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-orange-100 to-orange-200">
+                      <div className="text-5xl font-bold text-orange-500">
+                        {formData.firstName?.[0]?.toUpperCase() ||
+                          formData.email?.[0]?.toUpperCase() ||
+                          "U"}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Hover Overlay */}
+                <div
+                  className="absolute inset-0 rounded-full bg-linear-to-br from-black/60 to-black/70 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 cursor-pointer backdrop-blur-sm"
+                  onClick={() =>
+                    document.getElementById("profile-image-input")?.click()
+                  }
+                >
+                  <div className="text-white text-center transform group-hover:scale-110 transition-transform">
+                    {isUploadingImage ? (
+                      <div className="animate-spin rounded-full h-8 w-8 border-2 border-white border-t-transparent mx-auto mb-2"></div>
+                    ) : (
+                      <Camera className="w-8 h-8 mx-auto mb-2 drop-shadow-lg" />
+                    )}
+                    <span className="text-sm font-semibold select-none drop-shadow-md">
+                      {isUploadingImage ? "Uploading..." : "Update Image"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Hidden file input */}
+                <input
+                  id="profile-image-input"
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      handleImageUpload(file);
+                    }
+                  }}
+                  className="hidden"
+                  disabled={isUploadingImage}
+                />
+              </div>
+
+              {/* Remove Image Button */}
+              {profileImageUrl && (
+                <button
+                  type="button"
+                  onClick={handleImageRemove}
+                  disabled={isUploadingImage}
+                  className="mt-4 px-5 py-2.5 text-sm font-medium text-red-600 bg-red-50 rounded-xl hover:bg-red-100 transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed border border-red-100"
+                >
+                  Remove Image
+                </button>
+              )}
+
+              <p className="mt-3 text-xs text-gray-500 text-center md:text-left max-w-xs">
+                Recommended: Square image, max 5MB (JPG, PNG, WebP)
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <Input
                 label="First Name"
                 placeholder="Enter first name"
@@ -710,11 +882,16 @@ const CreateInstructorPage = () => {
           </div>
 
           {/* Password Section */}
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">
-              Account Security
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="bg-linear-to-br from-gray-50 to-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+            <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-200">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <Lock className="w-5 h-5 text-blue-600" />
+              </div>
+              <h2 className="text-xl font-bold text-gray-900">
+                Account Security
+              </h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div className="relative">
                 <Input
                   label="Password"
@@ -768,11 +945,16 @@ const CreateInstructorPage = () => {
           </div>
 
           {/* Address Information */}
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">
-              Address Information
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="bg-linear-to-br from-gray-50 to-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+            <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-200">
+              <div className="p-2 bg-green-100 rounded-lg">
+                <MapPin className="w-5 h-5 text-green-600" />
+              </div>
+              <h2 className="text-xl font-bold text-gray-900">
+                Address Information
+              </h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div className="md:col-span-2">
                 <Input
                   label="Street Address"
@@ -820,11 +1002,16 @@ const CreateInstructorPage = () => {
           </div>
 
           {/* Professional Information */}
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">
-              Professional Information
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="bg-linear-to-br from-gray-50 to-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+            <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-200">
+              <div className="p-2 bg-purple-100 rounded-lg">
+                <Briefcase className="w-5 h-5 text-purple-600" />
+              </div>
+              <h2 className="text-xl font-bold text-gray-900">
+                Professional Information
+              </h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <Input
                 label="Current Position"
                 placeholder="Enter current position"
@@ -900,30 +1087,36 @@ const CreateInstructorPage = () => {
           />
 
           {/* Submit Button */}
-          <div className="pt-6 border-t border-gray-200">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div className="text-sm text-gray-600">
-                <p className="font-medium">
-                  Ready to create instructor account?
-                </p>
-                <p className="text-xs text-gray-500">
-                  All required fields must be filled before creating the
-                  account.
-                </p>
+          <div className="pt-8 mt-8 border-t-2 border-gray-200 bg-linear-to-r from-orange-50 to-transparent rounded-2xl p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+              <div className="flex items-start gap-3">
+                <div className="p-2 bg-orange-100 rounded-lg mt-0.5">
+                  <Sparkles className="w-5 h-5 text-orange-600" />
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-900 mb-1">
+                    Ready to create instructor account?
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    All required fields must be filled before creating the account.
+                  </p>
+                </div>
               </div>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full sm:w-auto px-8 py-3 bg-linear-to-r from-orange-500 to-orange-600 text-white font-medium rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full sm:w-auto px-10 py-4 bg-linear-to-r from-orange-500 via-orange-600 to-orange-500 text-white font-semibold rounded-xl hover:from-orange-600 hover:via-orange-700 hover:to-orange-600 transition-all duration-300 shadow-lg hover:shadow-2xl hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2 text-base"
               >
                 {isSubmitting && (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
                 )}
                 {isSubmitting ? "Creating Instructor..." : "Create Instructor"}
               </button>
             </div>
           </div>
         </form>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -956,21 +1149,25 @@ const ExperienceSection = ({
   const experiences = formData.previousExperience || [];
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-200">
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-            <Briefcase className="w-5 h-5 text-orange-500" />
-            Previous Experience
-          </h3>
-          <p className="text-xs text-gray-500 mt-1">
-            Add previous work experience for the instructor
-          </p>
+    <div className="bg-linear-to-br from-gray-50 to-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+      <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-indigo-100 rounded-lg">
+            <Briefcase className="w-5 h-5 text-indigo-600" />
+          </div>
+          <div>
+            <h3 className="text-xl font-bold text-gray-900">
+              Previous Experience
+            </h3>
+            <p className="text-xs text-gray-500 mt-1">
+              Add previous work experience for the instructor
+            </p>
+          </div>
         </div>
         <button
           type="button"
           onClick={addExperience}
-          className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-orange-600 bg-orange-50 rounded-lg hover:bg-orange-100 transition-colors"
+          className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-linear-to-r from-orange-500 to-orange-600 rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all duration-200 shadow-md hover:shadow-lg"
         >
           <Plus className="w-4 h-4" />
           Add Experience
@@ -978,9 +1175,11 @@ const ExperienceSection = ({
       </div>
 
       {experiences.length === 0 ? (
-        <div className="text-center py-8 text-gray-500">
-          <Briefcase className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-          <p className="text-sm">No previous experience added yet.</p>
+        <div className="text-center py-12 text-gray-500 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+          <div className="p-3 bg-gray-100 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+            <Briefcase className="w-8 h-8 text-gray-400" />
+          </div>
+          <p className="text-sm font-medium text-gray-600">No previous experience added yet.</p>
           <p className="text-xs text-gray-400 mt-1">
             Click "Add Experience" to get started.
           </p>
@@ -993,17 +1192,17 @@ const ExperienceSection = ({
             return (
               <div
                 key={index}
-                className={`relative border rounded-xl transition-all duration-300 ${
+                className={`relative border-2 rounded-2xl transition-all duration-300 shadow-sm hover:shadow-md ${
                   isSaved
-                    ? "border-green-200 bg-green-50 p-4"
-                    : "border-gray-200 bg-gray-50 p-6"
+                    ? "border-green-300 bg-linear-to-br from-green-50 to-white p-5"
+                    : "border-gray-200 bg-white p-6"
                 }`}
               >
                 {/* Delete button - top right */}
                 <button
                   type="button"
                   onClick={() => removeExperience(index)}
-                  className="absolute top-3 right-3 p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
+                  className="absolute top-4 right-4 p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all duration-200 shadow-sm hover:shadow-md"
                   title="Delete experience"
                 >
                   <X className="w-4 h-4" />
@@ -1030,8 +1229,8 @@ const ExperienceSection = ({
                             : "Duration not specified"}
                         </p>
                       </div>
-                      <div className="inline-flex items-center gap-2 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                        <Check className="w-3 h-3" />
+                      <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold bg-linear-to-r from-green-100 to-green-50 text-green-700 border border-green-200 shadow-sm">
+                        <Check className="w-3.5 h-3.5" />
                         Saved
                       </div>
                     </div>
@@ -1042,16 +1241,17 @@ const ExperienceSection = ({
                       </p>
                     )}
 
-                    <div className="flex items-center justify-between pt-3 border-t border-green-200">
-                      <div className="text-xs text-green-600">
+                    <div className="flex items-center justify-between pt-4 mt-4 border-t border-green-200">
+                      <div className="text-xs font-medium text-green-700 flex items-center gap-1.5">
+                        <Check className="w-3.5 h-3.5" />
                         Experience ready for instructor creation
                       </div>
                       <button
                         type="button"
                         onClick={() => editExperience(index)}
-                        className="px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700 transition-colors flex items-center gap-1"
+                        className="px-4 py-2 bg-linear-to-r from-blue-600 to-blue-700 text-white text-xs font-semibold rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-sm hover:shadow-md flex items-center gap-1.5"
                       >
-                        <Edit3 className="w-3 h-3" />
+                        <Edit3 className="w-3.5 h-3.5" />
                         Edit
                       </button>
                     </div>
@@ -1060,14 +1260,14 @@ const ExperienceSection = ({
                   /* Full editing view */
                   <>
                     {/* Status indicator */}
-                    <div className="mb-4">
-                      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-700">
-                        <Edit3 className="w-3 h-3" />
+                    <div className="mb-5">
+                      <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold bg-linear-to-r from-orange-100 to-orange-50 text-orange-700 border border-orange-200 shadow-sm">
+                        <Edit3 className="w-3.5 h-3.5" />
                         Editing
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                       {/* Company Name */}
                       <Input
                         label="Company Name"
@@ -1200,7 +1400,7 @@ const ExperienceSection = ({
                       <button
                         type="button"
                         onClick={() => saveExperience(index)}
-                        className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+                        className="w-full px-5 py-3 bg-linear-to-r from-green-600 to-green-700 text-white font-semibold rounded-xl hover:from-green-700 hover:to-green-800 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-[1.02] flex items-center justify-center gap-2"
                       >
                         <Save className="w-4 h-4" />
                         Save Experience

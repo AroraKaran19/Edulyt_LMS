@@ -1,5 +1,5 @@
 "use client";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Settings } from "lucide-react";
 import ImageComponent from "@/components/ui/ImageComponent";
 import React from "react";
 import SidebarMenuItem from "./SidebarMenuItem";
@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import useAuth from "@/hooks/useAuth";
 
 interface MenuItem {
-  icon?: React.ComponentType<{ className?: string }>;
+  icon?: React.ReactNode;
   iconSrc?: string;
   label: string;
   href: string;
@@ -71,16 +71,23 @@ const AdminSidebar = ({ isCollapsed, setIsCollapsed }: AdminSidebarProps) => {
       href: "/admin/users",
       submenu: [
         {
-          label: "All Users",
-          href: "/admin/users/all-users",
-        },
-        {
           label: "Manage Users",
           href: "/admin/users/manage-users",
         },
         {
           label: "Create Instructor",
           href: "/admin/users/create-instructor",
+        },
+      ],
+    },
+    {
+      icon: <Settings className="size-6" />,
+      label: "Settings",
+      href: "/admin/settings",
+      submenu: [
+        {
+          label: "Authentication Media",
+          href: "/admin/settings/authentication-media",
         },
       ],
     },

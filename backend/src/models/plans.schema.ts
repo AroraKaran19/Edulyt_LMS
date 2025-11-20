@@ -42,23 +42,15 @@ const planSchema = new mongoose.Schema<Plan>(
           min: [0, "Discount value must be positive"],
           max: [100, "Discount value cannot exceed 100"],
         },
-        displayTime: { 
-          type: String, 
+        startDate: {
+          type: Date,
           required: false,
-          validate: {
-            validator: function(value: string) {
-              if (!value) return true; // Allow empty/null
-              // Validate hh:mm:ss format
-              const timeRegex = /^([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$/;
-              return timeRegex.test(value);
-            },
-            message: "Display time must be in hh:mm:ss format (e.g., 14:30:00)"
-          }
+          default: null,
         },
-        resetAfter: { 
-          type: Number, 
+        endDate: {
+          type: Date,
           required: false,
-          min: [0, "Reset after must be a positive number"]
+          default: null,
         },
         isActive: {
           type: Boolean,

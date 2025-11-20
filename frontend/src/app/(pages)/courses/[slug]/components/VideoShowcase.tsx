@@ -22,8 +22,8 @@ const VideoShowcase = ({ modules }: { modules: CourseModule[] | [] }) => {
 
           {/* Lesson cards */}
           <div className="space-y-4">
-            {modules.map((courseModule: CourseModule, index: number) =>
-              courseModule.lessons.map((lesson: CourseLesson | string) => (
+            {modules.map((courseModule: CourseModule) =>
+              courseModule.lessons.map((lesson: CourseLesson | string, index: number) => (
                 <VideoCard
                   key={index}
                   currentModuleImage={courseModule.thumbnailUrl}

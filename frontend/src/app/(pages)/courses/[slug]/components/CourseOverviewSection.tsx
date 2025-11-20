@@ -15,17 +15,17 @@ const CourseOverviewSection = ({ course }: { course: Course }) => {
             component: <AboutTheCourseComponent course={course} />,
           },
           {
-            label: "Modules",
+            label: "Lessons",
             activeTabIcon: <LockIcon className="size-4 lg:size-5" />,
             component: (
               <VideoShowcase
                 modules={(course?.modules as CourseModule[]) || []}
               />
             ),
-            ...(course?.modules?.length &&
-              course?.modules?.length > 0 && {
-                showCount: course?.modules?.length,
-              }),
+            showCount: (course?.modules as CourseModule[])?.reduce(
+              (acc, module) => (acc || 0) + module.lessons.length,
+              0
+            ),
           },
         ]}
       />

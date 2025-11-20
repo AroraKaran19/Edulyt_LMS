@@ -34,7 +34,7 @@ const EnrollmentModal: React.FC<EnrollmentModalProps> = ({
     name: string;
     theme: string;
     price: number;
-    features: { provided: boolean; title: string }[];
+    features: { provided: boolean; title: string; showHover?: string }[];
     discountType?: string;
     discountValue?: number;
     discountLabel?: string;
@@ -115,15 +115,16 @@ const EnrollmentModal: React.FC<EnrollmentModalProps> = ({
           {course?.discount &&
             course.discount.isActive &&
             course.discount.value > 0 &&
-            course.discount.displayTime &&
-            course.discount.resetAfter !== undefined && (
+            course.discount.startTime &&
+            course.discount.endTime &&
+            discountCountdown && (
               <div className="w-full flex justify-center mt-2">
                 <DiscountCountdown
                   discount={course.discount}
-                  days={discountCountdown?.days || 0}
-                  hours={discountCountdown?.hours || 0}
-                  minutes={discountCountdown?.minutes || 0}
-                  seconds={discountCountdown?.seconds || 0}
+                  days={discountCountdown.days || 0}
+                  hours={discountCountdown.hours || 0}
+                  minutes={discountCountdown.minutes || 0}
+                  seconds={discountCountdown.seconds || 0}
                   className={`${plusJakartaSans.className} text-sm md:text-base`}
                   discountClassname="justify-center!"
                 />

@@ -16,7 +16,7 @@ const PlanCard = ({
     name: string;
     theme: string;
     price: number;
-    features: { provided: boolean; title: string }[];
+    features: { provided: boolean; title: string; showHover?: string }[];
     discountType?: string;
     discountValue?: number;
     discountLabel?: string;
@@ -28,7 +28,6 @@ const PlanCard = ({
   onClick?: () => void;
   onEnrollClick?: () => void;
 }) => {
-
   return (
     <div
       className={cn(
@@ -90,14 +89,24 @@ const PlanCard = ({
         {plan.features.map((feature, index) => (
           <div
             key={index}
-            className="plan-feature text-sm font-medium text-text-primary flex items-stretch gap-2"
+            className={cn(
+              "plan-feature text-sm font-medium text-text-primary flex items-stretch gap-2",
+              feature.showHover && "group relative cursor-help"
+            )}
           >
             {feature.provided ? (
               <Check className="size-4 md:size-5 shrink-0" />
             ) : (
               <X className="size-4 md:size-5 shrink-0" />
             )}
-            <span>{feature.title}</span>
+            <span className="relative">
+              {feature.title}
+              {feature.showHover && (
+                <span className="absolute left-0 w-full top-full mt-2 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 pointer-events-none">
+                  {feature.showHover}
+                </span>
+              )}
+            </span>
           </div>
         ))}
       </div>

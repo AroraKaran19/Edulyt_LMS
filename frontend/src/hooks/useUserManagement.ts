@@ -158,6 +158,47 @@ const useUserManagement = () => {
     [handleRequest]
   );
 
+  const updateUser = useCallback(
+    async (userId: string, updateData: Partial<User>): Promise<User | null> => {
+      return handleRequest(
+        async () => {
+          const response = await apiClient.put(`/users/admin/${userId}`, updateData);
+          return response.data.data;
+        },
+        "Failed to update user"
+      );
+    },
+    [handleRequest]
+  );
+
+  const deleteUser = useCallback(
+    async (userId: string): Promise<User | null> => {
+      return handleRequest(
+        async () => {
+          const response = await apiClient.delete(`/users/admin/${userId}`);
+          return response.data.data;
+        },
+        "Failed to delete user"
+      );
+    },
+    [handleRequest]
+  );
+
+  const changeUserPassword = useCallback(
+    async (userId: string, newPassword: string): Promise<boolean> => {
+      return handleRequest(
+        async () => {
+          const response = await apiClient.put(`/users/admin/${userId}/password`, {
+            newPassword,
+          });
+          return response.data.success;
+        },
+        "Failed to change user password"
+      ) as Promise<boolean>;
+    },
+    [handleRequest]
+  );
+
   // Validation functions
   const validateGiftCourseData = useCallback((data: GiftCourseData): string[] => {
     const errors: string[] = [];
@@ -182,6 +223,9 @@ const useUserManagement = () => {
     getUsers,
     getUserById,
     updateUserStatus,
+    updateUser,
+    deleteUser,
+    changeUserPassword,
     giftCourse,
     getUserEnrollments,
 

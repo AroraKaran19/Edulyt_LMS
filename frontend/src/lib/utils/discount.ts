@@ -1,9 +1,9 @@
-import { Discount } from "@/types";
+import { Discount, CourseDiscount } from "@/types";
 
 export const calculateDiscountDisplay = (
   planPrice: number,
   planDiscount?: Discount,
-  courseDiscount?: Discount
+  courseDiscount?: CourseDiscount
 ): {
   discountPrice: number;
   discountLabel: string;
@@ -19,26 +19,18 @@ export const calculateDiscountDisplay = (
 
   // Calculate plan discount on original price
   if (planDiscount?.value && planDiscount.isActive) {
-    // Check if discount should be displayed based on displayTime and resetAfter
+    // Check if discount should be displayed based on startDate and endDate
     let isPlanDiscountActive = true;
-    if (planDiscount.displayTime && planDiscount.resetAfter) {
+    if (planDiscount.startDate && planDiscount.endDate) {
       const now = new Date();
-      const [displayHour, displayMin, displaySec] = planDiscount.displayTime.split(':').map(Number);
-      const displayTimeInSeconds = displayHour * 3600 + displayMin * 60 + displaySec;
-      const currentTimeInSeconds = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+      const startDate = new Date(planDiscount.startDate);
+      const endDate = new Date(planDiscount.endDate);
       
-      const totalSecondsInDay = 86400;
+      // Set time to start of day for date comparison
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setHours(23, 59, 59, 999);
       
-      let secondsSinceCycleStart: number;
-      if (currentTimeInSeconds < displayTimeInSeconds) {
-        const secondsFromYesterday = totalSecondsInDay - displayTimeInSeconds;
-        const totalSecondsSinceCycleStart = secondsFromYesterday + currentTimeInSeconds;
-        secondsSinceCycleStart = totalSecondsSinceCycleStart % planDiscount.resetAfter;
-      } else {
-        secondsSinceCycleStart = (currentTimeInSeconds - displayTimeInSeconds) % planDiscount.resetAfter;
-      }
-      
-      isPlanDiscountActive = secondsSinceCycleStart < planDiscount.resetAfter;
+      isPlanDiscountActive = now >= startDate && now <= endDate;
     }
     
     if (planDiscount.discount === "fixed") {
@@ -60,25 +52,25 @@ export const calculateDiscountDisplay = (
   // Calculate course discount on original price (simultaneously)
   if (courseDiscount?.value && courseDiscount.isActive) {
     let isCourseDiscountActive = true;
-    if (courseDiscount.displayTime && courseDiscount.resetAfter) {
+    if (courseDiscount.startTime && courseDiscount.endTime) {
       const now = new Date();
-      const [displayHour, displayMin, displaySec] = courseDiscount.displayTime.split(':').map(Number);
-      const displayTimeInSeconds = displayHour * 3600 + displayMin * 60 + displaySec;
-      const currentTimeInSeconds = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+      const [startHour, startMin] = courseDiscount.startTime.split(':').map(Number);
+      const [endHour, endMin] = courseDiscount.endTime.split(':').map(Number);
       
-      const totalSecondsInDay = 86400;
+      const currentHour = now.getHours();
+      const currentMin = now.getMinutes();
+      const currentTimeInMinutes = currentHour * 60 + currentMin;
+      const startTimeInMinutes = startHour * 60 + startMin;
+      const endTimeInMinutes = endHour * 60 + endMin;
       
-      let secondsSinceCycleStart: number;
-      if (currentTimeInSeconds < displayTimeInSeconds) {
-        const secondsFromYesterday = totalSecondsInDay - displayTimeInSeconds;
-        const totalSecondsSinceCycleStart = secondsFromYesterday + currentTimeInSeconds;
-        secondsSinceCycleStart = totalSecondsSinceCycleStart % courseDiscount.resetAfter;
+      // Check if current time is within the time range
+      if (startTimeInMinutes <= endTimeInMinutes) {
+        // Normal case: start time is before end time (e.g., 12:00 to 23:00)
+        isCourseDiscountActive = currentTimeInMinutes >= startTimeInMinutes && currentTimeInMinutes <= endTimeInMinutes;
       } else {
-        // We're after displayTime today
-        secondsSinceCycleStart = (currentTimeInSeconds - displayTimeInSeconds) % courseDiscount.resetAfter;
+        // Edge case: time range spans midnight (e.g., 22:00 to 06:00)
+        isCourseDiscountActive = currentTimeInMinutes >= startTimeInMinutes || currentTimeInMinutes <= endTimeInMinutes;
       }
-      
-      isCourseDiscountActive = secondsSinceCycleStart < courseDiscount.resetAfter;
     }
     
     if (courseDiscount.discount === "fixed") {

@@ -132,32 +132,40 @@ const courseSchema = new mongoose.Schema<Course>(
     },
     discount: {
       type: {
-        displayTime: { 
+        discount: {
+          type: String,
+          required: false,
+          default: "percentage",
+          enum: ["percentage", "fixed"],
+        },
+        value: { type: Number, required: false, default: 0 },
+        startTime: { 
           type: String, 
           required: false, 
           default: null,
           validate: {
             validator: function(value: string) {
               if (!value) return true; // Allow empty/null
-              // Validate hh:mm:ss format
-              const timeRegex = /^([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$/;
+              // Validate HH:mm format (24-hour)
+              const timeRegex = /^([0-1][0-9]|2[0-3]):[0-5][0-9]$/;
               return timeRegex.test(value);
             },
-            message: "Display time must be in hh:mm:ss format (e.g., 14:30:00)"
+            message: "Start time must be in HH:mm format (e.g., 12:00 for 12 AM, 23:00 for 11 PM)"
           }
         },
-        resetAfter: { 
-          type: Number, 
+        endTime: { 
+          type: String, 
           required: false, 
           default: null,
-          min: [0, "Reset after must be a positive number"]
-        },
-        value: { type: Number, required: false, default: 0 },
-        discount: {
-          type: String,
-          required: false,
-          default: "percentage",
-          enum: ["percentage", "fixed"],
+          validate: {
+            validator: function(value: string) {
+              if (!value) return true; // Allow empty/null
+              // Validate HH:mm format (24-hour)
+              const timeRegex = /^([0-1][0-9]|2[0-3]):[0-5][0-9]$/;
+              return timeRegex.test(value);
+            },
+            message: "End time must be in HH:mm format (e.g., 12:00 for 12 AM, 23:00 for 11 PM)"
+          }
         },
         isActive: { type: Boolean, required: false, default: true },
       },
@@ -209,6 +217,7 @@ const courseSchema = new mongoose.Schema<Course>(
       type: String,
       required: false,
       default: "Course | Airkrit India",
+      maxlength: 100, // SEO best practice for meta titles
     },
     metaDescription: {
       type: String,

@@ -58,7 +58,18 @@ const CourseHeader = ({
   }, [course?.analytics?.totalReviews]);
 
   const discountCountdown = useMemo(
-    () => calculateDiscountTime(course),
+    () => {
+      const result = calculateDiscountTime(course);
+      // Debug: Log discount info
+      if (course?.discount) {
+        console.log('Discount Info:', {
+          discount: course.discount,
+          countdown: result,
+          currentTime: new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' })
+        });
+      }
+      return result;
+    },
     [course]
   );
 
@@ -109,15 +120,16 @@ const CourseHeader = ({
             {course?.discount &&
               course.discount.isActive &&
               course.discount.value > 0 &&
-              course.discount.displayTime &&
-              course.discount.resetAfter !== undefined && (
+              course.discount.startTime &&
+              course.discount.endTime &&
+              discountCountdown !== null && (
                 <div className="course-discount flex flex-col gap-2">
                   <DiscountCountdown
                     discount={course.discount}
-                    days={discountCountdown?.days || 0}
-                    hours={discountCountdown?.hours || 0}
-                    minutes={discountCountdown?.minutes || 0}
-                    seconds={discountCountdown?.seconds || 0}
+                    days={discountCountdown.days}
+                    hours={discountCountdown.hours}
+                    minutes={discountCountdown.minutes}
+                    seconds={discountCountdown.seconds}
                     className={`${plusJakartaSans.className} text-sm md:text-base`}
                   />
                 </div>

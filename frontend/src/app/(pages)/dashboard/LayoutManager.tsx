@@ -7,12 +7,7 @@ import { cn } from "@/lib/utils";
 const LayoutManager = ({ children }: { children: React.ReactNode }) => {
   const pathname = usePathname();
   return (
-    <div
-      className={cn(
-        "pt-40 w-full",
-        pathname === "/dashboard/profile" && "pt-0"
-      )}
-    >
+    <div className="pt-40 w-full">
       {pathname !== "/dashboard/profile" && <DashboardBanner />}
       <div
         className={cn(

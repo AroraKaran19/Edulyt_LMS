@@ -1,6 +1,12 @@
 "use client";
 import Container from "@/app/admin/components/ui/Container";
-import { ArrowLeftIcon, ArrowRightIcon, BookOpenIcon, BookOpen, Users } from "lucide-react";
+import {
+  ArrowLeftIcon,
+  ArrowRightIcon,
+  BookOpenIcon,
+  BookOpen,
+  Users,
+} from "lucide-react";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import { useParams, useRouter } from "next/navigation";
@@ -76,29 +82,48 @@ const EditCoursePageContent = ({ courseId }: { courseId: string }) => {
     }
   };
 
+  // Handle instant navigation to Basic Information (Screen 1)
+  const handleNavigateToBasicInformation = async () => {
+    try {
+      // Save metadata before navigating
+      await updateCourseMetadata();
+      // Navigate after successful save (use setTimeout to ensure it runs after updateCourseMetadataHandler's nextScreen())
+      // updateCourseMetadataHandler will show success toast
+      setTimeout(() => goToScreen(1), 0);
+    } catch (error) {
+      // Error toast is already shown by updateCourseMetadataHandler
+      // Don't navigate if save failed
+      console.error("Failed to save metadata before navigation:", error);
+    }
+  };
+
   // Handle instant navigation to Modules (Screen 11)
   const handleNavigateToModules = async () => {
     try {
       // Save metadata before navigating
       await updateCourseMetadata();
-      toast.success("Course metadata saved successfully");
-      goToScreen(11);
+      // Navigate after successful save (use setTimeout to ensure it runs after updateCourseMetadataHandler's nextScreen())
+      // updateCourseMetadataHandler will show success toast
+      setTimeout(() => goToScreen(11), 0);
     } catch (error) {
+      // Error toast is already shown by updateCourseMetadataHandler
+      // Don't navigate if save failed
       console.error("Failed to save metadata before navigation:", error);
-      toast.error("Failed to save metadata. Please try again.");
     }
   };
 
-  // Handle instant navigation to Instructors (Screen 12)
+  // Handle instant navigation to Instructors (Screen 13)
   const handleNavigateToInstructors = async () => {
     try {
       // Save metadata before navigating
       await updateCourseMetadata();
-      toast.success("Course metadata saved successfully");
-      goToScreen(13);
+      // Navigate after successful save (use setTimeout to ensure it runs after updateCourseMetadataHandler's nextScreen())
+      // updateCourseMetadataHandler will show success toast
+      setTimeout(() => goToScreen(13), 0);
     } catch (error) {
+      // Error toast is already shown by updateCourseMetadataHandler
+      // Don't navigate if save failed
       console.error("Failed to save metadata before navigation:", error);
-      toast.error("Failed to save metadata. Please try again.");
     }
   };
 
@@ -112,6 +137,18 @@ const EditCoursePageContent = ({ courseId }: { courseId: string }) => {
         />
         {/* Instant Navigation Buttons */}
         <div className="flex items-center gap-5 w-full justify-center">
+          <OrangeButton
+            onClick={handleNavigateToBasicInformation}
+            disabled={isUpdating || currentScreen === 1}
+            className={`flex items-center gap-2 cursor-pointer ${
+              currentScreen === 1 ? "opacity-60" : ""
+            }`}
+            glow={false}
+          >
+            <BookOpen className="w-4 h-4" />
+            Basic Information
+            {currentScreen === 1 && " (Current)"}
+          </OrangeButton>
           <OrangeButton
             onClick={handleNavigateToModules}
             disabled={isUpdating || currentScreen === 11}

@@ -71,7 +71,7 @@ const TabSwitcher = ({ tabs, className }: TabSwitcherProps) => {
               {tab.activeTabIcon && activeTab === tab && tab.activeTabIcon}
               {tab.label}
             </span>
-            {tab.showCount && (
+            {typeof tab.showCount === 'number' && (
               <span
                 className={cn(
                   "text-[10px] leading-none font-semibold px-1.5 py-1 rounded-full flex items-center justify-center",
@@ -81,7 +81,7 @@ const TabSwitcher = ({ tabs, className }: TabSwitcherProps) => {
                   "transition-colors duration-200 ease-in-out",
                 )}
               >
-                {tab.showCount}
+                {tab.showCount > 100 ? "100+" : tab.showCount}
               </span>
             )}
           </div>

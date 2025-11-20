@@ -23,6 +23,7 @@ import { FAQModel } from "./faq.schema";
 import ReviewModel from "./review.schema";
 import { EnrollmentModel } from "./enrollment.schema";
 import LiveClassModel from "./live-classes.schema";
+import AuthenticationMediaModel from "./authentication-media.schema";
 
 export {
   UserModel,
@@ -48,4 +49,5 @@ export {
   ReviewModel,
   EnrollmentModel,
   LiveClassModel,
+  AuthenticationMediaModel,
 };

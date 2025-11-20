@@ -63,6 +63,8 @@ const CoursePage = ({ course }: { course: Course }) => {
 
   if (!course) return null;
 
+  console.log(course.discount);
+
   return (
     <div
       className={cn(

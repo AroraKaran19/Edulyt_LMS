@@ -20,7 +20,7 @@ const CertificateSection = ({
     name: string;
     theme: string;
     price: number;
-    features: { provided: boolean; title: string }[];
+    features: { provided: boolean; title: string; showHover?: string }[];
     discountType?: string;
     discountValue?: number;
     discountLabel?: string;

@@ -9,6 +9,7 @@ import {
   CourseEnrollmentStats,
   LastContentAccessed,
   PartialAccessControl,
+  ContentCompletion,
 } from "../types";
 import mongoose from "mongoose";
 
@@ -277,13 +278,30 @@ export const UpdateEnrollmentProgressService = async (
       lastActivityAt: new Date(),
     };
 
-    // Handle completed content
+    // Handle completed content with timestamp tracking
     let updatedCompletedContents = [...(enrollment.completedContents || [])];
     
     if (progressData.completed && progressData.contentId) {
-      // Add content ID to completed list if not already there
-      if (!updatedCompletedContents.includes(progressData.contentId)) {
-        updatedCompletedContents.push(progressData.contentId);
+      // Check if content is already marked as completed
+      const existingCompletion = updatedCompletedContents.find(
+        (completion) => completion.contentId === progressData.contentId
+      );
+      
+      // Only add if not already completed (avoid duplicate entries)
+      if (!existingCompletion) {
+        updatedCompletedContents.push({
+          contentId: progressData.contentId,
+          completedAt: new Date(),
+          moduleId: progressData.moduleId,
+          lessonId: progressData.lessonId,
+          contentType: progressData.contentType,
+          timeSpent: progressData.timeSpent,
+        });
+      } else {
+        // Update existing completion if timeSpent is provided and greater
+        if (progressData.timeSpent && progressData.timeSpent > (existingCompletion.timeSpent || 0)) {
+          existingCompletion.timeSpent = progressData.timeSpent;
+        }
       }
     }
 

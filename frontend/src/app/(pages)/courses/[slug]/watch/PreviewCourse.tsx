@@ -1,6 +1,6 @@
 "use client";
 import { Course, CourseLesson, CourseModule, Content } from "@/types";
-import React, { memo, useEffect, useMemo, useState } from "react";
+import React, { memo, useEffect, useMemo, useState, useRef, useCallback } from "react";
 import SectionContainer from "./components/SectionContainer";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import { Clock3, Play, FileText, Lock } from "lucide-react";
@@ -23,6 +23,7 @@ import { QnA } from "@/types/qna";
 import { useContentCompletion } from "./hooks/useContentCompletion";
 import { useSession } from "next-auth/react";
 import { useEnrollmentContext } from "@/components/EnrollmentGuard";
+import useEnrollment from "@/hooks/useEnrollment";
 import {
   canAccessModule,
   canAccessLesson,
@@ -491,7 +492,9 @@ const CourseContentWithTracking = ({
   navigateToContent, 
   toggleModule, 
   toggleLesson, 
-  tabs 
+  tabs,
+  onVideoEndHandlerReady,
+  onContentCompleted
 }: {
   course: Course;
   selectedContent: Content | null;
@@ -501,6 +504,8 @@ const CourseContentWithTracking = ({
   toggleModule: (module: CourseModule) => void;
   toggleLesson: (lesson: CourseLesson) => void;
   tabs: any[];
+  onVideoEndHandlerReady?: (handler: () => void) => void;
+  onContentCompleted?: (contentId: string) => void;
 }) => {
   // Content completion tracking (now inside VideoTimeProvider)
   const { progress: videoProgress, isPlaying } = useVideoTimeContext();
@@ -519,6 +524,21 @@ const CourseContentWithTracking = ({
     isVideoPlaying: isPlaying,
   });
 
+  // Track previously synced content IDs to avoid duplicate syncs
+  const syncedContentIdsRef = useRef<Set<string>>(new Set());
+
+  // Sync completion status to parent when new content is completed
+  useEffect(() => {
+    if (onContentCompleted) {
+      completedContents.forEach((contentId) => {
+        if (!syncedContentIdsRef.current.has(contentId)) {
+          onContentCompleted(contentId);
+          syncedContentIdsRef.current.add(contentId);
+        }
+      });
+    }
+  }, [completedContents, onContentCompleted]);
+
   // Handle video end with completion tracking
   const handleVideoEnd = () => {
     console.log("Video ended");
@@ -526,6 +546,13 @@ const CourseContentWithTracking = ({
       markContentAsCompleted(selectedContent._id!);
     }
   };
+
+  // Register the video end handler with parent
+  useEffect(() => {
+    if (onVideoEndHandlerReady) {
+      onVideoEndHandlerReady(handleVideoEnd);
+    }
+  }, [selectedContent, markContentAsCompleted, onVideoEndHandlerReady]);
 
   return (
     <div className="w-full min-h-screen flex gap-4 lg:flex-row flex-col">
@@ -567,8 +594,10 @@ const PreviewCourse = ({ course }: { course: Course }) => {
   const [search, setSearch] = useState("");
   const [qnas, setQnas] = useState<QnA[]>([]);
   const [isLoadingQnas, setIsLoadingQnas] = useState(false);
+  const [completedContents, setCompletedContents] = useState<Set<string>>(new Set());
 
   const { getQnAs } = useQnA();
+  const { checkEnrollment } = useEnrollment();
 
   // Fetch Q&As for this course
   const fetchQnas = async () => {
@@ -595,6 +624,38 @@ const PreviewCourse = ({ course }: { course: Course }) => {
   useEffect(() => {
     fetchQnas();
   }, [course._id, getQnAs]);
+
+  // Load completed contents from enrollment
+  useEffect(() => {
+    const loadCompletedContents = async () => {
+      if (!session?.user || !course._id) return;
+      
+      try {
+        const enrollmentStatus = await checkEnrollment({ courseId: course._id });
+        if (enrollmentStatus?.enrollment?.completedContents) {
+          // Extract contentIds from ContentCompletion objects
+          const contentIds = (enrollmentStatus.enrollment.completedContents as any[]).map(
+            (completion) => typeof completion === 'string' ? completion : completion.contentId
+          );
+          setCompletedContents(new Set(contentIds));
+        }
+      } catch (error) {
+        console.error("Failed to load completed contents:", error);
+      }
+    };
+
+    loadCompletedContents();
+  }, [session?.user, course._id, checkEnrollment]);
+
+  // Function to check if content is completed
+  const isContentCompleted = useCallback((contentId: string): boolean => {
+    return completedContents.has(contentId);
+  }, [completedContents]);
+
+  // Callback to update completion status when content is completed
+  const handleContentCompleted = useCallback((contentId: string) => {
+    setCompletedContents(prev => new Set([...prev, contentId]));
+  }, []);
 
   // Filter questions based on search
   const filteredQuestions = qnas?.filter(
@@ -625,6 +686,10 @@ const PreviewCourse = ({ course }: { course: Course }) => {
     isInitialized,
   } = useLessonNavigation(course, accessControl);
 
+  // Create a ref to store the video end handler from CourseContentWithTracking
+  // Must be called before any conditional returns to follow Rules of Hooks
+  const videoEndHandlerRef = useRef<(() => void) | null>(null);
+
   // Handle progress updates
   const handleProgressUpdate = (progress: number) => {
     // This will be called by the VideoTimeContext
@@ -650,7 +715,7 @@ const PreviewCourse = ({ course }: { course: Course }) => {
                 toggleModule={toggleModule}
                 toggleLesson={toggleLesson}
                 navigateToContent={navigateToContent}
-                isContentCompleted={() => false}
+                isContentCompleted={isContentCompleted}
               />
             ),
             showCount: course.modules?.length || 0,
@@ -724,7 +789,15 @@ const PreviewCourse = ({ course }: { course: Course }) => {
   }
 
   return (
-    <VideoTimeProvider onProgressUpdate={handleProgressUpdate}>
+    <VideoTimeProvider 
+      onProgressUpdate={handleProgressUpdate}
+      onVideoEnd={() => {
+        // Call the handler from CourseContentWithTracking if it exists
+        if (videoEndHandlerRef.current) {
+          videoEndHandlerRef.current();
+        }
+      }}
+    >
       <CourseContentWithTracking 
         course={course}
         selectedContent={selectedContent}
@@ -734,6 +807,10 @@ const PreviewCourse = ({ course }: { course: Course }) => {
         toggleModule={toggleModule}
         toggleLesson={toggleLesson}
         tabs={tabs}
+        onVideoEndHandlerReady={(handler) => {
+          videoEndHandlerRef.current = handler;
+        }}
+        onContentCompleted={handleContentCompleted}
       />
     </VideoTimeProvider>
   );
