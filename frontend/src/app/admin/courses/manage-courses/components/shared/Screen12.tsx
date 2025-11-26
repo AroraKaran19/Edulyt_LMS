@@ -20,7 +20,10 @@ import { CourseFormData } from "@/types/courseForm";
 import { useCourseFormContext } from "@/contexts/CourseFormContext";
 import { CourseModule, CourseLesson, Content } from "@/types/course";
 import { useCourse } from "@/hooks/useCourse";
-import { getModulesStorageKey, loadModulesFromStorage } from "@/lib/courseFormUtils";
+import {
+  getModulesStorageKey,
+  loadModulesFromStorage,
+} from "@/lib/courseFormUtils";
 
 const Screen12 = () => {
   const { watch } = useFormContext<CourseFormData>();
@@ -66,7 +69,7 @@ const Screen12 = () => {
           courseId,
           effectiveCourseId || undefined
         );
-        
+
         if (storedModules.length > 0) {
           setModules(storedModules);
         } else if (isEditMode && effectiveCourseId) {
@@ -95,7 +98,8 @@ const Screen12 = () => {
                     description: lesson.description,
                     duration: lesson.duration,
                     isCompleted: lesson.isCompleted || false,
-                    isActive: lesson.isActive !== undefined ? lesson.isActive : true,
+                    isActive:
+                      lesson.isActive !== undefined ? lesson.isActive : true,
                     isLocked: lesson.isLocked || false,
                     contents: lesson.contents || [],
                   })),
@@ -183,7 +187,9 @@ const Screen12 = () => {
       completed: !!(
         formData.title &&
         formData.description &&
-        formData.category
+        (Array.isArray(formData.category)
+          ? formData.category.length > 0
+          : formData.category)
       ),
     },
     {
@@ -369,11 +375,36 @@ const Screen12 = () => {
               <label className="text-sm font-medium text-gray-600">
                 Category
               </label>
-              <div className="flex items-center gap-2 mt-1">
+              <div className="flex items-center gap-2 mt-1 flex-wrap">
                 <Tag className="w-4 h-4 text-gray-500" />
-                <span className="text-gray-800 capitalize">
-                  {formData.category || "Not specified"}
-                </span>
+                {Array.isArray(formData.category) &&
+                formData.category.length > 0 ? (
+                  <div className="flex flex-wrap gap-1">
+                    {formData.category.map((cat, idx) => {
+                      // Handle both string IDs and Category objects
+                      const categoryName =
+                        typeof cat === "string"
+                          ? cat
+                          : (cat as any)?.name || String(cat);
+                      return (
+                        <span
+                          key={idx}
+                          className="inline-block px-2 py-1 bg-orange-100 text-orange-800 rounded text-sm capitalize"
+                        >
+                          {categoryName}
+                        </span>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <span className="text-gray-800 capitalize">
+                    {typeof formData.category === "string"
+                      ? formData.category
+                      : Array.isArray(formData.category)
+                      ? formData.category.join(", ")
+                      : "Not specified"}
+                  </span>
+                )}
               </div>
             </div>
 

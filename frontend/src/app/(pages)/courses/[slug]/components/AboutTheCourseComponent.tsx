@@ -115,7 +115,22 @@ const AboutTheCourseComponent = ({ course }: { course: Course }) => {
         id="career-growth"
         className="career-growth w-full flex flex-col lg:mt-5 gap-6"
       >
-        <CourseTitle title={`Careers in ${course?.category || ""}`} />
+        <CourseTitle 
+          title={`Careers in ${(() => {
+            if (!course?.category) return "";
+            if (Array.isArray(course.category)) {
+              const firstItem = course.category[0];
+              if (typeof firstItem === "object" && firstItem !== null && "name" in firstItem) {
+                // Populated Category objects
+                return course.category.map((c: any) => c.name).join(", ");
+              } else {
+                // Category IDs
+                return course.category.join(", ");
+              }
+            }
+            return String(course.category);
+          })()}`} 
+        />
         {course?.careerPaths.length > 0 && (
           <div className="career-list flex gap-4 flex-wrap">
             {course?.careerPaths.map((career, index) => (

@@ -5,9 +5,11 @@ import {
   CourseModel,
   CourseModuleModel,
   UserModel,
+  CategoryModel,
 } from "../models";
 import { Content, Course, CourseLesson, CourseModule } from "../types";
 import mongoose from "mongoose";
+import { createFuzzySearchOrFilter } from "../utils/lib/fuzzySearch";
 
 export const getAllCoursesService = async (
   page: number,
@@ -28,28 +30,50 @@ export const getAllCoursesService = async (
   const skip = (page - 1) * limit;
 
   let filters: any = {};
-  
+
   // Active filter - only show active courses for non-admin users
   if (!isAdmin) {
     filters.isActive = true;
   }
-  
+
   if (search) {
-    filters.$or = [
-      { title: { $regex: search, $options: "i" } },
-      { description: { $regex: search, $options: "i" } },
-      { shortDescription: { $regex: search, $options: "i" } },
-    ];
+    // Use fuzzy search for better matching
+    const fuzzySearchFilter = createFuzzySearchOrFilter(search, [
+      "title",
+      "description",
+      "shortDescription",
+    ]);
+    
+    if (fuzzySearchFilter && fuzzySearchFilter.$or) {
+      // If we already have a $or filter, we need to combine them
+      if (filters.$or) {
+        filters.$or = [...filters.$or, ...fuzzySearchFilter.$or];
+      } else {
+        filters.$or = fuzzySearchFilter.$or;
+      }
+    } else {
+      // Fallback to simple regex if fuzzy search fails
+      filters.$or = [
+        { title: { $regex: search, $options: "i" } },
+        { description: { $regex: search, $options: "i" } },
+        { shortDescription: { $regex: search, $options: "i" } },
+      ];
+    }
   }
   if (categories) {
     // Handle multiple categories separated by commas
-    const categoryList = categories.split(",").map((cat) => cat.trim());
-    if (categoryList.length === 1) {
-      // Single category - use exact match for better performance
-      filters.category = categoryList[0];
-    } else {
-      // Multiple categories - use $in operator
-      filters.category = { $in: categoryList };
+    // Categories are now ObjectIds, so we need to convert string IDs to ObjectIds
+    const categoryList = categories
+      .split(",")
+      .map((cat) => cat.trim())
+      .filter((cat) => mongoose.Types.ObjectId.isValid(cat));
+    if (categoryList.length > 0) {
+      // Convert string IDs to ObjectIds for querying
+      const categoryObjectIds = categoryList.map(
+        (cat) => new mongoose.Types.ObjectId(cat)
+      );
+      // Since category is now an array of ObjectIds in the course document, use $in to match any category in the array
+      filters.category = { $in: categoryObjectIds };
     }
   }
   if (audience && !isAdmin) {
@@ -111,6 +135,7 @@ export const getAllCoursesService = async (
             title: 1,
             shortDescription: 1,
             description: 1,
+            category: 1,
             thumbnail: 1,
             isActive: 1,
             isFeatured: 1,
@@ -127,6 +152,7 @@ export const getAllCoursesService = async (
         : {
             title: 1,
             description: 1,
+            category: 1,
             thumbnail: 1,
             instructor: 1,
             analytics: 1,
@@ -166,11 +192,23 @@ export const getFeaturedCoursesService = async (
     filters.isActive = true;
   }
   if (search) {
-    filters.$or = [
-      { title: { $regex: search, $options: "i" } },
-      { description: { $regex: search, $options: "i" } },
-      { shortDescription: { $regex: search, $options: "i" } },
-    ];
+    // Use fuzzy search for better matching
+    const fuzzySearchFilter = createFuzzySearchOrFilter(search, [
+      "title",
+      "description",
+      "shortDescription",
+    ]);
+    
+    if (fuzzySearchFilter && fuzzySearchFilter.$or) {
+      filters.$or = fuzzySearchFilter.$or;
+    } else {
+      // Fallback to simple regex if fuzzy search fails
+      filters.$or = [
+        { title: { $regex: search, $options: "i" } },
+        { description: { $regex: search, $options: "i" } },
+        { shortDescription: { $regex: search, $options: "i" } },
+      ];
+    }
   }
 
   // Use aggregation pipeline for random sorting
@@ -200,11 +238,20 @@ export const getFeaturedCoursesService = async (
       },
     },
     {
+      $lookup: {
+        from: "categories",
+        localField: "category",
+        foreignField: "_id",
+        as: "category",
+      },
+    },
+    {
       $project: isAdmin
         ? { __v: 0 }
         : {
             title: 1,
             description: 1,
+            category: 1,
             thumbnail: 1,
             instructor: 1,
             analytics: 1,
@@ -233,6 +280,7 @@ export const getCourseByIdService = async (
     return null;
   }
 
+  // Fetch course WITHOUT populating category to avoid CastError with invalid values
   const course = await CourseModel.findById(courseId)
     .where(isAdmin ? {} : { isActive: true })
     .select("-__v")
@@ -259,6 +307,77 @@ export const getCourseByIdService = async (
     return null;
   }
 
+  // Manually handle category population to avoid CastError
+  if (course.category) {
+    const categoryArray = Array.isArray(course.category)
+      ? course.category
+      : [course.category];
+
+    // Separate valid ObjectIds and string names
+    const validCategoryIds: string[] = [];
+    const categoryNames: string[] = [];
+
+    categoryArray.forEach((cat: any) => {
+      // If it's already a populated object, use its _id
+      if (typeof cat === "object" && cat !== null && cat._id) {
+        validCategoryIds.push(cat._id.toString());
+      }
+      // If it's a string, check if it's a valid ObjectId
+      else if (typeof cat === "string") {
+        if (mongoose.Types.ObjectId.isValid(cat)) {
+          validCategoryIds.push(cat);
+        } else {
+          // It's a category name (old format), try to find it
+          categoryNames.push(cat);
+        }
+      }
+    });
+
+    // Try to find categories by name for old string-based categories
+    if (categoryNames.length > 0) {
+      try {
+        const categoriesByName = await CategoryModel.find({
+          name: { $in: categoryNames },
+          isActive: true,
+        })
+          .select("-__v")
+          .lean();
+        
+        // Add the found category IDs
+        categoriesByName.forEach((cat) => {
+          if (cat._id) {
+            validCategoryIds.push(cat._id.toString());
+          }
+        });
+      } catch (error) {
+        console.error("Error finding categories by name:", error);
+      }
+    }
+
+    // Manually populate categories if we have valid IDs
+    if (validCategoryIds.length > 0) {
+      try {
+        const categoryObjectIds = validCategoryIds.map(
+          (id) => new mongoose.Types.ObjectId(id)
+        );
+        const categories = await CategoryModel.find({
+          _id: { $in: categoryObjectIds },
+        })
+          .select("-__v")
+          .lean();
+        (course as any).category = categories;
+      } catch (error) {
+        // If population fails, just use the IDs
+        (course as any).category = validCategoryIds;
+      }
+    } else {
+      // No valid categories, set to empty array
+      (course as any).category = [];
+    }
+  } else {
+    (course as any).category = [];
+  }
+
   return course as Course;
 };
 
@@ -266,6 +385,7 @@ export const getCourseBySlugService = async (
   slug: string,
   isAdmin?: boolean
 ): Promise<Course | null> => {
+  // Fetch course WITHOUT populating category to avoid CastError with invalid values
   const course = await CourseModel.findOne({ slug, isActive: true })
     .where(isAdmin ? {} : { isActive: true })
     .select("-__v")
@@ -290,6 +410,77 @@ export const getCourseBySlugService = async (
 
   if (!course) {
     return null;
+  }
+
+  // Manually handle category population to avoid CastError
+  if (course.category) {
+    const categoryArray = Array.isArray(course.category)
+      ? course.category
+      : [course.category];
+
+    // Separate valid ObjectIds and string names
+    const validCategoryIds: string[] = [];
+    const categoryNames: string[] = [];
+
+    categoryArray.forEach((cat: any) => {
+      // If it's already a populated object, use its _id
+      if (typeof cat === "object" && cat !== null && cat._id) {
+        validCategoryIds.push(cat._id.toString());
+      }
+      // If it's a string, check if it's a valid ObjectId
+      else if (typeof cat === "string") {
+        if (mongoose.Types.ObjectId.isValid(cat)) {
+          validCategoryIds.push(cat);
+        } else {
+          // It's a category name (old format), try to find it
+          categoryNames.push(cat);
+        }
+      }
+    });
+
+    // Try to find categories by name for old string-based categories
+    if (categoryNames.length > 0) {
+      try {
+        const categoriesByName = await CategoryModel.find({
+          name: { $in: categoryNames },
+          isActive: true,
+        })
+          .select("-__v")
+          .lean();
+        
+        // Add the found category IDs
+        categoriesByName.forEach((cat) => {
+          if (cat._id) {
+            validCategoryIds.push(cat._id.toString());
+          }
+        });
+      } catch (error) {
+        console.error("Error finding categories by name:", error);
+      }
+    }
+
+    // Manually populate categories if we have valid IDs
+    if (validCategoryIds.length > 0) {
+      try {
+        const categoryObjectIds = validCategoryIds.map(
+          (id) => new mongoose.Types.ObjectId(id)
+        );
+        const categories = await CategoryModel.find({
+          _id: { $in: categoryObjectIds },
+        })
+          .select("-__v")
+          .lean();
+        (course as any).category = categories;
+      } catch (error) {
+        // If population fails, just use the IDs
+        (course as any).category = validCategoryIds;
+      }
+    } else {
+      // No valid categories, set to empty array
+      (course as any).category = [];
+    }
+  } else {
+    (course as any).category = [];
   }
 
   return course as Course;
@@ -894,16 +1085,16 @@ export const UpdateCourseMetadataService = async (
   // Filter out undefined and null values to prevent overwriting existing data
   // Also explicitly exclude modules from metadata updates to preserve existing modules
   const cleanedData: any = { updatedAt: new Date() };
-  
+
   // Fields that should never be updated via metadata endpoint
-  const excludedFields = ['modules', '_id'];
-  
+  const excludedFields = ["modules", "_id"];
+
   Object.keys(courseData).forEach((key) => {
     // Skip excluded fields (like modules) - metadata updates shouldn't touch these
     if (excludedFields.includes(key)) {
       return;
     }
-    
+
     // Only include fields that are explicitly provided and not null/undefined
     if (courseData[key] !== undefined && courseData[key] !== null) {
       cleanedData[key] = courseData[key];

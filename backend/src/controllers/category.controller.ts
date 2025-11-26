@@ -9,6 +9,7 @@ import {
   deleteCategoryService,
   getAllCategoriesService,
   getCategoryByIdService,
+  getHomePageCategoriesService,
   updateCategoryService,
 } from "../services/category.services";
 
@@ -60,46 +61,61 @@ export const getCategoryById = asyncHandler(
 
 export const createCategory = asyncHandler(
   async (req: Request, res: Response) => {
-    const { name, description } = req.body;
+    const { name, description, showOnHomePage } = req.body;
     if (!name) {
       throw new AppError("Category name is required", 400);
     }
 
-    const result = await createCategoryService(name, description);
-    if (!result) {
-      throw new AppError("Failed to create category", 500);
-    }
+    try {
+      const result = await createCategoryService(name, description, showOnHomePage);
+      if (!result) {
+        throw new AppError("Failed to create category", 500);
+      }
 
-    sendSuccessResponse(res, result, "Category created successfully", 201);
-    return;
+      sendSuccessResponse(res, result, "Category created successfully", 201);
+      return;
+    } catch (error: any) {
+      if (error.message && error.message.includes("Maximum of 4 categories")) {
+        throw new AppError(error.message, 400);
+      }
+      throw error;
+    }
   }
 );
 
 export const updateCategory = asyncHandler(
   async (req: Request, res: Response) => {
     const { id } = req.params;
-    const { name, description, isActive } = req.body;
+    const { name, description, isActive, showOnHomePage } = req.body;
     if (!id) {
       throw new AppError("Category ID is required", 400);
     }
-    if (!name && !description && isActive === undefined) {
+    if (!name && !description && isActive === undefined && showOnHomePage === undefined) {
       throw new AppError(
-        "At least one field (name, description, or isActive) is required",
+        "At least one field (name, description, isActive, or showOnHomePage) is required",
         400
       );
     }
 
-    const result = await updateCategoryService(id, {
-      name,
-      description,
-      isActive,
-    });
-    if (!result) {
-      throw new AppError("Failed to update category", 500);
-    }
+    try {
+      const result = await updateCategoryService(id, {
+        name,
+        description,
+        isActive,
+        showOnHomePage,
+      });
+      if (!result) {
+        throw new AppError("Failed to update category", 500);
+      }
 
-    sendSuccessResponse(res, result, "Category updated successfully", 200);
-    return;
+      sendSuccessResponse(res, result, "Category updated successfully", 200);
+      return;
+    } catch (error: any) {
+      if (error.message && error.message.includes("Maximum of 4 categories")) {
+        throw new AppError(error.message, 400);
+      }
+      throw error;
+    }
   }
 );
 
@@ -116,6 +132,14 @@ export const deleteCategory = asyncHandler(
     }
 
     sendSuccessResponse(res, result, "Category deleted successfully", 200);
+    return;
+  }
+);
+
+export const getHomePageCategories = asyncHandler(
+  async (req: Request, res: Response) => {
+    const result = await getHomePageCategoriesService();
+    sendSuccessResponse(res, result, "Home page categories fetched successfully", 200);
     return;
   }
 );

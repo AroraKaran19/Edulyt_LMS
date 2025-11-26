@@ -9,8 +9,8 @@ import Input from "@/components/ui/inputs/Input";
 interface CategoryInputWithManagementProps {
   label: string;
   name: string;
-  value: string;
-  setChange: (value: string) => void;
+  value: string | string[];
+  setChange: (value: string[]) => void;
   className?: string;
   required?: boolean;
 }
@@ -33,10 +33,27 @@ const CategoryInputWithManagement: React.FC<
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
-  const [newCategory, setNewCategory] = useState({ name: "" });
+  const [newCategory, setNewCategory] = useState({
+    name: "",
+    showOnHomePage: false,
+  });
   const [isCreating, setIsCreating] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
+
+  // Count categories with showOnHomePage: true
+  const homePageCategoriesCount = categories.filter(
+    (cat) => cat.showOnHomePage === true
+  ).length;
+  const maxHomePageCategories = 4;
+  const canAddToHomePage = homePageCategoriesCount < maxHomePageCategories;
+
+  // Normalize value to array of category IDs
+  const selectedCategoryIds = Array.isArray(value)
+    ? value
+    : value
+    ? [value]
+    : [];
 
   // Load categories when dropdown opens
   const loadCategories = useCallback(async () => {
@@ -53,17 +70,43 @@ const CategoryInputWithManagement: React.FC<
     }
   }, [getActiveCategories]);
 
-  // Load categories when dropdown opens
+  // Load categories on mount and when dropdown opens
+  useEffect(() => {
+    loadCategories();
+  }, [loadCategories]);
+
+  // Reload categories when dropdown opens to ensure fresh data
   useEffect(() => {
     if (isOpen) {
       loadCategories();
     }
   }, [isOpen, loadCategories]);
 
-  // Handle category selection
-  const handleCategorySelect = (categoryName: string) => {
-    setChange(categoryName);
-    setIsOpen(false);
+  // Get selected category names for display
+  const getSelectedCategoryNames = () => {
+    return selectedCategoryIds
+      .map((id) => {
+        const category = categories.find((cat) => cat._id === id);
+        return category?.name;
+      })
+      .filter((name): name is string => !!name);
+  };
+
+  // Handle category toggle (add/remove by ID)
+  const handleCategoryToggle = (categoryId: string) => {
+    const isSelected = selectedCategoryIds.includes(categoryId);
+    if (isSelected) {
+      // Remove category
+      setChange(selectedCategoryIds.filter((id) => id !== categoryId));
+    } else {
+      // Add category
+      setChange([...selectedCategoryIds, categoryId]);
+    }
+  };
+
+  // Handle remove category chip
+  const handleRemoveCategory = (categoryId: string) => {
+    setChange(selectedCategoryIds.filter((id) => id !== categoryId));
   };
 
   // Handle create new category
@@ -74,12 +117,16 @@ const CategoryInputWithManagement: React.FC<
     try {
       const result = await createCategory({
         name: newCategory.name.trim(),
+        showOnHomePage: newCategory.showOnHomePage || false,
       });
 
-      if (result) {
+      if (result && result._id) {
         setCategories((prev) => [...(prev || []), result]);
-        setChange(result.name);
-        setNewCategory({ name: "" });
+        // Add the new category ID to selected categories
+        if (!selectedCategoryIds.includes(result._id)) {
+          setChange([...selectedCategoryIds, result._id]);
+        }
+        setNewCategory({ name: "", showOnHomePage: false });
         setShowCreateModal(false);
         clearError();
       }
@@ -106,10 +153,14 @@ const CategoryInputWithManagement: React.FC<
     )
       return;
 
+    const oldName = categories.find(
+      (cat) => cat._id === editingCategory._id
+    )?.name;
     setIsUpdating(true);
     try {
       const result = await updateCategory(editingCategory._id, {
         name: editingCategory.name.trim(),
+        showOnHomePage: editingCategory.showOnHomePage,
       });
 
       if (result) {
@@ -118,6 +169,10 @@ const CategoryInputWithManagement: React.FC<
             cat._id === editingCategory._id ? result : cat
           )
         );
+
+        // If the category was selected, keep it selected (ID doesn't change on update)
+        // No need to update selectedCategoryIds as the ID remains the same
+
         setShowEditModal(false);
         setEditingCategory(null);
         clearError();
@@ -150,8 +205,9 @@ const CategoryInputWithManagement: React.FC<
         setCategories((prev) =>
           (prev || []).filter((cat) => cat._id !== categoryId)
         );
-        if (value === categoryName) {
-          setChange("");
+        // Remove from selected categories if it was selected
+        if (selectedCategoryIds.includes(categoryId)) {
+          setChange(selectedCategoryIds.filter((id) => id !== categoryId));
         }
         clearError();
       }
@@ -169,18 +225,47 @@ const CategoryInputWithManagement: React.FC<
         {required && <span className="text-red-500 ml-1">*</span>}
       </label>
 
+      {/* Selected Categories Display */}
+      {selectedCategoryIds.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-2">
+          {selectedCategoryIds.map((categoryId) => {
+            const category = categories.find((cat) => cat._id === categoryId);
+            const categoryName = category?.name || categoryId;
+            return (
+              <div
+                key={categoryId}
+                className="inline-flex items-center gap-1 px-3 py-1.5 bg-orange-100 text-orange-800 rounded-lg text-sm font-medium"
+              >
+                <span>{categoryName}</span>
+                <button
+                  type="button"
+                  onClick={() => handleRemoveCategory(categoryId)}
+                  className="ml-1 text-orange-600 hover:text-orange-800 focus:outline-none"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       {/* Dropdown Button */}
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         className={`w-full px-4 py-3 border rounded-xl text-left focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all ${
-          value && value !== "Select a category"
+          selectedCategoryIds.length > 0
             ? "border-orange-300 bg-orange-50 text-gray-900"
             : "border-gray-300 bg-white text-gray-500"
         }`}
       >
         <div className="flex items-center justify-between">
-          <span>{value || "Select a category"}</span>
+          <span>
+            {selectedCategoryIds.length > 0
+              ? `Select more categories (${selectedCategoryIds.length} selected)`
+              : "Select categories"}
+          </span>
           <div className="flex items-center gap-2">
             <div
               onClick={(e) => {
@@ -224,6 +309,10 @@ const CategoryInputWithManagement: React.FC<
               {categories?.map((category) => {
                 if (!category._id) return null; // Skip categories without ID
 
+                const isSelected = category._id
+                  ? selectedCategoryIds.includes(category._id)
+                  : false;
+
                 return (
                   <div
                     key={category._id}
@@ -231,17 +320,32 @@ const CategoryInputWithManagement: React.FC<
                   >
                     <button
                       type="button"
-                      onClick={() => handleCategorySelect(category.name)}
-                      className="flex-1 text-left"
+                      onClick={() =>
+                        category._id && handleCategoryToggle(category._id)
+                      }
+                      className="flex-1 text-left flex items-center gap-3"
                     >
-                      <div className="font-medium text-gray-900">
-                        {category.name}
+                      <div
+                        className={`w-5 h-5 border-2 rounded flex items-center justify-center transition-colors ${
+                          isSelected
+                            ? "bg-orange-500 border-orange-500"
+                            : "border-gray-300"
+                        }`}
+                      >
+                        {isSelected && (
+                          <Check className="w-3.5 h-3.5 text-white" />
+                        )}
                       </div>
-                      {category.description && (
-                        <div className="text-sm text-gray-500">
-                          {category.description}
+                      <div>
+                        <div className="font-medium text-gray-900">
+                          {category.name}
                         </div>
-                      )}
+                        {category.description && (
+                          <div className="text-sm text-gray-500">
+                            {category.description}
+                          </div>
+                        )}
+                      </div>
                     </button>
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <div
@@ -302,7 +406,7 @@ const CategoryInputWithManagement: React.FC<
                 <button
                   onClick={() => {
                     setShowCreateModal(false);
-                    setNewCategory({ name: "" });
+                    setNewCategory({ name: "", showOnHomePage: false });
                     clearError();
                   }}
                   className="text-gray-500 hover:text-gray-700 p-1"
@@ -323,6 +427,40 @@ const CategoryInputWithManagement: React.FC<
                 required
               />
 
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="showOnHomePage"
+                  checked={newCategory.showOnHomePage || false}
+                  onChange={(e) => {
+                    if (e.target.checked && !canAddToHomePage) {
+                      return; // Prevent checking if limit reached
+                    }
+                    setNewCategory((prev) => ({
+                      ...prev,
+                      showOnHomePage: e.target.checked,
+                    }));
+                  }}
+                  disabled={!canAddToHomePage && !newCategory.showOnHomePage}
+                  className="w-4 h-4 text-orange-600 bg-gray-100 border-gray-300 rounded focus:ring-orange-500 focus:ring-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                />
+                <label
+                  htmlFor="showOnHomePage"
+                  className={`text-sm font-medium ${
+                    !canAddToHomePage && !newCategory.showOnHomePage
+                      ? "text-gray-400 cursor-not-allowed"
+                      : "text-gray-700 cursor-pointer"
+                  }`}
+                >
+                  Show on Home Page
+                  {!canAddToHomePage && !newCategory.showOnHomePage && (
+                    <span className="ml-1 text-xs text-gray-500">
+                      (Max 4 reached)
+                    </span>
+                  )}
+                </label>
+              </div>
+
               {error && (
                 <div className="flex items-center gap-2 text-red-600 text-sm">
                   <AlertCircle className="w-4 h-4" />
@@ -335,7 +473,7 @@ const CategoryInputWithManagement: React.FC<
               <WhiteButton
                 onClick={() => {
                   setShowCreateModal(false);
-                  setNewCategory({ name: "" });
+                  setNewCategory({ name: "", showOnHomePage: false });
                   clearError();
                 }}
                 disabled={isCreating}
@@ -400,6 +538,67 @@ const CategoryInputWithManagement: React.FC<
                 placeholder="Enter category name"
                 required
               />
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="editShowOnHomePage"
+                  checked={editingCategory.showOnHomePage || false}
+                  onChange={(e) => {
+                    // Allow unchecking, but check limit when checking
+                    if (e.target.checked) {
+                      // Count other categories with showOnHomePage: true (excluding current)
+                      const otherHomePageCount = categories.filter(
+                        (cat) =>
+                          cat.showOnHomePage === true &&
+                          cat._id !== editingCategory._id
+                      ).length;
+                      if (otherHomePageCount >= maxHomePageCategories) {
+                        return; // Prevent checking if limit reached
+                      }
+                    }
+                    setEditingCategory((prev) =>
+                      prev
+                        ? { ...prev, showOnHomePage: e.target.checked }
+                        : null
+                    );
+                  }}
+                  disabled={
+                    !editingCategory.showOnHomePage &&
+                    categories.filter(
+                      (cat) =>
+                        cat.showOnHomePage === true &&
+                        cat._id !== editingCategory._id
+                    ).length >= maxHomePageCategories
+                  }
+                  className="w-4 h-4 text-orange-600 bg-gray-100 border-gray-300 rounded focus:ring-orange-500 focus:ring-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                />
+                <label
+                  htmlFor="editShowOnHomePage"
+                  className={`text-sm font-medium ${
+                    !editingCategory.showOnHomePage &&
+                    categories.filter(
+                      (cat) =>
+                        cat.showOnHomePage === true &&
+                        cat._id !== editingCategory._id
+                    ).length >= maxHomePageCategories
+                      ? "text-gray-400 cursor-not-allowed"
+                      : "text-gray-700 cursor-pointer"
+                  }`}
+                >
+                  Show on Home Page
+                  {!editingCategory.showOnHomePage &&
+                    categories.filter(
+                      (cat) =>
+                        cat.showOnHomePage === true &&
+                        cat._id !== editingCategory._id
+                    ).length >= maxHomePageCategories && (
+                      <span className="ml-1 text-xs text-gray-500">
+                        (Max 4 reached)
+                      </span>
+                    )}
+                </label>
+              </div>
 
               {error && (
                 <div className="flex items-center gap-2 text-red-600 text-sm">

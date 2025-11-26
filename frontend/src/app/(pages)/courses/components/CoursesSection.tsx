@@ -13,6 +13,8 @@ import { Course } from "@/types";
 import { Filter } from "@/types";
 import { ENDPOINTS } from "@/constants/endpoints";
 import { fetcher } from "@/lib/utils";
+import { useCategory } from "@/hooks/useCategory";
+import { Category } from "@/types/category";
 
 const CoursesSection = () => {
   // Local state management instead of context
@@ -27,17 +29,32 @@ const CoursesSection = () => {
   const [allCourses, setAllCourses] = useState<Course[]>([]);
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [filters, setFilters] = useState<Filter[]>([
+    { label: "All", value: "all" },
+  ]);
   const lastLoadTimeRef = useRef(0);
   const isLoadingRef = useRef(false);
   const coursesSectionRef = useRef<HTMLElement>(null);
 
-  const filters: Filter[] = [
-    { label: "All", value: "all" },
-    { label: "Data Science", value: "data-science" },
-    { label: "Machine Learning", value: "machine-learning" },
-    { label: "AI", value: "ai" },
-    { label: "Web Development", value: "web-development" },
-  ];
+  const { getHomePageCategories } = useCategory();
+
+  // Fetch homepage categories on mount
+  useEffect(() => {
+    const fetchHomePageCategories = async () => {
+      const categories = await getHomePageCategories();
+      if (categories && categories.length > 0) {
+        const categoryFilters: Filter[] = [
+          { label: "All", value: "all" },
+          ...categories.map((category: Category) => ({
+            label: category.name,
+            value: category._id || "",
+          })),
+        ];
+        setFilters(categoryFilters);
+      }
+    };
+    fetchHomePageCategories();
+  }, [getHomePageCategories]);
 
   useEffect(() => {
     setPage(1);

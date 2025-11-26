@@ -1,0 +1,1808 @@
+"use client";
+import { useState, useEffect, useRef, useCallback } from "react";
+import {
+  Gift,
+  X,
+  Check,
+  User as UserIcon,
+  ChevronDown,
+  ChevronRight,
+  Search,
+} from "lucide-react";
+import { Button } from "@/components/ui/buttons/button";
+import OrangeButton from "@/components/ui/buttons/OrangeButton";
+import Select from "@/components/ui/inputs/Select";
+import Input from "@/components/ui/inputs/Input";
+import { Course, CourseModule } from "@/types/course";
+import { User } from "@/types/user";
+import { PartialAccessControl, ModuleAccessControl } from "@/types/enrollment";
+import { toast } from "react-toastify";
+import useUserManagement, { GiftCourseData } from "@/hooks/useUserManagement";
+import useCourseManagement from "@/hooks/useCourseManagement";
+
+interface GiftCourseModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  userEnrollments: Record<string, string[]>;
+  onGiftComplete?: () => void;
+}
+
+const GiftCourseModal = ({
+  isOpen,
+  onClose,
+  userEnrollments,
+  onGiftComplete,
+}: GiftCourseModalProps) => {
+  const [giftStep, setGiftStep] = useState<1 | 2 | 3 | 4>(1);
+  const [selectedCourses, setSelectedCourses] = useState<Course[]>([]);
+  const [selectedPlans, setSelectedPlans] = useState<
+    Record<string, "elite" | "essential">
+  >({});
+  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
+  const [accessType, setAccessType] = useState<"full" | "partial">("full");
+  const [courseDetails, setCourseDetails] = useState<Course | null>(null);
+  const [coursesDetails, setCoursesDetails] = useState<Record<string, Course>>(
+    {}
+  );
+  const [expandedModules, setExpandedModules] = useState<Set<string>>(
+    new Set()
+  );
+  const [expandedLessons, setExpandedLessons] = useState<Set<string>>(
+    new Set()
+  );
+  const [selectedModules, setSelectedModules] = useState<Set<string>>(
+    new Set()
+  );
+  const [selectedLessons, setSelectedLessons] = useState<
+    Record<string, Set<string>>
+  >({});
+  const [selectedContents, setSelectedContents] = useState<
+    Record<string, Set<string>>
+  >({});
+  const [loadingCourseDetails, setLoadingCourseDetails] = useState(false);
+  const [loadingStudents, setLoadingStudents] = useState(false);
+  const [isGifting, setIsGifting] = useState(false);
+
+  // Infinite scroll state for courses
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingCourses, setIsLoadingCourses] = useState(false);
+  const coursesScrollRef = useRef<HTMLDivElement>(null);
+  const coursesObserverTarget = useRef<HTMLDivElement>(null);
+
+  // User search and infinite scroll state
+  const [users, setUsers] = useState<User[]>([]);
+  const [userSearch, setUserSearch] = useState("");
+  const [debouncedUserSearch, setDebouncedUserSearch] = useState("");
+  const [userCurrentPage, setUserCurrentPage] = useState(1);
+  const [userHasMore, setUserHasMore] = useState(true);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+  const usersScrollRef = useRef<HTMLDivElement>(null);
+  const usersObserverTarget = useRef<HTMLDivElement>(null);
+  const isLoadingUsersRef = useRef(false);
+  const lastSearchRef = useRef<string>("");
+
+  const { giftCourse, isLoading, getUsers } = useUserManagement();
+  const { getCourses, getCourseById } = useCourseManagement();
+
+  // Fetch courses with pagination
+  const fetchCourses = useCallback(
+    async (page: number, append: boolean = false) => {
+      if (isLoadingCourses) return;
+
+      setIsLoadingCourses(true);
+      try {
+        const result = await getCourses({
+          page,
+          limit: 20, // Load 20 courses per page
+          isActive: true,
+        });
+
+        if (result) {
+          if (append) {
+            setCourses((prev) => [...prev, ...result.courses]);
+          } else {
+            setCourses(result.courses);
+          }
+
+          setHasMore(page < result.totalPages);
+          setCurrentPage(page);
+        }
+      } catch (error) {
+        console.error("Error fetching courses:", error);
+        toast.error("Failed to load courses");
+      } finally {
+        setIsLoadingCourses(false);
+      }
+    },
+    [getCourses, isLoadingCourses]
+  );
+
+  // Initial load when modal opens
+  useEffect(() => {
+    if (isOpen && courses.length === 0) {
+      setCurrentPage(1);
+      setHasMore(true);
+      fetchCourses(1, false);
+    }
+  }, [isOpen, fetchCourses, courses.length]);
+
+  // Reset state when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setGiftStep(1);
+      setSelectedUsers([]);
+      setSelectedCourses([]);
+      setSelectedPlans({});
+      setAccessType("full");
+      setSelectedModules(new Set());
+      setSelectedLessons({});
+      setSelectedContents({});
+      setCourseDetails(null);
+      setCoursesDetails({});
+      setExpandedModules(new Set());
+      setExpandedLessons(new Set());
+      // Don't reset courses and users - keep them cached for better UX
+      // Reset search when modal closes
+      setUserSearch("");
+      setDebouncedUserSearch("");
+      lastSearchRef.current = "";
+      isLoadingUsersRef.current = false;
+    }
+  }, [isOpen]);
+
+  // Debounce user search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedUserSearch(userSearch);
+    }, 500); // 500ms delay
+
+    return () => clearTimeout(timer);
+  }, [userSearch]);
+
+  // Fetch users with pagination and search
+  const fetchUsers = useCallback(
+    async (page: number, append: boolean = false, search?: string) => {
+      // Prevent duplicate calls
+      if (isLoadingUsersRef.current) return;
+
+      isLoadingUsersRef.current = true;
+      setIsLoadingUsers(true);
+      try {
+        const limit = search ? 100 : 20; // 100 limit when searching, 20 for pagination
+        const result = await getUsers({
+          page,
+          limit,
+          search: search || undefined,
+          userType: "student", // Only students can receive courses
+        });
+
+        if (result) {
+          if (append) {
+            setUsers((prev) => [...prev, ...result.users]);
+          } else {
+            setUsers(result.users);
+          }
+
+          setUserHasMore(page < result.totalPages);
+          setUserCurrentPage(page);
+        }
+      } catch (error) {
+        console.error("Error fetching users:", error);
+        toast.error("Failed to load users");
+      } finally {
+        setIsLoadingUsers(false);
+        isLoadingUsersRef.current = false;
+      }
+    },
+    [getUsers]
+  );
+
+  // Load users when step 3 is reached or search changes
+  useEffect(() => {
+    // Only run when we're on step 3 and modal is open
+    if (giftStep !== 3 || !isOpen) return;
+
+    // Check if search has actually changed to prevent duplicate calls
+    if (lastSearchRef.current === debouncedUserSearch && users.length > 0) {
+      return;
+    }
+
+    lastSearchRef.current = debouncedUserSearch;
+
+    // Reset pagination
+    setUserCurrentPage(1);
+    setUserHasMore(true);
+
+    if (debouncedUserSearch) {
+      // Fetch with search (limit 100, no pagination)
+      fetchUsers(1, false, debouncedUserSearch);
+    } else {
+      // Initial load without search (pagination enabled)
+      fetchUsers(1, false);
+    }
+  }, [giftStep, isOpen, debouncedUserSearch, fetchUsers]);
+
+  // Intersection Observer for courses infinite scroll
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !isLoadingCourses) {
+          fetchCourses(currentPage + 1, true);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    const currentTarget = coursesObserverTarget.current;
+    if (currentTarget) {
+      observer.observe(currentTarget);
+    }
+
+    return () => {
+      if (currentTarget) {
+        observer.unobserve(currentTarget);
+      }
+    };
+  }, [hasMore, isLoadingCourses, currentPage, fetchCourses]);
+
+  // Intersection Observer for users infinite scroll (only when not searching)
+  useEffect(() => {
+    // Don't use infinite scroll when searching (search returns up to 100 results)
+    if (debouncedUserSearch || giftStep !== 3) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        // Only trigger if:
+        // 1. Element is intersecting
+        // 2. There are more pages
+        // 3. Not currently loading
+        // 4. Not already loading (ref check)
+        if (
+          entries[0].isIntersecting &&
+          userHasMore &&
+          !isLoadingUsers &&
+          !isLoadingUsersRef.current
+        ) {
+          fetchUsers(userCurrentPage + 1, true);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    const currentTarget = usersObserverTarget.current;
+    if (currentTarget) {
+      observer.observe(currentTarget);
+    }
+
+    return () => {
+      if (currentTarget) {
+        observer.unobserve(currentTarget);
+      }
+    };
+  }, [
+    userHasMore,
+    isLoadingUsers,
+    userCurrentPage,
+    fetchUsers,
+    debouncedUserSearch,
+    giftStep,
+  ]);
+
+  const getAvailableUsers = () => {
+    if (selectedCourses.length === 0) return users;
+
+    return users.filter((user) => {
+      if (!user._id) return false;
+      const userCourseIds = userEnrollments[user._id] || [];
+      // Show users who don't have at least one of the selected courses
+      return selectedCourses.some(
+        (course) => !userCourseIds.includes(course._id || "")
+      );
+    });
+  };
+
+  // Fetch course details with modules, lessons, and content
+  const fetchCourseDetails = async (courseId: string) => {
+    setLoadingCourseDetails(true);
+    try {
+      const course = await getCourseById(courseId);
+      if (course) {
+        setCourseDetails(course);
+        setCoursesDetails((prev) => ({
+          ...prev,
+          [courseId]: course,
+        }));
+      }
+    } catch (error) {
+      console.error("Error fetching course details:", error);
+      toast.error("Failed to load course details");
+    } finally {
+      setLoadingCourseDetails(false);
+    }
+  };
+
+  // Handle course selection toggle (step 1)
+  const handleCourseToggle = async (courseId: string, isSelected: boolean) => {
+    const course = courses.find((c) => c._id === courseId);
+    if (!course) return;
+
+    if (isSelected) {
+      // Add course to selection
+      setSelectedCourses((prev) => [...prev, course]);
+      // Fetch course details for partial access
+      await fetchCourseDetails(courseId);
+    } else {
+      // Remove course from selection
+      setSelectedCourses((prev) => prev.filter((c) => c._id !== courseId));
+      // Remove plan selection for this course
+      setSelectedPlans((prev) => {
+        const newPlans = { ...prev };
+        delete newPlans[courseId];
+        return newPlans;
+      });
+      // Remove course details
+      setCoursesDetails((prev) => {
+        const newDetails = { ...prev };
+        delete newDetails[courseId];
+        return newDetails;
+      });
+    }
+  };
+
+  // Handle plan selection for a specific course (step 2)
+  const handlePlanSelect = (
+    courseId: string,
+    planType: "elite" | "essential"
+  ) => {
+    setSelectedPlans((prev) => ({
+      ...prev,
+      [courseId]: planType,
+    }));
+    setSelectedUsers([]);
+  };
+
+  // Handle access type selection (step 3 -> step 4)
+  const handleAccessTypeSelect = (type: "full" | "partial") => {
+    setAccessType(type);
+    if (type === "full") {
+      // Reset all selections for full access
+      setSelectedModules(new Set());
+      setSelectedLessons({});
+      setSelectedContents({});
+    }
+  };
+
+  // Toggle module selection
+  const toggleModule = (moduleId: string) => {
+    const newSelected = new Set(selectedModules);
+    if (newSelected.has(moduleId)) {
+      newSelected.delete(moduleId);
+      // Remove all lessons and contents for this module
+      const newLessons = { ...selectedLessons };
+      const newContents = { ...selectedContents };
+      delete newLessons[moduleId];
+      delete newContents[moduleId];
+      setSelectedLessons(newLessons);
+      setSelectedContents(newContents);
+    } else {
+      newSelected.add(moduleId);
+    }
+    setSelectedModules(newSelected);
+  };
+
+  // Toggle lesson selection
+  const toggleLesson = (moduleId: string, lessonId: string) => {
+    const moduleLessons = selectedLessons[moduleId] || new Set<string>();
+    const newModuleLessons = new Set(moduleLessons);
+
+    if (newModuleLessons.has(lessonId)) {
+      // Unselect lesson - remove it and all its contents
+      newModuleLessons.delete(lessonId);
+      const newContents = { ...selectedContents };
+      delete newContents[lessonId];
+      setSelectedContents(newContents);
+    } else {
+      // Select lesson - automatically select all contents in this lesson
+      newModuleLessons.add(lessonId);
+
+      // Find the lesson and get all its content IDs
+      if (
+        courseDetails &&
+        courseDetails.modules &&
+        Array.isArray(courseDetails.modules)
+      ) {
+        const module = (courseDetails.modules as CourseModule[]).find(
+          (m) => (typeof m === "string" ? m : m._id) === moduleId
+        );
+
+        if (module && typeof module !== "string") {
+          const lesson = (
+            Array.isArray(module.lessons) ? module.lessons : []
+          ).find((l) => (typeof l === "string" ? l : l._id) === lessonId);
+
+          if (
+            lesson &&
+            typeof lesson !== "string" &&
+            Array.isArray(lesson.contents)
+          ) {
+            // Auto-select all content IDs in this lesson
+            const allContentIds = lesson.contents
+              .map((c) => (typeof c === "string" ? c : c._id))
+              .filter((id): id is string => !!id);
+
+            const newContents = { ...selectedContents };
+            newContents[lessonId] = new Set(allContentIds);
+            setSelectedContents(newContents);
+          }
+        }
+      }
+    }
+
+    setSelectedLessons({ ...selectedLessons, [moduleId]: newModuleLessons });
+  };
+
+  // Toggle content selection
+  const toggleContent = (
+    moduleId: string,
+    lessonId: string,
+    contentId: string
+  ) => {
+    // Check if the lesson is already selected
+    const moduleLessons = selectedLessons[moduleId] || new Set<string>();
+    const isLessonSelected = moduleLessons.has(lessonId);
+
+    if (isLessonSelected) {
+      // If lesson is selected, unselect the lesson first (which will remove all contents)
+      // Then select only the remaining contents
+      const newModuleLessons = new Set(moduleLessons);
+      newModuleLessons.delete(lessonId);
+      setSelectedLessons({ ...selectedLessons, [moduleId]: newModuleLessons });
+
+      // Get all content IDs for this lesson
+      if (
+        courseDetails &&
+        courseDetails.modules &&
+        Array.isArray(courseDetails.modules)
+      ) {
+        const module = (courseDetails.modules as CourseModule[]).find(
+          (m) => (typeof m === "string" ? m : m._id) === moduleId
+        );
+
+        if (module && typeof module !== "string") {
+          const lesson = (
+            Array.isArray(module.lessons) ? module.lessons : []
+          ).find((l) => (typeof l === "string" ? l : l._id) === lessonId);
+
+          if (
+            lesson &&
+            typeof lesson !== "string" &&
+            Array.isArray(lesson.contents)
+          ) {
+            const allContentIds = lesson.contents
+              .map((c) => (typeof c === "string" ? c : c._id))
+              .filter((id): id is string => !!id);
+
+            // Remove the toggled content and keep the rest
+            const newContentIds = allContentIds.filter(
+              (id) => id !== contentId
+            );
+            const newContents = { ...selectedContents };
+
+            if (newContentIds.length > 0) {
+              newContents[lessonId] = new Set(newContentIds);
+            } else {
+              delete newContents[lessonId];
+            }
+
+            setSelectedContents(newContents);
+          }
+        }
+      }
+    } else {
+      // Lesson is not selected, so we're selecting individual contents
+      const lessonContents = selectedContents[lessonId] || new Set<string>();
+      const newLessonContents = new Set(lessonContents);
+
+      if (newLessonContents.has(contentId)) {
+        newLessonContents.delete(contentId);
+      } else {
+        newLessonContents.add(contentId);
+      }
+
+      const newContents = { ...selectedContents };
+      if (newLessonContents.size > 0) {
+        newContents[lessonId] = newLessonContents;
+      } else {
+        delete newContents[lessonId];
+      }
+      setSelectedContents(newContents);
+    }
+  };
+
+  // Toggle module expansion
+  const toggleModuleExpansion = (moduleId: string) => {
+    const newExpanded = new Set(expandedModules);
+    if (newExpanded.has(moduleId)) {
+      newExpanded.delete(moduleId);
+    } else {
+      newExpanded.add(moduleId);
+    }
+    setExpandedModules(newExpanded);
+  };
+
+  // Toggle lesson expansion
+  const toggleLessonExpansion = (lessonId: string) => {
+    const newExpanded = new Set(expandedLessons);
+    if (newExpanded.has(lessonId)) {
+      newExpanded.delete(lessonId);
+    } else {
+      newExpanded.add(lessonId);
+    }
+    setExpandedLessons(newExpanded);
+  };
+
+  // Check if there are any valid selections for partial access
+  const hasValidPartialAccessSelection = (): boolean => {
+    // Check if any modules are selected
+    if (selectedModules.size > 0) {
+      return true;
+    }
+
+    // Check if any contents are selected (which implies modules/lessons need to be included)
+    const hasSelectedContents = Object.keys(selectedContents).some(
+      (lessonId) =>
+        selectedContents[lessonId] && selectedContents[lessonId].size > 0
+    );
+
+    return hasSelectedContents;
+  };
+
+  // Build access control object from selections
+  const buildAccessControl = (): PartialAccessControl | undefined => {
+    if (accessType === "full") {
+      return undefined; // Full access means no accessControl
+    }
+
+    // First, build a complete map of lessons to their parent modules
+    const lessonToModuleMap = new Map<string, string>(); // Map lessonId to moduleId
+    const allModulesMap = new Map<string, CourseModule>(); // Map moduleId to module
+    const allLessonsMap = new Map<
+      string,
+      { lessonId: string; moduleId: string }
+    >(); // Map lessonId to lesson info
+
+    if (
+      courseDetails &&
+      courseDetails.modules &&
+      Array.isArray(courseDetails.modules)
+    ) {
+      (courseDetails.modules as CourseModule[]).forEach((module) => {
+        const moduleId = typeof module === "string" ? module : module._id || "";
+        if (moduleId && typeof module !== "string") {
+          allModulesMap.set(moduleId, module);
+
+          if (Array.isArray(module.lessons)) {
+            module.lessons.forEach((lesson) => {
+              const lessonId =
+                typeof lesson === "string" ? lesson : lesson._id || "";
+              if (lessonId) {
+                lessonToModuleMap.set(lessonId, moduleId);
+                allLessonsMap.set(lessonId, { lessonId, moduleId });
+              }
+            });
+          }
+        }
+      });
+    }
+
+    // Build the access control structure
+    const accessibleModules: ModuleAccessControl[] = [];
+
+    // Process selected modules
+    selectedModules.forEach((moduleId) => {
+      const module = allModulesMap.get(moduleId);
+      if (module && typeof module !== "string") {
+        const moduleAccess: ModuleAccessControl = {
+          moduleId,
+        };
+
+        // If module is selected, include all its lessons
+        if (Array.isArray(module.lessons)) {
+          const accessibleLessons = module.lessons
+            .map((lesson) => {
+              const lessonId =
+                typeof lesson === "string" ? lesson : lesson._id || "";
+              return {
+                lessonId,
+              };
+            })
+            .filter((l) => l.lessonId);
+
+          if (accessibleLessons.length > 0) {
+            moduleAccess.accessibleLessons = accessibleLessons;
+          }
+        }
+
+        accessibleModules.push(moduleAccess);
+      }
+    });
+
+    // Process selected lessons (that are not part of selected modules)
+    Object.keys(selectedLessons).forEach((moduleId) => {
+      if (!selectedModules.has(moduleId)) {
+        const moduleLessons = selectedLessons[moduleId];
+        if (moduleLessons && moduleLessons.size > 0) {
+          const moduleAccess: ModuleAccessControl = {
+            moduleId,
+            accessibleLessons: Array.from(moduleLessons).map((lessonId) => ({
+              lessonId,
+            })),
+          };
+
+          accessibleModules.push(moduleAccess);
+        }
+      }
+    });
+
+    // Process selected contents (that are not part of selected lessons)
+    Object.keys(selectedContents).forEach((lessonId) => {
+      const contents = selectedContents[lessonId];
+      if (contents && contents.size > 0) {
+        const moduleId = lessonToModuleMap.get(lessonId);
+        if (moduleId) {
+          // Check if this lesson is already in access control
+          let moduleAccess = accessibleModules.find(
+            (m) => m.moduleId === moduleId
+          );
+
+          if (!moduleAccess) {
+            moduleAccess = {
+              moduleId,
+              accessibleLessons: [],
+            };
+            accessibleModules.push(moduleAccess);
+          }
+
+          if (!moduleAccess.accessibleLessons) {
+            moduleAccess.accessibleLessons = [];
+          }
+
+          // Check if this lesson is already in the module's lessons
+          let lessonAccess = moduleAccess.accessibleLessons.find(
+            (l) => l.lessonId === lessonId
+          );
+
+          if (!lessonAccess) {
+            lessonAccess = {
+              lessonId,
+              accessibleContentIds: [],
+            };
+            moduleAccess.accessibleLessons.push(lessonAccess);
+          }
+
+          // Add contents
+          if (!lessonAccess.accessibleContentIds) {
+            lessonAccess.accessibleContentIds = [];
+          }
+          contents.forEach((contentId) => {
+            lessonAccess!.accessibleContentIds!.push(contentId);
+          });
+        }
+      }
+    });
+
+    return {
+      accessType: "partial",
+      accessibleModules:
+        accessibleModules.length > 0 ? accessibleModules : undefined,
+    };
+  };
+
+  // Handle course gifting
+  const handleGiftCourse = async () => {
+    if (selectedCourses.length === 0 || selectedUsers.length === 0) {
+      toast.error("Please select at least one course and one user");
+      return;
+    }
+
+    // Check if all selected courses have plans selected
+    const coursesWithoutPlans = selectedCourses.filter(
+      (course) => !selectedPlans[course._id || ""]
+    );
+    if (coursesWithoutPlans.length > 0) {
+      toast.error(
+        `Please select a plan for: ${coursesWithoutPlans
+          .map((c) => c.title)
+          .join(", ")}`
+      );
+      return;
+    }
+
+    // Check if all selected plans exist for their courses
+    for (const course of selectedCourses) {
+      const planType = selectedPlans[course._id || ""];
+      if (!course.plans || !course.plans[planType]) {
+        toast.error(
+          `Selected plan (${planType}) is not available for course: ${course.title}`
+        );
+        return;
+      }
+    }
+
+    // Build access control (same for all courses)
+    const accessControl = buildAccessControl();
+
+    setIsGifting(true);
+    try {
+      let totalSuccessCount = 0;
+      let totalFailCount = 0;
+      const errors: string[] = [];
+
+      // Gift each course to each selected user
+      for (const course of selectedCourses) {
+        const planType = selectedPlans[course._id || ""];
+        let courseSuccessCount = 0;
+        let courseFailCount = 0;
+
+        for (const userId of selectedUsers) {
+          try {
+            const giftData = {
+              userId,
+              courseId: course._id!,
+              planType,
+              ...(accessControl && { accessControl }),
+            } as GiftCourseData;
+            const result = await giftCourse(giftData);
+
+            if (result) {
+              courseSuccessCount++;
+              totalSuccessCount++;
+            } else {
+              courseFailCount++;
+              totalFailCount++;
+            }
+          } catch (error: any) {
+            courseFailCount++;
+            totalFailCount++;
+            // Find user from loaded users
+            const user = users.find((u) => u._id === userId);
+            const userName = user
+              ? `${user.firstName || "Unknown"} ${user.lastName || "User"}`
+              : userId;
+            errors.push(
+              `${course.title} → ${userName}: ${
+                error.message || "Failed to gift course"
+              }`
+            );
+          }
+        }
+
+        if (courseSuccessCount > 0) {
+          const accessInfo =
+            accessType === "full" ? "full access" : "partial access";
+          console.log(
+            `Successfully gifted ${course.title} (${planType} plan, ${accessInfo}) to ${courseSuccessCount} user(s)`
+          );
+        }
+      }
+
+      if (totalSuccessCount > 0) {
+        const accessInfo =
+          accessType === "full" ? "full access" : "partial access";
+        toast.success(
+          `Successfully gifted ${selectedCourses.length} course(s) (${accessInfo}) to ${selectedUsers.length} user(s). Total: ${totalSuccessCount} gift(s) completed.`
+        );
+      }
+
+      if (totalFailCount > 0) {
+        toast.error(
+          `Failed to gift ${totalFailCount} course(s). ${errors
+            .slice(0, 5)
+            .join("; ")}${
+            errors.length > 5 ? ` and ${errors.length - 5} more...` : ""
+          }`
+        );
+      }
+
+      // Reset and close modal
+      onClose();
+      if (onGiftComplete) {
+        onGiftComplete();
+      }
+    } catch (error: any) {
+      const errorMessage =
+        error.message || "Failed to gift course. Please try again.";
+      toast.error(errorMessage);
+      console.error("Gift course error:", error);
+    } finally {
+      setIsGifting(false);
+    }
+  };
+
+  const handleClose = () => {
+    onClose();
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl h-[90vh] overflow-hidden flex flex-col">
+        {/* Header */}
+        <div className="bg-linear-to-r from-orange-500 to-orange-600 px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
+                <Gift className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-white">
+                  Gift Course to Users
+                </h3>
+                <p className="text-sm text-orange-50">Step {giftStep} of 4</p>
+              </div>
+            </div>
+            <button
+              onClick={handleClose}
+              className="text-white/80 hover:text-white hover:bg-white/20 rounded-lg p-1.5 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Step Indicator */}
+        <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+          <div className="flex items-center justify-center">
+            <div className="flex items-center">
+              <div className="flex flex-col items-center">
+                <div
+                  className={`flex items-center justify-center w-10 h-10 rounded-full font-semibold transition-all ${
+                    giftStep >= 1
+                      ? "bg-orange-500 text-white shadow-lg scale-110"
+                      : "bg-gray-200 text-gray-500"
+                  }`}
+                >
+                  {giftStep > 1 ? <Check className="w-5 h-5" /> : "1"}
+                </div>
+                <span
+                  className={`text-xs mt-1 font-medium ${
+                    giftStep >= 1 ? "text-orange-600" : "text-gray-500"
+                  }`}
+                >
+                  Course
+                </span>
+              </div>
+              <div
+                className={`w-16 h-1 mx-2 transition-all ${
+                  giftStep >= 2 ? "bg-orange-500" : "bg-gray-200"
+                }`}
+              />
+              <div className="flex flex-col items-center">
+                <div
+                  className={`flex items-center justify-center w-10 h-10 rounded-full font-semibold transition-all ${
+                    giftStep >= 2
+                      ? "bg-orange-500 text-white shadow-lg scale-110"
+                      : "bg-gray-200 text-gray-500"
+                  }`}
+                >
+                  {giftStep > 2 ? <Check className="w-5 h-5" /> : "2"}
+                </div>
+                <span
+                  className={`text-xs mt-1 font-medium ${
+                    giftStep >= 2 ? "text-orange-600" : "text-gray-500"
+                  }`}
+                >
+                  Plan
+                </span>
+              </div>
+              <div
+                className={`w-16 h-1 mx-2 transition-all ${
+                  giftStep >= 3 ? "bg-orange-500" : "bg-gray-200"
+                }`}
+              />
+              <div className="flex flex-col items-center">
+                <div
+                  className={`flex items-center justify-center w-10 h-10 rounded-full font-semibold transition-all ${
+                    giftStep >= 3
+                      ? "bg-orange-500 text-white shadow-lg scale-110"
+                      : "bg-gray-200 text-gray-500"
+                  }`}
+                >
+                  {giftStep > 3 ? <Check className="w-5 h-5" /> : "3"}
+                </div>
+                <span
+                  className={`text-xs mt-1 font-medium ${
+                    giftStep >= 3 ? "text-orange-600" : "text-gray-500"
+                  }`}
+                >
+                  Users
+                </span>
+              </div>
+              <div
+                className={`w-16 h-1 mx-2 transition-all ${
+                  giftStep >= 4 ? "bg-orange-500" : "bg-gray-200"
+                }`}
+              />
+              <div className="flex flex-col items-center">
+                <div
+                  className={`flex items-center justify-center w-10 h-10 rounded-full font-semibold transition-all ${
+                    giftStep >= 4
+                      ? "bg-orange-500 text-white shadow-lg scale-110"
+                      : "bg-gray-200 text-gray-500"
+                  }`}
+                >
+                  4
+                </div>
+                <span
+                  className={`text-xs mt-1 font-medium ${
+                    giftStep >= 4 ? "text-orange-600" : "text-gray-500"
+                  }`}
+                >
+                  Access
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-6 min-h-0">
+          <div className="space-y-6">
+            {/* Step 1: Course Selection */}
+            {giftStep === 1 && (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-3">
+                    Select Course(s)
+                    <span className="ml-2 text-xs font-normal text-gray-500">
+                      (Multiple selection allowed)
+                    </span>
+                  </label>
+                  <div
+                    ref={coursesScrollRef}
+                    className="border-2 border-gray-200 rounded-xl overflow-hidden max-h-96 overflow-y-auto"
+                  >
+                    {courses.length === 0 && !isLoadingCourses ? (
+                      <div className="p-8 text-center">
+                        <p className="text-gray-600 font-medium">
+                          No courses available
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-gray-100">
+                        {courses.map((course) => {
+                          const isSelected = selectedCourses.some(
+                            (c) => c._id === course._id
+                          );
+                          const elitePlan = course.plans?.elite;
+                          const essentialPlan = course.plans?.essential;
+                          let planInfo = "";
+
+                          if (elitePlan && essentialPlan) {
+                            planInfo = ` (Elite: ₹${elitePlan.price}, Essential: ₹${essentialPlan.price})`;
+                          } else if (elitePlan) {
+                            planInfo = ` (Elite: ₹${elitePlan.price})`;
+                          } else if (essentialPlan) {
+                            planInfo = ` (Essential: ₹${essentialPlan.price})`;
+                          }
+
+                          const hasPlans =
+                            course.plans &&
+                            (course.plans.elite || course.plans.essential);
+
+                          return (
+                            <label
+                              key={course._id}
+                              className="flex items-center p-4 hover:bg-orange-50 transition-colors cursor-pointer group"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={(e) => {
+                                  handleCourseToggle(
+                                    course._id || "",
+                                    e.target.checked
+                                  );
+                                }}
+                                className="w-5 h-5 text-orange-600 border-gray-300 rounded focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
+                              />
+                              <div className="ml-4 flex-1">
+                                <div className="text-sm font-semibold text-gray-900 group-hover:text-orange-700">
+                                  {course.title}
+                                  {planInfo && (
+                                    <span className="text-xs text-gray-500 font-normal ml-2">
+                                      {planInfo}
+                                    </span>
+                                  )}
+                                </div>
+                                {!hasPlans && (
+                                  <div className="text-xs text-red-600 mt-1">
+                                    ⚠️ No plans available
+                                  </div>
+                                )}
+                              </div>
+                              {isSelected && (
+                                <div className="text-orange-600">
+                                  <Check className="w-5 h-5" />
+                                </div>
+                              )}
+                            </label>
+                          );
+                        })}
+                        {/* Infinite scroll trigger */}
+                        {hasMore && (
+                          <div
+                            ref={coursesObserverTarget}
+                            className="flex items-center justify-center p-4"
+                          >
+                            {isLoadingCourses && (
+                              <div className="flex items-center gap-2 text-gray-500">
+                                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-orange-500"></div>
+                                <span className="text-sm">
+                                  Loading more courses...
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        {!hasMore && courses.length > 0 && (
+                          <div className="p-4 text-center text-sm text-gray-500">
+                            No more courses to load
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {isLoadingCourses && courses.length === 0 && (
+                      <div className="p-8 text-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mx-auto mb-2"></div>
+                        <p className="text-gray-600 font-medium">
+                          Loading courses...
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                  {selectedCourses.length > 0 && (
+                    <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <p className="text-sm text-green-700 font-medium">
+                        ✓ {selectedCourses.length} course
+                        {selectedCourses.length > 1 ? "s" : ""} selected
+                      </p>
+                      <div className="mt-2 space-y-1">
+                        {selectedCourses.map((course) => (
+                          <div
+                            key={course._id}
+                            className="text-xs text-green-600"
+                          >
+                            • {course.title}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Step 2: Plan Selection */}
+            {giftStep === 2 && selectedCourses.length > 0 && (
+              <div className="space-y-6">
+                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-gray-700">
+                    <span className="font-semibold">Selected Course(s):</span>{" "}
+                    <span className="text-blue-700 font-medium">
+                      {selectedCourses.length} course
+                      {selectedCourses.length > 1 ? "s" : ""}
+                    </span>
+                  </p>
+                </div>
+                <div className="space-y-4">
+                  {selectedCourses.map((course) => {
+                    const courseId = course._id || "";
+                    const selectedPlan = selectedPlans[courseId];
+                    const hasElite = course.plans?.elite;
+                    const hasEssential = course.plans?.essential;
+
+                    if (!hasElite && !hasEssential) {
+                      return (
+                        <div
+                          key={courseId}
+                          className="p-4 bg-red-50 border border-red-200 rounded-lg"
+                        >
+                          <p className="text-sm text-red-600 font-medium">
+                            ⚠️ {course.title} doesn't have any plans available.
+                          </p>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div
+                        key={courseId}
+                        className="p-4 border-2 border-gray-200 rounded-xl"
+                      >
+                        <div className="mb-3">
+                          <label className="block text-sm font-semibold text-gray-900">
+                            {course.title}
+                          </label>
+                        </div>
+                        <Select
+                          options={[
+                            ...(hasElite
+                              ? [
+                                  {
+                                    value: "elite",
+                                    label: `Elite Plan - ₹${
+                                      course.plans!.elite!.price
+                                    }`,
+                                  },
+                                ]
+                              : []),
+                            ...(hasEssential
+                              ? [
+                                  {
+                                    value: "essential",
+                                    label: `Essential Plan - ₹${
+                                      course.plans!.essential!.price
+                                    }`,
+                                  },
+                                ]
+                              : []),
+                          ]}
+                          value={selectedPlan || ""}
+                          onChange={(value) =>
+                            handlePlanSelect(
+                              courseId,
+                              value as "elite" | "essential"
+                            )
+                          }
+                          placeholder="Choose a plan type"
+                        />
+                        {selectedPlan && (
+                          <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                            <p className="text-sm text-green-700">
+                              ✓ Plan selected:{" "}
+                              <span className="font-semibold capitalize">
+                                {selectedPlan}
+                              </span>
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                {Object.keys(selectedPlans).length === selectedCourses.length &&
+                  selectedCourses.every((c) => selectedPlans[c._id || ""]) && (
+                    <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <p className="text-sm text-green-700 font-medium">
+                        ✓ All courses have plans selected
+                      </p>
+                    </div>
+                  )}
+              </div>
+            )}
+
+            {/* Step 3: User Selection (Multi-select) */}
+            {giftStep === 3 &&
+              selectedCourses.length > 0 &&
+              Object.keys(selectedPlans).length === selectedCourses.length &&
+              selectedCourses.every((c) => selectedPlans[c._id || ""]) && (
+                <div className="space-y-4">
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-center gap-4 text-sm flex-wrap">
+                      <div>
+                        <span className="font-semibold text-gray-700">
+                          Course(s):
+                        </span>{" "}
+                        <span className="text-blue-700 font-medium">
+                          {selectedCourses.length} selected
+                        </span>
+                      </div>
+                      <div className="h-4 w-px bg-gray-300"></div>
+                      <div>
+                        <span className="font-semibold text-gray-700">
+                          Plan(s):
+                        </span>{" "}
+                        <span className="text-blue-700 font-medium">
+                          {Object.keys(selectedPlans).length} selected
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-900 mb-3">
+                      Select Users
+                      <span className="ml-2 text-xs font-normal text-gray-500">
+                        (Multiple selection allowed)
+                      </span>
+                    </label>
+
+                    {/* Search Bar */}
+                    <div className="mb-4">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                        <Input
+                          placeholder="Search users by name or email..."
+                          value={userSearch}
+                          onChange={(e) => setUserSearch(e.target.value)}
+                          className="pl-10"
+                        />
+                      </div>
+                      {debouncedUserSearch && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          Showing up to 100 results for "{debouncedUserSearch}"
+                        </p>
+                      )}
+                    </div>
+
+                    {isLoadingUsers && users.length === 0 ? (
+                      <div className="text-center py-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mx-auto mb-2"></div>
+                        <p className="text-gray-500">Loading users...</p>
+                      </div>
+                    ) : (
+                      <div
+                        ref={usersScrollRef}
+                        className="border-2 border-gray-200 rounded-xl overflow-hidden max-h-80 overflow-y-auto"
+                      >
+                        {getAvailableUsers().length === 0 ? (
+                          <div className="p-8 text-center">
+                            <div className="text-gray-400 mb-2">
+                              <UserIcon className="w-12 h-12 mx-auto" />
+                            </div>
+                            <p className="text-gray-600 font-medium">
+                              {debouncedUserSearch
+                                ? "No users found"
+                                : "No available users"}
+                            </p>
+                            <p className="text-sm text-gray-500 mt-1">
+                              {debouncedUserSearch
+                                ? "Try a different search term"
+                                : "All users already own this course."}
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="divide-y divide-gray-100">
+                            {getAvailableUsers().map((user) => (
+                              <label
+                                key={user._id}
+                                className="flex items-center p-4 hover:bg-orange-50 transition-colors cursor-pointer group"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={selectedUsers.includes(
+                                    user._id || ""
+                                  )}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setSelectedUsers([
+                                        ...selectedUsers,
+                                        user._id || "",
+                                      ]);
+                                    } else {
+                                      setSelectedUsers(
+                                        selectedUsers.filter(
+                                          (id) => id !== user._id
+                                        )
+                                      );
+                                    }
+                                  }}
+                                  className="w-5 h-5 text-orange-600 border-gray-300 rounded focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
+                                />
+                                <div className="ml-4 flex-1">
+                                  <div className="text-sm font-semibold text-gray-900 group-hover:text-orange-700">
+                                    {user.firstName || "Unknown"}{" "}
+                                    {user.lastName || "User"}
+                                  </div>
+                                  <div className="text-sm text-gray-500">
+                                    {user.email}
+                                  </div>
+                                </div>
+                                {selectedUsers.includes(user._id || "") && (
+                                  <div className="text-orange-600">
+                                    <Check className="w-5 h-5" />
+                                  </div>
+                                )}
+                              </label>
+                            ))}
+                            {/* Infinite scroll trigger (only when not searching) */}
+                            {!debouncedUserSearch && userHasMore && (
+                              <div
+                                ref={usersObserverTarget}
+                                className="flex items-center justify-center p-4"
+                              >
+                                {isLoadingUsers && (
+                                  <div className="flex items-center gap-2 text-gray-500">
+                                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-orange-500"></div>
+                                    <span className="text-sm">
+                                      Loading more users...
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            {!debouncedUserSearch &&
+                              !userHasMore &&
+                              users.length > 0 && (
+                                <div className="p-4 text-center text-sm text-gray-500">
+                                  No more users to load
+                                </div>
+                              )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {selectedUsers.length > 0 && (
+                      <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                        <p className="text-sm text-green-700 font-medium">
+                          ✓ {selectedUsers.length} user
+                          {selectedUsers.length > 1 ? "s" : ""} selected
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+            {/* Step 4: Access Control Selection */}
+            {giftStep === 4 &&
+              selectedCourses.length > 0 &&
+              Object.keys(selectedPlans).length === selectedCourses.length &&
+              selectedCourses.every((c) => selectedPlans[c._id || ""]) &&
+              selectedUsers.length > 0 && (
+                <div className="space-y-6">
+                  <div className="p-4 bg-linear-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-center gap-4 text-sm flex-wrap">
+                      <div>
+                        <span className="font-semibold text-gray-700">
+                          Course(s):
+                        </span>{" "}
+                        <span className="text-blue-700 font-medium">
+                          {selectedCourses.length}
+                        </span>
+                      </div>
+                      <div className="h-4 w-px bg-gray-300"></div>
+                      <div>
+                        <span className="font-semibold text-gray-700">
+                          Plan(s):
+                        </span>{" "}
+                        <span className="text-blue-700 font-medium">
+                          {Object.keys(selectedPlans).length}
+                        </span>
+                      </div>
+                      <div className="h-4 w-px bg-gray-300"></div>
+                      <div>
+                        <span className="font-semibold text-gray-700">
+                          User(s):
+                        </span>{" "}
+                        <span className="text-blue-700 font-medium">
+                          {selectedUsers.length}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-900 mb-4">
+                      Access Type
+                    </label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                      <label
+                        className={`flex items-center p-4 border-2 rounded-xl cursor-pointer transition-all ${
+                          accessType === "full"
+                            ? "border-orange-500 bg-orange-50"
+                            : "border-gray-200 hover:border-orange-300 hover:bg-gray-50"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="accessType"
+                          value="full"
+                          checked={accessType === "full"}
+                          onChange={() => handleAccessTypeSelect("full")}
+                          className="w-5 h-5 text-orange-600 border-gray-300 focus:ring-2 focus:ring-orange-500"
+                        />
+                        <div className="ml-3">
+                          <span className="text-sm font-semibold text-gray-900 block">
+                            Full Access
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            Grant access to all course content
+                          </span>
+                        </div>
+                      </label>
+                      <label
+                        className={`flex items-center p-4 border-2 rounded-xl cursor-pointer transition-all ${
+                          accessType === "partial"
+                            ? "border-orange-500 bg-orange-50"
+                            : "border-gray-200 hover:border-orange-300 hover:bg-gray-50"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="accessType"
+                          value="partial"
+                          checked={accessType === "partial"}
+                          onChange={() => handleAccessTypeSelect("partial")}
+                          className="w-5 h-5 text-orange-600 border-gray-300 focus:ring-2 focus:ring-orange-500"
+                        />
+                        <div className="ml-3">
+                          <span className="text-sm font-semibold text-gray-900 block">
+                            Partial Access
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            Select specific modules and lessons
+                          </span>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+
+                  {accessType === "partial" && (
+                    <div>
+                      {loadingCourseDetails ? (
+                        <div className="text-center py-12">
+                          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-orange-500 mx-auto mb-3"></div>
+                          <p className="text-gray-600 font-medium">
+                            Loading course structure...
+                          </p>
+                        </div>
+                      ) : courseDetails &&
+                        courseDetails.modules &&
+                        Array.isArray(courseDetails.modules) &&
+                        courseDetails.modules.length > 0 ? (
+                        <div className="border-2 border-gray-200 rounded-xl max-h-96 overflow-y-auto p-5 bg-gray-50">
+                          <div className="mb-4">
+                            <label className="block text-sm font-semibold text-gray-900 mb-2">
+                              Select Modules, Lessons, and Content
+                            </label>
+                            <p className="text-xs text-gray-600 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                              💡 <strong>Tip:</strong> Select modules to grant
+                              access. If you select a module without selecting
+                              lessons, users will have access to all lessons in
+                              that module. Same applies for lessons and content.
+                            </p>
+                          </div>
+                          <div className="space-y-2">
+                            {(courseDetails.modules as CourseModule[]).map(
+                              (module) => {
+                                const moduleId =
+                                  typeof module === "string"
+                                    ? module
+                                    : module._id || "";
+                                const moduleTitle =
+                                  typeof module === "string"
+                                    ? "Unknown Module"
+                                    : module.title;
+                                const moduleLessons =
+                                  typeof module === "string"
+                                    ? []
+                                    : Array.isArray(module.lessons)
+                                    ? module.lessons
+                                    : [];
+                                const isModuleSelected =
+                                  selectedModules.has(moduleId);
+                                const isModuleExpanded =
+                                  expandedModules.has(moduleId);
+
+                                return (
+                                  <div
+                                    key={moduleId}
+                                    className="border border-gray-200 rounded-lg"
+                                  >
+                                    <div className="flex items-center p-3 hover:bg-gray-50">
+                                      <button
+                                        onClick={() =>
+                                          toggleModuleExpansion(moduleId)
+                                        }
+                                        className="mr-2 text-gray-400 hover:text-gray-600"
+                                      >
+                                        {isModuleExpanded ? (
+                                          <ChevronDown className="w-4 h-4" />
+                                        ) : (
+                                          <ChevronRight className="w-4 h-4" />
+                                        )}
+                                      </button>
+                                      <input
+                                        type="checkbox"
+                                        checked={isModuleSelected}
+                                        onChange={() => toggleModule(moduleId)}
+                                        className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
+                                      />
+                                      <span className="ml-2 text-sm font-medium text-gray-900">
+                                        {moduleTitle}
+                                      </span>
+                                    </div>
+
+                                    {isModuleExpanded &&
+                                      moduleLessons.length > 0 && (
+                                        <div className="pl-8 pr-4 pb-2 space-y-1">
+                                          {moduleLessons.map((lesson) => {
+                                            const lessonId =
+                                              typeof lesson === "string"
+                                                ? lesson
+                                                : lesson._id || "";
+                                            const lessonTitle =
+                                              typeof lesson === "string"
+                                                ? "Unknown Lesson"
+                                                : lesson.title;
+                                            const lessonContents =
+                                              typeof lesson === "string"
+                                                ? []
+                                                : Array.isArray(lesson.contents)
+                                                ? lesson.contents
+                                                : [];
+                                            const isLessonSelected =
+                                              selectedLessons[moduleId]?.has(
+                                                lessonId
+                                              );
+                                            const isLessonExpanded =
+                                              expandedLessons.has(lessonId);
+
+                                            return (
+                                              <div
+                                                key={lessonId}
+                                                className="border border-gray-200 rounded p-2"
+                                              >
+                                                <div className="flex items-center">
+                                                  <button
+                                                    onClick={() =>
+                                                      toggleLessonExpansion(
+                                                        lessonId
+                                                      )
+                                                    }
+                                                    className="mr-2 text-gray-400 hover:text-gray-600"
+                                                  >
+                                                    {isLessonExpanded ? (
+                                                      <ChevronDown className="w-3 h-3" />
+                                                    ) : (
+                                                      <ChevronRight className="w-3 h-3" />
+                                                    )}
+                                                  </button>
+                                                  <input
+                                                    type="checkbox"
+                                                    checked={
+                                                      isLessonSelected || false
+                                                    }
+                                                    onChange={() =>
+                                                      toggleLesson(
+                                                        moduleId,
+                                                        lessonId
+                                                      )
+                                                    }
+                                                    className="w-3 h-3 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
+                                                  />
+                                                  <span className="ml-2 text-xs font-medium text-gray-700">
+                                                    {lessonTitle}
+                                                  </span>
+                                                </div>
+
+                                                {isLessonExpanded &&
+                                                  lessonContents.length > 0 && (
+                                                    <div className="pl-6 pr-2 pt-1 space-y-1">
+                                                      {lessonContents.map(
+                                                        (content) => {
+                                                          const contentId =
+                                                            typeof content ===
+                                                            "string"
+                                                              ? content
+                                                              : content._id ||
+                                                                "";
+                                                          const contentTitle =
+                                                            typeof content ===
+                                                            "string"
+                                                              ? "Unknown Content"
+                                                              : content.title;
+                                                          const contentType =
+                                                            typeof content ===
+                                                            "string"
+                                                              ? "unknown"
+                                                              : content.type;
+
+                                                          // Check if lesson is selected (all contents are accessible)
+                                                          const isLessonSelected =
+                                                            selectedLessons[
+                                                              moduleId
+                                                            ]?.has(lessonId);
+                                                          // Check if this specific content is selected (when lesson is not selected)
+                                                          const isContentIndividuallySelected =
+                                                            !isLessonSelected &&
+                                                            selectedContents[
+                                                              lessonId
+                                                            ]?.has(contentId);
+
+                                                          return (
+                                                            <label
+                                                              key={contentId}
+                                                              className="flex items-center text-xs text-gray-600 cursor-pointer hover:bg-gray-50 p-1 rounded"
+                                                            >
+                                                              <input
+                                                                type="checkbox"
+                                                                checked={
+                                                                  isLessonSelected ||
+                                                                  isContentIndividuallySelected ||
+                                                                  false
+                                                                }
+                                                                onChange={() =>
+                                                                  toggleContent(
+                                                                    moduleId,
+                                                                    lessonId,
+                                                                    contentId
+                                                                  )
+                                                                }
+                                                                className="w-3 h-3 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
+                                                              />
+                                                              <span className="ml-2">
+                                                                {contentTitle} (
+                                                                {contentType})
+                                                              </span>
+                                                            </label>
+                                                          );
+                                                        }
+                                                      )}
+                                                    </div>
+                                                  )}
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      )}
+                                  </div>
+                                );
+                              }
+                            )}
+                          </div>
+
+                          {!hasValidPartialAccessSelection() && (
+                            <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                              <p className="text-sm text-amber-700 font-medium">
+                                ⚠️ Please select at least one module, lesson, or
+                                content to grant partial access.
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                          <p className="text-gray-600 font-medium">
+                            This course doesn't have any modules yet.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-between items-center gap-3">
+          <div>
+            {giftStep > 1 && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  if (giftStep === 4) {
+                    setGiftStep(3);
+                  } else if (giftStep === 3) {
+                    setGiftStep(2);
+                    setSelectedUsers([]);
+                  } else if (giftStep === 2) {
+                    setGiftStep(1);
+                    setSelectedPlans({});
+                    setSelectedUsers([]);
+                  }
+                }}
+                className="cursor-pointer"
+              >
+                ← Back
+              </Button>
+            )}
+          </div>
+          <div className="flex gap-3">
+            <Button
+              variant="outline"
+              onClick={handleClose}
+              className="cursor-pointer"
+            >
+              Cancel
+            </Button>
+            {giftStep === 4 ? (
+              <OrangeButton
+                onClick={handleGiftCourse}
+                disabled={
+                  isGifting ||
+                  isLoading ||
+                  (accessType === "partial" &&
+                    !hasValidPartialAccessSelection())
+                }
+                className={`px-6 py-2.5 font-semibold ${
+                  isGifting ||
+                  isLoading ||
+                  (accessType === "partial" &&
+                    !hasValidPartialAccessSelection())
+                    ? "cursor-not-allowed opacity-50"
+                    : "cursor-pointer hover:shadow-lg transition-shadow"
+                }`}
+              >
+                {isGifting || isLoading ? (
+                  <span className="flex items-center gap-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                    Gifting...
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    <Gift className="w-4 h-4" />
+                    Gift to {selectedUsers.length} User
+                    {selectedUsers.length > 1 ? "s" : ""}
+                  </span>
+                )}
+              </OrangeButton>
+            ) : (
+              <OrangeButton
+                onClick={() => {
+                  if (
+                    giftStep === 1 &&
+                    selectedCourses.length > 0 &&
+                    selectedCourses.every(
+                      (c) => c.plans && (c.plans.elite || c.plans.essential)
+                    )
+                  ) {
+                    setGiftStep(2);
+                  } else if (
+                    giftStep === 2 &&
+                    Object.keys(selectedPlans).length ===
+                      selectedCourses.length &&
+                    selectedCourses.every((c) => selectedPlans[c._id || ""])
+                  ) {
+                    setGiftStep(3);
+                  } else if (giftStep === 3 && selectedUsers.length > 0) {
+                    setGiftStep(4);
+                  }
+                }}
+                disabled={
+                  (giftStep === 1 &&
+                    (selectedCourses.length === 0 ||
+                      !selectedCourses.every(
+                        (c) => c.plans && (c.plans.elite || c.plans.essential)
+                      ))) ||
+                  (giftStep === 2 &&
+                    (Object.keys(selectedPlans).length !==
+                      selectedCourses.length ||
+                      !selectedCourses.every(
+                        (c) => selectedPlans[c._id || ""]
+                      ))) ||
+                  (giftStep === 3 && selectedUsers.length === 0)
+                }
+                className={`px-6 py-2.5 font-semibold ${
+                  (giftStep === 1 &&
+                    (selectedCourses.length === 0 ||
+                      !selectedCourses.every(
+                        (c) => c.plans && (c.plans.elite || c.plans.essential)
+                      ))) ||
+                  (giftStep === 2 &&
+                    (Object.keys(selectedPlans).length !==
+                      selectedCourses.length ||
+                      !selectedCourses.every(
+                        (c) => selectedPlans[c._id || ""]
+                      ))) ||
+                  (giftStep === 3 && selectedUsers.length === 0)
+                    ? "cursor-not-allowed opacity-50"
+                    : "cursor-pointer hover:shadow-lg transition-shadow"
+                }`}
+              >
+                Next →
+              </OrangeButton>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default GiftCourseModal;

@@ -73,9 +73,15 @@ const courseSchema = new mongoose.Schema<Course>(
       maxlength: 300,
     },
     category: {
-      type: String,
+      type: [mongoose.Schema.Types.ObjectId],
       required: true,
-      trim: true,
+      ref: "Category",
+      validate: {
+        validator: function (categories: mongoose.Types.ObjectId[]) {
+          return Array.isArray(categories) && categories.length > 0;
+        },
+        message: "At least one category is required",
+      },
     },
     thumbnail: {
       type: String,

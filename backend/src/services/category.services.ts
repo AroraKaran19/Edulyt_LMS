@@ -61,11 +61,36 @@ export const getCategoryByIdService = async (
   return category as Category;
 };
 
+export const getHomePageCategoriesService = async (): Promise<Category[]> => {
+  const categories = await CategoryModel.find({
+    isActive: true,
+    showOnHomePage: true,
+  })
+    .sort({ createdAt: -1 })
+    .limit(4);
+
+  return categories as Category[];
+};
+
 export const createCategoryService = async (
   name: string,
-  description?: string
+  description?: string,
+  showOnHomePage?: boolean
 ): Promise<Category | null> => {
-  const category = new CategoryModel({ name, description });
+  // Check if trying to set showOnHomePage to true
+  if (showOnHomePage === true) {
+    // Count existing categories with showOnHomePage: true
+    const count = await CategoryModel.countDocuments({ showOnHomePage: true });
+    if (count >= 4) {
+      throw new Error("Maximum of 4 categories can be shown on home page");
+    }
+  }
+
+  const category = new CategoryModel({
+    name,
+    description,
+    showOnHomePage: showOnHomePage ?? false,
+  });
   const savedCategory = await category.save();
 
   if (!savedCategory) {
@@ -77,8 +102,25 @@ export const createCategoryService = async (
 
 export const updateCategoryService = async (
   id: string,
-  updateData: { name?: string; description?: string; isActive?: boolean }
+  updateData: {
+    name?: string;
+    description?: string;
+    isActive?: boolean;
+    showOnHomePage?: boolean;
+  }
 ): Promise<Category | null> => {
+  // Check if trying to set showOnHomePage to true
+  if (updateData.showOnHomePage === true) {
+    // Count existing categories with showOnHomePage: true (excluding current category)
+    const count = await CategoryModel.countDocuments({
+      showOnHomePage: true,
+      _id: { $ne: id },
+    });
+    if (count >= 4) {
+      throw new Error("Maximum of 4 categories can be shown on home page");
+    }
+  }
+
   const category = await CategoryModel.findByIdAndUpdate(id, updateData, {
     new: true,
     runValidators: true,

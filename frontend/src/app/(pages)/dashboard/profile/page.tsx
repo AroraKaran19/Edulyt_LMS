@@ -66,6 +66,7 @@ const ProfilePage = () => {
   const [profileImageUrl, setProfileImageUrl] = useState<string>("");
   const [profileImageS3Key, setProfileImageS3Key] = useState<string>("");
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [isExternalImage, setIsExternalImage] = useState(false);
 
   const router = useRouter();
   const { data: session, update: updateSession } = useSession();
@@ -116,7 +117,46 @@ const ProfilePage = () => {
         // Set profile image if available
         if (userData.profilePicture) {
           setProfileImageUrl(userData.profilePicture);
-          // Note: s3Key is not stored in the database for profilePicture
+
+          // Check if image is from S3 or external (Google/LinkedIn)
+          const imageUrl = userData.profilePicture;
+          const isS3Url =
+            imageUrl.includes(".s3.") || imageUrl.includes("s3.amazonaws.com");
+
+          if (isS3Url) {
+            // Extract S3 key from URL
+            try {
+              const url = new URL(imageUrl);
+              const pathParts = url.pathname.split("/").filter((p) => p);
+              if (pathParts.length >= 2) {
+                // Remove bucket name if it's the first part, then get folder/filename
+                const key = pathParts.slice(1).join("/");
+                setProfileImageS3Key(key);
+              } else if (pathParts.length === 1) {
+                setProfileImageS3Key(pathParts[0]);
+              } else {
+                // Try to extract from string pattern
+                const match = imageUrl.match(/profile-images\/[^?]+/);
+                if (match) {
+                  setProfileImageS3Key(match[0]);
+                }
+              }
+            } catch {
+              // If URL parsing fails, try to extract from string
+              const match = imageUrl.match(/profile-images\/[^?]+/);
+              if (match) {
+                setProfileImageS3Key(match[0]);
+              }
+            }
+            setIsExternalImage(false);
+          } else {
+            // External image (Google/LinkedIn) - don't allow changes
+            setIsExternalImage(true);
+            setProfileImageS3Key("");
+          }
+        } else {
+          setIsExternalImage(false);
+          setProfileImageS3Key("");
         }
       }
     } catch (error) {
@@ -396,6 +436,14 @@ const ProfilePage = () => {
 
   // Handle profile image upload
   const handleImageUpload = async (file: File) => {
+    // Don't allow upload if current image is from external source (Google/LinkedIn)
+    if (isExternalImage) {
+      toast.error(
+        "Cannot change profile picture. Your account is connected to Google or LinkedIn."
+      );
+      return;
+    }
+
     // Validate image file
     const validation = validateImageFile(file, 5 * 1024 * 1024); // 5MB max
     if (!validation.valid) {
@@ -406,8 +454,8 @@ const ProfilePage = () => {
     setIsUploadingImage(true);
 
     try {
-      // Delete old image if exists
-      if (profileImageS3Key) {
+      // Delete old image from S3 if exists and is S3 image
+      if (profileImageS3Key && !isExternalImage) {
         await deleteFile(profileImageS3Key);
       }
 
@@ -417,6 +465,7 @@ const ProfilePage = () => {
       if (result.success && result.data) {
         setProfileImageUrl(result.data.url);
         setProfileImageS3Key(result.data.s3Key);
+        setIsExternalImage(false); // New image is from S3
 
         // Update user profile with new image
         const updateData = {
@@ -446,13 +495,32 @@ const ProfilePage = () => {
 
   // Handle image removal
   const handleImageRemove = async () => {
-    if (!profileImageS3Key) return;
+    // Don't allow removal if image is from external source (Google/LinkedIn)
+    if (isExternalImage) {
+      toast.error(
+        "Cannot remove profile picture. Your account is connected to Google or LinkedIn."
+      );
+      return;
+    }
+
+    // Only allow removal if we have an S3 key
+    if (!profileImageS3Key) {
+      toast.error("Cannot remove image. No S3 key found.");
+      return;
+    }
 
     setIsUploadingImage(true);
 
     try {
       // Delete from S3
-      await deleteFile(profileImageS3Key);
+      const deleteResult = await deleteFile(profileImageS3Key);
+
+      if (!deleteResult.success) {
+        toast.error(
+          deleteResult.error || "Failed to delete image from storage"
+        );
+        return;
+      }
 
       // Update user profile to remove image
       const updateData = {
@@ -470,6 +538,7 @@ const ProfilePage = () => {
 
       setProfileImageUrl("");
       setProfileImageS3Key("");
+      setIsExternalImage(false);
       toast.success("Profile image removed successfully!");
     } catch (error: any) {
       console.error("Error removing image:", error);
@@ -728,23 +797,37 @@ const ProfilePage = () => {
               </div>
 
               {/* Hover Overlay */}
-              <div
-                className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 cursor-pointer"
-                onClick={() =>
-                  document.getElementById("profile-image-input")?.click()
-                }
-              >
-                <div className="text-white text-center">
-                  {isUploadingImage ? (
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-2"></div>
-                  ) : (
-                    <Camera className="w-8 h-8 mx-auto mb-2" />
-                  )}
-                  <span className="text-sm font-medium select-none">
-                    {isUploadingImage ? "Uploading..." : "Update Image"}
-                  </span>
+              {!isExternalImage && (
+                <div
+                  className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 cursor-pointer"
+                  onClick={() => {
+                    if (!isExternalImage && !isUploadingImage) {
+                      document.getElementById("profile-image-input")?.click();
+                    }
+                  }}
+                >
+                  <div className="text-white text-center">
+                    {isUploadingImage ? (
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-2"></div>
+                    ) : (
+                      <Camera className="w-8 h-8 mx-auto mb-2" />
+                    )}
+                    <span className="text-sm font-medium select-none">
+                      {isUploadingImage ? "Uploading..." : "Update Image"}
+                    </span>
+                  </div>
                 </div>
-              </div>
+              )}
+              {isExternalImage && (
+                <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                  <div className="text-white text-center px-4">
+                    <Lock className="w-6 h-6 mx-auto mb-2" />
+                    <span className="text-xs font-medium select-none">
+                      Image from connected account
+                    </span>
+                  </div>
+                </div>
+              )}
 
               {/* Hidden file input */}
               <input
@@ -753,17 +836,17 @@ const ProfilePage = () => {
                 accept="image/*"
                 onChange={(e) => {
                   const file = e.target.files?.[0];
-                  if (file) {
+                  if (file && !isExternalImage) {
                     handleImageUpload(file);
                   }
                 }}
                 className="hidden"
-                disabled={isUploadingImage}
+                disabled={isUploadingImage || isExternalImage}
               />
             </div>
 
-            {/* Remove Image Button */}
-            {profileImageUrl && (
+            {/* Remove Image Button - Only show for S3 images */}
+            {profileImageUrl && !isExternalImage && (
               <button
                 onClick={handleImageRemove}
                 disabled={isUploadingImage}
@@ -771,6 +854,12 @@ const ProfilePage = () => {
               >
                 {isUploadingImage ? "Removing..." : "Remove Image"}
               </button>
+            )}
+            {/* Info message for external images */}
+            {profileImageUrl && isExternalImage && (
+              <div className="mt-3 px-3 py-2 text-xs text-gray-600 bg-gray-50 rounded-full text-center">
+                Profile picture from connected account (Google/LinkedIn)
+              </div>
             )}
 
             <div className="mt-6 w-full">

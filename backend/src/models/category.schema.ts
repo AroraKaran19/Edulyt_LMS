@@ -22,6 +22,11 @@ const categorySchema = new mongoose.Schema<Category>(
       default: true,
       required: true,
     },
+    showOnHomePage: {
+      type: Boolean,
+      default: false,
+      required: true,
+    },
   },
   {
     timestamps: true,

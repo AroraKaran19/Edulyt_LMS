@@ -645,15 +645,20 @@ export const useCourseForm = (
 
     // Additional utilities
     generateSlug: (title: string) => title.toLowerCase().replace(/\s+/g, "-"),
-    generateMetaTitle: (title: string, category: string) =>
-      `${title} | ${category}`,
+    generateMetaTitle: (title: string, category: string | string[]) => {
+      const categoryStr = Array.isArray(category) ? category.join(", ") : category;
+      return `${title} | ${categoryStr}`;
+    },
     generateMetaDescription: (description: string, shortDescription?: string) =>
       shortDescription || description.substring(0, 160),
-    generateKeywords: (title: string, skills: string[], category: string) => [
-      title,
-      category,
-      ...skills,
-    ],
+    generateKeywords: (title: string, skills: string[], category: string | string[]) => {
+      const categoryArray = Array.isArray(category) ? category : [category];
+      return [
+        title,
+        ...categoryArray,
+        ...skills,
+      ];
+    },
 
     // Course creation status
     isCourseCreated,

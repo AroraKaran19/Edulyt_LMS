@@ -140,14 +140,14 @@ const DiscountCountdown = ({
       
       {/* Line 3: Countdown Time */}
       <p className="font-medium text-text-primary text-center md:text-left underline">
-        {displayCountdown.days > 0 ? `${displayCountdown.days} D : ` : ""}
-        {displayCountdown.hours > 0 ? `${displayCountdown.hours} Hr : ` : ""}
-        {displayCountdown.minutes > 0
-          ? `${displayCountdown.minutes} Min : `
-          : ""}
-        {displayCountdown.seconds > 0
-          ? `${displayCountdown.seconds} Sec`
-          : ""}
+          {displayCountdown.days > 0 ? `${displayCountdown.days} D : ` : ""}
+          {displayCountdown.hours > 0 ? `${displayCountdown.hours} Hr : ` : ""}
+          {displayCountdown.minutes > 0
+            ? `${displayCountdown.minutes} Min : `
+            : ""}
+          {displayCountdown.seconds > 0
+            ? `${displayCountdown.seconds} Sec`
+            : ""}
       </p>
     </div>
   );

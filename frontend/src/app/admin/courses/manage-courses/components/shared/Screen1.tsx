@@ -12,7 +12,7 @@ import { Controller } from "react-hook-form";
 import { CourseFormData } from "@/types/courseForm";
 import dynamic from "next/dynamic";
 import { ChangeEvent, useRef, useEffect, useState } from "react";
-import { getTextFromHtml } from "@/lib/courseFormUtils";
+import { getTextFromHtml, getCategoryIds } from "@/lib/courseFormUtils";
 
 const RichTextEditor = dynamic(
   () => import("@/components/shared/Editor/Editor"),
@@ -279,10 +279,18 @@ const Screen1 = () => {
           <Controller
             name="category"
             control={control}
-            rules={{ required: "Category is required" }}
+            rules={{
+              required: "At least one category is required",
+              validate: (value) => {
+                if (!Array.isArray(value) || value.length === 0) {
+                  return "At least one category is required";
+                }
+                return true;
+              },
+            }}
             render={({ field }) => (
               <CategoryInputWithManagement
-                {...field}
+                value={getCategoryIds(field.value)}
                 label="Course Category"
                 name="courseCategory"
                 className="w-full max-w-full"

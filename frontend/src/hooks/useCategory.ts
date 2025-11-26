@@ -34,6 +34,7 @@ export interface SingleCategoryResponse {
 export interface CreateCategoryData {
   name: string;
   description?: string;
+  showOnHomePage?: boolean;
 }
 
 export interface UpdateCategoryData {
@@ -113,6 +114,22 @@ export const useCategory = () => {
       return getCategories({ ...filters, isActive: true });
     },
     [getCategories]
+  );
+
+  const getHomePageCategories = useCallback(
+    async (): Promise<Category[] | null> => {
+      return handleRequest(async () => {
+        const response = await apiClient.get("/categories/homepage");
+        if (response.data.success) {
+          return response.data.data;
+        } else {
+          throw new Error(
+            response.data.error?.message || "Failed to fetch home page categories"
+          );
+        }
+      }, "Failed to fetch home page categories");
+    },
+    [handleRequest]
   );
 
   const getCategoryById = useCallback(
@@ -486,6 +503,7 @@ export const useCategory = () => {
     // Public Category Methods
     getCategories,
     getActiveCategories,
+    getHomePageCategories,
     getCategoryById,
 
     // Admin Category Methods

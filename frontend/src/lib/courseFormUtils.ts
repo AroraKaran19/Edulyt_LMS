@@ -6,6 +6,7 @@ import {
   VERSION,
 } from "@/types/courseForm";
 import { Course } from "@/types/course";
+import { Category } from "@/types";
 import { sanitizeSlug, generateSlugFromTitle } from "./courseFormValidation";
 
 // ===================
@@ -119,6 +120,13 @@ export const transformCourseToFormData = (
   return {
     // Spread all course properties
     ...course,
+
+    // Convert categories to string array (IDs) - handle both populated Category objects and string IDs
+    category: Array.isArray(course.category)
+      ? course.category.map((c: any) =>
+          typeof c === "string" ? c : c._id || ""
+        ).filter((id: string) => id && id.trim().length > 0)
+      : [],
 
     // Convert testimonials and FAQs to string arrays (IDs)
     testimonials: Array.isArray(course.testimonials)
@@ -643,7 +651,7 @@ export const getInitialFormData = (
     title: "",
     description: "",
     shortDescription: "",
-    category: "",
+    category: [],
     audience: "college-students" as const,
     thumbnail: "",
     previewVideoUrl: "",
@@ -691,6 +699,50 @@ export const getInitialFormData = (
   };
 
   return initialData;
+};
+
+// ===================
+// Category Utility Functions
+// ===================
+
+/**
+ * Extracts category names from course category field
+ * Handles both category IDs (string[]) and populated Category objects
+ */
+export const getCategoryNames = (category: string[] | Category[] | undefined): string[] => {
+  if (!category || !Array.isArray(category)) return [];
+  
+  return category.map((c: any) => {
+    // If it's a populated Category object, return the name
+    if (typeof c === "object" && c !== null && "name" in c) {
+      return c.name;
+    }
+    // If it's an ID string, return it (will need to be resolved elsewhere)
+    if (typeof c === "string") {
+      return c;
+    }
+    return "";
+  }).filter((name: string) => name && name.trim().length > 0);
+};
+
+/**
+ * Extracts category IDs from course category field
+ * Handles both category IDs (string[]) and populated Category objects
+ */
+export const getCategoryIds = (category: string[] | Category[] | undefined): string[] => {
+  if (!category || !Array.isArray(category)) return [];
+  
+  return category.map((c: any) => {
+    // If it's a populated Category object, return the _id
+    if (typeof c === "object" && c !== null && "_id" in c) {
+      return c._id || "";
+    }
+    // If it's an ID string, return it
+    if (typeof c === "string") {
+      return c;
+    }
+    return "";
+  }).filter((id: string) => id && id.trim().length > 0);
 };
 
 // ===================
@@ -788,7 +840,7 @@ export const sanitizeFormData = (formData: CourseFormData): CourseFormData => {
     title: formData.title?.trim() || "",
     description: formData.description?.trim() || "",
     shortDescription: formData.shortDescription?.trim() || "",
-    category: formData.category?.trim() || "",
+    category: Array.isArray(formData.category) ? formData.category : [],
     slug: sanitizeSlug(formData.slug || ""),
     metaTitle: formData.metaTitle?.trim() || "",
     metaDescription: formData.metaDescription?.trim() || "",

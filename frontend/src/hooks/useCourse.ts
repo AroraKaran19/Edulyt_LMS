@@ -43,7 +43,7 @@ export interface CreateCourseData {
   title: string;
   description: string;
   shortDescription: string;
-  category: string;
+  category: string[];
   thumbnail: string;
   previewVideoUrl?: string;
   whatYouWillLearn: string;
@@ -614,7 +614,7 @@ export const useCourse = () => {
       if (!data.description?.trim()) errors.push("Description is required");
       if (!data.shortDescription?.trim())
         errors.push("Short description is required");
-      if (!data.category?.trim()) errors.push("Category is required");
+      if (!Array.isArray(data.category) || data.category.length === 0) errors.push("At least one category is required");
       if (!data.thumbnail?.trim()) errors.push("Thumbnail is required");
       if (!data.whatYouWillLearn?.trim())
         errors.push("What you will learn is required");

@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { Discount, CourseDiscount, FAQ, Instructor, Review, User } from ".";
+import { Discount, CourseDiscount, FAQ, Instructor, Review, User, Category } from ".";
 
 // ===================
 // Document Types
@@ -179,7 +179,7 @@ export interface Course {
   title: string;
   description: string;
   shortDescription: string;
-  category: string;
+  category: Category["_id"][] | Category[]; // Can be IDs or populated Category objects
   thumbnail: string;
   previewVideoUrl?: string;
 

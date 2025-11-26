@@ -87,7 +87,7 @@ export interface CourseFormContextType {
 
   // Additional utilities
   generateSlug: (title: string) => string;
-  generateMetaTitle: (title: string, category: string) => string;
+  generateMetaTitle: (title: string, category: string | string[]) => string;
   generateMetaDescription: (
     description: string,
     shortDescription?: string
@@ -95,7 +95,7 @@ export interface CourseFormContextType {
   generateKeywords: (
     title: string,
     skills: string[],
-    category: string
+    category: string | string[]
   ) => string[];
 
   // Course creation status
@@ -242,7 +242,7 @@ export interface UseCourseFormReturn {
 
   // Additional utilities
   generateSlug: (title: string) => string;
-  generateMetaTitle: (title: string, category: string) => string;
+  generateMetaTitle: (title: string, category: string | string[]) => string;
   generateMetaDescription: (
     description: string,
     shortDescription?: string
@@ -250,7 +250,7 @@ export interface UseCourseFormReturn {
   generateKeywords: (
     title: string,
     skills: string[],
-    category: string
+    category: string | string[]
   ) => string[];
 
   // Course creation status
@@ -270,7 +270,7 @@ export const SCREEN_CONFIG: Record<number, ScreenConfig> = {
     description: "Define the core details of your course",
     component: null as any, // Will be set dynamically
     validation: (data) =>
-      !!(data.title && data.description && data.category && data.thumbnail),
+      !!(data.title && data.description && Array.isArray(data.category) && data.category.length > 0 && data.thumbnail),
     requiredFields: ["title", "description", "category", "thumbnail"],
     optionalFields: [
       "shortDescription",

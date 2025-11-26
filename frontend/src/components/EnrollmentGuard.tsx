@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/buttons/button";
 import { toast } from "react-toastify";
 import { createContext, useContext } from "react";
 import { PartialAccessControl } from "@/types/enrollment";
+import { getCategoryNames } from "@/lib/courseFormUtils";
 
 interface EnrollmentGuardProps {
   course: Course;
@@ -136,7 +137,9 @@ const EnrollmentGuard = ({ course, children }: EnrollmentGuardProps) => {
             />
             <div className="flex items-center gap-4 text-sm text-gray-500">
               <span>{course.duration || "Self-paced"}</span>
-              <span>{course.category || "General"}</span>
+              <span>
+                {getCategoryNames(course.category).join(", ") || "General"}
+              </span>
             </div>
           </div>
 

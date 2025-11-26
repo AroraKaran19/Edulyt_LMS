@@ -1,4 +1,4 @@
-import { Discount, CourseDiscount, FAQ, Instructor, Review, User } from ".";
+import { Discount, CourseDiscount, FAQ, Instructor, Review, User, Category } from ".";
 
 // ===================
 // Document Types
@@ -178,7 +178,7 @@ export interface Course {
   title: string;
   description: string;
   shortDescription: string;
-  category: string;
+  category: string[] | Category[]; // Can be IDs (string[]) or populated Category objects
   thumbnail: string;
   previewVideoUrl?: string;
 

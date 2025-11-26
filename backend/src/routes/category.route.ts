@@ -4,6 +4,7 @@ import {
   deleteCategory,
   getAllCategories,
   getCategoryById,
+  getHomePageCategories,
   updateCategory,
 } from "../controllers/category.controller";
 import { verifyAdmin } from "../middlewares/admin.middleware";
@@ -17,6 +18,13 @@ const router = Router();
  * @access  Public
  */
 router.get("/", getAllCategories);
+
+/**
+ * @route   GET /api/categories/homepage
+ * @desc    Get categories to show on home page
+ * @access  Public
+ */
+router.get("/homepage", getHomePageCategories);
 
 /**
  * @route   GET /api/categories/:id

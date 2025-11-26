@@ -72,8 +72,22 @@ const Screen9 = () => {
       {
         id: "category",
         label: "Course Category",
-        isValid: !!course?.category,
-        details: course?.category || "Missing",
+        isValid: Array.isArray(course?.category) ? course.category.length > 0 : !!course?.category,
+        details: (() => {
+          if (!course?.category) return "Missing";
+          if (Array.isArray(course.category)) {
+            // Check if categories are populated objects or IDs
+            const firstItem = course.category[0];
+            if (typeof firstItem === "object" && firstItem !== null && "name" in firstItem) {
+              // Populated Category objects
+              return course.category.map((c: any) => c.name).join(", ");
+            } else {
+              // Category IDs - return IDs for now (could be improved by loading category names)
+              return course.category.join(", ");
+            }
+          }
+          return String(course.category);
+        })(),
         icon: Tag,
         color: "orange",
       },
@@ -428,7 +442,21 @@ const Screen9 = () => {
                   </div>
                   <span className="text-gray-700 font-medium">Category:</span>
                   <span className="text-gray-800">
-                    {course?.category || "Not set"}
+                    {(() => {
+                      if (!course?.category) return "Not set";
+                      if (Array.isArray(course.category)) {
+                        // Check if categories are populated objects or IDs
+                        const firstItem = course.category[0];
+                        if (typeof firstItem === "object" && firstItem !== null && "name" in firstItem) {
+                          // Populated Category objects
+                          return course.category.map((c: any) => c.name).join(", ");
+                        } else {
+                          // Category IDs
+                          return course.category.join(", ");
+                        }
+                      }
+                      return String(course.category);
+                    })()}
                   </span>
                 </div>
 

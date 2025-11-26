@@ -131,9 +131,10 @@ const Screen8 = () => {
       const slug = generateSlug(title || "course");
 
       // Generate meta title based on course title and category
-      const metaTitle = `${title || "Course"} - ${
-        category || "Online Learning"
-      } | Airkrit`;
+      const categoryStr = Array.isArray(category) 
+        ? category.join(", ") 
+        : category || "Online Learning";
+      const metaTitle = `${title || "Course"} - ${categoryStr} | Airkrit`;
 
       // Generate meta description based on course details (strip HTML and limit to 160 chars)
       const getPlainText = (html: string) => getTextFromHtml(html || "");
@@ -141,9 +142,10 @@ const Screen8 = () => {
       const descText = getPlainText(description || "");
 
       const baseDescription = shortDescText || descText || "Learn";
-      const fullDescription = `${baseDescription} in this comprehensive ${
-        category?.toLowerCase() || "course"
-      }. Perfect for ${
+      const categoryLower = Array.isArray(category) 
+        ? category[0]?.toLowerCase() || "course"
+        : category?.toLowerCase() || "course";
+      const fullDescription = `${baseDescription} in this comprehensive ${categoryLower}. Perfect for ${
         audience === "college-students" ? "college students" : "professionals"
       }. Enroll now and advance your career!`;
 
@@ -154,8 +156,11 @@ const Screen8 = () => {
           : fullDescription;
 
       // Generate keywords based on course content (max 10)
+      const categoryKeywords = Array.isArray(category)
+        ? category.map(c => c.toLowerCase())
+        : [category?.toLowerCase() || "course"];
       const baseKeywords = [
-        category?.toLowerCase() || "course",
+        ...categoryKeywords,
         title?.toLowerCase() || "learning",
         audience === "college-students" ? "college students" : "professionals",
         "online learning",

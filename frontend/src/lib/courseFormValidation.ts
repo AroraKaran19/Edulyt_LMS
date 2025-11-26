@@ -4,7 +4,7 @@ import {
   ValidationResult,
   SCREEN_CONFIG,
 } from "@/types/courseForm";
-import { getTextFromHtml } from './courseFormUtils';
+import { getTextFromHtml, getCategoryIds } from "./courseFormUtils";
 
 // ===================
 // Field Validation Functions
@@ -56,11 +56,16 @@ export const validateShortDescription = (
   return errors;
 };
 
-export const validateCategory = (category: string): string[] => {
+export const validateCategory = (category: string | string[]): string[] => {
   const errors: string[] = [];
 
-  if (!category || category.trim().length === 0) {
-    errors.push("Category is required");
+  if (
+    !category ||
+    (Array.isArray(category)
+      ? category.length === 0
+      : category.trim().length === 0)
+  ) {
+    errors.push("At least one category is required");
   }
 
   return errors;
@@ -144,7 +149,10 @@ export const validateInstructor = (instructor: any[]): string[] => {
   return errors;
 };
 
-export const validatePlanDiscount = (discount: any, planName: string): string[] => {
+export const validatePlanDiscount = (
+  discount: any,
+  planName: string
+): string[] => {
   const errors: string[] = [];
 
   if (!discount) {
@@ -153,11 +161,20 @@ export const validatePlanDiscount = (discount: any, planName: string): string[] 
 
   // Only validate if discount is active
   if (discount.isActive) {
-    if (!discount.discount || (discount.discount !== "percentage" && discount.discount !== "fixed")) {
-      errors.push(`${planName} discount type must be either 'percentage' or 'fixed'`);
+    if (
+      !discount.discount ||
+      (discount.discount !== "percentage" && discount.discount !== "fixed")
+    ) {
+      errors.push(
+        `${planName} discount type must be either 'percentage' or 'fixed'`
+      );
     }
 
-    if (discount.value === undefined || discount.value === null || discount.value < 0) {
+    if (
+      discount.value === undefined ||
+      discount.value === null ||
+      discount.value < 0
+    ) {
       errors.push(`${planName} discount value must be 0 or greater`);
     }
 
@@ -169,16 +186,20 @@ export const validatePlanDiscount = (discount: any, planName: string): string[] 
     if (discount.startDate && discount.endDate) {
       const startDate = new Date(discount.startDate);
       const endDate = new Date(discount.endDate);
-      
+
       if (isNaN(startDate.getTime())) {
         errors.push(`${planName} discount start date must be a valid date`);
       }
-      
+
       if (isNaN(endDate.getTime())) {
         errors.push(`${planName} discount end date must be a valid date`);
       }
-      
-      if (!isNaN(startDate.getTime()) && !isNaN(endDate.getTime()) && endDate <= startDate) {
+
+      if (
+        !isNaN(startDate.getTime()) &&
+        !isNaN(endDate.getTime()) &&
+        endDate <= startDate
+      ) {
         errors.push(`${planName} discount end date must be after start date`);
       }
     }
@@ -215,7 +236,10 @@ export const validatePlans = (plans: any): string[] => {
 
     // Validate essential plan discount
     if (plans.essential.discount?.isActive) {
-      const planDiscountErrors = validatePlanDiscount(plans.essential.discount, "Essential plan");
+      const planDiscountErrors = validatePlanDiscount(
+        plans.essential.discount,
+        "Essential plan"
+      );
       errors.push(...planDiscountErrors);
     }
   }
@@ -241,7 +265,10 @@ export const validatePlans = (plans: any): string[] => {
 
     // Validate elite plan discount
     if (plans.elite.discount?.isActive) {
-      const planDiscountErrors = validatePlanDiscount(plans.elite.discount, "Elite plan");
+      const planDiscountErrors = validatePlanDiscount(
+        plans.elite.discount,
+        "Elite plan"
+      );
       errors.push(...planDiscountErrors);
     }
   }
@@ -258,11 +285,20 @@ export const validateDiscount = (discount: any): string[] => {
 
   // Only validate if discount is active
   if (discount.isActive) {
-    if (!discount.discount || (discount.discount !== "percentage" && discount.discount !== "fixed")) {
-      errors.push("Course discount type must be either 'percentage' or 'fixed'");
+    if (
+      !discount.discount ||
+      (discount.discount !== "percentage" && discount.discount !== "fixed")
+    ) {
+      errors.push(
+        "Course discount type must be either 'percentage' or 'fixed'"
+      );
     }
 
-    if (discount.value === undefined || discount.value === null || discount.value < 0) {
+    if (
+      discount.value === undefined ||
+      discount.value === null ||
+      discount.value < 0
+    ) {
       errors.push("Course discount value must be 0 or greater");
     }
 
@@ -274,7 +310,9 @@ export const validateDiscount = (discount: any): string[] => {
     if (discount.startTime) {
       const timeRegex = /^([0-1][0-9]|2[0-3]):[0-5][0-9]$/;
       if (!timeRegex.test(discount.startTime)) {
-        errors.push("Course discount start time must be in HH:mm format (e.g., 12:00 for 12 AM, 23:00 for 11 PM)");
+        errors.push(
+          "Course discount start time must be in HH:mm format (e.g., 12:00 for 12 AM, 23:00 for 11 PM)"
+        );
       }
     }
 
@@ -282,17 +320,21 @@ export const validateDiscount = (discount: any): string[] => {
     if (discount.endTime) {
       const timeRegex = /^([0-1][0-9]|2[0-3]):[0-5][0-9]$/;
       if (!timeRegex.test(discount.endTime)) {
-        errors.push("Course discount end time must be in HH:mm format (e.g., 12:00 for 12 AM, 23:00 for 11 PM)");
+        errors.push(
+          "Course discount end time must be in HH:mm format (e.g., 12:00 for 12 AM, 23:00 for 11 PM)"
+        );
       }
     }
 
     // Validate that endTime is after startTime if both are provided
     if (discount.startTime && discount.endTime) {
-      const [startHours, startMinutes] = discount.startTime.split(':').map(Number);
-      const [endHours, endMinutes] = discount.endTime.split(':').map(Number);
+      const [startHours, startMinutes] = discount.startTime
+        .split(":")
+        .map(Number);
+      const [endHours, endMinutes] = discount.endTime.split(":").map(Number);
       const startTotalMinutes = startHours * 60 + startMinutes;
       const endTotalMinutes = endHours * 60 + endMinutes;
-      
+
       if (endTotalMinutes <= startTotalMinutes) {
         errors.push("Course discount end time must be after start time");
       }
@@ -326,7 +368,9 @@ export const validateScreen1 = (
     missingFields.push("description");
   }
 
-  const categoryErrors = validateCategory(data.category);
+  // Convert category to string[] for validation (handles both string[] and Category[])
+  const categoryIds = getCategoryIds(data.category);
+  const categoryErrors = validateCategory(categoryIds);
   if (categoryErrors.length > 0) {
     errors.push(...categoryErrors);
     missingFields.push("category");
@@ -380,7 +424,7 @@ export const validateScreen2 = (
   const missingFields: string[] = [];
 
   // Required fields
-  const whatYouWillLearnText = getTextFromHtml(data.whatYouWillLearn || '');
+  const whatYouWillLearnText = getTextFromHtml(data.whatYouWillLearn || "");
   if (!data.whatYouWillLearn || whatYouWillLearnText.length === 0) {
     errors.push("What you will learn is required");
     missingFields.push("whatYouWillLearn");
@@ -414,7 +458,7 @@ export const validateScreen2 = (
   }
 
   // Who should join validation
-  const whoShouldJoinText = getTextFromHtml(data.whoShouldJoin || '');
+  const whoShouldJoinText = getTextFromHtml(data.whoShouldJoin || "");
   if (!data.whoShouldJoin || whoShouldJoinText.length === 0) {
     errors.push("Who should join this course is required");
     missingFields.push("whoShouldJoin");
@@ -456,7 +500,9 @@ export const validateScreen3 = (
 
   // Optional fields warnings
   if (!data.previewVideoUrl || data.previewVideoUrl.trim().length === 0) {
-    warnings.push("Preview video is recommended for better course presentation");
+    warnings.push(
+      "Preview video is recommended for better course presentation"
+    );
   }
 
   return {
@@ -485,15 +531,19 @@ export const validateScreen4 = (
         errors.push(`Highlight ${index + 1} title is required`);
         missingFields.push(`highlights.${index}.title`);
       } else if (highlight.title.length < 3) {
-        errors.push(`Highlight ${index + 1} title must be at least 3 characters`);
+        errors.push(
+          `Highlight ${index + 1} title must be at least 3 characters`
+        );
         missingFields.push(`highlights.${index}.title`);
       }
-      
+
       if (!highlight.description || highlight.description.trim().length === 0) {
         errors.push(`Highlight ${index + 1} description is required`);
         missingFields.push(`highlights.${index}.description`);
       } else if (highlight.description.length < 10) {
-        errors.push(`Highlight ${index + 1} description must be at least 10 characters`);
+        errors.push(
+          `Highlight ${index + 1} description must be at least 10 characters`
+        );
         missingFields.push(`highlights.${index}.description`);
       }
     });
@@ -501,7 +551,9 @@ export const validateScreen4 = (
 
   // Optional fields warnings
   if (!data.features || data.features.length === 0) {
-    warnings.push("Course features are recommended to showcase additional benefits");
+    warnings.push(
+      "Course features are recommended to showcase additional benefits"
+    );
   }
 
   return {
@@ -567,7 +619,11 @@ export const validateScreen8 = (
   }
 
   // Keywords validation
-  if (!data.keywords || !Array.isArray(data.keywords) || data.keywords.length === 0) {
+  if (
+    !data.keywords ||
+    !Array.isArray(data.keywords) ||
+    data.keywords.length === 0
+  ) {
     errors.push("At least one keyword is required");
     missingFields.push("keywords");
   }

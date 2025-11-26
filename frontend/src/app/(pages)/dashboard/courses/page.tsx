@@ -379,10 +379,36 @@ const CoursesPage = () => {
                         </span>
                         <span>•</span>
                         <span className="hidden sm:inline">
-                          {course.category || "Course"}
+                          {(() => {
+                            if (!course.category) return "Course";
+                            if (Array.isArray(course.category)) {
+                              const firstItem = course.category[0];
+                              if (typeof firstItem === "object" && firstItem !== null && "name" in firstItem) {
+                                // Populated Category objects
+                                return course.category.map((c: any) => c.name).join(", ");
+                              } else {
+                                // Category IDs
+                                return course.category.join(", ");
+                              }
+                            }
+                            return String(course.category);
+                          })()}
                         </span>
                         <span className="sm:hidden">
-                          {course.category || "Course"}
+                          {(() => {
+                            if (!course.category) return "Course";
+                            if (Array.isArray(course.category)) {
+                              const firstItem = course.category[0];
+                              if (typeof firstItem === "object" && firstItem !== null && "name" in firstItem) {
+                                // Populated Category objects - show first name
+                                return (course.category[0] as any).name || "Course";
+                              } else {
+                                // Category IDs - show first ID
+                                return course.category[0] || "Course";
+                              }
+                            }
+                            return String(course.category);
+                          })()}
                         </span>
                       </div>
                     </div>
