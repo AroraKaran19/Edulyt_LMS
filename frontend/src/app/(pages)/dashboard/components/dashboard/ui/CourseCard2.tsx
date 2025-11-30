@@ -1,10 +1,12 @@
 "use client";
 import InstructorCard from "@/components/ui/course/InstructorCard";
+import ProgressChart from "@/components/ui/charts/ProgressChart";
 import { Course, CourseModule, Instructor } from "@/types";
 import { Enrollment } from "@/types/enrollment";
 import { Plus } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { useCallback } from "react";
 
 interface CourseCard2Props {
   course: Course;
@@ -14,11 +16,17 @@ interface CourseCard2Props {
 const CourseCard2 = ({ course, enrollment }: CourseCard2Props) => {
   const router = useRouter();
 
+  const calculateProgress = useCallback((enrollment: Enrollment): number => {
+    if (!enrollment?.progress) return 0;
+    return Math.round(enrollment.progress.overallCompletion || 0);
+  }, []);
+
   const totalLessons = ((course?.modules as CourseModule[]) || []).reduce(
     (acc, module) => acc + (module.lessons || []).length,
     0
   );
   const totalModules = (course?.modules || []).length;
+  const progress = enrollment ? calculateProgress(enrollment) : 0;
 
   const handleClick = () => {
     if (course.slug) {
@@ -74,6 +82,30 @@ const CourseCard2 = ({ course, enrollment }: CourseCard2Props) => {
             </div>
           )}
         </div>
+        
+        {/* Progress Section */}
+        {enrollment && (
+          <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
+            <ProgressChart
+              percentage={progress}
+              primaryColor={progress === 100 ? "#22C55E" : progress > 0 ? "#714ACA" : "#E5E7EB"}
+              secondaryColor="hsla(0,0%,100%,.55)"
+              className="size-5"
+            />
+            <div className="flex flex-col min-w-0">
+              <span className="text-xs font-semibold text-gray-900">
+                {progress}% Complete
+              </span>
+              <span className="text-[10px] text-gray-500">
+                {progress === 100
+                  ? "Course completed"
+                  : progress > 0
+                  ? "In progress"
+                  : "Not started"}
+              </span>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

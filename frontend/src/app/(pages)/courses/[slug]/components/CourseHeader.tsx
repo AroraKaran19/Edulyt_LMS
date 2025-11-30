@@ -60,14 +60,6 @@ const CourseHeader = ({
   const discountCountdown = useMemo(
     () => {
       const result = calculateDiscountTime(course);
-      // Debug: Log discount info
-      if (course?.discount) {
-        console.log('Discount Info:', {
-          discount: course.discount,
-          countdown: result,
-          currentTime: new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' })
-        });
-      }
       return result;
     },
     [course]

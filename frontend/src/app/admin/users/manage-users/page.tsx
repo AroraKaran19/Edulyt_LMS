@@ -8,25 +8,21 @@ import {
   Trash2,
   Key,
   X,
-  Check,
   User as UserIcon,
+  Clock,
 } from "lucide-react";
 import Image from "next/image";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import { Button } from "@/components/ui/buttons/button";
 import Input from "@/components/ui/inputs/Input";
 import Select from "@/components/ui/inputs/Select";
-import useUserManagement, { GiftCourseData } from "@/hooks/useUserManagement";
+import useUserManagement from "@/hooks/useUserManagement";
 import { User, Instructor, Student } from "@/types/user";
-import {
-  PartialAccessControl,
-  ModuleAccessControl,
-  LessonAccessControl,
-} from "@/types/enrollment";
 import { toast } from "react-toastify";
-import DateSelector from "@/components/ui/inputs/DateSelector";
 import GiftCourseModal from "./components/GiftCourseModal";
+import TrialCourseModal from "./components/TrialCourseModal";
 import EditUserModal from "./components/EditUserModal";
+import { validatePassword, getPasswordRequirementsText } from "@/lib/passwordValidation";
 
 const ManageUsersPage = () => {
   const [users, setUsers] = useState<User[]>([]);
@@ -37,11 +33,11 @@ const ManageUsersPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [showGiftModal, setShowGiftModal] = useState(false);
+  const [showTrialModal, setShowTrialModal] = useState(false);
   const [showUserDetails, setShowUserDetails] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [allStudents, setAllStudents] = useState<User[]>([]);
   const [loadingStudents, setLoadingStudents] = useState(false);
   const [userEnrollments, setUserEnrollments] = useState<
     Record<string, string[]>
@@ -109,7 +105,6 @@ const ManageUsersPage = () => {
       });
 
       if (result) {
-        setAllStudents(result.users);
         // Fetch enrollments for all students
         const enrollmentsMap: Record<string, string[]> = {};
         await Promise.all(
@@ -228,13 +223,16 @@ const ManageUsersPage = () => {
   const handleChangePassword = async () => {
     if (!selectedUser?._id) return;
 
-    if (newPassword.length < 6) {
-      toast.error("Password must be at least 6 characters long");
+    if (newPassword !== confirmPassword) {
+      toast.error("Passwords do not match");
       return;
     }
 
-    if (newPassword !== confirmPassword) {
-      toast.error("Passwords do not match");
+    // Validate password against rules
+    const passwordValidationErrors = validatePassword(newPassword);
+    if (Object.keys(passwordValidationErrors).length > 0) {
+      const errorMessages = Object.values(passwordValidationErrors).filter(Boolean);
+      toast.error(errorMessages.join(". "));
       return;
     }
 
@@ -278,21 +276,14 @@ const ManageUsersPage = () => {
     }
   };
 
-  // Handle user status update
-  const handleStatusUpdate = async (
-    userId: string,
-    newStatus: "active" | "inactive" | "blocked"
-  ) => {
-    const result = await updateUserStatus(userId, newStatus);
-    if (result) {
-      toast.success(`User status updated to ${newStatus}`);
-      fetchUsers(); // Refresh the list
-    }
-  };
-
   // Handle modal open
   const handleOpenGiftModal = () => {
     setShowGiftModal(true);
+    fetchAllStudents();
+  };
+
+  const handleOpenTrialModal = () => {
+    setShowTrialModal(true);
     fetchAllStudents();
   };
 
@@ -455,63 +446,92 @@ const ManageUsersPage = () => {
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Manage Users</h1>
-        <p className="text-gray-600">
-          View and manage all users, gift courses, and update status
-        </p>
+      <div className="mb-6 sm:mb-8">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="p-2 bg-orange-100 rounded-lg">
+            <UserIcon className="w-6 h-6 text-orange-600" />
+          </div>
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+              Manage Users
+            </h1>
+            <p className="text-sm sm:text-base text-gray-600 mt-1">
+              View and manage all users, gift courses, and update status
+            </p>
+          </div>
+        </div>
       </div>
 
-      {/* Filters */}
+      {/* Filters and Actions */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <Input
-              placeholder="Search users..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-10"
-            />
+        <div className="flex flex-col lg:flex-row gap-4 lg:items-center">
+          {/* Left Section: Filters */}
+          <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* Search */}
+            <div className="relative sm:col-span-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <Input
+                placeholder="Search users..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-10 h-11"
+              />
+            </div>
+
+            {/* User Type Filter */}
+            <div className="sm:col-span-1">
+              <Select
+                options={[
+                  { value: "all", label: "All Types" },
+                  { value: "student", label: "Students" },
+                  { value: "instructor", label: "Instructors" },
+                  { value: "admin", label: "Admins" },
+                ]}
+                value={userTypeFilter}
+                onChange={setUserTypeFilter}
+                placeholder="Filter by type"
+              />
+            </div>
+
+            {/* Status Filter */}
+            <div className="sm:col-span-1">
+              <Select
+                options={[
+                  { value: "all", label: "All Status" },
+                  { value: "active", label: "Active" },
+                  { value: "inactive", label: "Inactive" },
+                  { value: "blocked", label: "Blocked" },
+                ]}
+                value={statusFilter}
+                onChange={setStatusFilter}
+                placeholder="Filter by status"
+              />
+            </div>
           </div>
 
-          {/* User Type Filter */}
-          <Select
-            options={[
-              { value: "all", label: "All Types" },
-              { value: "student", label: "Students" },
-              { value: "instructor", label: "Instructors" },
-              { value: "admin", label: "Admins" },
-            ]}
-            value={userTypeFilter}
-            onChange={setUserTypeFilter}
-            placeholder="Filter by type"
-          />
-
-          {/* Status Filter */}
-          <Select
-            options={[
-              { value: "all", label: "All Status" },
-              { value: "active", label: "Active" },
-              { value: "inactive", label: "Inactive" },
-              { value: "blocked", label: "Blocked" },
-            ]}
-            value={statusFilter}
-            onChange={setStatusFilter}
-            placeholder="Filter by status"
-          />
-
-          {/* Gift Course Button */}
-          <OrangeButton
-            onClick={handleOpenGiftModal}
-            className="flex items-center gap-2 cursor-pointer"
-          >
-            <Gift className="w-4 h-4" />
-            Gift Course
-          </OrangeButton>
+          {/* Right Section: Action Buttons */}
+          <div className="flex items-center gap-3 lg:ml-6 lg:pl-6 lg:border-l lg:border-gray-200 lg:flex-shrink-0">
+            {/* Gift Course Button */}
+            <OrangeButton
+              onClick={handleOpenGiftModal}
+              className="flex items-center justify-center gap-2 cursor-pointer px-4 py-2.5 h-11 transition-all duration-200 hover:shadow-md hover:scale-[1.02] active:scale-[0.98] shadow-sm"
+            >
+              <Gift className="w-4 h-4" />
+              <span className="font-medium hidden sm:inline">Gift Course</span>
+              <span className="font-medium sm:hidden">Gift</span>
+            </OrangeButton>
+            {/* Trial Course Button */}
+            <OrangeButton
+              onClick={handleOpenTrialModal}
+              className="flex items-center justify-center gap-2 cursor-pointer bg-blue-600 hover:bg-blue-700 px-4 py-2.5 h-11 transition-all duration-200 hover:shadow-md hover:scale-[1.02] active:scale-[0.98] shadow-sm"
+            >
+              <Clock className="w-4 h-4" />
+              <span className="font-medium hidden sm:inline">Give Trial</span>
+              <span className="font-medium sm:hidden">Trial</span>
+            </OrangeButton>
+          </div>
         </div>
       </div>
 
@@ -519,127 +539,159 @@ const ManageUsersPage = () => {
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50">
+            <thead className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                   User
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                   Type
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                   Status
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                   Email
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                   Joined
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {users.map((user) => (
-                <tr key={user._id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="shrink-0 h-10 w-10">
-                        <Image
-                          src={user.profilePicture || "/user.svg"}
-                          alt={`${user.firstName} ${user.lastName}`}
-                          className="h-10 w-10 rounded-full object-cover"
-                          width={40}
-                          height={40}
-                        />
-                      </div>
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">
-                          {user.firstName || "Unknown"}{" "}
-                          {user.lastName || "User"}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          ID: {user._id?.slice(-8)}
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getUserTypeBadgeColor(
-                        user.userType
-                      )}`}
-                    >
-                      {user.userType}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadgeColor(
-                        user.status
-                      )}`}
-                    >
-                      {user.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {user.email}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {user.createdAt
-                      ? new Date(user.createdAt).toLocaleDateString()
-                      : "N/A"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleViewUserDetails(user)}
-                        className="cursor-pointer"
-                        title="View Details"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEditUser(user)}
-                        className="cursor-pointer text-blue-600 hover:text-blue-700"
-                        title="Edit User"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedUser(user);
-                          setShowChangePasswordModal(true);
-                        }}
-                        className="cursor-pointer text-purple-600 hover:text-purple-700"
-                        title="Change Password"
-                      >
-                        <Key className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedUser(user);
-                          setShowDeleteConfirm(true);
-                        }}
-                        className="cursor-pointer text-red-600 hover:text-red-700"
-                        title="Delete User"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+              {isLoading ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center">
+                    <div className="flex flex-col items-center justify-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 mb-3"></div>
+                      <p className="text-gray-500 text-sm">Loading users...</p>
                     </div>
                   </td>
                 </tr>
-              ))}
+              ) : users.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center">
+                    <div className="flex flex-col items-center justify-center">
+                      <UserIcon className="w-12 h-12 text-gray-400 mb-3" />
+                      <p className="text-gray-500 text-sm font-medium">
+                        No users found
+                      </p>
+                      <p className="text-gray-400 text-xs mt-1">
+                        {search ||
+                        userTypeFilter !== "all" ||
+                        statusFilter !== "all"
+                          ? "Try adjusting your filters"
+                          : "No users in the system"}
+                      </p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                users.map((user) => (
+                  <tr
+                    key={user._id}
+                    className="hover:bg-gray-50 transition-colors duration-150"
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="shrink-0 h-10 w-10">
+                          <Image
+                            src={user.profilePicture || "/user.svg"}
+                            alt={`${user.firstName} ${user.lastName}`}
+                            className="h-10 w-10 rounded-full object-cover"
+                            width={40}
+                            height={40}
+                          />
+                        </div>
+                        <div className="ml-4">
+                          <div className="text-sm font-medium text-gray-900">
+                            {user.firstName || "Unknown"}{" "}
+                            {user.lastName || "User"}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            ID: {user._id?.slice(-8)}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                      <span
+                        className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getUserTypeBadgeColor(
+                          user.userType
+                        )}`}
+                      >
+                        {user.userType}
+                      </span>
+                    </td>
+                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                      <span
+                        className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadgeColor(
+                          user.status
+                        )}`}
+                      >
+                        {user.status}
+                      </span>
+                    </td>
+                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {user.email}
+                    </td>
+                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {user.createdAt
+                        ? new Date(user.createdAt).toLocaleDateString()
+                        : "N/A"}
+                    </td>
+                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleViewUserDetails(user)}
+                          className="cursor-pointer"
+                          title="View Details"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEditUser(user)}
+                          className="cursor-pointer text-blue-600 hover:text-blue-700"
+                          title="Edit User"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedUser(user);
+                            setShowChangePasswordModal(true);
+                          }}
+                          className="cursor-pointer text-purple-600 hover:text-purple-700"
+                          title="Change Password"
+                        >
+                          <Key className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedUser(user);
+                            setShowDeleteConfirm(true);
+                          }}
+                          className="cursor-pointer text-red-600 hover:text-red-700"
+                          title="Delete User"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -724,6 +776,17 @@ const ManageUsersPage = () => {
         onClose={() => setShowGiftModal(false)}
         userEnrollments={userEnrollments}
         onGiftComplete={() => {
+          fetchUsers();
+          fetchAllStudents();
+        }}
+      />
+
+      {/* Trial Course Modal */}
+      <TrialCourseModal
+        isOpen={showTrialModal}
+        onClose={() => setShowTrialModal(false)}
+        userEnrollments={userEnrollments}
+        onTrialComplete={() => {
           fetchUsers();
           fetchAllStudents();
         }}
@@ -1197,7 +1260,7 @@ const ManageUsersPage = () => {
                 placeholder="Confirm new password"
               />
               <p className="text-xs text-gray-500">
-                Password must be at least 6 characters long
+                {getPasswordRequirementsText()}
               </p>
             </div>
 

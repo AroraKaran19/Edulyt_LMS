@@ -145,18 +145,12 @@ const Navbar = () => {
             <UserMenu />
           ) : (
             <>
-              <WhiteButton
-                className="text-xs font-semibold lg:px-4 lg:py-2.5"
-                onClick={() => router.push("/login")}
-              >
-                Login
-              </WhiteButton>
               <OrangeButton
                 className="text-xs font-semibold lg:px-4 lg:py-2.5"
                 blinkIcon
                 onClick={() => router.push("/register")}
               >
-                Register Now
+                Get Started
               </OrangeButton>
             </>
           )}

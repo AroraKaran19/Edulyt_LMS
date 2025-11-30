@@ -232,3 +232,51 @@ export const getFileValidationRules = (
 
   return rules[folderName] || rules["general"];
 };
+
+/**
+ * Upload a file buffer directly to S3 (server-side upload)
+ * @param fileBuffer - File buffer to upload
+ * @param fileName - Name of the file
+ * @param folderName - S3 folder path
+ * @param contentType - MIME type of the file
+ * @returns Public URL of the uploaded file
+ */
+export const uploadFileToS3 = async (
+  fileBuffer: Buffer,
+  fileName: string,
+  folderName: string,
+  contentType: string
+): Promise<string> => {
+  try {
+    const s3Client = await getS3Client();
+    const bucketName = getBucketName();
+
+    // Generate unique file name to avoid conflicts
+    const fileExtension = fileName.split(".").pop();
+    const uniqueFileName = `${uuidv4()}.${fileExtension}`;
+    const s3Key = `${folderName}/${uniqueFileName}`;
+
+    // Create the command for putting an object
+    const command = new PutObjectCommand({
+      Bucket: bucketName,
+      Key: s3Key,
+      Body: fileBuffer,
+      ContentType: contentType,
+      Metadata: {
+        originalName: fileName,
+        folderName: folderName,
+      },
+    });
+
+    // Upload the file
+    await s3Client.send(command);
+
+    // Generate public URL
+    const publicUrl = `https://${bucketName}.s3.amazonaws.com/${s3Key}`;
+
+    return publicUrl;
+  } catch (error) {
+    console.error("Error uploading file to S3:", error);
+    throw new AppError("Failed to upload file to S3", 500);
+  }
+};

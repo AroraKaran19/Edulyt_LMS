@@ -1,9 +1,16 @@
 "use client";
 import { Course, CourseLesson, CourseModule, Content } from "@/types";
-import React, { memo, useEffect, useMemo, useState, useRef, useCallback } from "react";
+import React, {
+  memo,
+  useEffect,
+  useMemo,
+  useState,
+  useRef,
+  useCallback,
+} from "react";
 import SectionContainer from "./components/SectionContainer";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
-import { Clock3, Play, FileText, Lock } from "lucide-react";
+import { Clock3, Play, FileText, Lock, CheckCircle2 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useLessonNavigation } from "./hooks/useLessonNavigation";
 import {
@@ -16,204 +23,272 @@ import { VideoContent } from "@/types";
 import Reviews from "./components/Reviews";
 import QASections from "./components/QASections";
 import Notes from "./components/Notes";
-import { formatDuration } from "@/lib/utils";
+import { formatDuration, cn } from "@/lib/utils";
 import { usePresignedVideoSources } from "@/hooks/usePresignedUrl";
 import useQnA from "@/hooks/useQnA";
 import { QnA } from "@/types/qna";
-import { useContentCompletion } from "./hooks/useContentCompletion";
-import { useSession } from "next-auth/react";
 import { useEnrollmentContext } from "@/components/EnrollmentGuard";
-import useEnrollment from "@/hooks/useEnrollment";
 import {
   canAccessModule,
   canAccessLesson,
   canAccessContent,
 } from "@/lib/accessControlUtils";
+import { useCompletedContents } from "./hooks/useCompletedContents";
 
 const VideoPlayer = dynamic(() => import("./components/VideoPlayer"), {
   ssr: false,
 });
 
-const VideoSection = ({
-  course,
-  selectedContent,
-  onProgressUpdate,
-  onVideoEnd,
-}: {
-  course: Course;
-  selectedContent: Content | null;
-  onProgressUpdate?: (progress: number) => void;
-  onVideoEnd?: () => void;
-}) => {
-  const { connectToVideo } = useVideoTimeContext();
-  const { accessControl } = useEnrollmentContext() || { accessControl: null };
+const VideoSection = memo(
+  ({
+    course,
+    selectedContent,
+    selectedModule,
+    selectedLesson,
+  }: {
+    course: Course;
+    selectedContent: Content | null;
+    selectedModule: CourseModule | null;
+    selectedLesson: CourseLesson | null;
+  }) => {
+    const { connectToVideo } = useVideoTimeContext();
+    const { accessControl } = useEnrollmentContext() || { accessControl: null };
 
-  // Check if user has access to the selected content
-  const hasContentAccess = useMemo(() => {
-    if (!selectedContent?._id) return false;
-    
-    // Find the module and lesson for this content
-    if (!course.modules) return false;
-    
-    const modules = course.modules as CourseModule[];
-    for (const module of modules) {
-      if (!module.lessons) continue;
-      
-      const lessons = module.lessons as CourseLesson[];
-      for (const lesson of lessons) {
-        if (!lesson.contents) continue;
-        
-        const contents = lesson.contents as Content[];
-        if (contents.some((c) => c._id === selectedContent._id)) {
-          const moduleId = module._id || "";
-          const lessonId = lesson._id || "";
-          const contentId = selectedContent._id;
-          
-          return canAccessContent(accessControl, moduleId, lessonId, contentId);
-        }
-      }
-    }
-    
-    return false;
-  }, [selectedContent, course.modules, accessControl]);
+    // Check if user has access to the selected content
+    const hasContentAccess = useMemo(() => {
+      if (!selectedContent?._id) return false;
 
-  const rawVideoSources = useMemo(() => {
-    if (!selectedContent || selectedContent.type !== "video") return [];
+      // Find the module and lesson for this content
+      if (!course.modules) return false;
 
-    // Extract video sources from content
-    const allVideoSources: Array<{ quality: string; src: string }> = [];
+      const modules = course.modules as CourseModule[];
+      for (const module of modules) {
+        if (!module.lessons) continue;
 
-    if (selectedContent.sources && Array.isArray(selectedContent.sources)) {
-      selectedContent.sources.forEach(
-        (source: VideoContent["sources"][number]) => {
-          if (source?.quality && source?.videoUrl) {
-            allVideoSources.push({
-              quality: source.quality,
-              src: source.videoUrl,
-            });
+        const lessons = module.lessons as CourseLesson[];
+        for (const lesson of lessons) {
+          if (!lesson.contents) continue;
+
+          const contents = lesson.contents as Content[];
+          if (contents.some((c) => c._id === selectedContent._id)) {
+            const moduleId = module._id || "";
+            const lessonId = lesson._id || "";
+            const contentId = selectedContent._id;
+
+            return canAccessContent(
+              accessControl,
+              moduleId,
+              lessonId,
+              contentId
+            );
           }
         }
+      }
+
+      return false;
+    }, [selectedContent, course.modules, accessControl]);
+
+    const rawVideoSources = useMemo(() => {
+      if (!selectedContent || selectedContent.type !== "video") return [];
+
+      // Extract video sources from content
+      const allVideoSources: Array<{ quality: string; src: string }> = [];
+
+      if (selectedContent.sources && Array.isArray(selectedContent.sources)) {
+        selectedContent.sources.forEach(
+          (source: VideoContent["sources"][number]) => {
+            if (source?.quality && source?.videoUrl) {
+              allVideoSources.push({
+                quality: source.quality,
+                src: source.videoUrl,
+              });
+            }
+          }
+        );
+      }
+
+      return allVideoSources;
+    }, [selectedContent]);
+
+    // Convert S3 keys to presigned URLs for secure access
+    const {
+      sources: videoSources,
+      isLoading: isUrlLoading,
+      error: urlError,
+    } = usePresignedVideoSources(rawVideoSources, {
+      expiresIn: 3600,
+      autoRefresh: true,
+      refreshThreshold: 300,
+    });
+
+    // Track previous content to disconnect old video
+    const prevContentRef = useRef<string | null>(null);
+    const [isTransitioning, setIsTransitioning] = useState(false);
+
+    // Detect content changes and show transition
+    useEffect(() => {
+      if (
+        selectedContent?._id &&
+        prevContentRef.current &&
+        prevContentRef.current !== selectedContent._id
+      ) {
+        setIsTransitioning(true);
+        // Hide transition after a short delay
+        const timer = setTimeout(() => {
+          setIsTransitioning(false);
+        }, 300);
+        return () => clearTimeout(timer);
+      }
+      if (selectedContent?._id) {
+        prevContentRef.current = selectedContent._id;
+      }
+    }, [selectedContent?._id]);
+
+    const handleVideoReady = (video: HTMLVideoElement) => {
+      if (!selectedContent?._id) return;
+
+      connectToVideo(video);
+      // Don't autoplay on content change - let user control playback
+      // video.play().catch((error) => {
+      //   console.log("Autoplay failed:", error);
+      // });
+    };
+
+    // Show placeholder if no video content is selected
+    if (!selectedContent || selectedContent.type !== "video") {
+      return (
+        <SectionContainer
+          id="video-player"
+          className="w-full aspect-video bg-gray-100 flex items-center justify-center"
+        >
+          <div className="text-center">
+            <Play className="size-16 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-600">Select a video to start watching</p>
+          </div>
+        </SectionContainer>
       );
     }
 
-    return allVideoSources;
-  }, [selectedContent]);
-
-  // Convert S3 keys to presigned URLs for secure access
-  const {
-    sources: videoSources,
-    isLoading: isUrlLoading,
-    error: urlError,
-  } = usePresignedVideoSources(rawVideoSources, {
-    expiresIn: 3600,
-    autoRefresh: true,
-    refreshThreshold: 300,
-  });
-
-  const handleVideoReady = (video: HTMLVideoElement) => {
-    connectToVideo(video);
-    // Autoplay the video after it's ready
-    video.play().catch((error) => {
-      console.log("Autoplay failed:", error);
-      // Autoplay might fail due to browser policies, expected
-    });
-  };
-
-  // Show placeholder if no video content is selected
-  if (!selectedContent || selectedContent.type !== "video") {
-    return (
-      <SectionContainer
-        id="video-player"
-        className="w-full aspect-video bg-gray-100 flex items-center justify-center"
-      >
-        <div className="text-center">
-          <Play className="size-16 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-600">Select a video to start watching</p>
-        </div>
-      </SectionContainer>
-    );
-  }
-
-  // Show locked content message if user doesn't have access
-  if (!hasContentAccess) {
-    return (
-      <SectionContainer
-        id="video-player"
-        className="w-full aspect-video bg-gray-100 flex items-center justify-center"
-      >
-        <div className="text-center max-w-md mx-auto p-8">
-          <Lock className="size-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">
-            Content Locked
-          </h3>
-          <p className="text-gray-600 mb-4">
-            You don't have access to this content. Please contact your administrator
-            to request access.
-          </p>
-          <p className="text-sm text-gray-500">
-            Content: {selectedContent.title}
-          </p>
-        </div>
-      </SectionContainer>
-    );
-  }
-
-  // Show loading state while generating presigned URLs
-  if (isUrlLoading) {
-    return (
-      <SectionContainer
-        id="video-player"
-        className="w-full aspect-video bg-gray-100 flex items-center justify-center"
-      >
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-300 border-t-[#F77124] mx-auto mb-4"></div>
-          <p className="text-gray-600">Preparing secure video access...</p>
-        </div>
-      </SectionContainer>
-    );
-  }
-
-  // Show error state if presigned URL generation failed
-  if (urlError) {
-    return (
-      <SectionContainer
-        id="video-player"
-        className="w-full aspect-video bg-gray-100 flex items-center justify-center"
-      >
-        <div className="text-center">
-          <div className="text-red-500 mb-4">
-            <svg
-              className="w-12 h-12 mx-auto"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
-              />
-            </svg>
+    // Show locked content message if user doesn't have access
+    if (!hasContentAccess) {
+      return (
+        <SectionContainer
+          id="video-player"
+          className="w-full aspect-video bg-gray-100 flex items-center justify-center"
+        >
+          <div className="text-center max-w-md mx-auto p-8">
+            <Lock className="size-16 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              Content Locked
+            </h3>
+            <p className="text-gray-600 mb-4">
+              You don't have access to this content. Please contact your
+              administrator to request access.
+            </p>
+            <p className="text-sm text-gray-500">
+              Content: {selectedContent.title}
+            </p>
           </div>
-          <p className="text-gray-600 mb-2">Failed to load video securely</p>
-          <p className="text-sm text-gray-500">{urlError}</p>
+        </SectionContainer>
+      );
+    }
+
+    // Show loading state while generating presigned URLs
+    if (isUrlLoading) {
+      return (
+        <SectionContainer
+          id="video-player"
+          className="w-full aspect-video bg-gray-100 flex items-center justify-center"
+        >
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-300 border-t-[#F77124] mx-auto mb-4"></div>
+            <p className="text-gray-600">Preparing secure video access...</p>
+          </div>
+        </SectionContainer>
+      );
+    }
+
+    // Show error state if presigned URL generation failed
+    if (urlError) {
+      return (
+        <SectionContainer
+          id="video-player"
+          className="w-full aspect-video bg-gray-100 flex items-center justify-center"
+        >
+          <div className="text-center">
+            <div className="text-red-500 mb-4">
+              <svg
+                className="w-12 h-12 mx-auto"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+                />
+              </svg>
+            </div>
+            <p className="text-gray-600 mb-2">Failed to load video securely</p>
+            <p className="text-sm text-gray-500">{urlError}</p>
+          </div>
+        </SectionContainer>
+      );
+    }
+
+    return (
+      <SectionContainer
+        id="video-player"
+        className="w-full aspect-video relative"
+      >
+        {/* Smooth transition overlay during content change */}
+        {isTransitioning && (
+          <div className="absolute inset-0 bg-gray-900/50 z-10 flex items-center justify-center transition-opacity duration-300">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-300 border-t-[#F77124] mx-auto mb-4"></div>
+              <p className="text-white text-sm">Loading video...</p>
+            </div>
+          </div>
+        )}
+        <div
+          className={cn(
+            "w-full h-full transition-opacity duration-300",
+            isTransitioning ? "opacity-0" : "opacity-100"
+          )}
+        >
+          <VideoPlayer
+            key={selectedContent._id} // Key is needed for AWS presigned URLs - ensures proper cleanup and re-initialization
+            sources={videoSources}
+            posterUrl={course.thumbnail || ""}
+            onVideoReady={handleVideoReady}
+            contentId={selectedContent._id} // Track content changes for smooth transitions
+            moduleId={selectedModule?._id} // For progress tracking
+            lessonId={selectedLesson?._id} // For progress tracking
+            contentType={selectedContent.type as "video" | "quiz" | "document"} // For progress tracking
+          />
         </div>
       </SectionContainer>
     );
-  }
+  },
+  (prevProps, nextProps) => {
+    // Only re-render if selectedContent, selectedModule, selectedLesson, or course actually changed
+    // Return true if props are equal (skip re-render), false if different (re-render)
+    const contentChanged =
+      prevProps.selectedContent?._id !== nextProps.selectedContent?._id;
+    const moduleChanged =
+      prevProps.selectedModule?._id !== nextProps.selectedModule?._id;
+    const lessonChanged =
+      prevProps.selectedLesson?._id !== nextProps.selectedLesson?._id;
+    const courseChanged = prevProps.course._id !== nextProps.course._id;
 
-  return (
-    <SectionContainer id="video-player" className="w-full aspect-video">
-      <VideoPlayer
-        key={selectedContent._id}
-        sources={videoSources}
-        posterUrl={course.thumbnail || ""}
-        onVideoReady={handleVideoReady}
-      />
-    </SectionContainer>
-  );
-};
+    // Re-render if content, module, lesson, or course changed
+    return !contentChanged && !moduleChanged && !lessonChanged && !courseChanged;
+  }
+);
+
+VideoSection.displayName = "VideoSection";
 
 const CourseContentSection = ({
   course,
@@ -223,7 +298,6 @@ const CourseContentSection = ({
   toggleModule,
   toggleLesson,
   navigateToContent,
-  isContentCompleted,
 }: {
   course: Course;
   selectedModule: CourseModule | null;
@@ -232,9 +306,10 @@ const CourseContentSection = ({
   toggleModule: (module: CourseModule) => void;
   toggleLesson: (lesson: CourseLesson) => void;
   navigateToContent: (contentId: string) => void;
-  isContentCompleted: (contentId: string) => boolean;
 }) => {
   const { accessControl } = useEnrollmentContext() || { accessControl: null };
+  const { isContentCompleted } = useCompletedContents();
+  
   // Calculate total duration for a module
   const getModuleDuration = (module: CourseModule) => {
     return (module.lessons as CourseLesson[])?.reduce(
@@ -269,56 +344,61 @@ const CourseContentSection = ({
   };
 
   return (
-    <div className="w-full space-y-3">
+    <div className="w-full space-y-2 max-h-[calc(100vh-200px)] overflow-y-auto pr-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-400">
       {(course.modules as CourseModule[])?.map((courseModule, moduleIndex) => {
         const moduleId = courseModule._id || "";
         const hasModuleAccess = canAccessModule(accessControl, moduleId);
-        
+        const isModuleSelected = selectedModule?._id === courseModule._id;
+
         return (
           <div
-            className={`w-full border border-gray-200 rounded-lg ${
-              moduleIndex !== (course.modules?.length || 0) - 1 ? "mb-3" : ""
+            className={`w-full border rounded-lg transition-all duration-200 ${
+              isModuleSelected
+                ? "border-orange-300 bg-orange-50/30 shadow-sm"
+                : "border-gray-200 bg-white hover:border-gray-300"
             } ${!hasModuleAccess ? "opacity-60" : ""}`}
             key={courseModule._id}
           >
             {/* Module Header */}
             <div
-              className={`w-full p-4 rounded-t-lg ${
+              className={`w-full p-4 rounded-t-lg transition-colors ${
                 hasModuleAccess
-                  ? "cursor-pointer hover:bg-gray-50"
+                  ? "cursor-pointer hover:bg-gray-50/50"
                   : "cursor-not-allowed"
               }`}
               onClick={() => hasModuleAccess && toggleModule(courseModule)}
             >
-              <div className="flex items-center justify-between">
-                <div className="flex flex-col">
-                  <span className="text-xs font-normal text-gray-500">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex flex-col gap-1 flex-1 min-w-0">
+                  <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
                     Module {moduleIndex + 1}
                   </span>
                   <div className="flex items-center gap-2">
-                    <span className="text-base font-bold">
+                    <h3 className="text-sm font-bold text-gray-900 line-clamp-2">
                       {courseModule.title}
-                    </span>
+                    </h3>
                     {!hasModuleAccess && (
-                      <Lock className="size-4 text-gray-400" />
+                      <Lock className="size-4 text-gray-400 shrink-0" />
                     )}
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Clock3 className="size-4 text-gray-400" />
-                  <span className="text-xs text-gray-500">
-                    {formatDuration(getModuleDuration(courseModule) || 0)}
-                  </span>
-                  <span className="text-xs text-gray-500">
-                    ({courseModule.lessons?.length || 0} lessons)
+                <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-1.5 text-xs text-gray-600">
+                    <Clock3 className="size-3.5" />
+                    <span className="font-medium">
+                      {formatDuration(getModuleDuration(courseModule) || 0)}
+                    </span>
+                  </div>
+                  <span className="text-xs text-gray-500 font-medium">
+                    ({courseModule.lessons?.length || 0})
                   </span>
                 </div>
               </div>
             </div>
 
             {/* Lessons: only shown if module is selected */}
-            {selectedModule?._id === courseModule._id && hasModuleAccess && (
-              <div className="border-t border-gray-200">
+            {isModuleSelected && hasModuleAccess && (
+              <div className="border-t border-gray-200 bg-gray-50/50">
                 {(courseModule.lessons as CourseLesson[])?.map(
                   (lesson, lessonIndex) => {
                     const lessonId = lesson._id || "";
@@ -327,148 +407,168 @@ const CourseContentSection = ({
                       moduleId,
                       lessonId
                     );
+                    const isLessonSelected = selectedLesson?._id === lesson._id;
 
                     return (
                       <div
                         key={lesson._id}
-                        className={`border-b border-gray-100 last:border-b-0 ${
-                          !hasLessonAccess ? "opacity-60" : ""
-                        }`}
+                        className={`border-b border-gray-200/50 last:border-b-0 transition-colors ${
+                          isLessonSelected ? "bg-white" : ""
+                        } ${!hasLessonAccess ? "opacity-60" : ""}`}
                       >
                         {/* Lesson Header */}
                         <div
-                          className={`w-full p-3 pl-8 flex items-center justify-between ${
+                          className={`w-full p-3.5 pl-6 flex items-center justify-between transition-colors ${
                             hasLessonAccess
-                              ? "cursor-pointer hover:bg-gray-50"
+                              ? `cursor-pointer ${
+                                  isLessonSelected
+                                    ? "bg-orange-50/50 hover:bg-orange-50"
+                                    : "hover:bg-gray-100/50"
+                                }`
                               : "cursor-not-allowed"
                           }`}
-                          onClick={() => hasLessonAccess && toggleLesson(lesson)}
+                          onClick={() =>
+                            hasLessonAccess && toggleLesson(lesson)
+                          }
                         >
-                          <div className="flex items-center gap-3">
-                            <div className="shrink-0 w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-xs font-medium text-gray-600">
+                          <div className="flex items-center gap-3 flex-1 min-w-0">
+                            <div
+                              className={`shrink-0 w-7 h-7 rounded-md flex items-center justify-center text-xs font-bold transition-colors ${
+                                isLessonSelected
+                                  ? "bg-orange-500 text-white"
+                                  : "bg-gray-200 text-gray-700"
+                              }`}
+                            >
                               {lessonIndex + 1}
                             </div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-medium text-gray-700">
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              <span
+                                className={`text-sm font-semibold truncate ${
+                                  isLessonSelected
+                                    ? "text-orange-700"
+                                    : "text-gray-800"
+                                }`}
+                              >
                                 {lesson.title}
                               </span>
                               {!hasLessonAccess && (
-                                <Lock className="size-3 text-gray-400" />
+                                <Lock className="size-3.5 text-gray-400 shrink-0" />
                               )}
                             </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <Clock3 className="size-3 text-gray-400" />
-                            <span className="text-xs text-gray-500">
-                              {formatDuration(getLessonDuration(lesson) || 0)}
-                            </span>
-                            <span className="text-xs text-gray-500">
-                              ({lesson.contents?.length || 0} items)
+                          <div className="flex items-center gap-2.5 shrink-0 ml-2">
+                            <div className="flex items-center gap-1 text-xs text-gray-600">
+                              <Clock3 className="size-3.5" />
+                              <span className="font-medium">
+                                {formatDuration(getLessonDuration(lesson) || 0)}
+                              </span>
+                            </div>
+                            <span className="text-xs text-gray-500 font-medium px-1.5 py-0.5 bg-gray-200 rounded">
+                              {lesson.contents?.length || 0}
                             </span>
                           </div>
                         </div>
 
                         {/* Content: only shown if lesson is selected */}
-                        {selectedLesson?._id === lesson._id && (
-                          <div className="bg-gray-50">
-                            {(lesson.contents as Content[])?.map((content) => {
-                              if (!content?._id) return null;
+                        {isLessonSelected && (
+                          <div className="bg-white/80 border-t border-gray-200/50">
+                            {(lesson.contents as Content[])?.map(
+                              (content, contentIndex) => {
+                                if (!content?._id) return null;
 
-                              const contentId = content._id;
-                              const hasContentAccess = canAccessContent(
-                                accessControl,
-                                moduleId,
-                                lessonId,
-                                contentId
-                              );
+                                const contentId = content._id;
+                                const hasContentAccess = canAccessContent(
+                                  accessControl,
+                                  moduleId,
+                                  lessonId,
+                                  contentId
+                                );
+                                const isContentSelected =
+                                  selectedContent?._id === content._id;
+                                const isCompleted = isContentCompleted(contentId);
 
-                              return (
-                                <div
-                                  key={content._id}
-                                  onClick={() => {
-                                    if (hasContentAccess) {
-                                      navigateToContent(content._id!);
-                                    }
-                                  }}
-                                  className={`w-full p-3 pl-16 transition-all duration-200 border-b border-gray-200 last:border-b-0 ${
-                                    hasContentAccess
-                                      ? `cursor-pointer hover:bg-gray-100 ${
-                                          selectedContent?._id === content._id
-                                            ? "bg-orange-50 border-orange-200"
-                                            : ""
-                                        }`
-                                      : "cursor-not-allowed opacity-60"
-                                  }`}
-                                >
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                      <div className="shrink-0 relative">
-                                        {hasContentAccess ? (
-                                          content?.type === "video" ? (
-                                            <Play className="size-4 text-orange-500" />
+                                return (
+                                  <div
+                                    key={content._id}
+                                    onClick={() => {
+                                      if (hasContentAccess) {
+                                        navigateToContent(content._id!);
+                                      }
+                                    }}
+                                    className={cn(
+                                      "w-full p-3 pl-12 pr-4 transition-all duration-200 border-b border-gray-100 last:border-b-0",
+                                      hasContentAccess
+                                        ? `cursor-pointer ${
+                                            isContentSelected
+                                              ? "bg-orange-100 border-l-4 border-l-orange-500"
+                                              : isCompleted
+                                              ? "bg-green-50/50 border-l-4 border-l-green-400 hover:bg-green-50"
+                                              : "hover:bg-orange-50/50 border-l-4 border-l-transparent hover:border-l-orange-300"
+                                          }`
+                                        : "cursor-not-allowed opacity-60 border-l-4 border-l-gray-200"
+                                    )}
+                                  >
+                                    <div className="flex items-center justify-between gap-3">
+                                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                                        <div className="shrink-0 relative transition-transform hover:scale-105">
+                                          {hasContentAccess ? (
+                                            isCompleted ? (
+                                              <div className="w-8 h-8 rounded-md bg-green-100 flex items-center justify-center">
+                                                <CheckCircle2 className="size-4 text-green-600 fill-green-600" />
+                                              </div>
+                                            ) : content?.type === "video" ? (
+                                              <div className="w-8 h-8 rounded-md bg-orange-100 flex items-center justify-center">
+                                                <Play className="size-4 text-orange-600 fill-orange-600" />
+                                              </div>
+                                            ) : (
+                                              <div className="w-8 h-8 rounded-md bg-blue-100 flex items-center justify-center">
+                                                <FileText className="size-4 text-blue-600" />
+                                              </div>
+                                            )
                                           ) : (
-                                            <FileText className="size-4 text-blue-500" />
-                                          )
-                                        ) : (
-                                          <Lock className="size-4 text-gray-400" />
-                                        )}
-                                        {/* Completion indicator */}
-                                        {hasContentAccess &&
-                                          isContentCompleted(content._id!) && (
-                                            <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full flex items-center justify-center">
-                                              <span className="text-white text-xs">
-                                                ✓
-                                              </span>
+                                            <div className="w-8 h-8 rounded-md bg-gray-100 flex items-center justify-center">
+                                              <Lock className="size-4 text-gray-400" />
                                             </div>
                                           )}
-                                      </div>
-                                      <span
-                                        className={`text-sm font-medium truncate ${
-                                          !hasContentAccess
-                                            ? "text-gray-400"
-                                            : selectedContent?._id ===
-                                              content._id
-                                            ? "text-orange-700"
-                                            : isContentCompleted(content._id!)
-                                            ? "text-green-700"
-                                            : "text-gray-700"
-                                        }`}
-                                      >
-                                        {content?.title || "Untitled"}
-                                      </span>
-                                      {hasContentAccess && (
-                                        <>
-                                          <span className="text-xs text-gray-500 uppercase">
-                                            {content?.type || "unknown"}
+                                        </div>
+                                        <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                                          <span
+                                            className={cn(
+                                              "text-sm font-medium truncate",
+                                              !hasContentAccess
+                                                ? "text-gray-400"
+                                                : isContentSelected
+                                                ? "text-orange-900 font-semibold"
+                                                : isCompleted
+                                                ? "text-green-700 font-medium"
+                                                : "text-gray-800"
+                                            )}
+                                          >
+                                            {content?.title || "Untitled"}
                                           </span>
-                                          {isContentCompleted(content._id!) && (
-                                            <span className="text-xs text-green-600 font-medium">
-                                              ✓ Completed
+                                          {hasContentAccess && (
+                                            <span className="text-xs text-gray-500 uppercase tracking-wide font-medium">
+                                              {content?.type || "unknown"}
                                             </span>
                                           )}
-                                        </>
-                                      )}
-                                      {!hasContentAccess && (
-                                        <span className="text-xs text-gray-400 italic">
-                                          Locked
-                                        </span>
-                                      )}
-                                    </div>
-                                    {hasContentAccess &&
-                                      content?.type === "video" && (
-                                        <div className="flex items-center gap-1">
-                                          <Clock3 className="size-3 text-gray-400" />
-                                          <span className="text-xs text-gray-500">
-                                            {formatDuration(
-                                              getContentDuration(content)
-                                            )}
-                                          </span>
                                         </div>
-                                      )}
+                                      </div>
+                                      {hasContentAccess &&
+                                        content?.type === "video" && (
+                                          <div className="flex items-center gap-1.5 shrink-0">
+                                            <Clock3 className="size-3.5 text-gray-400" />
+                                            <span className="text-xs text-gray-600 font-medium whitespace-nowrap">
+                                              {formatDuration(
+                                                getContentDuration(content)
+                                              )}
+                                            </span>
+                                          </div>
+                                        )}
+                                    </div>
                                   </div>
-                                </div>
-                              );
-                            })}
+                                );
+                              }
+                            )}
                           </div>
                         )}
                       </div>
@@ -484,17 +584,15 @@ const CourseContentSection = ({
   );
 };
 
-const CourseContentWithTracking = ({ 
-  course, 
-  selectedContent, 
-  selectedLesson, 
-  selectedModule, 
-  navigateToContent, 
-  toggleModule, 
-  toggleLesson, 
+const CourseContentLayout = ({
+  course,
+  selectedContent,
+  selectedLesson,
+  selectedModule,
+  navigateToContent,
+  toggleModule,
+  toggleLesson,
   tabs,
-  onVideoEndHandlerReady,
-  onContentCompleted
 }: {
   course: Course;
   selectedContent: Content | null;
@@ -504,60 +602,16 @@ const CourseContentWithTracking = ({
   toggleModule: (module: CourseModule) => void;
   toggleLesson: (lesson: CourseLesson) => void;
   tabs: any[];
-  onVideoEndHandlerReady?: (handler: () => void) => void;
-  onContentCompleted?: (contentId: string) => void;
 }) => {
-  // Content completion tracking (now inside VideoTimeProvider)
-  const { progress: videoProgress, isPlaying } = useVideoTimeContext();
-  const {
-    completedContents,
-    isTracking,
-    markContentAsCompleted,
-    isContentCompleted,
-    getOverallCompletion,
-  } = useContentCompletion({
-    courseId: course._id!,
-    selectedContent,
-    selectedLesson,
-    selectedModule,
-    videoProgress,
-    isVideoPlaying: isPlaying,
-  });
-
-  // Track previously synced content IDs to avoid duplicate syncs
-  const syncedContentIdsRef = useRef<Set<string>>(new Set());
-
-  // Sync completion status to parent when new content is completed
-  useEffect(() => {
-    if (onContentCompleted) {
-      completedContents.forEach((contentId) => {
-        if (!syncedContentIdsRef.current.has(contentId)) {
-          onContentCompleted(contentId);
-          syncedContentIdsRef.current.add(contentId);
-        }
-      });
-    }
-  }, [completedContents, onContentCompleted]);
-
-  // Handle video end with completion tracking
-  const handleVideoEnd = () => {
-    console.log("Video ended");
-    if (selectedContent) {
-      markContentAsCompleted(selectedContent._id!);
-    }
-  };
-
-  // Register the video end handler with parent
-  useEffect(() => {
-    if (onVideoEndHandlerReady) {
-      onVideoEndHandlerReady(handleVideoEnd);
-    }
-  }, [selectedContent, markContentAsCompleted, onVideoEndHandlerReady]);
-
   return (
     <div className="w-full min-h-screen flex gap-4 lg:flex-row flex-col">
       <div className="left-side w-full lg:w-7/10 h-full rounded-xl flex flex-col gap-4">
-        <VideoSection course={course} selectedContent={selectedContent} />
+        <VideoSection 
+          course={course} 
+          selectedContent={selectedContent}
+          selectedModule={selectedModule}
+          selectedLesson={selectedLesson}
+        />
         <SectionContainer className="p-8">
           <TabSwitcher tabs={tabs} className="w-full" />
         </SectionContainer>
@@ -580,7 +634,6 @@ const CourseContentWithTracking = ({
             toggleModule={toggleModule}
             toggleLesson={toggleLesson}
             navigateToContent={navigateToContent}
-            isContentCompleted={isContentCompleted}
           />
         </SectionContainer>
       </div>
@@ -589,20 +642,17 @@ const CourseContentWithTracking = ({
 };
 
 const PreviewCourse = ({ course }: { course: Course }) => {
-  const { data: session } = useSession();
   const [width, setWidth] = useState(0);
   const [search, setSearch] = useState("");
   const [qnas, setQnas] = useState<QnA[]>([]);
   const [isLoadingQnas, setIsLoadingQnas] = useState(false);
-  const [completedContents, setCompletedContents] = useState<Set<string>>(new Set());
 
   const { getQnAs } = useQnA();
-  const { checkEnrollment } = useEnrollment();
 
   // Fetch Q&As for this course
   const fetchQnas = async () => {
     if (!course._id) return;
-    
+
     setIsLoadingQnas(true);
     try {
       const result = await getQnAs({
@@ -610,7 +660,7 @@ const PreviewCourse = ({ course }: { course: Course }) => {
         page: 1,
         limit: 50, // Get more Q&As for better UX
       });
-      
+
       if (result) {
         setQnas(result.qnas);
       }
@@ -625,44 +675,14 @@ const PreviewCourse = ({ course }: { course: Course }) => {
     fetchQnas();
   }, [course._id, getQnAs]);
 
-  // Load completed contents from enrollment
-  useEffect(() => {
-    const loadCompletedContents = async () => {
-      if (!session?.user || !course._id) return;
-      
-      try {
-        const enrollmentStatus = await checkEnrollment({ courseId: course._id });
-        if (enrollmentStatus?.enrollment?.completedContents) {
-          // Extract contentIds from ContentCompletion objects
-          const contentIds = (enrollmentStatus.enrollment.completedContents as any[]).map(
-            (completion) => typeof completion === 'string' ? completion : completion.contentId
-          );
-          setCompletedContents(new Set(contentIds));
-        }
-      } catch (error) {
-        console.error("Failed to load completed contents:", error);
-      }
-    };
-
-    loadCompletedContents();
-  }, [session?.user, course._id, checkEnrollment]);
-
-  // Function to check if content is completed
-  const isContentCompleted = useCallback((contentId: string): boolean => {
-    return completedContents.has(contentId);
-  }, [completedContents]);
-
-  // Callback to update completion status when content is completed
-  const handleContentCompleted = useCallback((contentId: string) => {
-    setCompletedContents(prev => new Set([...prev, contentId]));
-  }, []);
-
   // Filter questions based on search
   const filteredQuestions = qnas?.filter(
     (qna) =>
       qna.message.toLowerCase().includes(search.toLowerCase()) ||
-      (typeof qna.userId === 'object' && 
-       `${qna.userId.firstName || ''} ${qna.userId.lastName || ''}`.toLowerCase().includes(search.toLowerCase()))
+      (typeof qna.userId === "object" &&
+        `${qna.userId.firstName || ""} ${qna.userId.lastName || ""}`
+          .toLowerCase()
+          .includes(search.toLowerCase()))
   );
 
   useEffect(() => {
@@ -674,7 +694,10 @@ const PreviewCourse = ({ course }: { course: Course }) => {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  const { accessControl } = useEnrollmentContext() || { accessControl: null };
+  const { accessControl, enrollment } = useEnrollmentContext() || { 
+    accessControl: null, 
+    enrollment: null 
+  };
 
   const {
     selectedModule,
@@ -684,22 +707,7 @@ const PreviewCourse = ({ course }: { course: Course }) => {
     toggleModule,
     toggleLesson,
     isInitialized,
-  } = useLessonNavigation(course, accessControl);
-
-  // Create a ref to store the video end handler from CourseContentWithTracking
-  // Must be called before any conditional returns to follow Rules of Hooks
-  const videoEndHandlerRef = useRef<(() => void) | null>(null);
-
-  // Handle progress updates
-  const handleProgressUpdate = (progress: number) => {
-    // This will be called by the VideoTimeContext
-    console.log(`Video progress: ${progress}%`);
-  };
-
-  // Handle video end
-  const handleVideoEnd = () => {
-    console.log("Video ended");
-  };
+  } = useLessonNavigation(course, accessControl, enrollment?.lastContentAccessed);
 
   const tabs = [
     ...(width < 1024
@@ -715,7 +723,6 @@ const PreviewCourse = ({ course }: { course: Course }) => {
                 toggleModule={toggleModule}
                 toggleLesson={toggleLesson}
                 navigateToContent={navigateToContent}
-                isContentCompleted={isContentCompleted}
               />
             ),
             showCount: course.modules?.length || 0,
@@ -789,16 +796,8 @@ const PreviewCourse = ({ course }: { course: Course }) => {
   }
 
   return (
-    <VideoTimeProvider 
-      onProgressUpdate={handleProgressUpdate}
-      onVideoEnd={() => {
-        // Call the handler from CourseContentWithTracking if it exists
-        if (videoEndHandlerRef.current) {
-          videoEndHandlerRef.current();
-        }
-      }}
-    >
-      <CourseContentWithTracking 
+    <VideoTimeProvider>
+      <CourseContentLayout
         course={course}
         selectedContent={selectedContent}
         selectedLesson={selectedLesson}
@@ -807,10 +806,6 @@ const PreviewCourse = ({ course }: { course: Course }) => {
         toggleModule={toggleModule}
         toggleLesson={toggleLesson}
         tabs={tabs}
-        onVideoEndHandlerReady={(handler) => {
-          videoEndHandlerRef.current = handler;
-        }}
-        onContentCompleted={handleContentCompleted}
       />
     </VideoTimeProvider>
   );

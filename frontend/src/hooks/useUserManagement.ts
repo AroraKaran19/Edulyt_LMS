@@ -27,6 +27,12 @@ export interface GiftCourseData {
   accessControl?: PartialAccessControl;
 }
 
+export interface TrialCourseData {
+  userId: string;
+  courseId: string;
+  trialDurationDays?: number;
+}
+
 const useUserManagement = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -123,6 +129,29 @@ const useUserManagement = () => {
         const errorMessage = error.response?.data?.error?.message || "Failed to gift course";
         setError(errorMessage);
         console.error("Gift course error:", error);
+        throw new Error(errorMessage); // Throw the error so it can be caught in the component
+      }
+    },
+    [setError]
+  );
+
+  const createTrialEnrollment = useCallback(
+    async (data: TrialCourseData): Promise<Enrollment | null> => {
+      try {
+        const requestBody: any = {
+          userId: data.userId,
+          courseId: data.courseId,
+          isTrial: true,
+          trialDurationDays: data.trialDurationDays || 7, // Default to 7 days if not specified
+        };
+
+        const response = await apiClient.post("/enrollments", requestBody);
+        return response.data.data;
+      } catch (error: any) {
+        // Extract the specific error message from the backend
+        const errorMessage = error.response?.data?.error?.message || "Failed to create trial enrollment";
+        setError(errorMessage);
+        console.error("Trial enrollment error:", error);
         throw new Error(errorMessage); // Throw the error so it can be caught in the component
       }
     },
@@ -227,6 +256,7 @@ const useUserManagement = () => {
     deleteUser,
     changeUserPassword,
     giftCourse,
+    createTrialEnrollment,
     getUserEnrollments,
 
     // Validation

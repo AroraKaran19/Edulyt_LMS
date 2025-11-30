@@ -89,9 +89,11 @@ const useEnrollment = () => {
   const createEnrollment = useCallback(
     async (data: {
       courseId: string;
-      enrollmentSource?: "direct" | "gift" | "promotion";
+      enrollmentSource?: "direct" | "gift" | "promotion" | "trial";
       promotionCode?: string;
       giftFrom?: string;
+      isTrial?: boolean;
+      trialDurationDays?: number;
     }): Promise<Enrollment | null> => {
       return handleRequest(
         async () => {

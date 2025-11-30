@@ -132,13 +132,6 @@ const PaymentRedirectContent = () => {
             return;
           }
 
-          console.log("Paytm configuration data:", {
-            orderId: orderIdToBeUsed,
-            tokenLength: paymentToken.length,
-            tokenType: "TXN_TOKEN",
-            paytmMid: paytmMid,
-          });
-
           const config = {
             flow: "DEFAULT",
             data: {
@@ -149,8 +142,6 @@ const PaymentRedirectContent = () => {
             },
             handler: {
               notifyMerchant: function (eventName: string, data: any) {
-                console.log("Paytm event:", eventName, "Data:", data);
-
                 // Handle APP_CLOSED event
                 if (eventName === "APP_CLOSED") {
                   setPaymentStatus("Redirecting back...");
@@ -169,11 +160,8 @@ const PaymentRedirectContent = () => {
           if (window.Paytm && window.Paytm.CheckoutJS) {
             try {
               window.Paytm.CheckoutJS.onLoad(function () {
-                console.log("Paytm CheckoutJS loaded, initializing...");
-
                 window.Paytm?.CheckoutJS?.init(config)
                   .then(() => {
-                    console.log("Paytm CheckoutJS initialized successfully");
                     window.Paytm?.CheckoutJS?.invoke();
                     // Clear payment token from cookies after successful initialization
                     document.cookie =

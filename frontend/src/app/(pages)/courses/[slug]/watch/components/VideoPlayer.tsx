@@ -11,6 +11,7 @@ import {
   SkipForward,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useVideoProgressTracking } from "../hooks/useVideoProgressTracking";
 
 // Extend HTMLVideoElement to include webkit methods for iOS
 interface WebkitHTMLVideoElement extends HTMLVideoElement {
@@ -38,6 +39,10 @@ interface VideoPlayerProps {
   posterUrl?: string;
   onVideoReady?: (video: HTMLVideoElement) => void;
   className?: string;
+  contentId?: string; // Track content changes for smooth transitions
+  moduleId?: string; // For progress tracking
+  lessonId?: string; // For progress tracking
+  contentType?: "video" | "quiz" | "document"; // For progress tracking
 }
 
 /**
@@ -51,6 +56,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   posterUrl,
   onVideoReady,
   className,
+  contentId,
+  moduleId,
+  lessonId,
+  contentType = "video",
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -75,6 +84,17 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [isMobile, setIsMobile] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [showSeekButtons, setShowSeekButtons] = useState(false);
+
+  // Track video progress and completion
+  useVideoProgressTracking({
+    contentId,
+    moduleId,
+    lessonId,
+    contentType,
+    currentTime,
+    duration,
+    isPlaying,
+  });
 
   // Detect mobile/iOS devices
   useEffect(() => {
@@ -115,94 +135,138 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     [hasValidSources, validSources]
   );
 
+  // Track previous contentId to detect content changes
+  const prevContentIdRef = useRef<string | undefined>(contentId);
+
   // Initialize with first valid source or auto-select best quality
+  // Reset when content changes (new contentId)
   useEffect(() => {
     if (validSources.length > 0) {
+      // Check if content has changed
+      const contentChanged = prevContentIdRef.current !== contentId;
+      prevContentIdRef.current = contentId;
+
       // Auto-select highest quality by default
       const bestQuality =
         validSources.find((s) => s.quality === "1080p") ||
         validSources.find((s) => s.quality === "720p") ||
         validSources.find((s) => s.quality === "480p") ||
         validSources[0];
+
+      // If content changed, reset to beginning and pause
+      if (contentChanged) {
+        const video = videoRef.current;
+        if (video) {
+          video.pause();
+          video.currentTime = 0;
+        }
+        setIsPlaying(false);
+        setCurrentTime(0);
+      }
+
       setCurrentSrc(bestQuality.src);
       setCurrentQuality(bestQuality.quality);
     }
-  }, [validSources]);
+  }, [validSources, contentId]);
 
-  // Handle source changes smoothly
+  // Handle source changes - set video src when currentSrc changes
   useEffect(() => {
     const video = videoRef.current;
     if (!video || !currentSrc) return;
 
-    // Create full URL if currentSrc is relative
-    const fullCurrentSrc = currentSrc.startsWith("http")
-      ? currentSrc
-      : new URL(currentSrc, window.location.origin).href;
+    // Use the source URL directly (AWS presigned URLs are already full URLs)
+    const sourceUrl = currentSrc.trim();
+
+    // Get current video src - normalize both URLs for comparison
+    // video.src returns the full resolved URL, so we need to compare properly
+    let currentVideoSrc = "";
+    try {
+      if (video.src) {
+        // Remove hash/fragment and normalize
+        const url = new URL(video.src);
+        url.hash = "";
+        currentVideoSrc = url.href;
+      }
+    } catch (e) {
+      // If video.src is not a valid URL, use it as-is
+      currentVideoSrc = video.src || "";
+    }
+
+    let normalizedSourceUrl = "";
+    try {
+      const url = new URL(sourceUrl);
+      url.hash = "";
+      normalizedSourceUrl = url.href;
+    } catch (e) {
+      // If sourceUrl is not a valid URL, use it as-is
+      normalizedSourceUrl = sourceUrl;
+    }
 
     // Only update if the source actually changed
-    if (video.src !== fullCurrentSrc) {
-      // Save current state before changing source
-      const savedTime = video.currentTime || 0;
-      const wasPlaying = !video.paused;
+    if (currentVideoSrc !== normalizedSourceUrl && video.src !== sourceUrl) {
+      // Check if this is a content change (different contentId)
+      const isContentChange = prevContentIdRef.current !== contentId;
+
+      // Save current state before changing source (only if not changing content)
+      const savedTime = isContentChange ? 0 : video.currentTime || 0; // Reset to 0 for new content
+      const wasPlaying = !isContentChange && !video.paused; // Don't autoplay on content change
       const savedVolume = video.volume;
 
       // Set loading state
       setIsLoading(true);
       setError(null);
+      setIsBuffering(false);
 
       // Pause video before changing source to prevent glitches
-      if (wasPlaying) {
-        video.pause();
-      }
+      video.pause();
 
-      // Update the video source
-      video.src = fullCurrentSrc;
+      // Update the video source directly - this ensures AWS presigned URLs are used correctly
+      video.src = sourceUrl;
       video.load();
 
       // Set up one-time event listeners for smooth transition
       const handleCanPlay = () => {
-        console.log("New source can play, restoring state");
-
         // Restore volume (except on iOS where it's controlled by system)
         if (!isMobile) {
           video.volume = savedVolume;
         }
 
-        // Restore time
-        if (savedTime > 0) {
-          video.currentTime = savedTime;
-        }
+        // Reset time to 0 for new content, or restore for quality change
+        video.currentTime = savedTime;
 
-        // Resume playback if it was playing before
-        if (wasPlaying) {
+        // Only resume playback if it was a quality change (not content change)
+        if (wasPlaying && !isContentChange) {
           video.play().catch((error) => {
             console.error("Error resuming playback:", error);
           });
         }
 
-        // Clean up event listener
-        video.removeEventListener("canplay", handleCanPlay);
+        setIsLoading(false);
+
+        // Notify parent that video is ready
+        if (onVideoReady) {
+          onVideoReady(video);
+        }
       };
 
       const handleError = () => {
-        console.error("Error loading new source");
+        console.error("Error loading new source:", sourceUrl);
         setError("Failed to load video source");
         setIsLoading(false);
-        video.removeEventListener("error", handleError);
-        video.removeEventListener("canplay", handleCanPlay);
+        setIsBuffering(false);
       };
 
-      // Add event listeners
-      video.addEventListener("canplay", handleCanPlay);
-      video.addEventListener("error", handleError);
+      // Add event listeners with once option for automatic cleanup
+      video.addEventListener("canplay", handleCanPlay, { once: true });
+      video.addEventListener("error", handleError, { once: true });
 
-      // Cleanup after timeout to prevent memory leaks
-      setTimeout(() => {
+      // Cleanup function
+      return () => {
         video.removeEventListener("canplay", handleCanPlay);
         video.removeEventListener("error", handleError);
-      }, 10000);
+      };
     }
-  }, [currentSrc, isMobile]);
+  }, [currentSrc, isMobile, contentId, onVideoReady]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -674,7 +738,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   // Error component for missing or invalid sources
   if (!hasValidSources) {
     return (
-      <div className="relative w-full h-full rounded-2xl overflow-hidden bg-gradient-to-br from-gray-900 to-black flex items-center justify-center border-2 border-gray-800">
+      <div className="relative w-full h-full rounded-2xl overflow-hidden bg-linear-to-br from-gray-900 to-black flex items-center justify-center border-2 border-gray-800">
         <div className="text-center p-8">
           <AlertCircle className="w-16 h-16 text-[#F77124] mx-auto mb-4" />
           <h3 className="text-xl font-semibold text-white mb-2">
@@ -699,9 +763,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     <div
       ref={containerRef}
       className={cn(
-        "relative w-full h-full rounded-2xl overflow-hidden bg-gradient-to-br from-gray-900 to-black group border-2 border-gray-800 hover:border-[#F77124]/30 transition-all duration-300",
+        "relative w-full h-full rounded-2xl overflow-hidden bg-linear-to-br from-gray-900 to-black group border-2 border-gray-800 hover:border-[#F77124]/30 transition-all duration-300",
         className
       )}
+      style={{
+        opacity: isLoading ? 0.7 : 1,
+        transition: "opacity 0.2s ease-in-out",
+      }}
     >
       <video
         ref={videoRef}
@@ -729,7 +797,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       {/* Loading/Buffering Overlay */}
       {(isLoading || isBuffering) && !error && (
         <div
-          className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-900 to-black rounded-2xl animate-in fade-in duration-300"
+          className="absolute inset-0 flex items-center justify-center bg-linear-to-br from-gray-900 to-black rounded-2xl animate-in fade-in duration-300"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="text-center animate-in slide-in-from-bottom-4 duration-500">
@@ -822,7 +890,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
       {/* Controls */}
       <div
-        className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2 sm:p-4 transition-all duration-300 ${
+        className={`absolute bottom-0 left-0 right-0 bg-linear-to-t from-black/80 to-transparent p-2 sm:p-4 transition-all duration-300 ${
           showControls || isMobile
             ? "opacity-100 translate-y-0"
             : "opacity-0 translate-y-full"
@@ -843,7 +911,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           onTouchEnd={handleProgressTouchEnd}
         >
           <div
-            className="h-full bg-gradient-to-r from-[#F77124] to-[#e6651f] rounded-full transition-all duration-150 shadow-[0_0_8px_rgba(247,113,36,0.5)]"
+            className="h-full bg-linear-to-r from-[#F77124] to-[#e6651f] rounded-full transition-all duration-150 shadow-[0_0_8px_rgba(247,113,36,0.5)]"
             style={{ width: `${progressPercentage}%` }}
           />
         </div>
@@ -907,7 +975,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                   onChange={handleVolumeChange}
                   className="w-12 sm:w-20 h-1 bg-white/20 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#F77124] [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-[0_0_8px_rgba(247,113,36,0.5)]"
                   style={{
-                    background: `linear-gradient(to right, #F77124 0%, #F77124 ${
+                    background: `linear-linear(to right, #F77124 0%, #F77124 ${
                       (isMuted ? 0 : volume) * 100
                     }%, rgba(255,255,255,0.2) ${
                       (isMuted ? 0 : volume) * 100

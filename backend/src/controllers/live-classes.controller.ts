@@ -28,7 +28,7 @@ export const createLiveClass = asyncHandler(
     }
 
     const isAdmin = user.userType === "admin";
-    
+
     // For instructors: always use their own ID
     // For admins: allow them to specify instructor in request body, otherwise use their own ID
     if (!isAdmin) {
@@ -37,7 +37,7 @@ export const createLiveClass = asyncHandler(
     } else {
       // Admins can specify instructor in request body, or it defaults to their ID
       if (!liveClassData.instructor) {
-    liveClassData.instructor = user._id.toString();
+        liveClassData.instructor = user._id.toString();
       }
     }
 
@@ -107,10 +107,7 @@ export const getAllLiveClasses = asyncHandler(
       throw new AppError("Page and limit must be positive numbers", 400);
     }
 
-    const result = await getAllLiveClassesService(
-      Number(page),
-      Number(limit)
-    );
+    const result = await getAllLiveClassesService(Number(page), Number(limit));
 
     sendSuccessResponse(
       res,
@@ -234,6 +231,7 @@ export const getStudentLiveClasses = asyncHandler(
 export const getLiveClassById = asyncHandler(
   async (req: Request, res: Response) => {
     const { liveClassId } = req.params;
+    const user = req.user;
 
     if (!liveClassId) {
       throw new AppError("Live class ID is required", 400);
@@ -243,6 +241,36 @@ export const getLiveClassById = asyncHandler(
 
     if (!result) {
       throw new AppError("Live class not found", 404);
+    }
+
+    // If user is a student, verify they have elite plan enrollment for this course
+    // Instructors and admins can access any live class
+    if (user?.userType === "student" && user._id && result.course) {
+      const { EnrollmentModel } = await import("../models");
+      // Handle both populated course object and course ID string
+      let courseId: string;
+      if (typeof result.course === "object" && result.course !== null) {
+        const courseObj = result.course as { _id?: any };
+        courseId = courseObj._id
+          ? courseObj._id.toString()
+          : String(result.course);
+      } else {
+        courseId = result.course.toString();
+      }
+
+      const enrollment = await EnrollmentModel.findOne({
+        userId: user._id.toString(),
+        courseId: courseId,
+        status: { $in: ["active", "completed"] },
+        planType: "elite", // Only elite plan enrollments can access live classes
+      });
+
+      if (!enrollment) {
+        throw new AppError(
+          "Access denied. Live classes are only available for elite plan enrollments.",
+          403
+        );
+      }
     }
 
     sendSuccessResponse(res, result, "Live class retrieved successfully", 200);

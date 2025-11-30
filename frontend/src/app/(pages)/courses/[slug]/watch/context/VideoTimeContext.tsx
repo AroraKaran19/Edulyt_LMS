@@ -22,8 +22,6 @@ interface VideoTimeContextType {
 
 interface VideoTimeProviderProps {
   children: ReactNode;
-  onProgressUpdate?: (progress: number) => void;
-  onVideoEnd?: () => void;
 }
 
 const VideoTimeContext = createContext<VideoTimeContextType | undefined>(
@@ -32,10 +30,8 @@ const VideoTimeContext = createContext<VideoTimeContextType | undefined>(
 
 export const VideoTimeProvider: React.FC<VideoTimeProviderProps> = ({
   children,
-  onProgressUpdate,
-  onVideoEnd,
 }) => {
-  const videoTimeState = useVideoTime({ onProgressUpdate, onVideoEnd });
+  const videoTimeState = useVideoTime();
 
   return (
     <VideoTimeContext.Provider value={videoTimeState}>

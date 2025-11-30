@@ -24,6 +24,19 @@ const InstructorCard = ({
     return "Instructor";
   };
 
+  const getInitials = () => {
+    if (instructor.firstName && instructor.lastName) {
+      return `${instructor.firstName[0]}${instructor.lastName[0]}`.toUpperCase();
+    } else if (instructor.firstName) {
+      return instructor.firstName[0].toUpperCase();
+    } else if (instructor.lastName) {
+      return instructor.lastName[0].toUpperCase();
+    } else if (instructor.email) {
+      return instructor.email[0].toUpperCase();
+    }
+    return "I";
+  };
+
   const getSlug = () => {
     const name = getDisplayName();
     return name
@@ -43,17 +56,23 @@ const InstructorCard = ({
         e.stopPropagation();
       }}
     >
-      <Image
-        src={instructor.profilePicture || "/courseDefaultTestimonial.png"}
-        alt={getDisplayName()}
-        className="size-5 rounded-full shrink-0"
-        width={20}
-        height={20}
-        draggable={false}
-        loading="eager"
-        unoptimized
-        priority
-      />
+      {instructor.profilePicture ? (
+        <Image
+          src={instructor.profilePicture}
+          alt={getDisplayName()}
+          className="size-5 rounded-full shrink-0"
+          width={20}
+          height={20}
+          draggable={false}
+          loading="eager"
+          unoptimized
+          priority
+        />
+      ) : (
+        <div className="size-5 rounded-full shrink-0 bg-orange-500 flex items-center justify-center text-white text-[10px] font-bold">
+          {getInitials()}
+        </div>
+      )}
       <span className="flex-1 text-ellipsis overflow-hidden whitespace-nowrap min-w-0">
         {getDisplayName()}
       </span>

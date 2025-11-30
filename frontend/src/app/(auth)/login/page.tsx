@@ -4,10 +4,10 @@ import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import { Eye, EyeOff, Lock, Mail } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "react-toastify";
-import { signIn } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
 import apiClient from "@/configs/apiConfig";
 
 const LoginPage = () => {
@@ -16,23 +16,41 @@ const LoginPage = () => {
   const [loading, setLoading] = useState(false);
   const [isOAuthLoading, setIsOAuthLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [loginSuccess, setLoginSuccess] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { data: session } = useSession();
 
   // Get callbackUrl from URL parameters, default to /dashboard
   const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
+
+  // Handle role-based redirect after successful login
+  useEffect(() => {
+    if (loginSuccess && session?.user) {
+      const user = session.user as any;
+      // Check if user is admin or super-admin
+      if (user?.userType === "admin" || user?.userType === "super-admin") {
+        router.push("/admin/dashboard");
+      } else {
+        router.push(callbackUrl);
+      }
+      setLoginSuccess(false); // Reset the flag
+    }
+  }, [session, loginSuccess, router, callbackUrl]);
 
   const handleOAuthSignIn = async (provider: string) => {
     setIsOAuthLoading(true);
     try {
       const result = await signIn(provider, {
         callbackUrl,
-        redirect: true,
+        redirect: false, // Don't redirect automatically, handle it in useEffect
       });
       if (result?.error) {
         toast.error(result?.error as string);
       } else if (result?.ok) {
         toast.success("Login successful!");
+        // Set flag to trigger role-based redirect in useEffect
+        setLoginSuccess(true);
       }
     } catch (error) {
       toast.error(
@@ -63,7 +81,8 @@ const LoginPage = () => {
         );
       } else if (result?.ok) {
         toast.success("Login successful!");
-        router.push(callbackUrl);
+        // Set flag to trigger role-based redirect in useEffect
+        setLoginSuccess(true);
       }
     } catch (error) {
       toast.error("Something went wrong. Please try again.");

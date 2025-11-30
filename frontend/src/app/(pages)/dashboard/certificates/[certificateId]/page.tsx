@@ -1,35 +1,111 @@
-import { Download, Share2, CheckCircle } from "lucide-react";
+"use client";
+
+import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { Download, CheckCircle, ExternalLink, Loader2 } from "lucide-react";
 import Image from "next/image";
+import ImageComponent from "@/components/ui/ImageComponent";
+import apiClient from "@/configs/apiConfig";
+import { Certificate } from "@/types/certificate";
+import useCertificates from "@/hooks/useCertificates";
 
-interface CertificateDetailPageProps {
-  params: Promise<{
-    certificateId: string;
-  }>;
-}
+const CertificateDetailPage = () => {
+  const params = useParams();
+  const router = useRouter();
+  const certificateId = params?.certificateId as string;
+  const { downloadCertificate } = useCertificates();
 
-const CertificateDetailPage = async ({
-  params,
-}: CertificateDetailPageProps) => {
-  const { certificateId } = await params;
+  const [certificate, setCertificate] = useState<Certificate | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
 
-  // Mock certificate data - replace with actual data fetching
-  const certificate = {
-    id: certificateId,
-    title: "Data Science: Zero to Hundred",
-    completedDate: "24th March 2023",
-    hoursCompleted: "20 hours",
-    grade: "A",
-    instructor: "Dr. Sarah Johnson",
-    description:
-      "Lorem ipsum dolor sit amet consectetur adipisicing elit. Quisquam, voluptatum. Lorem ipsum dolor sit amet consectetur adipisicing elit. Quisquam, voluptatum. Lorem ipsum dolor sit amet consectetur adipisicing elit. Quisquam, voluptatum.",
-    skills: [
-      "Data Science",
-      "Machine Learning",
-      "Statistics",
-      "Python",
-      "Data Visualization",
-    ],
+  useEffect(() => {
+    const fetchCertificate = async () => {
+      if (!certificateId) {
+        setError("Certificate ID is required");
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        setError(null);
+        const response = await apiClient.get(`/certificates/${certificateId}`);
+        setCertificate(response.data.data);
+      } catch (err: any) {
+        const errorMsg =
+          err.response?.data?.error?.message ||
+          err.message ||
+          "Certificate not found";
+        setError(errorMsg);
+        console.error("Certificate fetch error:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchCertificate();
+  }, [certificateId]);
+
+  const handleDownload = async () => {
+    if (!certificate?.fileUrl) {
+      setError("Certificate file not available");
+      return;
+    }
+
+    setIsDownloading(true);
+    try {
+      await downloadCertificate(certificate);
+    } catch (err) {
+      console.error("Download error:", err);
+    } finally {
+      setIsDownloading(false);
+    }
   };
+
+  const handleVerify = () => {
+    if (certificate?.verificationCode) {
+      router.push(`/verify-certificate/${certificate.verificationCode}`);
+    } else if (certificate?.verificationUrl) {
+      // Extract verification code from URL or use the full URL
+      const urlParts = certificate.verificationUrl.split("/");
+      const code = urlParts[urlParts.length - 1];
+      router.push(`/verify-certificate/${code}`);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin text-orange-500 mx-auto mb-4" />
+          <p className="text-gray-600">Loading certificate...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !certificate) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-8 text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            Certificate Not Found
+          </h1>
+          <p className="text-gray-600 mb-6">
+            {error || "The certificate you are looking for does not exist."}
+          </p>
+          <button
+            onClick={() => router.push("/dashboard/certificates")}
+            className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-lg font-semibold"
+          >
+            Back to Certificates
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen">
@@ -42,109 +118,168 @@ const CertificateDetailPage = async ({
             <div className="flex items-center gap-3 bg-linear-to-r from-green-200 to-white rounded-xl p-1">
               <CheckCircle className="w-6 h-6 text-[#12B669]" />
               <span className="text-lg font-semibold text-[#12B669] font-plus-jakarta ">
-                Completed on {certificate.completedDate}
+                Completed on{" "}
+                {new Date(certificate.completionDate).toLocaleDateString(
+                  "en-US",
+                  {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  }
+                )}
               </span>
             </div>
 
             {/* Course Title */}
             <div>
               <h1 className="text-3xl font-bold text-gray-900 mb-6">
-                {certificate.title}
+                {(typeof certificate.courseId === "object" &&
+                  certificate.courseId?.title) ||
+                  certificate.courseName}
               </h1>
             </div>
 
             {/* Stats Section */}
             <div className="bg-white rounded-xl p-3 border border-[#0000001F]">
-              <p className="text-[#2B1508] font-bold font-plus-jakarta text-sm">
-                {" "}
-                Stats
+              <p className="text-[#2B1508] font-bold font-plus-jakarta text-sm mb-2">
+                Certificate Details
               </p>
-              <div className="flex items-center justify-between mt-2">
-                {/* timer and grades */}
-                <div className="flex items-start gap-4">
-                  <div className="flex flex-col items-start gap-2">
-                    <span className="text-[#000000] font-semibold font-plus-jakarta text-xs">
-                      {certificate.hoursCompleted}
-                    </span>
-                    <span className="text-[#00000080] font-semibold font-plus-jakarta text-xs">
-                      {" "}
-                      Completed In
-                    </span>
-                  </div>
-                  <div className="border border-[#00000029] h-10 mx-6"></div>
-                  <div className="flex flex-col items-start gap-2">
-                    <span className="text-[#000000] font-semibold font-plus-jakarta text-xs">
-                      {certificate.grade}
-                    </span>
-                    <span className="text-[#00000080] font-semibold font-plus-jakarta text-xs">
-                      Grade Achieved
-                    </span>
-                  </div>
+              <div className="space-y-3">
+                <div className="flex flex-col gap-1">
+                  <span className="text-[#00000080] font-semibold font-plus-jakarta text-xs">
+                    Certificate ID
+                  </span>
+                  <span className="text-[#000000] font-semibold font-plus-jakarta text-sm font-mono">
+                    {certificate.certificateId}
+                  </span>
                 </div>
-                <button
-                  type="button"
-                  className="flex justify-center items-center gap-1 sm:gap-2 bg-white border border-[#00000021] text-[#656565] rounded-lg px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-xs font-bold hover:bg-gray-100 transition cursor-pointer shadow-[0px_-3px_3.7px_0px_#0146E721_inset]"
-                >
-                  <span className="">Go Back to course</span>
-                </button>
+                <div className="flex flex-col gap-1">
+                  <span className="text-[#00000080] font-semibold font-plus-jakarta text-xs">
+                    Student Name
+                  </span>
+                  <span className="text-[#000000] font-semibold font-plus-jakarta text-sm">
+                    {certificate.studentName}
+                  </span>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-[#00000080] font-semibold font-plus-jakarta text-xs">
+                    Issued Date
+                  </span>
+                  <span className="text-[#000000] font-semibold font-plus-jakarta text-sm">
+                    {new Date(certificate.issuedAt).toLocaleDateString(
+                      "en-US",
+                      {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      }
+                    )}
+                  </span>
+                </div>
+                {certificate.verificationCode && (
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[#00000080] font-semibold font-plus-jakarta text-xs">
+                      Verification Code
+                    </span>
+                    <span className="text-[#000000] font-semibold font-plus-jakarta text-sm font-mono break-all">
+                      {certificate.verificationCode}
+                    </span>
+                  </div>
+                )}
               </div>
+              <button
+                type="button"
+                onClick={() => router.push("/dashboard/certificates")}
+                className="mt-4 flex justify-center items-center gap-1 sm:gap-2 bg-white border border-[#00000021] text-[#656565] rounded-lg px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-xs font-bold hover:bg-gray-100 transition cursor-pointer shadow-[0px_-3px_3.7px_0px_#0146E721_inset]"
+              >
+                <span className="">Back to Certificates</span>
+              </button>
             </div>
 
-            {/* About the Course */}
-            <div className="bg-white rounded-xl p-6 border border-[#0000001F] mt-4">
-              <h3 className="text-[#2B1508] font-bold font-plus-jakarta text-sm mb-2">
-                About the Course
-              </h3>
-              <p className="text-[#000000] font-normal font-plus-jakarta text-sm leading-relaxed">
-                {certificate.description}
-              </p>
-              <h3 className="text-[#2B1508] font-bold font-plus-jakarta text-sm my-2">
-                Skills you learned
-              </h3>
-              <div className="flex flex-wrap gap-2">
-                {certificate.skills.map((skill, index) => (
-                  <span
-                    key={index}
-                    className="bg-[#EDEDED] text-black px-3 py-1 rounded-full text-sm font-medium"
-                  >
-                    {skill}
-                  </span>
-                ))}
+            {/* Key Topics */}
+            {certificate.keyTopics && (
+              <div className="bg-white rounded-xl p-6 border border-[#0000001F] mt-4">
+                <h3 className="text-[#2B1508] font-bold font-plus-jakarta text-sm mb-2">
+                  Key Topics Covered
+                </h3>
+                <p className="text-[#000000] font-normal font-plus-jakarta text-sm leading-relaxed">
+                  {certificate.keyTopics}
+                </p>
               </div>
-            </div>
+            )}
           </div>
 
           {/* Right Column - Certificate */}
-          <div className="space-y-6 ">
+          <div className="space-y-6">
+            {/* Certificate Preview */}
+            {typeof certificate.courseId === "object" &&
+              certificate.courseId?.thumbnail && (
+                <div className="bg-white rounded-xl p-6 border border-[#0000001F]">
+                  <h2 className="text-xl font-bold text-gray-900 mb-4">
+                    Course
+                  </h2>
+                  <div className="relative w-full h-48 rounded-lg overflow-hidden">
+                    <ImageComponent
+                      src={certificate.courseId.thumbnail}
+                      alt={certificate.courseId.title || certificate.courseName}
+                      width={800}
+                      height={400}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                </div>
+              )}
+
             {/* Certificate Image */}
-            <div className="bg-[#F8F8F8] rounded-md p-6 border border-[#00000017]  min-h-[460px]">
+            <div className="bg-[#F8F8F8] rounded-md p-6 border border-[#00000017] min-h-[460px]">
               <div className="relative w-full h-full bg-white overflow-hidden">
-                {/* Certificate Design */}
-                <Image
-                  src="/certificate-complete-image.png"
-                  alt="certificate"
-                  width={585}
-                  height={420}
-                  className="w-full h-full object-contain"
-                />
+                {certificate.fileUrl ? (
+                  <iframe
+                    src={certificate.fileUrl}
+                    className="w-full h-full min-h-[420px]"
+                    title="Certificate PDF"
+                  />
+                ) : (
+                  <Image
+                    src="/certificate-complete-image.png"
+                    alt="certificate"
+                    width={585}
+                    height={420}
+                    className="w-full h-full object-contain"
+                  />
+                )}
               </div>
             </div>
 
             {/* Action Buttons */}
-            <div className="flex flex-row gap-4 w-full">
+            <div className="flex flex-col sm:flex-row gap-4 w-full">
+              {certificate.verificationCode && (
+                <button
+                  type="button"
+                  onClick={handleVerify}
+                  className="flex-1 flex justify-center items-center gap-2 bg-white border border-[#00000021] text-[#656565] rounded-lg px-3 py-[10px] text-xs font-bold hover:bg-gray-100 transition cursor-pointer shadow-[0px_-3px_3.7px_0px_#0146E721_inset]"
+                >
+                  <ExternalLink size={20} />
+                  Verify Certificate
+                </button>
+              )}
               <button
                 type="button"
-                className="w-[172px] flex justify-center items-center gap-1 sm:gap-2 bg-white border border-[#00000021] text-[#656565] rounded-lg px-3 py-[10px] text-xs font-bold hover:bg-gray-100 transition cursor-pointer shadow-[0px_-3px_3.7px_0px_#0146E721_inset]"
+                onClick={handleDownload}
+                disabled={!certificate.fileUrl || isDownloading}
+                className="flex-1 flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white py-[10px] rounded-lg font-bold text-xs transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Share2 size={20} />
-                Share Certificate
-              </button>
-              <button
-                type="button"
-                className="w-[172px] flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white py-[10px] rounded-lg font-bold text-xs transition-colors cursor-pointer"
-              >
-                Download certificate
-                <Download size={20} />
+                {isDownloading ? (
+                  <>
+                    <Loader2 size={20} className="animate-spin" />
+                    Downloading...
+                  </>
+                ) : (
+                  <>
+                    Download certificate
+                    <Download size={20} />
+                  </>
+                )}
               </button>
             </div>
           </div>

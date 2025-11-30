@@ -10,12 +10,7 @@ interface VideoTimeState {
   isPlaying: boolean;
 }
 
-interface UseVideoTimeProps {
-  onProgressUpdate?: (progress: number) => void;
-  onVideoEnd?: () => void;
-}
-
-export const useVideoTime = ({ onProgressUpdate, onVideoEnd }: UseVideoTimeProps = {}) => {
+export const useVideoTime = () => {
   const [timeState, setTimeState] = useState<VideoTimeState>({
     currentTime: 0,
     duration: 0,
@@ -27,7 +22,6 @@ export const useVideoTime = ({ onProgressUpdate, onVideoEnd }: UseVideoTimeProps
   });
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const lastProgressUpdate = useRef<number>(0);
 
   // Format time in MM:SS or HH:MM:SS format
   const formatTime = (time: number): string => {
@@ -61,13 +55,7 @@ export const useVideoTime = ({ onProgressUpdate, onVideoEnd }: UseVideoTimeProps
     };
 
     setTimeState(newState);
-
-    // Call progress update callback if provided and progress has changed significantly
-    if (onProgressUpdate && Math.abs(progress - lastProgressUpdate.current) >= 1) {
-      onProgressUpdate(progress);
-      lastProgressUpdate.current = progress;
-    }
-  }, [onProgressUpdate]);
+  }, []);
 
   // Connect to video element
   const connectToVideo = useCallback((video: HTMLVideoElement) => {
@@ -80,9 +68,6 @@ export const useVideoTime = ({ onProgressUpdate, onVideoEnd }: UseVideoTimeProps
     const handlePause = () => updateTimeState(video);
     const handleEnded = () => {
       updateTimeState(video);
-      if (onVideoEnd) {
-        onVideoEnd();
-      }
     };
 
     // Add event listeners
@@ -105,7 +90,7 @@ export const useVideoTime = ({ onProgressUpdate, onVideoEnd }: UseVideoTimeProps
       video.removeEventListener('pause', handlePause);
       video.removeEventListener('ended', handleEnded);
     };
-  }, [updateTimeState, onVideoEnd]);
+  }, [updateTimeState]);
 
   // Disconnect from video element
   const disconnectFromVideo = useCallback(() => {

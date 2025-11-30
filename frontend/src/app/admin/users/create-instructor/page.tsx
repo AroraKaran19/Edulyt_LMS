@@ -777,7 +777,7 @@ const CreateInstructorPage = () => {
                   type="button"
                   onClick={handleImageRemove}
                   disabled={isUploadingImage}
-                  className="mt-4 px-5 py-2.5 text-sm font-medium text-red-600 bg-red-50 rounded-xl hover:bg-red-100 transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed border border-red-100"
+                  className="cursor-pointer mt-4 px-5 py-2.5 text-sm font-medium text-red-600 bg-red-50 rounded-xl hover:bg-red-100 transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed border border-red-100"
                 >
                   Remove Image
                 </button>

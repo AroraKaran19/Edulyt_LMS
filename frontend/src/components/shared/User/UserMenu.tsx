@@ -4,10 +4,16 @@ import useAuth from "@/hooks/useAuth";
 import { Home, LogOut, Settings, User } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 
 const UserMenu = () => {
-  const { user, handleSignOut } = useAuth();
+  const { user: userFromAuth, handleSignOut } = useAuth();
+  const { data: session } = useSession();
   const [isUserOpen, setIsUserOpen] = useState(false);
+  
+  // Use session user data directly to ensure reactivity to session updates
+  // This ensures that when updateSession() is called elsewhere, this component updates
+  const user = (session?.user as typeof userFromAuth) || userFromAuth;
   const userMenuItems = [
     {
       label: "Dashboard",
@@ -57,6 +63,7 @@ const UserMenu = () => {
     document.addEventListener("click", handleClickOutside);
     return () => document.removeEventListener("click", handleClickOutside);
   }, [isUserOpen]);
+
 
   if (user.userType == "admin") {
     return (

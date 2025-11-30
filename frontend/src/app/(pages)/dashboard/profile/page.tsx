@@ -28,6 +28,10 @@ import Modal from "@/components/ui/Modal";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import ImageComponent from "@/components/ui/ImageComponent";
 import { Plus_Jakarta_Sans } from "next/font/google";
+import {
+  validatePassword,
+  getPasswordRequirementsText,
+} from "@/lib/passwordValidation";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -47,6 +51,7 @@ const ProfilePage = () => {
   const [savedExperiences, setSavedExperiences] = useState<number[]>([]);
   const [existingExperiences, setExistingExperiences] = useState<number[]>([]);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [showComingSoonModal, setShowComingSoonModal] = useState(false);
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
     newPassword: "",
@@ -67,6 +72,9 @@ const ProfilePage = () => {
   const [profileImageS3Key, setProfileImageS3Key] = useState<string>("");
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isExternalImage, setIsExternalImage] = useState(false);
+
+  // WhatsApp same as phone checkbox
+  const [whatsappSameAsPhone, setWhatsappSameAsPhone] = useState(false);
 
   const router = useRouter();
   const { data: session, update: updateSession } = useSession();
@@ -90,6 +98,13 @@ const ProfilePage = () => {
             country: "",
             pincode: "",
           },
+          // Ensure accounts object exists
+          accounts: userData.accounts || {
+            google: undefined,
+            linkedin: undefined,
+            github: undefined,
+            instagram: undefined,
+          },
           // Convert date string back to Date object for DateSelector
           dob: userData.dob ? new Date(userData.dob) : undefined,
           // Ensure experience array exists and convert date strings to Date objects
@@ -112,6 +127,15 @@ const ProfilePage = () => {
           );
           setSavedExperiences(existingExperienceIndices);
           setExistingExperiences(existingExperienceIndices);
+        }
+
+        // Check if WhatsApp number is same as phone number
+        if (
+          userData.phone &&
+          userData.whatsappNumber &&
+          userData.phone === userData.whatsappNumber
+        ) {
+          setWhatsappSameAsPhone(true);
         }
 
         // Set profile image if available
@@ -222,6 +246,45 @@ const ProfilePage = () => {
     setFormData((prev) => ({
       ...prev,
       [field]: value,
+    }));
+
+    // If phone number changes and checkbox is checked, update WhatsApp number
+    if (field === "phone" && whatsappSameAsPhone && typeof value === "string") {
+      setFormData((prev) => ({
+        ...prev,
+        whatsappNumber: value,
+      }));
+    }
+
+    // Clear error for this field when user starts typing
+    if (errors[field]) {
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
+    }
+  };
+
+  // Handle checkbox change for "WhatsApp same as phone"
+  const handleWhatsappSameAsPhone = (checked: boolean) => {
+    setWhatsappSameAsPhone(checked);
+    if (checked) {
+      // Copy phone number to WhatsApp number
+      setFormData((prev) => ({
+        ...prev,
+        whatsappNumber: prev.phone || "",
+      }));
+    }
+  };
+
+  const handleAccountsChange = (field: string, value: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      accounts: {
+        ...prev.accounts,
+        [field]: value,
+      },
     }));
 
     // Clear error for this field when user starts typing
@@ -359,8 +422,18 @@ const ProfilePage = () => {
 
     if (!passwordData.newPassword) {
       newErrors.newPassword = "New password is required";
-    } else if (passwordData.newPassword.length < 6) {
-      newErrors.newPassword = "Password must be at least 6 characters long";
+    } else {
+      // Validate new password against rules
+      const passwordValidationErrors = validatePassword(
+        passwordData.newPassword
+      );
+      if (Object.keys(passwordValidationErrors).length > 0) {
+        // Combine all password validation errors into one message
+        const errorMessages = Object.values(passwordValidationErrors).filter(
+          Boolean
+        );
+        newErrors.newPassword = errorMessages.join(". ");
+      }
     }
 
     if (!passwordData.confirmPassword) {
@@ -567,14 +640,81 @@ const ProfilePage = () => {
     return linkedinRegex.test(url);
   };
 
+  const validateInstagramUrl = (url: string): boolean => {
+    if (!url) return true; // Optional field
+    const instagramRegex =
+      /^https?:\/\/(www\.)?(instagram\.com|instagr\.am)\/[a-zA-Z0-9_.]+\/?$/;
+    return instagramRegex.test(url);
+  };
+
   const validatePortfolioUrl = (url: string): boolean => {
     if (!url) return true; // Optional field
     const urlRegex = /^https?:\/\/.+/;
     return urlRegex.test(url);
   };
 
+  // Calculate profile completion percentage
+  const calculateProfileCompletion = (): number => {
+    let completedFields = 0;
+    let totalFields = 0;
+
+    // Basic Information (5 fields)
+    totalFields += 5;
+    if (formData.firstName) completedFields++;
+    if (formData.lastName) completedFields++;
+    if (formData.email) completedFields++;
+    if (formData.phone) completedFields++;
+    if (formData.dob) completedFields++;
+
+    // Profile Picture (1 field)
+    totalFields += 1;
+    if (formData.profilePicture) completedFields++;
+
+    // Address (5 fields)
+    totalFields += 5;
+    if (formData.address?.address) completedFields++;
+    if (formData.address?.city) completedFields++;
+    if (formData.address?.state) completedFields++;
+    if (formData.address?.country) completedFields++;
+    if (formData.address?.pincode) completedFields++;
+
+    // User type specific fields
+    if (formData.userType === "student") {
+      // Student specific fields (6 fields)
+      // Note: Current Position, Current Company, Domain, and Work experience are NOT counted
+      // They are only shown for Working Professionals and are optional
+      totalFields += 6;
+      if (formData.collegeName) completedFields++;
+      if (formData.degreeName) completedFields++;
+      if (formData.passingYear) completedFields++;
+      if (formData.experienceLevel) completedFields++;
+      if (formData.areaOfInterest) completedFields++;
+      if (formData.portfolio) completedFields++;
+    } else if (formData.userType === "instructor") {
+      // Instructor specific fields (4 fields)
+      totalFields += 4;
+      if (formData.bio) completedFields++;
+      if (formData.currentPosition) completedFields++;
+      if (formData.currentCompany) completedFields++;
+      if (formData.linkedinUrl) completedFields++;
+    }
+
+    // Social profiles (optional but counted) - 2 fields
+    totalFields += 2;
+    if (formData.accounts?.instagram) completedFields++;
+    if (formData.accounts?.github) completedFields++;
+
+    if (totalFields === 0) return 0;
+    return Math.round((completedFields / totalFields) * 100);
+  };
+
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
+
+    // First name validation (mandatory)
+    if (!formData.firstName || formData.firstName.trim() === "") {
+      newErrors.firstName = "First name is required";
+    }
 
     // Email validation
     if (!formData.email) {
@@ -604,6 +744,14 @@ const ProfilePage = () => {
     if (formData.userType === "student") {
       if (formData.portfolio && !validatePortfolioUrl(formData.portfolio)) {
         newErrors.portfolio = "Please enter a valid portfolio URL";
+      }
+
+      if (
+        formData.accounts?.instagram &&
+        !validateInstagramUrl(formData.accounts.instagram)
+      ) {
+        newErrors.instagram =
+          "Please enter a valid Instagram URL (https://instagram.com/username)";
       }
 
       if (formData.passingYear) {
@@ -703,15 +851,15 @@ const ProfilePage = () => {
           setExistingExperiences(allExperienceIndices);
         }
 
-        // Update session with new user data
+        // Update session with new user data (including firstName)
         if (updateSession) {
           await updateSession({
-            firstName: updatedUserData.firstName,
-            lastName: updatedUserData.lastName,
-            email: updatedUserData.email,
-            phone: updatedUserData.phone,
-            profilePicture: updatedUserData.profilePicture,
-            userType: updatedUserData.userType,
+            firstName: updatedUserData.firstName || formData.firstName,
+            lastName: updatedUserData.lastName || formData.lastName,
+            email: updatedUserData.email || formData.email,
+            phone: updatedUserData.phone || formData.phone,
+            profilePicture:
+              updatedUserData.profilePicture || formData.profilePicture,
           });
         }
 
@@ -758,19 +906,55 @@ const ProfilePage = () => {
 
   return (
     <div className="w-full mx-auto p-6 flex flex-col gap-10">
-      <div className="flex flex-col gap-2">
-        <div className="flex justify-center lg:justify-start items-center gap-5">
-          <div
-            className="absolute lg:static left-4 p-2 rounded-full bg-gray-100 hover:bg-gray-200 cursor-pointer"
-            onClick={() => router.push("/dashboard")}
-          >
-            <ChevronLeftIcon className="size-4" />
+      {/* Header Section */}
+      <div className="bg-linear-to-r from-orange-50 to-white rounded-xl p-6 border border-orange-100 shadow-sm">
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => router.push("/dashboard")}
+              className="p-2.5 rounded-full bg-white hover:bg-gray-50 border border-gray-200 hover:border-orange-300 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md group"
+              title="Back to Dashboard"
+            >
+              <ChevronLeftIcon className="size-5 text-gray-700 group-hover:text-orange-600 transition-colors" />
+            </button>
+            <div className="flex-1">
+              <h1 className="text-3xl font-bold text-gray-900 mb-1">
+                Profile Settings
+              </h1>
+              <p className="text-sm text-gray-600">
+                Manage your account information and preferences
+              </p>
+            </div>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900">Profile Settings</h1>
+
+          {/* Profile Completion Progress Bar */}
+          <div className="mt-2">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-gray-700">
+                Profile Completion
+              </span>
+              <span className="text-sm font-semibold text-orange-600">
+                {calculateProfileCompletion()}%
+              </span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+              <div
+                className="bg-linear-to-r from-orange-500 to-orange-600 h-2.5 rounded-full transition-all duration-500 ease-out"
+                style={{ width: `${calculateProfileCompletion()}%` }}
+              />
+            </div>
+            {calculateProfileCompletion() < 100 && (
+              <p className="text-xs text-gray-500 mt-1.5">
+                Complete your profile
+              </p>
+            )}
+            {calculateProfileCompletion() === 100 && (
+              <p className="text-xs text-green-600 mt-1.5 font-medium">
+                ✓ Profile complete!
+              </p>
+            )}
+          </div>
         </div>
-        <p className="text-gray-600 text-center lg:text-left">
-          Manage your account information and preferences
-        </p>
       </div>
 
       <div className="lg:max-w-[90%] w-full mx-auto overflow-hidden">
@@ -850,7 +1034,7 @@ const ProfilePage = () => {
               <button
                 onClick={handleImageRemove}
                 disabled={isUploadingImage}
-                className="mt-3 px-3 py-1 text-xs text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="cursor-pointer mt-3 px-3 py-1 text-xs text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isUploadingImage ? "Removing..." : "Remove Image"}
               </button>
@@ -858,7 +1042,12 @@ const ProfilePage = () => {
             {/* Info message for external images */}
             {profileImageUrl && isExternalImage && (
               <div className="mt-3 px-3 py-2 text-xs text-gray-600 bg-gray-50 rounded-full text-center">
-                Profile picture from connected account (Google/LinkedIn)
+                Profile picture from connected account{" "}
+                {formData.provider === "google" && "(Google)"}
+                {formData.provider === "linkedin" && "(LinkedIn)"}
+                {formData.provider !== "google" &&
+                  formData.provider !== "linkedin" &&
+                  "(Google/LinkedIn)"}
               </div>
             )}
 
@@ -900,7 +1089,10 @@ const ProfilePage = () => {
               {formData.provider !== "linkedin" &&
                 formData.accounts &&
                 !formData.accounts?.linkedin && (
-                  <button className="w-full bg-[#006699] flex gap-2 items-center justify-center px-6 py-3 text-white rounded-2xl shadow-[inset_0_-2px_2px_0_rgba(0,0,0,0.2)] cursor-pointer">
+                  <button
+                    onClick={() => setShowComingSoonModal(true)}
+                    className="w-full bg-[#006699] flex gap-2 items-center justify-center px-6 py-3 text-white rounded-2xl shadow-[inset_0_-2px_2px_0_rgba(0,0,0,0.2)] cursor-pointer hover:bg-[#005588] transition-colors"
+                  >
                     <ImageComponent
                       src="/linkedin-icon.svg"
                       alt="LinkedIn"
@@ -913,10 +1105,13 @@ const ProfilePage = () => {
                 )}
               {formData.provider !== "google" &&
                 (!formData.accounts || !formData.accounts?.google) && (
-                  <WhiteButton className="w-full flex gap-2 items-center justify-center">
+                  <WhiteButton
+                    onClick={() => setShowComingSoonModal(true)}
+                    className="w-full flex gap-2 items-center justify-center"
+                  >
                     <ImageComponent
                       src="/google-icon.svg"
-                      alt="LinkedIn"
+                      alt="Google"
                       width={20}
                       height={20}
                       className="size-4"
@@ -943,6 +1138,7 @@ const ProfilePage = () => {
                     handleInputChange("firstName", e.target.value)
                   }
                   error={errors.firstName}
+                  required
                 />
                 <Input
                   label="Last Name"
@@ -999,8 +1195,25 @@ const ProfilePage = () => {
                   )}
                 </div>
                 <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-sm font-medium text-black">
+                      WhatsApp Number
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={whatsappSameAsPhone}
+                        onChange={(e) =>
+                          handleWhatsappSameAsPhone(e.target.checked)
+                        }
+                        className="w-4 h-4 text-orange-500 bg-gray-100 border-gray-300 rounded focus:ring-orange-500 focus:ring-2"
+                      />
+                      <span className="text-xs text-gray-600">
+                        Same as phone number
+                      </span>
+                    </label>
+                  </div>
                   <Input
-                    label="WhatsApp Number"
                     type="tel"
                     placeholder="+91XXXXXXXXXX"
                     value={formData.whatsappNumber || ""}
@@ -1009,6 +1222,10 @@ const ProfilePage = () => {
                     }
                     error={errors.whatsappNumber}
                     maxLength={15}
+                    disabled={whatsappSameAsPhone}
+                    className={
+                      whatsappSameAsPhone ? "opacity-60 cursor-not-allowed" : ""
+                    }
                     onKeyPress={(e: React.KeyboardEvent<HTMLInputElement>) => {
                       // Only allow digits and + symbol
                       if (
@@ -1097,6 +1314,7 @@ const ProfilePage = () => {
               <StudentFields
                 formData={formData}
                 handleInputChange={handleInputChange}
+                handleAccountsChange={handleAccountsChange}
                 errors={errors}
               />
             )}
@@ -1113,8 +1331,12 @@ const ProfilePage = () => {
               <CollaboratorFields formData={formData} />
             )}
 
-            {/* Experience Section - Show for students and instructors */}
-            {(formData.userType === "student" ||
+            {/* Experience Section - Show for instructors, or students who are Working Professionals */}
+            {((formData.userType === "student" &&
+              (formData.experienceLevel ===
+                "Working Professional - Tech Domain" ||
+                formData.experienceLevel ===
+                  "Working Professional - Non Tech Domain")) ||
               formData.userType === "instructor") && (
               <ExperienceSection
                 formData={formData}
@@ -1245,7 +1467,7 @@ const ProfilePage = () => {
               </p>
             )}
             <p className="mt-1 text-xs text-gray-500">
-              Password must be at least 6 characters long
+              {getPasswordRequirementsText()}
             </p>
           </div>
 
@@ -1301,6 +1523,46 @@ const ProfilePage = () => {
           </div>
         </form>
       </Modal>
+
+      {/* Coming Soon Modal */}
+      <Modal
+        isOpen={showComingSoonModal}
+        onClose={() => setShowComingSoonModal(false)}
+      >
+        <div className="w-full max-w-md mx-auto bg-white rounded-2xl p-8 text-center">
+          <div className="mb-6">
+            <div className="w-20 h-20 mx-auto mb-4 bg-linear-to-br from-orange-400 to-orange-600 rounded-full flex items-center justify-center">
+              <svg
+                className="w-10 h-10 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">
+              Feature Coming Soon
+            </h2>
+            <p className="text-gray-600 text-sm">
+              We're working hard to bring you this feature. Stay tuned for
+              updates!
+            </p>
+          </div>
+          <OrangeButton
+            onClick={() => setShowComingSoonModal(false)}
+            className="w-full py-3 font-medium"
+          >
+            Got it
+          </OrangeButton>
+        </div>
+      </Modal>
     </div>
   );
 };
@@ -1309,10 +1571,12 @@ const ProfilePage = () => {
 const StudentFields = ({
   formData,
   handleInputChange,
+  handleAccountsChange,
   errors,
 }: {
   formData: Partial<ExtendedUser>;
   handleInputChange: (field: string, value: string | number) => void;
+  handleAccountsChange: (field: string, value: string) => void;
   errors: Record<string, string>;
 }) => {
   const experienceLevels = [
@@ -1403,24 +1667,35 @@ const StudentFields = ({
           value={formData.areaOfInterest || ""}
           onChange={(e) => handleInputChange("areaOfInterest", e.target.value)}
         />
-        <Input
-          label="Current Position"
-          placeholder="Enter your current position"
-          value={formData.currentPosition || ""}
-          onChange={(e) => handleInputChange("currentPosition", e.target.value)}
-        />
-        <Input
-          label="Current Company"
-          placeholder="Enter your current company"
-          value={formData.currentCompany || ""}
-          onChange={(e) => handleInputChange("currentCompany", e.target.value)}
-        />
-        <Input
-          label="Domain"
-          placeholder="Enter your domain/field"
-          value={formData.domain || ""}
-          onChange={(e) => handleInputChange("domain", e.target.value)}
-        />
+        {/* Show working professional fields only when experience level is Working Professional */}
+        {(formData.experienceLevel === "Working Professional - Tech Domain" ||
+          formData.experienceLevel ===
+            "Working Professional - Non Tech Domain") && (
+          <>
+            <Input
+              label="Current Position"
+              placeholder="Enter your current position"
+              value={formData.currentPosition || ""}
+              onChange={(e) =>
+                handleInputChange("currentPosition", e.target.value)
+              }
+            />
+            <Input
+              label="Current Company"
+              placeholder="Enter your current company"
+              value={formData.currentCompany || ""}
+              onChange={(e) =>
+                handleInputChange("currentCompany", e.target.value)
+              }
+            />
+            <Input
+              label="Domain"
+              placeholder="Enter your domain/field"
+              value={formData.domain || ""}
+              onChange={(e) => handleInputChange("domain", e.target.value)}
+            />
+          </>
+        )}
         <Input
           label="Portfolio URL"
           placeholder="Enter your portfolio URL"
@@ -1428,6 +1703,32 @@ const StudentFields = ({
           onChange={(e) => handleInputChange("portfolio", e.target.value)}
           error={errors.portfolio}
         />
+        <div className="md:col-span-2">
+          <div className="w-full flex flex-col">
+            <label className="font-medium text-black mb-2 flex items-center gap-2">
+              <svg
+                className="w-4 h-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.98-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.98-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"
+                  fill="currentColor"
+                />
+              </svg>
+              Instagram URL
+            </label>
+            <Input
+              placeholder="https://instagram.com/your-username"
+              value={formData.accounts?.instagram || ""}
+              onChange={(e) =>
+                handleAccountsChange("instagram", e.target.value)
+              }
+              error={errors.instagram}
+            />
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -1646,7 +1947,7 @@ const ExperienceSection = ({
         <button
           type="button"
           onClick={addExperience}
-          className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-orange-600 bg-orange-50 rounded-lg hover:bg-orange-100 transition-colors"
+          className="flex items-center cursor-pointer gap-2 px-3 py-2 text-sm font-medium text-orange-600 bg-orange-50 rounded-lg hover:bg-orange-100 transition-colors"
         >
           <Plus className="w-4 h-4" />
           Add Experience

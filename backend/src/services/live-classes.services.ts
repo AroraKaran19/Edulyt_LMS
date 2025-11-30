@@ -349,10 +349,11 @@ export const getStudentLiveClassesService = async (
 }> => {
   const skip = (page - 1) * limit;
 
-  // Get all courses the student is enrolled in
+  // Get all courses the student is enrolled in with ELITE plan only
   const enrollments = await EnrollmentModel.find({
     userId: studentId,
     status: { $in: ["active", "completed"] },
+    planType: "elite", // Only elite plan enrollments
   }).select("courseId");
 
   const enrolledCourseIds = enrollments.map(

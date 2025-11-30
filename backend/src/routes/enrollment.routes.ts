@@ -5,6 +5,7 @@ import {
   getEnrollment,
   getUserEnrollments,
   updateEnrollmentProgress,
+  recalculateEnrollmentProgress,
   updateEnrollmentStatus,
   getEnrollmentStats,
   getCourseEnrollmentStats,
@@ -16,6 +17,7 @@ import {
   resumeEnrollment,
   getEnrollmentHistory,
   checkEnrollment,
+  getUserDashboardStats,
 } from "../controllers/enrollment.controller";
 
 const router = Router();
@@ -42,6 +44,13 @@ router.get("/check/:courseId", verifyUser, checkEnrollment);
 router.get("/user/:userId", verifyUser, getUserEnrollments);
 
 /**
+ * @route   GET /api/enrollments/dashboard-stats
+ * @desc    Get user dashboard statistics (for dashboard widgets)
+ * @access  User
+ */
+router.get("/dashboard-stats", verifyUser, getUserDashboardStats);
+
+/**
  * @route   GET /api/enrollments/:enrollmentId
  * @desc    Get specific enrollment details
  * @access  User
@@ -61,6 +70,17 @@ router.get("/:enrollmentId/progress", verifyUser, getDetailedProgress);
  * @access  User
  */
 router.put("/:enrollmentId/progress", verifyUser, updateEnrollmentProgress);
+
+/**
+ * @route   POST /api/enrollments/:enrollmentId/recalculate-progress
+ * @desc    Recalculate enrollment progress (useful for fixing existing enrollments)
+ * @access  User
+ */
+router.post(
+  "/:enrollmentId/recalculate-progress",
+  verifyUser,
+  recalculateEnrollmentProgress
+);
 
 /**
  * @route   PUT /api/enrollments/:enrollmentId/status

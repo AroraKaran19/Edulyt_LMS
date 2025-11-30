@@ -52,7 +52,12 @@ export const calculateDiscountDisplay = (
   // Calculate course discount on original price (simultaneously)
   if (courseDiscount?.value && courseDiscount.isActive) {
     let isCourseDiscountActive = true;
-    if (courseDiscount.startTime && courseDiscount.endTime) {
+    
+    // Check if discount has expired based on displayTime
+    // If displayTime is "00:00:00", the discount has expired
+    if (courseDiscount.displayTime === "00:00:00" || courseDiscount.resetAfter === 0) {
+      isCourseDiscountActive = false;
+    } else if (courseDiscount.startTime && courseDiscount.endTime) {
       const now = new Date();
       const [startHour, startMin] = courseDiscount.startTime.split(':').map(Number);
       const [endHour, endMin] = courseDiscount.endTime.split(':').map(Number);

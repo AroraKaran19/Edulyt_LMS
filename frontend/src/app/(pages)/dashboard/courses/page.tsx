@@ -1,27 +1,18 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { Search, Filter, Download, ChevronDown } from "lucide-react";
-import ImageComponent from "@/components/ui/ImageComponent";
+import { Search, Filter, ChevronDown, FileX, Loader2 } from "lucide-react";
 import { Course } from "@/types";
 import EmptyState from "../components/applications/EmptyState";
 import { cn } from "@/lib/utils";
 import useUserEnrollments from "@/hooks/useUserEnrollments";
 import { Enrollment } from "@/types/enrollment";
+import CourseCard from "./components/CourseCard";
 
 const tabs = [
   { label: "All" },
   { label: "In Progress" },
   { label: "Completed" },
   { label: "Newly bought" },
-];
-
-// Filter options similar to CoursesSection
-const filterOptions = [
-  { label: "All Categories", value: "all" },
-  { label: "Data Science", value: "data-science" },
-  { label: "Machine Learning", value: "machine-learning" },
-  { label: "AI", value: "ai" },
-  { label: "Web Development", value: "web-development" },
 ];
 
 // Sort options
@@ -38,11 +29,11 @@ const sortOptions = [
 const CoursesPage = () => {
   const [activeTab, setActiveTab] = useState("All");
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedFilters, setSelectedFilters] = useState([
     { label: "All Categories", value: "all" },
   ]);
   const [selectedSort, setSelectedSort] = useState(sortOptions[0]);
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isSortOpen, setIsSortOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -58,6 +49,15 @@ const CoursesPage = () => {
   const [totalPages, setTotalPages] = useState(0);
   const [total, setTotal] = useState(0);
 
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 500); // 500ms delay
+
+    return () => clearTimeout(timer);
+  }, [search]);
+
   // Fetch enrollments
   const fetchEnrollments = useCallback(async () => {
     const status =
@@ -69,11 +69,16 @@ const CoursesPage = () => {
         ? "completed"
         : undefined;
 
+    // For "Newly bought" tab, fetch all enrollments to filter client-side
+    // For other tabs, use normal pagination
+    const limit = activeTab === "Newly bought" ? 1000 : 12;
+    const page = activeTab === "Newly bought" ? 1 : currentPage;
+
     const result = await getUserEnrollments({
-      page: currentPage,
-      limit: 12,
+      page,
+      limit,
       status,
-      search: search || undefined,
+      search: debouncedSearch || undefined,
       sortBy: selectedSort.value as
         | "recent"
         | "progress-desc"
@@ -85,11 +90,41 @@ const CoursesPage = () => {
     });
 
     if (result) {
-      setEnrollments(result.enrollments);
-      setTotalPages(result.totalPages);
-      setTotal(result.total);
+      // Filter for "Newly bought" tab - only show direct enrollments (not trial, gift, or promotion)
+      let filteredEnrollments = result.enrollments;
+      if (activeTab === "Newly bought") {
+        filteredEnrollments = result.enrollments.filter(
+          (enrollment) => enrollment.enrollmentSource === "direct"
+        );
+
+        // Client-side pagination for filtered results
+        const startIndex = (currentPage - 1) * 12;
+        const endIndex = startIndex + 12;
+        filteredEnrollments = filteredEnrollments.slice(startIndex, endIndex);
+      }
+
+      setEnrollments(filteredEnrollments);
+      // Recalculate pagination for filtered results
+      if (activeTab === "Newly bought") {
+        const allDirectEnrollments = result.enrollments.filter(
+          (enrollment) => enrollment.enrollmentSource === "direct"
+        );
+        const filteredTotal = allDirectEnrollments.length;
+        const filteredTotalPages = Math.ceil(filteredTotal / 12);
+        setTotalPages(filteredTotalPages);
+        setTotal(filteredTotal);
+      } else {
+        setTotalPages(result.totalPages);
+        setTotal(result.total);
+      }
     }
-  }, [activeTab, currentPage, search, selectedSort.value, getUserEnrollments]);
+  }, [
+    activeTab,
+    currentPage,
+    debouncedSearch,
+    selectedSort.value,
+    getUserEnrollments,
+  ]);
 
   // Fetch enrollments when dependencies change
   useEffect(() => {
@@ -132,12 +167,6 @@ const CoursesPage = () => {
     []
   );
 
-  // Handle filter dropdown toggle
-  const handleFilterToggle = useCallback(() => {
-    setIsFilterOpen(!isFilterOpen);
-    setIsSortOpen(false); // Close sort dropdown when opening filter
-  }, [isFilterOpen]);
-
   // Handle sort selection
   const handleSortClick = useCallback(
     (sort: { label: string; value: string }) => {
@@ -150,24 +179,23 @@ const CoursesPage = () => {
   // Handle sort dropdown toggle
   const handleSortToggle = useCallback(() => {
     setIsSortOpen(!isSortOpen);
-    setIsFilterOpen(false); // Close filter dropdown when opening sort
   }, [isSortOpen]);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
-      if (
-        target.closest(".filter-dropdown") ||
-        target.closest(".sort-dropdown")
-      )
-        return;
-      setIsFilterOpen(false);
+      if (target.closest(".sort-dropdown")) return;
       setIsSortOpen(false);
     };
     document.addEventListener("click", handleClickOutside);
     return () => document.removeEventListener("click", handleClickOutside);
   }, []);
+
+  // Check if we're showing search results
+  const isSearchActive = debouncedSearch.trim().length > 0;
+  const hasEnrollments = enrollments.length > 0;
+  const isSearching = search !== debouncedSearch && search.trim().length > 0;
 
   return (
     <div className="py-4">
@@ -186,12 +214,31 @@ const CoursesPage = () => {
             Retry
           </button>
         </div>
-      ) : enrollments.length === 0 ? (
+      ) : !hasEnrollments && !isSearchActive ? (
         <EmptyState
           title="Courses"
-          description="No courses found! Buy courses to get courses."
-          buttonText="Explore for Courses!"
-          href="/courses"
+          description={
+            activeTab === "Completed"
+              ? "You haven't completed any courses yet. Keep learning to complete your courses!"
+              : activeTab === "In Progress"
+              ? "You don't have any courses in progress. Start learning to see your progress!"
+              : "No courses found! Buy courses to get courses."
+          }
+          buttonText={
+            activeTab === "Completed" || activeTab === "In Progress"
+              ? "See your courses"
+              : "Explore for Courses!"
+          }
+          href={
+            activeTab === "Completed" || activeTab === "In Progress"
+              ? undefined
+              : "/courses"
+          }
+          onClick={
+            activeTab === "Completed" || activeTab === "In Progress"
+              ? () => handleTabChange("All")
+              : undefined
+          }
         />
       ) : (
         <>
@@ -237,64 +284,6 @@ const CoursesPage = () => {
                     </button>
                   </div>
                   <div className="flex gap-2 order-2 sm:order-0">
-                    {/* Filter Button with Dropdown */}
-                    <div className="relative filter-dropdown">
-                      <button
-                        type="button"
-                        onClick={handleFilterToggle}
-                        className="flex items-center gap-1 border border-[#00000026] rounded-lg px-3 sm:px-5 py-2 sm:py-3 text-xs sm:text-sm font-bold text-[#2B1508] hover:bg-gray-200 cursor-pointer"
-                      >
-                        <span className="hidden sm:inline">Filter</span>
-                        <span className="sm:hidden">Filter</span>
-                        <Filter className="size-5" />
-                        {selectedFilters.some((f) => f.value !== "all") && (
-                          <span className="ml-1 text-orange-600">
-                            (
-                            {
-                              selectedFilters.filter((f) => f.value !== "all")
-                                .length
-                            }
-                            )
-                          </span>
-                        )}
-                      </button>
-
-                      {/* Filter Dropdown */}
-                      {isFilterOpen && (
-                        <div className="absolute top-full mt-2 right-0 w-56 bg-white text-text-primary rounded-xl shadow-2xl border border-gray-100/50 backdrop-blur-sm p-2 z-50">
-                          <div className="bg-linear-to-r from-gray-50 to-gray-100/30 rounded-lg p-1">
-                            {filterOptions.map((filter) => (
-                              <button
-                                key={filter.value}
-                                onClick={() => handleFilterClick(filter)}
-                                className="w-full flex items-center gap-3 p-3 hover:bg-white/80 hover:shadow-sm rounded-lg transition-all duration-200 ease-in-out cursor-pointer group"
-                              >
-                                <div
-                                  className={cn(
-                                    "flex items-center justify-center w-6 h-6 rounded-full border-2 transition-colors duration-200",
-                                    selectedFilters.some(
-                                      (f) => f.value === filter.value
-                                    )
-                                      ? "bg-orange-100 border-orange-600"
-                                      : "bg-gray-100 border-gray-300 group-hover:border-orange-300"
-                                  )}
-                                >
-                                  {selectedFilters.some(
-                                    (f) => f.value === filter.value
-                                  ) && (
-                                    <div className="w-2 h-2 bg-orange-600 rounded-full" />
-                                  )}
-                                </div>
-                                <span className="font-medium text-gray-700 text-left group-hover:text-gray-900 transition-colors duration-200">
-                                  {filter.label}
-                                </span>
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
                     {/* Sort Button with Dropdown */}
                     <div className="relative sort-dropdown">
                       <button
@@ -349,211 +338,120 @@ const CoursesPage = () => {
             </div>
           </div>
 
-          {/* Courses Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
-            {enrollments.map((enrollment, idx) => {
-              const course = enrollment.courseId as Course; // Backend populates courseId as Course object
-              const progress = calculateProgress(enrollment);
-              const showCertificate = shouldShowCertificate(enrollment);
+          {/* Results Section - Independent from search bar */}
+          {isSearching ? (
+            // Loading State - when search is being debounced
+            <div className="flex flex-col items-center justify-center min-h-[40vh] py-12">
+              <Loader2 className="w-12 h-12 text-orange-500 animate-spin mb-4" />
+              <p className="text-gray-600">Searching courses...</p>
+            </div>
+          ) : isSearchActive && !hasEnrollments ? (
+            // Not Found State - when searching and no results
+            <div className="flex flex-col items-center justify-center min-h-[40vh] py-12">
+              <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-6">
+                <FileX className="w-12 h-12 text-gray-400" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                No Courses Found
+              </h2>
+              <p className="text-gray-600 text-center max-w-md mb-6">
+                We couldn't find any courses matching "{debouncedSearch}". Try
+                searching with a different term or check your spelling.
+              </p>
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="cursor-pointer px-6 py-3 bg-orange-500 text-white rounded-xl font-medium hover:bg-orange-600 transition-colors shadow-md"
+              >
+                Clear Search
+              </button>
+            </div>
+          ) : (
+            <>
+              {/* Courses Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 lg:gap-6">
+                {enrollments.map((enrollment, idx) => {
+                  const course = enrollment.courseId as Course; // Backend populates courseId as Course object
+                  const progress = calculateProgress(enrollment);
+                  const showCertificate = shouldShowCertificate(enrollment);
 
-              return (
-                <div
-                  key={`${course._id}-${idx}`}
-                  className="bg-white border border-[#0000001F] rounded-xl flex flex-col justify-between p-3 sm:p-4 w-full shadow-sm hover:shadow-md transition-shadow"
+                  return (
+                    <CourseCard
+                      key={`${course._id}-${idx}`}
+                      course={course}
+                      enrollment={enrollment}
+                      progress={progress}
+                      showCertificate={showCertificate}
+                    />
+                  );
+                })}
+              </div>
+            </>
+          )}
+
+          {/* Pagination */}
+          {totalPages > 1 &&
+            !isSearching &&
+            !(isSearchActive && !hasEnrollments) && (
+              <div className="flex items-center justify-center gap-2 mt-8">
+                <button
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.max(prev - 1, 1))
+                  }
+                  disabled={currentPage === 1}
+                  className={cn(
+                    "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+                    currentPage === 1
+                      ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                      : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 cursor-pointer"
+                  )}
                 >
-                  <div>
-                    <div className="relative w-full  rounded-xl overflow-hidden mb-2 sm:mb-3">
-                      <ImageComponent
-                        src={course.thumbnail || "/courses-demo-image.png"}
-                        alt={course.title || "Course thumbnail"}
-                        width={300}
-                        height={226}
-                        className="w-full h-full object-contain"
-                      />
-                      <div className="absolute top-2 sm:top-3 left-2 sm:left-3 bg-[#00000078] text-white text-xs px-2 sm:px-3 py-1 rounded-full flex gap-1 font-medium">
-                        <span className="hidden sm:inline">
-                          {course.duration || "N/A"} Duration
-                        </span>
-                        <span className="sm:hidden">
-                          {course.duration || "N/A"}
-                        </span>
-                        <span>•</span>
-                        <span className="hidden sm:inline">
-                          {(() => {
-                            if (!course.category) return "Course";
-                            if (Array.isArray(course.category)) {
-                              const firstItem = course.category[0];
-                              if (typeof firstItem === "object" && firstItem !== null && "name" in firstItem) {
-                                // Populated Category objects
-                                return course.category.map((c: any) => c.name).join(", ");
-                              } else {
-                                // Category IDs
-                                return course.category.join(", ");
-                              }
-                            }
-                            return String(course.category);
-                          })()}
-                        </span>
-                        <span className="sm:hidden">
-                          {(() => {
-                            if (!course.category) return "Course";
-                            if (Array.isArray(course.category)) {
-                              const firstItem = course.category[0];
-                              if (typeof firstItem === "object" && firstItem !== null && "name" in firstItem) {
-                                // Populated Category objects - show first name
-                                return (course.category[0] as any).name || "Course";
-                              } else {
-                                // Category IDs - show first ID
-                                return course.category[0] || "Course";
-                              }
-                            }
-                            return String(course.category);
-                          })()}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="font-extrabold text-xs sm:text-sm mb-2 text-black line-clamp-2">
-                      {course.title || "Untitled Course"}
-                    </div>
-                    <div className="flex gap-1 sm:gap-2 overflow-x-auto">
-                      {course.instructor && Array.isArray(course.instructor) ? (
-                        course.instructor
-                          .slice(0, 2)
-                          .map((instructor: any, instructorIdx: number) => (
-                            <div
-                              key={instructorIdx}
-                              className="bg-[#EEEEEE] rounded-[34px] p-[2px] border-2 border-white flex items-center gap-1 sm:gap-2 shrink-0"
-                            >
-                              <ImageComponent
-                                src={instructor.profilePicture || "/user.svg"}
-                                alt={instructor.firstName || "Instructor"}
-                                width={20}
-                                height={20}
-                                className="sm:w-6 sm:h-6 rounded-full border border-white"
-                              />
-                              <span className="text-xs sm:text-sm text-gray-700 font-medium hidden sm:inline">
-                                {instructor.firstName || "Instructor"}
-                              </span>
-                              <span className="text-xs sm:text-sm text-gray-700 font-medium sm:hidden">
-                                {instructor.firstName?.charAt(0) || "I"}
-                              </span>
-                            </div>
-                          ))
-                      ) : (
-                        <div className="bg-[#EEEEEE] rounded-[34px] p-[2px] border-2 border-white flex items-center gap-1 sm:gap-2 shrink-0">
-                          <ImageComponent
-                            src="/user.svg"
-                            alt="Instructor"
-                            width={20}
-                            height={20}
-                            className="sm:w-6 sm:h-6 rounded-full border border-white"
-                          />
-                          <span className="text-xs sm:text-sm text-gray-700 font-medium">
-                            Instructor
-                          </span>
-                        </div>
-                      )}
-                      {course.instructor &&
-                        Array.isArray(course.instructor) &&
-                        course.instructor.length > 2 && (
-                          <div className="bg-[#EEEEEE] rounded-[34px] p-[2px] border-2 border-white flex items-center gap-1 sm:gap-2 shrink-0">
-                            <span className="text-xs sm:text-sm text-gray-700 font-medium m-[2px]">
-                              +{course.instructor.length - 2}
-                            </span>
-                          </div>
+                  Previous
+                </button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                    let pageNum;
+                    if (totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (currentPage <= 3) {
+                      pageNum = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i;
+                    } else {
+                      pageNum = currentPage - 2 + i;
+                    }
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => setCurrentPage(pageNum)}
+                        className={cn(
+                          "px-3 py-2 rounded-lg text-sm font-medium transition-colors min-w-[40px]",
+                          currentPage === pageNum
+                            ? "bg-orange-500 text-white"
+                            : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 cursor-pointer"
                         )}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 sm:gap-3 pt-2 sm:pt-3">
-                    {/* Circular progress bar */}
-                    <div className="relative w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center">
-                      <svg
-                        className="w-8 h-8 sm:w-10 sm:h-10 -rotate-90deg"
-                        viewBox="0 0 40 40"
                       >
-                        <circle
-                          cx="20"
-                          cy="20"
-                          r="18"
-                          fill="none"
-                          stroke="#F3F4F6"
-                          strokeWidth="4"
-                        />
-                        <circle
-                          cx="20"
-                          cy="20"
-                          r="18"
-                          fill="none"
-                          stroke={
-                            progress === 100
-                              ? "#22C55E"
-                              : progress > 0
-                              ? "#A259FF"
-                              : "#E5E7EB"
-                          }
-                          strokeWidth="4"
-                          strokeDasharray={2 * Math.PI * 18}
-                          strokeDashoffset={
-                            2 * Math.PI * 18 * (1 - progress / 100)
-                          }
-                          strokeLinecap="round"
-                        />
-                      </svg>
-                    </div>
-
-                    <div className="flex flex-col">
-                      <span className="text-xs font-bold text-black">
-                        {progress}%
-                      </span>
-                      <span className="text-[8px] sm:text-[10px] font-medium text-[#00000080]">
-                        Your progress
-                      </span>
-                    </div>
-
-                    <div className="flex-1" />
-
-                    {progress === 100 && showCertificate ? (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          window.open(`/courses/${course.slug}/watch`, "_blank")
-                        }
-                        className="flex items-center gap-1 sm:gap-2 bg-linear-to-b from-[#F5691D] to-[#F9792A] text-white rounded-lg px-2 sm:px-2 py-1.5 sm:py-2 text-[10px] font-semibold hover:from-[#F5691D] hover:to-[#F9792A] transition cursor-pointer border border-[#00000021] shadow-[0px_0px_0px_4px_rgba(246,140,34,0.22),0px_0px_0px_2px_rgba(246,140,34,0.22)]"
-                      >
-                        <Download size={14} className="sm:w-4 sm:h-4" />
-                        <span className="hidden sm:inline">
-                          Download certificate
-                        </span>
-                        <span className="sm:hidden">Download</span>
+                        {pageNum}
                       </button>
-                    ) : progress > 0 ? (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          window.open(`/courses/${course.slug}/watch`, "_blank")
-                        }
-                        className="flex items-center gap-1 sm:gap-2 bg-white border border-[#00000021] text-[#656565] rounded-lg px-2 sm:px-4 py-1.5 sm:py-2 text-xs font-bold hover:bg-gray-100 transition cursor-pointer shadow-[0px_-3px_3.7px_0px_#0146E721_inset]"
-                      >
-                        Continue
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          window.open(`/courses/${course.slug}/watch`, "_blank")
-                        }
-                        className="flex items-center gap-1 sm:gap-2 bg-white border border-[#00000021] text-[#656565] rounded-lg px-2 sm:px-4 py-1.5 sm:py-2 text-xs font-bold hover:bg-gray-100 transition cursor-pointer shadow-[0px_-3px_3.7px_0px_#0146E721_inset]"
-                      >
-                        <span className="hidden sm:inline">Start watching</span>
-                        <span className="sm:hidden">Start</span>
-                      </button>
-                    )}
-                  </div>
+                    );
+                  })}
                 </div>
-              );
-            })}
-          </div>
+                <button
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                  }
+                  disabled={currentPage === totalPages}
+                  className={cn(
+                    "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+                    currentPage === totalPages
+                      ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                      : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 cursor-pointer"
+                  )}
+                >
+                  Next
+                </button>
+              </div>
+            )}
         </>
       )}
     </div>

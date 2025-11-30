@@ -10,6 +10,7 @@ export * from "./notes";
 export * from "./qna";
 export * from "./order";
 export * from "./live-classes";
+export * from "./certificate";
 
 // ===================
 // Type Exports
@@ -31,6 +32,8 @@ export interface CourseDiscount {
   startTime?: string; // Time in HH:mm format (e.g., "12:00" for 12 AM)
   endTime?: string; // Time in HH:mm format (e.g., "23:00" for 11 PM)
   isActive: boolean;
+  displayTime?: string; // Time remaining in HH:mm:ss format (e.g., "00:00:00" means expired)
+  resetAfter?: number; // Reset after X seconds (0 means expired)
 }
 
 export interface NavItem {

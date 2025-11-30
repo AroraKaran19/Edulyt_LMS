@@ -9,19 +9,46 @@ import {
   CourseEnrollmentStats,
   LastContentAccessed,
   PartialAccessControl,
-  ContentCompletion,
 } from "../types";
 import mongoose from "mongoose";
+import {
+  createCertificateService,
+  getLatestCertificateService,
+} from "./certificate.services";
+
+/**
+ * Check if an enrollment is still valid (not expired)
+ * Trial enrollments expire based on trialExpiresAt
+ * Non-trial enrollments expire after 4 years (validUntil)
+ */
+export const isEnrollmentValid = (enrollment: Enrollment): boolean => {
+  if (!enrollment) return false;
+
+  // Check if trial enrollment has expired
+  if (enrollment.isTrial && enrollment.trialExpiresAt) {
+    return new Date() < new Date(enrollment.trialExpiresAt);
+  }
+
+  // Check if non-trial enrollment has expired (4-year validity)
+  if (!enrollment.isTrial && enrollment.validUntil) {
+    return new Date() < new Date(enrollment.validUntil);
+  }
+
+  // If no expiration date is set, consider it valid (for backward compatibility)
+  return true;
+};
 
 // Create new enrollment
 export const CreateEnrollmentService = async (enrollmentData: {
   userId: string;
   courseId: string;
-  enrollmentSource?: "direct" | "gift" | "promotion";
+  enrollmentSource?: "direct" | "gift" | "promotion" | "trial";
   promotionCode?: string;
   giftFrom?: string;
   planType?: "elite" | "essential";
   accessControl?: PartialAccessControl;
+  isTrial?: boolean;
+  trialDurationDays?: number;
 }): Promise<Enrollment | null> => {
   try {
     // Check if enrollment already exists
@@ -66,39 +93,47 @@ export const CreateEnrollmentService = async (enrollmentData: {
     await CourseModel.findByIdAndUpdate(
       enrollmentData.courseId,
       {
-        $inc: { 
+        $inc: {
           "analytics.totalEnrollments": 1,
           "analytics.activeEnrollments": 1,
-          enrollments: 1
-        }
+          enrollments: 1,
+        },
       },
       { new: true }
     );
 
     // Get course to access instructors
     const course = await CourseModel.findById(enrollmentData.courseId);
-    
+
     if (course && course.instructor) {
       // Extract instructor IDs
       const instructorIds: string[] = [];
-      
+
       if (Array.isArray(course.instructor)) {
         for (const instructor of course.instructor) {
-          if (typeof instructor === 'string') {
+          if (typeof instructor === "string") {
             instructorIds.push(instructor);
-          } else if (instructor && typeof instructor === 'object' && '_id' in instructor) {
+          } else if (
+            instructor &&
+            typeof instructor === "object" &&
+            "_id" in instructor
+          ) {
             instructorIds.push((instructor as any)._id.toString());
           }
         }
       } else {
         const instructor = course.instructor as any;
-        if (typeof instructor === 'string') {
+        if (typeof instructor === "string") {
           instructorIds.push(instructor);
-        } else if (instructor && typeof instructor === 'object' && '_id' in instructor) {
+        } else if (
+          instructor &&
+          typeof instructor === "object" &&
+          "_id" in instructor
+        ) {
           instructorIds.push(instructor._id.toString());
         }
       }
-      
+
       // Update totalStudents for each instructor
       for (const instructorId of instructorIds) {
         await UserModel.findByIdAndUpdate(
@@ -135,13 +170,27 @@ export const GetEnrollmentService = async (
 
     const enrollment = await EnrollmentModel.findById(enrollmentId)
       .populate("userId", "firstName lastName email profilePicture userType")
-      .populate(
-        "courseId",
-        "title thumbnail description category slug duration instructor plans analytics isFeatured isCertified"
-      )
+      .populate({
+        path: "courseId",
+        select:
+          "title thumbnail description category slug duration instructor plans analytics isFeatured isCertified",
+        populate: {
+          path: "instructor",
+          select: "firstName lastName email profilePicture",
+        },
+      })
       .lean();
 
-    return enrollment as Enrollment;
+    const enrollmentData = enrollment as Enrollment;
+
+    // Check if enrollment is still valid
+    if (enrollmentData && !isEnrollmentValid(enrollmentData)) {
+      // Mark as expired by updating status (optional - you might want to handle this differently)
+      // For now, we'll just return it but the frontend/API should check validity
+      return enrollmentData;
+    }
+
+    return enrollmentData;
   } catch (error) {
     console.error("Database error in GetEnrollmentService:", error);
     throw new AppError("Failed to get enrollment", 500);
@@ -213,10 +262,13 @@ export const GetUserEnrollmentsService = async (
               $or: [
                 { title: { $regex: search, $options: "i" } },
                 { description: { $regex: search, $options: "i" } },
-                { category: { $regex: search, $options: "i" } },
               ],
             }
           : {},
+        populate: {
+          path: "instructor",
+          select: "firstName lastName email profilePicture",
+        },
       })
       .sort(sortObj)
       .skip(skip)
@@ -240,6 +292,201 @@ export const GetUserEnrollmentsService = async (
   } catch (error) {
     console.error("Database error in GetUserEnrollmentsService:", error);
     throw new AppError("Failed to get user enrollments", 500);
+  }
+};
+
+// Helper function to calculate course structure totals
+const calculateCourseStructureTotals = async (
+  courseId: string
+): Promise<{
+  totalModules: number;
+  totalLessons: number;
+  totalContents: number;
+}> => {
+  let totalContents = 0;
+  let totalModules = 0;
+  let totalLessons = 0;
+
+  try {
+    const course = await CourseModel.findById(courseId)
+      .select("modules")
+      .populate({
+        path: "modules",
+        select: "lessons isActive",
+        populate: {
+          path: "lessons",
+          select: "contents isActive",
+          populate: {
+            path: "contents",
+            select: "_id isActive",
+          },
+        },
+      })
+      .lean();
+
+    if (course && course.modules && Array.isArray(course.modules)) {
+      // Filter out null modules and only count active ones
+      const activeModules = course.modules.filter(
+        (m: any) => m !== null && m !== undefined && m.isActive !== false
+      );
+      totalModules = activeModules.length;
+
+      activeModules.forEach((module: any) => {
+        if (module.lessons && Array.isArray(module.lessons)) {
+          // Filter out null lessons and only count active ones
+          const activeLessons = module.lessons.filter(
+            (l: any) => l !== null && l !== undefined && l.isActive !== false
+          );
+          totalLessons += activeLessons.length;
+
+          activeLessons.forEach((lesson: any) => {
+            if (lesson.contents && Array.isArray(lesson.contents)) {
+              // Filter out null contents and only count active ones
+              const activeContents = lesson.contents.filter(
+                (c: any) =>
+                  c !== null && c !== undefined && c.isActive !== false
+              );
+              totalContents += activeContents.length;
+            }
+          });
+        }
+      });
+    }
+  } catch (error) {
+    console.error(
+      `[calculateCourseStructureTotals] Error for course ${courseId}:`,
+      error
+    );
+    throw error;
+  }
+
+  return { totalModules, totalLessons, totalContents };
+};
+
+// Recalculate progress for an enrollment (useful for fixing existing enrollments)
+export const RecalculateEnrollmentProgressService = async (
+  enrollmentId: string
+): Promise<Enrollment | null> => {
+  try {
+    const enrollment = await EnrollmentModel.findById(enrollmentId);
+    if (!enrollment || !enrollment.courseId) {
+      return null;
+    }
+
+    const { totalModules, totalLessons, totalContents } =
+      await calculateCourseStructureTotals(enrollment.courseId.toString());
+
+    const completedContents = enrollment.completedContents || [];
+    const completedContentsCount = completedContents.length;
+
+    // Calculate overall completion
+    let overallCompletion = 0;
+    if (totalContents > 0) {
+      overallCompletion = Math.round(
+        (completedContentsCount / totalContents) * 100
+      );
+      if (overallCompletion > 100) {
+        overallCompletion = 100;
+      }
+    }
+
+    // Calculate completed modules and lessons
+    const completedModuleIds = new Set(
+      completedContents.map((c) => c.moduleId).filter(Boolean)
+    );
+    const completedLessonIds = new Set(
+      completedContents.map((c) => c.lessonId).filter(Boolean)
+    );
+
+    const updatedProgress: EnrollmentProgressSummary = {
+      overallCompletion,
+      totalModules,
+      completedModules: completedModuleIds.size,
+      totalLessons,
+      completedLessons: completedLessonIds.size,
+      lastActivityAt: enrollment.progress?.lastActivityAt || new Date(),
+    };
+
+    // Check if course should be marked as completed
+    let finalStatus = enrollment.status;
+    let completedAt = enrollment.completedAt;
+
+    if (overallCompletion >= 100 && enrollment.status !== "completed") {
+      finalStatus = "completed";
+      completedAt = new Date();
+    }
+
+    const updatedEnrollment = await EnrollmentModel.findByIdAndUpdate(
+      enrollmentId,
+      {
+        progress: updatedProgress,
+        status: finalStatus,
+        completedAt: completedAt,
+        lastUpdated: new Date(),
+      },
+      { new: true }
+    ).populate({
+      path: "courseId",
+      select:
+        "title thumbnail description category slug duration instructor plans analytics isFeatured isCertified",
+      populate: {
+        path: "instructor",
+        select: "firstName lastName email profilePicture",
+      },
+    });
+
+    // Automatically generate certificate when course reaches 100% completion
+    // Only if course is certified and certificate doesn't already exist
+    // Check if enrollment is completed (either just completed or already was completed)
+    const isCompleted =
+      finalStatus === "completed" || updatedProgress.overallCompletion >= 100;
+
+    if (isCompleted && completedAt) {
+      try {
+        // Check if certificate already exists
+        const existingCertificate = await getLatestCertificateService(
+          enrollmentId
+        );
+
+        if (!existingCertificate) {
+          // Get course details (already populated above)
+          const course = updatedEnrollment?.courseId as any;
+          const user = await UserModel.findById(enrollment.userId)
+            .select("firstName lastName")
+            .lean();
+
+          if (course && user && course.isCertified) {
+            // Get student full name
+            const studentName = `${user.firstName || ""} ${
+              user.lastName || ""
+            }`.trim();
+
+            // Get course name
+            const courseName = course.title || "";
+
+            // Generate certificate
+            await createCertificateService({
+              enrollmentId,
+              studentName,
+              courseName,
+              completionDate: completedAt,
+            });
+          }
+        }
+      } catch (certError) {
+        // Log error but don't fail the enrollment update
+        console.error("Error auto-generating certificate:", certError);
+        // Certificate generation failure shouldn't prevent enrollment completion
+      }
+    }
+
+    return updatedEnrollment as Enrollment;
+  } catch (error) {
+    console.error(
+      "Database error in RecalculateEnrollmentProgressService:",
+      error
+    );
+    throw new AppError("Failed to recalculate enrollment progress", 500);
   }
 };
 
@@ -280,13 +527,82 @@ export const UpdateEnrollmentProgressService = async (
 
     // Handle completed content with timestamp tracking
     let updatedCompletedContents = [...(enrollment.completedContents || [])];
-    
+
     if (progressData.completed && progressData.contentId) {
       // Check if content is already marked as completed
       const existingCompletion = updatedCompletedContents.find(
         (completion) => completion.contentId === progressData.contentId
       );
-      
+
+      // Get actual content duration from course structure
+      let actualContentDurationMinutes = progressData.timeSpent || 0;
+      try {
+        if (!enrollment.courseId) {
+          throw new Error("Course ID is missing");
+        }
+
+        let courseIdString: string;
+        if (
+          typeof enrollment.courseId === "object" &&
+          enrollment.courseId !== null &&
+          "_id" in enrollment.courseId
+        ) {
+          courseIdString = (enrollment.courseId as any)._id.toString();
+        } else {
+          courseIdString = enrollment.courseId.toString();
+        }
+
+        // Fetch course with content details to get actual duration
+        const course = await CourseModel.findById(courseIdString)
+          .select("modules")
+          .populate({
+            path: "modules",
+            select: "lessons",
+            populate: {
+              path: "lessons",
+              select: "contents",
+              populate: {
+                path: "contents",
+                select: "_id duration type",
+              },
+            },
+          })
+          .lean();
+
+        if (course && course.modules) {
+          // Find the content in the course structure
+          for (const module of course.modules as any[]) {
+            if (!module || !module.lessons) continue;
+            for (const lesson of module.lessons) {
+              if (!lesson || !lesson.contents) continue;
+              const content = lesson.contents.find(
+                (c: any) =>
+                  c && c._id && c._id.toString() === progressData.contentId
+              );
+              if (content && content.type === "video" && content.duration) {
+                // Duration is in seconds, convert to minutes
+                actualContentDurationMinutes = Math.round(
+                  content.duration / 60
+                );
+                break;
+              }
+            }
+            if (actualContentDurationMinutes > (progressData.timeSpent || 0)) {
+              break;
+            }
+          }
+        }
+      } catch (error) {
+        // If we can't fetch duration, use the provided timeSpent
+        console.error("Error fetching content duration:", error);
+      }
+
+      // Use the maximum of: provided timeSpent or actual content duration
+      const finalTimeSpent = Math.max(
+        progressData.timeSpent || 0,
+        actualContentDurationMinutes
+      );
+
       // Only add if not already completed (avoid duplicate entries)
       if (!existingCompletion) {
         updatedCompletedContents.push({
@@ -295,47 +611,383 @@ export const UpdateEnrollmentProgressService = async (
           moduleId: progressData.moduleId,
           lessonId: progressData.lessonId,
           contentType: progressData.contentType,
-          timeSpent: progressData.timeSpent,
+          timeSpent: finalTimeSpent,
         });
       } else {
-        // Update existing completion if timeSpent is provided and greater
-        if (progressData.timeSpent && progressData.timeSpent > (existingCompletion.timeSpent || 0)) {
-          existingCompletion.timeSpent = progressData.timeSpent;
-        }
+        // Update existing completion with the maximum timeSpent
+        existingCompletion.timeSpent = Math.max(
+          existingCompletion.timeSpent || 0,
+          finalTimeSpent
+        );
       }
     }
 
-    // Update progress summary
-    if (progressData.completed) {
-      updatedProgress.completedLessons += 1;
-      // Recalculate overall completion based on completed contents
-      if (updatedProgress.totalLessons > 0) {
-        updatedProgress.overallCompletion =
-          (updatedProgress.completedLessons / updatedProgress.totalLessons) *
-          100;
+    // ALWAYS recalculate progress from course structure and completed contents
+    // This ensures progress is accurate even if it wasn't calculated before
+    let totalContents = 0;
+    let totalModules = 0;
+    let totalLessons = 0;
+
+    try {
+      if (!enrollment.courseId) {
+        throw new Error("Course ID is missing from enrollment");
+      }
+
+      // Handle both ObjectId and string formats
+      let courseIdString: string;
+      if (
+        typeof enrollment.courseId === "object" &&
+        enrollment.courseId !== null &&
+        "_id" in enrollment.courseId
+      ) {
+        courseIdString = (enrollment.courseId as any)._id.toString();
+      } else {
+        courseIdString = enrollment.courseId.toString();
+      }
+
+      const structureTotals = await calculateCourseStructureTotals(
+        courseIdString
+      );
+      totalModules = structureTotals.totalModules;
+      totalLessons = structureTotals.totalLessons;
+      totalContents = structureTotals.totalContents;
+
+      // If totals are 0 or less than completed contents, something went wrong - use fallback
+      if (
+        (totalContents === 0 ||
+          totalContents < updatedCompletedContents.length) &&
+        updatedCompletedContents.length > 0
+      ) {
+        // Fallback: estimate based on completed contents
+        // Use completed contents count as minimum, but estimate more if we have module/lesson info
+        const uniqueModules = new Set(
+          updatedCompletedContents.map((c) => c.moduleId).filter(Boolean)
+        );
+        const uniqueLessons = new Set(
+          updatedCompletedContents.map((c) => c.lessonId).filter(Boolean)
+        );
+
+        // Estimate: assume at least the number of completed contents, or estimate based on modules/lessons
+        totalContents = Math.max(
+          updatedCompletedContents.length,
+          uniqueLessons.size * 2,
+          1
+        );
+        totalModules = Math.max(uniqueModules.size || totalModules, 1);
+        totalLessons = Math.max(uniqueLessons.size || totalLessons, 1);
+      }
+    } catch (error) {
+      console.error("Error calculating total contents:", error);
+      // If calculation fails, use fallback based on completed contents
+      const uniqueModules = new Set(
+        updatedCompletedContents.map((c) => c.moduleId).filter(Boolean)
+      );
+      const uniqueLessons = new Set(
+        updatedCompletedContents.map((c) => c.lessonId).filter(Boolean)
+      );
+
+      // Use existing values if available, otherwise estimate from completed contents
+      totalModules =
+        updatedProgress.totalModules > 0
+          ? updatedProgress.totalModules
+          : Math.max(uniqueModules.size, 1);
+      totalLessons =
+        updatedProgress.totalLessons > 0
+          ? updatedProgress.totalLessons
+          : Math.max(uniqueLessons.size, 1);
+      totalContents =
+        updatedProgress.totalLessons > 0 && updatedProgress.totalLessons > 0
+          ? Math.max(
+              updatedCompletedContents.length,
+              updatedProgress.totalLessons * 3
+            )
+          : Math.max(updatedCompletedContents.length, 1);
+    }
+
+    // CRITICAL: Ensure we ALWAYS have valid totals if there are completed contents
+    const completedContentsCount = updatedCompletedContents.length;
+
+    // If totals are still 0 but we have completed contents, FORCE fallback values
+    if (totalContents === 0 && completedContentsCount > 0) {
+      const uniqueModules = new Set(
+        updatedCompletedContents.map((c) => c.moduleId).filter(Boolean)
+      );
+      const uniqueLessons = new Set(
+        updatedCompletedContents.map((c) => c.lessonId).filter(Boolean)
+      );
+
+      // Force minimum values
+      totalContents = Math.max(completedContentsCount, 1);
+      totalModules = Math.max(uniqueModules.size || 1, 1);
+      totalLessons = Math.max(uniqueLessons.size || 1, 1);
+    }
+
+    // Update progress summary with calculated totals (ALWAYS update, even if 0)
+    updatedProgress.totalModules = totalModules;
+    updatedProgress.totalLessons = totalLessons;
+
+    // Calculate overall completion - this should NEVER be 0 if we have completed contents
+    if (totalContents > 0) {
+      updatedProgress.overallCompletion = Math.round(
+        (completedContentsCount / totalContents) * 100
+      );
+      // Cap at 100%
+      if (updatedProgress.overallCompletion > 100) {
+        updatedProgress.overallCompletion = 100;
+      }
+    } else if (completedContentsCount > 0) {
+      // Emergency fallback: if totalContents is still 0 but we have completed contents, set to 100%
+      updatedProgress.overallCompletion = 100;
+      totalContents = completedContentsCount; // Update for module/lesson calculation
+    } else {
+      // No completed contents and no total contents - set to 0
+      updatedProgress.overallCompletion = 0;
+    }
+
+    // Calculate completed modules and lessons
+    // A lesson is completed ONLY when ALL contents in that lesson are completed
+    // A module is completed ONLY when ALL lessons in that module are completed
+    let completedLessonsCount = 0;
+    let completedModulesCount = 0;
+
+    try {
+      if (!enrollment.courseId) {
+        throw new Error("Course ID is missing from enrollment");
+      }
+
+      // Handle both ObjectId and string formats
+      let courseIdString: string;
+      if (
+        typeof enrollment.courseId === "object" &&
+        enrollment.courseId !== null &&
+        "_id" in enrollment.courseId
+      ) {
+        courseIdString = (enrollment.courseId as any)._id.toString();
+      } else {
+        courseIdString = enrollment.courseId.toString();
+      }
+
+      // Get course structure to check lesson/module completion
+      const course = await CourseModel.findById(courseIdString)
+        .select("modules")
+        .populate({
+          path: "modules",
+          select: "lessons isActive",
+          populate: {
+            path: "lessons",
+            select: "contents isActive",
+            populate: {
+              path: "contents",
+              select: "_id isActive",
+            },
+          },
+        })
+        .lean();
+
+      if (course && course.modules && Array.isArray(course.modules)) {
+        const activeModules = course.modules.filter(
+          (m: any) => m !== null && m !== undefined && m.isActive !== false
+        );
+
+        // Create a Set of completed content IDs for quick lookup
+        const completedContentIds = new Set(
+          updatedCompletedContents.map((c) => c.contentId)
+        );
+
+        activeModules.forEach((module: any) => {
+          if (module.lessons && Array.isArray(module.lessons)) {
+            const activeLessons = module.lessons.filter(
+              (l: any) => l !== null && l !== undefined && l.isActive !== false
+            );
+
+            let moduleLessonsCompleted = 0;
+
+            activeLessons.forEach((lesson: any) => {
+              if (lesson.contents && Array.isArray(lesson.contents)) {
+                const activeContents = lesson.contents.filter(
+                  (c: any) =>
+                    c !== null && c !== undefined && c.isActive !== false
+                );
+
+                // Check if ALL contents in this lesson are completed
+                const allContentsCompleted =
+                  activeContents.length > 0 &&
+                  activeContents.every((content: any) =>
+                    completedContentIds.has(content._id.toString())
+                  );
+
+                if (allContentsCompleted) {
+                  completedLessonsCount++;
+                  moduleLessonsCompleted++;
+                }
+              }
+            });
+
+            // A module is completed if ALL its lessons are completed
+            if (
+              activeLessons.length > 0 &&
+              moduleLessonsCompleted === activeLessons.length
+            ) {
+              completedModulesCount++;
+            }
+          }
+        });
+      }
+    } catch (error) {
+      console.error("Error calculating completed lessons/modules:", error);
+      // Fallback: use simple count (any content = lesson completed)
+      const completedModuleIds = new Set(
+        updatedCompletedContents.map((c) => c.moduleId).filter(Boolean)
+      );
+      const completedLessonIds = new Set(
+        updatedCompletedContents.map((c) => c.lessonId).filter(Boolean)
+      );
+      completedLessonsCount = completedLessonIds.size;
+      completedModulesCount = completedModuleIds.size;
+    }
+
+    updatedProgress.completedModules = completedModulesCount;
+    updatedProgress.completedLessons = completedLessonsCount;
+
+    // FINAL VERIFICATION: If we have completed contents but progress is still 0, force it
+    if (completedContentsCount > 0 && updatedProgress.overallCompletion === 0) {
+      if (totalContents === 0) {
+        totalContents = completedContentsCount;
+        updatedProgress.totalModules = Math.max(
+          updatedProgress.totalModules,
+          completedModulesCount || 1
+        );
+        updatedProgress.totalLessons = Math.max(
+          updatedProgress.totalLessons,
+          completedLessonsCount || 1
+        );
+      }
+      updatedProgress.overallCompletion = Math.round(
+        (completedContentsCount / totalContents) * 100
+      );
+      if (updatedProgress.overallCompletion > 100)
+        updatedProgress.overallCompletion = 100;
+    }
+
+    // Automatically mark course as completed when overallCompletion reaches 100%
+    let finalStatus = enrollment.status;
+    let completedAt = enrollment.completedAt;
+
+    if (
+      updatedProgress.overallCompletion >= 100 &&
+      enrollment.status !== "completed"
+    ) {
+      finalStatus = "completed";
+      completedAt = new Date();
+    }
+
+    // Calculate total time spent from all completed contents (in minutes, then convert to seconds)
+    // This ensures accuracy and avoids double-counting
+    const totalTimeSpentMinutes = updatedCompletedContents.reduce(
+      (total, completion) => total + (completion.timeSpent || 0),
+      0
+    );
+    const newTotalTimeSpent = totalTimeSpentMinutes * 60; // Convert minutes to seconds
+
+    // FINAL VERIFICATION before saving - ensure progress is never 0 if we have completed contents
+    if (
+      updatedCompletedContents.length > 0 &&
+      updatedProgress.overallCompletion === 0
+    ) {
+      updatedProgress.overallCompletion = 100;
+      if (updatedProgress.totalModules === 0) {
+        const uniqueModules = new Set(
+          updatedCompletedContents.map((c) => c.moduleId).filter(Boolean)
+        );
+        updatedProgress.totalModules = Math.max(uniqueModules.size, 1);
+      }
+      if (updatedProgress.totalLessons === 0) {
+        const uniqueLessons = new Set(
+          updatedCompletedContents.map((c) => c.lessonId).filter(Boolean)
+        );
+        updatedProgress.totalLessons = Math.max(uniqueLessons.size, 1);
       }
     }
 
-    // Update total time spent
-    const additionalTimeSpent = progressData.timeSpent || 0;
-    const newTotalTimeSpent =
-      (enrollment.totalTimeSpent || 0) + additionalTimeSpent;
+    // Use dot notation to ensure Mongoose properly updates nested progress object
+    const updateData: any = {
+      "progress.overallCompletion": updatedProgress.overallCompletion,
+      "progress.totalModules": updatedProgress.totalModules,
+      "progress.completedModules": updatedProgress.completedModules,
+      "progress.totalLessons": updatedProgress.totalLessons,
+      "progress.completedLessons": updatedProgress.completedLessons,
+      "progress.lastActivityAt": updatedProgress.lastActivityAt || new Date(),
+      completedContents: updatedCompletedContents,
+      lastContentAccessed,
+      lastUpdated: new Date(),
+      lastActivityAt: new Date(),
+      totalTimeSpent: newTotalTimeSpent,
+      status: finalStatus,
+    };
+
+    if (completedAt) {
+      updateData.completedAt = completedAt;
+    }
 
     const updatedEnrollment = await EnrollmentModel.findByIdAndUpdate(
       enrollmentId,
-      {
-        progress: updatedProgress,
-        completedContents: updatedCompletedContents,
-        lastContentAccessed,
-        lastUpdated: new Date(),
-        lastActivityAt: new Date(),
-        totalTimeSpent: newTotalTimeSpent,
-      },
-      { new: true }
-    ).populate(
-      "courseId",
-      "title thumbnail description category slug duration instructor plans analytics isFeatured isCertified"
-    );
+      updateData,
+      { new: true, runValidators: true }
+    ).select("-__v"); // Don't use lean() - we need the Mongoose document for proper ObjectId handling
+
+    // Automatically generate certificate when course reaches 100% completion
+    // Only if course is certified and certificate doesn't already exist
+    // Check if enrollment is completed (either just completed or already was completed)
+    const isCompleted =
+      finalStatus === "completed" || updatedProgress.overallCompletion >= 100;
+
+    if (isCompleted && completedAt) {
+      try {
+        // Check if certificate already exists
+        const existingCertificate = await getLatestCertificateService(
+          enrollmentId
+        );
+
+        if (!existingCertificate) {
+          // Get course and user details for certificate generation
+          const course = await CourseModel.findById(enrollment.courseId)
+            .populate("instructor", "firstName lastName")
+            .lean();
+
+          const user = await UserModel.findById(enrollment.userId)
+            .select("firstName lastName")
+            .lean();
+
+          if (course && user && course.isCertified) {
+            // Get student full name
+            const studentName = `${user.firstName || ""} ${
+              user.lastName || ""
+            }`.trim();
+
+            // Get course name
+            const courseName = course.title || "";
+
+            // Get key topics from course (if available in course structure)
+            // You might need to extract this from course modules/lessons
+            let keyTopics: string | undefined;
+            // For now, we'll leave it undefined - can be enhanced later
+
+            // Generate certificate
+            await createCertificateService({
+              enrollmentId,
+              studentName,
+              courseName,
+              completionDate: completedAt,
+              keyTopics,
+            });
+          }
+        }
+      } catch (certError) {
+        // Log error but don't fail the enrollment update
+        console.error("Error auto-generating certificate:", certError);
+        // Certificate generation failure shouldn't prevent enrollment completion
+      }
+    }
 
     return updatedEnrollment as Enrollment;
   } catch (error) {
@@ -631,10 +1283,15 @@ export const GetEnrollmentHistoryService = async (
     const skip = (page - 1) * limit;
 
     const enrollments = await EnrollmentModel.find({ userId })
-      .populate(
-        "courseId",
-        "title thumbnail description category slug duration instructor plans analytics isFeatured isCertified"
-      )
+      .populate({
+        path: "courseId",
+        select:
+          "title thumbnail description category slug duration instructor plans analytics isFeatured isCertified",
+        populate: {
+          path: "instructor",
+          select: "firstName lastName email profilePicture",
+        },
+      })
       .sort({ enrolledAt: -1 })
       .skip(skip)
       .limit(limit)
@@ -652,6 +1309,176 @@ export const GetEnrollmentHistoryService = async (
   } catch (error) {
     console.error("Database error in GetEnrollmentHistoryService:", error);
     throw new AppError("Failed to get enrollment history", 500);
+  }
+};
+
+// Get user dashboard statistics
+export const GetUserDashboardStatsService = async (
+  userId: string
+): Promise<{
+  totalTimeSpent: number; // in minutes
+  averageTimePerSession: number; // in minutes
+  totalCourses: number;
+  completedCourses: number;
+  inProgressCourses: number;
+  totalProgress: number; // average progress across all courses
+  dailyGoal: {
+    target: number;
+    completed: number;
+    streak: number;
+  };
+  recentActivity: {
+    lastActivityAt: Date | null;
+    coursesAccessedToday: number;
+  };
+}> => {
+  try {
+    const enrollments = await EnrollmentModel.find({ userId }).lean();
+
+    // Calculate basic stats
+    const totalCourses = enrollments.length;
+    const completedCourses = enrollments.filter(
+      (enrollment) => enrollment.status === "completed"
+    ).length;
+    const inProgressCourses = enrollments.filter(
+      (enrollment) => enrollment.status === "active"
+    ).length;
+
+    // Calculate total time spent from completedContents (more accurate)
+    // This ensures we use actual content durations, not just tracked time
+    let totalTimeSpentMinutes = 0;
+
+    for (const enrollment of enrollments) {
+      if (
+        enrollment.completedContents &&
+        enrollment.completedContents.length > 0
+      ) {
+        // Sum up timeSpent from completedContents (already in minutes)
+        const enrollmentTimeSpent = enrollment.completedContents.reduce(
+          (total, completion) => total + (completion.timeSpent || 0),
+          0
+        );
+        totalTimeSpentMinutes += enrollmentTimeSpent;
+      } else {
+        // Fallback: use totalTimeSpent from enrollment (convert from seconds to minutes)
+        totalTimeSpentMinutes += Math.round(
+          (enrollment.totalTimeSpent || 0) / 60
+        );
+      }
+    }
+
+    const totalTimeSpent = totalTimeSpentMinutes;
+
+    // Calculate average progress
+    const totalProgress =
+      enrollments.length > 0
+        ? enrollments.reduce((total, enrollment) => {
+            return total + (enrollment.progress?.overallCompletion || 0);
+          }, 0) / enrollments.length
+        : 0;
+
+    // Calculate average time per session
+    // Use courses that actually have time spent (from completedContents) for more accurate average
+    const coursesWithTimeSpent = enrollments.filter((enrollment) => {
+      // Check if enrollment has time spent from completedContents
+      if (
+        enrollment.completedContents &&
+        enrollment.completedContents.length > 0
+      ) {
+        const enrollmentTimeSpent = enrollment.completedContents.reduce(
+          (total, completion) => total + (completion.timeSpent || 0),
+          0
+        );
+        return enrollmentTimeSpent > 0;
+      }
+      // Fallback: check totalTimeSpent
+      return (enrollment.totalTimeSpent || 0) > 0;
+    }).length;
+
+    let averageTimePerSession = 0;
+    if (coursesWithTimeSpent > 0) {
+      // Calculate average based on courses with time spent
+      averageTimePerSession = Math.round(totalTimeSpent / coursesWithTimeSpent);
+      // Ensure at least 1 minute if there's any time spent
+      if (totalTimeSpent > 0 && averageTimePerSession === 0) {
+        averageTimePerSession = 1;
+      }
+    } else if (totalTimeSpent > 0) {
+      // If there's time spent but no courses with time (edge case), show at least 1
+      averageTimePerSession = 1;
+    }
+
+    // Calculate daily goal progress (episodes/content accessed today)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const coursesAccessedToday = enrollments.filter((enrollment) => {
+      const lastActivity = enrollment.lastActivityAt;
+      if (!lastActivity) return false;
+      const activityDate = new Date(lastActivity);
+      activityDate.setHours(0, 0, 0, 0);
+      return activityDate.getTime() === today.getTime();
+    }).length;
+
+    // Calculate streak (consecutive days with activity)
+    let streak = 0;
+    const checkDate = new Date(today);
+    for (let i = 0; i < 30; i++) {
+      // Check last 30 days
+      const hasActivity = enrollments.some((enrollment) => {
+        const lastActivity = enrollment.lastActivityAt;
+        if (!lastActivity) return false;
+
+        const activityDate = new Date(lastActivity);
+        if (isNaN(activityDate.getTime())) return false;
+
+        activityDate.setHours(0, 0, 0, 0);
+        return activityDate.getTime() === checkDate.getTime();
+      });
+
+      if (hasActivity) {
+        streak++;
+        checkDate.setDate(checkDate.getDate() - 1);
+      } else if (i > 0) {
+        // Don't break streak on first day if no activity
+        break;
+      } else {
+        break;
+      }
+    }
+
+    // Get most recent activity
+    const lastActivityAt = enrollments.reduce((latest, enrollment) => {
+      const activityDate = enrollment.lastActivityAt;
+      if (!activityDate) return latest;
+
+      const activityDateObj = new Date(activityDate);
+      if (!latest || activityDateObj > latest) {
+        return activityDateObj;
+      }
+      return latest;
+    }, null as Date | null);
+
+    return {
+      totalTimeSpent,
+      averageTimePerSession,
+      totalCourses,
+      completedCourses,
+      inProgressCourses,
+      totalProgress: Math.round(totalProgress),
+      dailyGoal: {
+        target: 10, // Default target: 10 episodes/content per day
+        completed: coursesAccessedToday,
+        streak,
+      },
+      recentActivity: {
+        lastActivityAt,
+        coursesAccessedToday,
+      },
+    };
+  } catch (error) {
+    console.error("Database error in GetUserDashboardStatsService:", error);
+    throw new AppError("Failed to get dashboard statistics", 500);
   }
 };
 

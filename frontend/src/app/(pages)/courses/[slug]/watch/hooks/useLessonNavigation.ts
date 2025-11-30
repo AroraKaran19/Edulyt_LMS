@@ -5,18 +5,19 @@ import {
   canAccessLesson,
   canAccessContent,
 } from "@/lib/accessControlUtils";
-import { PartialAccessControl } from "@/types/enrollment";
+import { PartialAccessControl, LastContentAccessed } from "@/types/enrollment";
 
 export const useLessonNavigation = (
   course: Course,
-  accessControl?: PartialAccessControl | null
+  accessControl?: PartialAccessControl | null,
+  lastContentAccessed?: LastContentAccessed | null
 ) => {
   const [selectedModule, setSelectedModule] = useState<CourseModule | null>(null);
   const [selectedLesson, setSelectedLesson] = useState<CourseLesson | null>(null);
   const [selectedContent, setSelectedContent] = useState<Content | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Initialize with first accessible module, lesson, and content
+  // Initialize with last accessed content or first accessible module, lesson, and content
   useEffect(() => {
     if (isInitialized) return;
 
@@ -24,69 +25,105 @@ export const useLessonNavigation = (
     if (course.modules && course.modules.length > 0) {
       const modules = course.modules as CourseModule[];
       
-      // Find first accessible module
-      let firstModule: CourseModule | null = null;
-      let firstLesson: CourseLesson | null = null;
-      let firstContent: Content | null = null;
+      let targetModule: CourseModule | null = null;
+      let targetLesson: CourseLesson | null = null;
+      let targetContent: Content | null = null;
       
-      for (const module of modules) {
-        const moduleId = module._id || "";
-        if (canAccessModule(accessControl, moduleId)) {
-          firstModule = module;
-          
-          // Find first accessible lesson in this module
-          if (module.lessons && Array.isArray(module.lessons)) {
-            const lessons = module.lessons as CourseLesson[];
-            for (const lesson of lessons) {
-              const lessonId = lesson._id || "";
-              if (canAccessLesson(accessControl, moduleId, lessonId)) {
-                firstLesson = lesson;
-                
-                // Find first accessible content in this lesson
-                if (lesson.contents && Array.isArray(lesson.contents)) {
-                  const contents = lesson.contents as Content[];
-                  for (const content of contents) {
-                    const contentId = content._id || "";
-                    if (canAccessContent(accessControl, moduleId, lessonId, contentId)) {
-                      firstContent = content;
+      // Try to navigate to last accessed content first
+      if (lastContentAccessed?.contentId) {
+        const lastModuleId = lastContentAccessed.moduleId;
+        const lastLessonId = lastContentAccessed.lessonId;
+        const lastContentId = lastContentAccessed.contentId;
+        
+        // Find the last accessed content in the course structure
+        for (const module of modules) {
+          const moduleId = module._id || "";
+          if (moduleId === lastModuleId && canAccessModule(accessControl, moduleId)) {
+            if (module.lessons && Array.isArray(module.lessons)) {
+              const lessons = module.lessons as CourseLesson[];
+              for (const lesson of lessons) {
+                const lessonId = lesson._id || "";
+                if (lessonId === lastLessonId && canAccessLesson(accessControl, moduleId, lessonId)) {
+                  if (lesson.contents && Array.isArray(lesson.contents)) {
+                    const contents = lesson.contents as Content[];
+                    const content = contents.find((c) => c._id === lastContentId);
+                    if (content && canAccessContent(accessControl, moduleId, lessonId, lastContentId)) {
+                      targetModule = module;
+                      targetLesson = lesson;
+                      targetContent = content;
                       break;
                     }
                   }
                 }
-                break;
+                if (targetContent) break;
               }
             }
           }
-          break;
+          if (targetContent) break;
         }
       }
       
-      // Fallback to first module/lesson/content if no accessible content found
-      if (!firstModule) {
-        firstModule = modules[0];
-        if (firstModule?.lessons) {
-          firstLesson = (firstModule.lessons as CourseLesson[])?.[0];
-          if (firstLesson?.contents) {
-            firstContent = (firstLesson.contents as Content[])?.[0];
+      // Fallback to first accessible module, lesson, and content if last accessed not found or not accessible
+      if (!targetContent) {
+        for (const module of modules) {
+          const moduleId = module._id || "";
+          if (canAccessModule(accessControl, moduleId)) {
+            targetModule = module;
+            
+            // Find first accessible lesson in this module
+            if (module.lessons && Array.isArray(module.lessons)) {
+              const lessons = module.lessons as CourseLesson[];
+              for (const lesson of lessons) {
+                const lessonId = lesson._id || "";
+                if (canAccessLesson(accessControl, moduleId, lessonId)) {
+                  targetLesson = lesson;
+                  
+                  // Find first accessible content in this lesson
+                  if (lesson.contents && Array.isArray(lesson.contents)) {
+                    const contents = lesson.contents as Content[];
+                    for (const content of contents) {
+                      const contentId = content._id || "";
+                      if (canAccessContent(accessControl, moduleId, lessonId, contentId)) {
+                        targetContent = content;
+                        break;
+                      }
+                    }
+                  }
+                  break;
+                }
+              }
+            }
+            break;
+          }
+        }
+        
+        // Fallback to first module/lesson/content if no accessible content found
+        if (!targetModule) {
+          targetModule = modules[0];
+          if (targetModule?.lessons) {
+            targetLesson = (targetModule.lessons as CourseLesson[])?.[0];
+            if (targetLesson?.contents) {
+              targetContent = (targetLesson.contents as Content[])?.[0];
+            }
           }
         }
       }
 
-      if (firstModule) {
-        setSelectedModule(firstModule);
+      if (targetModule) {
+        setSelectedModule(targetModule);
         
-        if (firstLesson) {
-          setSelectedLesson(firstLesson);
+        if (targetLesson) {
+          setSelectedLesson(targetLesson);
           
-          if (firstContent) {
-            setSelectedContent(firstContent);
+          if (targetContent) {
+            setSelectedContent(targetContent);
           }
         }
       }
     }
     
     setIsInitialized(true);
-  }, [course.modules, isInitialized, accessControl]);
+  }, [course.modules, isInitialized, accessControl, lastContentAccessed]);
 
   // Preload next video content
   useEffect(() => {

@@ -2,6 +2,7 @@ import { InstructorModel, StudentModel, UserModel } from "../models";
 import { User } from "../types/user";
 import { AppError } from "../middlewares/error.middleware";
 import bcrypt from "bcrypt";
+import { validatePassword } from "../utils/passwordValidation";
 
 export interface GetUsersParams {
   page: number;
@@ -247,6 +248,9 @@ export const changeUserPasswordService = async (
     throw new AppError("Current password is incorrect", 400);
   }
 
+  // Validate new password
+  validatePassword(newPassword);
+
   // Check if new password is different from current
   const isSamePassword = await bcrypt.compare(newPassword, user.password);
   if (isSamePassword) {
@@ -286,10 +290,8 @@ export const adminChangeUserPasswordService = async (
     throw new AppError("User not found", 404);
   }
 
-  // Validate password length
-  if (newPassword.length < 6) {
-    throw new AppError("Password must be at least 6 characters long", 400);
-  }
+  // Validate password
+  validatePassword(newPassword);
 
   // Hash new password
   const saltRounds = 10;

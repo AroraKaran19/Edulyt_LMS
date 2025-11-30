@@ -15,6 +15,7 @@ import webhookRoutes from "./webhook.routes";
 import paymentRoutes from "./payment.routes";
 import liveClassesRoutes from "./live-classes.routes";
 import authenticationMediaRoutes from "./authentication-media.routes";
+import certificateRoutes from "./certificate.routes";
 
 export {
   authRoutes,
@@ -34,4 +35,5 @@ export {
   paymentRoutes,
   liveClassesRoutes,
   authenticationMediaRoutes,
+  certificateRoutes,
 };

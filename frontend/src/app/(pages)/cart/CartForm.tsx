@@ -16,6 +16,9 @@ import CheckBoxContainer from "@/components/ui/inputs/CheckBoxContainer";
 import useAuth from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
+import { useSession } from "next-auth/react";
+import Modal from "@/components/ui/Modal";
+import { User as UserIcon } from "lucide-react";
 
 interface EnrollmentFormData {
   name: string;
@@ -36,6 +39,64 @@ const CartForm = ({
 }) => {
   const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
+  const { update: updateSession } = useSession();
+  const [showFirstNameModal, setShowFirstNameModal] = useState(false);
+  const [firstNameInput, setFirstNameInput] = useState("");
+  const [isUpdatingFirstName, setIsUpdatingFirstName] = useState(false);
+
+  // Check if user has firstName before allowing enrollment
+  useEffect(() => {
+    if (
+      user &&
+      !isLoading &&
+      (!user.firstName || user.firstName.trim() === "")
+    ) {
+      setShowFirstNameModal(true);
+    }
+  }, [user, isLoading]);
+
+  const handleUpdateFirstName = async () => {
+    if (!firstNameInput.trim()) {
+      toast.error("First name is required");
+      return;
+    }
+
+    setIsUpdatingFirstName(true);
+    try {
+      const response = await apiClient.put("/users/me", {
+        firstName: firstNameInput.trim(),
+      });
+
+      if (response.data?.data) {
+        const updatedUserData = response.data.data;
+
+        // Update session with new firstName
+        if (updateSession) {
+          await updateSession({
+            firstName: updatedUserData.firstName,
+            lastName: updatedUserData.lastName,
+            email: updatedUserData.email,
+            phone: updatedUserData.phone,
+            profilePicture: updatedUserData.profilePicture,
+            userType: updatedUserData.userType,
+          });
+        }
+
+        toast.success("First name updated successfully!");
+        setShowFirstNameModal(false);
+        // Refresh the page to get updated user data
+        window.location.reload();
+      }
+    } catch (error: any) {
+      toast.error(
+        error.response?.data?.error?.message ||
+          "Failed to update first name. Please try again."
+      );
+    } finally {
+      setIsUpdatingFirstName(false);
+    }
+  };
+
   const [cartSteps, setCartSteps] = useState<
     { title: string; isActive?: boolean; completed: boolean }[]
   >([
@@ -538,6 +599,45 @@ const CartForm = ({
           </div>
         </div>
       </div>
+
+      {/* First Name Required Modal */}
+      <Modal
+        isOpen={showFirstNameModal}
+        onClose={() => {
+          // Don't allow closing - user must set firstName
+          toast.error("First name is required to enroll in courses");
+        }}
+        className="max-w-md"
+      >
+        <div className="flex flex-col items-center justify-center p-6">
+          <div className="w-20 h-20 rounded-full bg-orange-100 flex items-center justify-center mb-4">
+            <UserIcon className="w-10 h-10 text-orange-600" />
+          </div>
+          <h3 className="text-xl font-bold text-gray-900 mb-2">
+            First Name Required
+          </h3>
+          <p className="text-gray-600 text-center mb-6">
+            Please provide your first name to continue with course enrollment.
+          </p>
+          <div className="w-full mb-4">
+            <Input
+              label="First Name"
+              placeholder="Enter your first name"
+              value={firstNameInput}
+              onChange={(e) => setFirstNameInput(e.target.value)}
+              required
+              className="w-full"
+            />
+          </div>
+          <OrangeButton
+            onClick={handleUpdateFirstName}
+            disabled={isUpdatingFirstName || !firstNameInput.trim()}
+            className="w-full"
+          >
+            {isUpdatingFirstName ? "Updating..." : "Update & Continue"}
+          </OrangeButton>
+        </div>
+      </Modal>
     </div>
   );
 };

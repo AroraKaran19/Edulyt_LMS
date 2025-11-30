@@ -1,6 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import useUserEnrollments from "./useUserEnrollments";
-import { Enrollment } from "@/types/enrollment";
+import apiClient from "@/configs/apiConfig";
 
 export interface DashboardStats {
   totalTimeSpent: number; // in minutes
@@ -41,150 +40,55 @@ const useDashboardStats = () => {
     },
   });
 
-  const { getUserEnrollments, calculateProgress } = useUserEnrollments();
-
-  const calculateStats = useCallback(async () => {
+  const fetchStats = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
     try {
-      // Get all user enrollments
-      const result = await getUserEnrollments({
-        page: 1,
-        limit: 100, // Get all enrollments for stats calculation
-      });
+      const response = await apiClient.get("/enrollments/dashboard-stats");
+      const data = response.data.data;
 
-      if (!result) {
-        throw new Error("Failed to fetch enrollment data");
-      }
-
-      const enrollments = result.enrollments;
-
-      // Calculate basic stats
-      const totalCourses = enrollments.length;
-      const completedCourses = enrollments.filter(
-        (enrollment) => enrollment.status === "completed"
-      ).length;
-      const inProgressCourses = enrollments.filter(
-        (enrollment) => enrollment.status === "active"
-      ).length;
-
-      // Calculate total time spent (convert from seconds to minutes)
-      const totalTimeSpent =
-        enrollments.reduce(
-          (total, enrollment) => total + (enrollment.totalTimeSpent || 0),
-          0
-        ) / 60; // Convert seconds to minutes
-
-      // Calculate average progress
-      const totalProgress =
-        enrollments.length > 0
-          ? enrollments.reduce((total, enrollment) => {
-              return total + calculateProgress(enrollment);
-            }, 0) / enrollments.length
-          : 0;
-
-      // Calculate average time per session (simplified)
-      const averageTimePerSession =
-        totalCourses > 0 ? totalTimeSpent / totalCourses : 0;
-
-      // Calculate daily goal progress (simplified - episodes completed today)
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      const coursesAccessedToday = enrollments.filter((enrollment) => {
-        const lastActivity = enrollment.lastActivityAt;
-        if (!lastActivity) return false;
-        return new Date(lastActivity) >= today;
-      }).length;
-
-      // Calculate streak (simplified - consecutive days with activity)
-      const streak = calculateStreak(enrollments);
-
-      // Get most recent activity
-      const lastActivityAt = enrollments.reduce((latest, enrollment) => {
-        const activityDate = enrollment.lastActivityAt;
-        if (!activityDate) return latest;
-
-        const activityDateObj = new Date(activityDate);
-        if (!latest || activityDateObj > latest) {
-          return activityDateObj;
-        }
-        return latest;
-      }, null as Date | null);
-
+      // Transform backend response to match frontend interface
       const newStats: DashboardStats = {
-        totalTimeSpent: Math.round(totalTimeSpent),
-        averageTimePerSession: Math.round(averageTimePerSession),
-        totalCourses,
-        completedCourses,
-        inProgressCourses,
-        totalProgress: Math.round(totalProgress),
+        totalTimeSpent: data.totalTimeSpent || 0,
+        averageTimePerSession: data.averageTimePerSession || 0,
+        totalCourses: data.totalCourses || 0,
+        completedCourses: data.completedCourses || 0,
+        inProgressCourses: data.inProgressCourses || 0,
+        totalProgress: data.totalProgress || 0,
         dailyGoal: {
-          target: 10,
-          completed: coursesAccessedToday,
-          streak,
+          target: data.dailyGoal?.target || 10,
+          completed: data.dailyGoal?.completed || 0,
+          streak: data.dailyGoal?.streak || 0,
         },
         recentActivity: {
-          lastActivityAt,
-          coursesAccessedToday,
+          lastActivityAt: data.recentActivity?.lastActivityAt
+            ? new Date(data.recentActivity.lastActivityAt)
+            : null,
+          coursesAccessedToday: data.recentActivity?.coursesAccessedToday || 0,
         },
       };
 
       setStats(newStats);
     } catch (err: any) {
       const errorMsg =
-        err.message || "Failed to calculate dashboard statistics";
+        err.response?.data?.error?.message ||
+        err.message ||
+        "Failed to fetch dashboard statistics";
       setError(errorMsg);
-      console.error("Dashboard stats calculation error:", err);
+      console.error("Dashboard stats fetch error:", err);
     } finally {
       setIsLoading(false);
     }
-  }, [getUserEnrollments, calculateProgress]);
-
-  // Calculate streak (simplified implementation)
-  const calculateStreak = useCallback((enrollments: Enrollment[]): number => {
-    // This is a simplified streak calculation
-    // In a real implementation, you'd track daily activity more precisely
-    const today = new Date();
-    let streak = 0;
-
-    for (let i = 0; i < 30; i++) {
-      // Check last 30 days
-      const checkDate = new Date(today);
-      checkDate.setDate(today.getDate() - i);
-      checkDate.setHours(0, 0, 0, 0);
-
-      const hasActivity = enrollments.some((enrollment) => {
-        const lastActivity = enrollment.lastActivityAt;
-        if (!lastActivity) return false;
-
-        const activityDate = new Date(lastActivity);
-        if (isNaN(activityDate.getTime())) return false; // Check if valid date
-
-        activityDate.setHours(0, 0, 0, 0);
-
-        return activityDate.getTime() === checkDate.getTime();
-      });
-
-      if (hasActivity) {
-        streak++;
-      } else if (i > 0) {
-        // Don't break streak on first day if no activity
-        break;
-      }
-    }
-
-    return streak;
   }, []);
 
   useEffect(() => {
-    calculateStats();
-  }, [calculateStats]);
+    fetchStats();
+  }, [fetchStats]);
 
   const refreshStats = useCallback(() => {
-    calculateStats();
-  }, [calculateStats]);
+    fetchStats();
+  }, [fetchStats]);
 
   return {
     stats,

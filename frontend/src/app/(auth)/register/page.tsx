@@ -4,24 +4,54 @@ import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import { Eye, Lock, Mail, EyeOff, RefreshCw } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { toast } from "react-toastify";
 import apiClient from "@/configs/apiConfig";
-import { signIn } from "next-auth/react";
-import { useSearchParams } from "next/navigation";
+import { signIn, useSession } from "next-auth/react";
+import { useSearchParams, useRouter } from "next/navigation";
+import {
+  validatePassword,
+  getPasswordRequirementsText,
+  isPasswordValid,
+  PasswordValidationErrors,
+} from "@/lib/passwordValidation";
+import { Check, X } from "lucide-react";
 
 const RegisterPage = () => {
   const [email, setEmail] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [isOAuthLoading, setIsOAuthLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [loginSuccess, setLoginSuccess] = useState(false);
+  const [passwordErrors, setPasswordErrors] = useState<
+    PasswordValidationErrors & { confirmPassword?: string }
+  >({});
+  const [showPasswordValidation, setShowPasswordValidation] = useState(false);
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const { data: session } = useSession();
 
   // Get callbackUrl from URL parameters, default to /dashboard
   const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
+
+  // Handle role-based redirect after successful login
+  useEffect(() => {
+    if (loginSuccess && session?.user) {
+      const user = session.user as any;
+      // Check if user is admin or super-admin
+      if (user?.userType === "admin" || user?.userType === "super-admin") {
+        router.push("/admin/dashboard");
+      } else {
+        router.push(callbackUrl);
+      }
+      setLoginSuccess(false); // Reset the flag
+    }
+  }, [session, loginSuccess, router, callbackUrl]);
 
   // Toggle password visibility
   const togglePasswordVisibility = () => {
@@ -30,6 +60,77 @@ const RegisterPage = () => {
 
   const toggleConfirmPasswordVisibility = () => {
     setShowConfirmPassword(!showConfirmPassword);
+  };
+
+  // Handle password change with real-time validation
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newPassword = e.target.value;
+    setPassword(newPassword);
+
+    if (newPassword.length > 0) {
+      setShowPasswordValidation(true);
+      const validationErrors = validatePassword(newPassword);
+      setPasswordErrors(validationErrors);
+    } else {
+      setShowPasswordValidation(false);
+      setPasswordErrors({});
+    }
+
+    // Clear confirm password error if passwords match
+    if (confirmPassword && newPassword === confirmPassword) {
+      setPasswordErrors(
+        (prev: PasswordValidationErrors & { confirmPassword?: string }) => {
+          const newErrors = { ...prev };
+          delete newErrors.confirmPassword;
+          return newErrors;
+        }
+      );
+    }
+  };
+
+  // Handle confirm password change
+  const handleConfirmPasswordChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const newConfirmPassword = e.target.value;
+    setConfirmPassword(newConfirmPassword);
+
+    if (newConfirmPassword && password && newConfirmPassword !== password) {
+      setPasswordErrors(
+        (prev: PasswordValidationErrors & { confirmPassword?: string }) => ({
+          ...prev,
+          confirmPassword: "Passwords do not match",
+        })
+      );
+    } else {
+      setPasswordErrors(
+        (prev: PasswordValidationErrors & { confirmPassword?: string }) => {
+          const newErrors = { ...prev };
+          delete newErrors.confirmPassword;
+          return newErrors;
+        }
+      );
+    }
+  };
+
+  // Check individual password requirements
+  const checkPasswordRequirement = (
+    type: "length" | "capital" | "small" | "symbol"
+  ): boolean => {
+    if (!password) return false;
+
+    switch (type) {
+      case "length":
+        return password.length >= 8;
+      case "capital":
+        return /[A-Z]/.test(password);
+      case "small":
+        return /[a-z]/.test(password);
+      case "symbol":
+        return /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
+      default:
+        return false;
+    }
   };
 
   const handleOAuthSignIn = async (provider: string) => {
@@ -43,8 +144,8 @@ const RegisterPage = () => {
         toast.error(result?.error as string);
       } else if (result?.ok) {
         toast.success("Welcome to Airkrit!");
-        // Redirect manually after successful signup
-        window.location.href = callbackUrl;
+        // Set flag to trigger role-based redirect in useEffect
+        setLoginSuccess(true);
       }
     } catch (error) {
       toast.error(
@@ -58,13 +159,44 @@ const RegisterPage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validate password before submission
+    if (!isPasswordValid(password)) {
+      const passwordValidationErrors = validatePassword(password);
+      const errorMessages = Object.values(passwordValidationErrors).filter(
+        Boolean
+      );
+      toast.error(errorMessages.join(". "));
+      setShowPasswordValidation(true);
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      toast.error("Passwords do not match");
+      setPasswordErrors(
+        (prev: PasswordValidationErrors & { confirmPassword?: string }) => ({
+          ...prev,
+          confirmPassword: "Passwords do not match",
+        })
+      );
+      return;
+    }
+
     try {
       setLoading(true);
+
+      // Validate firstName before submission
+      if (!firstName || firstName.trim() === "") {
+        toast.error("First name is required");
+        return;
+      }
 
       // First, try to register with the backend
       try {
         const response = await apiClient.post("/auth/register", {
           email,
+          firstName: firstName.trim(),
+          lastName: lastName?.trim() || "",
           password,
           confirmPassword,
           userType: "student",
@@ -88,8 +220,8 @@ const RegisterPage = () => {
             );
           } else if (result?.ok) {
             toast.success("Welcome to Airkrit!");
-            // Redirect manually after successful signup and login
-            window.location.href = callbackUrl;
+            // Set flag to trigger role-based redirect in useEffect
+            setLoginSuccess(true);
           }
         } else {
           toast.error(
@@ -154,61 +286,170 @@ const RegisterPage = () => {
             required
           />
         </div>
-        <div className="password-input w-full flex gap-3 bg-white rounded-md p-3 border border-gray-300 relative">
-          <label htmlFor="password" className="text-sm text-gray-500">
-            <Lock className="w-full h-full" />
-          </label>
-          <input
-            type={showPassword ? "text" : "password"}
-            placeholder="Password"
-            className="w-full bg-transparent outline-none font-bold pr-20"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-          <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+        <div className="name-inputs w-full flex gap-3">
+          <div className="flex-1 flex gap-3 bg-white rounded-md p-3 border border-gray-300">
+            <input
+              type="text"
+              placeholder="First Name"
+              className="w-full bg-transparent outline-none font-bold"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              required
+            />
+          </div>
+          <div className="flex-1 flex gap-3 bg-white rounded-md p-3 border border-gray-300">
+            <input
+              type="text"
+              placeholder="Last Name"
+              className="w-full bg-transparent outline-none font-bold"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+            />
+          </div>
+        </div>
+        <div className="w-full">
+          <div
+            className={`password-input w-full flex gap-3 bg-white rounded-md p-3 border ${
+              showPasswordValidation && Object.keys(passwordErrors).length > 0
+                ? "border-red-300"
+                : showPasswordValidation && isPasswordValid(password)
+                ? "border-green-300"
+                : "border-gray-300"
+            } relative`}
+          >
+            <label htmlFor="password" className="text-sm text-gray-500">
+              <Lock className="w-full h-full" />
+            </label>
+            <input
+              type={showPassword ? "text" : "password"}
+              placeholder="Password"
+              className="w-full bg-transparent outline-none font-bold pr-20"
+              value={password}
+              onChange={handlePasswordChange}
+              onFocus={() => password && setShowPasswordValidation(true)}
+              required
+            />
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+              <button
+                type="button"
+                className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <RefreshCw className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={togglePasswordVisibility}
+                className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                {showPassword ? (
+                  <EyeOff className="w-4 h-4" />
+                ) : (
+                  <Eye className="w-4 h-4" />
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Real-time password validation feedback */}
+          {showPasswordValidation && password && (
+            <div className="mt-2 space-y-1.5">
+              <div
+                className={`flex items-center gap-2 text-xs ${
+                  checkPasswordRequirement("length")
+                    ? "text-green-600"
+                    : "text-gray-500"
+                }`}
+              >
+                {checkPasswordRequirement("length") ? (
+                  <Check className="w-3 h-3" />
+                ) : (
+                  <X className="w-3 h-3" />
+                )}
+                <span>At least 8 characters</span>
+              </div>
+              <div
+                className={`flex items-center gap-2 text-xs ${
+                  checkPasswordRequirement("capital")
+                    ? "text-green-600"
+                    : "text-gray-500"
+                }`}
+              >
+                {checkPasswordRequirement("capital") ? (
+                  <Check className="w-3 h-3" />
+                ) : (
+                  <X className="w-3 h-3" />
+                )}
+                <span>At least one capital letter (A-Z)</span>
+              </div>
+              <div
+                className={`flex items-center gap-2 text-xs ${
+                  checkPasswordRequirement("small")
+                    ? "text-green-600"
+                    : "text-gray-500"
+                }`}
+              >
+                {checkPasswordRequirement("small") ? (
+                  <Check className="w-3 h-3" />
+                ) : (
+                  <X className="w-3 h-3" />
+                )}
+                <span>At least one small letter (a-z)</span>
+              </div>
+              <div
+                className={`flex items-center gap-2 text-xs ${
+                  checkPasswordRequirement("symbol")
+                    ? "text-green-600"
+                    : "text-gray-500"
+                }`}
+              >
+                {checkPasswordRequirement("symbol") ? (
+                  <Check className="w-3 h-3" />
+                ) : (
+                  <X className="w-3 h-3" />
+                )}
+                <span>At least one symbol (!@#$%^&*)</span>
+              </div>
+            </div>
+          )}
+        </div>
+        <div className="w-full">
+          <div
+            className={`confirm-password-input w-full flex gap-3 bg-white rounded-md p-3 border ${
+              passwordErrors.confirmPassword
+                ? "border-red-300"
+                : confirmPassword && password === confirmPassword
+                ? "border-green-300"
+                : "border-gray-300"
+            } relative`}
+          >
+            <label htmlFor="confirm-password" className="text-sm text-gray-500">
+              <Lock className="w-full h-full" />
+            </label>
+            <input
+              type={showConfirmPassword ? "text" : "password"}
+              placeholder="Confirm Password"
+              className="w-full bg-transparent outline-none font-bold pr-10"
+              value={confirmPassword}
+              onChange={handleConfirmPasswordChange}
+              required
+            />
             <button
               type="button"
-              className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+              onClick={toggleConfirmPasswordVisibility}
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 transition-colors"
             >
-              <RefreshCw className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              onClick={togglePasswordVisibility}
-              className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
-            >
-              {showPassword ? (
+              {showConfirmPassword ? (
                 <EyeOff className="w-4 h-4" />
               ) : (
                 <Eye className="w-4 h-4" />
               )}
             </button>
           </div>
-        </div>
-        <div className="confirm-password-input w-full flex gap-3 bg-white rounded-md p-3 border border-gray-300 relative">
-          <label htmlFor="confirm-password" className="text-sm text-gray-500">
-            <Lock className="w-full h-full" />
-          </label>
-          <input
-            type={showConfirmPassword ? "text" : "password"}
-            placeholder="Confirm Password"
-            className="w-full bg-transparent outline-none font-bold pr-10"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            required
-          />
-          <button
-            type="button"
-            onClick={toggleConfirmPasswordVisibility}
-            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 transition-colors"
-          >
-            {showConfirmPassword ? (
-              <EyeOff className="w-4 h-4" />
-            ) : (
-              <Eye className="w-4 h-4" />
-            )}
-          </button>
+          {passwordErrors.confirmPassword && (
+            <p className="mt-1 text-xs text-red-500">
+              {passwordErrors.confirmPassword}
+            </p>
+          )}
         </div>
         <OrangeButton
           className="w-full mt-1 lg:mt-2 rounded-xl font-bold"

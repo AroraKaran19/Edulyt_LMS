@@ -44,20 +44,24 @@ const GiftCourseModal = ({
   const [coursesDetails, setCoursesDetails] = useState<Record<string, Course>>(
     {}
   );
-  const [expandedModules, setExpandedModules] = useState<Set<string>>(
-    new Set()
-  );
-  const [expandedLessons, setExpandedLessons] = useState<Set<string>>(
-    new Set()
-  );
-  const [selectedModules, setSelectedModules] = useState<Set<string>>(
-    new Set()
-  );
-  const [selectedLessons, setSelectedLessons] = useState<
+  // Track expanded state per course
+  const [expandedModules, setExpandedModules] = useState<
     Record<string, Set<string>>
   >({});
-  const [selectedContents, setSelectedContents] = useState<
+  const [expandedLessons, setExpandedLessons] = useState<
     Record<string, Set<string>>
+  >({});
+  // Track selections per course: courseId -> Set<moduleId>
+  const [selectedModules, setSelectedModules] = useState<
+    Record<string, Set<string>>
+  >({});
+  // Track selections per course: courseId -> moduleId -> Set<lessonId>
+  const [selectedLessons, setSelectedLessons] = useState<
+    Record<string, Record<string, Set<string>>>
+  >({});
+  // Track selections per course: courseId -> lessonId -> Set<contentId>
+  const [selectedContents, setSelectedContents] = useState<
+    Record<string, Record<string, Set<string>>>
   >({});
   const [loadingCourseDetails, setLoadingCourseDetails] = useState(false);
   const [loadingStudents, setLoadingStudents] = useState(false);
@@ -68,8 +72,12 @@ const GiftCourseModal = ({
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingCourses, setIsLoadingCourses] = useState(false);
+  const [courseSearch, setCourseSearch] = useState("");
+  const [debouncedCourseSearch, setDebouncedCourseSearch] = useState("");
   const coursesScrollRef = useRef<HTMLDivElement>(null);
   const coursesObserverTarget = useRef<HTMLDivElement>(null);
+  const lastCourseSearchRef = useRef<string>("");
+  const isLoadingCoursesRef = useRef(false);
 
   // User search and infinite scroll state
   const [users, setUsers] = useState<User[]>([]);
@@ -86,16 +94,19 @@ const GiftCourseModal = ({
   const { giftCourse, isLoading, getUsers } = useUserManagement();
   const { getCourses, getCourseById } = useCourseManagement();
 
-  // Fetch courses with pagination
+  // Fetch courses with pagination and search
   const fetchCourses = useCallback(
-    async (page: number, append: boolean = false) => {
-      if (isLoadingCourses) return;
+    async (page: number, append: boolean = false, search?: string) => {
+      // Prevent duplicate calls
+      if (isLoadingCoursesRef.current) return;
 
+      isLoadingCoursesRef.current = true;
       setIsLoadingCourses(true);
       try {
         const result = await getCourses({
           page,
-          limit: 20, // Load 20 courses per page
+          limit: search ? 100 : 20, // 100 limit when searching, 20 for pagination
+          search: search || undefined,
           isActive: true,
         });
 
@@ -114,19 +125,48 @@ const GiftCourseModal = ({
         toast.error("Failed to load courses");
       } finally {
         setIsLoadingCourses(false);
+        isLoadingCoursesRef.current = false;
       }
     },
-    [getCourses, isLoadingCourses]
+    [getCourses]
   );
 
-  // Initial load when modal opens
+  // Debounce course search
   useEffect(() => {
-    if (isOpen && courses.length === 0) {
-      setCurrentPage(1);
-      setHasMore(true);
+    const timer = setTimeout(() => {
+      setDebouncedCourseSearch(courseSearch);
+    }, 500); // 500ms delay
+
+    return () => clearTimeout(timer);
+  }, [courseSearch]);
+
+  // Load courses when modal opens or search changes
+  useEffect(() => {
+    // Only run when we're on step 1 and modal is open
+    if (giftStep !== 1 || !isOpen) return;
+
+    // Check if search has actually changed to prevent duplicate calls
+    if (
+      lastCourseSearchRef.current === debouncedCourseSearch &&
+      courses.length > 0
+    ) {
+      return;
+    }
+
+    lastCourseSearchRef.current = debouncedCourseSearch;
+
+    // Reset pagination
+    setCurrentPage(1);
+    setHasMore(true);
+
+    if (debouncedCourseSearch) {
+      // Fetch with search (limit 100, no pagination)
+      fetchCourses(1, false, debouncedCourseSearch);
+    } else {
+      // Initial load without search (pagination enabled)
       fetchCourses(1, false);
     }
-  }, [isOpen, fetchCourses, courses.length]);
+  }, [giftStep, isOpen, debouncedCourseSearch, fetchCourses]);
 
   // Reset state when modal closes
   useEffect(() => {
@@ -136,19 +176,23 @@ const GiftCourseModal = ({
       setSelectedCourses([]);
       setSelectedPlans({});
       setAccessType("full");
-      setSelectedModules(new Set());
+      setSelectedModules({});
       setSelectedLessons({});
       setSelectedContents({});
+      setExpandedModules({});
+      setExpandedLessons({});
       setCourseDetails(null);
       setCoursesDetails({});
-      setExpandedModules(new Set());
-      setExpandedLessons(new Set());
       // Don't reset courses and users - keep them cached for better UX
       // Reset search when modal closes
       setUserSearch("");
       setDebouncedUserSearch("");
       lastSearchRef.current = "";
       isLoadingUsersRef.current = false;
+      setCourseSearch("");
+      setDebouncedCourseSearch("");
+      lastCourseSearchRef.current = "";
+      isLoadingCoursesRef.current = false;
     }
   }, [isOpen]);
 
@@ -226,6 +270,9 @@ const GiftCourseModal = ({
 
   // Intersection Observer for courses infinite scroll
   useEffect(() => {
+    // Don't enable infinite scroll when searching (we load all results at once)
+    if (debouncedCourseSearch) return;
+
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting && hasMore && !isLoadingCourses) {
@@ -245,7 +292,13 @@ const GiftCourseModal = ({
         observer.unobserve(currentTarget);
       }
     };
-  }, [hasMore, isLoadingCourses, currentPage, fetchCourses]);
+  }, [
+    hasMore,
+    isLoadingCourses,
+    currentPage,
+    fetchCourses,
+    debouncedCourseSearch,
+  ]);
 
   // Intersection Observer for users infinite scroll (only when not searching)
   useEffect(() => {
@@ -368,46 +421,80 @@ const GiftCourseModal = ({
     setAccessType(type);
     if (type === "full") {
       // Reset all selections for full access
-      setSelectedModules(new Set());
+      setSelectedModules({});
       setSelectedLessons({});
       setSelectedContents({});
+    } else {
+      // When switching to partial, ensure all selected courses have their details loaded
+      selectedCourses.forEach((course) => {
+        if (course._id && !coursesDetails[course._id]) {
+          fetchCourseDetails(course._id);
+        }
+      });
     }
   };
 
-  // Toggle module selection
-  const toggleModule = (moduleId: string) => {
-    const newSelected = new Set(selectedModules);
+  // Toggle module selection for a specific course
+  const toggleModule = (courseId: string, moduleId: string) => {
+    const courseModules = selectedModules[courseId] || new Set<string>();
+    const newSelected = new Set(courseModules);
+
     if (newSelected.has(moduleId)) {
       newSelected.delete(moduleId);
       // Remove all lessons and contents for this module
-      const newLessons = { ...selectedLessons };
-      const newContents = { ...selectedContents };
-      delete newLessons[moduleId];
-      delete newContents[moduleId];
-      setSelectedLessons(newLessons);
-      setSelectedContents(newContents);
+      const courseLessons = { ...(selectedLessons[courseId] || {}) };
+      const courseContents = { ...(selectedContents[courseId] || {}) };
+      delete courseLessons[moduleId];
+      setSelectedLessons({ ...selectedLessons, [courseId]: courseLessons });
+      // Note: contents are keyed by lessonId, not moduleId, so we need to find and remove them
+      const courseDetails = coursesDetails[courseId];
+      if (courseDetails && courseDetails.modules) {
+        const module = (courseDetails.modules as CourseModule[]).find(
+          (m) => (typeof m === "string" ? m : m._id) === moduleId
+        );
+        if (
+          module &&
+          typeof module !== "string" &&
+          Array.isArray(module.lessons)
+        ) {
+          module.lessons.forEach((lesson) => {
+            const lessonId =
+              typeof lesson === "string" ? lesson : lesson._id || "";
+            if (lessonId) {
+              delete courseContents[lessonId];
+            }
+          });
+        }
+      }
+      setSelectedContents({ ...selectedContents, [courseId]: courseContents });
     } else {
       newSelected.add(moduleId);
     }
-    setSelectedModules(newSelected);
+    setSelectedModules({ ...selectedModules, [courseId]: newSelected });
   };
 
-  // Toggle lesson selection
-  const toggleLesson = (moduleId: string, lessonId: string) => {
-    const moduleLessons = selectedLessons[moduleId] || new Set<string>();
+  // Toggle lesson selection for a specific course
+  const toggleLesson = (
+    courseId: string,
+    moduleId: string,
+    lessonId: string
+  ) => {
+    const courseLessons = selectedLessons[courseId] || {};
+    const moduleLessons = courseLessons[moduleId] || new Set<string>();
     const newModuleLessons = new Set(moduleLessons);
 
     if (newModuleLessons.has(lessonId)) {
       // Unselect lesson - remove it and all its contents
       newModuleLessons.delete(lessonId);
-      const newContents = { ...selectedContents };
-      delete newContents[lessonId];
-      setSelectedContents(newContents);
+      const courseContents = { ...(selectedContents[courseId] || {}) };
+      delete courseContents[lessonId];
+      setSelectedContents({ ...selectedContents, [courseId]: courseContents });
     } else {
       // Select lesson - automatically select all contents in this lesson
       newModuleLessons.add(lessonId);
 
       // Find the lesson and get all its content IDs
+      const courseDetails = coursesDetails[courseId];
       if (
         courseDetails &&
         courseDetails.modules &&
@@ -432,25 +519,32 @@ const GiftCourseModal = ({
               .map((c) => (typeof c === "string" ? c : c._id))
               .filter((id): id is string => !!id);
 
-            const newContents = { ...selectedContents };
-            newContents[lessonId] = new Set(allContentIds);
-            setSelectedContents(newContents);
+            const courseContents = { ...(selectedContents[courseId] || {}) };
+            courseContents[lessonId] = new Set(allContentIds);
+            setSelectedContents({
+              ...selectedContents,
+              [courseId]: courseContents,
+            });
           }
         }
       }
     }
 
-    setSelectedLessons({ ...selectedLessons, [moduleId]: newModuleLessons });
+    setSelectedLessons({
+      ...selectedLessons,
+      [courseId]: { ...courseLessons, [moduleId]: newModuleLessons },
+    });
   };
 
-  // Toggle content selection
+  // Toggle content selection for a specific course
   const toggleContent = (
+    courseId: string,
     moduleId: string,
     lessonId: string,
     contentId: string
   ) => {
-    // Check if the lesson is already selected
-    const moduleLessons = selectedLessons[moduleId] || new Set<string>();
+    const courseLessons = selectedLessons[courseId] || {};
+    const moduleLessons = courseLessons[moduleId] || new Set<string>();
     const isLessonSelected = moduleLessons.has(lessonId);
 
     if (isLessonSelected) {
@@ -458,9 +552,13 @@ const GiftCourseModal = ({
       // Then select only the remaining contents
       const newModuleLessons = new Set(moduleLessons);
       newModuleLessons.delete(lessonId);
-      setSelectedLessons({ ...selectedLessons, [moduleId]: newModuleLessons });
+      setSelectedLessons({
+        ...selectedLessons,
+        [courseId]: { ...courseLessons, [moduleId]: newModuleLessons },
+      });
 
       // Get all content IDs for this lesson
+      const courseDetails = coursesDetails[courseId];
       if (
         courseDetails &&
         courseDetails.modules &&
@@ -488,21 +586,25 @@ const GiftCourseModal = ({
             const newContentIds = allContentIds.filter(
               (id) => id !== contentId
             );
-            const newContents = { ...selectedContents };
+            const courseContents = { ...(selectedContents[courseId] || {}) };
 
             if (newContentIds.length > 0) {
-              newContents[lessonId] = new Set(newContentIds);
+              courseContents[lessonId] = new Set(newContentIds);
             } else {
-              delete newContents[lessonId];
+              delete courseContents[lessonId];
             }
 
-            setSelectedContents(newContents);
+            setSelectedContents({
+              ...selectedContents,
+              [courseId]: courseContents,
+            });
           }
         }
       }
     } else {
       // Lesson is not selected, so we're selecting individual contents
-      const lessonContents = selectedContents[lessonId] || new Set<string>();
+      const courseContents = selectedContents[courseId] || {};
+      const lessonContents = courseContents[lessonId] || new Set<string>();
       const newLessonContents = new Set(lessonContents);
 
       if (newLessonContents.has(contentId)) {
@@ -511,97 +613,128 @@ const GiftCourseModal = ({
         newLessonContents.add(contentId);
       }
 
-      const newContents = { ...selectedContents };
+      const newCourseContents = { ...courseContents };
       if (newLessonContents.size > 0) {
-        newContents[lessonId] = newLessonContents;
+        newCourseContents[lessonId] = newLessonContents;
       } else {
-        delete newContents[lessonId];
+        delete newCourseContents[lessonId];
       }
-      setSelectedContents(newContents);
+      setSelectedContents({
+        ...selectedContents,
+        [courseId]: newCourseContents,
+      });
     }
   };
 
   // Toggle module expansion
-  const toggleModuleExpansion = (moduleId: string) => {
-    const newExpanded = new Set(expandedModules);
+  const toggleModuleExpansion = (courseId: string, moduleId: string) => {
+    const courseExpanded = expandedModules[courseId] || new Set<string>();
+    const newExpanded = new Set(courseExpanded);
     if (newExpanded.has(moduleId)) {
       newExpanded.delete(moduleId);
     } else {
       newExpanded.add(moduleId);
     }
-    setExpandedModules(newExpanded);
+    setExpandedModules({ ...expandedModules, [courseId]: newExpanded });
   };
 
   // Toggle lesson expansion
-  const toggleLessonExpansion = (lessonId: string) => {
-    const newExpanded = new Set(expandedLessons);
+  const toggleLessonExpansion = (courseId: string, lessonId: string) => {
+    const courseExpanded = expandedLessons[courseId] || new Set<string>();
+    const newExpanded = new Set(courseExpanded);
     if (newExpanded.has(lessonId)) {
       newExpanded.delete(lessonId);
     } else {
       newExpanded.add(lessonId);
     }
-    setExpandedLessons(newExpanded);
+    setExpandedLessons({ ...expandedLessons, [courseId]: newExpanded });
   };
 
-  // Check if there are any valid selections for partial access
+  // Check if there are any valid selections for partial access across all courses
   const hasValidPartialAccessSelection = (): boolean => {
-    // Check if any modules are selected
-    if (selectedModules.size > 0) {
+    // Check if any modules are selected in any course
+    const hasSelectedModules = Object.values(selectedModules).some(
+      (modules) => modules && modules.size > 0
+    );
+    if (hasSelectedModules) {
       return true;
     }
 
-    // Check if any contents are selected (which implies modules/lessons need to be included)
-    const hasSelectedContents = Object.keys(selectedContents).some(
-      (lessonId) =>
-        selectedContents[lessonId] && selectedContents[lessonId].size > 0
+    // Check if any lessons are selected in any course
+    const hasSelectedLessons = Object.values(selectedLessons).some(
+      (courseLessons) => {
+        if (!courseLessons) return false;
+        return Object.values(courseLessons).some(
+          (lessons) => lessons && lessons.size > 0
+        );
+      }
+    );
+    if (hasSelectedLessons) {
+      return true;
+    }
+
+    // Check if any contents are selected in any course
+    const hasSelectedContents = Object.values(selectedContents).some(
+      (courseContents) => {
+        if (!courseContents) return false;
+        return Object.values(courseContents).some(
+          (contents) => contents && contents.size > 0
+        );
+      }
     );
 
     return hasSelectedContents;
   };
 
-  // Build access control object from selections
-  const buildAccessControl = (): PartialAccessControl | undefined => {
+  // Build access control object from selections for a specific course
+  const buildAccessControl = (
+    courseId: string
+  ): PartialAccessControl | undefined => {
     if (accessType === "full") {
       return undefined; // Full access means no accessControl
     }
 
+    const courseDetails = coursesDetails[courseId];
+    if (
+      !courseDetails ||
+      !courseDetails.modules ||
+      !Array.isArray(courseDetails.modules)
+    ) {
+      return undefined;
+    }
+
+    // Get selections for this course
+    const courseSelectedModules =
+      selectedModules[courseId] || new Set<string>();
+    const courseSelectedLessons = selectedLessons[courseId] || {};
+    const courseSelectedContents = selectedContents[courseId] || {};
+
     // First, build a complete map of lessons to their parent modules
     const lessonToModuleMap = new Map<string, string>(); // Map lessonId to moduleId
     const allModulesMap = new Map<string, CourseModule>(); // Map moduleId to module
-    const allLessonsMap = new Map<
-      string,
-      { lessonId: string; moduleId: string }
-    >(); // Map lessonId to lesson info
 
-    if (
-      courseDetails &&
-      courseDetails.modules &&
-      Array.isArray(courseDetails.modules)
-    ) {
-      (courseDetails.modules as CourseModule[]).forEach((module) => {
-        const moduleId = typeof module === "string" ? module : module._id || "";
-        if (moduleId && typeof module !== "string") {
-          allModulesMap.set(moduleId, module);
+    (courseDetails.modules as CourseModule[]).forEach((module) => {
+      const moduleId = typeof module === "string" ? module : module._id || "";
+      if (moduleId && typeof module !== "string") {
+        allModulesMap.set(moduleId, module);
 
-          if (Array.isArray(module.lessons)) {
-            module.lessons.forEach((lesson) => {
-              const lessonId =
-                typeof lesson === "string" ? lesson : lesson._id || "";
-              if (lessonId) {
-                lessonToModuleMap.set(lessonId, moduleId);
-                allLessonsMap.set(lessonId, { lessonId, moduleId });
-              }
-            });
-          }
+        if (Array.isArray(module.lessons)) {
+          module.lessons.forEach((lesson) => {
+            const lessonId =
+              typeof lesson === "string" ? lesson : lesson._id || "";
+            if (lessonId) {
+              lessonToModuleMap.set(lessonId, moduleId);
+            }
+          });
         }
-      });
-    }
+      }
+    });
 
     // Build the access control structure
     const accessibleModules: ModuleAccessControl[] = [];
 
     // Process selected modules
-    selectedModules.forEach((moduleId) => {
+    courseSelectedModules.forEach((moduleId) => {
       const module = allModulesMap.get(moduleId);
       if (module && typeof module !== "string") {
         const moduleAccess: ModuleAccessControl = {
@@ -630,9 +763,9 @@ const GiftCourseModal = ({
     });
 
     // Process selected lessons (that are not part of selected modules)
-    Object.keys(selectedLessons).forEach((moduleId) => {
-      if (!selectedModules.has(moduleId)) {
-        const moduleLessons = selectedLessons[moduleId];
+    Object.keys(courseSelectedLessons).forEach((moduleId) => {
+      if (!courseSelectedModules.has(moduleId)) {
+        const moduleLessons = courseSelectedLessons[moduleId];
         if (moduleLessons && moduleLessons.size > 0) {
           const moduleAccess: ModuleAccessControl = {
             moduleId,
@@ -647,8 +780,8 @@ const GiftCourseModal = ({
     });
 
     // Process selected contents (that are not part of selected lessons)
-    Object.keys(selectedContents).forEach((lessonId) => {
-      const contents = selectedContents[lessonId];
+    Object.keys(courseSelectedContents).forEach((lessonId) => {
+      const contents = courseSelectedContents[lessonId];
       if (contents && contents.size > 0) {
         const moduleId = lessonToModuleMap.get(lessonId);
         if (moduleId) {
@@ -731,9 +864,6 @@ const GiftCourseModal = ({
       }
     }
 
-    // Build access control (same for all courses)
-    const accessControl = buildAccessControl();
-
     setIsGifting(true);
     try {
       let totalSuccessCount = 0;
@@ -743,6 +873,10 @@ const GiftCourseModal = ({
       // Gift each course to each selected user
       for (const course of selectedCourses) {
         const planType = selectedPlans[course._id || ""];
+        // Build access control for this specific course
+        const accessControl = course._id
+          ? buildAccessControl(course._id)
+          : undefined;
         let courseSuccessCount = 0;
         let courseFailCount = 0;
 
@@ -777,14 +911,6 @@ const GiftCourseModal = ({
               }`
             );
           }
-        }
-
-        if (courseSuccessCount > 0) {
-          const accessInfo =
-            accessType === "full" ? "full access" : "partial access";
-          console.log(
-            `Successfully gifted ${course.title} (${planType} plan, ${accessInfo}) to ${courseSuccessCount} user(s)`
-          );
         }
       }
 
@@ -961,9 +1087,20 @@ const GiftCourseModal = ({
                       (Multiple selection allowed)
                     </span>
                   </label>
+                  {/* Course Search */}
+                  <div className="mb-3">
+                    <Input
+                      type="text"
+                      placeholder="Search courses by title..."
+                      value={courseSearch}
+                      onChange={(e) => setCourseSearch(e.target.value)}
+                      icon={<Search className="w-5 h-5 text-gray-400" />}
+                      className="w-full"
+                    />
+                  </div>
                   <div
                     ref={coursesScrollRef}
-                    className="border-2 border-gray-200 rounded-xl overflow-hidden max-h-96 overflow-y-auto"
+                    className="border-2 border-gray-200 rounded-xl overflow-hidden max-h-[calc(90vh-380px)] min-h-[400px] overflow-y-auto"
                   >
                     {courses.length === 0 && !isLoadingCourses ? (
                       <div className="p-8 text-center">
@@ -1450,14 +1587,12 @@ const GiftCourseModal = ({
                             Loading course structure...
                           </p>
                         </div>
-                      ) : courseDetails &&
-                        courseDetails.modules &&
-                        Array.isArray(courseDetails.modules) &&
-                        courseDetails.modules.length > 0 ? (
-                        <div className="border-2 border-gray-200 rounded-xl max-h-96 overflow-y-auto p-5 bg-gray-50">
+                      ) : selectedCourses.length > 0 ? (
+                        <div className="space-y-4">
                           <div className="mb-4">
                             <label className="block text-sm font-semibold text-gray-900 mb-2">
-                              Select Modules, Lessons, and Content
+                              Select Modules, Lessons, and Content for Each
+                              Course
                             </label>
                             <p className="text-xs text-gray-600 bg-blue-50 border border-blue-200 rounded-lg p-3">
                               💡 <strong>Tip:</strong> Select modules to grant
@@ -1466,209 +1601,297 @@ const GiftCourseModal = ({
                               that module. Same applies for lessons and content.
                             </p>
                           </div>
-                          <div className="space-y-2">
-                            {(courseDetails.modules as CourseModule[]).map(
-                              (module) => {
-                                const moduleId =
-                                  typeof module === "string"
-                                    ? module
-                                    : module._id || "";
-                                const moduleTitle =
-                                  typeof module === "string"
-                                    ? "Unknown Module"
-                                    : module.title;
-                                const moduleLessons =
-                                  typeof module === "string"
-                                    ? []
-                                    : Array.isArray(module.lessons)
-                                    ? module.lessons
-                                    : [];
-                                const isModuleSelected =
-                                  selectedModules.has(moduleId);
-                                const isModuleExpanded =
-                                  expandedModules.has(moduleId);
+                          {selectedCourses.map((course) => {
+                            const courseId = course._id || "";
+                            const courseDetails = coursesDetails[courseId];
+                            const isLoadingCourse =
+                              !courseDetails && loadingCourseDetails;
 
-                                return (
-                                  <div
-                                    key={moduleId}
-                                    className="border border-gray-200 rounded-lg"
-                                  >
-                                    <div className="flex items-center p-3 hover:bg-gray-50">
-                                      <button
-                                        onClick={() =>
-                                          toggleModuleExpansion(moduleId)
-                                        }
-                                        className="mr-2 text-gray-400 hover:text-gray-600"
-                                      >
-                                        {isModuleExpanded ? (
-                                          <ChevronDown className="w-4 h-4" />
-                                        ) : (
-                                          <ChevronRight className="w-4 h-4" />
-                                        )}
-                                      </button>
-                                      <input
-                                        type="checkbox"
-                                        checked={isModuleSelected}
-                                        onChange={() => toggleModule(moduleId)}
-                                        className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
-                                      />
-                                      <span className="ml-2 text-sm font-medium text-gray-900">
-                                        {moduleTitle}
-                                      </span>
+                            return (
+                              <div
+                                key={courseId}
+                                className="border-2 border-gray-300 rounded-xl overflow-hidden"
+                              >
+                                <div className="bg-orange-50 px-4 py-3 border-b border-gray-300">
+                                  <h4 className="text-sm font-bold text-gray-900">
+                                    {course.title}
+                                  </h4>
+                                </div>
+                                {isLoadingCourse ? (
+                                  <div className="text-center py-8">
+                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mx-auto mb-2"></div>
+                                    <p className="text-xs text-gray-600">
+                                      Loading structure...
+                                    </p>
+                                  </div>
+                                ) : courseDetails &&
+                                  courseDetails.modules &&
+                                  Array.isArray(courseDetails.modules) &&
+                                  courseDetails.modules.length > 0 ? (
+                                  <div className="max-h-96 overflow-y-auto p-5 bg-gray-50">
+                                    <div className="space-y-2">
+                                      {(
+                                        courseDetails.modules as CourseModule[]
+                                      ).map((module) => {
+                                        const moduleId =
+                                          typeof module === "string"
+                                            ? module
+                                            : module._id || "";
+                                        const moduleTitle =
+                                          typeof module === "string"
+                                            ? "Unknown Module"
+                                            : module.title;
+                                        const moduleLessons =
+                                          typeof module === "string"
+                                            ? []
+                                            : Array.isArray(module.lessons)
+                                            ? module.lessons
+                                            : [];
+                                        const isModuleSelected =
+                                          selectedModules[courseId]?.has(
+                                            moduleId
+                                          ) || false;
+                                        const isModuleExpanded =
+                                          expandedModules[courseId]?.has(
+                                            moduleId
+                                          ) || false;
+
+                                        return (
+                                          <div
+                                            key={moduleId}
+                                            className="border border-gray-200 rounded-lg"
+                                          >
+                                            <div className="flex items-center p-3 hover:bg-gray-50">
+                                              <button
+                                                onClick={() =>
+                                                  toggleModuleExpansion(
+                                                    courseId,
+                                                    moduleId
+                                                  )
+                                                }
+                                                className="mr-2 text-gray-400 hover:text-gray-600"
+                                              >
+                                                {isModuleExpanded ? (
+                                                  <ChevronDown className="w-4 h-4" />
+                                                ) : (
+                                                  <ChevronRight className="w-4 h-4" />
+                                                )}
+                                              </button>
+                                              <input
+                                                type="checkbox"
+                                                checked={isModuleSelected}
+                                                onChange={() =>
+                                                  toggleModule(
+                                                    courseId,
+                                                    moduleId
+                                                  )
+                                                }
+                                                className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
+                                              />
+                                              <span className="ml-2 text-sm font-medium text-gray-900">
+                                                {moduleTitle}
+                                              </span>
+                                            </div>
+
+                                            {isModuleExpanded &&
+                                              moduleLessons.length > 0 && (
+                                                <div className="pl-8 pr-4 pb-2 space-y-1">
+                                                  {moduleLessons.map(
+                                                    (lesson) => {
+                                                      const lessonId =
+                                                        typeof lesson ===
+                                                        "string"
+                                                          ? lesson
+                                                          : lesson._id || "";
+                                                      const lessonTitle =
+                                                        typeof lesson ===
+                                                        "string"
+                                                          ? "Unknown Lesson"
+                                                          : lesson.title;
+                                                      const lessonContents =
+                                                        typeof lesson ===
+                                                        "string"
+                                                          ? []
+                                                          : Array.isArray(
+                                                              lesson.contents
+                                                            )
+                                                          ? lesson.contents
+                                                          : [];
+                                                      const isLessonSelected =
+                                                        selectedLessons[
+                                                          courseId
+                                                        ]?.[moduleId]?.has(
+                                                          lessonId
+                                                        ) || false;
+                                                      const isLessonExpanded =
+                                                        expandedLessons[
+                                                          courseId
+                                                        ]?.has(lessonId) ||
+                                                        false;
+
+                                                      return (
+                                                        <div
+                                                          key={lessonId}
+                                                          className="border border-gray-200 rounded p-2"
+                                                        >
+                                                          <div className="flex items-center">
+                                                            <button
+                                                              onClick={() =>
+                                                                toggleLessonExpansion(
+                                                                  courseId,
+                                                                  lessonId
+                                                                )
+                                                              }
+                                                              className="mr-2 text-gray-400 hover:text-gray-600"
+                                                            >
+                                                              {isLessonExpanded ? (
+                                                                <ChevronDown className="w-3 h-3" />
+                                                              ) : (
+                                                                <ChevronRight className="w-3 h-3" />
+                                                              )}
+                                                            </button>
+                                                            <input
+                                                              type="checkbox"
+                                                              checked={
+                                                                isLessonSelected ||
+                                                                false
+                                                              }
+                                                              onChange={() =>
+                                                                toggleLesson(
+                                                                  courseId,
+                                                                  moduleId,
+                                                                  lessonId
+                                                                )
+                                                              }
+                                                              className="w-3 h-3 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
+                                                            />
+                                                            <span className="ml-2 text-xs font-medium text-gray-700">
+                                                              {lessonTitle}
+                                                            </span>
+                                                          </div>
+
+                                                          {isLessonExpanded &&
+                                                            lessonContents.length >
+                                                              0 && (
+                                                              <div className="pl-6 pr-2 pt-1 space-y-1">
+                                                                {lessonContents.map(
+                                                                  (content) => {
+                                                                    const contentId =
+                                                                      typeof content ===
+                                                                      "string"
+                                                                        ? content
+                                                                        : content._id ||
+                                                                          "";
+                                                                    const contentTitle =
+                                                                      typeof content ===
+                                                                      "string"
+                                                                        ? "Unknown Content"
+                                                                        : content.title;
+                                                                    const contentType =
+                                                                      typeof content ===
+                                                                      "string"
+                                                                        ? "unknown"
+                                                                        : content.type;
+
+                                                                    // Check if lesson is selected (all contents are accessible)
+                                                                    const isLessonSelected =
+                                                                      selectedLessons[
+                                                                        courseId
+                                                                      ]?.[
+                                                                        moduleId
+                                                                      ]?.has(
+                                                                        lessonId
+                                                                      ) ||
+                                                                      false;
+                                                                    // Check if this specific content is selected (when lesson is not selected)
+                                                                    const isContentIndividuallySelected =
+                                                                      !isLessonSelected &&
+                                                                      (selectedContents[
+                                                                        courseId
+                                                                      ]?.[
+                                                                        lessonId
+                                                                      ]?.has(
+                                                                        contentId
+                                                                      ) ||
+                                                                        false);
+
+                                                                    return (
+                                                                      <label
+                                                                        key={
+                                                                          contentId
+                                                                        }
+                                                                        className="flex items-center text-xs text-gray-600 cursor-pointer hover:bg-gray-50 p-1 rounded"
+                                                                      >
+                                                                        <input
+                                                                          type="checkbox"
+                                                                          checked={
+                                                                            isLessonSelected ||
+                                                                            isContentIndividuallySelected ||
+                                                                            false
+                                                                          }
+                                                                          onChange={() =>
+                                                                            toggleContent(
+                                                                              courseId,
+                                                                              moduleId,
+                                                                              lessonId,
+                                                                              contentId
+                                                                            )
+                                                                          }
+                                                                          className="w-3 h-3 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
+                                                                        />
+                                                                        <span className="ml-2">
+                                                                          {
+                                                                            contentTitle
+                                                                          }{" "}
+                                                                          (
+                                                                          {
+                                                                            contentType
+                                                                          }
+                                                                          )
+                                                                        </span>
+                                                                      </label>
+                                                                    );
+                                                                  }
+                                                                )}
+                                                              </div>
+                                                            )}
+                                                        </div>
+                                                      );
+                                                    }
+                                                  )}
+                                                </div>
+                                              )}
+                                          </div>
+                                        );
+                                      })}
                                     </div>
 
-                                    {isModuleExpanded &&
-                                      moduleLessons.length > 0 && (
-                                        <div className="pl-8 pr-4 pb-2 space-y-1">
-                                          {moduleLessons.map((lesson) => {
-                                            const lessonId =
-                                              typeof lesson === "string"
-                                                ? lesson
-                                                : lesson._id || "";
-                                            const lessonTitle =
-                                              typeof lesson === "string"
-                                                ? "Unknown Lesson"
-                                                : lesson.title;
-                                            const lessonContents =
-                                              typeof lesson === "string"
-                                                ? []
-                                                : Array.isArray(lesson.contents)
-                                                ? lesson.contents
-                                                : [];
-                                            const isLessonSelected =
-                                              selectedLessons[moduleId]?.has(
-                                                lessonId
-                                              );
-                                            const isLessonExpanded =
-                                              expandedLessons.has(lessonId);
-
-                                            return (
-                                              <div
-                                                key={lessonId}
-                                                className="border border-gray-200 rounded p-2"
-                                              >
-                                                <div className="flex items-center">
-                                                  <button
-                                                    onClick={() =>
-                                                      toggleLessonExpansion(
-                                                        lessonId
-                                                      )
-                                                    }
-                                                    className="mr-2 text-gray-400 hover:text-gray-600"
-                                                  >
-                                                    {isLessonExpanded ? (
-                                                      <ChevronDown className="w-3 h-3" />
-                                                    ) : (
-                                                      <ChevronRight className="w-3 h-3" />
-                                                    )}
-                                                  </button>
-                                                  <input
-                                                    type="checkbox"
-                                                    checked={
-                                                      isLessonSelected || false
-                                                    }
-                                                    onChange={() =>
-                                                      toggleLesson(
-                                                        moduleId,
-                                                        lessonId
-                                                      )
-                                                    }
-                                                    className="w-3 h-3 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
-                                                  />
-                                                  <span className="ml-2 text-xs font-medium text-gray-700">
-                                                    {lessonTitle}
-                                                  </span>
-                                                </div>
-
-                                                {isLessonExpanded &&
-                                                  lessonContents.length > 0 && (
-                                                    <div className="pl-6 pr-2 pt-1 space-y-1">
-                                                      {lessonContents.map(
-                                                        (content) => {
-                                                          const contentId =
-                                                            typeof content ===
-                                                            "string"
-                                                              ? content
-                                                              : content._id ||
-                                                                "";
-                                                          const contentTitle =
-                                                            typeof content ===
-                                                            "string"
-                                                              ? "Unknown Content"
-                                                              : content.title;
-                                                          const contentType =
-                                                            typeof content ===
-                                                            "string"
-                                                              ? "unknown"
-                                                              : content.type;
-
-                                                          // Check if lesson is selected (all contents are accessible)
-                                                          const isLessonSelected =
-                                                            selectedLessons[
-                                                              moduleId
-                                                            ]?.has(lessonId);
-                                                          // Check if this specific content is selected (when lesson is not selected)
-                                                          const isContentIndividuallySelected =
-                                                            !isLessonSelected &&
-                                                            selectedContents[
-                                                              lessonId
-                                                            ]?.has(contentId);
-
-                                                          return (
-                                                            <label
-                                                              key={contentId}
-                                                              className="flex items-center text-xs text-gray-600 cursor-pointer hover:bg-gray-50 p-1 rounded"
-                                                            >
-                                                              <input
-                                                                type="checkbox"
-                                                                checked={
-                                                                  isLessonSelected ||
-                                                                  isContentIndividuallySelected ||
-                                                                  false
-                                                                }
-                                                                onChange={() =>
-                                                                  toggleContent(
-                                                                    moduleId,
-                                                                    lessonId,
-                                                                    contentId
-                                                                  )
-                                                                }
-                                                                className="w-3 h-3 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
-                                                              />
-                                                              <span className="ml-2">
-                                                                {contentTitle} (
-                                                                {contentType})
-                                                              </span>
-                                                            </label>
-                                                          );
-                                                        }
-                                                      )}
-                                                    </div>
-                                                  )}
-                                              </div>
-                                            );
-                                          })}
-                                        </div>
-                                      )}
+                                    {!hasValidPartialAccessSelection() && (
+                                      <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                                        <p className="text-sm text-amber-700 font-medium">
+                                          ⚠️ Please select at least one module,
+                                          lesson, or content to grant partial
+                                          access.
+                                        </p>
+                                      </div>
+                                    )}
                                   </div>
-                                );
-                              }
-                            )}
-                          </div>
-
-                          {!hasValidPartialAccessSelection() && (
-                            <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                              <p className="text-sm text-amber-700 font-medium">
-                                ⚠️ Please select at least one module, lesson, or
-                                content to grant partial access.
-                              </p>
-                            </div>
-                          )}
+                                ) : (
+                                  <div className="text-center py-8 bg-gray-50">
+                                    <p className="text-xs text-gray-600">
+                                      This course doesn't have any modules yet.
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                       ) : (
                         <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
                           <p className="text-gray-600 font-medium">
-                            This course doesn't have any modules yet.
+                            No courses selected. Please select courses in step
+                            1.
                           </p>
                         </div>
                       )}

@@ -156,9 +156,7 @@ export const changeUserPassword = asyncHandler(
       throw new AppError("Current password and new password are required", 400);
     }
 
-    if (newPassword.length < 6) {
-      throw new AppError("New password must be at least 6 characters long", 400);
-    }
+    // Password validation is done in the service
 
     const result = await changeUserPasswordService(userId, currentPassword, newPassword);
     
@@ -217,9 +215,7 @@ export const adminChangeUserPassword = asyncHandler(
       throw new AppError("New password is required", 400);
     }
 
-    if (newPassword.length < 6) {
-      throw new AppError("Password must be at least 6 characters long", 400);
-    }
+    // Password validation is done in the service
 
     await adminChangeUserPasswordService(userId, newPassword);
     

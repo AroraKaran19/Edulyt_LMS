@@ -26,7 +26,7 @@ const enrollmentProgressSummarySchema =
 // Content Completion Schema
 const contentCompletionSchema = new mongoose.Schema<ContentCompletion>(
   {
-    contentId: { type: String, required: true, index: true },
+    contentId: { type: String, required: true }, // Index is defined on parent schema
     completedAt: { type: Date, required: true, default: Date.now },
     moduleId: { type: String, required: false },
     lessonId: { type: String, required: false },
@@ -140,7 +140,7 @@ const enrollmentSchema = new mongoose.Schema<Enrollment>(
     // Optional metadata
     enrollmentSource: {
       type: String,
-      enum: ["direct", "gift", "promotion"],
+      enum: ["direct", "gift", "promotion", "trial"],
       default: "direct",
     },
     giftFrom: {
@@ -204,6 +204,34 @@ const enrollmentSchema = new mongoose.Schema<Enrollment>(
       type: lastContentAccessedSchema,
       default: null,
     },
+
+    // Trial enrollment fields
+    isTrial: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    trialExpiresAt: {
+      type: Date,
+      default: undefined,
+      required: false,
+      // This field will be automatically set in pre-save hook if isTrial is true
+    },
+    trialDurationDays: {
+      type: Number,
+      default: undefined,
+      required: false,
+      min: 1,
+      // Number of days the trial lasts (defaults to 7 if not specified)
+    },
+    // Validity period for non-trial enrollments (4 years from enrollment date)
+    validUntil: {
+      type: Date,
+      default: undefined,
+      required: false,
+      index: true,
+      // This field will be automatically set in pre-save hook for non-trial enrollments
+    },
   },
   {
     timestamps: true,
@@ -220,6 +248,43 @@ enrollmentSchema.index({ enrolledAt: -1 });
 enrollmentSchema.index({ lastActivityAt: -1 });
 enrollmentSchema.index({ status: 1, enrolledAt: -1 });
 enrollmentSchema.index({ "completedContents.contentId": 1 }); // Index for querying completed content
+enrollmentSchema.index({ isTrial: 1, trialExpiresAt: 1 }); // Index for trial enrollments
+enrollmentSchema.index({ isTrial: 1, validUntil: 1 }); // Index for non-trial enrollment validity
+
+// TTL index - automatically delete trial enrollments when trialExpiresAt time is reached
+// MongoDB will delete the document when the trialExpiresAt date/time passes
+enrollmentSchema.index(
+  { trialExpiresAt: 1 },
+  {
+    expireAfterSeconds: 0,
+    partialFilterExpression: { isTrial: true }, // Only apply TTL to trial enrollments
+  }
+);
+
+// Pre-save hook to set expiration dates for enrollments
+enrollmentSchema.pre("save", function (next) {
+  // If this is a trial enrollment and trialExpiresAt is not set
+  if (this.isTrial && !this.trialExpiresAt) {
+    const trialDuration = this.trialDurationDays || 7; // Default to 7 days if not specified
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + trialDuration);
+    this.trialExpiresAt = expiresAt;
+    // Clear validUntil for trial enrollments
+    this.validUntil = undefined;
+  }
+  // If trial enrollment is being converted to regular enrollment, clear trial fields
+  if (!this.isTrial && this.trialExpiresAt) {
+    this.trialExpiresAt = undefined;
+    this.trialDurationDays = undefined;
+  }
+  // For non-trial enrollments, set validUntil to 4 years from enrollment date
+  if (!this.isTrial && !this.validUntil) {
+    const validUntilDate = new Date(this.enrolledAt || new Date());
+    validUntilDate.setFullYear(validUntilDate.getFullYear() + 4); // Add 4 years
+    this.validUntil = validUntilDate;
+  }
+  next();
+});
 
 // Pre-update middleware
 enrollmentSchema.pre("findOneAndUpdate", function (next) {

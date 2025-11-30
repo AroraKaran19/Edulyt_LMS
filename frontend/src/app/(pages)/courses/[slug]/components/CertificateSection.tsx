@@ -26,6 +26,7 @@ const CertificateSection = ({
     discountLabel?: string;
     discountPrice?: number;
     isPopular?: boolean;
+    discountIsActive?: boolean;
   }[] = [];
 
   // Only add Essential plan if it exists
@@ -44,10 +45,11 @@ const CertificateSection = ({
       theme: "bg-[#F68A5C]",
       price: essentialPrice,
       features: course.plans.essential.features || [],
-      discountType: combinedDiscount.discountType,
-      discountValue: combinedDiscount.discountValue,
-      discountLabel: combinedDiscount.discountLabel,
-      discountPrice: combinedDiscount.discountPrice,
+      discountType: combinedDiscount.isActive ? combinedDiscount.discountType : undefined,
+      discountValue: combinedDiscount.isActive ? combinedDiscount.discountValue : undefined,
+      discountLabel: combinedDiscount.isActive ? combinedDiscount.discountLabel : undefined,
+      discountPrice: combinedDiscount.isActive ? combinedDiscount.discountPrice : undefined,
+      discountIsActive: combinedDiscount.isActive,
       isPopular: course.plans.essential.isPopular,
     });
   }
@@ -68,10 +70,11 @@ const CertificateSection = ({
       theme: "bg-[#8B5CF6]",
       price: elitePrice,
       features: course.plans.elite.features || [],
-      discountType: combinedDiscount.discountType,
-      discountValue: combinedDiscount.discountValue,
-      discountLabel: combinedDiscount.discountLabel,
-      discountPrice: combinedDiscount.discountPrice,
+      discountType: combinedDiscount.isActive ? combinedDiscount.discountType : undefined,
+      discountValue: combinedDiscount.isActive ? combinedDiscount.discountValue : undefined,
+      discountLabel: combinedDiscount.isActive ? combinedDiscount.discountLabel : undefined,
+      discountPrice: combinedDiscount.isActive ? combinedDiscount.discountPrice : undefined,
+      discountIsActive: combinedDiscount.isActive,
       isPopular: course.plans.elite.isPopular,
     });
   }

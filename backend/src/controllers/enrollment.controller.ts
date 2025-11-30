@@ -19,8 +19,11 @@ import {
   PauseEnrollmentService,
   ResumeEnrollmentService,
   GetEnrollmentHistoryService,
+  RecalculateEnrollmentProgressService,
+  GetUserDashboardStatsService,
 } from "../services/enrollment.services";
 import { EnrollmentModel } from "../models/enrollment.schema";
+import { UserModel } from "../models";
 import {
   Enrollment,
   EnrollmentProgressSummary,
@@ -33,7 +36,16 @@ import {
 // Create new enrollment
 export const createEnrollment = asyncHandler(
   async (req: Request, res: Response) => {
-    const { courseId, enrollmentSource, promotionCode, giftFrom, planType, accessControl } = req.body;
+    const {
+      courseId,
+      enrollmentSource,
+      promotionCode,
+      giftFrom,
+      planType,
+      accessControl,
+      isTrial,
+      trialDurationDays,
+    } = req.body;
     const currentUserId = req.user?._id;
 
     if (!currentUserId) {
@@ -46,16 +58,36 @@ export const createEnrollment = asyncHandler(
 
     // Determine the actual user being enrolled and who is gifting
     const userId = req.body.userId || currentUserId; // Allow admin to enroll other users
+
+    // Check if the user being enrolled has firstName (required for enrollment)
+    const user = await UserModel.findById(userId).select("firstName");
+    if (!user) {
+      throw new AppError("User not found", 404);
+    }
+
+    if (!user.firstName || user.firstName.trim() === "") {
+      throw new AppError(
+        "First name is required. Please update your profile before enrolling in a course.",
+        400
+      );
+    }
     const actualGiftFrom =
       enrollmentSource === "gift" ? currentUserId : giftFrom;
+
+    // If isTrial is true, set enrollmentSource to "trial"
+    const finalEnrollmentSource = isTrial
+      ? "trial"
+      : enrollmentSource || "direct";
 
     const enrollmentData: any = {
       userId,
       courseId,
-      enrollmentSource: enrollmentSource || "direct",
+      enrollmentSource: finalEnrollmentSource,
       promotionCode,
       giftFrom: actualGiftFrom,
       planType: planType || "essential", // Default to essential if not specified
+      isTrial: isTrial || false,
+      trialDurationDays: isTrial ? trialDurationDays || 7 : undefined, // Default to 7 days if not specified
     };
 
     // Include accessControl if provided
@@ -68,7 +100,13 @@ export const createEnrollment = asyncHandler(
       throw new AppError("Failed to create enrollment", 500);
     }
 
-    sendSuccessResponse(res, result, "Enrollment created successfully", 201);
+    const message = isTrial
+      ? `Trial enrollment created successfully. Expires in ${
+          enrollmentData.trialDurationDays || 7
+        } days.`
+      : "Enrollment created successfully";
+
+    sendSuccessResponse(res, result, message, 201);
   }
 );
 
@@ -96,14 +134,36 @@ export const checkEnrollment = asyncHandler(
         "courseId",
         "title thumbnail description category slug duration instructor plans analytics isFeatured isCertified"
       )
-      .select("status accessControl"); // Include accessControl in the response
+      .select(
+        "status accessControl completedContents progress lastContentAccessed isTrial trialExpiresAt validUntil"
+      ); // Include accessControl, completedContents, progress, and lastContentAccessed
+
+    // Check if enrollment is still valid (not expired)
+    let isValid = false;
+    if (enrollment) {
+      // Check trial expiration
+      if (enrollment.isTrial && enrollment.trialExpiresAt) {
+        isValid = new Date() < new Date(enrollment.trialExpiresAt);
+      }
+      // Check non-trial expiration (4-year validity)
+      else if (!enrollment.isTrial && enrollment.validUntil) {
+        isValid = new Date() < new Date(enrollment.validUntil);
+      }
+      // If no expiration date set, consider valid (backward compatibility)
+      else {
+        isValid = true;
+      }
+    }
 
     const enrollmentStatus = {
       isEnrolled: !!enrollment,
       enrollment: enrollment || null,
       status: enrollment?.status || null,
+      isValid: isValid,
       canAccess:
-        enrollment?.status === "active" || enrollment?.status === "completed",
+        (enrollment?.status === "active" ||
+          enrollment?.status === "completed") &&
+        isValid,
       accessControl: enrollment?.accessControl || null, // Include accessControl
     };
 
@@ -216,6 +276,29 @@ export const updateEnrollmentProgress = asyncHandler(
       res,
       result,
       "Enrollment progress updated successfully",
+      200
+    );
+  }
+);
+
+// Recalculate enrollment progress (useful for fixing existing enrollments)
+export const recalculateEnrollmentProgress = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { enrollmentId } = req.params;
+
+    if (!enrollmentId) {
+      throw new AppError("Enrollment ID is required", 400);
+    }
+
+    const result = await RecalculateEnrollmentProgressService(enrollmentId);
+    if (!result) {
+      throw new AppError("Failed to recalculate enrollment progress", 500);
+    }
+
+    sendSuccessResponse(
+      res,
+      result,
+      "Enrollment progress recalculated successfully",
       200
     );
   }
@@ -394,6 +477,29 @@ export const getEnrollmentAnalytics = asyncHandler(
       res,
       result,
       "Enrollment analytics retrieved successfully",
+      200
+    );
+  }
+);
+
+// Get user dashboard statistics
+export const getUserDashboardStats = asyncHandler(
+  async (req: Request, res: Response) => {
+    const userId = req.user?._id;
+
+    if (!userId) {
+      throw new AppError("User ID is required", 400);
+    }
+
+    const result = await GetUserDashboardStatsService(userId.toString());
+    if (!result) {
+      throw new AppError("Failed to get dashboard statistics", 500);
+    }
+
+    sendSuccessResponse(
+      res,
+      result,
+      "Dashboard statistics retrieved successfully",
       200
     );
   }

@@ -8,8 +8,14 @@ import {
 import { User } from "../types";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { validatePassword } from "../utils/passwordValidation";
 
 export const registerUser = async (userData: Partial<User>) => {
+  // Validate password before hashing
+  if (userData.password) {
+    validatePassword(userData.password);
+  }
+  
   const hashedPassword = await bcrypt.hash(userData.password!, 10);
   const newUserData: Partial<User> = {
     ...userData,

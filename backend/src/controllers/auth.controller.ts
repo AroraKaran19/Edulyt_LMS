@@ -58,6 +58,10 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
     throw new AppError("All fields are required", 400);
   }
 
+  if (!firstName || firstName.trim() === "") {
+    throw new AppError("First name is required", 400);
+  }
+
   if (password !== confirmPassword) {
     throw new AppError("Passwords do not match", 400);
   }
@@ -67,24 +71,13 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
     throw new AppError("User already exists!", 400);
   }
 
-  // Use firstName and lastName from request body if provided, otherwise extract from email
-  let finalFirstName = firstName;
-  let finalLastName = lastName;
-  
-  if (!finalFirstName || !finalLastName) {
-    const emailParts = email.split('@')[0];
-    const nameParts = emailParts.split('.');
-    finalFirstName = finalFirstName || nameParts[0] || emailParts;
-    finalLastName = finalLastName || (nameParts.length > 1 ? nameParts.slice(1).join(' ') : '');
-  }
-
   const newUser = await registerUser({ 
     email, 
     password, 
     userType, 
     provider,
-    firstName: finalFirstName,
-    lastName: finalLastName,
+    firstName: firstName.trim(),
+    lastName: lastName?.trim() || "",
     ...restData // Spread any additional fields (phone, address, bio, etc.)
   });
   if (!newUser) {

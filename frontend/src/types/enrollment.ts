@@ -90,7 +90,7 @@ export interface Enrollment {
   lastUpdated: Date;
   
   // Optional metadata
-  enrollmentSource?: "direct" | "gift" | "promotion";
+  enrollmentSource?: "direct" | "gift" | "promotion" | "trial";
   giftFrom?: User["_id"]; // If enrolled via gift
   promotionCode?: string; // If enrolled via promotion
   planType?: "elite" | "essential"; // Plan type for the enrollment
@@ -108,6 +108,14 @@ export interface Enrollment {
   // Analytics
   totalTimeSpent?: number; // In seconds
   lastActivityAt?: Date;
+  
+  // Trial enrollment fields
+  isTrial?: boolean; // Whether this is a trial enrollment
+  trialExpiresAt?: Date | string; // When the trial expires (for TTL auto-deletion)
+  trialDurationDays?: number; // Number of days the trial lasts (defaults to 7)
+  
+  // Validity period for non-trial enrollments (4 years from enrollment date)
+  validUntil?: Date | string; // When the enrollment expires (4 years from enrolledAt for non-trial enrollments)
   
   // Timestamps
   createdAt?: Date;

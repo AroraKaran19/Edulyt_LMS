@@ -20,6 +20,7 @@ interface EnrollmentGuardProps {
 export interface EnrollmentContextValue {
   enrollment: any;
   accessControl: PartialAccessControl | null | undefined;
+  refreshEnrollment?: () => Promise<void>;
 }
 
 const EnrollmentContext = createContext<EnrollmentContextValue | null>(null);
@@ -43,33 +44,35 @@ const EnrollmentGuard = ({ course, children }: EnrollmentGuardProps) => {
   } | null>(null);
   const [isCheckingEnrollment, setIsCheckingEnrollment] = useState(true);
 
-  // Check enrollment status
+  // Function to check enrollment status
+  const checkUserEnrollment = async () => {
+    if (status === "loading") return;
+
+    if (status === "unauthenticated") {
+      setIsCheckingEnrollment(false);
+      return;
+    }
+
+    if (!course._id) {
+      setIsCheckingEnrollment(false);
+      return;
+    }
+
+    try {
+      setIsCheckingEnrollment(true);
+      const result = await checkEnrollment({ courseId: course._id });
+      if (result) {
+        setEnrollmentStatus(result);
+      }
+    } catch (error) {
+      console.error("Failed to check enrollment:", error);
+    } finally {
+      setIsCheckingEnrollment(false);
+    }
+  };
+
+  // Check enrollment status on mount
   useEffect(() => {
-    const checkUserEnrollment = async () => {
-      if (status === "loading") return;
-
-      if (status === "unauthenticated") {
-        setIsCheckingEnrollment(false);
-        return;
-      }
-
-      if (!course._id) {
-        setIsCheckingEnrollment(false);
-        return;
-      }
-
-      try {
-        const result = await checkEnrollment({ courseId: course._id });
-        if (result) {
-          setEnrollmentStatus(result);
-        }
-      } catch (error) {
-        console.error("Failed to check enrollment:", error);
-      } finally {
-        setIsCheckingEnrollment(false);
-      }
-    };
-
     checkUserEnrollment();
   }, [session, status, course._id, checkEnrollment]);
 
@@ -209,6 +212,7 @@ const EnrollmentGuard = ({ course, children }: EnrollmentGuardProps) => {
       value={{
         enrollment: enrollmentStatus?.enrollment,
         accessControl: enrollmentStatus?.accessControl || null,
+        refreshEnrollment: checkUserEnrollment,
       }}
     >
       {children}
