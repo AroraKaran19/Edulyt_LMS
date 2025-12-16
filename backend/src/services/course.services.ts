@@ -6,6 +6,9 @@ import {
   CourseModuleModel,
   UserModel,
   CategoryModel,
+  VideoContentModel,
+  QuizContentModel,
+  DocumentContentModel,
 } from "../models";
 import { Content, Course, CourseLesson, CourseModule } from "../types";
 import mongoose from "mongoose";
@@ -43,7 +46,7 @@ export const getAllCoursesService = async (
       "description",
       "shortDescription",
     ]);
-    
+
     if (fuzzySearchFilter && fuzzySearchFilter.$or) {
       // If we already have a $or filter, we need to combine them
       if (filters.$or) {
@@ -198,7 +201,7 @@ export const getFeaturedCoursesService = async (
       "description",
       "shortDescription",
     ]);
-    
+
     if (fuzzySearchFilter && fuzzySearchFilter.$or) {
       filters.$or = fuzzySearchFilter.$or;
     } else {
@@ -290,14 +293,17 @@ export const getCourseByIdService = async (
     .populate({
       path: "modules",
       select: isAdmin ? "-__v" : "-__v -courseId -createdAt -updatedAt",
+      options: { sort: { order: 1 } },
       populate: {
         path: "lessons",
         select: isAdmin ? "-__v" : "-__v -moduleId -createdAt -updatedAt",
+        options: { sort: { order: 1 } },
         populate: {
           path: "contents",
           select: isAdmin
             ? "-__v"
             : "-__v -moduleId -lessonId -createdAt -updatedAt",
+          options: { sort: { order: 1 } },
         },
       },
     })
@@ -342,7 +348,7 @@ export const getCourseByIdService = async (
         })
           .select("-__v")
           .lean();
-        
+
         // Add the found category IDs
         categoriesByName.forEach((cat) => {
           if (cat._id) {
@@ -395,14 +401,17 @@ export const getCourseBySlugService = async (
     .populate({
       path: "modules",
       select: isAdmin ? "-__v" : "-__v -courseId -createdAt -updatedAt",
+      options: { sort: { order: 1 } },
       populate: {
         path: "lessons",
         select: isAdmin ? "-__v" : "-__v -moduleId -createdAt -updatedAt",
+        options: { sort: { order: 1 } },
         populate: {
           path: "contents",
           select: isAdmin
             ? "-__v"
             : "-__v -moduleId -lessonId -createdAt -updatedAt",
+          options: { sort: { order: 1 } },
         },
       },
     })
@@ -447,7 +456,7 @@ export const getCourseBySlugService = async (
         })
           .select("-__v")
           .lean();
-        
+
         // Add the found category IDs
         categoriesByName.forEach((cat) => {
           if (cat._id) {
@@ -518,10 +527,14 @@ export const CreateCourseModuleService = async (
     throw new AppError("Course not found", 404);
   }
 
+  // Get the count of existing modules to set the order
+  const moduleCount = await CourseModuleModel.countDocuments({ courseId });
+
   const cleanedModuleData = {
     ...moduleData,
     courseId: course._id,
     lessons: [],
+    order: moduleData.order !== undefined ? moduleData.order : moduleCount,
   };
   const module = new CourseModuleModel(cleanedModuleData);
   const savedModule = await module.save();
@@ -612,10 +625,14 @@ export const CreateCourseLessonService = async (
     throw new AppError("Module not found", 404);
   }
 
+  // Get the count of existing lessons in this module to set the order
+  const lessonCount = await CourseLessonModel.countDocuments({ moduleId });
+
   const cleanedLessonData = {
     ...lessonData,
     moduleId: module._id,
     contents: [],
+    order: lessonData.order !== undefined ? lessonData.order : lessonCount,
   };
   const lesson = new CourseLessonModel(cleanedLessonData);
 
@@ -735,10 +752,14 @@ export const CreateCourseLessonContentService = async (
     throw new AppError("Lesson not found", 404);
   }
 
+  // Get the count of existing content in this lesson to set the order
+  const contentCount = await ContentModel.countDocuments({ lessonId });
+
   const cleanedContentData = {
     ...contentData,
     lessonId: lesson._id,
     moduleId: module._id,
+    order: contentData.order !== undefined ? contentData.order : contentCount,
   };
   const content = new ContentModel(cleanedContentData);
   if (!content) {
@@ -1061,6 +1082,271 @@ export const DuplicateCourseMetadataService = async (
   return savedCourse as Course;
 };
 
+export const DuplicateCourseWithModulesService = async (
+  courseId: string
+): Promise<Course | null> => {
+  // Find the original course with all populated data
+  const course = await CourseModel.findById(courseId)
+    .populate({
+      path: "modules",
+      options: { sort: { order: 1 } },
+      populate: {
+        path: "lessons",
+        options: { sort: { order: 1 } },
+        populate: {
+          path: "contents",
+          options: { sort: { order: 1 } },
+        },
+      },
+    })
+    .lean();
+
+  if (!course) {
+    throw new AppError("Course not found", 404);
+  }
+
+  const courseData = course as any;
+
+  // Prepare course data (excluding system fields)
+  const cleanedCourseData: any = { ...courseData };
+  delete cleanedCourseData._id;
+  delete cleanedCourseData.createdAt;
+  delete cleanedCourseData.updatedAt;
+  delete cleanedCourseData.slug;
+  delete cleanedCourseData.metaTitle;
+  delete cleanedCourseData.metaDescription;
+  delete cleanedCourseData.keywords;
+  delete cleanedCourseData.modules; // Will be recreated
+  delete cleanedCourseData.instructor; // Keep original instructors
+  delete cleanedCourseData.reviews;
+  delete cleanedCourseData.testimonials;
+  delete cleanedCourseData.faqs;
+  delete cleanedCourseData.scholarshipRef;
+  delete cleanedCourseData.createdBy;
+  delete cleanedCourseData.analytics;
+
+  // Modify title and status
+  cleanedCourseData.title = `${cleanedCourseData.title} (Copy)`;
+  cleanedCourseData.isActive = false;
+  cleanedCourseData.isFeatured = false;
+  cleanedCourseData.isCertified = false;
+  cleanedCourseData.scholarship = false;
+
+  // Reset analytics
+  cleanedCourseData.analytics = {
+    totalRatings: 0,
+    totalReviews: 0,
+    totalEnrollments: 0,
+    activeEnrollments: 0,
+    completionRate: 0,
+    averageRating: 0,
+    averageCompletionTime: 0,
+    dropoffPoints: [],
+  };
+
+  // Generate unique slug
+  const baseSlug = generateSlugFromTitle(cleanedCourseData.title);
+  let savedCourse: any = null;
+  let attempts = 0;
+  const maxAttempts = 5;
+
+  while (!savedCourse && attempts < maxAttempts) {
+    try {
+      cleanedCourseData.slug = await generateUniqueSlug(
+        attempts === 0 ? baseSlug : `${baseSlug}-${Date.now()}-${attempts}`
+      );
+
+      // Create the new course
+      const duplicatedCourse = new CourseModel(cleanedCourseData);
+      savedCourse = await duplicatedCourse.save();
+
+      if (!savedCourse) {
+        throw new AppError("Failed to duplicate course", 500);
+      }
+
+      // Now duplicate modules, lessons, and contents
+      const newModuleIds: mongoose.Types.ObjectId[] = [];
+      const moduleIdMap = new Map<string, mongoose.Types.ObjectId>(); // old -> new module ID mapping
+      const lessonIdMap = new Map<string, mongoose.Types.ObjectId>(); // old -> new lesson ID mapping
+
+      if (courseData.modules && Array.isArray(courseData.modules)) {
+        // Duplicate modules
+        for (const oldModule of courseData.modules) {
+          if (!oldModule || !oldModule._id) continue;
+
+          const moduleData: any = {
+            courseId: savedCourse._id,
+            title: oldModule.title,
+            thumbnailUrl: oldModule.thumbnailUrl,
+            description: oldModule.description,
+            isActive: oldModule.isActive !== false,
+            lessons: [],
+          };
+
+          const newModule = new CourseModuleModel(moduleData);
+          const savedModule = await newModule.save();
+
+          if (savedModule) {
+            newModuleIds.push(
+              savedModule._id as unknown as mongoose.Types.ObjectId
+            );
+            moduleIdMap.set(
+              oldModule._id.toString(),
+              savedModule._id as unknown as mongoose.Types.ObjectId
+            );
+
+            // Duplicate lessons for this module
+            if (oldModule.lessons && Array.isArray(oldModule.lessons)) {
+              const newLessonIds: mongoose.Types.ObjectId[] = [];
+
+              for (const oldLesson of oldModule.lessons) {
+                if (!oldLesson || !oldLesson._id) continue;
+
+                const lessonData: any = {
+                  moduleId: savedModule._id,
+                  title: oldLesson.title,
+                  description: oldLesson.description,
+                  contents: [],
+                };
+
+                const newLesson = new CourseLessonModel(lessonData);
+                const savedLesson = await newLesson.save();
+
+                if (savedLesson) {
+                  newLessonIds.push(
+                    savedLesson._id as unknown as mongoose.Types.ObjectId
+                  );
+                  lessonIdMap.set(
+                    oldLesson._id.toString(),
+                    savedLesson._id as unknown as mongoose.Types.ObjectId
+                  );
+
+                  // Duplicate contents for this lesson
+                  if (oldLesson.contents && Array.isArray(oldLesson.contents)) {
+                    const newContentIds: mongoose.Types.ObjectId[] = [];
+
+                    for (const oldContent of oldLesson.contents) {
+                      if (!oldContent || !oldContent._id) continue;
+
+                      // Prepare content data based on type
+                      const contentData: any = {
+                        lessonId: savedLesson._id,
+                        moduleId: savedModule._id,
+                        title: oldContent.title,
+                        description: oldContent.description,
+                        type: oldContent.type,
+                      };
+
+                      // Copy type-specific fields
+                      if (oldContent.type === "video" && oldContent.sources) {
+                        contentData.sources = oldContent.sources;
+                        contentData.thumbnailUrl = oldContent.thumbnailUrl;
+                        contentData.duration = oldContent.duration;
+                      } else if (
+                        oldContent.type === "quiz" &&
+                        oldContent.questions
+                      ) {
+                        contentData.questions = oldContent.questions;
+                        contentData.passingScore = oldContent.passingScore;
+                        contentData.maxAttempts = oldContent.maxAttempts;
+                      } else if (
+                        oldContent.type === "document" &&
+                        oldContent.documentUrl
+                      ) {
+                        contentData.documentUrl = oldContent.documentUrl;
+                      }
+
+                      // Copy reading materials if present
+                      if (oldContent.readingMaterials) {
+                        contentData.readingMaterials =
+                          oldContent.readingMaterials;
+                      }
+
+                      // Create content using the appropriate discriminator model
+                      let newContent;
+                      if (oldContent.type === "video") {
+                        newContent = new VideoContentModel(contentData);
+                      } else if (oldContent.type === "quiz") {
+                        newContent = new QuizContentModel(contentData);
+                      } else if (oldContent.type === "document") {
+                        newContent = new DocumentContentModel(contentData);
+                      } else {
+                        newContent = new ContentModel(contentData);
+                      }
+
+                      const savedContent = await newContent.save();
+                      if (savedContent) {
+                        newContentIds.push(savedContent._id);
+                      }
+                    }
+
+                    // Update lesson with new content IDs
+                    await CourseLessonModel.findByIdAndUpdate(savedLesson._id, {
+                      $set: { contents: newContentIds },
+                    });
+                  }
+                }
+              }
+
+              // Update module with new lesson IDs
+              await CourseModuleModel.findByIdAndUpdate(savedModule._id, {
+                $set: { lessons: newLessonIds },
+              });
+            }
+          }
+        }
+      }
+
+      // Update course with new module IDs
+      await CourseModel.findByIdAndUpdate(savedCourse._id, {
+        $set: { modules: newModuleIds },
+      });
+
+      // Fetch and return the fully populated course
+      const finalCourse = await CourseModel.findById(savedCourse._id)
+        .populate({
+          path: "modules",
+          options: { sort: { order: 1 } },
+          populate: {
+            path: "lessons",
+            options: { sort: { order: 1 } },
+            populate: {
+              path: "contents",
+              options: { sort: { order: 1 } },
+            },
+          },
+        })
+        .lean();
+
+      return finalCourse as Course;
+    } catch (error: any) {
+      // Check if error is due to duplicate slug
+      if (
+        error.code === 11000 ||
+        error.name === "MongoServerError" ||
+        (error.message && error.message.includes("duplicate key"))
+      ) {
+        attempts++;
+        if (attempts >= maxAttempts) {
+          throw new AppError(
+            "Failed to generate unique slug after multiple attempts",
+            500
+          );
+        }
+        continue;
+      }
+      // For other errors, throw immediately
+      throw error;
+    }
+  }
+
+  if (!savedCourse) {
+    throw new AppError("Failed to duplicate course", 500);
+  }
+
+  return savedCourse as Course;
+};
+
 export const UpdateCourseStatusService = async (
   courseId: string,
   status: boolean
@@ -1313,4 +1599,77 @@ export const checkSlugAvailabilityService = async (
       message: "Error checking slug availability",
     };
   }
+};
+
+// Reorder services
+export const reorderModulesService = async (
+  courseId: string,
+  moduleIds: string[]
+): Promise<CourseModule[]> => {
+  const bulkOps = moduleIds.map((id, index) => ({
+    updateOne: {
+      filter: {
+        _id: new mongoose.Types.ObjectId(id),
+        courseId: new mongoose.Types.ObjectId(courseId),
+      },
+      update: { $set: { order: index } },
+    },
+  }));
+
+  await CourseModuleModel.bulkWrite(bulkOps);
+
+  const updatedModules = await CourseModuleModel.find({
+    _id: { $in: moduleIds.map((id) => new mongoose.Types.ObjectId(id)) },
+    courseId: new mongoose.Types.ObjectId(courseId),
+  }).sort({ order: 1 });
+
+  return updatedModules as CourseModule[];
+};
+
+export const reorderLessonsService = async (
+  moduleId: string,
+  lessonIds: string[]
+): Promise<CourseLesson[]> => {
+  const bulkOps = lessonIds.map((id, index) => ({
+    updateOne: {
+      filter: {
+        _id: new mongoose.Types.ObjectId(id),
+        moduleId: new mongoose.Types.ObjectId(moduleId),
+      },
+      update: { $set: { order: index } },
+    },
+  }));
+
+  await CourseLessonModel.bulkWrite(bulkOps);
+
+  const updatedLessons = await CourseLessonModel.find({
+    _id: { $in: lessonIds.map((id) => new mongoose.Types.ObjectId(id)) },
+    moduleId: new mongoose.Types.ObjectId(moduleId),
+  }).sort({ order: 1 });
+
+  return updatedLessons as CourseLesson[];
+};
+
+export const reorderContentService = async (
+  lessonId: string,
+  contentIds: string[]
+): Promise<Content[]> => {
+  const bulkOps = contentIds.map((id, index) => ({
+    updateOne: {
+      filter: {
+        _id: new mongoose.Types.ObjectId(id),
+        lessonId: new mongoose.Types.ObjectId(lessonId),
+      },
+      update: { $set: { order: index } },
+    },
+  }));
+
+  await ContentModel.bulkWrite(bulkOps);
+
+  const updatedContent = await ContentModel.find({
+    _id: { $in: contentIds.map((id) => new mongoose.Types.ObjectId(id)) },
+    lessonId: new mongoose.Types.ObjectId(lessonId),
+  }).sort({ order: 1 });
+
+  return updatedContent as Content[];
 };

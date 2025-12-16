@@ -61,6 +61,7 @@ export interface BaseContent {
   description?: string;
   type: "video" | "quiz" | "document";
   readingMaterials?: ReadingMaterial[];
+  order?: number;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -103,6 +104,7 @@ export interface CourseLesson {
   title: string;
   description?: string;
   contents: Content[] | string[];
+  order?: number;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -119,6 +121,7 @@ export interface CourseModule {
   lessons: CourseLesson[] | string[];
   description?: string;
   isActive?: boolean;
+  order?: number;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -162,7 +165,6 @@ export interface Testimonial {
   collegeProfileUrl?: string;
   companyUrl?: string;
   companyProfileUrl?: string;
-  companyLogo?: string;
   verified?: boolean;
   profileImage?: string;
   createdAt?: Date;

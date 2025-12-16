@@ -4,6 +4,7 @@ export interface Category {
   description?: string;
   isActive: boolean;
   showOnHomePage?: boolean;
+  categoryImage?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }

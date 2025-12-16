@@ -12,6 +12,7 @@ import {
   deleteCourseModule,
   duplicateCourse,
   duplicateCourseMetadata,
+  duplicateCourseWithModules,
   getAdminCourseById,
   getAdminCourseBySlug,
   getAdminCourses,
@@ -27,6 +28,9 @@ import {
   updateCourseModule,
   updateCourseStatus,
   checkSlugAvailability,
+  reorderModules,
+  reorderLessons,
+  reorderContent,
 } from "../controllers/course.controller";
 
 const router = Router();
@@ -242,6 +246,18 @@ router.post(
 );
 
 /**
+ * @route   POST /api/courses/admin/duplicate-with-modules/:courseId
+ * @desc    Duplicate course with all modules, lessons, and contents
+ * @access  Admin
+ */
+router.post(
+  "/admin/duplicate-with-modules/:courseId",
+  verifyUser,
+  verifyAdmin,
+  duplicateCourseWithModules
+);
+
+/**
  * @route   PUT /api/courses/:courseId/status
  * @desc    Update a course status
  * @access  Admin
@@ -266,5 +282,26 @@ router.put(
  * @access  Admin
  */
 router.delete("/:courseId", verifyUser, verifyAdmin, deleteCourse);
+
+/**
+ * @route   PUT /api/courses/:courseId/modules/reorder
+ * @desc    Reorder course modules
+ * @access  Admin
+ */
+router.put("/:courseId/modules/reorder", verifyUser, verifyAdmin, reorderModules);
+
+/**
+ * @route   PUT /api/courses/modules/:moduleId/lessons/reorder
+ * @desc    Reorder course lessons
+ * @access  Admin
+ */
+router.put("/modules/:moduleId/lessons/reorder", verifyUser, verifyAdmin, reorderLessons);
+
+/**
+ * @route   PUT /api/courses/lessons/:lessonId/contents/reorder
+ * @desc    Reorder lesson content
+ * @access  Admin
+ */
+router.put("/lessons/:lessonId/contents/reorder", verifyUser, verifyAdmin, reorderContent);
 
 export default router;

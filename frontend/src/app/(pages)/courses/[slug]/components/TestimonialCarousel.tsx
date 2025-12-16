@@ -14,6 +14,10 @@ const TestimonialCarousel = ({
   className?: string;
   style?: React.CSSProperties;
 }) => {
+
+
+  if (!testimonials || testimonials.length === 0) return null;
+
   return (
     <Swiper
       centeredSlides={true}

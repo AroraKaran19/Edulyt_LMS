@@ -67,6 +67,35 @@ const ProfilePage = () => {
   });
   const [updatingPassword, setUpdatingPassword] = useState(false);
 
+  // Email change states
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [emailData, setEmailData] = useState({
+    currentPassword: "",
+    newEmail: "",
+  });
+  const [emailErrors, setEmailErrors] = useState<Record<string, string>>({});
+  const [showEmailPassword, setShowEmailPassword] = useState(false);
+  const [updatingEmail, setUpdatingEmail] = useState(false);
+  const [unlinkingGoogle, setUnlinkingGoogle] = useState(false);
+  const [unlinkingLinkedIn, setUnlinkingLinkedIn] = useState(false);
+  const [showSetPasswordModal, setShowSetPasswordModal] = useState(false);
+  const [showUnlinkConfirmModal, setShowUnlinkConfirmModal] = useState(false);
+  const [accountToUnlink, setAccountToUnlink] = useState<
+    "google" | "linkedin" | null
+  >(null);
+  const [initialPasswordData, setInitialPasswordData] = useState({
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [initialPasswordErrors, setInitialPasswordErrors] = useState<
+    Record<string, string>
+  >({});
+  const [showInitialPasswords, setShowInitialPasswords] = useState({
+    new: false,
+    confirm: false,
+  });
+  const [settingPassword, setSettingPassword] = useState(false);
+
   // Profile image upload states
   const [profileImageUrl, setProfileImageUrl] = useState<string>("");
   const [profileImageS3Key, setProfileImageS3Key] = useState<string>("");
@@ -174,8 +203,16 @@ const ProfilePage = () => {
             }
             setIsExternalImage(false);
           } else {
-            // External image (Google/LinkedIn) - don't allow changes
-            setIsExternalImage(true);
+            // External image (Google/LinkedIn) - only prevent changes if account is still linked
+            const isAccountLinked = Boolean(
+              (formData.provider === "google" && formData.accounts?.google) ||
+                (formData.provider === "linkedin" &&
+                  formData.accounts?.linkedin) ||
+                formData.accounts?.google ||
+                formData.accounts?.linkedin
+            );
+
+            setIsExternalImage(isAccountLinked);
             setProfileImageS3Key("");
           }
         } else {
@@ -507,12 +544,331 @@ const ProfilePage = () => {
     }));
   };
 
+  const toggleSetPasswordVisibility = (field: string) => {
+    setShowInitialPasswords((prev) => ({
+      ...prev,
+      [field]: !prev[field as keyof typeof prev],
+    }));
+  };
+
+  const handleSetPasswordChange = (field: string, value: string) => {
+    setInitialPasswordData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+
+    // Clear error for this field when user starts typing
+    if (initialPasswordErrors[field]) {
+      setInitialPasswordErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
+    }
+  };
+
+  const validateSetPasswordForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    if (!initialPasswordData.newPassword) {
+      newErrors.newPassword = "New password is required";
+    } else {
+      // Validate new password against rules
+      const passwordValidationErrors = validatePassword(
+        initialPasswordData.newPassword
+      );
+      if (Object.keys(passwordValidationErrors).length > 0) {
+        // Combine all password validation errors into one message
+        const errorMessages = Object.values(passwordValidationErrors).filter(
+          Boolean
+        );
+        newErrors.newPassword = errorMessages.join(". ");
+      }
+    }
+
+    if (!initialPasswordData.confirmPassword) {
+      newErrors.confirmPassword = "Please confirm your new password";
+    } else if (
+      initialPasswordData.newPassword !== initialPasswordData.confirmPassword
+    ) {
+      newErrors.confirmPassword = "Passwords do not match";
+    }
+
+    setInitialPasswordErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSetPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!validateSetPasswordForm()) {
+      return;
+    }
+
+    setSettingPassword(true);
+
+    try {
+      const response = await apiClient.put("/users/set-password", {
+        newPassword: initialPasswordData.newPassword,
+      });
+
+      if (response.data) {
+        toast.success(
+          "Password set successfully! You can now sign in with email/password."
+        );
+        setInitialPasswordData({
+          newPassword: "",
+          confirmPassword: "",
+        });
+        setInitialPasswordErrors({});
+
+        // If we were in the process of unlinking, proceed with that now
+        if (accountToUnlink) {
+          // Small delay to show success message before proceeding
+          setTimeout(() => {
+            setShowSetPasswordModal(false);
+            proceedWithUnlink();
+          }, 500);
+        } else {
+          setShowSetPasswordModal(false);
+        }
+      }
+    } catch (error: any) {
+      console.error("Error setting password:", error);
+
+      if (error.response?.data?.error?.message) {
+        toast.error(error.response.data.error.message);
+      } else if (error.response?.data?.message) {
+        toast.error(error.response.data.message);
+      } else {
+        toast.error("Failed to set password. Please try again.");
+      }
+    } finally {
+      setSettingPassword(false);
+    }
+  };
+
+  const handleEmailChange = (field: string, value: string) => {
+    setEmailData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+
+    // Clear error for this field when user starts typing
+    if (emailErrors[field]) {
+      setEmailErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
+    }
+  };
+
+  const validateEmailForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    if (!emailData.currentPassword) {
+      newErrors.currentPassword = "Current password is required";
+    }
+
+    if (!emailData.newEmail) {
+      newErrors.newEmail = "New email is required";
+    } else if (!validateEmail(emailData.newEmail)) {
+      newErrors.newEmail = "Please enter a valid email address";
+    } else if (
+      emailData.newEmail.toLowerCase() === formData.email?.toLowerCase()
+    ) {
+      newErrors.newEmail = "New email must be different from current email";
+    }
+
+    setEmailErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleEmailSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!validateEmailForm()) {
+      return;
+    }
+
+    setUpdatingEmail(true);
+
+    try {
+      const response = await apiClient.put("/users/change-email", {
+        currentPassword: emailData.currentPassword,
+        newEmail: emailData.newEmail,
+      });
+
+      if (response.data) {
+        toast.success(
+          "Email updated successfully! Please check your new email for verification."
+        );
+        setShowEmailModal(false);
+        setEmailData({
+          currentPassword: "",
+          newEmail: "",
+        });
+        setEmailErrors({});
+
+        // Update form data and session
+        setFormData((prev) => ({
+          ...prev,
+          email: emailData.newEmail,
+        }));
+
+        // Refresh profile to get updated data
+        await fetchProfile();
+        await updateSession();
+      }
+    } catch (error: any) {
+      console.error("Error updating email:", error);
+
+      if (error.response?.data?.error?.message) {
+        toast.error(error.response.data.error.message);
+        if (error.response.data.error.message.includes("password")) {
+          setEmailErrors({
+            currentPassword: "Current password is incorrect",
+          });
+        } else if (
+          error.response.data.error.message.includes("already in use")
+        ) {
+          setEmailErrors({
+            newEmail: "Email already in use by another account",
+          });
+        }
+      } else if (error.response?.data?.message) {
+        toast.error(error.response.data.message);
+      } else {
+        toast.error("Failed to update email. Please try again.");
+      }
+    } finally {
+      setUpdatingEmail(false);
+    }
+  };
+
+  const handleUnlinkGoogle = () => {
+    setAccountToUnlink("google");
+    setShowUnlinkConfirmModal(true);
+  };
+
+  const handleUnlinkLinkedIn = () => {
+    setAccountToUnlink("linkedin");
+    setShowUnlinkConfirmModal(true);
+  };
+
+  const confirmUnlink = () => {
+    if (!accountToUnlink) return;
+
+    // If user's provider is the account they're trying to unlink, they need to set a password first
+    if (formData.provider === accountToUnlink) {
+      // Close confirmation modal and show set password modal
+      setShowUnlinkConfirmModal(false);
+      setShowSetPasswordModal(true);
+    } else {
+      // User already has credentials provider, proceed with unlinking
+      proceedWithUnlink();
+    }
+  };
+
+  const proceedWithUnlink = async () => {
+    if (!accountToUnlink) return;
+
+    if (accountToUnlink === "google") {
+      setUnlinkingGoogle(true);
+    } else {
+      setUnlinkingLinkedIn(true);
+    }
+
+    setShowUnlinkConfirmModal(false);
+
+    try {
+      const endpoint =
+        accountToUnlink === "google"
+          ? "/users/unlink-google"
+          : "/users/unlink-linkedin";
+      const response = await apiClient.delete(endpoint);
+
+      if (response.data) {
+        // Update form data to remove account and change provider if needed
+        setFormData((prev) => ({
+          ...prev,
+          provider:
+            prev.provider === accountToUnlink ? "credentials" : prev.provider,
+          accounts: {
+            ...prev.accounts,
+            [accountToUnlink]: undefined,
+          },
+        }));
+
+        // Clear profile image if it was from external source (Google/LinkedIn)
+        if (
+          profileImageUrl &&
+          !profileImageUrl.includes(".s3.") &&
+          !profileImageUrl.includes("s3.amazonaws.com")
+        ) {
+          setProfileImageUrl("");
+          setProfileImageS3Key("");
+          setIsExternalImage(false);
+        }
+
+        // Update form data to remove profile picture if it was external
+        setFormData((prev) => ({
+          ...prev,
+          profilePicture:
+            prev.profilePicture &&
+            !prev.profilePicture.includes(".s3.") &&
+            !prev.profilePicture.includes("s3.amazonaws.com")
+              ? undefined
+              : prev.profilePicture,
+        }));
+
+        // Refresh profile to get updated data
+        await fetchProfile();
+        await updateSession();
+
+        toast.success(
+          `${
+            accountToUnlink === "google" ? "Google" : "LinkedIn"
+          } account unlinked successfully! You can now change your email and profile picture.`
+        );
+      }
+    } catch (error: any) {
+      console.error(`Error unlinking ${accountToUnlink} account:`, error);
+
+      if (error.response?.data?.error?.message) {
+        toast.error(error.response.data.error.message);
+      } else if (error.response?.data?.message) {
+        toast.error(error.response.data.message);
+      } else {
+        toast.error(
+          `Failed to unlink ${
+            accountToUnlink === "google" ? "Google" : "LinkedIn"
+          } account. Please try again.`
+        );
+      }
+    } finally {
+      if (accountToUnlink === "google") {
+        setUnlinkingGoogle(false);
+      } else {
+        setUnlinkingLinkedIn(false);
+      }
+      setAccountToUnlink(null);
+    }
+  };
+
   // Handle profile image upload
   const handleImageUpload = async (file: File) => {
-    // Don't allow upload if current image is from external source (Google/LinkedIn)
-    if (isExternalImage) {
+    // Don't allow upload if current image is from external source AND account is still linked
+    const isAccountLinked =
+      (formData.provider === "google" && formData.accounts?.google) ||
+      (formData.provider === "linkedin" && formData.accounts?.linkedin) ||
+      formData.accounts?.google ||
+      formData.accounts?.linkedin;
+
+    if (isExternalImage && isAccountLinked) {
       toast.error(
-        "Cannot change profile picture. Your account is connected to Google or LinkedIn."
+        "Cannot change profile picture. Your account is connected to Google or LinkedIn. Please unlink the account first."
       );
       return;
     }
@@ -981,37 +1337,55 @@ const ProfilePage = () => {
               </div>
 
               {/* Hover Overlay */}
-              {!isExternalImage && (
-                <div
-                  className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 cursor-pointer"
-                  onClick={() => {
-                    if (!isExternalImage && !isUploadingImage) {
-                      document.getElementById("profile-image-input")?.click();
-                    }
-                  }}
-                >
-                  <div className="text-white text-center">
-                    {isUploadingImage ? (
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-2"></div>
-                    ) : (
-                      <Camera className="w-8 h-8 mx-auto mb-2" />
+              {(() => {
+                const isAccountLinked = Boolean(
+                  (formData.provider === "google" &&
+                    formData.accounts?.google) ||
+                    (formData.provider === "linkedin" &&
+                      formData.accounts?.linkedin) ||
+                    formData.accounts?.google ||
+                    formData.accounts?.linkedin
+                );
+                const shouldBlockChanges = isExternalImage && isAccountLinked;
+
+                return (
+                  <>
+                    {!shouldBlockChanges && (
+                      <div
+                        className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 cursor-pointer"
+                        onClick={() => {
+                          if (!shouldBlockChanges && !isUploadingImage) {
+                            document
+                              .getElementById("profile-image-input")
+                              ?.click();
+                          }
+                        }}
+                      >
+                        <div className="text-white text-center">
+                          {isUploadingImage ? (
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-2"></div>
+                          ) : (
+                            <Camera className="w-8 h-8 mx-auto mb-2" />
+                          )}
+                          <span className="text-sm font-medium select-none">
+                            {isUploadingImage ? "Uploading..." : "Update Image"}
+                          </span>
+                        </div>
+                      </div>
                     )}
-                    <span className="text-sm font-medium select-none">
-                      {isUploadingImage ? "Uploading..." : "Update Image"}
-                    </span>
-                  </div>
-                </div>
-              )}
-              {isExternalImage && (
-                <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                  <div className="text-white text-center px-4">
-                    <Lock className="w-6 h-6 mx-auto mb-2" />
-                    <span className="text-xs font-medium select-none">
-                      Image from connected account
-                    </span>
-                  </div>
-                </div>
-              )}
+                    {shouldBlockChanges && (
+                      <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                        <div className="text-white text-center px-4">
+                          <Lock className="w-6 h-6 mx-auto mb-2" />
+                          <span className="text-xs font-medium select-none">
+                            Image from connected account
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
 
               {/* Hidden file input */}
               <input
@@ -1020,36 +1394,82 @@ const ProfilePage = () => {
                 accept="image/*"
                 onChange={(e) => {
                   const file = e.target.files?.[0];
-                  if (file && !isExternalImage) {
+                  const isAccountLinked = Boolean(
+                    (formData.provider === "google" &&
+                      formData.accounts?.google) ||
+                      (formData.provider === "linkedin" &&
+                        formData.accounts?.linkedin) ||
+                      formData.accounts?.google ||
+                      formData.accounts?.linkedin
+                  );
+                  const shouldBlockChanges = isExternalImage && isAccountLinked;
+
+                  if (file && !shouldBlockChanges) {
                     handleImageUpload(file);
                   }
                 }}
                 className="hidden"
-                disabled={isUploadingImage || isExternalImage}
+                disabled={
+                  isUploadingImage ||
+                  (isExternalImage &&
+                    Boolean(
+                      (formData.provider === "google" &&
+                        formData.accounts?.google) ||
+                        (formData.provider === "linkedin" &&
+                          formData.accounts?.linkedin) ||
+                        formData.accounts?.google ||
+                        formData.accounts?.linkedin
+                    ))
+                }
               />
             </div>
 
-            {/* Remove Image Button - Only show for S3 images */}
-            {profileImageUrl && !isExternalImage && (
-              <button
-                onClick={handleImageRemove}
-                disabled={isUploadingImage}
-                className="cursor-pointer mt-3 px-3 py-1 text-xs text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isUploadingImage ? "Removing..." : "Remove Image"}
-              </button>
-            )}
-            {/* Info message for external images */}
-            {profileImageUrl && isExternalImage && (
-              <div className="mt-3 px-3 py-2 text-xs text-gray-600 bg-gray-50 rounded-full text-center">
-                Profile picture from connected account{" "}
-                {formData.provider === "google" && "(Google)"}
-                {formData.provider === "linkedin" && "(LinkedIn)"}
-                {formData.provider !== "google" &&
-                  formData.provider !== "linkedin" &&
-                  "(Google/LinkedIn)"}
-              </div>
-            )}
+            {/* Remove Image Button - Show for S3 images or unlinked accounts */}
+            {profileImageUrl &&
+              (() => {
+                const isAccountLinked = Boolean(
+                  (formData.provider === "google" &&
+                    formData.accounts?.google) ||
+                    (formData.provider === "linkedin" &&
+                      formData.accounts?.linkedin) ||
+                    formData.accounts?.google ||
+                    formData.accounts?.linkedin
+                );
+                return !isExternalImage || !isAccountLinked;
+              })() && (
+                <button
+                  onClick={handleImageRemove}
+                  disabled={isUploadingImage}
+                  className="cursor-pointer mt-3 px-3 py-1 text-xs text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isUploadingImage ? "Removing..." : "Remove Image"}
+                </button>
+              )}
+            {/* Info message for external images - only show if account is still linked */}
+            {profileImageUrl &&
+              isExternalImage &&
+              (() => {
+                const isAccountLinked = Boolean(
+                  (formData.provider === "google" &&
+                    formData.accounts?.google) ||
+                    (formData.provider === "linkedin" &&
+                      formData.accounts?.linkedin) ||
+                    formData.accounts?.google ||
+                    formData.accounts?.linkedin
+                );
+                return isAccountLinked;
+              })() && (
+                <div className="mt-3 px-3 py-2 text-xs text-gray-600 bg-gray-50 rounded-full text-center">
+                  Profile picture from connected account{" "}
+                  {formData.provider === "google" && "(Google)"}
+                  {formData.provider === "linkedin" && "(LinkedIn)"}
+                  {formData.provider !== "google" &&
+                    formData.provider !== "linkedin" &&
+                    (formData.accounts?.google ||
+                      formData.accounts?.linkedin) &&
+                    "(Google/LinkedIn)"}
+                </div>
+              )}
 
             <div className="mt-6 w-full">
               <h2 className="text-xl font-semibold text-gray-900 text-center">
@@ -1119,6 +1539,56 @@ const ProfilePage = () => {
                     <span>Link Google</span>
                   </WhiteButton>
                 )}
+              {formData.accounts?.google && (
+                <button
+                  onClick={handleUnlinkGoogle}
+                  disabled={unlinkingGoogle}
+                  className="w-full bg-yellow-600 flex gap-2 items-center justify-center px-6 py-3 text-white rounded-2xl shadow-[inset_0_-2px_4px_0_rgba(0,0,0,0.3)] cursor-pointer hover:bg-yellow-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {unlinkingGoogle ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                      <span>Unlinking...</span>
+                    </>
+                  ) : (
+                    <>
+                      <ImageComponent
+                        src="/google-icon.svg"
+                        alt="Google"
+                        width={20}
+                        height={20}
+                        className="size-4"
+                      />
+                      <span>Unlink Google</span>
+                    </>
+                  )}
+                </button>
+              )}
+              {formData.accounts?.linkedin && (
+                <button
+                  onClick={handleUnlinkLinkedIn}
+                  disabled={unlinkingLinkedIn}
+                  className="w-full bg-red-600 flex gap-2 items-center justify-center px-6 py-3 text-white rounded-2xl shadow-[inset_0_-2px_4px_0_rgba(0,0,0,0.3)] cursor-pointer hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {unlinkingLinkedIn ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                      <span>Unlinking...</span>
+                    </>
+                  ) : (
+                    <>
+                      <ImageComponent
+                        src="/linkedin-icon.svg"
+                        alt="LinkedIn"
+                        width={20}
+                        height={20}
+                        className="size-4"
+                      />
+                      <span>Unlink LinkedIn</span>
+                    </>
+                  )}
+                </button>
+              )}
             </div>
           </div>
 
@@ -1149,16 +1619,54 @@ const ProfilePage = () => {
                   }
                   error={errors.lastName}
                 />
-                <Input
-                  label="Email"
-                  type="email"
-                  placeholder="Enter your email"
-                  value={formData.email || ""}
-                  onChange={(e) => handleInputChange("email", e.target.value)}
-                  disabled
-                  className="opacity-75 select-none!"
-                  error={errors.email}
-                />
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Email
+                    {formData.provider === "google" && (
+                      <span className="ml-2 text-xs text-gray-500">
+                        (Linked to Google)
+                      </span>
+                    )}
+                    {formData.provider === "linkedin" && (
+                      <span className="ml-2 text-xs text-gray-500">
+                        (Linked to LinkedIn)
+                      </span>
+                    )}
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="email"
+                      placeholder="Enter your email"
+                      value={formData.email || ""}
+                      onChange={(e) =>
+                        handleInputChange("email", e.target.value)
+                      }
+                      disabled
+                      className="opacity-75 select-none! flex-1"
+                      error={errors.email}
+                    />
+                    {formData.provider !== "google" &&
+                      formData.provider !== "linkedin" && (
+                        <button
+                          type="button"
+                          onClick={() => setShowEmailModal(true)}
+                          className="px-4 py-3 bg-orange-600 cursor-pointer text-white font-medium rounded-xl hover:bg-orange-700 transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 whitespace-nowrap"
+                          title="Change email"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                          Change
+                        </button>
+                      )}
+                    {(formData.provider === "google" ||
+                      formData.provider === "linkedin") && (
+                      <span className="px-4 py-3 text-sm text-gray-500 italic">
+                        Unlink{" "}
+                        {formData.provider === "google" ? "Google" : "LinkedIn"}{" "}
+                        to change email
+                      </span>
+                    )}
+                  </div>
+                </div>
                 <div>
                   <Input
                     label="Phone Number"
@@ -1524,6 +2032,280 @@ const ProfilePage = () => {
         </form>
       </Modal>
 
+      {/* Email Change Modal */}
+      <Modal
+        isOpen={showEmailModal}
+        onClose={() => {
+          setShowEmailModal(false);
+          setEmailData({
+            currentPassword: "",
+            newEmail: "",
+          });
+          setEmailErrors({});
+        }}
+        title="Change Email"
+        className="max-w-md"
+      >
+        <form onSubmit={handleEmailSubmit} className="space-y-4">
+          {/* Current Password */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Current Password
+            </label>
+            <div className="relative">
+              <input
+                type={showEmailPassword ? "text" : "password"}
+                value={emailData.currentPassword}
+                onChange={(e) =>
+                  handleEmailChange("currentPassword", e.target.value)
+                }
+                className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-400 transition-all duration-200 ease-in-out outline-none shadow-sm hover:shadow-md"
+                placeholder="Enter your current password"
+              />
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setShowEmailPassword(!showEmailPassword);
+                }}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                {showEmailPassword ? (
+                  <EyeOff className="w-5 h-5" />
+                ) : (
+                  <Eye className="w-5 h-5" />
+                )}
+              </button>
+            </div>
+            {emailErrors.currentPassword && (
+              <p className="mt-1 text-sm text-red-500">
+                {emailErrors.currentPassword}
+              </p>
+            )}
+          </div>
+
+          {/* New Email */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              New Email
+            </label>
+            <input
+              type="email"
+              value={emailData.newEmail}
+              onChange={(e) => handleEmailChange("newEmail", e.target.value)}
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-400 transition-all duration-200 ease-in-out outline-none shadow-sm hover:shadow-md"
+              placeholder="Enter your new email address"
+            />
+            {emailErrors.newEmail && (
+              <p className="mt-1 text-sm text-red-500">
+                {emailErrors.newEmail}
+              </p>
+            )}
+            <p className="mt-1 text-xs text-gray-500">
+              A verification email will be sent to your new email address.
+            </p>
+          </div>
+
+          {/* Submit Button */}
+          <div className="pt-4">
+            <button
+              type="submit"
+              disabled={updatingEmail}
+              className="w-full px-4 py-3 bg-orange-600 text-white font-medium rounded-xl hover:bg-orange-700 transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {updatingEmail && (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+              )}
+              {updatingEmail ? "Updating Email..." : "Update Email"}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Unlink Account Confirmation Modal */}
+      <Modal
+        isOpen={showUnlinkConfirmModal}
+        onClose={() => {
+          setShowUnlinkConfirmModal(false);
+          setAccountToUnlink(null);
+        }}
+        className="max-w-md"
+      >
+        <div className="w-full max-w-md mx-auto bg-white rounded-2xl p-8">
+          <div className="mb-6 text-center">
+            <div className="w-20 h-20 mx-auto mb-4 bg-yellow-100 rounded-full flex items-center justify-center">
+              <svg
+                className="w-10 h-10 text-yellow-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                />
+              </svg>
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">
+              Unlink {accountToUnlink === "google" ? "Google" : "LinkedIn"}{" "}
+              Account?
+            </h2>
+            <p className="text-gray-600 text-sm">
+              Are you sure you want to unlink your{" "}
+              {accountToUnlink === "google" ? "Google" : "LinkedIn"} account?
+              You will need to use email/password to sign in.
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={() => {
+                setShowUnlinkConfirmModal(false);
+                setAccountToUnlink(null);
+              }}
+              className="flex-1 px-4 py-3 bg-gray-100 cursor-pointer text-gray-700 font-medium rounded-xl hover:bg-gray-200 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={confirmUnlink}
+              disabled={unlinkingGoogle || unlinkingLinkedIn}
+              className="flex-1 px-4 py-3 bg-yellow-600 cursor-pointer text-white font-medium rounded-xl hover:bg-yellow-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {(unlinkingGoogle || unlinkingLinkedIn) && (
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+              )}
+              {unlinkingGoogle || unlinkingLinkedIn ? "Unlinking..." : "Unlink"}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Set Password Modal */}
+      <Modal
+        isOpen={showSetPasswordModal}
+        onClose={() => {
+          if (!accountToUnlink) {
+            // Only allow closing if not in the process of unlinking
+            setShowSetPasswordModal(false);
+            setInitialPasswordData({
+              newPassword: "",
+              confirmPassword: "",
+            });
+            setInitialPasswordErrors({});
+          }
+        }}
+        title={
+          accountToUnlink ? "Set Password to Unlink Account" : "Set Password"
+        }
+        className="max-w-md"
+      >
+        <div className="mb-4 p-4 bg-orange-50 border border-orange-200 rounded-xl">
+          <p className="text-sm text-orange-800">
+            <strong>Important:</strong>{" "}
+            {accountToUnlink
+              ? `Before unlinking your ${
+                  accountToUnlink === "google" ? "Google" : "LinkedIn"
+                } account, you need to set a password. You'll need this to sign in with your email and password.`
+              : "Please set a password for your account. You'll need this to sign in with your email and password."}
+          </p>
+        </div>
+        <form onSubmit={handleSetPasswordSubmit} className="space-y-4">
+          {/* New Password */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              New Password
+            </label>
+            <div className="relative">
+              <input
+                type={showInitialPasswords.new ? "text" : "password"}
+                value={initialPasswordData.newPassword}
+                onChange={(e) =>
+                  handleSetPasswordChange("newPassword", e.target.value)
+                }
+                className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-400 transition-all duration-200 ease-in-out outline-none shadow-sm hover:shadow-md"
+                placeholder="Enter your new password"
+              />
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  toggleSetPasswordVisibility("new");
+                }}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                {showInitialPasswords.new ? (
+                  <EyeOff className="w-5 h-5" />
+                ) : (
+                  <Eye className="w-5 h-5" />
+                )}
+              </button>
+            </div>
+            {initialPasswordErrors.newPassword && (
+              <p className="mt-1 text-sm text-red-500">
+                {initialPasswordErrors.newPassword}
+              </p>
+            )}
+            <p className="mt-1 text-xs text-gray-500">
+              {getPasswordRequirementsText()}
+            </p>
+          </div>
+
+          {/* Confirm Password */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Confirm New Password
+            </label>
+            <div className="relative">
+              <input
+                type={showInitialPasswords.confirm ? "text" : "password"}
+                value={initialPasswordData.confirmPassword}
+                onChange={(e) =>
+                  handleSetPasswordChange("confirmPassword", e.target.value)
+                }
+                className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-400 transition-all duration-200 ease-in-out outline-none shadow-sm hover:shadow-md"
+                placeholder="Confirm your new password"
+              />
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  toggleSetPasswordVisibility("confirm");
+                }}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                {showInitialPasswords.confirm ? (
+                  <EyeOff className="w-5 h-5" />
+                ) : (
+                  <Eye className="w-5 h-5" />
+                )}
+              </button>
+            </div>
+            {initialPasswordErrors.confirmPassword && (
+              <p className="mt-1 text-sm text-red-500">
+                {initialPasswordErrors.confirmPassword}
+              </p>
+            )}
+          </div>
+
+          {/* Submit Button */}
+          <div className="pt-4">
+            <button
+              type="submit"
+              disabled={settingPassword}
+              className="w-full px-4 py-3 bg-orange-600 cursor-pointer text-white font-medium rounded-xl hover:bg-orange-700 transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {settingPassword && (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+              )}
+              {settingPassword ? "Setting Password..." : "Set Password"}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
       {/* Coming Soon Modal */}
       <Modal
         isOpen={showComingSoonModal}
@@ -1773,6 +2555,12 @@ const InstructorFields = ({
           placeholder="Enter your current company"
           value={formData.currentCompany || ""}
           onChange={(e) => handleInputChange("currentCompany", e.target.value)}
+        />
+        <Input
+          label="Field"
+          placeholder="e.g., AI Python"
+          value={formData.field || ""}
+          onChange={(e) => handleInputChange("field", e.target.value)}
         />
         <div className="md:col-span-2">
           <Input

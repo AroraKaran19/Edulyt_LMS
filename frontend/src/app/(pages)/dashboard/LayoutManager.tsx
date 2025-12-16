@@ -11,7 +11,7 @@ const LayoutManager = ({ children }: { children: React.ReactNode }) => {
       {pathname !== "/dashboard/profile" && <DashboardBanner />}
       <div
         className={cn(
-          "px-10 lg:px-20 min-h-screen w-full",
+          "px-4 lg:px-20 min-h-screen w-full",
           pathname === "/dashboard/profile" && "px-0!"
         )}
       >

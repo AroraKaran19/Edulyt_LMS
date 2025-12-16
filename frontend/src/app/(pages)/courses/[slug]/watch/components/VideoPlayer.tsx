@@ -530,6 +530,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       // Only handle keyboard shortcuts when the video container is focused or when video is playing
       if (!videoRef.current) return;
 
+      // Don't handle keyboard shortcuts if user is typing in an input field
+      const target = e.target as HTMLElement;
+      const isInputField = 
+        target.tagName === 'INPUT' || 
+        target.tagName === 'TEXTAREA' || 
+        target.isContentEditable;
+      
+      if (isInputField) return;
+
       switch (e.key) {
         case " ":
         case "k":

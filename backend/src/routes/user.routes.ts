@@ -10,6 +10,10 @@ import {
   updateUserProfile,
   getCurrentUserProfile,
   changeUserPassword,
+  changeUserEmail,
+  setUserPassword,
+  unlinkGoogleAccount,
+  unlinkLinkedInAccount,
   adminUpdateUser,
   adminChangeUserPassword,
 } from "../controllers/user.controller";
@@ -20,6 +24,10 @@ const router = Router();
 router.get("/me", verifyUser, getCurrentUserProfile);
 router.put("/me", verifyUser, updateUserProfile);
 router.put("/change-password", verifyUser, changeUserPassword);
+router.put("/set-password", verifyUser, setUserPassword);
+router.put("/change-email", verifyUser, changeUserEmail);
+router.delete("/unlink-google", verifyUser, unlinkGoogleAccount);
+router.delete("/unlink-linkedin", verifyUser, unlinkLinkedInAccount);
 
 // Admin routes 
 router.use(verifyUser);

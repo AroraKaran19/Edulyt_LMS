@@ -11,6 +11,8 @@ import {
   updateReviewService,
   deleteReviewService,
   getReviewsByReviewableService,
+  approveReviewService,
+  rejectReviewService,
 } from "../services/review.services";
 
 export const getAllReviews = asyncHandler(
@@ -22,6 +24,7 @@ export const getAllReviews = asyncHandler(
       reviewableType,
       reviewableId,
       rating,
+      approved,
     } = req.query;
     const isAdmin = req.user?.userType === "admin";
 
@@ -36,7 +39,8 @@ export const getAllReviews = asyncHandler(
       reviewableType as string,
       reviewableId as string,
       rating ? Number(rating) : undefined,
-      isAdmin
+      isAdmin,
+      approved !== undefined ? approved === "true" : undefined
     );
 
     if (!result || result.reviews.length === 0) {
@@ -205,6 +209,46 @@ export const getReviewsByReviewable = asyncHandler(
     );
 
     sendSuccessResponse(res, result, "Reviews fetched successfully", 200);
+    return;
+  }
+);
+
+// Approve review (instructor/admin only)
+export const approveReview = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { id } = req.params;
+
+    if (!id) {
+      throw new AppError("Review ID is required", 400);
+    }
+
+    const result = await approveReviewService(id);
+
+    if (!result) {
+      throw new AppError("Review not found", 404);
+    }
+
+    sendSuccessResponse(res, result, "Review approved successfully", 200);
+    return;
+  }
+);
+
+// Reject/Un-approve review (instructor/admin only)
+export const rejectReview = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { id } = req.params;
+
+    if (!id) {
+      throw new AppError("Review ID is required", 400);
+    }
+
+    const result = await rejectReviewService(id);
+
+    if (!result) {
+      throw new AppError("Review not found", 404);
+    }
+
+    sendSuccessResponse(res, result, "Review rejected successfully", 200);
     return;
   }
 );

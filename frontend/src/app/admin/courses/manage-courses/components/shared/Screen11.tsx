@@ -11,6 +11,7 @@ import {
   FileVideo,
   HelpCircle,
   FileText,
+  GripVertical,
 } from "lucide-react";
 import Container from "@/app/admin/components/ui/Container";
 import Input from "@/components/ui/inputs/Input";
@@ -115,6 +116,9 @@ const Screen11 = () => {
     updateContent,
     deleteContent,
     getCourseById,
+    reorderModules,
+    reorderLessons,
+    reorderContent,
     isLoading: isApiLoading,
   } = useCourse();
 
@@ -241,6 +245,15 @@ const Screen11 = () => {
   const [isUploadingModuleThumbnail, setIsUploadingModuleThumbnail] =
     useState(false);
   const [isExtractingDuration, setIsExtractingDuration] = useState(false);
+  
+  // Drag and drop state
+  const [draggedModuleIndex, setDraggedModuleIndex] = useState<number | null>(null);
+  const [dragOverModuleIndex, setDragOverModuleIndex] = useState<number | null>(null);
+  const [draggedLessonIndex, setDraggedLessonIndex] = useState<number | null>(null);
+  const [dragOverLessonIndex, setDragOverLessonIndex] = useState<number | null>(null);
+  const [draggedContentIndex, setDraggedContentIndex] = useState<number | null>(null);
+  const [dragOverContentIndex, setDragOverContentIndex] = useState<number | null>(null);
+  
   const [newModule, setNewModule] = useState({
     title: "",
     description: "",
@@ -329,11 +342,6 @@ const Screen11 = () => {
       return;
     }
 
-    if (!newModule.description.trim()) {
-      toast.error("Module description is required");
-      return;
-    }
-
     if (!newModule.thumbnailUrl.trim()) {
       toast.error("Module thumbnail is required");
       return;
@@ -367,6 +375,7 @@ const Screen11 = () => {
           thumbnailUrl: result.thumbnailUrl,
           lessons: result.lessons || [],
           isActive: result.isActive !== undefined ? result.isActive : true,
+          order: modules.length, // Set order to the end
         };
 
         // Add module to local state
@@ -526,11 +535,6 @@ const Screen11 = () => {
       return;
     }
 
-    if (!newLesson.description.trim()) {
-      toast.error("Lesson description is required");
-      return;
-    }
-
     try {
       // Prepare lesson data for API
       const lessonData = {
@@ -548,6 +552,7 @@ const Screen11 = () => {
           description: result.description,
           moduleId,
           contents: [],
+          order: ((modules.find(m => m._id === moduleId)?.lessons as CourseLesson[])?.length || 0), // Set order to the end
         };
 
         // Add lesson to local state
@@ -583,11 +588,6 @@ const Screen11 = () => {
   const editLesson = async (moduleId: string) => {
     if (!editingLesson.title.trim()) {
       toast.error("Lesson title is required");
-      return;
-    }
-
-    if (!editingLesson.description.trim()) {
-      toast.error("Lesson description is required");
       return;
     }
 
@@ -690,11 +690,6 @@ const Screen11 = () => {
       return;
     }
 
-    if (!newContent.description.trim()) {
-      toast.error("Content description is required");
-      return;
-    }
-
     let contentData: any;
 
     if (newContent.type === "video") {
@@ -764,6 +759,11 @@ const Screen11 = () => {
       if (result) {
         let content: Content;
 
+        const currentLesson = modules
+          .find(m => m._id === moduleId)?.lessons
+          ?.find(l => (l as CourseLesson)._id === lessonId) as CourseLesson;
+        const contentOrder = (currentLesson?.contents as Content[])?.length || 0;
+
         if (result.type === "video") {
           content = {
             _id: result._id,
@@ -774,6 +774,7 @@ const Screen11 = () => {
             thumbnailUrl: result.thumbnailUrl,
             duration: result.duration || 0,
             lessonId,
+            order: contentOrder,
           } as VideoContent;
         } else if (result.type === "document") {
           content = {
@@ -783,6 +784,7 @@ const Screen11 = () => {
             type: "document",
             documentUrl: result.documentUrl,
             lessonId,
+            order: contentOrder,
           } as DocumentContent;
         } else {
           content = {
@@ -792,6 +794,7 @@ const Screen11 = () => {
             type: "quiz",
             questions: result.questions || [],
             lessonId,
+            order: contentOrder,
           } as QuizContent;
         }
 
@@ -898,11 +901,6 @@ const Screen11 = () => {
   const editContent = async (lessonId: string, moduleId: string) => {
     if (!editingContent.title.trim()) {
       toast.error("Content title is required");
-      return;
-    }
-
-    if (!editingContent.description.trim()) {
-      toast.error("Content description is required");
       return;
     }
 
@@ -1334,6 +1332,220 @@ const Screen11 = () => {
     }));
   };
 
+  // Drag and drop handlers for modules
+  const handleModuleDragStart = (index: number) => {
+    setDraggedModuleIndex(index);
+  };
+
+  const handleModuleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (draggedModuleIndex !== null && draggedModuleIndex !== index) {
+      setDragOverModuleIndex(index);
+    }
+  };
+
+  const handleModuleDragLeave = () => {
+    setDragOverModuleIndex(null);
+  };
+
+  const handleModuleDrop = async (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    setDragOverModuleIndex(null);
+
+    if (draggedModuleIndex === null || draggedModuleIndex === dropIndex) {
+      setDraggedModuleIndex(null);
+      return;
+    }
+
+    const newModules = [...modules];
+    const draggedModule = newModules[draggedModuleIndex];
+
+    // Remove dragged module from its original position
+    newModules.splice(draggedModuleIndex, 1);
+
+    // Insert at new position
+    newModules.splice(dropIndex, 0, draggedModule);
+
+    // Update order values
+    newModules.forEach((module, idx) => {
+      module.order = idx;
+    });
+
+    setModules(newModules);
+    setDraggedModuleIndex(null);
+
+    // Save to localStorage
+    saveModulesToLocalStorage(newModules);
+
+    // Call API to save new order
+    try {
+      const moduleIds = newModules.map(m => m._id!);
+      await reorderModules(effectiveCourseId!, moduleIds);
+      console.log("Module order updated successfully");
+    } catch (error) {
+      console.error("Failed to update module order:", error);
+      // Revert the local state on error
+      setModules(modules);
+      saveModulesToLocalStorage(modules);
+    }
+  };
+
+  const handleModuleDragEnd = () => {
+    setDraggedModuleIndex(null);
+    setDragOverModuleIndex(null);
+  };
+
+  // Drag and drop handlers for lessons
+  const handleLessonDragStart = (index: number) => {
+    setDraggedLessonIndex(index);
+  };
+
+  const handleLessonDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (draggedLessonIndex !== null && draggedLessonIndex !== index) {
+      setDragOverLessonIndex(index);
+    }
+  };
+
+  const handleLessonDragLeave = () => {
+    setDragOverLessonIndex(null);
+  };
+
+  const handleLessonDrop = async (e: React.DragEvent, dropIndex: number, moduleId: string) => {
+    e.preventDefault();
+    setDragOverLessonIndex(null);
+
+    if (draggedLessonIndex === null || draggedLessonIndex === dropIndex) {
+      setDraggedLessonIndex(null);
+      return;
+    }
+
+    const newModules = modules.map((module) => {
+      if (module._id === moduleId) {
+        const newLessons = [...(module.lessons as CourseLesson[])];
+        const draggedLesson = newLessons[draggedLessonIndex];
+
+        // Remove dragged lesson from its original position
+        newLessons.splice(draggedLessonIndex, 1);
+
+        // Insert at new position
+        newLessons.splice(dropIndex, 0, draggedLesson);
+
+        // Update order values
+        newLessons.forEach((lesson, idx) => {
+          lesson.order = idx;
+        });
+
+        return { ...module, lessons: newLessons };
+      }
+      return module;
+    });
+
+    setModules(newModules);
+    setDraggedLessonIndex(null);
+
+    // Save to localStorage
+    saveModulesToLocalStorage(newModules);
+
+    // Call API to save new order
+    try {
+      const lessonIds = (newModules.find(m => m._id === moduleId)?.lessons as CourseLesson[])
+        .map(l => l._id!);
+      await reorderLessons(moduleId, lessonIds);
+      console.log("Lesson order updated successfully for module:", moduleId);
+    } catch (error) {
+      console.error("Failed to update lesson order:", error);
+      // Revert the local state on error
+      setModules(modules);
+      saveModulesToLocalStorage(modules);
+    }
+  };
+
+  const handleLessonDragEnd = () => {
+    setDraggedLessonIndex(null);
+    setDragOverLessonIndex(null);
+  };
+
+  // Drag and drop handlers for content
+  const handleContentDragStart = (index: number) => {
+    setDraggedContentIndex(index);
+  };
+
+  const handleContentDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (draggedContentIndex !== null && draggedContentIndex !== index) {
+      setDragOverContentIndex(index);
+    }
+  };
+
+  const handleContentDragLeave = () => {
+    setDragOverContentIndex(null);
+  };
+
+  const handleContentDrop = async (e: React.DragEvent, dropIndex: number, moduleId: string, lessonId: string) => {
+    e.preventDefault();
+    setDragOverContentIndex(null);
+
+    if (draggedContentIndex === null || draggedContentIndex === dropIndex) {
+      setDraggedContentIndex(null);
+      return;
+    }
+
+    const newModules = modules.map((module) => {
+      if (module._id === moduleId) {
+        const newLessons = (module.lessons as CourseLesson[]).map((lesson) => {
+          if (lesson._id === lessonId) {
+            const newContents = [...(lesson.contents as Content[])];
+            const draggedContent = newContents[draggedContentIndex];
+
+            // Remove dragged content from its original position
+            newContents.splice(draggedContentIndex, 1);
+
+            // Insert at new position
+            newContents.splice(dropIndex, 0, draggedContent);
+
+            // Update order values
+            newContents.forEach((content, idx) => {
+              content.order = idx;
+            });
+
+            return { ...lesson, contents: newContents };
+          }
+          return lesson;
+        });
+
+        return { ...module, lessons: newLessons };
+      }
+      return module;
+    });
+
+    setModules(newModules);
+    setDraggedContentIndex(null);
+
+    // Save to localStorage
+    saveModulesToLocalStorage(newModules);
+
+    // Call API to save new order
+    try {
+      const lesson = newModules
+        .find(m => m._id === moduleId)?.lessons
+        ?.find(l => (l as CourseLesson)._id === lessonId) as CourseLesson;
+      const contentIds = (lesson?.contents as Content[]).map(c => c._id!);
+      await reorderContent(lessonId, contentIds);
+      console.log("Content order updated successfully for lesson:", lessonId);
+    } catch (error) {
+      console.error("Failed to update content order:", error);
+      // Revert the local state on error
+      setModules(modules);
+      saveModulesToLocalStorage(modules);
+    }
+  };
+
+  const handleContentDragEnd = () => {
+    setDraggedContentIndex(null);
+    setDragOverContentIndex(null);
+  };
+
   // Show loading state while modules are being loaded
   if (isLoadingModules) {
     return (
@@ -1399,12 +1611,11 @@ const Screen11 = () => {
               />
               <TextArea
                 label="Description"
-                placeholder="Enter module description"
+                placeholder="Enter module description (optional)"
                 value={newModule.description}
                 onChange={(e) =>
                   setNewModule({ ...newModule, description: e.target.value })
                 }
-                required
               />
               <UploadMediaContainer
                 title="Module Thumbnail"
@@ -1486,7 +1697,7 @@ const Screen11 = () => {
               />
               <TextArea
                 label="Description"
-                placeholder="Enter module description"
+                placeholder="Enter module description (optional)"
                 value={editingModule.description}
                 onChange={(e) =>
                   setEditingModule({
@@ -1494,7 +1705,6 @@ const Screen11 = () => {
                     description: e.target.value,
                   })
                 }
-                required
               />
               <UploadMediaContainer
                 title="Module Thumbnail"
@@ -1625,27 +1835,46 @@ const Screen11 = () => {
           <div className="space-y-4">
             {!isAddingModule &&
               !isEditingModule &&
-              modules.map((selectedModule) => (
+              modules
+                .sort((a, b) => (a.order || 0) - (b.order || 0))
+                .map((selectedModule, moduleIndex) => (
                 <div
                   key={selectedModule._id}
-                  className="bg-white rounded-lg border border-gray-200 shadow-sm"
+                  draggable
+                  onDragStart={() => handleModuleDragStart(moduleIndex)}
+                  onDragOver={(e) => handleModuleDragOver(e, moduleIndex)}
+                  onDragLeave={handleModuleDragLeave}
+                  onDrop={(e) => handleModuleDrop(e, moduleIndex)}
+                  onDragEnd={handleModuleDragEnd}
+                  className={`bg-white rounded-lg border border-gray-200 shadow-sm transition-all duration-200 ${
+                    draggedModuleIndex === moduleIndex ? "opacity-50 scale-95" : ""
+                  } ${
+                    dragOverModuleIndex === moduleIndex
+                      ? "border-orange-400 shadow-lg transform scale-105"
+                      : ""
+                  }`}
                 >
                   {/* Module Header */}
                   <div className="p-4 border-b border-gray-200">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <button
-                          onClick={() =>
-                            toggleModuleExpansion(selectedModule._id!)
-                          }
-                          className="p-1 hover:bg-gray-100 rounded"
-                        >
-                          {expandedModules.has(selectedModule._id!) ? (
-                            <ChevronDown className="w-4 h-4" />
-                          ) : (
-                            <ChevronRight className="w-4 h-4" />
-                          )}
-                        </button>
+                        <div className="flex items-center gap-1">
+                          <div className="p-1 cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600">
+                            <GripVertical className="w-4 h-4" />
+                          </div>
+                          <button
+                            onClick={() =>
+                              toggleModuleExpansion(selectedModule._id!)
+                            }
+                            className="p-1 hover:bg-gray-100 rounded"
+                          >
+                            {expandedModules.has(selectedModule._id!) ? (
+                              <ChevronDown className="w-4 h-4" />
+                            ) : (
+                              <ChevronRight className="w-4 h-4" />
+                            )}
+                          </button>
+                        </div>
                         <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center overflow-hidden">
                           {selectedModule.thumbnailUrl ? (
                             <img
@@ -1730,7 +1959,7 @@ const Screen11 = () => {
                             />
                             <TextArea
                               label="Description"
-                              placeholder="Enter lesson description"
+                              placeholder="Enter lesson description (optional)"
                               value={newLesson.description}
                               onChange={(e) =>
                                 setNewLesson({
@@ -1738,7 +1967,6 @@ const Screen11 = () => {
                                   description: e.target.value,
                                 })
                               }
-                              required
                             />
                             <CheckBoxContainer
                               label="Active Lesson"
@@ -1757,8 +1985,7 @@ const Screen11 = () => {
                               onClick={() => addLesson(selectedModule._id!)}
                               disabled={
                                 isApiLoading ||
-                                !newLesson.title.trim() ||
-                                !newLesson.description.trim()
+                                !newLesson.title.trim()
                               }
                               glow={false}
                               className="flex items-center gap-2"
@@ -1803,7 +2030,7 @@ const Screen11 = () => {
                             />
                             <TextArea
                               label="Description"
-                              placeholder="Enter lesson description"
+                              placeholder="Enter lesson description (optional)"
                               value={editingLesson.description}
                               onChange={(e) =>
                                 setEditingLesson({
@@ -1811,7 +2038,6 @@ const Screen11 = () => {
                                   description: e.target.value,
                                 })
                               }
-                              required
                             />
                             <CheckBoxContainer
                               label="Active Lesson"
@@ -1830,8 +2056,7 @@ const Screen11 = () => {
                               onClick={() => editLesson(selectedModule._id!)}
                               disabled={
                                 isApiLoading ||
-                                !editingLesson.title.trim() ||
-                                !editingLesson.description.trim()
+                                !editingLesson.title.trim()
                               }
                               glow={false}
                               className="flex items-center gap-2"
@@ -1866,28 +2091,46 @@ const Screen11 = () => {
                       {/* Lessons List */}
                       {!isAddingLesson && !isEditingLesson && (
                         <div className="space-y-3">
-                          {(selectedModule.lessons as CourseLesson[])?.map(
-                            (lesson) => (
+                          {(selectedModule.lessons as CourseLesson[])
+                            ?.sort((a, b) => (a.order || 0) - (b.order || 0))
+                            ?.map((lesson, lessonIndex) => (
                               <div
                                 key={lesson._id}
-                                className="bg-gray-50 rounded-lg border border-gray-200"
+                                draggable
+                                onDragStart={() => handleLessonDragStart(lessonIndex)}
+                                onDragOver={(e) => handleLessonDragOver(e, lessonIndex)}
+                                onDragLeave={handleLessonDragLeave}
+                                onDrop={(e) => handleLessonDrop(e, lessonIndex, selectedModule._id!)}
+                                onDragEnd={handleLessonDragEnd}
+                                className={`bg-gray-50 rounded-lg border border-gray-200 transition-all duration-200 ${
+                                  draggedLessonIndex === lessonIndex ? "opacity-50 scale-95" : ""
+                                } ${
+                                  dragOverLessonIndex === lessonIndex
+                                    ? "border-blue-400 shadow-lg transform scale-105"
+                                    : ""
+                                }`}
                               >
                                 {/* Lesson Header */}
                                 <div className="p-3 border-b border-gray-200">
                                   <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-3">
-                                      <button
-                                        onClick={() =>
-                                          toggleLessonExpansion(lesson._id!)
-                                        }
-                                        className="p-1 hover:bg-gray-200 rounded"
-                                      >
-                                        {expandedLessons.has(lesson._id!) ? (
-                                          <ChevronDown className="w-4 h-4" />
-                                        ) : (
-                                          <ChevronRight className="w-4 h-4" />
-                                        )}
-                                      </button>
+                                      <div className="flex items-center gap-1">
+                                        <div className="p-1 cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600">
+                                          <GripVertical className="w-3 h-3" />
+                                        </div>
+                                        <button
+                                          onClick={() =>
+                                            toggleLessonExpansion(lesson._id!)
+                                          }
+                                          className="p-1 hover:bg-gray-200 rounded"
+                                        >
+                                          {expandedLessons.has(lesson._id!) ? (
+                                            <ChevronDown className="w-4 h-4" />
+                                          ) : (
+                                            <ChevronRight className="w-4 h-4" />
+                                          )}
+                                        </button>
+                                      </div>
                                       <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
                                         <Play className="w-4 h-4 text-blue-600" />
                                       </div>
@@ -2022,7 +2265,7 @@ const Screen11 = () => {
                                           />
                                           <TextArea
                                             label="Description"
-                                            placeholder="Enter content description"
+                                            placeholder="Enter content description (optional)"
                                             value={editingContent.description}
                                             onChange={(e) =>
                                               setEditingContent({
@@ -2030,7 +2273,6 @@ const Screen11 = () => {
                                                 description: e.target.value,
                                               })
                                             }
-                                            required
                                           />
                                           <CheckBoxContainer
                                             label="Active Content"
@@ -2200,7 +2442,6 @@ const Screen11 = () => {
                                             }
                                             disabled={
                                               !editingContent.title.trim() ||
-                                              !editingContent.description.trim() ||
                                               isUploadingVideo ||
                                               isUploadingVideoThumbnail ||
                                               isUploadingDocument ||
@@ -2308,7 +2549,7 @@ const Screen11 = () => {
                                           />
                                           <TextArea
                                             label="Description"
-                                            placeholder="Enter content description"
+                                            placeholder="Enter content description (optional)"
                                             value={newContent.description}
                                             onChange={(e) =>
                                               setNewContent({
@@ -2316,7 +2557,6 @@ const Screen11 = () => {
                                                 description: e.target.value,
                                               })
                                             }
-                                            required
                                           />
                                           <CheckBoxContainer
                                             label="Active Content"
@@ -2472,7 +2712,6 @@ const Screen11 = () => {
                                             }
                                             disabled={
                                               !newContent.title.trim() ||
-                                              !newContent.description.trim() ||
                                               isUploadingVideo ||
                                               isUploadingVideoThumbnail ||
                                               isUploadingDocument ||
@@ -2522,14 +2761,30 @@ const Screen11 = () => {
                                     {/* Content List */}
                                     {!isEditingContent && (
                                       <div className="space-y-2">
-                                        {(lesson.contents as Content[])?.map(
-                                          (content) => (
+                                        {(lesson.contents as Content[])
+                                          ?.sort((a, b) => (a.order || 0) - (b.order || 0))
+                                          ?.map((content, contentIndex) => (
                                             <div
                                               key={content._id}
-                                              className="bg-white rounded-lg p-3 border border-gray-200"
+                                              draggable
+                                              onDragStart={() => handleContentDragStart(contentIndex)}
+                                              onDragOver={(e) => handleContentDragOver(e, contentIndex)}
+                                              onDragLeave={handleContentDragLeave}
+                                              onDrop={(e) => handleContentDrop(e, contentIndex, selectedModule._id!, lesson._id!)}
+                                              onDragEnd={handleContentDragEnd}
+                                              className={`bg-white rounded-lg p-3 border border-gray-200 transition-all duration-200 ${
+                                                draggedContentIndex === contentIndex ? "opacity-50 scale-95" : ""
+                                              } ${
+                                                dragOverContentIndex === contentIndex
+                                                  ? "border-green-400 shadow-lg transform scale-105"
+                                                  : ""
+                                              }`}
                                             >
                                               <div className="flex items-center justify-between">
                                                 <div className="flex items-center gap-3">
+                                                  <div className="p-1 cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600">
+                                                    <GripVertical className="w-3 h-3" />
+                                                  </div>
                                                   <div
                                                     className={`w-6 h-6 rounded-lg flex items-center justify-center ${
                                                       content.type === "video"

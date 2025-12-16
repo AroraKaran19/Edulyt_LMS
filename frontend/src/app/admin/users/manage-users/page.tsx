@@ -22,7 +22,10 @@ import { toast } from "react-toastify";
 import GiftCourseModal from "./components/GiftCourseModal";
 import TrialCourseModal from "./components/TrialCourseModal";
 import EditUserModal from "./components/EditUserModal";
-import { validatePassword, getPasswordRequirementsText } from "@/lib/passwordValidation";
+import {
+  validatePassword,
+  getPasswordRequirementsText,
+} from "@/lib/passwordValidation";
 
 const ManageUsersPage = () => {
   const [users, setUsers] = useState<User[]>([]);
@@ -231,7 +234,9 @@ const ManageUsersPage = () => {
     // Validate password against rules
     const passwordValidationErrors = validatePassword(newPassword);
     if (Object.keys(passwordValidationErrors).length > 0) {
-      const errorMessages = Object.values(passwordValidationErrors).filter(Boolean);
+      const errorMessages = Object.values(passwordValidationErrors).filter(
+        Boolean
+      );
       toast.error(errorMessages.join(". "));
       return;
     }
@@ -512,7 +517,7 @@ const ManageUsersPage = () => {
           </div>
 
           {/* Right Section: Action Buttons */}
-          <div className="flex items-center gap-3 lg:ml-6 lg:pl-6 lg:border-l lg:border-gray-200 lg:flex-shrink-0">
+          <div className="flex items-center gap-3 lg:ml-6 lg:pl-6 lg:border-l lg:border-gray-200 lg:shrink-0">
             {/* Gift Course Button */}
             <OrangeButton
               onClick={handleOpenGiftModal}
@@ -539,7 +544,7 @@ const ManageUsersPage = () => {
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
+            <thead className="bg-linear-to-r from-gray-50 to-gray-100 border-b border-gray-200">
               <tr>
                 <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                   User
@@ -598,13 +603,22 @@ const ManageUsersPage = () => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="shrink-0 h-10 w-10">
-                          <Image
-                            src={user.profilePicture || "/user.svg"}
-                            alt={`${user.firstName} ${user.lastName}`}
-                            className="h-10 w-10 rounded-full object-cover"
-                            width={40}
-                            height={40}
-                          />
+                          {user.profilePicture ? (
+                            <Image
+                              src={user.profilePicture}
+                              alt={`${user.firstName} ${user.lastName}`}
+                              className="h-10 w-10 rounded-full object-cover"
+                              width={40}
+                              height={40}
+                            />
+                          ) : (
+                            <div className="h-10 w-10 rounded-full bg-orange-500 flex items-center justify-center text-white font-semibold text-sm">
+                              {user.firstName?.[0]?.toUpperCase() ||
+                                user.lastName?.[0]?.toUpperCase() ||
+                                user.email?.[0]?.toUpperCase() ||
+                                "U"}
+                            </div>
+                          )}
                         </div>
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900">
@@ -699,7 +713,7 @@ const ManageUsersPage = () => {
         {/* Pagination */}
         {totalPages > 1 && (
           <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
-            <div className="flex-1 flex justify-between sm:hidden">
+            <div className="flex-1 flex justify-between items-center gap- sm:hidden">
               <Button
                 variant="outline"
                 onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
@@ -734,7 +748,7 @@ const ManageUsersPage = () => {
                 </p>
               </div>
               <div>
-                <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+                <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px items-center gap-4">
                   <Button
                     variant="outline"
                     onClick={() =>

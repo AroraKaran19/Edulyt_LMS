@@ -25,6 +25,7 @@ import { EnrollmentModel } from "./enrollment.schema";
 import { CertificateModel } from "./certificate.schema";
 import LiveClassModel from "./live-classes.schema";
 import AuthenticationMediaModel from "./authentication-media.schema";
+import { CouponModel } from "./coupon.schema";
 
 export {
   UserModel,
@@ -52,4 +53,5 @@ export {
   CertificateModel,
   LiveClassModel,
   AuthenticationMediaModel,
+  CouponModel,
 };

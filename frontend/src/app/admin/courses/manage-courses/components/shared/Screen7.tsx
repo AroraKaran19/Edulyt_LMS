@@ -3,7 +3,6 @@ import React, { useState, useEffect, useCallback } from "react";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import Container from "@/app/admin/components/ui/Container";
-import UploadMediaContainer from "@/components/ui/container/UploadMediaContainer";
 import {
   Plus,
   Search,
@@ -23,7 +22,6 @@ import {
 import { Testimonial } from "@/types";
 import { useTestimonial } from "@/hooks/useTestimonial";
 import { useFormContext, Controller } from "react-hook-form";
-import { useUpload } from "@/hooks/useUpload";
 
 interface ProfileImageProps {
   src: string;
@@ -118,8 +116,6 @@ const Screen7 = () => {
     clearError,
   } = useTestimonial();
 
-  const { uploadFile, isUploading: isUploadingLogo } = useUpload();
-
   const [testimonials, setTestimonials] = useState<Testimonial[] | null>([]);
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(1);
@@ -140,7 +136,6 @@ const Screen7 = () => {
     collegeProfileUrl: "",
     companyUrl: "",
     companyProfileUrl: "",
-    companyLogo: "",
     profileImage: "",
     verified: false,
   });
@@ -272,70 +267,6 @@ const Screen7 = () => {
     });
   };
 
-  // Handle company logo upload for new testimonial
-  const handleCompanyLogoUpload = async (file: File, folderName: string) => {
-    try {
-      const result = await uploadFile(file, folderName);
-      if (result.success && result.data?.url) {
-        setNewTestimonial((prev) => ({
-          ...prev,
-          companyLogo: result.data!.url,
-        }));
-        return result.data.url;
-      }
-      throw new Error(result.error || "Upload failed");
-    } catch (error) {
-      console.error("Failed to upload company logo:", error);
-      throw error;
-    }
-  };
-
-  // Handle company logo URL submission for new testimonial
-  const handleCompanyLogoUrlChange = (url: string) => {
-    setNewTestimonial((prev) => ({
-      ...prev,
-      companyLogo: url,
-    }));
-  };
-
-  // Handle company logo remove for new testimonial
-  const handleCompanyLogoRemove = () => {
-    setNewTestimonial((prev) => ({
-      ...prev,
-      companyLogo: "",
-    }));
-  };
-
-  // Handle company logo upload for editing testimonial
-  const handleEditCompanyLogoUpload = async (file: File, folderName: string) => {
-    try {
-      const result = await uploadFile(file, folderName);
-      if (result.success && result.data?.url) {
-        setEditingTestimonial((prev) =>
-          prev ? { ...prev, companyLogo: result.data!.url } : null
-        );
-        return result.data.url;
-      }
-      throw new Error(result.error || "Upload failed");
-    } catch (error) {
-      console.error("Failed to upload company logo:", error);
-      throw error;
-    }
-  };
-
-  // Handle company logo URL submission for editing testimonial
-  const handleEditCompanyLogoUrlChange = (url: string) => {
-    setEditingTestimonial((prev) =>
-      prev ? { ...prev, companyLogo: url } : null
-    );
-  };
-
-  // Handle company logo remove for editing testimonial
-  const handleEditCompanyLogoRemove = () => {
-    setEditingTestimonial((prev) =>
-      prev ? { ...prev, companyLogo: "" } : null
-    );
-  };
 
   const handleCreateTestimonial = async () => {
     if (
@@ -362,7 +293,6 @@ const Screen7 = () => {
           collegeProfileUrl: "",
           companyUrl: "",
           companyProfileUrl: "",
-          companyLogo: "",
           profileImage: "",
           verified: false,
         });
@@ -404,7 +334,6 @@ const Screen7 = () => {
         collegeProfileUrl: editingTestimonial.collegeProfileUrl,
         companyUrl: editingTestimonial.companyUrl,
         companyProfileUrl: editingTestimonial.companyProfileUrl,
-        companyLogo: editingTestimonial.companyLogo,
         profileImage: editingTestimonial.profileImage,
         verified: editingTestimonial.verified,
       });
@@ -510,7 +439,7 @@ const Screen7 = () => {
       classNameBody="flex flex-col gap-6"
       style={{ scrollbarWidth: "thin" }}
     >
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 gap-4">
         <div className="flex-1 max-w-md">
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -525,14 +454,39 @@ const Screen7 = () => {
             />
           </div>
         </div>
-        <OrangeButton
-          onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2 ml-4"
-          glow={false}
-        >
-          <Plus className="w-4 h-4" />
-          Create Testimonial
-        </OrangeButton>
+        <div className="flex items-center gap-2">
+          <WhiteButton
+            onClick={() => {
+              const allTestimonialIds = testimonials?.map(testimonial => testimonial._id).filter((id): id is string => !!id) || [];
+              setSelectedTestimonialIds(allTestimonialIds);
+              setValue("testimonials", allTestimonialIds, { shouldDirty: true, shouldTouch: true });
+            }}
+            className="flex items-center gap-2"
+            disabled={!testimonials || testimonials.length === 0}
+          >
+            <Check className="w-4 h-4" />
+            Select All
+          </WhiteButton>
+          <WhiteButton
+            onClick={() => {
+              setSelectedTestimonialIds([]);
+              setValue("testimonials", [], { shouldDirty: true, shouldTouch: true });
+            }}
+            className="flex items-center gap-2"
+            disabled={selectedTestimonialIds.length === 0}
+          >
+            <X className="w-4 h-4" />
+            Clear All
+          </WhiteButton>
+          <OrangeButton
+            onClick={() => setShowCreateModal(true)}
+            className="flex items-center gap-2"
+            glow={false}
+          >
+            <Plus className="w-4 h-4" />
+            Create Testimonial
+          </OrangeButton>
+        </div>
       </div>
 
       {showCreateModal && (
@@ -708,24 +662,6 @@ const Screen7 = () => {
                   placeholder="https://example.com/company/profile"
                 />
 
-              </div>
-
-              <div className="w-full">
-                <UploadMediaContainer
-                  type="image"
-                  folderName="testimonials/company_logos"
-                  mediaUrl={newTestimonial.companyLogo}
-                  mediaSource={newTestimonial.companyLogo ? "url" : undefined}
-                  onFileUpload={handleCompanyLogoUpload}
-                  onFileRemove={handleCompanyLogoRemove}
-                  onUrlSubmit={handleCompanyLogoUrlChange}
-                  allowUrlInput
-                  maxSize={5}
-                  acceptedFormats={[".jpg", ".jpeg", ".png", ".webp", ".gif"]}
-                  isUploading={isUploadingLogo}
-                  title="Company Logo"
-                  description="Upload or provide URL for company logo"
-                />
               </div>
 
               <div className="flex items-center gap-3">
@@ -948,24 +884,6 @@ const Screen7 = () => {
                   placeholder="https://example.com/company/profile"
                 />
 
-              </div>
-
-              <div className="w-full">
-                <UploadMediaContainer
-                  type="image"
-                  folderName="testimonials/company_logos"
-                  mediaUrl={editingTestimonial.companyLogo || ""}
-                  mediaSource={editingTestimonial.companyLogo ? "url" : undefined}
-                  onFileUpload={handleEditCompanyLogoUpload}
-                  onFileRemove={handleEditCompanyLogoRemove}
-                  onUrlSubmit={handleEditCompanyLogoUrlChange}
-                  allowUrlInput
-                  maxSize={5}
-                  acceptedFormats={[".jpg", ".jpeg", ".png", ".webp", ".gif"]}
-                  isUploading={isUploadingLogo}
-                  title="Company Logo"
-                  description="Upload or provide URL for company logo"
-                />
               </div>
 
               <div className="flex items-center gap-3">

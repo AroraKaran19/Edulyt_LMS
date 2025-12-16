@@ -50,6 +50,13 @@ const TextArea = ({
   const isMaxLengthExceeded = maxLength ? characterCount > maxLength : false;
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newValue = e.target.value;
+    
+    // Manually enforce maxLength if specified (allows better control)
+    if (maxLength && newValue.length > maxLength) {
+      return; // Don't update if exceeding max length
+    }
+    
     // Call traditional onChange if provided
     if (onChange) {
       onChange(e);
@@ -57,7 +64,7 @@ const TextArea = ({
     
     // Call setChange if provided
     if (setChange) {
-      setChange(e.target.value);
+      setChange(newValue);
     }
   };
 
@@ -82,7 +89,6 @@ const TextArea = ({
           disabled={disabled}
           required={required}
           minLength={minLength}
-          maxLength={maxLength}
           {...props}
           className={cn(
             "w-full px-4 py-3.5 border border-gray-300 rounded-xl bg-white text-black",

@@ -45,19 +45,22 @@ const CoursesCard1 = ({ course, enrollment }: CoursesCard1Props) => {
   };
 
   return (
-    <div className="flex w-full p-1 border border-gray-200 rounded-lg items-stretch gap-3">
+    <div className="flex flex-col sm:flex-row w-full p-2 sm:p-1 border border-gray-200 rounded-lg items-stretch gap-3">
+      {/* Image - responsive sizing */}
       <Image
         src={course.thumbnail || "/courses-demo-image.png"}
         alt={course.title || "Course thumbnail"}
         width={150}
         height={100}
-        className="object-fill aspect-video rounded-lg select-none"
+        className="object-cover aspect-video rounded-lg select-none w-full sm:w-[150px] sm:h-[100px] h-auto"
         loading="lazy"
         quality={100}
         draggable={false}
       />
-      <div className="flex w-full h-full flex-col gap-2 justify-center items-start">
-        <h2 className="text-base font-bold line-clamp-1 text-ellipsis">
+      
+      {/* Title and Instructors Section */}
+      <div className="flex w-full flex-col gap-2 justify-center items-start min-w-0 flex-1">
+        <h2 className="text-sm sm:text-base font-bold line-clamp-2 sm:line-clamp-1 text-ellipsis w-full">
           {course.title || "Untitled Course"}
         </h2>
         <div className="flex instructors gap-2 flex-wrap">
@@ -81,8 +84,33 @@ const CoursesCard1 = ({ course, enrollment }: CoursesCard1Props) => {
           )}
         </div>
       </div>
-      <div className="flex w-full h-full gap-2 justify-center items-end pr-2">
-        <div className="flex w-full h-full gap-6 items-center justify-end">
+      
+      {/* Progress and Action Section - responsive layout */}
+      <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-3 sm:gap-2 justify-between sm:justify-center items-stretch sm:items-end sm:pr-2">
+        {/* Mobile: Show progress and lesson info in a row */}
+        <div className="flex sm:hidden w-full gap-3 items-center justify-between">
+          <div className="flex gap-2 items-center">
+            <ProgressChart
+              percentage={progress}
+              primaryColor="#714ACA"
+              secondaryColor="hsla(0,0%,100%,.55)"
+              className="size-6"
+            />
+            <div className="flex flex-col">
+              <span className="text-xs font-semibold text-black">{progress}%</span>
+              <span className="text-xs text-gray-500">Lesson {currentPosition.lesson}</span>
+            </div>
+          </div>
+          <WhiteButton 
+            className="text-xs font-bold text-gray-500 px-3 py-1.5"
+            onClick={handleContinue}
+          >
+            Continue
+          </WhiteButton>
+        </div>
+
+        {/* Desktop: Original layout */}
+        <div className="hidden sm:flex w-full h-full gap-4 lg:gap-6 items-center justify-end">
           <div className="flex current-lesson w-max h-full flex-col justify-center items-end">
             <span className="text-sm font-semibold">Lesson {currentPosition.lesson}</span>
             <span className="text-xs text-gray-500 font-semibold">

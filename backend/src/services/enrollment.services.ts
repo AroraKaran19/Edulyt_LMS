@@ -15,6 +15,7 @@ import {
   createCertificateService,
   getLatestCertificateService,
 } from "./certificate.services";
+import { createCertificateJobService } from "./certificateJob.services";
 
 /**
  * Check if an enrollment is still valid (not expired)
@@ -443,34 +444,38 @@ export const RecalculateEnrollmentProgressService = async (
 
     if (isCompleted && completedAt) {
       try {
-        // Check if certificate already exists
-        const existingCertificate = await getLatestCertificateService(
-          enrollmentId
-        );
+        // DO NOT generate certificate for partial access users
+        // Only generate certificates for users with FULL course access
+        const hasFullAccess = !updatedEnrollment?.accessControl || 
+          updatedEnrollment.accessControl.accessType === "full";
 
-        if (!existingCertificate) {
-          // Get course details (already populated above)
-          const course = updatedEnrollment?.courseId as any;
-          const user = await UserModel.findById(enrollment.userId)
-            .select("firstName lastName")
-            .lean();
+        if (!hasFullAccess) {
+          console.log(`Skipping certificate generation for enrollment ${enrollmentId} - user has partial access`);
+        } else {
+          // Check if certificate already exists
+          const existingCertificate = await getLatestCertificateService(
+            enrollmentId
+          );
 
-          if (course && user && course.isCertified) {
-            // Get student full name
-            const studentName = `${user.firstName || ""} ${
-              user.lastName || ""
-            }`.trim();
+          if (!existingCertificate) {
+            // Get course details (already populated above)
+            const course = updatedEnrollment?.courseId as any;
 
-            // Get course name
-            const courseName = course.title || "";
-
-            // Generate certificate
-            await createCertificateService({
-              enrollmentId,
-              studentName,
-              courseName,
-              completionDate: completedAt,
-            });
+            if (course && course.isCertified) {
+              // Create certificate generation job (non-blocking)
+              try {
+                await createCertificateJobService({
+                  enrollmentId: enrollmentId.toString(),
+                  studentName: "", // Will be fetched by worker
+                  courseName: "", // Will be fetched by worker
+                  completionDate: completedAt,
+                });
+                console.log(`Certificate generation job created for enrollment ${enrollmentId}`);
+              } catch (jobError) {
+                console.error("Error creating certificate job:", jobError);
+                // Job creation failure shouldn't prevent enrollment completion
+              }
+            }
           }
         }
       } catch (certError) {
@@ -943,49 +948,100 @@ export const UpdateEnrollmentProgressService = async (
 
     if (isCompleted && completedAt) {
       try {
+        // Use updatedEnrollment to get the latest enrollment data
+        const enrollmentForCert = updatedEnrollment || enrollment;
+        
         // Check if certificate already exists
         const existingCertificate = await getLatestCertificateService(
           enrollmentId
         );
 
-        if (!existingCertificate) {
+        if (existingCertificate) {
+          console.log(`Certificate already exists for enrollment ${enrollmentId}`);
+        } else if (enrollmentForCert.isTrial) {
+          console.log(`Skipping certificate generation for trial enrollment ${enrollmentId}`);
+        } else {
+          // DO NOT generate certificate for partial access users
+          // Only generate certificates for users with FULL course access
+          const hasFullAccess = !enrollmentForCert.accessControl || 
+            enrollmentForCert.accessControl.accessType === "full";
+
+        if (!hasFullAccess) {
+          console.log(`Skipping certificate generation for enrollment ${enrollmentId} - user has partial access`);
+        } else {
           // Get course and user details for certificate generation
-          const course = await CourseModel.findById(enrollment.courseId)
-            .populate("instructor", "firstName lastName")
-            .lean();
+          const courseId = enrollmentForCert.courseId?.toString() || enrollment.courseId?.toString();
+          const userId = enrollmentForCert.userId?.toString() || enrollment.userId?.toString();
+          
+          if (!courseId || !userId) {
+            console.error(`Missing courseId or userId for enrollment ${enrollmentId}`);
+          } else {
+            const course = await CourseModel.findById(courseId)
+              .populate("instructor", "firstName lastName")
+              .lean();
 
-          const user = await UserModel.findById(enrollment.userId)
-            .select("firstName lastName")
-            .lean();
+            const user = await UserModel.findById(userId)
+              .select("firstName lastName")
+              .lean();
 
-          if (course && user && course.isCertified) {
-            // Get student full name
-            const studentName = `${user.firstName || ""} ${
-              user.lastName || ""
-            }`.trim();
+            if (!course) {
+              console.error(`Course not found for enrollment ${enrollmentId}, courseId: ${courseId}`);
+            } else if (!user) {
+              console.error(`User not found for enrollment ${enrollmentId}, userId: ${userId}`);
+            } else if (!course.isCertified) {
+              console.log(`Course ${courseId} is not certified, skipping certificate generation`);
+            } else {
+              // Get student full name
+              const studentName = `${user.firstName || ""} ${
+                user.lastName || ""
+              }`.trim();
 
-            // Get course name
-            const courseName = course.title || "";
+              if (!studentName) {
+                console.error(`Student name is empty for enrollment ${enrollmentId}`);
+              } else {
+                // Get course name
+                const courseName = course.title || "";
 
-            // Get key topics from course (if available in course structure)
-            // You might need to extract this from course modules/lessons
-            let keyTopics: string | undefined;
-            // For now, we'll leave it undefined - can be enhanced later
+                // Get key topics from course (if available in course structure)
+                // You might need to extract this from course modules/lessons
+                let keyTopics: string | undefined;
+                // For now, we'll leave it undefined - can be enhanced later
 
-            // Generate certificate
-            await createCertificateService({
-              enrollmentId,
-              studentName,
-              courseName,
-              completionDate: completedAt,
-              keyTopics,
-            });
+                console.log(`Creating certificate generation job for enrollment ${enrollmentId}`);
+                
+                // Create certificate generation job (non-blocking)
+                try {
+                  await createCertificateJobService({
+                    enrollmentId: enrollmentId.toString(),
+                    studentName: "", // Will be fetched by worker
+                    courseName: "", // Will be fetched by worker
+                    completionDate: completedAt,
+                    keyTopics,
+                  });
+                  console.log(`Certificate generation job created for enrollment ${enrollmentId}`);
+                } catch (jobError) {
+                  console.error("Error creating certificate job:", jobError);
+                  // Job creation failure shouldn't prevent enrollment completion
+                }
+              }
+            }
           }
+        }
         }
       } catch (certError) {
         // Log error but don't fail the enrollment update
         console.error("Error auto-generating certificate:", certError);
+        if (certError instanceof Error) {
+          console.error("Certificate error details:", certError.message, certError.stack);
+        }
         // Certificate generation failure shouldn't prevent enrollment completion
+      }
+    } else {
+      if (!isCompleted) {
+        console.log(`Enrollment ${enrollmentId} not completed yet. Status: ${finalStatus}, Progress: ${updatedProgress.overallCompletion}%`);
+      }
+      if (!completedAt) {
+        console.log(`Enrollment ${enrollmentId} completed but completedAt is not set`);
       }
     }
 

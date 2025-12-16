@@ -76,7 +76,6 @@ export const createTestimonialService = async (testimonialData: {
   collegeProfileUrl?: string;
   companyUrl?: string;
   companyProfileUrl?: string;
-  companyLogo?: string;
   verified?: boolean;
   profileImage?: string;
 }): Promise<Testimonial | null> => {
@@ -104,7 +103,6 @@ export const updateTestimonialService = async (
     collegeProfileUrl?: string;
     companyUrl?: string;
     companyProfileUrl?: string;
-    companyLogo?: string;
     verified?: boolean;
     profileImage?: string;
   }

@@ -3,6 +3,9 @@ import {
   getUserCertificates,
   getCertificateById,
   verifyCertificate,
+  createCertificateJob,
+  getCertificateJobStatus,
+  getCertificateJobByEnrollment,
 } from "../controllers/certificate.controller";
 import { verifyUser } from "../middlewares/user.middleware";
 
@@ -21,6 +24,27 @@ router.get("/", verifyUser, getUserCertificates);
  * @access  Public
  */
 router.get("/verify/:verificationCode", verifyCertificate);
+
+/**
+ * @route   POST /api/certificates/generate
+ * @desc    Create a certificate generation job
+ * @access  User
+ */
+router.post("/generate", verifyUser, createCertificateJob);
+
+/**
+ * @route   GET /api/certificates/job/:jobId
+ * @desc    Get certificate job status by job ID
+ * @access  User
+ */
+router.get("/job/:jobId", verifyUser, getCertificateJobStatus);
+
+/**
+ * @route   GET /api/certificates/job/enrollment/:enrollmentId
+ * @desc    Get certificate job status by enrollment ID
+ * @access  User
+ */
+router.get("/job/enrollment/:enrollmentId", verifyUser, getCertificateJobByEnrollment);
 
 /**
  * @route   GET /api/certificates/:certificateId

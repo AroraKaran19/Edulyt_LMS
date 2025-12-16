@@ -16,7 +16,6 @@ export interface Testimonial {
   collegeProfileUrl?: string;
   companyUrl?: string;
   companyProfileUrl?: string;
-  companyLogo?: string;
   verified?: boolean;
   profileImage?: string;
   createdAt?: Date;
@@ -63,7 +62,6 @@ export interface CreateTestimonialData {
   collegeProfileUrl?: string;
   companyUrl?: string;
   companyProfileUrl?: string;
-  companyLogo?: string;
   verified?: boolean;
   profileImage?: string;
 }
@@ -80,7 +78,6 @@ export interface UpdateTestimonialData {
   collegeProfileUrl?: string;
   companyUrl?: string;
   companyProfileUrl?: string;
-  companyLogo?: string;
   verified?: boolean;
   profileImage?: string;
 }
@@ -641,7 +638,6 @@ export const useTestimonial = () => {
         { field: "collegeProfileUrl", label: "College Profile URL" },
         { field: "companyUrl", label: "Company URL" },
         { field: "companyProfileUrl", label: "Company Profile URL" },
-        { field: "companyLogo", label: "Company Logo URL" },
       ];
 
       for (const { field, label } of urlFields) {

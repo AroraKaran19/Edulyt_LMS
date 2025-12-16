@@ -70,13 +70,13 @@ const DashboardNavbar = () => {
         </div>
       </div>
       <div className="w-full py-4.25 px-4 lg:px-20 shadow-[0_2px_0_rgba(0,0,0,0.1)]">
-        <nav className="w-full flex items-center gap-4">
+        <nav className="w-full flex items-center gap-4 overflow-x-auto">
           {navItems.map((item, index) => (
             <Link
               href={item.href}
               key={index}
               className={cn(
-                "text-text-primary text-sm font-medium px-5 py-2.5 rounded-full transition-colors duration-200 ease-in-out flex items-center gap-2",
+                "text-text-primary shrink-0 text-sm font-medium px-5 py-2.5 rounded-full transition-colors duration-200 ease-in-out flex items-center gap-2",
                 pathname === item.href && "bg-[#FFE9DB] text-orange-600"
               )}
             >

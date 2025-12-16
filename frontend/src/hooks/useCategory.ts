@@ -35,6 +35,7 @@ export interface CreateCategoryData {
   name: string;
   description?: string;
   showOnHomePage?: boolean;
+  categoryImage?: string;
 }
 
 export interface UpdateCategoryData {

@@ -72,7 +72,6 @@ export const createTestimonial = asyncHandler(
       collegeProfileUrl,
       companyUrl,
       companyProfileUrl,
-      companyLogo,
       verified,
       profileImage,
     } = req.body;
@@ -104,7 +103,6 @@ export const createTestimonial = asyncHandler(
       collegeProfileUrl,
       companyUrl,
       companyProfileUrl,
-      companyLogo,
       verified,
       profileImage,
     });
@@ -133,7 +131,6 @@ export const updateTestimonial = asyncHandler(
       collegeProfileUrl,
       companyUrl,
       companyProfileUrl,
-      companyLogo,
       verified,
       profileImage,
     } = req.body;
@@ -154,7 +151,6 @@ export const updateTestimonial = asyncHandler(
       collegeProfileUrl === undefined &&
       companyUrl === undefined &&
       companyProfileUrl === undefined &&
-      companyLogo === undefined &&
       verified === undefined &&
       !profileImage
     ) {
@@ -173,7 +169,6 @@ export const updateTestimonial = asyncHandler(
       collegeProfileUrl,
       companyUrl,
       companyProfileUrl,
-      companyLogo,
       verified,
       profileImage,
     });

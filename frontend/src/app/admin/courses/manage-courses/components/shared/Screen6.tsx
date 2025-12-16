@@ -470,14 +470,39 @@ const Screen6 = () => {
               </p>
             </div>
           </div>
-          <OrangeButton
-            onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2"
-            glow={false}
-          >
-            <Plus className="w-4 h-4" />
-            Create FAQ
-          </OrangeButton>
+          <div className="flex items-center gap-2">
+            <WhiteButton
+              onClick={() => {
+                const allFaqIds = faqs?.map(faq => faq._id).filter((id): id is string => !!id) || [];
+                setSelectedFAQIds(allFaqIds);
+                setValue("faqs", allFaqIds, { shouldDirty: true, shouldTouch: true });
+              }}
+              className="flex items-center gap-2"
+              disabled={!faqs || faqs.length === 0}
+            >
+              <Check className="w-4 h-4" />
+              Select All
+            </WhiteButton>
+            <WhiteButton
+              onClick={() => {
+                setSelectedFAQIds([]);
+                setValue("faqs", [], { shouldDirty: true, shouldTouch: true });
+              }}
+              className="flex items-center gap-2"
+              disabled={selectedFAQIds.length === 0}
+            >
+              <X className="w-4 h-4" />
+              Clear All
+            </WhiteButton>
+            <OrangeButton
+              onClick={() => setShowCreateModal(true)}
+              className="flex items-center gap-2"
+              glow={false}
+            >
+              <Plus className="w-4 h-4" />
+              Create FAQ
+            </OrangeButton>
+          </div>
         </div>
 
         {/* Search Bar */}

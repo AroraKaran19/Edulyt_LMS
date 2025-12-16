@@ -4,6 +4,7 @@ import Image from "next/image";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import Link from "next/link";
 import { Testimonial } from "@/types";
+import ImageComponent from "@/components/ui/ImageComponent";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -88,11 +89,31 @@ const TestimonialCard = ({
         </div>
         <div
           className={cn(
-            "testimonial-college text-xs md:text-base font-normal",
+            "testimonial-college text-xs md:text-base font-normal flex items-center justify-center flex-wrap text-center gap-2",
             plusJakartaSans.className
           )}
         >
-          {testimonial.college}
+          {testimonial.collegeProfileUrl && (
+            <ImageComponent
+              src={testimonial.collegeProfileUrl}
+              alt={testimonial.currentCompany}
+              width={20}
+              height={20}
+              className="size-6 rounded-sm object-cover"
+            />
+          )}
+          {testimonial.collegeUrl ? (
+            <Link
+              href={testimonial.collegeUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:underline transition-all duration-300"
+            >
+              {testimonial.college}
+            </Link>
+          ) : (
+            <span>{testimonial.college}</span>
+          )}
         </div>
       </div>
       <div className="testimonial-transition-container flex flex-col items-center justify-center gap-1 grow">
@@ -119,8 +140,28 @@ const TestimonialCard = ({
           >
             {testimonial.currentRole}
           </div>
-          <div className="testimonial-current-company text-sm md:text-xl font-bold font-coolvetica flex-wrap text-center">
-            {testimonial.currentCompany}
+          <div className="testimonial-current-company text-sm md:text-xl font-bold font-coolvetica flex items-center justify-center flex-wrap text-center gap-2">
+            {testimonial.companyProfileUrl && (
+              <ImageComponent
+                src={testimonial.companyProfileUrl}
+                alt={testimonial.currentCompany}
+                width={20}
+                height={20}
+                className="size-6 rounded-sm object-cover"
+              />
+            )}
+            {testimonial.companyUrl ? (
+              <Link
+                href={testimonial.companyUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:underline transition-all duration-300"
+              >
+                {testimonial.currentCompany}
+              </Link>
+            ) : (
+              <span>{testimonial.currentCompany}</span>
+            )}
           </div>
         </div>
       </div>

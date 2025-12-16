@@ -162,9 +162,11 @@ const contentSchema = new mongoose.Schema<Content>(
     description: {
       type: String,
       maxlength: 1500,
+      required: false,
     },
     type: { type: String, required: true, enum: ["video", "quiz", "document"] },
     readingMaterials: [readingMaterialSchema],
+    order: { type: Number, default: 0, required: true },
   },
   { timestamps: true, discriminatorKey: "type" }
 );
@@ -184,6 +186,7 @@ const courseLessonSchema = new mongoose.Schema<CourseLesson>(
     description: {
       type: String,
       maxlength: 1500,
+      required: false,
     },
     contents: [
       {
@@ -193,6 +196,7 @@ const courseLessonSchema = new mongoose.Schema<CourseLesson>(
         default: [],
       },
     ],
+    order: { type: Number, default: 0, required: true },
   },
   {
     timestamps: true,
@@ -230,8 +234,10 @@ const courseModuleSchema = new mongoose.Schema<CourseModule>(
     description: {
       type: String,
       maxlength: 1500,
+      required: false,
     },
     isActive: { type: Boolean, default: true, required: true },
+    order: { type: Number, default: 0, required: true },
   },
   {
     timestamps: true,
@@ -246,12 +252,14 @@ const courseModuleSchema = new mongoose.Schema<CourseModule>(
 
 // Indexes
 
-courseModuleSchema.index({ courseId: 1 }); // For finding modules by course
+courseModuleSchema.index({ courseId: 1, order: 1 }); // For finding modules by course and ordering
 courseModuleSchema.index({ courseId: 1, title: 1 }); // For searching modules by course and title
 courseModuleSchema.index({ title: 1, lessons: 1 }); // For searching modules by title and lesson IDs
 courseModuleSchema.index({ isActive: 1 }); // For filtering active modules
+courseLessonSchema.index({ moduleId: 1, order: 1 }); // For searching lessons by module ID and ordering
 courseLessonSchema.index({ moduleId: 1, title: 1 }); // For searching lessons by module ID and title
 courseLessonSchema.index({ contents: 1 }); // For searching lessons by content IDs
+contentSchema.index({ lessonId: 1, order: 1 }); // For ordering content within lessons
 
 // ===================
 // Models

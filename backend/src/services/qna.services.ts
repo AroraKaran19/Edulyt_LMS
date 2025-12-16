@@ -8,7 +8,8 @@ export const getAllQnAsService = async (
   courseId?: string,
   lessonId?: string,
   contentId?: string,
-  isAdmin?: boolean
+  isAdmin?: boolean,
+  approved?: boolean
 ): Promise<{
   qnas: QnA[];
   total: number;
@@ -19,6 +20,15 @@ export const getAllQnAsService = async (
 
   let filters: any = {};
 
+  // Only show approved Q&As for non-admin users
+  if (!isAdmin) {
+    filters.approved = true;
+  } else {
+    // Admin can filter by approval status
+    if (approved !== undefined) {
+      filters.approved = approved;
+    }
+  }
 
   if (search) {
     filters.$or = [
@@ -43,8 +53,8 @@ export const getAllQnAsService = async (
   }
 
   const qnas = await QnAModel.find(filters)
-    .populate("userId", isAdmin ? "-__v" : "name email profilePicture")
-    .populate("replies.userId", isAdmin ? "-__v" : "name email profilePicture")
+    .populate("userId", isAdmin ? "-__v" : "firstName lastName email profilePicture")
+    .populate("replies.userId", isAdmin ? "-__v" : "firstName lastName email profilePicture")
     .skip(skip)
     .limit(limit)
     .sort({ createdAt: -1 });
@@ -64,9 +74,16 @@ export const getQnAByIdService = async (
   id: string,
   isAdmin?: boolean
 ): Promise<QnA | null> => {
-  const qna = await QnAModel.findById(id)
-    .populate("userId", isAdmin ? "-__v" : "name email profilePicture")
-    .populate("replies.userId", isAdmin ? "-__v" : "name email profilePicture");
+  let query = QnAModel.findById(id);
+  
+  // Only show approved Q&As to non-admins
+  if (!isAdmin) {
+    query = query.where({ approved: true });
+  }
+  
+  const qna = await query
+    .populate("userId", isAdmin ? "-__v" : "firstName lastName email profilePicture")
+    .populate("replies.userId", isAdmin ? "-__v" : "firstName lastName email profilePicture");
 
   if (!qna) {
     return null;
@@ -89,10 +106,10 @@ export const createQnAService = async (qnaData: {
     return null;
   }
 
-  // Populate user data with name and profilePicture
+  // Populate user data with firstName, lastName, email and profilePicture
   const populatedQnA = await QnAModel.findById(savedQnA._id).populate(
     "userId",
-    "name email profilePicture"
+    "firstName lastName email profilePicture"
   );
 
   return populatedQnA as QnA;
@@ -107,8 +124,8 @@ export const updateQnAService = async (
     new: true,
     runValidators: true,
   })
-    .populate("userId", isAdmin ? "-__v" : "name email profilePicture")
-    .populate("replies.userId", isAdmin ? "-__v" : "name email profilePicture");
+    .populate("userId", isAdmin ? "-__v" : "firstName lastName email profilePicture")
+    .populate("replies.userId", isAdmin ? "-__v" : "firstName lastName email profilePicture");
 
   if (!qna) {
     return null;
@@ -136,8 +153,8 @@ export const addReplyToQnAService = async (
 
   // Get the updated QnA with populated data
   const updatedQnA = await QnAModel.findById(qnaId)
-    .populate("userId", "name email profilePicture")
-    .populate("replies.userId", "name email profilePicture");
+    .populate("userId", "firstName lastName email profilePicture")
+    .populate("replies.userId", "firstName lastName email profilePicture");
 
   return updatedQnA;
 };
@@ -151,8 +168,42 @@ export const removeReplyFromQnAService = async (
 
   // Get the updated QnA with populated data
   const updatedQnA = await QnAModel.findById(qnaId)
-    .populate("userId", "name email profilePicture")
-    .populate("replies.userId", "name email profilePicture");
+    .populate("userId", "firstName lastName email profilePicture")
+    .populate("replies.userId", "firstName lastName email profilePicture");
 
   return updatedQnA as QnA;
+};
+
+// Approve a Q&A (instructor/admin only)
+export const approveQnAService = async (id: string): Promise<QnA | null> => {
+  const qna = await QnAModel.findByIdAndUpdate(
+    id,
+    { approved: true },
+    { new: true, runValidators: true }
+  )
+    .populate("userId", "firstName lastName email profilePicture")
+    .populate("replies.userId", "firstName lastName email profilePicture");
+
+  if (!qna) {
+    return null;
+  }
+
+  return qna as QnA;
+};
+
+// Reject/Un-approve a Q&A (instructor/admin only)
+export const rejectQnAService = async (id: string): Promise<QnA | null> => {
+  const qna = await QnAModel.findByIdAndUpdate(
+    id,
+    { approved: false },
+    { new: true, runValidators: true }
+  )
+    .populate("userId", "firstName lastName email profilePicture")
+    .populate("replies.userId", "firstName lastName email profilePicture");
+
+  if (!qna) {
+    return null;
+  }
+
+  return qna as QnA;
 };

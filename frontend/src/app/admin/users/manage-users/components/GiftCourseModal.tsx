@@ -39,7 +39,8 @@ const GiftCourseModal = ({
     Record<string, "elite" | "essential">
   >({});
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
-  const [accessType, setAccessType] = useState<"full" | "partial">("full");
+  const [accessType, setAccessType] = useState<"full" | "partial" | "topN">("full");
+  const [topNCount, setTopNCount] = useState<number>(5);
   const [courseDetails, setCourseDetails] = useState<Course | null>(null);
   const [coursesDetails, setCoursesDetails] = useState<Record<string, Course>>(
     {}
@@ -176,6 +177,7 @@ const GiftCourseModal = ({
       setSelectedCourses([]);
       setSelectedPlans({});
       setAccessType("full");
+      setTopNCount(5);
       setSelectedModules({});
       setSelectedLessons({});
       setSelectedContents({});
@@ -417,7 +419,7 @@ const GiftCourseModal = ({
   };
 
   // Handle access type selection (step 3 -> step 4)
-  const handleAccessTypeSelect = (type: "full" | "partial") => {
+  const handleAccessTypeSelect = (type: "full" | "partial" | "topN") => {
     setAccessType(type);
     if (type === "full") {
       // Reset all selections for full access
@@ -425,7 +427,7 @@ const GiftCourseModal = ({
       setSelectedLessons({});
       setSelectedContents({});
     } else {
-      // When switching to partial, ensure all selected courses have their details loaded
+      // When switching to partial or topN, ensure all selected courses have their details loaded
       selectedCourses.forEach((course) => {
         if (course._id && !coursesDetails[course._id]) {
           fetchCourseDetails(course._id);
@@ -652,6 +654,12 @@ const GiftCourseModal = ({
 
   // Check if there are any valid selections for partial access across all courses
   const hasValidPartialAccessSelection = (): boolean => {
+    // For "topN" access type, check if topNCount is valid
+    if (accessType === "topN") {
+      return topNCount > 0;
+    }
+
+    // For "partial" access type, check selections
     // Check if any modules are selected in any course
     const hasSelectedModules = Object.values(selectedModules).some(
       (modules) => modules && modules.size > 0
@@ -703,6 +711,86 @@ const GiftCourseModal = ({
       return undefined;
     }
 
+    // Handle "topN" access type - automatically select top N contents from each lesson
+    if (accessType === "topN") {
+      const accessibleModules: ModuleAccessControl[] = [];
+      const lessonToModuleMap = new Map<string, string>(); // Map lessonId to moduleId
+
+      // First, build a map of lessons to their parent modules
+      (courseDetails.modules as CourseModule[]).forEach((module) => {
+        const moduleId = typeof module === "string" ? module : module._id || "";
+        if (moduleId && typeof module !== "string" && Array.isArray(module.lessons)) {
+          module.lessons.forEach((lesson) => {
+            const lessonId =
+              typeof lesson === "string" ? lesson : lesson._id || "";
+            if (lessonId) {
+              lessonToModuleMap.set(lessonId, moduleId);
+            }
+          });
+        }
+      });
+
+      // Process all modules and lessons to select top N contents
+      (courseDetails.modules as CourseModule[]).forEach((module) => {
+        const moduleId = typeof module === "string" ? module : module._id || "";
+        if (!moduleId || typeof module === "string") return;
+
+        const moduleAccess: ModuleAccessControl = {
+          moduleId,
+          accessibleLessons: [],
+        };
+
+        if (Array.isArray(module.lessons)) {
+          module.lessons.forEach((lesson) => {
+            const lessonId =
+              typeof lesson === "string" ? lesson : lesson._id || "";
+            if (!lessonId || typeof lesson === "string") return;
+
+            // Get all contents for this lesson
+            const lessonContents =
+              Array.isArray(lesson.contents) ? lesson.contents : [];
+
+            // Sort contents by order (ascending) and take top N
+            const sortedContents = lessonContents
+              .map((content) => {
+                const contentId =
+                  typeof content === "string" ? content : content._id || "";
+                const order =
+                  typeof content === "string" ? 0 : content.order || 0;
+                return { contentId, order };
+              })
+              .filter((c) => c.contentId)
+              .sort((a, b) => a.order - b.order)
+              .slice(0, topNCount)
+              .map((c) => c.contentId);
+
+            // Only add lesson if it has accessible contents
+            if (sortedContents.length > 0) {
+              moduleAccess.accessibleLessons!.push({
+                lessonId,
+                accessibleContentIds: sortedContents,
+              });
+            }
+          });
+        }
+
+        // Only add module if it has accessible lessons
+        if (
+          moduleAccess.accessibleLessons &&
+          moduleAccess.accessibleLessons.length > 0
+        ) {
+          accessibleModules.push(moduleAccess);
+        }
+      });
+
+      return {
+        accessType: "partial",
+        accessibleModules:
+          accessibleModules.length > 0 ? accessibleModules : undefined,
+      };
+    }
+
+    // Handle "partial" access type - use existing logic
     // Get selections for this course
     const courseSelectedModules =
       selectedModules[courseId] || new Set<string>();
@@ -915,8 +1003,12 @@ const GiftCourseModal = ({
       }
 
       if (totalSuccessCount > 0) {
-        const accessInfo =
-          accessType === "full" ? "full access" : "partial access";
+        let accessInfo = "full access";
+        if (accessType === "topN") {
+          accessInfo = `top ${topNCount} contents from each lesson`;
+        } else if (accessType === "partial") {
+          accessInfo = "partial access";
+        }
         toast.success(
           `Successfully gifted ${selectedCourses.length} course(s) (${accessInfo}) to ${selectedUsers.length} user(s). Total: ${totalSuccessCount} gift(s) completed.`
         );
@@ -1526,7 +1618,7 @@ const GiftCourseModal = ({
                     <label className="block text-sm font-semibold text-gray-900 mb-4">
                       Access Type
                     </label>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                       <label
                         className={`flex items-center p-4 border-2 rounded-xl cursor-pointer transition-all ${
                           accessType === "full"
@@ -1575,7 +1667,54 @@ const GiftCourseModal = ({
                           </span>
                         </div>
                       </label>
+                      <label
+                        className={`flex items-center p-4 border-2 rounded-xl cursor-pointer transition-all ${
+                          accessType === "topN"
+                            ? "border-orange-500 bg-orange-50"
+                            : "border-gray-200 hover:border-orange-300 hover:bg-gray-50"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="accessType"
+                          value="topN"
+                          checked={accessType === "topN"}
+                          onChange={() => handleAccessTypeSelect("topN")}
+                          className="w-5 h-5 text-orange-600 border-gray-300 focus:ring-2 focus:ring-orange-500"
+                        />
+                        <div className="ml-3">
+                          <span className="text-sm font-semibold text-gray-900 block">
+                            Top N Contents
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            Top N contents from each lesson
+                          </span>
+                        </div>
+                      </label>
                     </div>
+                    {accessType === "topN" && (
+                      <div className="mb-6">
+                        <Input
+                          type="number"
+                          label="Number of Contents (N)"
+                          placeholder="e.g., 5"
+                          value={topNCount.toString()}
+                          onChange={(e) => {
+                            const value = parseInt(e.target.value, 10);
+                            if (!isNaN(value) && value > 0) {
+                              setTopNCount(value);
+                            } else if (e.target.value === "") {
+                              setTopNCount(1);
+                            }
+                          }}
+                          min={1}
+                          className="max-w-xs"
+                        />
+                        <p className="text-xs text-gray-500 mt-2">
+                          Users will get access to the top {topNCount} content(s) from each lesson (sorted by order). If a lesson has fewer than {topNCount} contents, all available contents will be granted.
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   {accessType === "partial" && (
@@ -1940,13 +2079,13 @@ const GiftCourseModal = ({
                 disabled={
                   isGifting ||
                   isLoading ||
-                  (accessType === "partial" &&
+                  ((accessType === "partial" || accessType === "topN") &&
                     !hasValidPartialAccessSelection())
                 }
                 className={`px-6 py-2.5 font-semibold ${
                   isGifting ||
                   isLoading ||
-                  (accessType === "partial" &&
+                  ((accessType === "partial" || accessType === "topN") &&
                     !hasValidPartialAccessSelection())
                     ? "cursor-not-allowed opacity-50"
                     : "cursor-pointer hover:shadow-lg transition-shadow"

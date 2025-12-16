@@ -332,12 +332,6 @@ const RegisterPage = () => {
             <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
               <button
                 type="button"
-                className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <RefreshCw className="w-4 h-4" />
-              </button>
-              <button
-                type="button"
                 onClick={togglePasswordVisibility}
                 className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
               >

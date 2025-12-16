@@ -3,6 +3,7 @@ import { connectDB, disconnectDB } from "./config/database";
 import dotenv from "dotenv";
 import { initializeS3 } from "./config/s3";
 import { initializeCronJobs } from "./services/cron.services";
+import { startCertificateWorker } from "./workers/certificate.worker";
 
 dotenv.config();
 
@@ -19,6 +20,9 @@ const startServer = async () => {
     
     // Initialize cron jobs
     initializeCronJobs();
+
+    // Start certificate generation worker
+    startCertificateWorker();
 
     const server = app.listen(PORT, () => {
       console.log(`🚀 Airkrit Backend Server is running on port ${PORT}`);

@@ -3,6 +3,8 @@ import PizZip from "pizzip";
 import fs from "fs";
 import path from "path";
 import { DOMParser, XMLSerializer } from "xmldom";
+import ImageModule from "docxtemplater-image-module-free";
+import QRCode from "qrcode";
 
 /**
  * Certificate Generator using DOCX Templates
@@ -20,7 +22,105 @@ export interface CertificateData {
   certificateId: string;
   instructorName?: string;
   keyTopics?: string; // Key topics or technologies
+  verificationUrl?: string; // URL for QR code verification
 }
+
+/**
+ * Post-process the DOCX XML to replace plain text placeholders that weren't caught by docxtemplater
+ * This handles cases where the template has plain text like "DD-MM-YYYY" instead of "[DD-MM-YYYY]"
+ */
+function replacePlainTextPlaceholders(
+  zip: PizZip,
+  replacements: { [key: string]: string }
+): void {
+  try {
+    // Get the main document XML
+    const docXml = zip.files["word/document.xml"];
+    if (!docXml) {
+      throw new Error("document.xml not found in DOCX");
+    }
+
+    const xmlContent = docXml.asText();
+
+    // Parse the XML
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(xmlContent, "text/xml");
+
+    // Define namespaces
+    const ns = {
+      w: "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
+    };
+
+    // Helper function to get elements by tag name with namespace
+    const getElementsByTagNameNS = (
+      node: any,
+      namespace: string,
+      localName: string
+    ): any[] => {
+      const result: any[] = [];
+      const traverse = (n: any) => {
+        if (
+          n.nodeType === 1 &&
+          n.namespaceURI === namespace &&
+          n.localName === localName
+        ) {
+          result.push(n);
+        }
+        if (n.childNodes) {
+          for (let i = 0; i < n.childNodes.length; i++) {
+            traverse(n.childNodes[i]);
+          }
+        }
+      };
+      traverse(node);
+      return result;
+    };
+
+    // Find all text nodes (w:t elements)
+    const textNodes = getElementsByTagNameNS(doc, ns.w, "t");
+
+    // Replace plain text placeholders in each text node
+    textNodes.forEach((textNode: any) => {
+      let textContent = textNode.textContent || "";
+      let modified = false;
+
+      // Replace each placeholder (replace all occurrences)
+      for (const [placeholder, replacement] of Object.entries(replacements)) {
+        if (textContent.includes(placeholder)) {
+          // Use global replace to replace all occurrences
+          const regex = new RegExp(
+            placeholder.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+            "g"
+          );
+          textContent = textContent.replace(regex, replacement);
+          modified = true;
+        }
+      }
+
+      // Update the text node if it was modified
+      if (modified) {
+        textNode.textContent = textContent;
+      }
+    });
+
+    // Serialize back to XML string
+    const serializer = new XMLSerializer();
+    const updatedXml = serializer.serializeToString(doc);
+
+    // Update the document.xml in the zip
+    zip.file("word/document.xml", updatedXml);
+  } catch (error: any) {
+    console.error("Error replacing plain text placeholders:", error);
+    // Don't throw - continue without replacement if it fails
+  }
+}
+
+/**
+ * Insert QR code image into DOCX document at bottom right
+ * This function adds the QR code image to the document and positions it
+ */
+// QR code insertion function removed - caused DOCX corruption
+// TODO: Re-implement with proper DOCX XML handling if needed
 
 /**
  * Post-process the DOCX XML to apply bold formatting to text between markers
@@ -120,163 +220,169 @@ function applyBoldFormattingWithMarkers(
           }
 
           // Check if original text node has xml:space="preserve"
-          const preserveSpace = textNode.getAttribute("xml:space") === "preserve";
-          runsToProcess.push({ 
-            runNode, 
-            textNode, 
-            textContent, 
+          const preserveSpace =
+            textNode.getAttribute("xml:space") === "preserve";
+          runsToProcess.push({
+            runNode,
+            textNode,
+            textContent,
             preserveSpace,
-            originalRPr 
+            originalRPr,
           });
         }
       }
     });
 
     // Process each run that contains markers
-    runsToProcess.forEach(({ runNode, textNode, textContent, preserveSpace, originalRPr }) => {
-      const parentNode = runNode.parentNode;
-      if (!parentNode) return;
+    runsToProcess.forEach(
+      ({ runNode, textNode, textContent, preserveSpace, originalRPr }) => {
+        const parentNode = runNode.parentNode;
+        if (!parentNode) return;
 
-      // Parse text to extract parts (normal text and bold text)
-      const parts: Array<{ text: string; shouldBold: boolean }> = [];
-      let remainingText = textContent;
-      let currentIndex = 0;
+        // Parse text to extract parts (normal text and bold text)
+        const parts: Array<{ text: string; shouldBold: boolean }> = [];
+        let remainingText = textContent;
+        let currentIndex = 0;
 
-      while (currentIndex < remainingText.length) {
-        const startIndex = remainingText.indexOf(startMarker, currentIndex);
+        while (currentIndex < remainingText.length) {
+          const startIndex = remainingText.indexOf(startMarker, currentIndex);
 
-        if (startIndex === -1) {
-          // No more markers, add remaining text
-          if (currentIndex < remainingText.length) {
-            const remaining = remainingText.substring(currentIndex);
-            if (remaining) {
-              parts.push({ text: remaining, shouldBold: false });
+          if (startIndex === -1) {
+            // No more markers, add remaining text
+            if (currentIndex < remainingText.length) {
+              const remaining = remainingText.substring(currentIndex);
+              if (remaining) {
+                parts.push({ text: remaining, shouldBold: false });
+              }
+            }
+            break;
+          }
+
+          // Add text before marker
+          if (startIndex > currentIndex) {
+            const beforeText = remainingText.substring(
+              currentIndex,
+              startIndex
+            );
+            if (beforeText) {
+              parts.push({ text: beforeText, shouldBold: false });
             }
           }
-          break;
-        }
 
-        // Add text before marker
-        if (startIndex > currentIndex) {
-          const beforeText = remainingText.substring(currentIndex, startIndex);
-          if (beforeText) {
-            parts.push({ text: beforeText, shouldBold: false });
+          // Find end marker
+          const endIndex = remainingText.indexOf(
+            endMarker,
+            startIndex + startMarker.length
+          );
+          if (endIndex === -1) {
+            // No end marker found, treat rest as normal text
+            const rest = remainingText.substring(startIndex);
+            if (rest) {
+              parts.push({ text: rest, shouldBold: false });
+            }
+            break;
           }
-        }
 
-        // Find end marker
-        const endIndex = remainingText.indexOf(
-          endMarker,
-          startIndex + startMarker.length
-        );
-        if (endIndex === -1) {
-          // No end marker found, treat rest as normal text
-          const rest = remainingText.substring(startIndex);
-          if (rest) {
-            parts.push({ text: rest, shouldBold: false });
+          // Extract text between markers (this should be bold)
+          const boldText = remainingText.substring(
+            startIndex + startMarker.length,
+            endIndex
+          );
+          if (boldText) {
+            parts.push({ text: boldText, shouldBold: true });
           }
-          break;
+
+          currentIndex = endIndex + endMarker.length;
         }
 
-        // Extract text between markers (this should be bold)
-        const boldText = remainingText.substring(
-          startIndex + startMarker.length,
-          endIndex
-        );
-        if (boldText) {
-          parts.push({ text: boldText, shouldBold: true });
-        }
+        // If no parts were found, skip
+        if (parts.length === 0) return;
 
-        currentIndex = endIndex + endMarker.length;
+        // Store the next sibling for insertion
+        const nextSibling = runNode.nextSibling;
+
+        // Remove the original run
+        parentNode.removeChild(runNode);
+
+        // Create new runs for each part
+        parts.forEach((part) => {
+          if (!part.text) return; // Skip empty parts
+
+          const newRun = doc.createElementNS(ns.w, "w:r");
+
+          // Always create rPr to preserve font properties (font-size, font-family, etc.)
+          const rPr = doc.createElementNS(ns.w, "w:rPr");
+
+          // Copy all properties from original rPr (font-size, font-family, color, etc.)
+          if (originalRPr) {
+            const originalChildren = originalRPr.childNodes || [];
+            for (let i = 0; i < originalChildren.length; i++) {
+              const child = originalChildren[i];
+              if (child.nodeType === 1) {
+                // Clone the node (font-size, font-family, color, etc.)
+                const clonedChild = child.cloneNode(true);
+                rPr.appendChild(clonedChild);
+              }
+            }
+          }
+
+          // Add or update bold property
+          if (part.shouldBold) {
+            // Check if bold already exists, if not add it
+            let hasBold = false;
+            const rPrChildren = rPr.childNodes || [];
+            for (let i = 0; i < rPrChildren.length; i++) {
+              const child = rPrChildren[i];
+              if (
+                child.nodeType === 1 &&
+                child.localName === "b" &&
+                child.namespaceURI === ns.w
+              ) {
+                hasBold = true;
+                break;
+              }
+            }
+            if (!hasBold) {
+              const bold = doc.createElementNS(ns.w, "w:b");
+              rPr.appendChild(bold);
+            }
+          } else {
+            // Remove bold if it exists (for non-bold parts)
+            const rPrChildren = rPr.childNodes || [];
+            for (let i = rPrChildren.length - 1; i >= 0; i--) {
+              const child = rPrChildren[i];
+              if (
+                child.nodeType === 1 &&
+                child.localName === "b" &&
+                child.namespaceURI === ns.w
+              ) {
+                rPr.removeChild(child);
+              }
+            }
+          }
+
+          // Only add rPr if it has children (properties)
+          if (rPr.childNodes && rPr.childNodes.length > 0) {
+            newRun.appendChild(rPr);
+          }
+
+          const newTextNode = doc.createElementNS(ns.w, "w:t");
+          // Preserve spaces in text nodes if original had it
+          if (preserveSpace) {
+            newTextNode.setAttribute("xml:space", "preserve");
+          }
+          newTextNode.textContent = part.text;
+          newRun.appendChild(newTextNode);
+
+          // Insert the new run
+          if (nextSibling) {
+            parentNode.insertBefore(newRun, nextSibling);
+          } else {
+            parentNode.appendChild(newRun);
+          }
+        });
       }
-
-      // If no parts were found, skip
-      if (parts.length === 0) return;
-
-      // Store the next sibling for insertion
-      const nextSibling = runNode.nextSibling;
-
-      // Remove the original run
-      parentNode.removeChild(runNode);
-
-      // Create new runs for each part
-      parts.forEach((part) => {
-        if (!part.text) return; // Skip empty parts
-
-        const newRun = doc.createElementNS(ns.w, "w:r");
-
-        // Always create rPr to preserve font properties (font-size, font-family, etc.)
-        const rPr = doc.createElementNS(ns.w, "w:rPr");
-        
-        // Copy all properties from original rPr (font-size, font-family, color, etc.)
-        if (originalRPr) {
-          const originalChildren = originalRPr.childNodes || [];
-          for (let i = 0; i < originalChildren.length; i++) {
-            const child = originalChildren[i];
-            if (child.nodeType === 1) {
-              // Clone the node (font-size, font-family, color, etc.)
-              const clonedChild = child.cloneNode(true);
-              rPr.appendChild(clonedChild);
-            }
-          }
-        }
-
-        // Add or update bold property
-        if (part.shouldBold) {
-          // Check if bold already exists, if not add it
-          let hasBold = false;
-          const rPrChildren = rPr.childNodes || [];
-          for (let i = 0; i < rPrChildren.length; i++) {
-            const child = rPrChildren[i];
-            if (
-              child.nodeType === 1 &&
-              child.localName === "b" &&
-              child.namespaceURI === ns.w
-            ) {
-              hasBold = true;
-              break;
-            }
-          }
-          if (!hasBold) {
-            const bold = doc.createElementNS(ns.w, "w:b");
-            rPr.appendChild(bold);
-          }
-        } else {
-          // Remove bold if it exists (for non-bold parts)
-          const rPrChildren = rPr.childNodes || [];
-          for (let i = rPrChildren.length - 1; i >= 0; i--) {
-            const child = rPrChildren[i];
-            if (
-              child.nodeType === 1 &&
-              child.localName === "b" &&
-              child.namespaceURI === ns.w
-            ) {
-              rPr.removeChild(child);
-            }
-          }
-        }
-
-        // Only add rPr if it has children (properties)
-        if (rPr.childNodes && rPr.childNodes.length > 0) {
-          newRun.appendChild(rPr);
-        }
-
-        const newTextNode = doc.createElementNS(ns.w, "w:t");
-        // Preserve spaces in text nodes if original had it
-        if (preserveSpace) {
-          newTextNode.setAttribute("xml:space", "preserve");
-        }
-        newTextNode.textContent = part.text;
-        newRun.appendChild(newTextNode);
-
-        // Insert the new run
-        if (nextSibling) {
-          parentNode.insertBefore(newRun, nextSibling);
-        } else {
-          parentNode.appendChild(newRun);
-        }
-      });
-    });
+    );
 
     // Serialize back to XML string
     const serializer = new XMLSerializer();
@@ -293,7 +399,7 @@ function applyBoldFormattingWithMarkers(
 /**
  * Generate certificate from DOCX template
  * Replaces placeholders and returns the modified DOCX buffer
- * 
+ *
  * Template placeholders should use square brackets: [Placeholder Name]
  * Supported placeholders:
  * - [DD-MM-YYYY] or [Date] or [Completion Date] - for the completion date
@@ -317,8 +423,44 @@ export async function generateCertificateFromDocx(
     const content = fs.readFileSync(templatePath, "binary");
     const zip = new PizZip(content);
 
+    // Generate QR code if verification URL is provided
+    let qrCodeBuffer: Buffer | null = null;
+    if (data.verificationUrl) {
+      try {
+        qrCodeBuffer = await QRCode.toBuffer(data.verificationUrl, {
+          type: "png",
+          width: 300,
+          margin: 1,
+          color: {
+            dark: "#000000",
+            light: "#FFFFFF",
+          },
+        });
+        console.log(`[Certificate] QR code generated for: ${data.verificationUrl}`);
+      } catch (error) {
+        console.error("[Certificate] Error generating QR code:", error);
+        // Continue without QR code
+      }
+    }
+
+    // Configure ImageModule for QR code insertion
+    const imageModule = new ImageModule({
+      centered: false,
+      getImage(tagValue: string) {
+        // Return QR code buffer when [qrImage] placeholder is found
+        if (tagValue === "qrImage" && qrCodeBuffer) {
+          return qrCodeBuffer;
+        }
+        return Buffer.from(""); // Return empty buffer if no QR code
+      },
+      getSize() {
+        // Size: 1 inch at 96 DPI = 96 pixels (smaller to prevent page break)
+        return [96, 96];
+      },
+    });
+
     // Configure docxtemplater with custom delimiters to use [] instead of {{}}
-    // Enable modules for rich text support
+    // Enable modules for rich text support and image insertion
     const doc = new Docxtemplater(zip, {
       delimiters: {
         start: "[",
@@ -326,7 +468,7 @@ export async function generateCertificateFromDocx(
       },
       paragraphLoop: true,
       linebreaks: true,
-      modules: [], // We'll use XML formatting directly
+      modules: [imageModule], // Add image module for QR code
     });
 
     // Prepare data for replacement
@@ -346,26 +488,84 @@ export async function generateCertificateFromDocx(
       // Date format: DD-MM-YYYY (will be made bold)
       // Support multiple variations
       "DD-MM-YYYY": `${BOLD_MARKER_PREFIX}${formattedDate}${BOLD_MARKER_SUFFIX}`,
-      "Date": `${BOLD_MARKER_PREFIX}${formattedDate}${BOLD_MARKER_SUFFIX}`,
+      Date: `${BOLD_MARKER_PREFIX}${formattedDate}${BOLD_MARKER_SUFFIX}`,
       "Completion Date": `${BOLD_MARKER_PREFIX}${formattedDate}${BOLD_MARKER_SUFFIX}`,
       // Certificate ID (will be made bold)
       // Support multiple variations including "ID : AI-XXXX" format
       "AI-XXXX": `${BOLD_MARKER_PREFIX}${data.certificateId}${BOLD_MARKER_SUFFIX}`,
       "ID : AI-XXXX": `ID : ${BOLD_MARKER_PREFIX}${data.certificateId}${BOLD_MARKER_SUFFIX}`,
       "Certificate ID": `${BOLD_MARKER_PREFIX}${data.certificateId}${BOLD_MARKER_SUFFIX}`,
-      "ID": `${BOLD_MARKER_PREFIX}${data.certificateId}${BOLD_MARKER_SUFFIX}`,
+      ID: `${BOLD_MARKER_PREFIX}${data.certificateId}${BOLD_MARKER_SUFFIX}`,
+      // QR Code placeholder - will be replaced by ImageModule if QR code exists
+      qrImage: qrCodeBuffer ? "qrImage" : "", // Empty string if no QR code
     };
 
     // Render the document (replace placeholders with marked text)
     try {
-    doc.render(templateData);
+      doc.render(templateData);
     } catch (renderError: any) {
       // Log template data keys for debugging
       console.log("Available template data keys:", Object.keys(templateData));
       if (renderError.properties && renderError.properties.errors) {
-        console.error("Template rendering errors:", renderError.properties.errors);
+        console.error(
+          "Template rendering errors:",
+          renderError.properties.errors
+        );
       }
       throw renderError;
+    }
+
+    // Post-process: Replace any plain text placeholders that weren't caught by docxtemplater
+    // This handles cases where the template has "DD-MM-YYYY" instead of "[DD-MM-YYYY]"
+    // Also handles certificate ID placeholders like "AI-XXXX" or "ID : AI-XXXX"
+    // Order matters: replace longer strings first to avoid partial replacements
+    const plainTextReplacements: { [key: string]: string } = {
+      "ID : AI-XXXX": `ID : ${BOLD_MARKER_PREFIX}${data.certificateId}${BOLD_MARKER_SUFFIX}`,
+      "AI-XXXX": `${BOLD_MARKER_PREFIX}${data.certificateId}${BOLD_MARKER_SUFFIX}`,
+      "DD-MM-YYYY": `${BOLD_MARKER_PREFIX}${formattedDate}${BOLD_MARKER_SUFFIX}`,
+    };
+    replacePlainTextPlaceholders(doc.getZip(), plainTextReplacements);
+
+    // Additional aggressive replacement for certificate ID in the entire XML
+    // This handles cases where text might be split across nodes or formatted differently
+    try {
+      const docXml = doc.getZip().files["word/document.xml"];
+      if (docXml) {
+        let xmlContent = docXml.asText();
+        const originalContent = xmlContent;
+
+        // Replace AI-XXXX patterns in the entire XML (case-insensitive)
+        // Handle various formats: "AI-XXXX", "[AI-XXXX]", "ID : AI-XXXX", "[ID : AI-XXXX]"
+        const replacementValue = `${BOLD_MARKER_PREFIX}${data.certificateId}${BOLD_MARKER_SUFFIX}`;
+
+        // First, replace "ID : AI-XXXX" patterns (with or without brackets, with flexible spacing)
+        xmlContent = xmlContent.replace(/\[?ID\s*:\s*AI-XXXX\]?/gi, (match) => {
+          if (match.includes("[") && match.includes("]")) {
+            return `[ID : ${replacementValue}]`;
+          }
+          return `ID : ${replacementValue}`;
+        });
+
+        // Then, replace standalone "AI-XXXX" patterns (only if not already part of "ID : AI-XXXX")
+        // Check if the replacement already happened by looking for our replacement value
+        if (!xmlContent.includes(replacementValue)) {
+          xmlContent = xmlContent.replace(/\[?AI-XXXX\]?/gi, (match) => {
+            if (match.includes("[") && match.includes("]")) {
+              return `[${replacementValue}]`;
+            }
+            return replacementValue;
+          });
+        }
+
+        // Update the XML if it was modified
+        if (xmlContent !== originalContent) {
+          doc.getZip().file("word/document.xml", xmlContent);
+          console.log(`Certificate ID replaced in XML: ${data.certificateId}`);
+        }
+      }
+    } catch (error: any) {
+      console.error("Error in aggressive certificate ID replacement:", error);
+      // Don't throw - continue without this replacement if it fails
     }
 
     // Post-process: Apply bold formatting to text between markers and remove markers
@@ -374,6 +574,17 @@ export async function generateCertificateFromDocx(
       BOLD_MARKER_PREFIX,
       BOLD_MARKER_SUFFIX
     );
+
+    // QR code is handled by ImageModule during doc.render()
+    // NOTE: The template MUST contain [%qrImage] placeholder for QR code to appear
+    if (data.verificationUrl && qrCodeBuffer) {
+      console.log(
+        `[Certificate] QR code ready. Verification URL: ${data.verificationUrl}`
+      );
+      console.log(
+        `[Certificate] ⚠️  Template must contain [%qrImage] placeholder for QR code to appear!`
+      );
+    }
 
     // Get the generated document
     const buf = doc.getZip().generate({
@@ -424,6 +635,7 @@ function formatDateDDMMYYYY(dateString: string): string {
  * Find LibreOffice executable path
  * On Windows, LibreOffice uses soffice.exe instead of libreoffice
  * On Linux/Ubuntu, uses libreoffice command
+ * Returns null if not found (will throw error in convertDocxToPdf)
  */
 function findLibreOfficePath(): string | null {
   const os = require("os");
@@ -439,7 +651,12 @@ function findLibreOfficePath(): string | null {
     // Add paths from environment variables if they exist
     if (process.env.PROGRAMFILES) {
       possiblePaths.push(
-        path.join(process.env.PROGRAMFILES, "LibreOffice", "program", "soffice.exe")
+        path.join(
+          process.env.PROGRAMFILES,
+          "LibreOffice",
+          "program",
+          "soffice.exe"
+        )
       );
     }
     if (process.env["ProgramFiles(x86)"]) {
@@ -483,8 +700,9 @@ function findLibreOfficePath(): string | null {
 }
 
 /**
- * Convert DOCX to PDF
- * Tries LibreOffice first (better quality), falls back to docx-pdf if LibreOffice is not available
+ * Convert DOCX to PDF using LibreOffice (REQUIRED for high quality)
+ * LibreOffice provides superior PDF quality compared to docx-pdf
+ * Installation: https://www.libreoffice.org/download/
  */
 export async function convertDocxToPdf(
   docxPath: string,
@@ -494,75 +712,274 @@ export async function convertDocxToPdf(
   const { promisify } = require("util");
   const execAsync = promisify(exec);
 
-  // Try LibreOffice first (better quality)
-  try {
-    // Find LibreOffice executable path
-    const libreOfficePath = findLibreOfficePath();
-    if (!libreOfficePath) {
-      throw new Error("LibreOffice not found");
-    }
-
-    // Use LibreOffice to convert DOCX to PDF
-    // LibreOffice must be installed: https://www.libreoffice.org/download/
-    const command = `"${libreOfficePath}" --headless --convert-to pdf --outdir "${path.dirname(
-      pdfPath
-    )}" "${docxPath}"`;
-
-    await execAsync(command);
-
-    // LibreOffice creates PDF with same name but .pdf extension
-    const expectedPdfPath = docxPath.replace(/\.docx$/i, ".pdf");
-    const finalPdfPath = path.join(
-      path.dirname(pdfPath),
-      path.basename(expectedPdfPath)
-    );
-
-    // Rename if needed
-    if (fs.existsSync(finalPdfPath) && finalPdfPath !== pdfPath) {
-      fs.renameSync(finalPdfPath, pdfPath);
-    }
-
-    // Verify PDF was created
-    if (fs.existsSync(pdfPath)) {
-      return; // Success with LibreOffice
-    }
-  } catch (error: any) {
-    // LibreOffice failed, try fallback
-    console.warn(
-      `LibreOffice conversion failed: ${error.message}. Trying docx-pdf fallback...`
+  // Find LibreOffice executable path
+  const libreOfficePath = findLibreOfficePath();
+  if (!libreOfficePath) {
+    throw new Error(
+      `LibreOffice is REQUIRED for high-quality PDF generation but was not found.\n` +
+        `Please install LibreOffice:\n` +
+        `  Windows: https://www.libreoffice.org/download/download/\n` +
+        `  Linux/Ubuntu: sudo apt-get install libreoffice\n` +
+        `  macOS: brew install --cask libreoffice\n` +
+        `After installation, restart the server.`
     );
   }
 
-  // Fallback to docx-pdf if LibreOffice is not available
   try {
-    const convert = require("docx-pdf");
+    const outputDir = path.dirname(pdfPath);
+    const docxFileName = path.basename(docxPath, path.extname(docxPath));
 
-    return new Promise((resolve, reject) => {
-      convert(docxPath, pdfPath, (err: Error | null) => {
-        if (err) {
+    // On Windows, we need to handle paths and escaping carefully
+    // Use absolute paths and proper escaping
+    const os = require("os");
+    const platform = os.platform();
+
+    console.log(
+      `[Certificate] Converting DOCX to PDF using LibreOffice (high quality)`
+    );
+    console.log(`[Certificate] LibreOffice path: ${libreOfficePath}`);
+    console.log(`[Certificate] Input DOCX: ${docxPath}`);
+    console.log(`[Certificate] Output directory: ${outputDir}`);
+    console.log(`[Certificate] Expected PDF: ${pdfPath}`);
+
+    // Use spawn instead of exec for better error handling, especially on Windows
+    const { spawn } = require("child_process");
+
+    // Build command arguments for spawn
+    // On Windows, LibreOffice may need --invisible instead of --headless
+    const commandArgs = [
+      platform === "win32" ? "--invisible" : "--headless", // Windows prefers --invisible
+      "--nodefault",
+      "--nolockcheck",
+      "--norestore",
+      "--convert-to",
+      "pdf",
+      "--outdir",
+      outputDir,
+      docxPath,
+    ];
+
+    console.log(`[Certificate] LibreOffice command args:`, commandArgs);
+    console.log(`[Certificate] Platform: ${platform}`);
+
+    // Use spawn for better control and error handling
+    // On Windows with paths containing spaces, we need to handle it carefully
+    let libreOfficeProcess: any;
+
+    if (platform === "win32") {
+      // On Windows, quote the executable path to handle spaces
+      // Build a command string that properly quotes the executable
+      const quotedPath = `"${libreOfficePath}"`;
+      const fullCommand = [quotedPath, ...commandArgs].join(" ");
+
+      console.log(`[Certificate] Windows command string: ${fullCommand}`);
+
+      // Use shell: true with a properly quoted command string
+      libreOfficeProcess = spawn(fullCommand, [], {
+        cwd: outputDir,
+        stdio: ["ignore", "pipe", "pipe"],
+        shell: true,
+      });
+    } else {
+      // Linux/Mac: Use spawn normally
+      libreOfficeProcess = spawn(libreOfficePath, commandArgs, {
+        cwd: outputDir,
+        stdio: ["ignore", "pipe", "pipe"],
+        shell: false,
+      });
+    }
+
+    let stdout = "";
+    let stderr = "";
+
+    libreOfficeProcess.stdout.on("data", (data: Buffer) => {
+      const output = data.toString();
+      stdout += output;
+      if (output.trim()) {
+        console.log(`[Certificate] LibreOffice stdout: ${output.trim()}`);
+      }
+    });
+
+    libreOfficeProcess.stderr.on("data", (data: Buffer) => {
+      const output = data.toString();
+      stderr += output;
+      if (output.trim()) {
+        console.log(`[Certificate] LibreOffice stderr: ${output.trim()}`);
+      }
+    });
+
+    // Wait for process to complete
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          libreOfficeProcess.kill();
           reject(
-            new Error(
-              `Failed to convert DOCX to PDF using docx-pdf: ${err.message}. Please install LibreOffice for better results: https://www.libreoffice.org/download/`
-            )
+            new Error("LibreOffice conversion timed out after 30 seconds")
           );
-        } else {
-          // Verify PDF was created
-          if (fs.existsSync(pdfPath)) {
+        }, 30000);
+
+        libreOfficeProcess.on("close", (code: number) => {
+          clearTimeout(timeout);
+
+          console.log(
+            `[Certificate] LibreOffice process closed. Code: ${code}`
+          );
+
+          if (stdout.trim()) {
+            console.log(`[Certificate] LibreOffice stdout: ${stdout.trim()}`);
+          } else {
+            console.log(`[Certificate] LibreOffice stdout: (empty)`);
+          }
+
+          if (stderr.trim()) {
+            console.log(`[Certificate] LibreOffice stderr: ${stderr.trim()}`);
+          } else {
+            console.log(`[Certificate] LibreOffice stderr: (empty)`);
+          }
+
+          if (code === 0 || code === null) {
+            console.log(
+              `[Certificate] LibreOffice exited successfully (code: ${code})`
+            );
             resolve();
           } else {
             reject(
               new Error(
-                "PDF file was not created. Please install LibreOffice: https://www.libreoffice.org/download/"
+                `LibreOffice exited with code ${code}.\n` +
+                  `stdout: ${stdout || "(empty)"}\n` +
+                  `stderr: ${stderr || "(empty)"}`
               )
             );
           }
-        }
+        });
+
+        libreOfficeProcess.on("error", (error: Error) => {
+          clearTimeout(timeout);
+          reject(new Error(`Failed to start LibreOffice: ${error.message}`));
+        });
       });
-    });
-  } catch (error: any) {
-    throw new Error(
-      `Failed to convert DOCX to PDF. Neither LibreOffice nor docx-pdf is available. Error: ${error.message}. Please install LibreOffice: https://www.libreoffice.org/download/`
+    } catch (execError: any) {
+      console.error(
+        `[Certificate] LibreOffice execution failed:`,
+        execError.message
+      );
+      if (stdout) console.error(`[Certificate] Captured stdout: ${stdout}`);
+      if (stderr) console.error(`[Certificate] Captured stderr: ${stderr}`);
+      throw execError;
+    }
+
+    // Wait a bit for file system to sync (Windows sometimes needs this)
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    // LibreOffice creates PDF with same name but .pdf extension in the output directory
+    // Check multiple possible locations
+    const possiblePdfPaths = [
+      pdfPath, // Expected final path
+      path.join(outputDir, `${docxFileName}.pdf`), // Same name as DOCX
+      path.join(outputDir, path.basename(docxPath).replace(/\.docx$/i, ".pdf")), // DOCX name with .pdf
+      docxPath.replace(/\.docx$/i, ".pdf"), // Same directory as DOCX
+    ];
+
+    console.log(`[Certificate] Checking for PDF in possible locations:`);
+    possiblePdfPaths.forEach((p) =>
+      console.log(`  - ${p} (exists: ${fs.existsSync(p)})`)
     );
+
+    // List all files in output directory for debugging
+    try {
+      const filesInDir = fs.readdirSync(outputDir);
+      console.log(
+        `[Certificate] Files in output directory: ${filesInDir.join(", ")}`
+      );
+    } catch (dirError) {
+      console.log(`[Certificate] Could not list output directory: ${dirError}`);
+    }
+
+    // Find the actual PDF file
+    let actualPdfPath: string | null = null;
+    for (const possiblePath of possiblePdfPaths) {
+      if (fs.existsSync(possiblePath)) {
+        actualPdfPath = possiblePath;
+        break;
+      }
+    }
+
+    // If not found in expected locations, search for any PDF in the directory
+    if (!actualPdfPath) {
+      try {
+        const filesInDir = fs.readdirSync(outputDir);
+        const pdfFiles = filesInDir.filter((f: string) =>
+          f.toLowerCase().endsWith(".pdf")
+        );
+        if (pdfFiles.length > 0) {
+          actualPdfPath = path.join(outputDir, pdfFiles[0]);
+          console.log(`[Certificate] Found PDF file: ${actualPdfPath}`);
+        }
+      } catch (dirError) {
+        // Ignore directory read errors
+      }
+    }
+
+    if (!actualPdfPath) {
+      // List all files for debugging
+      let allFiles = "";
+      try {
+        const filesInDir = fs.readdirSync(outputDir);
+        allFiles = filesInDir.join(", ");
+      } catch (e) {
+        allFiles = "Could not read directory";
+      }
+
+      throw new Error(
+        `PDF file was not created. Expected at: ${pdfPath}\n` +
+          `Files in output directory: ${allFiles}\n` +
+          `LibreOffice path: ${libreOfficePath}\n` +
+          `LibreOffice args: ${commandArgs.join(" ")}\n` +
+          `Check LibreOffice installation and permissions.`
+      );
+    }
+
+    // Move/rename to expected location if needed
+    if (actualPdfPath !== pdfPath) {
+      console.log(
+        `[Certificate] Moving PDF from ${actualPdfPath} to ${pdfPath}`
+      );
+      fs.renameSync(actualPdfPath, pdfPath);
+    }
+
+    // Verify PDF file is not empty
+    const stats = fs.statSync(pdfPath);
+    if (stats.size === 0) {
+      throw new Error(
+        `PDF file was created but is empty (0 bytes). LibreOffice conversion may have failed.`
+      );
+    }
+
+    console.log(
+      `[Certificate] PDF generated successfully: ${pdfPath} (${(
+        stats.size / 1024
+      ).toFixed(2)} KB)`
+    );
+    return; // Success
+  } catch (error: any) {
+    // Provide detailed error message
+    if (error.code === "ENOENT" || error.message.includes("not found")) {
+      throw new Error(
+        `LibreOffice executable not found at: ${libreOfficePath}\n` +
+          `Please ensure LibreOffice is installed and the path is correct.\n` +
+          `Installation: https://www.libreoffice.org/download/`
+      );
+    } else if (error.code === "ETIMEDOUT") {
+      throw new Error(
+        `LibreOffice conversion timed out. The document may be too complex or LibreOffice may be unresponsive.\n` +
+          `Original error: ${error.message}`
+      );
+    } else {
+      throw new Error(
+        `LibreOffice PDF conversion failed: ${error.message}\n` +
+          `Please ensure LibreOffice is properly installed: https://www.libreoffice.org/download/`
+      );
+    }
   }
 }
 

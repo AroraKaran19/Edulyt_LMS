@@ -18,7 +18,8 @@ import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import { useSession } from "next-auth/react";
 import Modal from "@/components/ui/Modal";
-import { User as UserIcon } from "lucide-react";
+import { User as UserIcon, Tag, X, Check } from "lucide-react";
+import { useCoupon } from "@/hooks/useCoupon";
 
 interface EnrollmentFormData {
   name: string;
@@ -40,9 +41,19 @@ const CartForm = ({
   const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
   const { update: updateSession } = useSession();
+  const { validateCoupon } = useCoupon();
   const [showFirstNameModal, setShowFirstNameModal] = useState(false);
   const [firstNameInput, setFirstNameInput] = useState("");
   const [isUpdatingFirstName, setIsUpdatingFirstName] = useState(false);
+  
+  // Coupon state
+  const [couponCode, setCouponCode] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<{
+    code: string;
+    discountAmount: number;
+    finalAmount: number;
+  } | null>(null);
+  const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
 
   // Check if user has firstName before allowing enrollment
   useEffect(() => {
@@ -54,6 +65,66 @@ const CartForm = ({
       setShowFirstNameModal(true);
     }
   }, [user, isLoading]);
+
+  // Handle coupon application
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) {
+      toast.error("Please enter a coupon code");
+      return;
+    }
+
+    setIsValidatingCoupon(true);
+    try {
+      // Get the base price after plan discount
+      const planPrice =
+        planType === "elite"
+          ? course.plans?.elite?.price || 0
+          : course.plans?.essential?.price || 0;
+
+      const planDiscount = course.plans?.[planType]?.discount;
+      const courseDiscount = course.discount;
+
+      const discountInfo = calculateDiscountDisplay(
+        planPrice,
+        planDiscount,
+        courseDiscount
+      );
+      const purchaseAmount = discountInfo.discountPrice;
+
+      if (!purchaseAmount || purchaseAmount <= 0) {
+        toast.error("Invalid course pricing");
+        return;
+      }
+
+      const result = await validateCoupon({
+        code: couponCode.trim().toUpperCase(),
+        courseId: course._id!,
+        purchaseAmount,
+      });
+
+      if (result && result.valid) {
+        setAppliedCoupon({
+          code: couponCode.trim().toUpperCase(),
+          discountAmount: result.discountAmount || 0,
+          finalAmount: result.finalAmount || purchaseAmount,
+        });
+        toast.success(result.message || "Coupon applied successfully!");
+      } else {
+        toast.error(result?.message || "Invalid coupon code");
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.error?.message || "Failed to validate coupon");
+    } finally {
+      setIsValidatingCoupon(false);
+    }
+  };
+
+  // Handle coupon removal
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponCode("");
+    toast.info("Coupon removed");
+  };
 
   const handleUpdateFirstName = async () => {
     if (!firstNameInput.trim()) {
@@ -472,8 +543,58 @@ const CartForm = ({
                         </span>
                       </div>
                       <div className="w-full flex flex-col gap-4">
+                        {/* Coupon Code Section */}
+                        <div className="bg-gradient-to-r from-orange-50 to-yellow-50 border border-orange-200 rounded-lg p-4">
+                          <label className="text-sm font-semibold text-text-primary flex items-center gap-2 mb-3">
+                            <Tag className="w-4 h-4 text-orange-600" />
+                            Have a coupon code?
+                          </label>
+                          {!appliedCoupon ? (
+                            <div className="flex gap-2">
+                              <input
+                                type="text"
+                                placeholder="Enter coupon code"
+                                value={couponCode}
+                                onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                                onKeyPress={(e) => {
+                                  if (e.key === 'Enter') {
+                                    handleApplyCoupon();
+                                  }
+                                }}
+                                className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent uppercase font-mono"
+                                disabled={isValidatingCoupon}
+                              />
+                              <OrangeButton
+                                onClick={handleApplyCoupon}
+                                disabled={isValidatingCoupon || !couponCode.trim()}
+                                className="px-6 whitespace-nowrap"
+                              >
+                                {isValidatingCoupon ? "Checking..." : "Apply"}
+                              </OrangeButton>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-between bg-green-50 border-2 border-green-300 rounded-lg px-4 py-3">
+                              <div className="flex items-center gap-2">
+                                <Check className="w-5 h-5 text-green-600" />
+                                <span className="font-bold text-green-800 font-mono">
+                                  {appliedCoupon.code}
+                                </span>
+                                <span className="text-sm text-green-600 font-medium">applied</span>
+                              </div>
+                              <button
+                                onClick={handleRemoveCoupon}
+                                className="text-red-600 hover:text-red-700 hover:bg-red-100 p-1 rounded transition-colors"
+                                title="Remove coupon"
+                              >
+                                <X className="w-5 h-5" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Order Summary */}
                         <div className="bg-gray-50 rounded-lg p-4">
-                          <h3 className="font-semibold text-text-primary mb-2">
+                          <h3 className="font-semibold text-text-primary mb-3">
                             Order Summary
                           </h3>
                           {(() => {
@@ -492,11 +613,13 @@ const CartForm = ({
                               courseDiscount
                             );
 
+                            const finalAmount = appliedCoupon ? appliedCoupon.finalAmount : discountInfo.discountPrice;
+
                             return (
-                              <>
+                              <div className="space-y-2">
                                 <div className="flex justify-between items-center">
-                                  <span className="text-text-primary">
-                                    Course: {course.title}
+                                  <span className="text-text-primary text-sm">
+                                    Course Price
                                   </span>
                                   <span className="font-semibold text-text-primary">
                                     ₹{planPrice}
@@ -505,25 +628,35 @@ const CartForm = ({
 
                                 {discountInfo.discountLabel && (
                                   <div className="flex justify-between items-center text-green-600">
-                                    <span>
-                                      Discount Applied (
-                                      {discountInfo.discountLabel})
+                                    <span className="text-sm">
+                                      Plan Discount ({discountInfo.discountLabel})
                                     </span>
-                                    <span>
+                                    <span className="text-sm font-medium">
                                       -₹{planPrice - discountInfo.discountPrice}
                                     </span>
                                   </div>
                                 )}
 
-                                <div className="flex justify-between items-center border-t pt-2 mt-2">
-                                  <span className="font-bold text-text-primary">
+                                {appliedCoupon && (
+                                  <div className="flex justify-between items-center text-orange-600">
+                                    <span className="text-sm font-medium">
+                                      Coupon ({appliedCoupon.code})
+                                    </span>
+                                    <span className="text-sm font-bold">
+                                      -₹{appliedCoupon.discountAmount}
+                                    </span>
+                                  </div>
+                                )}
+
+                                <div className="flex justify-between items-center border-t-2 pt-3 mt-2">
+                                  <span className="font-bold text-text-primary text-base">
                                     Total Amount
                                   </span>
-                                  <span className="font-bold text-text-primary text-lg">
-                                    ₹{discountInfo.discountPrice}
+                                  <span className="font-bold text-orange-600 text-xl">
+                                    ₹{finalAmount}
                                   </span>
                                 </div>
-                              </>
+                              </div>
                             );
                           })()}
                         </div>
@@ -543,13 +676,17 @@ const CartForm = ({
 
                             setIsCreatingOrder(true);
                             try {
-                              // Create order - Backend expects: courseId, planType, userId
-                              // Note: Backend will calculate discounts internally
-                              const orderData = {
+                              // Create order - Backend expects: courseId, planType, userId, and optionally couponCode
+                              const orderData: any = {
                                 courseId: course._id,
                                 planType: planType,
                                 userId: user._id, // Use authenticated user's ID
                               };
+
+                              // Add coupon code if applied
+                              if (appliedCoupon) {
+                                orderData.couponCode = appliedCoupon.code;
+                              }
 
                               const response = await apiClient.post(
                                 "/orders",

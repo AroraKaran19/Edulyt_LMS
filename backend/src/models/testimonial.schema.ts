@@ -58,16 +58,6 @@ const testimonialSchema = new Schema<Testimonial>(
         message: "Company Profile URL must be a valid URL",
       },
     },
-    companyLogo: {
-      type: String,
-      required: false,
-      validate: {
-        validator: function (value: string) {
-          return !value || validateUrl(value);
-        },
-        message: "Company Logo must be a valid URL",
-      },
-    },
     verified: { type: Boolean, default: false },
     profileImage: { type: String, required: false },
   },

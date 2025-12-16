@@ -5,6 +5,7 @@ import ImageComponent from "@/components/ui/ImageComponent";
 import { Download, Clock, BookOpen, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { useRouter } from "next/navigation";
 
 interface CourseCardProps {
   course: Course;
@@ -19,6 +20,7 @@ const CourseCard = ({
   progress,
   showCertificate,
 }: CourseCardProps) => {
+  const router = useRouter();
   const isTrial = enrollment.isTrial;
   const isExpired =
     isTrial && enrollment.trialExpiresAt
@@ -143,7 +145,10 @@ const CourseCard = ({
   };
 
   return (
-    <div className="group bg-white border border-gray-200 rounded-xl flex flex-col h-full shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden">
+    <div
+      className="group bg-white border border-gray-200 rounded-xl flex flex-col h-full shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden cursor-pointer"
+      onClick={() => router.push(`/courses/${course.slug}/watch`)}
+    >
       {/* Image Section */}
       <div className="relative w-full aspect-video overflow-hidden bg-gray-100">
         <ImageComponent
@@ -320,16 +325,17 @@ const CourseCard = ({
               </div>
             ) : progress === 100 && showCertificate ? (
               <Link
-                href={`/courses/${course.slug}/watch`}
+                href="/dashboard/certificates"
+                onClick={(e) => e.stopPropagation()}
                 className="flex items-center gap-1.5 sm:gap-2 bg-linear-to-b from-orange-500 to-orange-600 text-white rounded-lg px-3 sm:px-4 py-2 text-xs font-semibold hover:from-orange-600 hover:to-orange-700 transition-all shadow-sm hover:shadow-md"
               >
                 <Download className="w-4 h-4" />
-                <span className="hidden sm:inline">Certificate</span>
-                <span className="sm:hidden">Cert</span>
+                <span>Certificate</span>
               </Link>
             ) : progress > 0 ? (
               <Link
                 href={`/courses/${course.slug}/watch`}
+                onClick={(e) => e.stopPropagation()}
                 className="flex items-center gap-1.5 sm:gap-2 bg-white border border-gray-300 text-gray-700 rounded-lg px-3 sm:px-4 py-2 text-xs font-semibold hover:bg-gray-50 hover:border-gray-400 transition-all shadow-sm hover:shadow"
               >
                 Continue
@@ -337,6 +343,7 @@ const CourseCard = ({
             ) : (
               <Link
                 href={`/courses/${course.slug}/watch`}
+                onClick={(e) => e.stopPropagation()}
                 className="flex items-center gap-1.5 sm:gap-2 bg-white border border-gray-300 text-gray-700 rounded-lg px-3 sm:px-4 py-2 text-xs font-semibold hover:bg-gray-50 hover:border-gray-400 transition-all shadow-sm hover:shadow"
               >
                 Start

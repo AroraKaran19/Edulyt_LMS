@@ -74,7 +74,8 @@ const EnrollmentGuard = ({ course, children }: EnrollmentGuardProps) => {
   // Check enrollment status on mount
   useEffect(() => {
     checkUserEnrollment();
-  }, [session, status, course._id, checkEnrollment]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session, status, course._id]); // checkEnrollment is stable (memoized), exclude to prevent infinite loops
 
   // Loading state
   if (status === "loading" || isCheckingEnrollment) {

@@ -28,6 +28,7 @@ const ManageCoursesPage = () => {
     updateCourseStatus,
     deleteCourse,
     duplicateCourse,
+    duplicateCourseWithModules,
     isLoading,
   } = useCourse();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -45,6 +46,10 @@ const ManageCoursesPage = () => {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [duplicatingCourseId, setDuplicatingCourseId] = useState<string | null>(
+    null
+  );
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+  const [courseToDuplicate, setCourseToDuplicate] = useState<Course | null>(
     null
   );
 
@@ -174,17 +179,24 @@ const ManageCoursesPage = () => {
     }
   };
 
-  // Handle duplicate course
+  // Handle duplicate course option click
+  const handleDuplicateClick = (course: Course) => {
+    setOpenMenuId(null);
+    setCourseToDuplicate(course);
+    setShowDuplicateModal(true);
+  };
+
+  // Handle duplicate course (metadata only)
   const handleDuplicateCourse = async (courseId: string) => {
     if (!courseId) return;
 
-    setOpenMenuId(null);
+    setShowDuplicateModal(false);
     setDuplicatingCourseId(courseId);
 
     try {
       const duplicatedCourse = await duplicateCourse(courseId);
       if (duplicatedCourse && duplicatedCourse._id) {
-        toast.success("Course duplicated successfully!");
+        toast.success("Course metadata duplicated successfully!");
         // Navigate to edit page for the duplicated course
         router.push(
           `/admin/courses/manage-courses/edit/${duplicatedCourse._id}`
@@ -197,6 +209,34 @@ const ManageCoursesPage = () => {
       toast.error("Failed to duplicate course");
     } finally {
       setDuplicatingCourseId(null);
+      setCourseToDuplicate(null);
+    }
+  };
+
+  // Handle duplicate course with modules
+  const handleDuplicateCourseWithModules = async (courseId: string) => {
+    if (!courseId) return;
+
+    setShowDuplicateModal(false);
+    setDuplicatingCourseId(courseId);
+
+    try {
+      const duplicatedCourse = await duplicateCourseWithModules(courseId);
+      if (duplicatedCourse && duplicatedCourse._id) {
+        toast.success("Course with modules duplicated successfully!");
+        // Navigate to edit page for the duplicated course
+        router.push(
+          `/admin/courses/manage-courses/edit/${duplicatedCourse._id}`
+        );
+      } else {
+        toast.error("Failed to duplicate course with modules");
+      }
+    } catch (error) {
+      console.error("Failed to duplicate course with modules:", error);
+      toast.error("Failed to duplicate course with modules");
+    } finally {
+      setDuplicatingCourseId(null);
+      setCourseToDuplicate(null);
     }
   };
 
@@ -418,9 +458,7 @@ const ManageCoursesPage = () => {
                               View Course
                             </button>
                             <button
-                              onClick={() =>
-                                handleDuplicateCourse(course._id || "")
-                              }
+                              onClick={() => handleDuplicateClick(course)}
                               disabled={duplicatingCourseId === course._id}
                               className={`w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors text-left ${
                                 duplicatingCourseId === course._id
@@ -428,17 +466,8 @@ const ManageCoursesPage = () => {
                                   : "cursor-pointer"
                               }`}
                             >
-                              {duplicatingCourseId === course._id ? (
-                                <>
-                                  <div className="w-4 h-4 border-2 border-gray-500 border-t-transparent rounded-full animate-spin" />
-                                  Duplicating...
-                                </>
-                              ) : (
-                                <>
-                                  <Copy className="w-4 h-4 text-gray-500" />
-                                  Duplicate Course
-                                </>
-                              )}
+                              <Copy className="w-4 h-4 text-gray-500" />
+                              Duplicate Course
                             </button>
                             <button
                               onClick={() => handleEditCourse(course._id || "")}
@@ -611,6 +640,96 @@ const ManageCoursesPage = () => {
                     Delete
                   </>
                 )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Duplicate Course Modal */}
+      {showDuplicateModal && courseToDuplicate && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
+                <Copy className="w-6 h-6 text-orange-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Duplicate Course
+                </h3>
+                <p className="text-sm text-gray-600">
+                  Choose duplication type
+                </p>
+              </div>
+            </div>
+
+            <p className="text-gray-700 mb-6">
+              How would you like to duplicate{" "}
+              <strong>"{courseToDuplicate.title}"</strong>?
+            </p>
+
+            <div className="space-y-3 mb-6">
+              <button
+                onClick={() =>
+                  handleDuplicateCourse(courseToDuplicate._id || "")
+                }
+                disabled={duplicatingCourseId === courseToDuplicate._id}
+                className={`w-full p-4 border-2 rounded-lg text-left transition-colors ${
+                  duplicatingCourseId === courseToDuplicate._id
+                    ? "opacity-50 cursor-not-allowed border-gray-200"
+                    : "border-gray-200 hover:border-orange-500 hover:bg-orange-50 cursor-pointer"
+                }`}
+              >
+                <div className="font-medium text-gray-900 mb-1">
+                  Copy Metadata Only
+                </div>
+                <div className="text-sm text-gray-600">
+                  Duplicate course information, settings, and pricing. Modules
+                  and lessons will not be copied.
+                </div>
+              </button>
+
+              <button
+                onClick={() =>
+                  handleDuplicateCourseWithModules(
+                    courseToDuplicate._id || ""
+                  )
+                }
+                disabled={duplicatingCourseId === courseToDuplicate._id}
+                className={`w-full p-4 border-2 rounded-lg text-left transition-colors ${
+                  duplicatingCourseId === courseToDuplicate._id
+                    ? "opacity-50 cursor-not-allowed border-gray-200"
+                    : "border-gray-200 hover:border-orange-500 hover:bg-orange-50 cursor-pointer"
+                }`}
+              >
+                <div className="font-medium text-gray-900 mb-1">
+                  Copy Whole Course
+                </div>
+                <div className="text-sm text-gray-600">
+                  Duplicate everything including all modules, lessons, and
+                  content. Creates a complete copy of the course structure.
+                </div>
+              </button>
+            </div>
+
+            {duplicatingCourseId === courseToDuplicate._id && (
+              <div className="flex items-center justify-center gap-2 text-sm text-gray-600 mb-4">
+                <div className="w-4 h-4 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+                Duplicating...
+              </div>
+            )}
+
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => {
+                  setShowDuplicateModal(false);
+                  setCourseToDuplicate(null);
+                }}
+                disabled={duplicatingCourseId === courseToDuplicate._id}
+                className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                Cancel
               </button>
             </div>
           </div>

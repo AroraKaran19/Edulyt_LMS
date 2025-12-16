@@ -1,12 +1,51 @@
 import { useState } from "react";
-import { MessageCircle, Search, Plus, X } from "lucide-react";
+import { MessageCircle, Search, Plus, X, Send } from "lucide-react";
 import Image from "next/image";
-import TextArea from "@/components/ui/inputs/TextArea";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import { Button } from "@/components/ui/buttons/button";
 import { QnA, QnAReply } from "@/types/qna";
 import useQnA from "@/hooks/useQnA";
 import { toast } from "react-toastify";
+
+// Helper function to get initials from name
+const getInitials = (name: string): string => {
+  // Check if it's an email address
+  if (name.includes("@")) {
+    // Extract username part before @ and take first 2 chars
+    const username = name.split("@")[0];
+    return username.substring(0, 2).toUpperCase();
+  }
+
+  // Check if it's "Anonymous User"
+  if (name.toLowerCase().includes("anonymous")) {
+    return "AU";
+  }
+
+  // Extract initials from actual name
+  const parts = name.trim().split(" ");
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+  return name.substring(0, 2).toUpperCase();
+};
+
+// Helper function to generate a consistent color based on name
+const getAvatarColor = (name: string): string => {
+  const colors = [
+    "bg-blue-500",
+    "bg-green-500",
+    "bg-yellow-500",
+    "bg-purple-500",
+    "bg-pink-500",
+    "bg-indigo-500",
+    "bg-red-500",
+    "bg-teal-500",
+  ];
+  const index = name
+    .split("")
+    .reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  return colors[index % colors.length];
+};
 
 const QASections = ({
   questions,
@@ -30,8 +69,14 @@ const QASections = ({
   const [openReplyId, setOpenReplyId] = useState<string | null>(null);
   const [isAskingQuestion, setIsAskingQuestion] = useState(false);
   const [newQuestion, setNewQuestion] = useState("");
+  const [replyText, setReplyText] = useState("");
+  const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
 
   const { createQnA, addReply, validateQnA, validateReply } = useQnA();
+
+  const handleImageError = (id: string) => {
+    setImageErrors((prev) => ({ ...prev, [id]: true }));
+  };
 
   return (
     <div>
@@ -53,7 +98,7 @@ const QASections = ({
           <button
             type="button"
             title="Ask Question"
-            className="text-[#2B1508] font-bold text-base p-4 rounded-2xl border border-[#00000026] flex items-center gap-2 hover:bg-gray-50 transition-colors"
+            className="text-[#2B1508] font-bold cursor-pointer text-base p-4 rounded-2xl border border-[#00000026] flex items-center gap-2 hover:bg-gray-50 transition-colors"
             onClick={() => setIsAskingQuestion(true)}
           >
             <Plus className="w-4 h-4" />
@@ -148,17 +193,37 @@ const QASections = ({
                 }
               }}
             >
-              <TextArea
-                placeholder="What would you like to know about this course?"
-                value={newQuestion}
-                setChange={setNewQuestion}
-                rows={4}
-                minLength={10}
-                maxLength={1000}
-                showWordCount={true}
-                required
-                className="mb-4"
-              />
+              <div className="mb-4 relative">
+                <textarea
+                  placeholder="What would you like to know about this course?"
+                  value={newQuestion}
+                  onChange={(e) => setNewQuestion(e.target.value)}
+                  rows={4}
+                  minLength={10}
+                  maxLength={1000}
+                  required
+                  className="w-full px-4 py-3.5 pb-8 border border-gray-300 rounded-xl bg-white text-black focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-400 transition-all duration-200 ease-in-out outline-none shadow-sm hover:shadow-md resize-none"
+                />
+                <div className="absolute bottom-2 right-3 text-xs bg-white px-1 rounded">
+                  <div
+                    className={`text-right ${
+                      newQuestion.length > 1000
+                        ? "text-red-500"
+                        : newQuestion.length < 10
+                        ? "text-orange-500"
+                        : "text-gray-500"
+                    }`}
+                  >
+                    {newQuestion.length}/1000
+                  </div>
+                </div>
+                {newQuestion.length < 10 && newQuestion.length > 0 && (
+                  <div className="text-xs text-orange-500 mt-1">
+                    Minimum 10 characters required ({10 - newQuestion.length}{" "}
+                    more needed)
+                  </div>
+                )}
+              </div>
 
               <div className="flex items-center gap-3 justify-end">
                 <Button
@@ -168,6 +233,7 @@ const QASections = ({
                     setIsAskingQuestion(false);
                     setNewQuestion("");
                   }}
+                  className="cursor-pointer"
                 >
                   Cancel
                 </Button>
@@ -176,6 +242,7 @@ const QASections = ({
                   disabled={
                     !newQuestion.trim() || newQuestion.trim().length < 10
                   }
+                  className="cursor-pointer"
                 >
                   Post Question
                 </OrangeButton>
@@ -199,22 +266,37 @@ const QASections = ({
           questions?.map((qna) => {
             const user = typeof qna.userId === "object" ? qna.userId : null;
             const userName = user?.firstName
-              ? `${user.firstName} ${user.lastName}`
+              ? `${user.firstName} ${user.lastName || ""}`.trim()
               : user?.email ?? "Anonymous User";
             const userAvatar = user?.profilePicture || "/user.svg";
+            // For initials, prefer first/last name over email
+            const nameForInitials = user?.firstName
+              ? `${user.firstName} ${user.lastName || ""}`.trim()
+              : "Anonymous User";
 
             return (
               <div key={qna._id} className="bg-white rounded-lg p-6">
                 {/* User Info */}
                 <div className="flex items-start gap-3 mb-3">
                   <div className="w-10 h-10 rounded-full overflow-hidden shrink-0">
-                    <Image
-                      src={userAvatar}
-                      alt={userName}
-                      className="w-full h-full object-cover"
-                      width={40}
-                      height={40}
-                    />
+                    {user?.profilePicture && !imageErrors[qna._id || ""] ? (
+                      <Image
+                        src={userAvatar}
+                        alt={userName}
+                        className="w-full h-full object-cover"
+                        width={40}
+                        height={40}
+                        onError={() => handleImageError(qna._id || "")}
+                      />
+                    ) : (
+                      <div
+                        className={`w-full h-full flex items-center justify-center text-white font-semibold text-sm ${getAvatarColor(
+                          nameForInitials
+                        )}`}
+                      >
+                        {getInitials(nameForInitials)}
+                      </div>
+                    )}
                   </div>
                   <div className="flex-1">
                     <h3 className="font-normal font-coolvetica text-black text-xl">
@@ -246,10 +328,18 @@ const QASections = ({
                       const replyUser =
                         typeof reply.userId === "object" ? reply.userId : null;
                       const replyUserName = replyUser?.firstName
-                        ? `${replyUser.firstName} ${replyUser.lastName}`
+                        ? `${replyUser.firstName} ${
+                            replyUser.lastName || ""
+                          }`.trim()
                         : replyUser?.email ?? "Anonymous User";
                       const replyUserAvatar =
                         replyUser?.profilePicture ?? "/user.svg";
+                      // For initials, prefer first/last name over email
+                      const replyNameForInitials = replyUser?.firstName
+                        ? `${replyUser.firstName} ${
+                            replyUser.lastName || ""
+                          }`.trim()
+                        : "Anonymous User";
 
                       return (
                         <div
@@ -257,13 +347,27 @@ const QASections = ({
                           className="flex items-start gap-3 mb-3 p-3 bg-gray-50 rounded-lg"
                         >
                           <div className="w-8 h-8 rounded-full overflow-hidden shrink-0">
-                            <Image
-                              src={replyUserAvatar}
-                              alt={replyUserName}
-                              className="w-full h-full object-cover"
-                              width={32}
-                              height={32}
-                            />
+                            {replyUser?.profilePicture &&
+                            !imageErrors[reply._id || ""] ? (
+                              <Image
+                                src={replyUserAvatar}
+                                alt={replyUserName}
+                                className="w-full h-full object-cover"
+                                width={32}
+                                height={32}
+                                onError={() =>
+                                  handleImageError(reply._id || "")
+                                }
+                              />
+                            ) : (
+                              <div
+                                className={`w-full h-full flex items-center justify-center text-white font-semibold text-xs ${getAvatarColor(
+                                  replyNameForInitials
+                                )}`}
+                              >
+                                {getInitials(replyNameForInitials)}
+                              </div>
+                            )}
                           </div>
                           <div className="flex-1">
                             <h5 className="font-medium text-sm text-gray-900">
@@ -311,7 +415,10 @@ const QASections = ({
                       </h4>
                       <button
                         type="button"
-                        onClick={() => setOpenReplyId(null)}
+                        onClick={() => {
+                          setOpenReplyId(null);
+                          setReplyText("");
+                        }}
                         className="p-1 hover:bg-gray-200 rounded-full transition-colors"
                         title="Close"
                       >
@@ -322,55 +429,84 @@ const QASections = ({
                     <form
                       onSubmit={async (e) => {
                         e.preventDefault();
-                        const formData = new FormData(e.currentTarget);
-                        const replyMessage = formData.get("reply") as string;
 
-                        if (!replyMessage.trim()) {
+                        if (!replyText.trim()) {
                           toast.error("Please enter a reply");
                           return;
                         }
 
-                        const errors = validateReply({ message: replyMessage });
+                        const errors = validateReply({ message: replyText });
                         if (errors.length > 0) {
                           toast.error(errors[0]);
                           return;
                         }
 
                         const result = await addReply(qna._id!, {
-                          message: replyMessage,
+                          message: replyText,
                         });
                         if (result) {
                           toast.success("Reply posted successfully!");
                           setOpenReplyId(null);
+                          setReplyText("");
                           onRefresh?.();
                         }
                       }}
                     >
-                      <TextArea
-                        name="reply"
-                        placeholder="Add your reply here..."
-                        rows={3}
-                        minLength={5}
-                        maxLength={500}
-                        showWordCount={true}
-                        required
-                        className="mb-3"
-                      />
+                      <div className="mb-3 relative">
+                        <textarea
+                          placeholder="Add your reply here..."
+                          value={replyText}
+                          onChange={(e) => setReplyText(e.target.value)}
+                          rows={3}
+                          minLength={5}
+                          maxLength={500}
+                          required
+                          className="w-full px-4 py-3.5 pb-8 border border-gray-300 rounded-xl bg-white text-black focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-400 transition-all duration-200 ease-in-out outline-none shadow-sm hover:shadow-md resize-none"
+                        />
+                        <div className="absolute bottom-2 right-3 text-xs bg-white px-1 rounded">
+                          <div
+                            className={`text-right ${
+                              replyText.length > 500
+                                ? "text-red-500"
+                                : replyText.length < 5
+                                ? "text-orange-500"
+                                : "text-gray-500"
+                            }`}
+                          >
+                            {replyText.length}/500
+                          </div>
+                        </div>
+                        {replyText.length < 5 && replyText.length > 0 && (
+                          <div className="text-xs text-orange-500 mt-1">
+                            Minimum 5 characters required (
+                            {5 - replyText.length} more needed)
+                          </div>
+                        )}
+                      </div>
 
                       <div className="flex items-center gap-2 justify-end">
                         <Button
                           type="button"
                           variant="outline"
                           size="sm"
-                          onClick={() => setOpenReplyId(null)}
+                          onClick={() => {
+                            setOpenReplyId(null);
+                            setReplyText("");
+                          }}
+                          className="cursor-pointer"
                         >
                           Cancel
                         </Button>
                         <OrangeButton
                           type="submit"
-                          className="px-4 py-2 text-sm"
+                          className="px-4 py-2 text-sm cursor-pointer flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                          disabled={!replyText.trim()}
                         >
-                          Post Reply
+                          <Send className="size-4" />
+                          <span className="text-sm font-bold text-white disabled:text-white/50">
+                            {" "}
+                            Post Reply
+                          </span>
                         </OrangeButton>
                       </div>
                     </form>

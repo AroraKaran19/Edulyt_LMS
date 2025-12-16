@@ -17,7 +17,7 @@ const InstructorCarousel = ({ instructors }: { instructors: Instructor[] }) => {
       }}
       breakpoints={{
         0: {
-          slidesPerView: 1.1,
+          slidesPerView: 1.2,
           spaceBetween: 10,
         },
         768: {

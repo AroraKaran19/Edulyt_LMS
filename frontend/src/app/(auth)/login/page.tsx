@@ -110,7 +110,7 @@ const LoginPage = () => {
     <>
       <div className="header flex flex-col gap-2 mb-2">
         <h1 className="text-3xl lg:text-4xl font-regular font-coolvetica text-center lg:text-start text-text-primary">
-          Sign up for Free at Airkrit!
+          Login to your Airkrit account
         </h1>
         <p className="text-base font-regular text-center lg:text-start text-text-primary">
           Welcome back! Enter your details to continue using Airkrit

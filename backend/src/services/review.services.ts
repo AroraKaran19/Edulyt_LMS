@@ -43,7 +43,8 @@ export const getAllReviewsService = async (
   reviewableType?: string,
   reviewableId?: string,
   rating?: number,
-  isAdmin?: boolean
+  isAdmin?: boolean,
+  approved?: boolean
 ): Promise<{
   reviews: Review[];
   total: number;
@@ -54,9 +55,15 @@ export const getAllReviewsService = async (
 
   let filters: any = {};
 
-  // Only show active reviews for non-admin users
+  // Only show active and approved reviews for non-admin users
   if (!isAdmin) {
     filters.isActive = true;
+    filters.approved = true; // Only show approved reviews to non-admins
+  } else {
+    // Admin can filter by approval status
+    if (approved !== undefined) {
+      filters.approved = approved;
+    }
   }
 
   // Search filter
@@ -80,7 +87,7 @@ export const getAllReviewsService = async (
   }
 
   const reviews = await ReviewModel.find(filters)
-    .populate("userId", isAdmin ? "-__v" : "name email profilePicture")
+    .populate("userId", isAdmin ? "-__v" : "firstName lastName email profilePicture")
     .populate("reviewableId", "title name")
     .skip(skip)
     .limit(limit)
@@ -102,8 +109,8 @@ export const getReviewByIdService = async (
   isAdmin?: boolean
 ): Promise<Review | null> => {
   const review = await ReviewModel.findById(id)
-    .where(isAdmin ? {} : { isActive: true })
-    .populate("userId", isAdmin ? "-__v" : "name email profilePicture")
+    .where(isAdmin ? {} : { isActive: true, approved: true }) // Only show approved reviews to non-admins
+    .populate("userId", isAdmin ? "-__v" : "firstName lastName email profilePicture")
     .populate("reviewableId", "title name");
 
   if (!review) {
@@ -155,7 +162,7 @@ export const createReviewService = async (reviewData: {
 
   // Populate user data
   const populatedReview = await ReviewModel.findById(savedReview._id)
-    .populate("userId", "name email profilePicture")
+    .populate("userId", "firstName lastName email profilePicture")
     .populate("reviewableId", "title name");
 
   return populatedReview as Review;
@@ -181,7 +188,7 @@ export const updateReviewService = async (
     new: true,
     runValidators: true,
   })
-    .populate("userId", isAdmin ? "-__v" : "name email profilePicture")
+    .populate("userId", isAdmin ? "-__v" : "firstName lastName email profilePicture")
     .populate("reviewableId", "title name");
 
   if (!review) {
@@ -266,7 +273,7 @@ export const getReviewsByReviewableService = async (
   }
 
   const reviews = await ReviewModel.find(filters)
-    .populate("userId", "name email profilePicture")
+    .populate("userId", "firstName lastName email profilePicture")
     .skip(skip)
     .limit(limit)
     .sort({ createdAt: -1 });
@@ -309,4 +316,42 @@ export const getReviewsByReviewableService = async (
     averageRating: Math.round(averageRating * 10) / 10, // Round to 1 decimal place
     ratingDistribution,
   };
+};
+
+// Approve a review (instructor/admin only)
+export const approveReviewService = async (
+  id: string
+): Promise<Review | null> => {
+  const review = await ReviewModel.findByIdAndUpdate(
+    id,
+    { approved: true },
+    { new: true, runValidators: true }
+  )
+    .populate("userId", "firstName lastName email profilePicture")
+    .populate("reviewableId", "title name");
+
+  if (!review) {
+    return null;
+  }
+
+  return review as Review;
+};
+
+// Reject/Un-approve a review (instructor/admin only)
+export const rejectReviewService = async (
+  id: string
+): Promise<Review | null> => {
+  const review = await ReviewModel.findByIdAndUpdate(
+    id,
+    { approved: false },
+    { new: true, runValidators: true }
+  )
+    .populate("userId", "firstName lastName email profilePicture")
+    .populate("reviewableId", "title name");
+
+  if (!review) {
+    return null;
+  }
+
+  return review as Review;
 };

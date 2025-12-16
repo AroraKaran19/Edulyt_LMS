@@ -71,6 +71,14 @@ export const createCertificateService = async (
       );
     }
 
+    // Prevent certificate generation for trial enrollments
+    if (enrollment.isTrial) {
+      throw new AppError(
+        "Certificates cannot be issued for trial enrollments",
+        400
+      );
+    }
+
     // Get user and course details
     const user = await UserModel.findById(enrollment.userId);
     const course = await CourseModel.findById(enrollment.courseId);
@@ -108,6 +116,14 @@ export const createCertificateService = async (
           }`.trim()
         : undefined;
 
+    // Generate verification code and URL before creating certificate
+    // This matches the format used in the pre-save hook: VER-${certificateId}-${timestamp}
+    const verificationCode = `VER-${certificateId}-${Date.now()
+      .toString(36)
+      .toUpperCase()}`;
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+    const verificationUrl = `${frontendUrl}/verify-certificate/${verificationCode}`;
+
     // Generate certificate DOCX file
     const templatePath = path.join(
       process.cwd(),
@@ -127,7 +143,7 @@ export const createCertificateService = async (
     const pdfPath = path.join(tempDir, `certificate-${certificateId}.pdf`);
 
     try {
-      // Generate DOCX certificate
+      // Generate DOCX certificate with QR code
       await generateCertificateFromDocx(templatePath, docxPath, {
         studentName: data.studentName,
         courseName: data.courseName,
@@ -135,6 +151,7 @@ export const createCertificateService = async (
         certificateId,
         keyTopics: data.keyTopics,
         instructorName: data.instructorName || instructorName,
+        verificationUrl, // Pass verification URL for QR code generation
       });
 
       // Convert DOCX to PDF
@@ -166,7 +183,7 @@ export const createCertificateService = async (
         "application/pdf"
       );
 
-      // Create certificate document
+      // Create certificate document with verification code and URL
       const certificate = new CertificateModel({
         enrollmentId: data.enrollmentId,
         userId: enrollment.userId,
@@ -179,6 +196,8 @@ export const createCertificateService = async (
         keyTopics: data.keyTopics,
         instructorName: data.instructorName || instructorName,
         fileUrl: s3Url,
+        verificationCode, // Set verification code (pre-save hook will use this if not set)
+        verificationUrl, // Set verification URL
         isLatest: true,
         version: 1, // Will be updated by pre-save hook
         isActive: true,
@@ -293,6 +312,13 @@ export const regenerateCertificateService = async (
     oldCertificate.regenerationReason = reason;
     await oldCertificate.save();
 
+    // Generate new verification code and URL for the regenerated certificate
+    const newVerificationCode = `VER-${newCertificateId}-${Date.now()
+      .toString(36)
+      .toUpperCase()}`;
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+    const newVerificationUrl = `${frontendUrl}/verify-certificate/${newVerificationCode}`;
+
     // Generate certificate DOCX file
     const templatePath = path.join(
       process.cwd(),
@@ -312,7 +338,7 @@ export const regenerateCertificateService = async (
     const pdfPath = path.join(tempDir, `certificate-${newCertificateId}.pdf`);
 
     try {
-      // Generate DOCX certificate
+      // Generate DOCX certificate with QR code
       await generateCertificateFromDocx(templatePath, docxPath, {
         studentName: newStudentName,
         courseName: oldCertificate.courseName,
@@ -323,6 +349,7 @@ export const regenerateCertificateService = async (
         certificateId: newCertificateId,
         keyTopics: oldCertificate.keyTopics || undefined,
         instructorName: instructorName,
+        verificationUrl: newVerificationUrl, // Pass verification URL for QR code generation
       });
 
       // Convert DOCX to PDF
@@ -356,7 +383,7 @@ export const regenerateCertificateService = async (
         "application/pdf"
       );
 
-      // Create new certificate
+      // Create new certificate with verification code and URL
       const newCertificate = new CertificateModel({
         enrollmentId: oldCertificate.enrollmentId,
         userId: oldCertificate.userId,
@@ -369,6 +396,8 @@ export const regenerateCertificateService = async (
         keyTopics: oldCertificate.keyTopics,
         instructorName: instructorName,
         fileUrl: s3Url,
+        verificationCode: newVerificationCode, // Set new verification code
+        verificationUrl: newVerificationUrl, // Set new verification URL
         isLatest: true,
         version: oldCertificate.version + 1,
         isActive: true,

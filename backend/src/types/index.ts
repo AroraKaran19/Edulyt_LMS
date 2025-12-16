@@ -30,3 +30,4 @@ export * from "./qna";
 export * from "./notes";
 export * from "./category";
 export * from "./live-classes";
+export * from "./coupon";

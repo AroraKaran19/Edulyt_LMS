@@ -49,6 +49,11 @@ const qnaSchema = new mongoose.Schema<QnA>(
       type: String,
       required: true,
     },
+    approved: {
+      type: Boolean,
+      default: false,
+      required: true,
+    }, // Requires instructor/admin approval
     replies: {
       type: [qnaReplySchema],
       required: false,
@@ -59,7 +64,8 @@ const qnaSchema = new mongoose.Schema<QnA>(
 );
 
 // Indexes
-qnaSchema.index({ courseId: 1, lessonId: 1, contentId: 1, createdAt: -1 });
+qnaSchema.index({ courseId: 1, lessonId: 1, contentId: 1, approved: 1, createdAt: -1 });
+qnaSchema.index({ approved: 1, createdAt: -1 }); // For filtering by approval status
 qnaSchema.index({ userId: 1, createdAt: -1 });
 qnaSchema.index({ "replies.userId": 1, createdAt: -1 });
 

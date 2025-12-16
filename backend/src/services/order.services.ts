@@ -6,10 +6,12 @@ import {
   UserModel,
   StudentModel,
   EnrollmentModel,
+  CouponModel,
 } from "../models";
 import jwt from "jsonwebtoken";
 import { generatePaytmChecksum } from "../utils/lib/generatePaytmChecksum";
 import axios from "axios";
+import { validateCouponService } from "./coupon.services";
 
 const updatePendingPayments = async (userId: string, updateOperation: any) => {
   const user = await UserModel.findById(userId);
@@ -174,7 +176,8 @@ export const getSelfOrdersService = async (
 export const createOrderService = async (
   userId: string,
   courseId: string,
-  planType: "elite" | "essential"
+  planType: "elite" | "essential",
+  couponCode?: string
 ) => {
   if (!process.env.PAYTM_MID || !process.env.PAYTM_WEBSITE) {
     throw new AppError("PAYTM_MID or PAYTM_WEBSITE is not set", 500);
@@ -187,11 +190,41 @@ export const createOrderService = async (
   if (!plan)
     throw new AppError(`${planType} plan not available for this course`, 400);
 
-  const amount = calculateFinalDiscountedPrice(
+  let amount = calculateFinalDiscountedPrice(
     plan.price,
     course.discount,
     plan.discount
   );
+
+  let appliedCouponCode: string | undefined = undefined;
+  let couponDiscount = 0;
+
+  // Apply coupon if provided
+  if (couponCode) {
+    try {
+      const couponValidation = await validateCouponService({
+        code: couponCode,
+        courseId,
+        purchaseAmount: amount,
+        userId,
+      });
+
+      if (couponValidation.valid && couponValidation.finalAmount) {
+        couponDiscount = couponValidation.discountAmount || 0;
+        amount = couponValidation.finalAmount;
+        appliedCouponCode = couponCode;
+
+        // Increment coupon usage count
+        await CouponModel.findOneAndUpdate(
+          { code: couponCode.toUpperCase() },
+          { $inc: { usedCount: 1 } }
+        );
+      }
+    } catch (error) {
+      // If coupon validation fails, proceed without coupon
+      console.error("Coupon validation failed:", error);
+    }
+  }
 
   const order = new OrderModel({
     txnId: Math.random().toString(36).substring(2, 15),
@@ -204,6 +237,8 @@ export const createOrderService = async (
     paymentMethod: "paytm",
     paymentMode: "online",
     paymentStatus: "pending",
+    couponCode: appliedCouponCode,
+    couponDiscount,
   });
   await order.save();
 

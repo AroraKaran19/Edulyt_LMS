@@ -34,6 +34,8 @@ import {
   canAccessContent,
 } from "@/lib/accessControlUtils";
 import { useCompletedContents } from "./hooks/useCompletedContents";
+import { useCourseCompletion } from "./hooks/useCourseCompletion";
+import { FullScreenLoader } from "@/components/ui/Loader";
 
 const VideoPlayer = dynamic(() => import("./components/VideoPlayer"), {
   ssr: false,
@@ -673,7 +675,8 @@ const PreviewCourse = ({ course }: { course: Course }) => {
 
   useEffect(() => {
     fetchQnas();
-  }, [course._id, getQnAs]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [course._id]); // Only re-fetch when course changes, not when getQnAs changes
 
   // Filter questions based on search
   const filteredQuestions = qnas?.filter(
@@ -698,6 +701,9 @@ const PreviewCourse = ({ course }: { course: Course }) => {
     accessControl: null, 
     enrollment: null 
   };
+
+  // Monitor course completion and certificate generation
+  const { isGeneratingCertificate } = useCourseCompletion(course);
 
   const {
     selectedModule,
@@ -765,6 +771,17 @@ const PreviewCourse = ({ course }: { course: Course }) => {
     //   component: <Notes />,
     // },
   ];
+
+  // Show loading screen when certificate is being generated
+  if (isGeneratingCertificate) {
+    return (
+      <FullScreenLoader
+        text="Generating your certificate..."
+        size="xl"
+        variant="spinner"
+      />
+    );
+  }
 
   // Show loading state while initializing
   if (!isInitialized) {

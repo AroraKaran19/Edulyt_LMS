@@ -249,11 +249,11 @@ const CoursesPage = () => {
                 My Courses
               </h1>
               <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 sm:gap-4">
-                <div className="flex gap-1 sm:gap-2 rounded-lg border border-[#F66F221F] bg-[#FFF6F2] p-1 overflow-x-auto">
+                <div className="flex gap-1 sm:gap-2 rounded-lg border border-[#F66F221F] bg-white p-1 overflow-x-auto">
                   {tabs.map((tab) => (
                     <button
                       key={tab.label}
-                      className={`px-2 sm:px-4 py-1 sm:py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors whitespace-nowrap cursor-pointer ${
+                      className={`px-2 sm:px-4 py-1 sm:py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap cursor-pointer ${
                         activeTab === tab.label
                           ? "bg-orange-500 text-white shadow"
                           : "text-black hover:bg-gray-200"

@@ -16,6 +16,7 @@ import paymentRoutes from "./payment.routes";
 import liveClassesRoutes from "./live-classes.routes";
 import authenticationMediaRoutes from "./authentication-media.routes";
 import certificateRoutes from "./certificate.routes";
+import couponRoutes from "./coupon.routes";
 
 export {
   authRoutes,
@@ -36,4 +37,5 @@ export {
   liveClassesRoutes,
   authenticationMediaRoutes,
   certificateRoutes,
+  couponRoutes,
 };

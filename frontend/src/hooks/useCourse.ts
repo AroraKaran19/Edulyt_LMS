@@ -446,6 +446,18 @@ export const useCourse = () => {
     [handleRequest]
   );
 
+  const duplicateCourseWithModules = useCallback(
+    async (id: string): Promise<Course | null> => {
+      return handleRequest(async () => {
+        const response = await apiClient.post(
+          `/courses/admin/duplicate-with-modules/${id}`
+        );
+        return response.data.data;
+      }, "Failed to duplicate course with modules");
+    },
+    [handleRequest]
+  );
+
   // ===================
   // Module Management Methods
   // ===================
@@ -685,6 +697,7 @@ export const useCourse = () => {
     updateCourseStatus,
     deleteCourse,
     duplicateCourse,
+    duplicateCourseWithModules,
 
     // Module Management
     createModule,
@@ -700,6 +713,43 @@ export const useCourse = () => {
     createContent,
     updateContent,
     deleteContent,
+
+    // Reorder Management
+    reorderModules: useCallback(
+      async (courseId: string, moduleIds: string[]): Promise<CourseModule[] | null> => {
+        return handleRequest(async () => {
+          const response = await apiClient.put(`/courses/${courseId}/modules/reorder`, {
+            moduleIds,
+          });
+          return response.data.data;
+        }, "Failed to reorder modules");
+      },
+      [handleRequest]
+    ),
+
+    reorderLessons: useCallback(
+      async (moduleId: string, lessonIds: string[]): Promise<CourseLesson[] | null> => {
+        return handleRequest(async () => {
+          const response = await apiClient.put(`/courses/modules/${moduleId}/lessons/reorder`, {
+            lessonIds,
+          });
+          return response.data.data;
+        }, "Failed to reorder lessons");
+      },
+      [handleRequest]
+    ),
+
+    reorderContent: useCallback(
+      async (lessonId: string, contentIds: string[]): Promise<Content[] | null> => {
+        return handleRequest(async () => {
+          const response = await apiClient.put(`/courses/lessons/${lessonId}/contents/reorder`, {
+            contentIds,
+          });
+          return response.data.data;
+        }, "Failed to reorder content");
+      },
+      [handleRequest]
+    ),
 
     // Utilities
     validateCourse,

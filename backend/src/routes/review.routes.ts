@@ -6,6 +6,8 @@ import {
   updateReview,
   deleteReview,
   getReviewsByReviewable,
+  approveReview,
+  rejectReview,
 } from "../controllers/review.controller";
 import { verifyUser } from "../middlewares/user.middleware";
 import { verifyAdmin } from "../middlewares/admin.middleware";
@@ -96,5 +98,19 @@ router.put("/reviews/admin/:id", verifyUser, verifyAdmin, updateReview);
  * @access  Admin
  */
 router.delete("/reviews/admin/:id", verifyUser, verifyAdmin, deleteReview);
+
+/**
+ * @route   PATCH /api/reviews/admin/:id/approve
+ * @desc    Approve a review (Admin/Instructor only)
+ * @access  Admin
+ */
+router.patch("/reviews/admin/:id/approve", verifyUser, verifyAdmin, approveReview);
+
+/**
+ * @route   PATCH /api/reviews/admin/:id/reject
+ * @desc    Reject/Un-approve a review (Admin/Instructor only)
+ * @access  Admin
+ */
+router.patch("/reviews/admin/:id/reject", verifyUser, verifyAdmin, rejectReview);
 
 export default router;

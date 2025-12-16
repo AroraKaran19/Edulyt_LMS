@@ -71,10 +71,8 @@ export const getUserByIdService = async (
   userId: string
 ): Promise<User | null> => {
   // First get the user to determine their type
-  const baseUser = await UserModel.findById(userId)
-    .select("userType")
-    .lean();
-  
+  const baseUser = await UserModel.findById(userId).select("userType").lean();
+
   if (!baseUser) {
     return null;
   }
@@ -275,6 +273,189 @@ export const changeUserPasswordService = async (
   );
 
   return true;
+};
+
+export const setUserPasswordService = async (
+  userId: string,
+  newPassword: string
+): Promise<boolean> => {
+  // Get user to verify existence
+  const user = await UserModel.findById(userId);
+  if (!user) {
+    throw new AppError("User not found", 404);
+  }
+
+  // Validate password
+  validatePassword(newPassword);
+
+  // Hash new password
+  const saltRounds = 10;
+  const hashedNewPassword = await bcrypt.hash(newPassword, saltRounds);
+
+  // Update password
+  await UserModel.findByIdAndUpdate(
+    userId,
+    {
+      password: hashedNewPassword,
+      updatedAt: new Date(),
+    },
+    { new: true }
+  );
+
+  return true;
+};
+
+export const changeUserEmailService = async (
+  userId: string,
+  currentPassword: string,
+  newEmail: string
+): Promise<User | null> => {
+  // Validate email format
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(newEmail)) {
+    throw new AppError("Invalid email format", 400);
+  }
+
+  // Get user with password field
+  const user = await UserModel.findById(userId).select("+password");
+  if (!user) {
+    throw new AppError("User not found", 404);
+  }
+
+  // Verify current password
+  const isCurrentPasswordValid = await bcrypt.compare(
+    currentPassword,
+    user.password
+  );
+  if (!isCurrentPasswordValid) {
+    throw new AppError("Current password is incorrect", 400);
+  }
+
+  // Check if new email is different from current
+  if (user.email.toLowerCase() === newEmail.toLowerCase()) {
+    throw new AppError("New email must be different from current email", 400);
+  }
+
+  // Check if new email already exists
+  const existingUser = await UserModel.findOne({
+    email: newEmail.toLowerCase(),
+    _id: { $ne: userId },
+  });
+  if (existingUser) {
+    throw new AppError("Email already in use by another account", 400);
+  }
+
+  // Get the old email for notification
+  const oldEmail = user.email;
+
+  // Update email
+  const updatedUser = await UserModel.findByIdAndUpdate(
+    userId,
+    {
+      email: newEmail.toLowerCase(),
+      updatedAt: new Date(),
+    },
+    { new: true, runValidators: true }
+  ).select("-password -refreshTokens -__v");
+
+  if (!updatedUser) {
+    throw new AppError("Failed to update email", 500);
+  }
+
+  // TODO: Send notification email to old email address
+  // TODO: Send verification email to new email address (if email verification is required)
+
+  return updatedUser as User | null;
+};
+
+export const unlinkGoogleAccountService = async (
+  userId: string
+): Promise<{ user: User | null; needsPassword: boolean }> => {
+  const user = await UserModel.findById(userId).select("+password");
+  if (!user) {
+    throw new AppError("User not found", 404);
+  }
+
+  // Check if user has Google account linked
+  if (!user.accounts?.google) {
+    throw new AppError("Google account is not linked to this user", 400);
+  }
+
+  // If user's provider is Google, change provider to credentials
+  // The user already has a password (set during OAuth registration)
+  const updateData: any = {
+    $unset: { "accounts.google": "" },
+    updatedAt: new Date(),
+  };
+
+  if (user.provider === "google") {
+    updateData.provider = "credentials";
+  }
+
+  // Remove profile picture if it's from Google (external URL, not S3)
+  if (user.profilePicture && !user.profilePicture.includes(".s3.") && !user.profilePicture.includes("s3.amazonaws.com")) {
+    updateData.$unset.profilePicture = "";
+  }
+
+  // Remove Google account data and update provider if needed
+  const updatedUser = await UserModel.findByIdAndUpdate(userId, updateData, {
+    new: true,
+    runValidators: true,
+  }).select("-password -refreshTokens -__v");
+
+  if (!updatedUser) {
+    throw new AppError("Failed to unlink Google account", 500);
+  }
+
+  // Check if user needs to set a password (if provider was Google, they have a random password)
+  const needsPassword = user.provider === "google";
+
+  return { user: updatedUser as User | null, needsPassword };
+};
+
+export const unlinkLinkedInAccountService = async (
+  userId: string
+): Promise<{ user: User | null; needsPassword: boolean }> => {
+  const user = await UserModel.findById(userId).select("+password");
+  if (!user) {
+    throw new AppError("User not found", 404);
+  }
+
+  // Check if user has LinkedIn account linked
+  if (!user.accounts?.linkedin) {
+    throw new AppError("LinkedIn account is not linked to this user", 400);
+  }
+
+  // If user's provider is LinkedIn, change provider to credentials
+  // The user already has a password (set during OAuth registration)
+  const updateData: any = {
+    $unset: { "accounts.linkedin": "" },
+    updatedAt: new Date(),
+  };
+
+  if (user.provider === "linkedin") {
+    updateData.provider = "credentials";
+  }
+
+  // Remove profile picture if it's from LinkedIn (external URL)
+  if (user.profilePicture && !user.profilePicture.includes(".s3.") && !user.profilePicture.includes("s3.amazonaws.com")) {
+    updateData.$unset.profilePicture = "";
+  }
+
+  // Remove LinkedIn account data and update provider if needed
+  const updatedUser = await UserModel.findByIdAndUpdate(userId, updateData, {
+    new: true,
+    runValidators: true,
+  }).select("-password -refreshTokens -__v");
+
+  if (!updatedUser) {
+    throw new AppError("Failed to unlink LinkedIn account", 500);
+  }
+
+  // Check if user needs to set a password (if provider was LinkedIn, they have a random password)
+  const needsPassword = user.provider === "linkedin";
+
+  return { user: updatedUser as User | null, needsPassword };
 };
 
 /**

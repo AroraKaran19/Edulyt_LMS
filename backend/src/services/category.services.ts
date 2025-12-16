@@ -75,7 +75,8 @@ export const getHomePageCategoriesService = async (): Promise<Category[]> => {
 export const createCategoryService = async (
   name: string,
   description?: string,
-  showOnHomePage?: boolean
+  showOnHomePage?: boolean,
+  categoryImage?: string
 ): Promise<Category | null> => {
   // Check if trying to set showOnHomePage to true
   if (showOnHomePage === true) {
@@ -90,6 +91,7 @@ export const createCategoryService = async (
     name,
     description,
     showOnHomePage: showOnHomePage ?? false,
+    categoryImage: categoryImage || "",
   });
   const savedCategory = await category.save();
 
@@ -107,6 +109,7 @@ export const updateCategoryService = async (
     description?: string;
     isActive?: boolean;
     showOnHomePage?: boolean;
+    categoryImage?: string;
   }
 ): Promise<Category | null> => {
   // Check if trying to set showOnHomePage to true

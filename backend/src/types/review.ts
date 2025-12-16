@@ -12,6 +12,7 @@ export interface Review {
   reviewableType: "Course" | "Instructor";
   reviewableId: Course["_id"] | Instructor["_id"]; // will be the id of the course or instructor
   isActive: boolean;
+  approved: boolean; // Instructor/Admin approval required to show review
   createdAt?: Date;
   updatedAt?: Date;
 }

@@ -72,6 +72,7 @@ const CreateInstructorPage = () => {
       pincode: "",
     },
     bio: "",
+    field: "",
     currentPosition: "",
     currentCompany: "",
     linkedinUrl: "",
@@ -642,6 +643,7 @@ const CreateInstructorPage = () => {
                 'whatsappNumber': 'whatsappNumber',
                 'linkedinUrl': 'linkedinUrl',
                 'bio': 'bio',
+                'field': 'field',
                 'currentPosition': 'currentPosition',
                 'currentCompany': 'currentCompany',
                 'dob': 'dob',
@@ -1030,6 +1032,16 @@ const CreateInstructorPage = () => {
                   handleInputChange("currentCompany", e.target.value)
                 }
                 error={errors.currentCompany}
+              />
+
+              <Input
+                label="Field"
+                placeholder="e.g., AI Python"
+                value={formData.field || ""}
+                onChange={(e) =>
+                  handleInputChange("field", e.target.value)
+                }
+                error={errors.field}
               />
 
               <div className="md:col-span-2">

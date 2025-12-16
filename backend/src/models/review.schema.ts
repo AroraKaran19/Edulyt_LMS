@@ -25,6 +25,7 @@ const reviewSchema = new mongoose.Schema<Review>(
     },
     comment: { type: String, required: true },
     isActive: { type: Boolean, default: true, required: true },
+    approved: { type: Boolean, default: false, required: true }, // Requires instructor/admin approval
     reviewableType: {
       type: String,
       required: true,
@@ -39,7 +40,8 @@ const reviewSchema = new mongoose.Schema<Review>(
   { timestamps: true }
 );
 
-reviewSchema.index({ reviewableId: 1, isActive: 1 }); // For fetching active reviews by course
+reviewSchema.index({ reviewableId: 1, isActive: 1, approved: 1 }); // For fetching active approved reviews by course
+reviewSchema.index({ approved: 1, createdAt: -1 }); // For filtering by approval status
 reviewSchema.index({ rating: 1 }); // For sorting/filtering by rating
 reviewSchema.index({ comment: 1 }); // For searching reviews by comment
 

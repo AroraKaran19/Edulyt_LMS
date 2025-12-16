@@ -15,9 +15,9 @@ const CourseInstructorSection = ({ course }: { course: Course }) => {
           className="text-2xl md:text-4xl text-text-primary text-center text-balance"
         />
       </div>
-      <div className="instructor-carousel w-full relative">
-        <div className="absolute w-full h-full bg-linear-to-r from-white/40 via-transparent to-white/40 z-10 pointer-events-none" />
+      <div className="instructor-carousel w-full flex flex-col items-center justify-center relative">
         <InstructorCarousel instructors={instructors as Instructor[]} />
+        <div className="absolute w-full h-full bg-linear-to-r from-white/40 via-transparent to-white/40 z-10 pointer-events-none" />
       </div>
     </SectionContainer>
   );

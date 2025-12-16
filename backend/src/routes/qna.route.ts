@@ -6,6 +6,8 @@ import {
   updateQnA,
   addReply,
   removeReply,
+  approveQnA,
+  rejectQnA,
 } from "../controllers/qna.controller";
 import { verifyUser } from "../middlewares/user.middleware";
 import { verifyAdmin } from "../middlewares/admin.middleware";
@@ -93,5 +95,19 @@ router.put("/admin/:id", verifyUser, verifyAdmin, updateQnA);
  * @access  Admin
  */
 router.delete("/admin/:id", verifyUser, verifyAdmin, deleteQnA);
+
+/**
+ * @route   PATCH /api/qna/admin/:id/approve
+ * @desc    Approve a Q&A (Admin/Instructor only)
+ * @access  Admin
+ */
+router.patch("/admin/:id/approve", verifyUser, verifyAdmin, approveQnA);
+
+/**
+ * @route   PATCH /api/qna/admin/:id/reject
+ * @desc    Reject/Un-approve a Q&A (Admin/Instructor only)
+ * @access  Admin
+ */
+router.patch("/admin/:id/reject", verifyUser, verifyAdmin, rejectQnA);
 
 export default router;

@@ -9,6 +9,7 @@ export interface Instructor extends User {
   rating: number;
   totalStudents: number;
   bio?: string;
+  field?: string;
   currentPosition?: string;
   currentCompany?: string;
   previousExperience?: {

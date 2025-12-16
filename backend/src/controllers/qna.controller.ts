@@ -12,6 +12,8 @@ import {
   updateQnAService,
   addReplyToQnAService,
   removeReplyFromQnAService,
+  approveQnAService,
+  rejectQnAService,
 } from "../services/qna.services";
 
 export const getAllQnAs = asyncHandler(async (req: Request, res: Response) => {
@@ -22,6 +24,7 @@ export const getAllQnAs = asyncHandler(async (req: Request, res: Response) => {
     courseId,
     lessonId,
     contentId,
+    approved,
   } = req.query;
   const isAdmin = req.user?.userType === "admin";
 
@@ -36,7 +39,8 @@ export const getAllQnAs = asyncHandler(async (req: Request, res: Response) => {
     courseId as string,
     lessonId as string,
     contentId as string,
-    isAdmin
+    isAdmin,
+    approved !== undefined ? approved === "true" : undefined
   );
 
   if (!result || result.qnas.length === 0) {
@@ -167,5 +171,41 @@ export const removeReply = asyncHandler(async (req: Request, res: Response) => {
   }
 
   sendSuccessResponse(res, result, "Reply removed successfully", 200);
+  return;
+});
+
+// Approve Q&A (instructor/admin only)
+export const approveQnA = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  if (!id) {
+    throw new AppError("Q&A ID is required", 400);
+  }
+
+  const result = await approveQnAService(id);
+
+  if (!result) {
+    throw new AppError("Q&A not found", 404);
+  }
+
+  sendSuccessResponse(res, result, "Q&A approved successfully", 200);
+  return;
+});
+
+// Reject/Un-approve Q&A (instructor/admin only)
+export const rejectQnA = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  if (!id) {
+    throw new AppError("Q&A ID is required", 400);
+  }
+
+  const result = await rejectQnAService(id);
+
+  if (!result) {
+    throw new AppError("Q&A not found", 404);
+  }
+
+  sendSuccessResponse(res, result, "Q&A rejected successfully", 200);
   return;
 });

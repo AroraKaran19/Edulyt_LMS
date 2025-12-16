@@ -13,6 +13,10 @@ import {
   updateUserProfileService,
   getCurrentUserProfileService,
   changeUserPasswordService,
+  changeUserEmailService,
+  setUserPasswordService,
+  unlinkGoogleAccountService,
+  unlinkLinkedInAccountService,
   adminChangeUserPasswordService,
 } from "../services/user.services";
 
@@ -164,6 +168,96 @@ export const changeUserPassword = asyncHandler(
       res,
       null,
       "Password updated successfully",
+      200
+    );
+  }
+);
+
+export const changeUserEmail = asyncHandler(
+  async (req: Request, res: Response) => {
+    const userId = req.user?._id;
+    const { currentPassword, newEmail } = req.body;
+
+    if (!userId) {
+      throw new AppError("User ID not found", 400);
+    }
+
+    if (!currentPassword || !newEmail) {
+      throw new AppError("Current password and new email are required", 400);
+    }
+
+    const updatedUser = await changeUserEmailService(userId, currentPassword, newEmail);
+    
+    sendSuccessResponse(
+      res,
+      updatedUser,
+      "Email updated successfully. Please check your new email for verification.",
+      200
+    );
+  }
+);
+
+export const setUserPassword = asyncHandler(
+  async (req: Request, res: Response) => {
+    const userId = req.user?._id;
+    const { newPassword } = req.body;
+
+    if (!userId) {
+      throw new AppError("User ID not found", 400);
+    }
+
+    if (!newPassword) {
+      throw new AppError("New password is required", 400);
+    }
+
+    await setUserPasswordService(userId, newPassword);
+    
+    sendSuccessResponse(
+      res,
+      null,
+      "Password set successfully",
+      200
+    );
+  }
+);
+
+export const unlinkGoogleAccount = asyncHandler(
+  async (req: Request, res: Response) => {
+    const userId = req.user?._id;
+
+    if (!userId) {
+      throw new AppError("User ID not found", 400);
+    }
+
+    const result = await unlinkGoogleAccountService(userId);
+    
+    sendSuccessResponse(
+      res,
+      result,
+      result.needsPassword 
+        ? "Google account unlinked successfully. Please set a password for your account."
+        : "Google account unlinked successfully",
+      200
+    );
+  }
+);
+
+export const unlinkLinkedInAccount = asyncHandler(
+  async (req: Request, res: Response) => {
+    const userId = req.user?._id;
+
+    if (!userId) {
+      throw new AppError("User ID not found", 400);
+    }
+
+    const result = await unlinkLinkedInAccountService(userId);
+    
+    sendSuccessResponse(
+      res,
+      result,
+      result.needsPassword 
+        ? "LinkedIn account unlinked successfully. Please set a password for your account."
+        : "LinkedIn account unlinked successfully",
       200
     );
   }

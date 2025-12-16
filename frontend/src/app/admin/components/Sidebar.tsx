@@ -1,5 +1,5 @@
 "use client";
-import { ChevronLeft, ChevronRight, Settings } from "lucide-react";
+import { ChevronLeft, ChevronRight, Settings, Tag } from "lucide-react";
 import ImageComponent from "@/components/ui/ImageComponent";
 import React from "react";
 import SidebarMenuItem from "./SidebarMenuItem";
@@ -44,6 +44,18 @@ const AdminSidebar = ({ isCollapsed, setIsCollapsed }: AdminSidebarProps) => {
           label: "Live Classes",
           href: "/admin/courses/live-classes",
         },
+        {
+          label: "Moderation",
+          href: "/admin/courses/moderation",
+        },
+        {
+          label: "FAQs",
+          href: "/admin/courses/faqs",
+        },
+        {
+          label: "Testimonials",
+          href: "/admin/courses/testimonials",
+        },
       ],
     },
     {
@@ -81,6 +93,11 @@ const AdminSidebar = ({ isCollapsed, setIsCollapsed }: AdminSidebarProps) => {
       ],
     },
     {
+      icon: <Tag className="size-6" />,
+      label: "Coupons",
+      href: "/admin/coupons",
+    },
+    {
       icon: <Settings className="size-6" />,
       label: "Settings",
       href: "/admin/settings",
@@ -96,9 +113,10 @@ const AdminSidebar = ({ isCollapsed, setIsCollapsed }: AdminSidebarProps) => {
   return (
     <div
       className={cn(
-        "flex admin-sidebar h-full bg-orange-500/10 transition-all duration-300 relative",
+        "flex admin-sidebar h-full bg-orange-500/10 transition-all duration-300 relative overflow-y-auto",
         isCollapsed ? "w-12 py-4" : "w-full py-10 flex-col gap-4"
       )}
+      style={{ scrollbarWidth: "thin" }}
     >
       {/* Collapse/Expand Button */}
       <button

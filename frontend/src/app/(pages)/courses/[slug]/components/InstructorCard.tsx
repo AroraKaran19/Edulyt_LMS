@@ -1,7 +1,7 @@
 import { Instructor } from "@/types";
 import Image from "next/image";
 import React from "react";
-import { Star } from "lucide-react";
+import { Star, Users } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
@@ -38,14 +38,14 @@ const InstructorCard = ({
     <Link
       href={`/instructor/${getSlug()}`}
       className={cn(
-        "instructor-card h-full bg-white rounded-2xl flex flex-col p-3 border-2 border-gray-200 gap-2 hover:border-[#f77124] hover:shadow-[0_0_2px_3px_rgba(233,117,0,0.5)] hover:bg-linear-to-br from-white to-[#f77124]/5 transition-all duration-300 ease-in-out",
+        "instructor-card w-full max-w-[500px] mx-auto h-full bg-white rounded-2xl flex flex-col p-3 border-2 border-gray-200 gap-2 hover:border-[#f77124] hover:shadow-[0_0_2px_3px_rgba(233,117,0,0.5)] hover:bg-linear-to-br from-white to-[#f77124]/5 transition-all duration-300 ease-in-out",
         props.className
       )}
       target="_blank"
       rel="noopener"
       title={`Click to view ${getDisplayName()}'s profile`}
     >
-      <div className="card-top w-full flex items-center gap-2 lg:gap-4 justify-center">
+      <div className="card-top w-full flex items-center justify-center gap-2 lg:gap-4">
         <div className="instructor-image min-w-[30px] h-[50px] lg:h-[100px] aspect-square rounded-full flex items-center justify-center shrink-0">
           {instructor.profilePicture ? (
             <Image
@@ -65,7 +65,7 @@ const InstructorCard = ({
             </div>
           )}
         </div>
-        <div className="instructor-details w-max text-base font-medium text-black flex flex-col gap-1">
+        <div className="instructor-details text-base font-medium text-black flex flex-col items-start gap-1">
           <p className="instructor-name text-xs sm:text-sm lg:text-base font-bold flex items-center gap-4">
             <span className="whitespace-nowrap">{getDisplayName()}</span>
             {instructor.accounts.linkedin && (
@@ -86,16 +86,31 @@ const InstructorCard = ({
               </span>
             )}
           </p>
-          <div className="instructor-info flex items-center gap-2 flex-wrap">
-            <p className="text-xs text-gray-500 whitespace-nowrap">
-              {instructor.currentPosition} at {instructor.currentCompany}
-            </p>
+          <div className="instructor-info flex flex-col gap-2">
+            {instructor.field && (
+              <p className="text-xs text-gray-500 whitespace-nowrap">
+                {instructor.field}
+              </p>
+            )}
+            {instructor.currentPosition && instructor.currentCompany && (
+              <p className="text-xs text-gray-500 whitespace-nowrap">
+                {instructor.currentPosition}
+              </p>
+            )}
+            {instructor.currentCompany && (
+              <p className="text-xs text-gray-500 whitespace-nowrap">
+                {instructor.currentCompany}
+              </p>
+            )}
             <p className="rating text-xs text-gray-500 flex items-center gap-1 whitespace-nowrap">
-              <Star className="size-3 text-yellow-500 fill-yellow-500" />
-              {instructor.rating}{" "}
-              {instructor.totalStudents && instructor.totalStudents > 1
-                ? `students`
-                : `student`}
+              <span className="flex items-center gap-1">
+                <Star className="size-3 text-yellow-500 fill-yellow-500" />
+                {instructor.rating || 0}{" "}
+              </span>
+              <span className="flex items-center gap-1">
+                <Users className="size-3 text-yellow-500 fill-yellow-500" />
+                {instructor.totalStudents || 0}{" "}
+              </span>
             </p>
           </div>
         </div>

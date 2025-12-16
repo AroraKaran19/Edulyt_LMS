@@ -15,6 +15,7 @@ export interface QnA {
   contentId: Content | string | null;
   userId: User | string;
   message: string;
+  approved: boolean; // Instructor/Admin approval required to show question
   replies: QnAReply[];
   createdAt?: Date;
   updatedAt?: Date;

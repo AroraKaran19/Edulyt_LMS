@@ -15,6 +15,7 @@ import {
   DeleteCourseService,
   DuplicateCourseService,
   DuplicateCourseMetadataService,
+  DuplicateCourseWithModulesService,
   UpdateCourseLessonContentService,
   UpdateCourseLessonService,
   UpdateCourseMetadataService,
@@ -25,6 +26,9 @@ import {
   getCourseBySlugService,
   getFeaturedCoursesService,
   checkSlugAvailabilityService,
+  reorderModulesService,
+  reorderLessonsService,
+  reorderContentService,
 } from "../services/course.services";
 
 export const getAllCourses = asyncHandler(
@@ -581,6 +585,22 @@ export const duplicateCourseMetadata = asyncHandler(
   }
 );
 
+export const duplicateCourseWithModules = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { courseId } = req.params;
+    if (!courseId) {
+      throw new AppError("Course ID is required", 400);
+    }
+
+    const result = await DuplicateCourseWithModulesService(courseId);
+    if (!result) {
+      throw new AppError("Failed to duplicate course with modules", 500);
+    }
+    sendSuccessResponse(res, result, "Course with modules duplicated successfully", 200);
+    return;
+  }
+);
+
 export const updateCourseStatus = asyncHandler(
   async (req: Request, res: Response) => {
     const { courseId } = req.params;
@@ -669,6 +689,91 @@ export const checkSlugAvailability = asyncHandler(
     );
 
     sendSuccessResponse(res, result, result.message, 200);
+    return;
+  }
+);
+
+// Reorder controllers
+export const reorderModules = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { courseId } = req.params;
+    const { moduleIds } = req.body;
+
+    if (!courseId) {
+      throw new AppError("Course ID is required", 400);
+    }
+
+    if (!Array.isArray(moduleIds) || moduleIds.length === 0) {
+      throw new AppError(
+        "moduleIds must be a non-empty array of module IDs",
+        400
+      );
+    }
+
+    const result = await reorderModulesService(courseId, moduleIds);
+
+    sendSuccessResponse(
+      res,
+      result,
+      "Modules reordered successfully",
+      200
+    );
+    return;
+  }
+);
+
+export const reorderLessons = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { moduleId } = req.params;
+    const { lessonIds } = req.body;
+
+    if (!moduleId) {
+      throw new AppError("Module ID is required", 400);
+    }
+
+    if (!Array.isArray(lessonIds) || lessonIds.length === 0) {
+      throw new AppError(
+        "lessonIds must be a non-empty array of lesson IDs",
+        400
+      );
+    }
+
+    const result = await reorderLessonsService(moduleId, lessonIds);
+
+    sendSuccessResponse(
+      res,
+      result,
+      "Lessons reordered successfully",
+      200
+    );
+    return;
+  }
+);
+
+export const reorderContent = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { lessonId } = req.params;
+    const { contentIds } = req.body;
+
+    if (!lessonId) {
+      throw new AppError("Lesson ID is required", 400);
+    }
+
+    if (!Array.isArray(contentIds) || contentIds.length === 0) {
+      throw new AppError(
+        "contentIds must be a non-empty array of content IDs",
+        400
+      );
+    }
+
+    const result = await reorderContentService(lessonId, contentIds);
+
+    sendSuccessResponse(
+      res,
+      result,
+      "Content reordered successfully",
+      200
+    );
     return;
   }
 );

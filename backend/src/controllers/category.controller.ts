@@ -61,13 +61,13 @@ export const getCategoryById = asyncHandler(
 
 export const createCategory = asyncHandler(
   async (req: Request, res: Response) => {
-    const { name, description, showOnHomePage } = req.body;
+    const { name, description, showOnHomePage, categoryImage } = req.body;
     if (!name) {
       throw new AppError("Category name is required", 400);
     }
 
     try {
-      const result = await createCategoryService(name, description, showOnHomePage);
+      const result = await createCategoryService(name, description, showOnHomePage, categoryImage);
       if (!result) {
         throw new AppError("Failed to create category", 500);
       }
@@ -86,13 +86,13 @@ export const createCategory = asyncHandler(
 export const updateCategory = asyncHandler(
   async (req: Request, res: Response) => {
     const { id } = req.params;
-    const { name, description, isActive, showOnHomePage } = req.body;
+    const { name, description, isActive, showOnHomePage, categoryImage } = req.body;
     if (!id) {
       throw new AppError("Category ID is required", 400);
     }
-    if (!name && !description && isActive === undefined && showOnHomePage === undefined) {
+    if (!name && !description && isActive === undefined && showOnHomePage === undefined && categoryImage === undefined) {
       throw new AppError(
-        "At least one field (name, description, isActive, or showOnHomePage) is required",
+        "At least one field (name, description, isActive, showOnHomePage, or categoryImage) is required",
         400
       );
     }
@@ -103,6 +103,7 @@ export const updateCategory = asyncHandler(
         description,
         isActive,
         showOnHomePage,
+        categoryImage,
       });
       if (!result) {
         throw new AppError("Failed to update category", 500);

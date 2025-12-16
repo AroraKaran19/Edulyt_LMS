@@ -5,6 +5,8 @@ import { Plus, X, Edit3, Trash2, Check, AlertCircle } from "lucide-react";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import Input from "@/components/ui/inputs/Input";
+import UploadMediaContainer from "@/components/ui/container/UploadMediaContainer";
+import { useUpload } from "@/hooks/useUpload";
 
 interface CategoryInputWithManagementProps {
   label: string;
@@ -37,9 +39,17 @@ const CategoryInputWithManagement: React.FC<
     name: "",
     showOnHomePage: false,
   });
+  const [categoryImage, setCategoryImage] = useState<string>("");
+  const [categoryImageS3Key, setCategoryImageS3Key] = useState<string>("");
+  const [categoryImageSource, setCategoryImageSource] = useState<
+    "upload" | "url"
+  >("upload");
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
+
+  const { uploadFile } = useUpload();
 
   // Count categories with showOnHomePage: true
   const homePageCategoriesCount = categories.filter(
@@ -109,6 +119,44 @@ const CategoryInputWithManagement: React.FC<
     setChange(selectedCategoryIds.filter((id) => id !== categoryId));
   };
 
+  // Handle file upload for category image
+  const handleCategoryImageUpload = useCallback(
+    async (file: File, folderName: string): Promise<string> => {
+      setIsUploadingImage(true);
+      try {
+        const result = await uploadFile(file, folderName);
+        if (result.success && result.data) {
+          setCategoryImage(result.data.url);
+          setCategoryImageS3Key(result.data.s3Key);
+          setCategoryImageSource("upload");
+          return result.data.url;
+        } else {
+          throw new Error(result.error || "Upload failed");
+        }
+      } catch (error) {
+        console.error("Error uploading category image:", error);
+        throw error;
+      } finally {
+        setIsUploadingImage(false);
+      }
+    },
+    [uploadFile]
+  );
+
+  // Handle URL submission for category image
+  const handleCategoryImageUrlSubmit = useCallback((url: string) => {
+    setCategoryImage(url);
+    setCategoryImageSource("url");
+    setCategoryImageS3Key(""); // No S3 key for URL-based images
+  }, []);
+
+  // Handle category image removal
+  const handleCategoryImageRemove = useCallback(() => {
+    setCategoryImage("");
+    setCategoryImageS3Key("");
+    setCategoryImageSource("upload");
+  }, []);
+
   // Handle create new category
   const handleCreateCategory = async () => {
     if (!newCategory.name || !newCategory.name.trim()) return;
@@ -118,6 +166,7 @@ const CategoryInputWithManagement: React.FC<
       const result = await createCategory({
         name: newCategory.name.trim(),
         showOnHomePage: newCategory.showOnHomePage || false,
+        categoryImage: categoryImage || undefined,
       });
 
       if (result && result._id) {
@@ -127,6 +176,9 @@ const CategoryInputWithManagement: React.FC<
           setChange([...selectedCategoryIds, result._id]);
         }
         setNewCategory({ name: "", showOnHomePage: false });
+        setCategoryImage("");
+        setCategoryImageS3Key("");
+        setCategoryImageSource("upload");
         setShowCreateModal(false);
         clearError();
       }
@@ -140,6 +192,18 @@ const CategoryInputWithManagement: React.FC<
   // Handle edit category
   const handleEditCategory = (category: Category) => {
     setEditingCategory(category);
+    // Set the category image state when opening edit modal
+    setCategoryImage(category.categoryImage || "");
+    // Determine if image is from URL or upload (if it's an S3 URL, it's upload)
+    if (category.categoryImage) {
+      const isS3Url =
+        category.categoryImage.includes("s3.amazonaws.com") ||
+        category.categoryImage.includes("amazonaws.com");
+      setCategoryImageSource(isS3Url ? "upload" : "url");
+    } else {
+      setCategoryImageSource("upload");
+    }
+    setCategoryImageS3Key(""); // We don't track S3 key in edit mode for now
     setShowEditModal(true);
   };
 
@@ -161,6 +225,7 @@ const CategoryInputWithManagement: React.FC<
       const result = await updateCategory(editingCategory._id, {
         name: editingCategory.name.trim(),
         showOnHomePage: editingCategory.showOnHomePage,
+        categoryImage: categoryImage || undefined,
       });
 
       if (result) {
@@ -175,6 +240,9 @@ const CategoryInputWithManagement: React.FC<
 
         setShowEditModal(false);
         setEditingCategory(null);
+        setCategoryImage("");
+        setCategoryImageS3Key("");
+        setCategoryImageSource("upload");
         clearError();
       }
     } catch (err) {
@@ -407,6 +475,9 @@ const CategoryInputWithManagement: React.FC<
                   onClick={() => {
                     setShowCreateModal(false);
                     setNewCategory({ name: "", showOnHomePage: false });
+                    setCategoryImage("");
+                    setCategoryImageS3Key("");
+                    setCategoryImageSource("upload");
                     clearError();
                   }}
                   className="text-gray-500 hover:text-gray-700 p-1"
@@ -461,6 +532,23 @@ const CategoryInputWithManagement: React.FC<
                 </label>
               </div>
 
+              <UploadMediaContainer
+                title="Category Image/Thumbnail"
+                description="Upload an image or provide a URL for the category thumbnail"
+                type="image"
+                mediaUrl={categoryImage}
+                mediaSource={categoryImageSource}
+                s3Key={categoryImageS3Key}
+                maxSize={10}
+                onFileUpload={handleCategoryImageUpload}
+                onUrlSubmit={handleCategoryImageUrlSubmit}
+                onFileRemove={handleCategoryImageRemove}
+                isUploading={isUploadingImage}
+                folderName="category-images"
+                allowUrlInput={true}
+                showConfirmation={false}
+              />
+
               {error && (
                 <div className="flex items-center gap-2 text-red-600 text-sm">
                   <AlertCircle className="w-4 h-4" />
@@ -474,6 +562,9 @@ const CategoryInputWithManagement: React.FC<
                 onClick={() => {
                   setShowCreateModal(false);
                   setNewCategory({ name: "", showOnHomePage: false });
+                  setCategoryImage("");
+                  setCategoryImageS3Key("");
+                  setCategoryImageSource("upload");
                   clearError();
                 }}
                 disabled={isCreating}
@@ -600,6 +691,23 @@ const CategoryInputWithManagement: React.FC<
                 </label>
               </div>
 
+              <UploadMediaContainer
+                title="Category Image/Thumbnail"
+                description="Upload an image or provide a URL for the category thumbnail"
+                type="image"
+                mediaUrl={categoryImage}
+                mediaSource={categoryImageSource}
+                s3Key={categoryImageS3Key}
+                maxSize={10}
+                onFileUpload={handleCategoryImageUpload}
+                onUrlSubmit={handleCategoryImageUrlSubmit}
+                onFileRemove={handleCategoryImageRemove}
+                isUploading={isUploadingImage}
+                folderName="category-images"
+                allowUrlInput={true}
+                showConfirmation={false}
+              />
+
               {error && (
                 <div className="flex items-center gap-2 text-red-600 text-sm">
                   <AlertCircle className="w-4 h-4" />
@@ -613,6 +721,9 @@ const CategoryInputWithManagement: React.FC<
                 onClick={() => {
                   setShowEditModal(false);
                   setEditingCategory(null);
+                  setCategoryImage("");
+                  setCategoryImageS3Key("");
+                  setCategoryImageSource("upload");
                   clearError();
                 }}
                 disabled={isUpdating}

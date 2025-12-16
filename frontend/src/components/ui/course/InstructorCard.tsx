@@ -47,7 +47,7 @@ const InstructorCard = ({
 
   return (
     <Link
-      href={`/instructors/${getSlug()}`}
+      href={`/instructor/${getSlug()}`}
       className={cn(
         "instructor flex gap-1 items-center bg-[#EEEEEE] rounded-full p-1 text-xs font-bold text-text-primary select-none cursor-pointer max-w-[150px]",
         props.className
