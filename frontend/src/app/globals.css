@@ -119,3 +119,18 @@ html {
     paused;
   --animate-fade-from-left: fadeFromLeft 0.3s ease-in-out forwards;
 }
+
+/* Internship Features Carousel Pagination */
+.internship-features-swiper .swiper-pagination-bullet-custom {
+  width: 24px;
+  height: 6px;
+  border-radius: 3px;
+  background: #FED7AA;
+  opacity: 1;
+  transition: all 0.3s ease;
+}
+
+.internship-features-swiper .swiper-pagination-bullet-active-custom {
+  background: #F77124;
+  width: 32px;
+}
