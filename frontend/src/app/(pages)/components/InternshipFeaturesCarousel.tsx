@@ -9,16 +9,16 @@ import { internshipFeatures } from "@/constants/internshipData";
 
 const InternshipFeaturesCarousel = () => {
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
-  const swiperRef = useRef<any>(null);
+  const swiperRef = useRef<{ slideToLoop: (index: number) => void } | null>(null);
 
   return (
     <div className="px-4 lg:px-8 xl:px-12 mt-16 lg:mt-24">
       <div className="text-center mb-8">
         <h2 className="text-3xl lg:text-4xl font-bold mb-4">
-          <span className="text-[#F77124]">Internship</span>{" "}
-          <span className="text-gray-900">Features</span>
+          <span className="text-[#F77124] font-extrabold">Internship</span>{" "}
+          <span className="text-gray-900 font-extrabold">Features</span>
         </h2>
-        <p className="text-gray-600 text-base lg:text-lg max-w-3xl mx-auto">
+        <p className="text-black text-base lg:text-lg max-w-2xl mx-auto">
           Discover how this internship helps you grow through hands-on learning
           and industry exposure.
         </p>
@@ -55,18 +55,20 @@ const InternshipFeaturesCarousel = () => {
             const IconComponent = feature.icon;
             return (
               <SwiperSlide key={index}>
-                <div className="bg-white rounded-2xl p-6 border border-[#F77124] hover:shadow-lg transition-shadow h-full">
-                  <div className="flex items-center gap-4 mb-4">
-                    <div className="bg-[#F77124] p-3 rounded-xl">
-                      <IconComponent className="w-6 h-6 text-white" />
+                <div className="relative rounded-3xl p-[2px] bg-gradient-to-r from-[#F77124]/20 via-[#F77124]/60 to-[#F77124] h-full">
+                  <div className="bg-white rounded-3xl p-6 h-full">
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="bg-[#F77124] p-3 rounded-xl">
+                        <IconComponent className="w-6 h-6 text-white" />
+                      </div>
                     </div>
+                    <h3 className="text-xl font-bold text-[#F77124] mb-3 line-clamp-1">
+                      {feature.title}
+                    </h3>
+                    <p className="text-gray-600 line-clamp-4">
+                      {feature.description}
+                    </p>
                   </div>
-                  <h3 className="text-xl font-bold text-[#F77124] mb-3 line-clamp-1">
-                    {feature.title}
-                  </h3>
-                  <p className="text-gray-600 line-clamp-3">
-                    {feature.description}
-                  </p>
                 </div>
               </SwiperSlide>
             );
@@ -87,7 +89,7 @@ const InternshipFeaturesCarousel = () => {
                 "transition-all duration-300 rounded-full cursor-pointer",
                 activeSlideIndex === index
                   ? "w-8 h-2 bg-[#F77124]"
-                  : "w-2 h-2 bg-[#FED7AA] hover:bg-[#F77124]/70"
+                  : "w-4 h-2 bg-[#FED7AA] hover:bg-[#F77124]/70"
               )}
               aria-label={`Go to slide ${index + 1}`}
             />

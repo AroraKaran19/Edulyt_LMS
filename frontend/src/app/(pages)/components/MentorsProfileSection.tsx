@@ -8,21 +8,21 @@ import { Autoplay } from "swiper/modules";
 import "swiper/css";
 import { cn } from "@/lib/utils";
 import { mentorProfiles } from "@/constants/internshipData";
-import { Linkedin, Star } from "lucide-react";
+import { Star } from "lucide-react";
 
 const MentorsProfileSection = () => {
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
-  const swiperRef = useRef<any>(null);
+  const swiperRef = useRef<{ slideToLoop: (index: number) => void } | null>(null);
 
   return (
     <div className="px-4 lg:px-8 xl:px-12 mt-16 lg:mt-24">
       <div className="text-center mb-8">
         <h2 className="text-3xl lg:text-4xl font-bold mb-4">
-          <span className="text-gray-900">Our</span>{" "}
-          <span className="text-[#F77124]">Mentors</span>{" "}
-          <span className="text-gray-900">Profile</span>
+          <span className="text-gray-900 font-extrabold">Our</span>{" "}
+          <span className="text-[#F77124] font-extrabold">Mentors</span>{" "}
+          <span className="text-gray-900 font-extrabold">Profile</span>
         </h2>
-        <p className="text-gray-600 text-base lg:text-lg max-w-3xl mx-auto">
+        <p className="text-black text-base lg:text-lg max-w-3xl mx-auto">
           A simple, step-by-step process to help you start, learn, and
           successfully complete your internship.
         </p>
@@ -57,10 +57,10 @@ const MentorsProfileSection = () => {
         >
           {mentorProfiles.map((mentor, index) => (
             <SwiperSlide key={index}>
-              <div className="bg-white rounded-2xl p-6 border border-[#F77124] hover:shadow-lg transition-shadow h-full">
-                {/* Profile Picture, Name, and LinkedIn Icon */}
+              <div className="bg-white max-w-[430px] m-1 rounded-2xl p-6 border-2 border-[#f77124] shadow-[0_0_2px_3px_rgba(233,117,0,0.5)] opacity-100 transition-shadow h-full">
+                {/* Profile Picture, Name, Specialization, and LinkedIn Icon */}
                 <div className="flex items-center gap-4 mb-4">
-                  <div className="relative w-16 h-16 rounded-full overflow-hidden flex-shrink-0">
+                  <div className="relative w-16 h-16 rounded-full overflow-hidden shrink-0">
                     <Image
                       src={mentor.profileImage}
                       alt={mentor.name}
@@ -68,30 +68,42 @@ const MentorsProfileSection = () => {
                       className="object-cover"
                     />
                   </div>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between gap-2 mb-1">
-                      <h3 className="text-lg font-bold text-gray-900">
+                  <div className="flex-1 flex items-center gap-3">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-lg font-bold text-gray-900 truncate">
                         {mentor.name}
                       </h3>
-                      {mentor.linkedinUrl ? (
-                        <Link
-                          href={mentor.linkedinUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="bg-black p-2 rounded flex-shrink-0"
-                          aria-label={`${mentor.name} LinkedIn`}
-                        >
-                          <Linkedin className="w-5 h-5 text-white" />
-                        </Link>
-                      ) : (
-                        <div className="bg-black p-2 rounded flex-shrink-0">
-                          <Linkedin className="w-5 h-5 text-white" />
-                        </div>
-                      )}
+                      <p className="text-xs text-gray-600 truncate">
+                        {mentor.specialization}
+                      </p>
                     </div>
-                    <p className="text-sm text-gray-600">
-                      {mentor.specialization}
-                    </p>
+                    {mentor.linkedinUrl ? (
+                      <Link
+                        href={mentor.linkedinUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="shrink-0"
+                        aria-label={`${mentor.name} LinkedIn`}
+                      >
+                        <Image
+                          src="/assets/LinkedIn.svg"
+                          alt="LinkedIn"
+                          width={40}
+                          height={40}
+                          className="w-full h-full"
+                        />
+                      </Link>
+                    ) : (
+                      <div className="shrink-0">
+                        <Image
+                          src="/assets/LinkedIn.svg"
+                          alt="LinkedIn"
+                          width={40}
+                          height={40}
+                          className="w-full h-full"
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -120,7 +132,7 @@ const MentorsProfileSection = () => {
         </Swiper>
 
         {/* Custom Pagination Dots */}
-        <div className="flex justify-center items-center gap-2 mt-8">
+        {/* <div className="flex justify-center items-center gap-2 mt-8">
           {mentorProfiles.map((_, index) => (
             <button
               key={index}
@@ -133,12 +145,12 @@ const MentorsProfileSection = () => {
                 "transition-all duration-300 rounded-full cursor-pointer",
                 activeSlideIndex === index
                   ? "w-8 h-2 bg-[#F77124]"
-                  : "w-2 h-2 bg-[#FED7AA] hover:bg-[#F77124]/70"
+                  : "w-8 h-2 bg-[#FED7AA] hover:bg-[#F77124]/70"
               )}
               aria-label={`Go to slide ${index + 1}`}
             />
           ))}
-        </div>
+        </div> */}
       </div>
     </div>
   );

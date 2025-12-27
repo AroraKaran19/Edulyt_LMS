@@ -60,10 +60,10 @@ const HeroSection = () => {
           {/* Title */}
           <div className="space-y-4">
             <h1 className="text-4xl lg:text-5xl xl:text-6xl font-bold">
-              <span className="text-[#F77124]">Intensive</span>{" "}
-              <div className="text-gray-900">Internship Program</div>
+              <span className="text-[#F77124] font-extrabold ">Intensive</span>{" "}
+              <div className="text-gray-900 font-extrabold mt-3">Internship Program</div>
             </h1>
-            <p className="text-gray-700 text-md lg:text-lg max-w-2xl leading-relaxed">
+            <p className="text-black text-md lg:text-lg max-w-2xl leading-relaxed">
               Gain hands-on experience, real project exposure, and learn
               directly from industry mentors- all in one structured,
               beginner-friendly internship program.
@@ -71,31 +71,32 @@ const HeroSection = () => {
           </div>
 
           {/* Key Features */}
-          <div className="flex flex-wrap items-center gap-5 mt-6">
+          <div className="flex flex-wrap items-center gap-5">
             <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-5 h-5 text-[#F77124] flex-shrink-0" />
-              <span className="text-gray-800 text-base lg:text-lg">
+              <CheckCircle2 className="w-7 h-7 fill-[#F77124] text-[#fff] flex-shrink-0" />
+              <span className="text-gray-800 font-bold text-base lg:text-lg">
                 Mentor-Led Live Sessions
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-5 h-5 text-[#F77124] flex-shrink-0" />
-              <span className="text-gray-800 text-base lg:text-lg">
+              <CheckCircle2 className="w-7 h-7 fill-[#F77124] text-[#fff] flex-shrink-0" />
+              <span className="text-gray-800 font-bold text-base lg:text-lg">
                 Real Industry projects
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-5 h-5 text-[#F77124] flex-shrink-0" />
-              <span className="text-gray-800 text-base lg:text-lg">
+              <CheckCircle2 className="w-7 h-7 fill-[#F77124] text-[#fff] flex-shrink-0" />
+              <span className="text-gray-800 font-bold text-base lg:text-lg">
                 Online + Offline Modes
               </span>
             </div>
           </div>
+          
           <div className="flex flex-col sm:flex-row gap-4 mt-8">
-            <OrangeButton className="px-8 py-4 text-lg font-semibold">
+            <div className="px-8 py-4 text-lg text-[#fff] rounded-2xl cursor-pointer bg-[#F77124] hover:bg-[#F77124]/90 transition-all duration-300 ease-in-out font-semibold">
               <FileText className="w-5 h-5 mr-2 inline" />
               Job Description
-            </OrangeButton>
+            </div>
             <WhiteButton className="px-8 py-4 text-lg font-semibold border-2 border-[#F77124] text-[#F77124] hover:bg-[#F77124]/10">
               <Download className="w-5 h-5 mr-2 inline" />
               Download Brochure
@@ -103,11 +104,11 @@ const HeroSection = () => {
           </div>
 
           {/* Key Benefits */}
-          <div className="mt-8 pt-6 border-t border-gray-300">
-            <p className="text-gray-700 text-sm lg:text-base">
-              <span className="font-semibold">1000+ Students Trained</span> |{" "}
-              <span className="font-semibold">Beginner Friendly</span> |{" "}
-              <span className="font-semibold">Certification Included</span>
+          <div className="mt-4">
+            <p className="text-black text-sm lg:text-base">
+              <span className="">1000+ Students Trained</span> |{" "}
+              <span className="">Beginner Friendly</span> |{" "}
+              <span className="">Certification Included</span>
             </p>
           </div>
         </div>
@@ -115,64 +116,64 @@ const HeroSection = () => {
 
       {/* Right Section - Internship Details Panel */}
       <div className="lg:col-span-1">
-        <div className="bg-white rounded-4xl shadow-xl border border-gray-800/10 overflow-hidden">
+        <div className="bg-white rounded-[40px] shadow-xl border border-gray-800/5 overflow-hidden">
           {/* Top White Section - Internship Details */}
-          <div className="p-6 lg:p-8 space-y-4">
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-gray-600">Application Last Date</p>
-              <div className="bg-gray-100 px-3 py-1.5 rounded-full">
-                <p className="text-sm text-gray-500">
+          <div className="p-6 lg:p-8 space-y-2">
+            <div className="flex items-center justify-between border-b border-gray-800/10 pb-2">
+              <p className="text-sm text-black/50 font-medium">Application Last Date</p>
+              <div className="bg-[#D9D9D933] px-3 py-1.5 rounded-full">
+                <p className="text-sm text-[#BCBCBC] font-semibold">
                   {internshipDetails.applicationLastDate}
                 </p>
               </div>
             </div>
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-gray-600">Exam Date</p>
-              <div className="bg-gray-100 px-3 py-1.5 rounded-full">
-                <p className="text-sm text-gray-500">
+            <div className="flex items-center justify-between border-b border-gray-800/10 pb-2">
+              <p className="text-sm text-black/50 font-medium">Exam Date</p>
+              <div className="bg-[#D9D9D933] px-3 py-1.5 rounded-full">
+                <p className="text-sm text-[#BCBCBC] font-semibold">
                   {internshipDetails.examDate}
                 </p>
               </div>
             </div>
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-gray-600">Internship Start Date</p>
-              <div className="bg-gray-100 px-3 py-1.5 rounded-full">
-                <p className="text-sm text-gray-500">
+            <div className="flex items-center justify-between border-b border-gray-800/10 pb-2">
+              <p className="text-sm text-black/50 font-medium">Internship Start Date</p>
+              <div className="bg-[#D9D9D933] px-3 py-1.5 rounded-full">
+                <p className="text-sm text-[#BCBCBC] font-semibold">
                   {internshipDetails.internshipStartDate}
                 </p>
               </div>
             </div>
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-gray-600">WhatsApp Link</p>
+            <div className="flex items-center justify-between border-b border-gray-800/10 pb-2">
+              <p className="text-sm text-black/50 font-medium">WhatsApp Link</p>
               <Link
                 href={internshipDetails.whatsappLink}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-sm text-gray-500 bg-[#F77124] text-white px-3 py-1.5 rounded-full cursor-pointer"
+                className="text-sm text-[#BCBCBC] font-semibold bg-[#D9D9D933] px-3 py-1.5 rounded-full cursor-pointer"
               >
                   Join Now
               </Link>
             </div>
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-gray-600">Certificate</p>
-              <div className="bg-gray-100 px-3 py-1.5 rounded-full">
-                <p className="text-sm text-gray-500">
+            <div className="flex items-center justify-between border-b border-gray-800/10 pb-2">
+              <p className="text-sm text-black/50 font-medium">Certificate</p>
+              <div className="bg-[#D9D9D933] px-3 py-1.5 rounded-full">
+                <p className="text-sm text-[#BCBCBC] font-semibold">
                   {internshipDetails.certificate}
                 </p>
               </div>
             </div>
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-gray-600">Mode</p>
-              <div className="bg-gray-100 px-3 py-1.5 rounded-full">
-                <p className="text-sm text-gray-500">
+            <div className="flex items-center justify-between border-b border-gray-800/10 pb-2">
+              <p className="text-sm text-black/50 font-medium">Mode</p>
+              <div className="bg-[#D9D9D933] px-3 py-1.5 rounded-full">
+                <p className="text-sm text-[#BCBCBC] font-semibold">
                   {internshipDetails.mode}
                 </p>
               </div>
             </div>
             <div className="flex items-center justify-between">
-              <p className="text-sm text-gray-600">Language</p>
-              <div className="bg-gray-100 px-3 py-1.5 rounded-full">
-                <p className="text-sm text-gray-500">
+              <p className="text-sm text-black/50 font-medium">Language</p>
+              <div className="bg-[#D9D9D933] px-3 py-1.5 rounded-full">
+                <p className="text-sm text-[#BCBCBC] font-semibold">
                   {internshipDetails.language}
                 </p>
               </div>
@@ -180,7 +181,7 @@ const HeroSection = () => {
           </div>
 
           {/* Bottom Light Orange Section */}
-          <div className="bg-orange-50 p-6 lg:p-8 space-y-4">
+          <div className="bg-[#F5691D1A] p-6 lg:p-8 space-y-4">
             {/* Social Media Icons */}
             <div className="flex items-center justify-center gap-3 flex-wrap">
               {socialLinks.map((social, index) => {
@@ -211,11 +212,11 @@ const HeroSection = () => {
             </p>
 
             {/* Action Buttons - Side by Side */}
-            <div className="flex flex-col sm:flex-row gap-3">
-              <OrangeButton className="flex-1 py-3 text-xs sm:text-sm rounded-full cursor-pointer font-semibold">
+            <div className="flex flex-col items-center justify-center sm:flex-row gap-3">
+              <div className="py-3 border-2 border-[#F77124] hover:bg-[#F77124]/90 text-xs sm:text-sm rounded-full px-4 cursor-pointer font-semibold bg-[#F77124] text-[#fff]">
                 <Phone className="w-4 h-4 mr-2 inline" />
                 Call Us: {internshipDetails.phoneNumber}
-              </OrangeButton>
+              </div>
               <div className="py-3 text-xs sm:text-sm rounded-full text-center px-4 cursor-pointer font-semibold border-2 border-[#F77124] text-[#F77124] hover:bg-[#F77724]/10">
                 <FileText className="w-4 h-4 mr-2 inline" />
                 Apply Now

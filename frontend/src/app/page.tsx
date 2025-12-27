@@ -18,7 +18,7 @@ const HomePage = () => {
             Browse Courses
           </Link>
           <Link
-            href="/internship"
+            href="/internships"
             className="bg-white text-[#F77124] border-2 border-[#F77124] px-8 py-3 rounded-lg font-semibold hover:bg-[#F77124] hover:text-white transition-colors text-lg"
           >
             Internship Program

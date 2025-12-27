@@ -15,20 +15,20 @@ const LearnersTestimonialsSection = () => {
   return (
     <div className="px-4 lg:px-8 xl:px-12 mt-16 lg:mt-24 bg-white">
       {/* Title Section */}
-      <div className="text-center mb-12">
-        <h2 className="text-3xl lg:text-4xl font-bold mb-4">
-          <span className="text-gray-900">Our learners</span>{" "}
-          <span className="text-[#F77124]">transformed</span>{" "}
-          <span className="text-gray-900">their careers</span>
+      <div className="text-center mb-12 max-w-md mx-auto">
+        <h2 className="text-3xl lg:text-4xl font-bold mb-4 font-coolvetica">
+          <span className="text-gray-900 font-extrabold">Our learners</span>{" "}
+          <span className="text-[#F77124] font-extrabold">transformed</span>{" "}
+          <span className="text-gray-900 font-extrabold">their careers</span>
         </h2>
       </div>
 
       {/* Statistics Cards */}
-      <div className="max-w-6xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-16">
+      <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-16">
         {learnerStatistics.map((stat, index) => (
           <div
             key={index}
-            className="bg-white rounded-lg flex flex-col items-center justify-center p-6 border border-gray-200 hover:shadow-md transition-shadow"
+            className="bg-white rounded-2xl flex flex-col items-center justify-center p-6 border-2 border-gray-200 hover:shadow-md transition-shadow"
           >
             <div className="text-4xl lg:text-5xl font-bold text-gray-900 mb-2">
               {stat.value}
@@ -41,14 +41,14 @@ const LearnersTestimonialsSection = () => {
       </div>
 
       {/* Testimonials Slider Section */}
-      <div className="max-w-5xl mx-auto relative">
+      <div className="max-w-7xl mx-auto relative">
         {/* Gradient Overlay Wrapper */}
         <div className="relative">
           {/* Left Gradient Fade */}
-          <div className="absolute left-0 top-0 bottom-0 w-32 bg-gradient-to-r from-white to-transparent z-10 pointer-events-none"></div>
+          <div className="absolute left-0 top-0 bottom-0 w-52 bg-gradient-to-r from-white to-transparent z-10 pointer-events-none"></div>
           
           {/* Right Gradient Fade */}
-          <div className="absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none"></div>
+          <div className="absolute right-0 top-0 bottom-0 w-52 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none"></div>
           
           {/* Swiper Slider */}
           <Swiper
@@ -81,10 +81,10 @@ const LearnersTestimonialsSection = () => {
               <SwiperSlide key={index}>
                 <div
                   className={cn(
-                    "rounded-lg p-6 border transition-all relative overflow-hidden h-full",
+                    "rounded-3xl p-12 border m-1 transition-all relative overflow-hidden h-full",
                     index === (activeSlideIndex + 1) % learnerTestimonials.length
-                      ? "bg-white border-[#F77124] border-2 shadow-lg"
-                      : "bg-white/70 backdrop-blur-md border-gray-200 hover:shadow-md"
+                      ? "bg-white border-[#F77124] shadow-[0_0_2px_3px_rgba(233,117,0,0.5)] border-2"
+                      : "bg-white/70 backdrop-blur-md border-gray-200 shadow-lg"
                   )}
                 >
                   {/* Profile Section */}
@@ -100,22 +100,22 @@ const LearnersTestimonialsSection = () => {
                     </div>
 
                     {/* Name */}
-                    <h3 className="text-lg font-bold text-gray-900 mb-1">
+                    <h3 className="text-xl font-extrabold text-gray-900 mb-1">
                       {testimonial.name}
                     </h3>
 
                     {/* Course */}
-                    <p className="text-sm text-gray-600 mb-2">
+                    <p className="text-xs text-gray-600 mb-2">
                       {testimonial.course}
                     </p>
 
                     {/* Role */}
-                    <p className="text-base font-semibold text-gray-900 mb-2">
+                    <p className="text-base mt-4 text-gray-900 mb-2">
                       {testimonial.role}
                     </p>
 
                     {/* Company */}
-                    <p className="text-base font-bold text-gray-900 mb-4">
+                    <p className="text-xl text-center text-black font-extrabold mb-4">
                       {testimonial.company}
                     </p>
 
@@ -130,23 +130,23 @@ const LearnersTestimonialsSection = () => {
                         >
                           <path
                             d="M12 0 L12 40"
-                            stroke="#9CA3AF"
+                            stroke="#F77124"
                             strokeWidth="2"
                             strokeDasharray="4 4"
                           />
                           <path
                             d="M12 40 L6 34 M12 40 L18 34"
-                            stroke="#9CA3AF"
+                            stroke="#F77124"
                             strokeWidth="2"
                             strokeLinecap="round"
                           />
                         </svg>
                       </div>
-                      <div className="bg-gray-50 rounded-lg p-3 w-full border flex flex-col items-center justify-center border-gray-200">
-                        <p className="text-sm text-gray-900 font-semibold text-center">
+                      <div className="bg-[#F771241A] rounded-full p-3 w-full border flex flex-col items-center justify-center border-gray-200">
+                        <p className="text-base text-gray-900 text-center mb-2">
                           {testimonial.role}
                         </p>
-                        <p className="text-xs text-gray-600 font-bold text-center">
+                        <p className="text-xl text-black font-extrabold text-center">
                           {testimonial.company}
                         </p>
                       </div>
@@ -154,7 +154,7 @@ const LearnersTestimonialsSection = () => {
                   </div>
 
                   {/* Testimonial Text */}
-                  <p className="text-sm text-gray-700 leading-relaxed line-clamp-6 min-h-36">
+                  <p className="text-sm text-gray-700 leading-relaxed text-center line-clamp-6 min-h-32">
                     {testimonial.testimonial}
                   </p>
                 </div>
@@ -163,26 +163,7 @@ const LearnersTestimonialsSection = () => {
           </Swiper>
         </div>
 
-        {/* Custom Pagination Dots */}
-        <div className="flex justify-center items-center gap-2 mt-8">
-          {learnerTestimonials.map((_, index) => (
-            <button
-              key={index}
-              onClick={() => {
-                if (swiperRef.current) {
-                  swiperRef.current.slideToLoop(index);
-                }
-              }}
-              className={cn(
-                "transition-all duration-300 rounded-full cursor-pointer",
-                activeSlideIndex === index
-                  ? "w-8 h-2 bg-[#F77124]"
-                  : "w-2 h-2 bg-[#FED7AA] hover:bg-[#F77124]/70"
-              )}
-              aria-label={`Go to slide ${index + 1}`}
-            />
-          ))}
-        </div>
+
       </div>
     </div>
   );

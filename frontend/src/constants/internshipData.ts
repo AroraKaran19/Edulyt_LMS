@@ -12,6 +12,7 @@ import {
   Hand,
   GraduationCap,
   CheckCircle2,
+  BadgeCheck,
   Globe,
   UserCog,
   FolderKanban,
@@ -46,61 +47,61 @@ export const internshipFeatures: InternshipFeature[] = [
     icon: Briefcase,
     title: "Real Industry Projects",
     description:
-      "Work on actual company-style projects to build real skills and practical experience",
+      "Work on actual company-style projects to build real skills and practical experience. You'll work on real scenarios, learn actual workflows, and build a strong portfolio that boosts your confidence and sets you apart from other students.",
   },
   {
     icon: Users,
     title: "Expert Mentor Support",
     description:
-      "Learn directly from experienced trainers and industry professionals through guided sessions.",
+      "Learn directly from experienced trainers and industry professionals through guided sessions. Get expert feedback on your work, learn best practices, and receive career advice from experienced mentors who are invested in your success.",
   },
   {
     icon: BookOpen,
     title: "Flexible Learning Modes",
     description:
-      "Choose online, offline, or a hybrid format that fits your schedule.",
+      "Choose online, offline, or a hybrid format that fits your schedule. Study at your own pace, attend live sessions, and access recorded content whenever you need. Perfect for students balancing academics, work, or other commitments.",
   },
   {
     icon: Award,
     title: "Portfolio Development",
     description:
-      "Build a project-based portfolio that strengthens your profile for future opportunities.",
+      "Build a project-based portfolio that strengthens your profile for future opportunities. Create real work samples and projects that help you stand out.",
   },
   {
     icon: Code,
     title: "Hands-On Coding Practice",
     description:
-      "Get extensive coding practice with real-world scenarios and problem-solving challenges.",
+      "Get extensive coding practice with real-world scenarios and problem-solving challenges. You'll work on real scenarios, learn actual workflows, and build a strong portfolio that boosts your confidence and sets you apart from other students.",
   },
   {
     icon: Target,
     title: "Career Goal Alignment",
     description:
-      "Align your internship experience with your career goals through personalized guidance.",
+      "Align your internship experience with your career goals through personalized guidance. Get expert feedback on your work, learn best practices, and receive career advice from experienced mentors who are invested in your success.",
   },
   {
     icon: Zap,
     title: "Fast-Track Learning",
     description:
-      "Accelerate your learning curve with intensive, focused training sessions and workshops.",
+      "Accelerate your learning curve with intensive, focused training sessions and workshops. You'll work on real scenarios, learn actual workflows, and build a strong portfolio that boosts your confidence and sets you apart from other students.",
   },
   {
     icon: TrendingUp,
     title: "Skill Enhancement",
     description:
-      "Enhance your technical and soft skills through comprehensive training programs.",
+      "Enhance your technical and soft skills through comprehensive training programs. You'll work on real scenarios, learn actual workflows, and build a strong portfolio that boosts your confidence and sets you apart from other students.",
   },
   {
     icon: Clock,
     title: "Flexible Timings",
     description:
-      "Learn at your own pace with flexible scheduling that accommodates your commitments.",
+      "Learn at your own pace with flexible scheduling that accommodates your commitments. You'll work on real scenarios, learn actual workflows, and build a strong portfolio that boosts your confidence and sets you apart from other students.",
   },
   {
     icon: Network,
     title: "Industry Networking",
     description:
-      "Connect with industry professionals and build a strong professional network.",
+      "Connect with industry professionals and build a strong professional network. You'll work on real scenarios, learn actual workflows, and build a strong portfolio that boosts your confidence and sets you apart from other students.",
   },
 ];
 
@@ -119,7 +120,7 @@ export const internshipPerks: InternshipPerk[] = [
     highlighted: true,
   },
   {
-    icon: CheckCircle2,
+    icon: BadgeCheck,
     title: "Certification",
     description:
       "Receive a verified internship certificate to boost your resume.",
@@ -155,32 +156,26 @@ export const whyJoinItems: WhyJoinItem[] = [
     icon: Building2,
     title: "Expert Mentor Support",
     description:
-      "Learn directly from industry professionals who provide personalized guidance and mentorship. Get expert feedback on your work, learn best practices, and receive career advice from experienced mentors who are invested in your success.",
+      "Geared towards businesses and offices, commercial cleaning services focus on maintaining a clean and hygienic work environment, ensuring a professional and healthy workspace for employees and clients.",
   },
   {
     icon: Laptop,
     title: "Flexible Learning Modes",
     description:
-      "Choose the learning mode that works best for you - online, offline, or hybrid. Study at your own pace, attend live sessions, and access recorded content whenever you need. Perfect for students balancing academics, work, or other commitments.",
+      "Deep cleaning goes beyond regular cleaning routines, tackling hard-to-reach or neglected areas. It involves detailed and thorough cleaning of every nook and cranny, from baseboards to appliances, to eliminate deep-seated dirt and grime.",
   },
   {
     icon: FileCheck,
     title: "Verified Certification",
     description:
-      "Receive a verified internship certificate upon successful completion that validates your skills and experience. This industry-recognized certification enhances your resume and demonstrates your commitment to professional development.",
+      "This category includes niche cleaning services tailored to specific needs, such as carpet cleaning to remove stains and odors, window cleaning for sparkling glass surfaces, and post-construction cleaning to eliminate debris and dust after construction or renovation projects.",
   },
   {
     icon: Target,
     title: "Portfolio Development",
     description:
-      "Build a comprehensive portfolio showcasing your real-world projects and achievements. Create work samples that demonstrate your skills to potential employers and stand out in job applications and interviews.",
-  },
-  {
-    icon: TrendingUp,
-    title: "Career Growth",
-    description:
-      "Accelerate your career growth with industry exposure, networking opportunities, and skill development. Gain the practical experience and confidence needed to excel in your chosen field and advance your professional journey.",
-  },
+      "These eco-friendly cleaning services use environmentally conscious products and practices to reduce the impact on the environment. They prioritize the use of non-toxic, biodegradable, and sustainable cleaning solutions.",
+  }
 ];
 
 export const internshipDetails = {
