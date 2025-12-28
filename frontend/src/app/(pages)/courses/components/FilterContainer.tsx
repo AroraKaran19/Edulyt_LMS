@@ -15,7 +15,7 @@ const FilterContainer = ({
 }) => {
   return (
     <div
-      className={`filter-options w-full mt-6 bg-[#FFF6F2] rounded-full flex gap-2 items-stretch animate-fade-from-top p-2 ${
+      className={`filter-options w-full mt-6 bg-[#fff6f1] rounded-full flex gap-2 items-stretch animate-fade-from-top p-2 ${
         isMobile ? "overflow-scroll" : "overflow-x-auto"
       }`}
     >
@@ -35,7 +35,7 @@ const FilterContainer = ({
           }}
           onClick={() => handleFilterClick(filter)}
         >
-          <span className="text-lg">{filter.label}</span>
+          <span className="text-sm py-2">{filter.label}</span>
           {filter.featureBox && (
             <span className="text-[10px] font-normal px-1.5 py-0.75 rounded-full bg-[#F5691D] text-white">
               {filter.featureBox.value}

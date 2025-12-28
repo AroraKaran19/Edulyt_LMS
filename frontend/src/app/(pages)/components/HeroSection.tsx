@@ -52,18 +52,18 @@ const socialIcons: Record<string, React.ComponentType<{ className?: string }>> =
 
 const HeroSection = () => {
   return (
-    <div className=" px-4 bg-white lg:px-8 xl:px-12 py-8 lg:py-12">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <div className="px-4 sm:px-6 bg-white lg:px-8 xl:px-12 py-6 sm:py-8 lg:py-12">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
       {/* Left Section - Main Content */}
       <div className="lg:col-span-2 relative overflow-hidden">
-        <div className="relative bg-white z-10 lg:p-12 h-full flex flex-col justify-between min-h-[500px]">
+        <div className="relative bg-white z-10 p-4 sm:p-6 lg:p-12 h-full flex flex-col justify-between min-h-[400px] sm:min-h-[450px] lg:min-h-[500px]">
           {/* Title */}
-          <div className="space-y-4">
-            <h1 className="text-4xl lg:text-5xl xl:text-6xl font-bold">
-              <span className="text-[#F77124] font-extrabold ">Intensive</span>{" "}
-              <div className="text-gray-900 font-extrabold mt-3">Internship Program</div>
+          <div className="space-y-3 sm:space-y-4">
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold">
+              <span className="text-[#F77124] font-extrabold">Intensive</span>{" "}
+              <div className="text-gray-900 font-extrabold mt-2 sm:mt-3">Internship Program</div>
             </h1>
-            <p className="text-black text-md lg:text-lg max-w-2xl leading-relaxed">
+            <p className="text-black text-sm sm:text-base lg:text-lg max-w-2xl leading-relaxed">
               Gain hands-on experience, real project exposure, and learn
               directly from industry mentors- all in one structured,
               beginner-friendly internship program.
@@ -71,41 +71,41 @@ const HeroSection = () => {
           </div>
 
           {/* Key Features */}
-          <div className="flex flex-wrap items-center gap-5">
+          <div className="flex flex-wrap items-center gap-3 sm:gap-4 lg:gap-5 mt-4 sm:mt-0">
             <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-7 h-7 fill-[#F77124] text-[#fff] flex-shrink-0" />
-              <span className="text-gray-800 font-bold text-base lg:text-lg">
+              <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 fill-[#F77124] text-[#fff] shrink-0" />
+              <span className="text-gray-800 font-bold text-sm sm:text-base lg:text-lg">
                 Mentor-Led Live Sessions
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-7 h-7 fill-[#F77124] text-[#fff] flex-shrink-0" />
-              <span className="text-gray-800 font-bold text-base lg:text-lg">
+              <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 fill-[#F77124] text-[#fff] shrink-0" />
+              <span className="text-gray-800 font-bold text-sm sm:text-base lg:text-lg">
                 Real Industry projects
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-7 h-7 fill-[#F77124] text-[#fff] flex-shrink-0" />
-              <span className="text-gray-800 font-bold text-base lg:text-lg">
+              <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 fill-[#F77124] text-[#fff] shrink-0" />
+              <span className="text-gray-800 font-bold text-sm sm:text-base lg:text-lg">
                 Online + Offline Modes
               </span>
             </div>
           </div>
           
-          <div className="flex flex-col sm:flex-row gap-4 mt-8">
-            <div className="px-8 py-4 text-lg text-[#fff] rounded-2xl cursor-pointer bg-[#F77124] hover:bg-[#F77124]/90 transition-all duration-300 ease-in-out font-semibold">
-              <FileText className="w-5 h-5 mr-2 inline" />
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-6 sm:mt-8">
+            <div className="px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg text-[#fff] rounded-xl sm:rounded-2xl cursor-pointer bg-[#F77124] hover:bg-[#F77124]/90 transition-all duration-300 ease-in-out font-semibold text-center sm:text-left">
+              <FileText className="w-4 h-4 sm:w-5 sm:h-5 mr-2 inline" />
               Job Description
             </div>
-            <WhiteButton className="px-8 py-4 text-lg font-semibold border-2 border-[#F77124] text-[#F77124] hover:bg-[#F77124]/10">
-              <Download className="w-5 h-5 mr-2 inline" />
+            <WhiteButton className="px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg font-semibold border-2 border-[#F77124] text-[#F77124] hover:bg-[#F77124]/10 text-center sm:text-left">
+              <Download className="w-4 h-4 sm:w-5 sm:h-5 mr-2 inline" />
               Download Brochure
             </WhiteButton>
           </div>
 
           {/* Key Benefits */}
-          <div className="mt-4">
-            <p className="text-black text-sm lg:text-base">
+          <div className="mt-4 sm:mt-6">
+            <p className="text-black text-xs sm:text-sm lg:text-base text-center sm:text-left">
               <span className="">1000+ Students Trained</span> |{" "}
               <span className="">Beginner Friendly</span> |{" "}
               <span className="">Certification Included</span>
@@ -116,64 +116,64 @@ const HeroSection = () => {
 
       {/* Right Section - Internship Details Panel */}
       <div className="lg:col-span-1">
-        <div className="bg-white rounded-[40px] shadow-xl border border-gray-800/5 overflow-hidden">
+        <div className="bg-white rounded-2xl sm:rounded-3xl lg:rounded-[40px] shadow-xl border border-gray-800/5 overflow-hidden">
           {/* Top White Section - Internship Details */}
-          <div className="p-6 lg:p-8 space-y-2">
-            <div className="flex items-center justify-between border-b border-gray-800/10 pb-2">
-              <p className="text-sm text-black/50 font-medium">Application Last Date</p>
-              <div className="bg-[#D9D9D933] px-3 py-1.5 rounded-full">
-                <p className="text-sm text-[#BCBCBC] font-semibold">
+          <div className="p-4 sm:p-6 lg:p-8 space-y-2">
+            <div className="flex items-center justify-between border-b border-gray-800/10 pb-2 gap-2">
+              <p className="text-xs sm:text-sm text-black/50 font-medium">Application Last Date</p>
+              <div className="bg-[#D9D9D933] px-2 sm:px-3 py-1 sm:py-1.5 rounded-full shrink-0">
+                <p className="text-xs sm:text-sm text-[#BCBCBC] font-semibold whitespace-nowrap">
                   {internshipDetails.applicationLastDate}
                 </p>
               </div>
             </div>
-            <div className="flex items-center justify-between border-b border-gray-800/10 pb-2">
-              <p className="text-sm text-black/50 font-medium">Exam Date</p>
-              <div className="bg-[#D9D9D933] px-3 py-1.5 rounded-full">
-                <p className="text-sm text-[#BCBCBC] font-semibold">
+            <div className="flex items-center justify-between border-b border-gray-800/10 pb-2 gap-2">
+              <p className="text-xs sm:text-sm text-black/50 font-medium">Exam Date</p>
+              <div className="bg-[#D9D9D933] px-2 sm:px-3 py-1 sm:py-1.5 rounded-full shrink-0">
+                <p className="text-xs sm:text-sm text-[#BCBCBC] font-semibold whitespace-nowrap">
                   {internshipDetails.examDate}
                 </p>
               </div>
             </div>
-            <div className="flex items-center justify-between border-b border-gray-800/10 pb-2">
-              <p className="text-sm text-black/50 font-medium">Internship Start Date</p>
-              <div className="bg-[#D9D9D933] px-3 py-1.5 rounded-full">
-                <p className="text-sm text-[#BCBCBC] font-semibold">
+            <div className="flex items-center justify-between border-b border-gray-800/10 pb-2 gap-2">
+              <p className="text-xs sm:text-sm text-black/50 font-medium">Internship Start Date</p>
+              <div className="bg-[#D9D9D933] px-2 sm:px-3 py-1 sm:py-1.5 rounded-full shrink-0">
+                <p className="text-xs sm:text-sm text-[#BCBCBC] font-semibold whitespace-nowrap">
                   {internshipDetails.internshipStartDate}
                 </p>
               </div>
             </div>
-            <div className="flex items-center justify-between border-b border-gray-800/10 pb-2">
-              <p className="text-sm text-black/50 font-medium">WhatsApp Link</p>
+            <div className="flex items-center justify-between border-b border-gray-800/10 pb-2 gap-2">
+              <p className="text-xs sm:text-sm text-black/50 font-medium">WhatsApp Link</p>
               <Link
                 href={internshipDetails.whatsappLink}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-sm text-[#BCBCBC] font-semibold bg-[#D9D9D933] px-3 py-1.5 rounded-full cursor-pointer"
+                className="text-xs sm:text-sm text-[#BCBCBC] font-semibold bg-[#D9D9D933] px-2 sm:px-3 py-1 sm:py-1.5 rounded-full cursor-pointer shrink-0 whitespace-nowrap"
               >
                   Join Now
               </Link>
             </div>
-            <div className="flex items-center justify-between border-b border-gray-800/10 pb-2">
-              <p className="text-sm text-black/50 font-medium">Certificate</p>
-              <div className="bg-[#D9D9D933] px-3 py-1.5 rounded-full">
-                <p className="text-sm text-[#BCBCBC] font-semibold">
+            <div className="flex items-center justify-between border-b border-gray-800/10 pb-2 gap-2">
+              <p className="text-xs sm:text-sm text-black/50 font-medium">Certificate</p>
+              <div className="bg-[#D9D9D933] px-2 sm:px-3 py-1 sm:py-1.5 rounded-full shrink-0">
+                <p className="text-xs sm:text-sm text-[#BCBCBC] font-semibold whitespace-nowrap">
                   {internshipDetails.certificate}
                 </p>
               </div>
             </div>
-            <div className="flex items-center justify-between border-b border-gray-800/10 pb-2">
-              <p className="text-sm text-black/50 font-medium">Mode</p>
-              <div className="bg-[#D9D9D933] px-3 py-1.5 rounded-full">
-                <p className="text-sm text-[#BCBCBC] font-semibold">
+            <div className="flex items-center justify-between border-b border-gray-800/10 pb-2 gap-2">
+              <p className="text-xs sm:text-sm text-black/50 font-medium">Mode</p>
+              <div className="bg-[#D9D9D933] px-2 sm:px-3 py-1 sm:py-1.5 rounded-full shrink-0">
+                <p className="text-xs sm:text-sm text-[#BCBCBC] font-semibold whitespace-nowrap">
                   {internshipDetails.mode}
                 </p>
               </div>
             </div>
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-black/50 font-medium">Language</p>
-              <div className="bg-[#D9D9D933] px-3 py-1.5 rounded-full">
-                <p className="text-sm text-[#BCBCBC] font-semibold">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs sm:text-sm text-black/50 font-medium">Language</p>
+              <div className="bg-[#D9D9D933] px-2 sm:px-3 py-1 sm:py-1.5 rounded-full shrink-0">
+                <p className="text-xs sm:text-sm text-[#BCBCBC] font-semibold whitespace-nowrap">
                   {internshipDetails.language}
                 </p>
               </div>
@@ -181,9 +181,9 @@ const HeroSection = () => {
           </div>
 
           {/* Bottom Light Orange Section */}
-          <div className="bg-[#F5691D1A] p-6 lg:p-8 space-y-4">
+          <div className="bg-[#F5691D1A] p-4 sm:p-6 lg:p-8 space-y-3 sm:space-y-4">
             {/* Social Media Icons */}
-            <div className="flex items-center justify-center gap-3 flex-wrap">
+            <div className="flex items-center justify-center gap-2 sm:gap-3 flex-wrap">
               {socialLinks.map((social, index) => {
                 const IconComponent = socialIcons[social.label] || null;
                 if (!IconComponent) return null;
@@ -200,25 +200,25 @@ const HeroSection = () => {
                     )}
                     aria-label={social.label}
                   >
-                    <IconComponent className="w-6 h-6" />
+                    <IconComponent className="w-5 h-5 sm:w-6 sm:h-6" />
                   </Link>
                 );
               })}
             </div>
 
             {/* For Enquiry Text */}
-            <p className="text-sm font-bold text-gray-900 text-center">
+            <p className="text-xs sm:text-sm font-bold text-gray-900 text-center">
               For Enquiry!
             </p>
 
             {/* Action Buttons - Side by Side */}
-            <div className="flex flex-col items-center justify-center sm:flex-row gap-3">
-              <div className="py-3 border-2 border-[#F77124] hover:bg-[#F77124]/90 text-xs sm:text-sm rounded-full px-4 cursor-pointer font-semibold bg-[#F77124] text-[#fff]">
-                <Phone className="w-4 h-4 mr-2 inline" />
+            <div className="flex flex-col items-stretch sm:flex-row gap-2 sm:gap-3">
+              <div className="py-2.5 sm:py-3 border-2 border-[#F77124] hover:bg-[#F77124]/90 text-xs sm:text-sm rounded-full px-3 sm:px-4 cursor-pointer font-semibold bg-[#F77124] text-[#fff] text-center">
+                <Phone className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2 inline" />
                 Call Us: {internshipDetails.phoneNumber}
               </div>
-              <div className="py-3 text-xs sm:text-sm rounded-full text-center px-4 cursor-pointer font-semibold border-2 border-[#F77124] text-[#F77124] hover:bg-[#F77724]/10">
-                <FileText className="w-4 h-4 mr-2 inline" />
+              <div className="py-2.5 sm:py-3 text-xs sm:text-sm rounded-full text-center px-3 sm:px-4 cursor-pointer font-semibold border-2 border-[#F77124] text-[#F77124] hover:bg-[#F77724]/10">
+                <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2 inline" />
                 Apply Now
               </div>
             </div>

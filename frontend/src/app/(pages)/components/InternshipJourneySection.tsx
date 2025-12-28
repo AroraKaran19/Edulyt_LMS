@@ -33,14 +33,15 @@ const InternshipJourneySection = () => {
   };
 
   return (
-    <div className="px-4 lg:px-8 xl:px-12 mt-16 lg:mt-24 bg-white py-12">
+    <div className="px-4 lg:px-8 xl:px-12 mt-16 lg:pt-12 bg-[#fffbf8]">
       {/* Title Section */}
       <div className="text-center mb-12 max-w-4xl mx-auto">
         <h2 className="text-3xl lg:text-4xl font-bold mb-4">
-          <span className="text-gray-900">Your</span>{" "}
-          <span className="text-[#F77124]">Internship Journey</span>
+          <span className="text-gray-900 font-extrabold">Your</span>{" "}
+          <span className="text-[#F77124] font-extrabold">Internship </span>
+            <span className="text-gray-900 font-extrabold">Journey</span>
         </h2>
-        <p className="text-gray-700 text-base lg:text-lg mt-4">
+        <p className="text-black text-base lg:text-lg mt-4">
           A simple, step-by-step process to help you start, learn, and
           successfully complete your internship.
         </p>

@@ -19,13 +19,13 @@ const FAQSection = () => {
   };
 
   return (
-    <div className="px-4 lg:px-8 xl:px-12 mt-16 lg:mt-24 bg-white py-12">
+    <div className="px-4 sm:px-6 lg:px-8 xl:px-12 mt-16 lg:mt-24 bg-[#fffcfa] py-8 sm:py-12">
       {/* Title Section */}
-      <div className="text-center mb-8 max-w-4xl mx-auto">
-        <h2 className="text-3xl lg:text-4xl font-bold mb-4 text-[#F77124]">
+      <div className="text-center mb-6 sm:mb-8 max-w-4xl mx-auto">
+        <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold mb-3 sm:mb-4 text-[#F77124]">
           FAQ
         </h2>
-        <p className="text-gray-700 text-base lg:text-lg mt-4">
+        <p className="text-black text-sm sm:text-base lg:text-lg mt-3 sm:mt-4 px-2">
           Dive into Artificial Intelligence & Machine Learning projects to
           sharpen skills and build a unique portfolio
         </p>
@@ -33,25 +33,25 @@ const FAQSection = () => {
 
       {/* FAQ Accordion */}
       <div className="max-w-4xl mx-auto">
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {faqItems.map((item) => {
             const isOpen = openItems.has(item.id);
             return (
               <div
                 key={item.id}
-                className="bg-gray-100 rounded-lg overflow-hidden transition-all"
+                className="bg-[#f3f3f3] rounded-lg sm:rounded-xl overflow-hidden transition-all"
               >
                 {/* Question Header */}
                 <button
                   onClick={() => toggleItem(item.id)}
-                  className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-gray-200 transition-colors"
+                  className="w-full px-4 sm:px-6 cursor-pointer py-3 sm:py-4 flex items-center justify-between text-left hover:bg-gray-200 transition-colors gap-2 sm:gap-4"
                 >
-                  <span className="text-gray-900 font-medium pr-4">
+                  <span className="text-gray-900 font-medium text-sm sm:text-base pr-2 sm:pr-4 flex-1">
                     {item.question}
                   </span>
                   <ChevronDown
                     className={cn(
-                      "w-5 h-5 text-gray-600 flex-shrink-0 transition-transform duration-300",
+                      "w-4 h-4 sm:w-5 sm:h-5 text-gray-600 shrink-0 transition-transform duration-300",
                       isOpen && "transform rotate-180"
                     )}
                   />
@@ -64,7 +64,7 @@ const FAQSection = () => {
                     isOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
                   )}
                 >
-                  <div className="px-6 py-4 text-gray-700 bg-white">
+                  <div className="px-4 sm:px-6 py-3 sm:py-4 text-gray-700 bg-white text-sm sm:text-base">
                     {item.answer}
                   </div>
                 </div>

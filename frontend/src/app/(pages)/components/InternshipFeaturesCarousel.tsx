@@ -12,26 +12,26 @@ const InternshipFeaturesCarousel = () => {
   const swiperRef = useRef<{ slideToLoop: (index: number) => void } | null>(null);
 
   return (
-    <div className="px-4 lg:px-8 xl:px-12 mt-16 lg:mt-24">
-      <div className="text-center mb-8">
-        <h2 className="text-3xl lg:text-4xl font-bold mb-4">
+    <div className="px-4 sm:px-6 lg:px-8 xl:px-12 mt-12 sm:mt-16 lg:mt-24">
+      <div className="text-center mb-6 sm:mb-8">
+        <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-3 sm:mb-4">
           <span className="text-[#F77124] font-extrabold">Internship</span>{" "}
           <span className="text-gray-900 font-extrabold">Features</span>
         </h2>
-        <p className="text-black text-base lg:text-lg max-w-2xl mx-auto">
+        <p className="text-black text-sm sm:text-base lg:text-lg max-w-2xl mx-auto px-2">
           Discover how this internship helps you grow through hands-on learning
           and industry exposure.
         </p>
       </div>
 
-      <div className="mt-12">
+      <div className="mt-8 sm:mt-12">
         <Swiper
           onSwiper={(swiper) => {
             swiperRef.current = swiper;
             setActiveSlideIndex(swiper.realIndex);
           }}
           modules={[Autoplay]}
-          spaceBetween={24}
+          spaceBetween={16}
           slidesPerView={1}
           loop={true}
           autoplay={{
@@ -44,9 +44,11 @@ const InternshipFeaturesCarousel = () => {
           breakpoints={{
             640: {
               slidesPerView: 2,
+              spaceBetween: 20,
             },
             1024: {
               slidesPerView: 4,
+              spaceBetween: 24,
             },
           }}
           className="internship-features-swiper"
@@ -55,17 +57,17 @@ const InternshipFeaturesCarousel = () => {
             const IconComponent = feature.icon;
             return (
               <SwiperSlide key={index}>
-                <div className="relative rounded-3xl p-[2px] bg-gradient-to-r from-[#F77124]/20 via-[#F77124]/60 to-[#F77124] h-full">
-                  <div className="bg-white rounded-3xl p-6 h-full">
-                    <div className="flex items-center gap-4 mb-4">
-                      <div className="bg-[#F77124] p-3 rounded-xl">
-                        <IconComponent className="w-6 h-6 text-white" />
+                <div className="relative rounded-2xl sm:rounded-3xl p-[2px] bg-gradient-to-r from-[#F77124]/20 via-[#F77124]/60 to-[#F77124] h-full">
+                  <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 h-full">
+                    <div className="flex items-center gap-3 sm:gap-4 mb-3 sm:mb-4">
+                      <div className="bg-[#F77124] p-2 sm:p-3 rounded-lg sm:rounded-xl">
+                        <IconComponent className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                       </div>
                     </div>
-                    <h3 className="text-xl font-bold text-[#F77124] mb-3 line-clamp-1">
+                    <h3 className="text-lg sm:text-xl font-bold text-[#F77124] mb-2 sm:mb-3 line-clamp-1">
                       {feature.title}
                     </h3>
-                    <p className="text-gray-600 line-clamp-4">
+                    <p className="text-sm sm:text-base text-gray-600 line-clamp-4">
                       {feature.description}
                     </p>
                   </div>
@@ -76,7 +78,7 @@ const InternshipFeaturesCarousel = () => {
         </Swiper>
 
         {/* Custom Pagination Dots */}
-        <div className="flex justify-center items-center gap-2 mt-8">
+        <div className="flex justify-center items-center gap-2 mt-6 sm:mt-8">
           {internshipFeatures.map((_, index) => (
             <button
               key={index}
@@ -88,8 +90,8 @@ const InternshipFeaturesCarousel = () => {
               className={cn(
                 "transition-all duration-300 rounded-full cursor-pointer",
                 activeSlideIndex === index
-                  ? "w-8 h-2 bg-[#F77124]"
-                  : "w-4 h-2 bg-[#FED7AA] hover:bg-[#F77124]/70"
+                  ? "w-6 sm:w-8 h-1.5 sm:h-2 bg-[#F77124]"
+                  : "w-3 sm:w-4 h-1.5 sm:h-2 bg-[#FED7AA] hover:bg-[#F77124]/70"
               )}
               aria-label={`Go to slide ${index + 1}`}
             />

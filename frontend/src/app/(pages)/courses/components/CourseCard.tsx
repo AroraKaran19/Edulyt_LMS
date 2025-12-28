@@ -49,11 +49,11 @@ const CourseCard = ({
       )}
       style={props.style}
     >
-      <div className="course-image w-full md:w-2/5 rounded-2xl overflow-hidden relative shrink-0">
+      <div className="course-image h-50 aspect-square rounded-2xl overflow-hidden relative shrink-0">
         <img
           src={course.thumbnail}
           alt={course?.title}
-          className="rounded-2xl w-full h-full object-fill max-h-[150px] md:max-h-full opacity-90"
+          className="rounded-2xl w-full h-full object-fill max-h-full md:max-h-full opacity-90"
           draggable={false}
           loading="lazy"
         />
@@ -81,7 +81,7 @@ const CourseCard = ({
           className="mt-2 text-xs"
           courseSlug={course?.slug}
         />
-        <div className="instructors mt-2 flex gap-2 select-none mb-2 flex-col sm:flex-row items-start sm:items-center">
+        <div className="instructors mt-2 flex gap-2 select-none mb-2 flex-row items-center justify-start">
           {course?.instructor?.map((instructor, index) => {
             if (index < 2) {
               return (

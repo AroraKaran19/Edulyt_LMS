@@ -20,16 +20,16 @@ const KnowYourManagersSection = () => {
       {/* Title Section */}
       <div className="text-center mb-8 max-w-4xl mx-auto">
         <h2 className="text-3xl lg:text-4xl font-bold mb-4">
-          <span className="text-gray-900">Know Your</span>{" "}
-          <span className="text-[#F77124]">Future Managers</span>
+          <span className="text-gray-900 font-extrabold">Know Your</span>{" "}
+          <span className="text-[#F77124] font-extrabold">Future Managers</span>
         </h2>
-        <p className="text-gray-700 text-base lg:text-lg mt-4">
+        <p className="text-black text-base lg:text-lg mt-4">
           Learn from experienced industry experts and seasoned mentor
         </p>
       </div>
 
       {/* Managers Carousel */}
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-7xl mx-auto">
         <Swiper
           onSwiper={(swiper) => {
             swiperRef.current = swiper;
@@ -50,22 +50,22 @@ const KnowYourManagersSection = () => {
           }}
           breakpoints={{
             640: {
-              slidesPerView: 2,
-              loop: managers.length > 2,
-            },
-            1024: {
               slidesPerView: 3,
               loop: managers.length > 3,
+            },
+            1024: {
+              slidesPerView: 4,
+              loop: managers.length > 4,
             },
           }}
           className="managers-swiper cursor-grab active:cursor-grabbing"
         >
           {managers.map((manager, index) => (
             <SwiperSlide key={manager.id}>
-              <div className="bg-white rounded-lg p-6 border border-gray-200 hover:shadow-lg transition-shadow h-full">
+              <div className="bg-white rounded-lg p-4 m-2 shadow-md border border-gray-200 hover:shadow-lg transition-shadow h-full">
                 {/* Profile Picture */}
                 <div className="flex justify-center mb-4">
-                  <div className="relative w-32 h-32 rounded-lg overflow-hidden">
+                  <div className="relative w-full h-52 rounded-lg overflow-hidden">
                     <Image
                       src={manager.profileImage}
                       alt={manager.name}
@@ -76,22 +76,22 @@ const KnowYourManagersSection = () => {
                 </div>
 
                 {/* Name */}
-                <h3 className="text-lg font-bold text-gray-900 text-center mb-2">
+                <h3 className="text-lg font-bold text-gray-900 text-left">
                   {manager.name}
                 </h3>
 
                 {/* Title */}
-                <p className="text-sm text-gray-700 text-center mb-4">
+                <p className="text-sm text-black font-medium text-left mb-2">
                   {manager.title}
                 </p>
 
                 {/* Description */}
-                <p className="text-sm text-gray-600 text-center mb-6 line-clamp-3">
+                <p className="text-sm text-black text-left mb-4 line-clamp-3">
                   {manager.description}
                 </p>
 
                 {/* Social Media Icons */}
-                <div className="flex justify-center items-center gap-3">
+                <div className="flex justify-start items-center gap-3">
                   <a
                     href={manager.socialLinks.facebook}
                     className="text-gray-400 hover:text-blue-600 transition-colors"
@@ -140,7 +140,7 @@ const KnowYourManagersSection = () => {
                 "transition-all duration-300 rounded-full cursor-pointer",
                 activeSlideIndex === index
                   ? "w-8 h-2 bg-[#F77124]"
-                  : "w-2 h-2 bg-gray-300 hover:bg-[#F77124]/70"
+                  : "w-4 h-2 bg-gray-300 hover:bg-[#F77124]/70"
               )}
               aria-label={`Go to slide ${index + 1}`}
             />

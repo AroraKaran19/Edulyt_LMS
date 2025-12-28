@@ -15,27 +15,27 @@ const MentorsProfileSection = () => {
   const swiperRef = useRef<{ slideToLoop: (index: number) => void } | null>(null);
 
   return (
-    <div className="px-4 lg:px-8 xl:px-12 mt-16 lg:mt-24">
-      <div className="text-center mb-8">
-        <h2 className="text-3xl lg:text-4xl font-bold mb-4">
+    <div className="px-4 sm:px-6 lg:px-8 xl:px-12 mt-12 sm:mt-16 lg:pt-16 pb-6 sm:pb-8 bg-white">
+      <div className="text-center mb-6 sm:mb-8">
+        <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-3 sm:mb-4">
           <span className="text-gray-900 font-extrabold">Our</span>{" "}
           <span className="text-[#F77124] font-extrabold">Mentors</span>{" "}
           <span className="text-gray-900 font-extrabold">Profile</span>
         </h2>
-        <p className="text-black text-base lg:text-lg max-w-3xl mx-auto">
+        <p className="text-black text-sm sm:text-base lg:text-lg max-w-3xl mx-auto px-2">
           A simple, step-by-step process to help you start, learn, and
           successfully complete your internship.
         </p>
       </div>
 
-      <div className="mt-12">
+      <div className="mt-8 sm:mt-12">
         <Swiper
           onSwiper={(swiper) => {
             swiperRef.current = swiper;
             setActiveSlideIndex(swiper.realIndex);
           }}
           modules={[Autoplay]}
-          spaceBetween={24}
+          spaceBetween={16}
           slidesPerView={1}
           loop={true}
           autoplay={{
@@ -48,19 +48,21 @@ const MentorsProfileSection = () => {
           breakpoints={{
             640: {
               slidesPerView: 2,
+              spaceBetween: 20,
             },
             1024: {
               slidesPerView: 3,
+              spaceBetween: 24,
             },
           }}
           className="mentors-profile-swiper"
         >
           {mentorProfiles.map((mentor, index) => (
             <SwiperSlide key={index}>
-              <div className="bg-white max-w-[430px] m-1 rounded-2xl p-6 border-2 border-[#f77124] shadow-[0_0_2px_3px_rgba(233,117,0,0.5)] opacity-100 transition-shadow h-full">
+              <div className="bg-white max-w-[430px] mx-auto sm:m-1 rounded-xl sm:rounded-2xl p-4 sm:p-6 border-2 border-[#f77124] shadow-[0_0_2px_3px_rgba(233,117,0,0.5)] opacity-100 transition-shadow h-full">
                 {/* Profile Picture, Name, Specialization, and LinkedIn Icon */}
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="relative w-16 h-16 rounded-full overflow-hidden shrink-0">
+                <div className="flex items-center gap-3 sm:gap-4 mb-3 sm:mb-4">
+                  <div className="relative w-12 h-12 sm:w-16 sm:h-16 rounded-full overflow-hidden shrink-0">
                     <Image
                       src={mentor.profileImage}
                       alt={mentor.name}
@@ -68,9 +70,9 @@ const MentorsProfileSection = () => {
                       className="object-cover"
                     />
                   </div>
-                  <div className="flex-1 flex items-center gap-3">
+                  <div className="flex-1 flex items-center gap-2 sm:gap-3">
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-lg font-bold text-gray-900 truncate">
+                      <h3 className="text-base sm:text-lg font-bold text-gray-900 truncate">
                         {mentor.name}
                       </h3>
                       <p className="text-xs text-gray-600 truncate">
@@ -82,7 +84,7 @@ const MentorsProfileSection = () => {
                         href={mentor.linkedinUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="shrink-0"
+                        className="shrink-0 hidden md:block"
                         aria-label={`${mentor.name} LinkedIn`}
                       >
                         <Image
@@ -94,7 +96,7 @@ const MentorsProfileSection = () => {
                         />
                       </Link>
                     ) : (
-                      <div className="shrink-0">
+                      <div className="shrink-0 hidden md:block">
                         <Image
                           src="/assets/LinkedIn.svg"
                           alt="LinkedIn"
@@ -108,7 +110,7 @@ const MentorsProfileSection = () => {
                 </div>
 
                 {/* Curriculum Description */}
-                <p className="text-gray-700 text-sm mb-4 line-clamp-3">
+                <p className="text-gray-700 text-xs sm:text-sm mb-3 sm:mb-4 line-clamp-3">
                   {mentor.curriculumDescription}
                 </p>
 
@@ -118,7 +120,7 @@ const MentorsProfileSection = () => {
                     <Star
                       key={i}
                       className={cn(
-                        "w-5 h-5",
+                        "w-4 h-4 sm:w-5 sm:h-5",
                         i < mentor.rating
                           ? "text-yellow-400 fill-yellow-400"
                           : "text-gray-300"

@@ -39,8 +39,7 @@ const ProfessionalGuidanceForm = () => {
         </div>
 
         {/* Professional Image */}
-        <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-          <div className="relative h-full min-h-[200px]">
+          <div className="relative rounded-2xl shadow-lg h-full min-h-[200px]">
             <Image
               src="/assets/ProfesssionalGuidance.png"
               alt="Professional guidance"
@@ -49,11 +48,9 @@ const ProfessionalGuidanceForm = () => {
               priority
             />
           </div>
-        </div>
       </div>
     </div>
   );
 };
 
 export default ProfessionalGuidanceForm;
-
