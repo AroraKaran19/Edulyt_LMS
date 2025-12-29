@@ -39,15 +39,16 @@ const ProfessionalGuidanceForm = () => {
         </div>
 
         {/* Professional Image */}
-          <div className="relative rounded-2xl shadow-lg h-full min-h-[200px]">
-            <Image
-              src="/assets/ProfesssionalGuidance.png"
-              alt="Professional guidance"
-              fill
-              className="object-cover"
-              priority
-            />
-          </div>
+        <div className="rounded-3xl">
+          <Image
+            src="/assets/ProfesssionalGuidance.png"
+            alt="Professional guidance"
+            width={100}
+            height={100}
+            className="object-cover rounded-2xl w-full h-80"
+            priority
+          />
+        </div>
       </div>
     </div>
   );
