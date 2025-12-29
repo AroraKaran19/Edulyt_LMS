@@ -3,12 +3,13 @@ import Error from "@/components/ui/Error";
 import ImageComponent from "@/components/ui/ImageComponent";
 import { ENDPOINTS } from "@/constants/endpoints";
 import { cn, fetcher } from "@/lib/utils";
-import { Course, NavItem } from "@/types";
-import { AlertCircle, ChevronRight, Crown } from "lucide-react";
+import { Course, NavItem, Category } from "@/types";
+import { AlertCircle, ChevronRight, Crown, ArrowLeft } from "lucide-react";
 import Loader from "@/components/ui/Loader";
 import Link from "next/link";
 import { Suspense, useState, useEffect, useRef, useCallback } from "react";
 import useSWR from "swr";
+import { useCategory } from "@/hooks/useCategory";
 
 const NavbarContent = ({
   navLink,
@@ -17,7 +18,9 @@ const NavbarContent = ({
   navLink: NavItem;
   closeHoverContainer: () => void;
 }) => {
-  const categories = [
+  const { getActiveCategories } = useCategory();
+  
+  const audiences = [
     {
       label: "All",
       value: "all",
@@ -32,25 +35,67 @@ const NavbarContent = ({
     },
   ];
   const [selectedAudience, setSelectedAudience] = useState<string>(
-    categories[0].value
+    audiences[0].value
   );
+  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [isLoadingCategories, setIsLoadingCategories] = useState(false);
   const [page, setPage] = useState(1);
   const [allCourses, setAllCourses] = useState<Course[]>([]);
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // Reset state when audience changes
+  // Fetch categories when audience changes or component mounts
+  useEffect(() => {
+    const fetchCategories = async () => {
+      setIsLoadingCategories(true);
+      try {
+        const response = await getActiveCategories({ limit: 100 });
+        if (response?.categories) {
+          setCategories(response.categories);
+        }
+      } catch (error) {
+        console.error("Failed to fetch categories:", error);
+      } finally {
+        setIsLoadingCategories(false);
+      }
+    };
+    
+    fetchCategories();
+    // Reset category selection when audience changes
+    setSelectedCategory(null);
+  }, [selectedAudience, getActiveCategories]);
+
+  // Reset courses state when audience or category changes
   useEffect(() => {
     setPage(1);
     setAllCourses([]);
     setHasMore(true);
-  }, [selectedAudience]);
+  }, [selectedAudience, selectedCategory]);
+
+  // Build API URL based on selected category and audience
+  const buildCoursesUrl = useCallback(() => {
+    if (!selectedCategory) return null; // Don't fetch courses if no category is selected
+    
+    const params = new URLSearchParams();
+    params.append("page", page.toString());
+    params.append("limit", "10");
+    
+    if (selectedAudience !== "all") {
+      params.append("audience", selectedAudience);
+    }
+    
+    // Add category filter
+    if (selectedCategory._id) {
+      params.append("categories", selectedCategory._id);
+    }
+    
+    return `${ENDPOINTS.courses.all}?${params.toString()}`;
+  }, [selectedCategory, selectedAudience, page]);
 
   const { data, isLoading, error } = useSWR(
-    `${ENDPOINTS.courses.all}?page=${page}&limit=10${
-      selectedAudience === "all" ? "" : `&audience=${selectedAudience}`
-    }`,
+    buildCoursesUrl(),
     fetcher,
     {
       revalidateOnFocus: false,
@@ -113,7 +158,86 @@ const NavbarContent = ({
     }
   }, [handleScroll]);
 
-  const renderCouses = (): React.ReactNode => {
+  const renderCategories = (): React.ReactNode => {
+    if (isLoadingCategories) {
+      return (
+        <div className="w-full h-full flex items-center justify-center">
+          <Loader size="lg" variant="spinner" />
+        </div>
+      );
+    }
+
+    if (categories.length === 0) {
+      const audienceLabel =
+        audiences.find((aud) => aud.value === selectedAudience)?.label || "All";
+      return (
+        <div className="w-full h-full flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-gray-500 text-lg">
+              No categories found for {audienceLabel}
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    const audienceLabel =
+      audiences.find((aud) => aud.value === selectedAudience)?.label || "All";
+    const headingText =
+      selectedAudience === "all"
+        ? "Browse Categories"
+        : `${audienceLabel}'s Categories`;
+
+    return (
+      <div className="w-full h-full flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-bold text-gray-800">{headingText}</h2>
+          <p className="text-sm text-gray-500">
+            {categories.length} {categories.length === 1 ? "category" : "categories"} available
+          </p>
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {categories.map((category: Category) => {
+            return (
+              <div
+                key={category._id}
+                onClick={() => setSelectedCategory(category)}
+                className={cn(
+                  "w-full flex flex-col items-center justify-center gap-3 p-6 hover:bg-gray-100 transition-all duration-300 cursor-pointer rounded-xl border-2 border-transparent hover:border-orange-200"
+                )}
+              >
+                {category.categoryImage && (
+                  <div className="w-20 h-20 rounded-lg overflow-hidden shrink-0">
+                    <ImageComponent
+                      src={category.categoryImage}
+                      alt={category.name || "Category"}
+                      width={80}
+                      height={80}
+                      className="w-full h-full object-cover"
+                      draggable={false}
+                    />
+                  </div>
+                )}
+                <div className="w-full flex flex-col gap-1 text-center">
+                  <h3 className="text-base font-bold text-gray-800">
+                    {category.name}
+                  </h3>
+                  {category.description && (
+                    <p className="text-xs text-gray-500 line-clamp-2">
+                      {category.description}
+                    </p>
+                  )}
+                </div>
+                <ChevronRight className="size-4 text-gray-400" />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  const renderCourses = (): React.ReactNode => {
     if (error) {
       return (
         <Error
@@ -137,13 +261,19 @@ const NavbarContent = ({
 
     if (!isLoading && allCourses.length === 0) {
       const audienceLabel =
-        categories.find((cat) => cat.value === selectedAudience)?.label ||
-        "All";
+        audiences.find((aud) => aud.value === selectedAudience)?.label || "All";
       return (
-        <div className="w-full h-full flex items-center justify-center">
+        <div className="w-full h-full flex flex-col items-center justify-center gap-4">
+          <button
+            onClick={() => setSelectedCategory(null)}
+            className="flex items-center gap-2 text-orange-500 hover:text-orange-600 transition-colors cursor-pointer"
+          >
+            <ArrowLeft className="size-4" />
+            <span className="text-sm font-medium">Back to Categories</span>
+          </button>
           <div className="text-center">
             <p className="text-gray-500 text-lg">
-              No courses found for {audienceLabel}
+              No courses found in {selectedCategory?.name} for {audienceLabel}
             </p>
           </div>
         </div>
@@ -151,8 +281,27 @@ const NavbarContent = ({
     }
 
     return (
-      <div className="w-full h-full">
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-10">
+      <div className="w-full h-full flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setSelectedCategory(null)}
+              className="flex items-center gap-2 text-orange-500 hover:text-orange-600 transition-colors cursor-pointer"
+            >
+              <ArrowLeft className="size-4" />
+              <span className="text-sm font-medium">Back</span>
+            </button>
+            <div className="h-6 w-px bg-gray-300"></div>
+            <h2 className="text-xl font-bold text-gray-800">
+              {selectedCategory?.name || "Courses"}
+            </h2>
+          </div>
+          <p className="text-sm text-gray-500">
+            {allCourses.length} {allCourses.length === 1 ? "course" : "courses"}
+          </p>
+        </div>
+        <div className="w-full h-full">
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-10">
           {allCourses.map((course: Course, index: number) => {
             return (
               <Link
@@ -201,19 +350,20 @@ const NavbarContent = ({
               </Link>
             );
           })}
-        </div>
-
-        {/* Loading more indicator */}
-        {isLoadingMore && (
-          <div className="w-full flex items-center justify-center py-4">
-            <Loader
-              size="md"
-              variant="spinner"
-              text="Loading more courses..."
-              showText={true}
-            />
           </div>
-        )}
+
+          {/* Loading more indicator */}
+          {isLoadingMore && (
+            <div className="w-full flex items-center justify-center py-4">
+              <Loader
+                size="md"
+                variant="spinner"
+                text="Loading more courses..."
+                showText={true}
+              />
+            </div>
+          )}
+        </div>
       </div>
     );
   };
@@ -225,19 +375,22 @@ const NavbarContent = ({
   return (
     <div className="bg-white w-full h-full flex gap-10">
       <div className="w-2/8 xl:w-1/5 flex flex-col gap-4 shrink-0 items-end">
-        <h1 className="text-2xl font-bold text-black/60">Categories</h1>
+        <h1 className="text-2xl font-bold text-black/60">Audience</h1>
         <div className="w-full flex flex-col gap-2 text-right">
-          {categories.map((category, index) => (
+          {audiences.map((audience, index) => (
             <div
               key={index}
               className={cn(
                 "category w-full px-8 py-4 flex items-center justify-between hover:bg-gray-200 transition-all duration-300 cursor-pointer rounded-xl shrink-0",
-                selectedAudience === category.value && "bg-gray-200"
+                selectedAudience === audience.value && "bg-gray-200"
               )}
-              onClick={() => setSelectedAudience(category.value)}
+              onClick={() => {
+                setSelectedAudience(audience.value);
+                setSelectedCategory(null); // Reset category when audience changes
+              }}
             >
               <span className="text-base lg:text-lg font-normal wrap-break-word">
-                {category.label}
+                {audience.label}
               </span>
               <ChevronRight className="size-4 md:size-6 stroke-2 shrink-0" />
             </div>
@@ -256,7 +409,11 @@ const NavbarContent = ({
             </div>
           }
         >
-          {navLink?.label === "courses" ? renderCouses() : renderInternships()}
+          {navLink?.label === "courses" ? (
+            selectedCategory ? renderCourses() : renderCategories()
+          ) : (
+            renderInternships()
+          )}
         </Suspense>
       </div>
     </div>
