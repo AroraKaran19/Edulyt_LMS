@@ -41,7 +41,7 @@ const LearnersTestimonialsSection = () => {
       </div>
 
       {/* Testimonials Slider Section */}
-      <div className="max-w-7xl mx-auto relative">
+      <div className="w-full mx-auto relative">
         {/* Gradient Overlay Wrapper */}
         <div className="relative">
           {/* Left Gradient Fade */}

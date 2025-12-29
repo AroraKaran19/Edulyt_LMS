@@ -79,14 +79,14 @@ const MentorsProfileSection = () => {
                         {mentor.specialization}
                       </p>
                     </div>
-                    {mentor.linkedinUrl ? (
-                      <Link
-                        href={mentor.linkedinUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                      {mentor.linkedinUrl ? (
+                        <Link
+                          href={mentor.linkedinUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
                         className="shrink-0 hidden md:block"
-                        aria-label={`${mentor.name} LinkedIn`}
-                      >
+                          aria-label={`${mentor.name} LinkedIn`}
+                        >
                         <Image
                           src="/assets/LinkedIn.svg"
                           alt="LinkedIn"
@@ -94,8 +94,8 @@ const MentorsProfileSection = () => {
                           height={40}
                           className="w-full h-full"
                         />
-                      </Link>
-                    ) : (
+                        </Link>
+                      ) : (
                       <div className="shrink-0 hidden md:block">
                         <Image
                           src="/assets/LinkedIn.svg"
@@ -104,8 +104,8 @@ const MentorsProfileSection = () => {
                           height={40}
                           className="w-full h-full"
                         />
-                      </div>
-                    )}
+                        </div>
+                      )}
                   </div>
                 </div>
 
