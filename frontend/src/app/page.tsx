@@ -23,6 +23,12 @@ const HomePage = () => {
           >
             Internship Program
           </Link>
+          <Link
+            href="/enroll"
+            className="bg-[#F77124] text-white px-8 py-3 rounded-lg font-semibold hover:bg-[#F77124]/90 transition-colors text-lg shadow-lg"
+          >
+            Enroll Now
+          </Link>
         </div>
       </div>
     </div>

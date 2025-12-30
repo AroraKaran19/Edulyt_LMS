@@ -38,6 +38,14 @@ html {
   scrollbar-color: #cbd5e1 #f1f5f9;
 }
 
+@utility scrollbar-hide {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 @theme {
   --color-text-primary: #2b1508;
   --font-coolvetica: "Coolvetica Regular", sans-serif;

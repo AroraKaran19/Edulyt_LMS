@@ -32,6 +32,10 @@ const Navbar = () => {
       href: "/internships",
       count: 101,
     },
+    {
+      label: "enroll",
+      href: "/enroll",
+    },
   ];
   const [hoveredNavLink, setHoveredNavLink] = useState<NavItem | null>(null);
   const [isHoverContainerVisible, setIsHoverContainerVisible] = useState(false);
