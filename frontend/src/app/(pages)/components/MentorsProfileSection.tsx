@@ -35,7 +35,7 @@ const MentorsProfileSection = () => {
             setActiveSlideIndex(swiper.realIndex);
           }}
           modules={[Autoplay]}
-          spaceBetween={16}
+          spaceBetween={52}
           slidesPerView={1}
           loop={true}
           autoplay={{
