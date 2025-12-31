@@ -22,6 +22,7 @@ interface SelectProps {
   value?: string;
   disabled?: boolean;
   onChange?: (value: string) => void;
+  error?: string;
 }
 
 const Select = ({
@@ -33,6 +34,7 @@ const Select = ({
   value,
   disabled = false,
   onChange,
+  error,
 }: SelectProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -78,14 +80,17 @@ const Select = ({
           type="button"
           onClick={() => setIsOpen(!isOpen)}
           className={cn(
-            "w-full px-4 py-3.5 text-left bg-white border border-gray-300 rounded-xl",
+            "w-full px-4 py-3.5 text-left bg-white border rounded-xl",
             "focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500",
-            "hover:border-orange-400 hover:shadow-sm",
+            "hover:shadow-sm",
             "transition-all duration-200 ease-in-out outline-none",
             "flex items-center justify-between",
             "disabled:opacity-50 disabled:cursor-not-allowed",
             "shadow-sm hover:shadow-md",
-            isOpen && "border-orange-500 ring-2 ring-orange-500/20"
+            isOpen && "border-orange-500 ring-2 ring-orange-500/20",
+            error 
+              ? "border-red-500 hover:border-red-500 focus:border-red-500 focus:ring-red-500/20" 
+              : "border-gray-300 hover:border-orange-400"
           )}
           disabled={disabled}
         >
@@ -139,6 +144,7 @@ const Select = ({
           </div>
         )}
       </div>
+      {error && <p className="text-red-500 text-sm mt-1">{error}</p>}
     </div>
   );
 };

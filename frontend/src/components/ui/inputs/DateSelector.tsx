@@ -17,6 +17,7 @@ interface DateSelectorProps {
   className?: string;
   minDate?: Date | string;
   maxDate?: Date | string;
+  error?: string;
 }
 
 const DateSelector: React.FC<DateSelectorProps> = ({
@@ -28,6 +29,7 @@ const DateSelector: React.FC<DateSelectorProps> = ({
   className = "",
   minDate,
   maxDate,
+  error,
 }) => {
   // Convert string to Date object if needed
   const getDateValue = (val: Date | string | undefined): Date | undefined => {
@@ -268,7 +270,12 @@ const DateSelector: React.FC<DateSelectorProps> = ({
       <div className="relative">
         <div
           onClick={() => setIsOpen(!isOpen)}
-          className="w-full px-4 py-3.5 border border-gray-300 rounded-xl bg-white cursor-pointer hover:border-orange-400 hover:shadow-sm focus-within:border-orange-500 focus-within:ring-2 focus-within:ring-orange-500/20 transition-all duration-200 ease-in-out flex items-center justify-between shadow-sm"
+          className={cn(
+            "w-full px-4 py-3.5 border rounded-xl bg-white cursor-pointer hover:shadow-sm focus-within:ring-2 transition-all duration-200 ease-in-out flex items-center justify-between shadow-sm",
+            error 
+              ? "border-red-500 hover:border-red-500 focus-within:border-red-500 focus-within:ring-red-500/20" 
+              : "border-gray-300 hover:border-orange-400 focus-within:border-orange-500 focus-within:ring-orange-500/20"
+          )}
         >
           <div className="flex items-center gap-2">
             <Calendar className="w-4 h-4 text-gray-500" />
@@ -468,6 +475,7 @@ const DateSelector: React.FC<DateSelectorProps> = ({
           />
         )}
       </div>
+      {error && <p className="text-red-500 text-sm mt-1">{error}</p>}
     </div>
   );
 };
