@@ -1,5 +1,5 @@
 import Image from "next/image";
-import EnquiryForm from "../courses/[slug]/components/EnquiryForm";
+import EnquiryForm from "../../courses/[slug]/components/EnquiryForm";
 import { Course } from "@/types";
 
 const ProfessionalGuidanceForm = () => {

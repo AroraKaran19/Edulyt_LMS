@@ -3,10 +3,10 @@
 import { ChevronDown } from "lucide-react";
 import Loader from "@/components/ui/Loader";
 import { useState, useEffect, useCallback, useRef } from "react";
-import CourseSearchBar from "../courses/components/CourseSearchBar";
+import CourseSearchBar from "../../courses/components/CourseSearchBar";
 import { cn } from "@/lib/utils";
-import FilterContainer from "../courses/components/FilterContainer";
-import CourseCard from "../courses/components/CourseCard";
+import FilterContainer from "../../courses/components/FilterContainer";
+import CourseCard from "../../courses/components/CourseCard";
 import { getErrorUIConfig } from "@/configs/errorUIConfig";
 import Error from "@/components/ui/Error";
 import useSWR from "swr";
