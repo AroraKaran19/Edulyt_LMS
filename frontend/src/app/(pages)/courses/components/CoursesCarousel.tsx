@@ -152,10 +152,12 @@ const CoursesCarousel = ({ courses }: { courses: Course[] }) => {
             stretch: 0,
             depth: 100,
             modifier: 2.5,
+            scale: 0.95,
+            slideShadows: false,
           }}
           initialSlide={courses.length > 3 ? 0 : 1}
           className={cn(
-            "w-full px-4 py-4! sm:px-0 [&_.swiper-slide]:flex! [&_.swiper-slide]:items-stretch [&_.swiper-slide]:h-full cursor-grab active:cursor-grabbing [&_.swiper-container]:cursor-grab [&_.swiper-container]:active:cursor-grabbing [&_.swiper-wrapper]:cursor-grab [&_.swiper-wrapper]:active:cursor-grabbing"
+            "w-full px-4 py-4! sm:px-0 [&_.swiper-slide]:flex! [&_.swiper-slide]:items-stretch [&_.swiper-slide]:h-full [&_.swiper-slide-active]:scale-100 [&_.swiper-slide]:scale-[0.95] [&_.swiper-slide]:transition-transform [&_.swiper-slide]:duration-300 cursor-grab active:cursor-grabbing [&_.swiper-container]:cursor-grab [&_.swiper-container]:active:cursor-grabbing [&_.swiper-wrapper]:cursor-grab [&_.swiper-wrapper]:active:cursor-grabbing"
           )}
           style={{ cursor: "grab" }}
           breakpoints={{
@@ -173,9 +175,11 @@ const CoursesCarousel = ({ courses }: { courses: Course[] }) => {
             },
             1100: {
               slidesPerView: 3,
+              spaceBetween: 30,
             },
             1440: {
               slidesPerView: 3.5,
+              spaceBetween: 30,
             },
             1600: {
               slidesPerView: 4.2,
@@ -184,7 +188,7 @@ const CoursesCarousel = ({ courses }: { courses: Course[] }) => {
           }}
         >
           {courses.map((course, index) => (
-            <SwiperSlide key={`${course.title}-${index}`}>
+            <SwiperSlide key={`${course.title}-${index}`} className="flex! h-auto!">
               {({ isActive }) => (
                 <TopCourseCard
                   course={course}
@@ -194,7 +198,7 @@ const CoursesCarousel = ({ courses }: { courses: Course[] }) => {
                         isActive,
                       "opacity-90": !isActive,
                     },
-                    "h-full transition-all duration-300 ease-out"
+                    "h-full w-full transition-all duration-300 ease-out"
                   )}
                 />
               )}

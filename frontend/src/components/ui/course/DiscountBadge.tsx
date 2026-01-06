@@ -3,13 +3,17 @@ import { Discount } from "@/types";
 
 const DiscountBadge = ({
   discount,
+  label,
   className,
 }: {
-  discount: Discount;
+  discount?: Discount;
+  label?: string;
   className?: string;
 }) => {
   const discountText =
-    discount && discount.discount && discount.discount === "percentage"
+    label && label.length > 0
+      ? label
+      : discount && discount.discount && discount.discount === "percentage"
       ? `${discount.value}% off`
       : discount && discount.value
       ? `₹${discount.value} off`

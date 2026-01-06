@@ -261,7 +261,9 @@ const CoursesSection = () => {
               key={`${course._id || course.slug}-${index}`}
               course={course}
               className="opacity-0 animate-course-card-fade-in"
-              style={{ animationDelay: `${index * 100}ms` }}
+              style={
+                { animationDelay: "100ms" }
+              }
             />
           ))}
         </div>

@@ -31,13 +31,10 @@ const CourseCard = ({
   const discountInfo = calculateDiscountDisplay(
     originalPrice,
     planDiscount, // Plan-specific discount
-    course.discount // Course-wide discount
+    course.discount // Course-wide discount (time-bound)
   );
 
-  // Show discount badge only if course.discount exists AND is active
-  const hasActiveDiscount = !!course.discount && discountInfo.isActive;
-  
-  // Show discounted price if either plan discount OR course discount exists
+  // Flag indicating if any discount (plan and/or active course-level) is present
   const hasAnyDiscount = !!discountInfo.discountLabel;
 
   return (
@@ -49,22 +46,22 @@ const CourseCard = ({
       )}
       style={props.style}
     >
-      <div className="course-image h-50 aspect-square rounded-2xl overflow-hidden relative shrink-0">
+      <div className="course-image w-full md:w-2/5 rounded-2xl overflow-hidden relative shrink-0">
         <img
           src={course.thumbnail}
           alt={course?.title}
-          className="rounded-2xl w-full h-full object-fill max-h-full md:max-h-full opacity-90"
+          className="rounded-2xl w-full h-full object-fill max-h-[150px] md:max-h-full opacity-90"
           draggable={false}
           loading="lazy"
         />
-        {hasActiveDiscount && (
+        {hasAnyDiscount && (
           <DiscountBadge
-            discount={course.discount!}
+            label={discountInfo.discountLabel}
             className="absolute top-2 right-2"
           />
         )}
       </div>
-      <div className="course-content w-full md:w-3/5 flex flex-col justify-between">
+      <div className="course-content w-full md:w-3/5 flex flex-col justify-between flex-1">
         {course?.isFeatured ? (
           <BestsellerBadge
             enrollStudents={course?.analytics?.totalEnrollments || 0}
@@ -81,7 +78,7 @@ const CourseCard = ({
           className="mt-2 text-xs"
           courseSlug={course?.slug}
         />
-        <div className="instructors mt-2 flex gap-2 select-none mb-2 flex-row items-center justify-start">
+        <div className="instructors mt-2 flex gap-2 select-none mb-2 flex-col sm:flex-row items-start sm:items-center">
           {course?.instructor?.map((instructor, index) => {
             if (index < 2) {
               return (
@@ -120,7 +117,7 @@ const CourseCard = ({
             <p className="text-sm font-normal text-black">onwards/-</p>
           </div>
           <OrangeButton
-            className="sm:ml-auto font-bold text-sm px-8 py-4"
+            className="mt-auto sm:mt-0 sm:ml-auto font-bold text-sm px-8 py-4"
             onClick={(e) => {
               e.stopPropagation();
               router.push(`/courses/${course?.slug}`);

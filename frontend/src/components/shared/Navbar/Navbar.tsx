@@ -1,6 +1,5 @@
 "use client";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
-import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import ImageComponent from "@/components/ui/ImageComponent";
 import Link from "next/link";
 import NavLink from "./components/NavLink";
@@ -31,10 +30,6 @@ const Navbar = () => {
       label: "internships",
       href: "/internships",
       count: 101,
-    },
-    {
-      label: "enroll",
-      href: "/enroll",
     },
   ];
   const [hoveredNavLink, setHoveredNavLink] = useState<NavItem | null>(null);
@@ -165,7 +160,7 @@ const Navbar = () => {
       {hoveredNavLink &&
         (isAnimating ? (
           <div
-            className={`fixed top-[78px] h-[40vh] left-0 right-0 z-40 bg-white/95 backdrop-blur-md shadow-[0_0_1px_2px_rgba(0,0,0,0.1)] hidden lg:block p-8 rounded-b-4xl transition-all duration-300 ${
+            className={`fixed top-[78px] h-[60vh] left-0 right-0 z-40 bg-white/95 backdrop-blur-md shadow-[0_0_1px_2px_rgba(0,0,0,0.1)] hidden lg:block p-8 rounded-b-4xl transition-all duration-300 ${
               isHoverContainerVisible
                 ? "animate-fade-from-top opacity-100 translate-y-0"
                 : "opacity-0 -translate-y-4"

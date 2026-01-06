@@ -49,13 +49,17 @@ export const calculateDiscountDisplay = (
     isActive = isPlanDiscountActive;
   }
 
-  // Calculate course discount on original price (simultaneously)
+  // Calculate course discount on original price (time-bound / countdown based)
   if (courseDiscount?.value && courseDiscount.isActive) {
     let isCourseDiscountActive = true;
     
     // Check if discount has expired based on displayTime
     // If displayTime is "00:00:00", the discount has expired
-    if (courseDiscount.displayTime === "00:00:00" || courseDiscount.resetAfter === 0) {
+    // If displayTime is "00:00:00" OR resetAfter is 0, treat the discount as expired
+    if (
+      courseDiscount.displayTime === "00:00:00" ||
+      courseDiscount.resetAfter === 0
+    ) {
       isCourseDiscountActive = false;
     } else if (courseDiscount.startTime && courseDiscount.endTime) {
       const now = new Date();
@@ -78,25 +82,29 @@ export const calculateDiscountDisplay = (
       }
     }
     
-    if (courseDiscount.discount === "fixed") {
-      totalDiscountAmount += courseDiscount.value;
-      // Update label to show combined discount
-      if (discountLabel) {
-        discountLabel += ` + ₹${courseDiscount.value} off`;
+    // Only apply course discount to price if it is currently active
+    if (isCourseDiscountActive) {
+      if (courseDiscount.discount === "fixed") {
+        totalDiscountAmount += courseDiscount.value;
+        // Update label to show combined discount
+        if (discountLabel) {
+          discountLabel += ` + ₹${courseDiscount.value} off`;
+        } else {
+          discountLabel = `₹${courseDiscount.value} off`;
+        }
       } else {
-        discountLabel = `₹${courseDiscount.value} off`;
-      }
-    } else {
-      const courseDiscountAmount = (planPrice * courseDiscount.value) / 100;
-      totalDiscountAmount += courseDiscountAmount;
-      // Update label to show combined discount
-      if (discountLabel) {
-        discountLabel += ` + ${courseDiscount.value}% off`;
-      } else {
-        discountLabel = `${courseDiscount.value}% off`;
+        const courseDiscountAmount = (planPrice * courseDiscount.value) / 100;
+        totalDiscountAmount += courseDiscountAmount;
+        // Update label to show combined discount
+        if (discountLabel) {
+          discountLabel += ` + ${courseDiscount.value}% off`;
+        } else {
+          discountLabel = `${courseDiscount.value}% off`;
+        }
       }
     }
-    
+
+    // The overall "isActive" flag should reflect whether any discount is active
     isActive = isActive || isCourseDiscountActive;
   }
 

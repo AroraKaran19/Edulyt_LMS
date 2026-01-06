@@ -31,13 +31,10 @@ const TopCourseCard = ({
   const discountInfo = calculateDiscountDisplay(
     originalPrice,
     planDiscount, // Plan-specific discount
-    course.discount // Course-wide discount
+    course.discount // Course-wide discount (time-bound)
   );
 
-  // Show discount badge only if course.discount exists AND is active
-  const hasActiveDiscount = !!course.discount && discountInfo.isActive;
-  
-  // Show discounted price if either plan discount OR course discount exists
+  // Any discount (plan and/or active course-level) present?
   const hasAnyDiscount = !!discountInfo.discountLabel;
 
   return (
@@ -55,9 +52,9 @@ const TopCourseCard = ({
           draggable={false}
           loading="lazy"
         />
-        {hasActiveDiscount && (
+        {hasAnyDiscount && (
           <DiscountBadge
-            discount={course.discount!}
+            label={discountInfo.discountLabel}
             className="absolute top-2 right-2"
           />
         )}
