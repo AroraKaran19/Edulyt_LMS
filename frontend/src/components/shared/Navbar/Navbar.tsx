@@ -129,7 +129,11 @@ const Navbar = () => {
         >
           {navItems.map((item) => (
             <NavLink
-              href={item.href}
+              href={
+                item.href === "/internships"
+                  ? "https://edulyt.com/internships.php"
+                  : item.href
+              }
               key={item.href}
               label={item.label}
               count={item.count}
