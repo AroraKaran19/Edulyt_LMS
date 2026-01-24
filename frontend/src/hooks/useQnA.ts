@@ -70,7 +70,25 @@ const useQnA = () => {
 
       return handleRequest(async () => {
         const response = await apiClient.get(`/qna?${queryParams.toString()}`);
-        return response.data.data;
+        const payload = response.data?.data;
+
+        // Backend may return either:
+        // 1) data: { qnas: [...], total, page, totalPages }
+        // 2) data: [] (when no QnAs found)
+        if (Array.isArray(payload)) {
+          const page = params.page ?? 1;
+          const limit = params.limit ?? payload.length;
+          const total = payload.length;
+          const totalPages = limit > 0 ? Math.max(1, Math.ceil(total / limit)) : 1;
+          return {
+            qnas: payload,
+            total,
+            page,
+            totalPages,
+          } as GetQnAsResult;
+        }
+
+        return payload as GetQnAsResult;
       }, "Failed to fetch Q&As");
     },
     [handleRequest]

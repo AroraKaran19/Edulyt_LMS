@@ -181,6 +181,11 @@ const UserModel = mongoose.model<User>("User", userSchema);
 
 // Instructor discriminator schema
 const instructorSchema = new mongoose.Schema<Instructor>({
+  slug: {
+    type: String,
+    required: false,
+    trim: true,
+  },
   rating: {
     type: Number,
     required: true,
@@ -229,6 +234,9 @@ const instructorSchema = new mongoose.Schema<Instructor>({
     default: [],
   },
 });
+
+// Unique slug for instructors only (sparse allows other user types)
+instructorSchema.index({ slug: 1 }, { unique: true, sparse: true });
 
 // Student discriminator schema
 const studentSchema = new mongoose.Schema<Student>({

@@ -15,15 +15,30 @@ interface TabSwitcherProps {
 }
 
 const TabSwitcher = ({ tabs, className }: TabSwitcherProps) => {
-  const [activeTab, setActiveTab] = useState<Tab | null>(null);
+  const [activeTabLabel, setActiveTabLabel] = useState<string | null>(null);
   const tabRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const prevTabsLabelsRef = useRef<string>("");
 
+  // Create stable label string for comparison
+  const tabsLabels = tabs.map(t => t.label).join("|");
+
+  // Only reset activeTab if tabs structure actually changed (labels changed)
+  // This prevents reset when only component references change
   useEffect(() => {
-    setActiveTab(tabs[0]);
-  }, [tabs]);
+    if (prevTabsLabelsRef.current !== tabsLabels) {
+      prevTabsLabelsRef.current = tabsLabels;
+      // Only set if we don't have an active tab or if the current active tab no longer exists
+      if (!activeTabLabel || !tabs.some(t => t.label === activeTabLabel)) {
+        setActiveTabLabel(tabs[0]?.label || null);
+      }
+    }
+  }, [tabsLabels, activeTabLabel, tabs]);
+
+  // Find active tab by label (stable reference)
+  const activeTab = tabs.find(t => t.label === activeTabLabel) || tabs[0] || null;
 
   const handleTabClick = (tab: Tab, index: number) => {
-    setActiveTab(tab);
+    setActiveTabLabel(tab.label);
     
     // Scroll to the clicked tab in mobile view
     if (tabRefs.current[index]) {

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { getVideoPresignedUrl } from '@/lib/presignedUrl';
 
 interface UsePresignedUrlOptions {
@@ -108,6 +108,15 @@ export const usePresignedVideoSources = (
   const [presignedSources, setPresignedSources] = useState<Array<{ quality: string; src: string }>>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Use refs to track previous values and prevent unnecessary conversions
+  const prevSourcesRef = useRef<string>('');
+  const prevExpiresInRef = useRef<number | undefined>(options.expiresIn);
+
+  // Create a stable string representation of sources for comparison
+  const sourcesKey = useMemo(() => {
+    return JSON.stringify(sources.map(s => ({ quality: s.quality, src: s.src })).sort((a, b) => a.quality.localeCompare(b.quality)));
+  }, [sources]);
 
   const convertSources = useCallback(async () => {
     if (!sources || sources.length === 0) {
@@ -152,8 +161,16 @@ export const usePresignedVideoSources = (
   }, [sources, options.expiresIn]);
 
   useEffect(() => {
-    convertSources();
-  }, [convertSources]);
+    // Only convert if sources actually changed or expiresIn changed
+    const sourcesChanged = prevSourcesRef.current !== sourcesKey;
+    const expiresInChanged = prevExpiresInRef.current !== options.expiresIn;
+    
+    if (sourcesChanged || expiresInChanged) {
+      prevSourcesRef.current = sourcesKey;
+      prevExpiresInRef.current = options.expiresIn;
+      convertSources();
+    }
+  }, [sourcesKey, options.expiresIn, convertSources]);
 
   return {
     sources: presignedSources,

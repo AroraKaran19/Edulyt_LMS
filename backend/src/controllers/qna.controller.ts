@@ -43,8 +43,20 @@ export const getAllQnAs = asyncHandler(async (req: Request, res: Response) => {
     approved !== undefined ? approved === "true" : undefined
   );
 
+  // Always return a consistent response shape for the frontend:
+  // { qnas: [], total, page, totalPages }
   if (!result || result.qnas.length === 0) {
-    sendSuccessResponse(res, [], "No QnAs found", 200);
+    sendSuccessResponse(
+      res,
+      {
+        qnas: [],
+        total: 0,
+        page: Number(page),
+        totalPages: 0,
+      },
+      "No QnAs found",
+      200
+    );
     return;
   }
 
@@ -62,7 +74,7 @@ export const getQnAById = asyncHandler(async (req: Request, res: Response) => {
 
   const result = await getQnAByIdService(id, isAdmin);
   if (!result) {
-    sendSuccessResponse(res, [], "QnA not found", 200);
+    sendSuccessResponse(res, null, "QnA not found", 200);
     return;
   }
 

@@ -212,12 +212,11 @@ export const useCourseCompletion = (course?: Course) => {
     // Initial check
     checkForCertificate();
 
-    // Poll every 2 seconds for certificate (only if certificate didn't exist on mount)
     pollingIntervalRef.current = setInterval(() => {
       if (!hasRedirectedRef.current && certificateExistedOnMountRef.current === false) {
         checkForCertificate();
       }
-    }, 2000);
+    }, 5000);
 
     // Cleanup interval on unmount
     return () => {
@@ -230,16 +229,9 @@ export const useCourseCompletion = (course?: Course) => {
 
   // Refresh enrollment periodically to check for completion
   useEffect(() => {
-    if (!isCourseCompleted && refreshEnrollment && enrollment?._id) {
-      // Refresh enrollment every 5 seconds to check for completion
-      const refreshInterval = setInterval(() => {
-        refreshEnrollment();
-      }, 5000);
-
-      return () => clearInterval(refreshInterval);
-    }
+    return () => {}; // No cleanup needed
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isCourseCompleted, enrollment?._id]); // Don't include refreshEnrollment to avoid infinite loops
+  }, [isCourseCompleted, enrollment?._id]);
 
   return {
     isGeneratingCertificate,

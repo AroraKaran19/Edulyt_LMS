@@ -15,12 +15,30 @@ const apiClient = axios.create({
   },
 });
 
+// Session cache to prevent repeated getSession() calls
+let sessionCache: { session: any; timestamp: number } | null = null;
+const SESSION_CACHE_DURATION = 5000; // Cache for 5 seconds
+
 // Request interceptor to add access token
 apiClient.interceptors.request.use(
   async (config) => {
     // Only add token for client-side requests
     if (typeof window !== "undefined") {
-      const session = await getSession();
+      // Use cached session if available and not expired
+      let session = null;
+      const now = Date.now();
+      
+      if (sessionCache && (now - sessionCache.timestamp) < SESSION_CACHE_DURATION) {
+        session = sessionCache.session;
+      } else {
+        // Fetch fresh session and cache it
+        session = await getSession();
+        sessionCache = {
+          session,
+          timestamp: now,
+        };
+      }
+      
       if (session?.accessToken) {
         config.headers.Authorization = `Bearer ${session.accessToken}`;
       }
@@ -51,8 +69,17 @@ apiClient.interceptors.response.use(
         originalRequest._retry = true;
 
         try {
+          // Clear session cache on 401 to force fresh session fetch
+          sessionCache = null;
+          
           // Try to refresh the token using the same apiClient
           const session = await getSession();
+          // Update cache with fresh session
+          sessionCache = {
+            session,
+            timestamp: Date.now(),
+          };
+          
           if (session?.accessToken) {
             const refreshResponse = await apiClient.post(
               "/auth/refresh-token",

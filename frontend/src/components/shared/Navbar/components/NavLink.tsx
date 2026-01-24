@@ -15,6 +15,15 @@ const NavLink = ({
   const pathname = usePathname();
   const isActive = pathname === href || active;
 
+  const displayCount =
+    typeof count === "number"
+      ? count > 200
+        ? "200+"
+        : count > 100
+          ? "100+"
+          : `${count}`
+      : undefined;
+
   return (
     <Link
       href={href}
@@ -30,14 +39,14 @@ const NavLink = ({
       <span className="text-sm font-semibold">
         {label.charAt(0).toUpperCase() + label.slice(1)}
       </span>
-      {count && (
+      {displayCount !== undefined && (
         <span
           className={cn(
             "text-[10px] font-medium py-0.25 px-2 rounded-full transition-colors duration-400 ease-in-out select-none bg-black text-white",
             isActive && "bg-[#F77124] text-white"
           )}
         >
-          {count && count > 100 ? "100+" : count}
+          {displayCount}
         </span>
       )}
     </Link>

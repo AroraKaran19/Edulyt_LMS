@@ -6,6 +6,7 @@ export interface Collaborator extends User {
 }
 
 export interface Instructor extends User {
+  slug?: string;
   rating: number;
   totalStudents: number;
   bio?: string;

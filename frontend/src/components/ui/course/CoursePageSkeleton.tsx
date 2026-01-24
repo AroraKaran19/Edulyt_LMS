@@ -1,4 +1,3 @@
-import React from 'react';
 
 const CoursePageSkeleton = () => {
   return (
@@ -61,7 +60,7 @@ const CoursePageSkeleton = () => {
       </div>
 
       {/* Scholarship Banner Skeleton */}
-      <div className="w-full bg-gradient-to-r from-orange-100 to-orange-200 rounded-2xl p-6 animate-pulse">
+      <div className="w-full bg-linear-to-r from-orange-100 to-orange-200 rounded-2xl p-6 animate-pulse">
         <div className="flex items-center justify-between">
           <div className="flex-1">
             <div className="h-6 w-48 bg-gray-300 rounded mb-2"></div>
@@ -89,7 +88,7 @@ const CoursePageSkeleton = () => {
         {/* Testimonial Cards Skeleton */}
         <div className="testimonial-cards w-full flex gap-4 overflow-hidden">
           {[...Array(3)].map((_, index) => (
-            <div key={index} className="flex-shrink-0 w-80 h-48 bg-gray-300 rounded-xl"></div>
+            <div key={index} className="shrink-0 w-80 h-48 bg-gray-300 rounded-xl"></div>
           ))}
         </div>
       </div>

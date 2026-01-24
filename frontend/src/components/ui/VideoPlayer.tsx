@@ -75,6 +75,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [isMobile, setIsMobile] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [showSeekButtons, setShowSeekButtons] = useState(false);
+  
+  // Use refs to track initialization and prevent unnecessary re-renders
+  const initializedRef = useRef(false);
+  const lastSrcRef = useRef<string>("");
+  const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Detect mobile/iOS devices
   useEffect(() => {
@@ -113,18 +118,26 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   );
 
   // Initialize with first valid source or auto-select best quality
+  // Only run once when validSources first becomes available
   useEffect(() => {
-    if (validSources.length > 0) {
+    if (validSources.length > 0 && !initializedRef.current) {
       // Auto-select highest quality by default
       const bestQuality =
         validSources.find((s) => s.quality === "1080p") ||
         validSources.find((s) => s.quality === "720p") ||
         validSources.find((s) => s.quality === "480p") ||
         validSources[0];
-      setCurrentSrc(bestQuality.src);
-      setCurrentQuality(bestQuality.quality);
+      
+      const newSrc = bestQuality.src;
+      // Only set if different from current
+      if (newSrc !== currentSrc) {
+        setCurrentSrc(newSrc);
+        setCurrentQuality(bestQuality.quality);
+        lastSrcRef.current = newSrc;
+        initializedRef.current = true;
+      }
     }
-  }, [validSources]);
+  }, [validSources, currentSrc]);
 
   // Handle source changes smoothly
   useEffect(() => {
@@ -136,8 +149,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       ? currentSrc
       : new URL(currentSrc, window.location.origin).href;
 
-    // Only update if the source actually changed
-    if (video.src !== fullCurrentSrc) {
+    // Normalize URLs for comparison (remove trailing slashes, etc.)
+    const normalizeUrl = (url: string) => url.replace(/\/$/, '');
+    const normalizedCurrentSrc = normalizeUrl(fullCurrentSrc);
+    const normalizedVideoSrc = normalizeUrl(video.src || '');
+
+    // Only update if the source actually changed (check both ref and video.src)
+    if (lastSrcRef.current !== currentSrc && normalizedVideoSrc !== normalizedCurrentSrc) {
       // Save current state before changing source
       const savedTime = video.currentTime || 0;
       const wasPlaying = !video.paused;
@@ -151,6 +169,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       if (wasPlaying) {
         video.pause();
       }
+
+      // Update the ref to track the current source
+      lastSrcRef.current = currentSrc;
 
       // Update the video source
       video.src = fullCurrentSrc;
@@ -194,10 +215,17 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       video.addEventListener("error", handleError);
 
       // Cleanup after timeout to prevent memory leaks
-      setTimeout(() => {
+      const cleanupTimeout = setTimeout(() => {
         video.removeEventListener("canplay", handleCanPlay);
         video.removeEventListener("error", handleError);
       }, 10000);
+
+      // Return cleanup function
+      return () => {
+        clearTimeout(cleanupTimeout);
+        video.removeEventListener("canplay", handleCanPlay);
+        video.removeEventListener("error", handleError);
+      };
     }
   }, [currentSrc, isMobile]);
 
@@ -225,8 +253,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       setError(null);
 
       // Clear any existing timeout
-      if (loadingTimeout) {
-        clearTimeout(loadingTimeout);
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+        loadingTimeoutRef.current = null;
       }
 
       // Set timeout for loading (30 seconds)
@@ -235,8 +264,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         setError(
           "Video loading timeout. Please check your connection and try again."
         );
+        loadingTimeoutRef.current = null;
       }, 30000);
 
+      loadingTimeoutRef.current = timeout;
       setLoadingTimeout(timeout);
     };
 
@@ -246,8 +277,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       setError(null);
 
       // Clear timeout when video can play
-      if (loadingTimeout) {
-        clearTimeout(loadingTimeout);
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+        loadingTimeoutRef.current = null;
         setLoadingTimeout(null);
       }
     };
@@ -264,8 +296,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       setIsLoading(false);
 
       // Clear timeout when video data is loaded
-      if (loadingTimeout) {
-        clearTimeout(loadingTimeout);
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+        loadingTimeoutRef.current = null;
         setLoadingTimeout(null);
       }
     };
@@ -275,8 +308,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       setIsBuffering(false);
 
       // Clear timeout on error
-      if (loadingTimeout) {
-        clearTimeout(loadingTimeout);
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+        loadingTimeoutRef.current = null;
         setLoadingTimeout(null);
       }
 
@@ -354,8 +388,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
     return () => {
       // Clear timeout on cleanup
-      if (loadingTimeout) {
-        clearTimeout(loadingTimeout);
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
+        loadingTimeoutRef.current = null;
       }
 
       video.removeEventListener("loadedmetadata", handleLoadedMetadata);
@@ -373,7 +408,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       video.removeEventListener("seeking", handleSeeking);
       video.removeEventListener("progress", handleProgress);
     };
-  }, [loadingTimeout]);
+  }, [onVideoReady]);
 
   // Auto-hide controls with better mobile handling
   useEffect(() => {
@@ -454,7 +489,24 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     video.currentTime = newTime;
   };
 
-  // Keyboard shortcuts
+  // Keyboard shortcuts - use refs to avoid dependency issues
+  const isPlayingRef = useRef(isPlaying);
+  const isMutedRef = useRef(isMuted);
+  const isFullscreenRef = useRef(isFullscreen);
+
+  // Update refs when state changes
+  useEffect(() => {
+    isPlayingRef.current = isPlaying;
+  }, [isPlaying]);
+
+  useEffect(() => {
+    isMutedRef.current = isMuted;
+  }, [isMuted]);
+
+  useEffect(() => {
+    isFullscreenRef.current = isFullscreen;
+  }, [isFullscreen]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Only handle keyboard shortcuts when the video container is focused or when video is playing
@@ -487,7 +539,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [isPlaying, isMuted, isFullscreen]);
+  }, []);
 
   // Enhanced progress bar handling for mobile
   const handleProgressInteraction = (clientX: number) => {
@@ -641,14 +693,18 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     setIsBuffering(false);
 
     // Clear any existing timeout
-    if (loadingTimeout) {
-      clearTimeout(loadingTimeout);
+    if (loadingTimeoutRef.current) {
+      clearTimeout(loadingTimeoutRef.current);
+      loadingTimeoutRef.current = null;
       setLoadingTimeout(null);
     }
 
     // Force React to re-render with empty src, then restore
     const currentSrcValue = currentSrc;
     console.log("Retrying with source:", currentSrcValue);
+
+    // Reset the ref to allow re-initialization
+    lastSrcRef.current = "";
 
     // Temporarily clear the source to force reload
     setCurrentSrc("");

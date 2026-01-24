@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { Manrope } from "next/font/google";
 import useAuth from "@/hooks/useAuth";
 import UserMenu from "../User/UserMenu";
+import { API_BASE_URL } from "@/constants/endpoints";
 
 const manrope = Manrope({
   subsets: ["latin"],
@@ -20,11 +21,48 @@ const manrope = Manrope({
 const Navbar = () => {
   const router = useRouter();
   const { isAuthenticated } = useAuth();
+  const [coursesCount, setCoursesCount] = useState<number | undefined>(undefined);
+
+  useEffect(() => {
+    if (!API_BASE_URL) return;
+
+    const controller = new AbortController();
+
+    (async () => {
+      try {
+        // Fetch a single course page only to get `total`
+        const res = await fetch(`${API_BASE_URL}/courses?page=1&limit=1`, {
+          signal: controller.signal,
+        });
+
+        if (!res.ok) return;
+
+        const json = (await res.json()) as any;
+        const data = json?.data;
+
+        if (Array.isArray(data)) {
+          // Backend returns [] for "no courses found"
+          setCoursesCount(data.length);
+          return;
+        }
+
+        const total = data?.total;
+        if (typeof total === "number") {
+          setCoursesCount(total);
+        }
+      } catch {
+        // ignore navbar count fetch errors
+      }
+    })();
+
+    return () => controller.abort();
+  }, []);
+
   const navItems: NavItem[] = [
     {
       label: "courses",
       href: "/courses",
-      count: 1,
+      count: coursesCount,
     },
     {
       label: "internships",

@@ -1,5 +1,4 @@
 import CoursePageSkeleton from "@/components/ui/course/CoursePageSkeleton";
-import React from "react";
 
 const Loading = () => {
   return (

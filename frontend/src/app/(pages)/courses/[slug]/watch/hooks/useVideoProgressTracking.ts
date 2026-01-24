@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback } from "react";
 import useEnrollment from "@/hooks/useEnrollment";
 import { useEnrollmentContext } from "@/components/EnrollmentGuard";
 import { ContentCompletion } from "@/types/enrollment";
+import { toast } from "react-toastify";
 
 interface UseVideoProgressTrackingProps {
   contentId?: string;
@@ -11,6 +12,7 @@ interface UseVideoProgressTrackingProps {
   currentTime: number;
   duration: number;
   isPlaying: boolean;
+  onVideoComplete?: () => void; // Callback when video completes (98%)
 }
 
 /**
@@ -29,6 +31,7 @@ export const useVideoProgressTracking = ({
   currentTime,
   duration,
   isPlaying,
+  onVideoComplete,
 }: UseVideoProgressTrackingProps) => {
   const { updateEnrollmentProgress } = useEnrollment();
   const { enrollment, refreshEnrollment } = useEnrollmentContext() || {};
@@ -188,8 +191,25 @@ export const useVideoProgressTracking = ({
       })
         .then(() => {
           // Refresh enrollment data to update completed contents list
+          // Use setTimeout to defer refresh and prevent immediate re-render during video switch
           if (refreshEnrollment) {
-            refreshEnrollment();
+            setTimeout(() => {
+              refreshEnrollment();
+            }, 100);
+          }
+
+          // Call onVideoComplete callback to auto-advance to next content
+          if (onVideoComplete) {
+            // Show toast notification
+            toast.info("Video completed! Moving to next content...", {
+              position: "bottom-right",
+              autoClose: 1500,
+              hideProgressBar: false,
+            });
+            
+            setTimeout(() => {
+              onVideoComplete();
+            }, 1500); // Wait 1.5 seconds before auto-advancing
           }
         })
         .catch((error) => {
@@ -199,7 +219,7 @@ export const useVideoProgressTracking = ({
           hasSentCompletionRequestRef.current = false;
         });
     }
-  }, [currentTime, duration, enrollment, contentId, moduleId, lessonId, contentType, updateEnrollmentProgress]);
+  }, [currentTime, duration, enrollment, contentId, moduleId, lessonId, contentType, updateEnrollmentProgress, refreshEnrollment, onVideoComplete]);
 
   // Handle page unload - send final update
   useEffect(() => {

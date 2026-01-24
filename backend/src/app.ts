@@ -18,6 +18,7 @@ import {
   adminRoutes,
   uploadRoutes,
   instructorRoutes,
+  publicInstructorRoutes,
   reviewRoutes,
   webhookRoutes,
   paymentRoutes,
@@ -62,6 +63,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/instructors", instructorRoutes);
+app.use("/api/public/instructors", publicInstructorRoutes);
 app.use("/api", reviewRoutes);
 app.use("/api/webhook", webhookRoutes);
 app.use("/api/payment", paymentRoutes);

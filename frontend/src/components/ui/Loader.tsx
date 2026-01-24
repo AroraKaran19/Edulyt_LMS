@@ -146,90 +146,44 @@ export const FullScreenLoader: React.FC<{
   showProgress = false,
   progress = 0,
 }) => {
+  const safeProgress = Math.max(0, Math.min(100, progress));
+
   return (
-    <div className="fixed inset-0 bg-black/20 backdrop-blur-md z-50 flex items-center justify-center animate-fade-in">
-      <div className="flex flex-col items-center space-y-6">
-        {/* Enhanced Loader with better spacing */}
-        <div className="relative">
-          <Loader
-            size={size}
-            variant={variant}
-            text=""
-            showText={false}
-            className="min-w-[80px]"
-          />
-          {/* Optional progress ring */}
-          {showProgress && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <svg
-                className="w-20 h-20 transform -rotate-90"
-                viewBox="0 0 100 100"
-              >
-                <circle
-                  cx="50"
-                  cy="50"
-                  r="45"
-                  stroke="currentColor"
-                  strokeWidth="8"
-                  fill="none"
-                  className="text-gray-200"
-                />
-                <circle
-                  cx="50"
-                  cy="50"
-                  r="45"
-                  stroke="currentColor"
-                  strokeWidth="8"
-                  fill="none"
-                  strokeDasharray={`${2 * Math.PI * 45}`}
-                  strokeDashoffset={`${
-                    2 * Math.PI * 45 * (1 - progress / 100)
-                  }`}
-                  className="text-[#F77124] transition-all duration-300 ease-out"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </div>
-          )}
-        </div>
+    <div
+      className={cn(
+        "fixed inset-0 z-50 flex items-center justify-center",
+        "bg-[#fff7f2]",
+        "animate-fade-in"
+      )}
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+    >
+      <div className="flex flex-col items-center gap-4 animate-scale-in px-6">
+        <Loader size={size} variant={variant} showText={false} />
 
-        {/* Enhanced text styling */}
-        <div className="text-center space-y-2">
-          <h3 className="text-xl font-semibold text-white animate-pulse drop-shadow-lg">
+        <div className="text-center">
+          <p className="text-base sm:text-lg font-semibold text-text-primary">
             {text}
-          </h3>
-          {showProgress && (
-            <div className="space-y-2">
-              <div className="w-full bg-white/20 rounded-full h-2 overflow-hidden">
-                <div
-                  className="bg-linear-to-r from-[#F77124] to-[#e65a1a] h-full rounded-full transition-all duration-500 ease-out"
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
-              <p className="text-sm text-white/80 font-medium drop-shadow">
-                {Math.round(progress)}% Complete
-              </p>
-            </div>
-          )}
+          </p>
+          <p className="mt-1 text-xs sm:text-sm text-text-primary/70">
+            Please wait…
+          </p>
         </div>
 
-        {/* Optional decorative elements - only show for dots variant */}
-        {variant === "dots" && (
-          <div className="flex space-x-1">
-            <div
-              className="w-2 h-2 bg-[#F77124] rounded-full animate-bounce"
-              style={{ animationDelay: "0ms" }}
-            />
-            <div
-              className="w-2 h-2 bg-[#F77124] rounded-full animate-bounce"
-              style={{ animationDelay: "150ms" }}
-            />
-            <div
-              className="w-2 h-2 bg-[#F77124] rounded-full animate-bounce"
-              style={{ animationDelay: "300ms" }}
-            />
+        {showProgress ? (
+          <div className="w-full max-w-sm">
+            <div className="w-full bg-black/10 rounded-full h-2 overflow-hidden">
+              <div
+                className="bg-linear-to-r from-[#F77124] to-[#e65a1a] h-full rounded-full transition-all duration-500 ease-out"
+                style={{ width: `${safeProgress}%` }}
+              />
+            </div>
+            <p className="mt-2 text-center text-xs text-text-primary/70 font-medium">
+              {Math.round(safeProgress)}%
+            </p>
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );

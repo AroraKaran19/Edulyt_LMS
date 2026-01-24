@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { slugify } from "@/lib/utils/slugify";
 import { Instructor } from "@/types";
 import Image from "next/image";
 import Link from "next/link";
@@ -38,11 +39,8 @@ const InstructorCard = ({
   };
 
   const getSlug = () => {
-    const name = getDisplayName();
-    return name
-      .toLowerCase()
-      .replace(/\s+/g, "-")
-      .replace(/[^a-z0-9-]/g, "");
+    if (instructor.slug) return instructor.slug;
+    return slugify(getDisplayName());
   };
 
   return (

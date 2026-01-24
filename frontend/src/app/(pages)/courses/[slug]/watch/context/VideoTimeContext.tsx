@@ -1,5 +1,5 @@
 "use client";
-import React, { createContext, useContext, ReactNode } from "react";
+import React, { createContext, useContext, ReactNode, useMemo } from "react";
 import { useVideoTime } from "../hooks/useVideoTime";
 
 interface VideoTimeContextType {
@@ -33,8 +33,12 @@ export const VideoTimeProvider: React.FC<VideoTimeProviderProps> = ({
 }) => {
   const videoTimeState = useVideoTime();
 
+  const contextValue = useMemo(() => videoTimeState, [
+    videoTimeState,
+  ]);
+
   return (
-    <VideoTimeContext.Provider value={videoTimeState}>
+    <VideoTimeContext.Provider value={contextValue}>
       {children}
     </VideoTimeContext.Provider>
   );

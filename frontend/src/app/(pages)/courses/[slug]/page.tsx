@@ -110,8 +110,6 @@ const IndividualCoursePage = async ({
     );
   }
 
-  console.log(JSON.stringify(course, null, 2));
-
   return <CoursePage course={course} />;
 };
 

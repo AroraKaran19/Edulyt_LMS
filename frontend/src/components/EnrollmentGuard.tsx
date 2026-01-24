@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo, createContext, useContext } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import useEnrollment from "@/hooks/useEnrollment";
@@ -7,8 +7,6 @@ import { Course } from "@/types";
 import { Lock, AlertCircle, Loader2 } from "lucide-react";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import { Button } from "@/components/ui/buttons/button";
-import { toast } from "react-toastify";
-import { createContext, useContext } from "react";
 import { PartialAccessControl } from "@/types/enrollment";
 import { getCategoryNames } from "@/lib/courseFormUtils";
 
@@ -31,9 +29,9 @@ export const useEnrollmentContext = () => {
 };
 
 const EnrollmentGuard = ({ course, children }: EnrollmentGuardProps) => {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const router = useRouter();
-  const { checkEnrollment, createEnrollment, isLoading } = useEnrollment();
+  const { checkEnrollment } = useEnrollment();
 
   const [enrollmentStatus, setEnrollmentStatus] = useState<{
     isEnrolled: boolean;
@@ -44,23 +42,43 @@ const EnrollmentGuard = ({ course, children }: EnrollmentGuardProps) => {
   } | null>(null);
   const [isCheckingEnrollment, setIsCheckingEnrollment] = useState(true);
 
-  // Function to check enrollment status
-  const checkUserEnrollment = async () => {
+  // Track previous values to prevent unnecessary re-runs
+  const prevStatusRef = useRef<string | null>(null);
+  const prevCourseIdRef = useRef<string | undefined>(undefined);
+  const isInitialMountRef = useRef(true);
+  const isCheckingRef = useRef(false);
+  
+  // Store checkEnrollment in ref to prevent dependency issues
+  const checkEnrollmentRef = useRef(checkEnrollment);
+  useEffect(() => {
+    checkEnrollmentRef.current = checkEnrollment;
+  }, [checkEnrollment]);
+
+  // Function to check enrollment status - memoized
+  const checkUserEnrollment = useCallback(async () => {
     if (status === "loading") return;
 
     if (status === "unauthenticated") {
       setIsCheckingEnrollment(false);
+      isCheckingRef.current = false;
       return;
     }
 
     if (!course._id) {
       setIsCheckingEnrollment(false);
+      isCheckingRef.current = false;
+      return;
+    }
+
+    // Prevent duplicate concurrent calls
+    if (isCheckingRef.current) {
       return;
     }
 
     try {
+      isCheckingRef.current = true;
       setIsCheckingEnrollment(true);
-      const result = await checkEnrollment({ courseId: course._id });
+      const result = await checkEnrollmentRef.current({ courseId: course._id });
       if (result) {
         setEnrollmentStatus(result);
       }
@@ -68,17 +86,61 @@ const EnrollmentGuard = ({ course, children }: EnrollmentGuardProps) => {
       console.error("Failed to check enrollment:", error);
     } finally {
       setIsCheckingEnrollment(false);
+      isCheckingRef.current = false;
     }
-  };
+  }, [status, course._id]);
 
-  // Check enrollment status on mount
+  // Check enrollment status only when status or courseId actually changes
   useEffect(() => {
-    checkUserEnrollment();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session, status, course._id]); // checkEnrollment is stable (memoized), exclude to prevent infinite loops
+    const statusChanged = prevStatusRef.current !== status;
+    const courseIdChanged = prevCourseIdRef.current !== course._id;
+    const isInitialMount = isInitialMountRef.current;
+    
+    // Always check on initial mount if authenticated
+    if (isInitialMount && status === "authenticated") {
+      isInitialMountRef.current = false;
+      prevStatusRef.current = status;
+      prevCourseIdRef.current = course._id;
+      checkUserEnrollment();
+      return;
+    }
+    
+    // Check if status changed to authenticated, or courseId changed while authenticated
+    if ((statusChanged && status === "authenticated") || 
+        (courseIdChanged && status === "authenticated")) {
+      prevStatusRef.current = status;
+      prevCourseIdRef.current = course._id;
+      checkUserEnrollment();
+    } else if (statusChanged) {
+      prevStatusRef.current = status;
+      if (status === "unauthenticated") {
+        setIsCheckingEnrollment(false);
+        isCheckingRef.current = false;
+      }
+    }
+    
+    // Update courseId ref even if we don't check enrollment
+    if (courseIdChanged) {
+      prevCourseIdRef.current = course._id;
+    }
+  }, [status, course._id, checkUserEnrollment]);
 
-  // Loading state
-  if (status === "loading" || isCheckingEnrollment) {
+  // Memoize context value to prevent unnecessary re-renders
+  // MUST be called before any conditional returns to follow Rules of Hooks
+  const contextValue = useMemo(
+    () => ({
+      enrollment: enrollmentStatus?.enrollment,
+      accessControl: enrollmentStatus?.accessControl || null,
+      refreshEnrollment: checkUserEnrollment,
+    }),
+    [
+      enrollmentStatus?.enrollment,
+      enrollmentStatus?.accessControl,
+      checkUserEnrollment,
+    ]
+  );
+
+  if (status === "loading" || (isCheckingEnrollment && !enrollmentStatus)) {
     return (
       <div className="w-full h-screen flex items-center justify-center">
         <div className="text-center">
@@ -209,13 +271,7 @@ const EnrollmentGuard = ({ course, children }: EnrollmentGuardProps) => {
 
   // User has access - render the course content with enrollment context
   return (
-    <EnrollmentContext.Provider
-      value={{
-        enrollment: enrollmentStatus?.enrollment,
-        accessControl: enrollmentStatus?.accessControl || null,
-        refreshEnrollment: checkUserEnrollment,
-      }}
-    >
+    <EnrollmentContext.Provider value={contextValue}>
       {children}
     </EnrollmentContext.Provider>
   );
