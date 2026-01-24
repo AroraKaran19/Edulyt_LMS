@@ -1,10 +1,12 @@
+import MentorPage from "./components/MentorPage";
+
 const InstructorIndividualPage = async ({
   params,
 }: {
   params: Promise<{ slug: string }>;
 }) => {
   const { slug } = await params;
-  return <div>{slug}</div>;
+  return <MentorPage slug={slug} />;
 };
 
 export default InstructorIndividualPage;
