@@ -1,4 +1,25 @@
-import { Discount } from "../../types";
+import { Discount, CourseDiscount } from "../../types";
+
+/**
+ * Check if course discount is currently active (same logic as frontend).
+ * Respects displayTime/resetAfter (expired) and startTime/endTime window.
+ */
+function isCourseDiscountCurrentlyActive(courseDiscount?: CourseDiscount | null): boolean {
+  if (!courseDiscount || !courseDiscount.isActive) return false;
+  const cd = courseDiscount as CourseDiscount & { displayTime?: string; resetAfter?: number };
+  if (cd.displayTime === "00:00:00" || cd.resetAfter === 0) return false;
+  if (!cd.startTime || !cd.endTime) return true;
+  const now = new Date();
+  const [startHour, startMin] = cd.startTime.split(":").map(Number);
+  const [endHour, endMin] = cd.endTime.split(":").map(Number);
+  const currentTimeInMinutes = now.getHours() * 60 + now.getMinutes();
+  const startTimeInMinutes = startHour * 60 + startMin;
+  const endTimeInMinutes = endHour * 60 + endMin;
+  if (startTimeInMinutes <= endTimeInMinutes) {
+    return currentTimeInMinutes >= startTimeInMinutes && currentTimeInMinutes <= endTimeInMinutes;
+  }
+  return currentTimeInMinutes >= startTimeInMinutes || currentTimeInMinutes <= endTimeInMinutes;
+}
 
 /**
  * Calculate the final price after applying discount
@@ -48,13 +69,13 @@ export const calculateDiscountedPrice = (
  */
 export const calculateFinalDiscountedPrice = (
   planPrice: number,
-  courseDiscount?: Discount,
+  courseDiscount?: CourseDiscount | Discount | null,
   planDiscount?: Discount
 ): number => {
   let totalDiscountAmount = 0;
 
-  // Calculate course discount on original price
-  if (courseDiscount && courseDiscount.isActive) {
+  // Course discount: only apply when currently active (time window matches frontend)
+  if (courseDiscount && isCourseDiscountCurrentlyActive(courseDiscount)) {
     if (courseDiscount.discount === "percentage") {
       totalDiscountAmount += (planPrice * courseDiscount.value) / 100;
     } else {
