@@ -544,7 +544,7 @@ const CartForm = ({
                       </div>
                       <div className="w-full flex flex-col gap-4">
                         {/* Coupon Code Section */}
-                        <div className="bg-gradient-to-r from-orange-50 to-yellow-50 border border-orange-200 rounded-lg p-4">
+                        <div className="bg-linear-to-r from-orange-50 to-yellow-50 border border-orange-200 rounded-lg p-4">
                           <label className="text-sm font-semibold text-text-primary flex items-center gap-2 mb-3">
                             <Tag className="w-4 h-4 text-orange-600" />
                             Have a coupon code?
@@ -615,6 +615,10 @@ const CartForm = ({
 
                             const finalAmount = appliedCoupon ? appliedCoupon.finalAmount : discountInfo.discountPrice;
 
+                            // Round to 2 decimal places for display to avoid floating-point precision issues (e.g. 0.34999999999999964 → 0.35)
+                            const formatPrice = (n: number) =>
+                              Number.isInteger(n) ? String(n) : Number(n.toFixed(2)).toString();
+
                             return (
                               <div className="space-y-2">
                                 <div className="flex justify-between items-center">
@@ -622,7 +626,7 @@ const CartForm = ({
                                     Course Price
                                   </span>
                                   <span className="font-semibold text-text-primary">
-                                    ₹{planPrice}
+                                    ₹{formatPrice(planPrice)}
                                   </span>
                                 </div>
 
@@ -632,7 +636,7 @@ const CartForm = ({
                                       Plan Discount ({discountInfo.discountLabel})
                                     </span>
                                     <span className="text-sm font-medium">
-                                      -₹{planPrice - discountInfo.discountPrice}
+                                      -₹{formatPrice(planPrice - discountInfo.discountPrice)}
                                     </span>
                                   </div>
                                 )}
@@ -643,7 +647,7 @@ const CartForm = ({
                                       Coupon ({appliedCoupon.code})
                                     </span>
                                     <span className="text-sm font-bold">
-                                      -₹{appliedCoupon.discountAmount}
+                                      -₹{formatPrice(appliedCoupon.discountAmount)}
                                     </span>
                                   </div>
                                 )}
@@ -653,7 +657,7 @@ const CartForm = ({
                                     Total Amount
                                   </span>
                                   <span className="font-bold text-orange-600 text-xl">
-                                    ₹{finalAmount}
+                                    {finalAmount < 1 ? "FREE" : `₹${formatPrice(finalAmount)}`}
                                   </span>
                                 </div>
                               </div>
@@ -694,8 +698,13 @@ const CartForm = ({
                               );
                               const order = response.data.data;
 
+                              // If order is free (amount < ₹1), go directly to success page
+                              if (order.freeOrder && order.token) {
+                                window.location.href = `/payment/status/${order._id}?token=${order.token}`;
+                                return;
+                              }
+
                               // Redirect to paytm-redirect page with order ID
-                              // The backend sets a paymentToken cookie which will be used by paytm-redirect page
                               window.location.href = `/paytm-redirect?orderId=${order._id}`;
                             } catch (error: any) {
                               console.error("Error creating order:", error);

@@ -247,10 +247,29 @@ export const createOrderService = async (
     $push: { orders: order._id.toString() },
   });
 
+  // If final amount is less than ₹1, treat as free — skip Paytm and complete enrollment
+  const isFreeOrder = amount < 1;
+  if (isFreeOrder) {
+    order.amount = 0;
+    order.paymentStatus = "success";
+    await order.save();
+    await createEnrollmentAfterPayment(order);
+    const paymentGatewayToken = generatePaymentGatewayToken(order._id.toString());
+    return {
+      _id: order._id.toString(),
+      freeOrder: true,
+      token: paymentGatewayToken,
+    };
+  }
+
   const paymentGatewayToken = generatePaymentGatewayToken(order._id.toString());
   const redirectUrl = `${
     process.env.FRONTEND_URL
   }/payment/status/${order._id.toString()}?token=${paymentGatewayToken}`;
+
+  // Paytm requires amount with at most 2 decimal places; avoid floating-point strings like "0.34999999999999964"
+  const amountForPaytm =
+    Number.isInteger(amount) ? amount.toString() : Number(amount.toFixed(2)).toString();
 
   const body = {
     requestType: "Payment",
@@ -258,7 +277,7 @@ export const createOrderService = async (
     websiteName: process.env.PAYTM_WEBSITE,
     orderId: order._id.toString(),
     callbackUrl: redirectUrl,
-    txnAmount: { value: amount.toString(), currency: "INR" },
+    txnAmount: { value: amountForPaytm, currency: "INR" },
     userInfo: { custId: userId },
   };
 
@@ -268,39 +287,62 @@ export const createOrderService = async (
     throw new AppError("Failed to generate Paytm checksum", 500);
   }
 
-  const response = await axios.post(
-    `https://secure.paytmpayments.com/theia/api/v1/initiateTransaction?mid=${
-      process.env.PAYTM_MID
-    }&orderId=${order._id.toString()}`,
-    {
-      head: {
-        signature: checksum,
-        channelId: "WEB",
-        version: "v1",
-        requestTimestamp: `${Math.floor(Date.now() / 1000)}`,
+  let response;
+  try {
+    response = await axios.post(
+      `https://secure.paytmpayments.com/theia/api/v1/initiateTransaction?mid=${
+        process.env.PAYTM_MID
+      }&orderId=${order._id.toString()}`,
+      {
+        head: {
+          signature: checksum,
+          channelId: "WEB",
+          version: "v1",
+          requestTimestamp: `${Math.floor(Date.now() / 1000)}`,
+        },
+        body,
       },
-      body,
-    },
-    {
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-    }
-  );
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+      }
+    );
+  } catch (err: any) {
+    const paytmBody = err.response?.data?.body;
+    const resultInfo = paytmBody?.resultInfo;
+    const message =
+      resultInfo?.resultMsg ||
+      err.response?.data?.message ||
+      err.message ||
+      "Failed to initiate Paytm transaction";
+    throw new AppError(message, err.response?.status || 500);
+  }
 
   if (response.status !== 200) {
     throw new AppError("Error initiating transaction", 500);
   }
 
-  if (!response.data.body?.txnToken) {
-    throw new AppError(
-      "Invalid response from Paytm - no transaction token",
-      500
-    );
+  const paytmBody = response.data?.body;
+  const resultInfo = paytmBody?.resultInfo;
+
+  // Paytm returns 200 even for validation/API errors; check resultInfo first
+  if (resultInfo && resultInfo.resultStatus !== "S") {
+    const message =
+      resultInfo.resultMsg ||
+      `Paytm error (code: ${resultInfo.resultCode || "unknown"})`;
+    throw new AppError(message, 400);
   }
 
-  order.token = response.data.body.txnToken; // Paytm's transaction token
+  if (!paytmBody?.txnToken) {
+    const paytmMessage = resultInfo?.resultMsg
+      ? resultInfo.resultMsg
+      : "Invalid response from Paytm - no transaction token";
+    throw new AppError(paytmMessage, 500);
+  }
+
+  order.token = paytmBody.txnToken; // Paytm's transaction token
   await order.save();
 
   await updatePendingPayments(userId, {
@@ -309,7 +351,7 @@ export const createOrderService = async (
 
   return {
     _id: order._id.toString(),
-    token: response.data.body.txnToken,
+    token: paytmBody.txnToken,
   };
 };
 
