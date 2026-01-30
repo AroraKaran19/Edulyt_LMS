@@ -680,14 +680,29 @@ const CartForm = ({
 
                             setIsCreatingOrder(true);
                             try {
-                              // Create order - Backend expects: courseId, planType, userId, and optionally couponCode
+                              // Same calculation as Order Summary — send exact total so Paytm matches UI
+                              const planPrice =
+                                planType === "elite"
+                                  ? course.plans?.elite?.price || 0
+                                  : course.plans?.essential?.price || 0;
+                              const discountInfo = calculateDiscountDisplay(
+                                planPrice,
+                                course.plans?.[planType]?.discount,
+                                course.discount
+                              );
+                              const totalAmount = appliedCoupon
+                                ? appliedCoupon.finalAmount
+                                : discountInfo.discountPrice;
+                              const purchaseAmountBeforeCoupon =
+                                discountInfo.discountPrice;
+
                               const orderData: any = {
                                 courseId: course._id,
                                 planType: planType,
-                                userId: user._id, // Use authenticated user's ID
+                                userId: user._id,
+                                totalAmount,
+                                purchaseAmountBeforeCoupon,
                               };
-
-                              // Add coupon code if applied
                               if (appliedCoupon) {
                                 orderData.couponCode = appliedCoupon.code;
                               }

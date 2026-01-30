@@ -173,11 +173,127 @@ export const getSelfOrdersService = async (
   return { orders, total, totalPages, page };
 };
 
+/**
+ * Resolve the amount to charge: use frontend total when provided and valid,
+ * otherwise compute from plan/course discounts and coupon.
+ */
+async function resolveOrderAmount(params: {
+  planPrice: number;
+  courseId: string;
+  courseDiscount: any;
+  planDiscount: any;
+  userId: string;
+  couponCode?: string;
+  totalAmountFromFrontend?: number;
+  purchaseAmountBeforeCouponFromFrontend?: number;
+}): Promise<{
+  amount: number;
+  couponCode: string | undefined;
+  couponDiscount: number;
+}> {
+  const {
+    planPrice,
+    courseId,
+    courseDiscount,
+    planDiscount,
+    userId,
+    couponCode,
+    totalAmountFromFrontend,
+    purchaseAmountBeforeCouponFromFrontend,
+  } = params;
+
+  const isTotalValid =
+    typeof totalAmountFromFrontend === "number" &&
+    totalAmountFromFrontend >= 0 &&
+    totalAmountFromFrontend <= planPrice;
+
+  // Use frontend total as single source of truth when provided (Paytm will match UI)
+  if (isTotalValid && totalAmountFromFrontend !== undefined) {
+    if (couponCode) {
+      const purchaseForValidation =
+        typeof purchaseAmountBeforeCouponFromFrontend === "number" &&
+        purchaseAmountBeforeCouponFromFrontend >= 0 &&
+        purchaseAmountBeforeCouponFromFrontend <= planPrice
+          ? purchaseAmountBeforeCouponFromFrontend
+          : calculateFinalDiscountedPrice(planPrice, courseDiscount, planDiscount);
+
+      const validation = await validateCouponService({
+        code: couponCode,
+        courseId,
+        purchaseAmount: purchaseForValidation,
+        userId,
+      });
+
+      if (!validation.valid) {
+        throw new AppError(
+          validation.message || "Invalid coupon",
+          400
+        );
+      }
+
+      await CouponModel.findOneAndUpdate(
+        { code: couponCode.toUpperCase() },
+        { $inc: { usedCount: 1 } }
+      );
+
+      const discountAmount =
+        validation.discountAmount ?? purchaseForValidation - totalAmountFromFrontend;
+      return {
+        amount: Math.round(totalAmountFromFrontend * 100) / 100,
+        couponCode,
+        couponDiscount: discountAmount,
+      };
+    }
+
+    return {
+      amount: Math.round(totalAmountFromFrontend * 100) / 100,
+      couponCode: undefined,
+      couponDiscount: 0,
+    };
+  }
+
+  // Fallback: compute amount on backend (no totalAmount sent or invalid)
+  let amount = calculateFinalDiscountedPrice(
+    planPrice,
+    courseDiscount,
+    planDiscount
+  );
+  let appliedCouponCode: string | undefined = undefined;
+  let couponDiscount = 0;
+
+  if (couponCode) {
+    const validation = await validateCouponService({
+      code: couponCode,
+      courseId,
+      purchaseAmount: amount,
+      userId,
+    });
+
+    if (validation.valid && validation.finalAmount != null) {
+      couponDiscount = validation.discountAmount ?? 0;
+      amount = validation.finalAmount;
+      appliedCouponCode = couponCode;
+      await CouponModel.findOneAndUpdate(
+        { code: couponCode.toUpperCase() },
+        { $inc: { usedCount: 1 } }
+      );
+    }
+  }
+
+  return {
+    amount: Math.round(amount * 100) / 100,
+    couponCode: appliedCouponCode,
+    couponDiscount,
+  };
+}
+
 export const createOrderService = async (
   userId: string,
   courseId: string,
   planType: "elite" | "essential",
-  couponCode?: string
+  couponCode?: string,
+  totalAmountFromFrontend?: number,
+  purchaseAmountBeforeCouponFromFrontend?: number
 ) => {
   if (!process.env.PAYTM_MID || !process.env.PAYTM_WEBSITE) {
     throw new AppError("PAYTM_MID or PAYTM_WEBSITE is not set", 500);
@@ -190,41 +306,19 @@ export const createOrderService = async (
   if (!plan)
     throw new AppError(`${planType} plan not available for this course`, 400);
 
-  let amount = calculateFinalDiscountedPrice(
-    plan.price,
-    course.discount,
-    plan.discount
-  );
+  const planPrice = plan.price;
 
-  let appliedCouponCode: string | undefined = undefined;
-  let couponDiscount = 0;
-
-  // Apply coupon if provided
-  if (couponCode) {
-    try {
-      const couponValidation = await validateCouponService({
-        code: couponCode,
-        courseId,
-        purchaseAmount: amount,
-        userId,
-      });
-
-      if (couponValidation.valid && couponValidation.finalAmount) {
-        couponDiscount = couponValidation.discountAmount || 0;
-        amount = couponValidation.finalAmount;
-        appliedCouponCode = couponCode;
-
-        // Increment coupon usage count
-        await CouponModel.findOneAndUpdate(
-          { code: couponCode.toUpperCase() },
-          { $inc: { usedCount: 1 } }
-        );
-      }
-    } catch (error) {
-      // If coupon validation fails, proceed without coupon
-      console.error("Coupon validation failed:", error);
-    }
-  }
+  const { amount, couponCode: appliedCouponCode, couponDiscount } =
+    await resolveOrderAmount({
+      planPrice,
+      courseId,
+      courseDiscount: course.discount,
+      planDiscount: plan.discount,
+      userId,
+      couponCode,
+      totalAmountFromFrontend,
+      purchaseAmountBeforeCouponFromFrontend,
+    });
 
   const order = new OrderModel({
     txnId: Math.random().toString(36).substring(2, 15),

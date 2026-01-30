@@ -41,8 +41,15 @@ export const getSelfOrders = asyncHandler(
 );
 
 export const createOrder = asyncHandler(async (req: Request, res: Response) => {
-  const { courseId, planType, userId, couponCode } = req.body;
-  // const user = req.user;
+  const {
+    courseId,
+    planType,
+    userId,
+    couponCode,
+    totalAmount,
+    purchaseAmountBeforeCoupon,
+  } = req.body;
+
   const user = await UserModel.findById(userId);
   if (!user) {
     throw new AppError("User not found", 404);
@@ -53,10 +60,12 @@ export const createOrder = asyncHandler(async (req: Request, res: Response) => {
   }
 
   const order = await createOrderService(
-    user?._id as string,
+    user._id as string,
     courseId,
     planType,
-    couponCode // Pass coupon code if provided
+    couponCode,
+    totalAmount,
+    purchaseAmountBeforeCoupon
   );
 
   if (!order) {

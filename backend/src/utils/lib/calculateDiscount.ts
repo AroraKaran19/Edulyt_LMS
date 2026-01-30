@@ -1,7 +1,22 @@
 import { Discount, CourseDiscount } from "../../types";
 
 /**
- * Check if course discount is currently active (same logic as frontend).
+ * Check if plan discount is currently active
+ * Only apply when current date is within startDate and endDate.
+ */
+function isPlanDiscountCurrentlyActive(planDiscount?: Discount | null): boolean {
+  if (!planDiscount || !planDiscount.isActive) return false;
+  if (!planDiscount.startDate || !planDiscount.endDate) return true;
+  const now = new Date();
+  const startDate = new Date(planDiscount.startDate);
+  const endDate = new Date(planDiscount.endDate);
+  startDate.setHours(0, 0, 0, 0);
+  endDate.setHours(23, 59, 59, 999);
+  return now >= startDate && now <= endDate;
+}
+
+/**
+ * Check if course discount is currently active
  * Respects displayTime/resetAfter (expired) and startTime/endTime window.
  */
 function isCourseDiscountCurrentlyActive(courseDiscount?: CourseDiscount | null): boolean {
@@ -83,8 +98,8 @@ export const calculateFinalDiscountedPrice = (
     }
   }
 
-  // Calculate plan discount on original price (simultaneously)
-  if (planDiscount && planDiscount.isActive) {
+  // Plan discount: only apply when currently active (date range matches frontend)
+  if (planDiscount && isPlanDiscountCurrentlyActive(planDiscount)) {
     if (planDiscount.discount === "percentage") {
       totalDiscountAmount += (planPrice * planDiscount.value) / 100;
     } else {
