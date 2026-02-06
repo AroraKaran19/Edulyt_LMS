@@ -4,7 +4,9 @@ import { Discount, CourseDiscount } from "../../types";
  * Check if plan discount is currently active
  * Only apply when current date is within startDate and endDate.
  */
-function isPlanDiscountCurrentlyActive(planDiscount?: Discount | null): boolean {
+function isPlanDiscountCurrentlyActive(
+  planDiscount?: Discount | null,
+): boolean {
   if (!planDiscount || !planDiscount.isActive) return false;
   if (!planDiscount.startDate || !planDiscount.endDate) return true;
   const now = new Date();
@@ -19,9 +21,14 @@ function isPlanDiscountCurrentlyActive(planDiscount?: Discount | null): boolean 
  * Check if course discount is currently active
  * Respects displayTime/resetAfter (expired) and startTime/endTime window.
  */
-function isCourseDiscountCurrentlyActive(courseDiscount?: CourseDiscount | null): boolean {
+function isCourseDiscountCurrentlyActive(
+  courseDiscount?: CourseDiscount | null,
+): boolean {
   if (!courseDiscount || !courseDiscount.isActive) return false;
-  const cd = courseDiscount as CourseDiscount & { displayTime?: string; resetAfter?: number };
+  const cd = courseDiscount as CourseDiscount & {
+    displayTime?: string;
+    resetAfter?: number;
+  };
   if (cd.displayTime === "00:00:00" || cd.resetAfter === 0) return false;
   if (!cd.startTime || !cd.endTime) return true;
   const now = new Date();
@@ -31,9 +38,15 @@ function isCourseDiscountCurrentlyActive(courseDiscount?: CourseDiscount | null)
   const startTimeInMinutes = startHour * 60 + startMin;
   const endTimeInMinutes = endHour * 60 + endMin;
   if (startTimeInMinutes <= endTimeInMinutes) {
-    return currentTimeInMinutes >= startTimeInMinutes && currentTimeInMinutes <= endTimeInMinutes;
+    return (
+      currentTimeInMinutes >= startTimeInMinutes &&
+      currentTimeInMinutes <= endTimeInMinutes
+    );
   }
-  return currentTimeInMinutes >= startTimeInMinutes || currentTimeInMinutes <= endTimeInMinutes;
+  return (
+    currentTimeInMinutes >= startTimeInMinutes ||
+    currentTimeInMinutes <= endTimeInMinutes
+  );
 }
 
 /**
@@ -44,7 +57,7 @@ function isCourseDiscountCurrentlyActive(courseDiscount?: CourseDiscount | null)
  */
 export const calculateDiscountedPrice = (
   basePrice: number,
-  discount?: Discount
+  discount?: Discount,
 ): number => {
   // If no discount or discount is inactive, return base price
   if (!discount || discount.isActive === false) {
@@ -85,7 +98,7 @@ export const calculateDiscountedPrice = (
 export const calculateFinalDiscountedPrice = (
   planPrice: number,
   courseDiscount?: CourseDiscount | Discount | null,
-  planDiscount?: Discount
+  planDiscount?: Discount,
 ): number => {
   let totalDiscountAmount = 0;
 

@@ -108,40 +108,40 @@ const LoginPage = () => {
 
   return (
     <>
-      <div className="header flex flex-col gap-2 mb-2">
-        <h1 className="text-3xl lg:text-4xl font-regular font-coolvetica text-center lg:text-start text-text-primary">
+      <div className="header flex flex-col gap-2 mb-2 w-full">
+        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-regular font-coolvetica text-center lg:text-start text-text-primary">
           Login to your Airkrit account
         </h1>
-        <p className="text-base font-regular text-center lg:text-start text-text-primary">
+        <p className="text-sm sm:text-base font-regular text-center lg:text-start text-text-primary">
           Welcome back! Enter your details to continue using Airkrit
         </p>
       </div>
       <form
-        className="form w-full max-w-lg flex flex-col gap-4 lg:max-w-full"
+        className="form w-full flex flex-col gap-3 sm:gap-4"
         onSubmit={handleLogin}
       >
-        <div className="email-input w-full flex gap-3 bg-white rounded-md p-3 border border-gray-300">
-          <label htmlFor="email" className="text-sm text-gray-500">
-            <Mail className="w-full h-full" />
+        <div className="email-input w-full flex gap-2 sm:gap-3 bg-white rounded-lg p-3 sm:p-3.5 border border-gray-300 focus-within:border-orange-400 transition-colors">
+          <label htmlFor="email" className="text-sm text-gray-500 flex-shrink-0">
+            <Mail className="w-5 h-5" />
           </label>
           <input
             type="email"
             placeholder="Email"
-            className="w-full bg-transparent outline-none font-bold"
+            className="w-full bg-transparent outline-none font-semibold text-sm sm:text-base placeholder:font-normal"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
             suppressHydrationWarning
           />
         </div>
-        <div className="password-input w-full flex gap-3 bg-white rounded-md p-3 border border-gray-300 relative">
-          <label htmlFor="password" className="text-sm text-gray-500">
-            <Lock className="w-full h-full" />
+        <div className="password-input w-full flex gap-2 sm:gap-3 bg-white rounded-lg p-3 sm:p-3.5 border border-gray-300 focus-within:border-orange-400 transition-colors relative">
+          <label htmlFor="password" className="text-sm text-gray-500 flex-shrink-0">
+            <Lock className="w-5 h-5" />
           </label>
           <input
             type={showPassword ? "text" : "password"}
             placeholder="Password"
-            className="w-full bg-transparent outline-none font-bold"
+            className="w-full bg-transparent outline-none font-semibold text-sm sm:text-base pr-10 placeholder:font-normal"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
@@ -149,34 +149,34 @@ const LoginPage = () => {
           />
           {showPassword ? (
             <Eye
-              className="size-4 absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer"
+              className="w-4 h-4 absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 cursor-pointer text-gray-400 hover:text-gray-600 transition-colors"
               onClick={() => setShowPassword(!showPassword)}
             />
           ) : (
             <EyeOff
-              className="size-4 absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer"
+              className="w-4 h-4 absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 cursor-pointer text-gray-400 hover:text-gray-600 transition-colors"
               onClick={() => setShowPassword(!showPassword)}
             />
           )}
         </div>
         <OrangeButton
           type="submit"
-          className="w-full mt-1 lg:mt-2 rounded-xl font-bold"
+          className="w-full mt-2 sm:mt-3 rounded-xl font-bold text-sm sm:text-base py-3"
           disabled={loading}
         >
           {loading ? "Logging in..." : "Login"}
         </OrangeButton>
       </form>
-      <div className="breaker w-full flex items-center justify-center gap-4 my-4">
-        <div className="w-1/4 h-[4px] bg-gray-200"></div>
-        <span className="text-base text-gray-500 uppercase whitespace-nowrap">
+      <div className="breaker w-full flex items-center justify-center gap-3 sm:gap-4 my-3 sm:my-4">
+        <div className="flex-1 h-[3px] sm:h-[4px] bg-gray-200 max-w-[100px]"></div>
+        <span className="text-sm sm:text-base text-gray-500 uppercase whitespace-nowrap font-medium">
           OR
         </span>
-        <div className="w-1/4 h-[4px] bg-gray-200"></div>
+        <div className="flex-1 h-[3px] sm:h-[4px] bg-gray-200 max-w-[100px]"></div>
       </div>
-      <div className="oauth-buttons w-full max-w-lg lg:max-w-full flex flex-col items-center justify-center gap-6">
+      <div className="oauth-buttons w-full flex flex-col items-center justify-center gap-3 sm:gap-4">
         <WhiteButton
-          className="w-full flex items-center justify-center gap-2 rounded-xl font-bold shadow-[inset_0_-2px_7px_0_rgba(183,159,255,0.22)]"
+          className="w-full flex items-center justify-center gap-2 rounded-xl font-bold text-sm sm:text-base py-3 shadow-[inset_0_-2px_7px_0_rgba(183,159,255,0.22)]"
           disabled={isOAuthLoading}
           onClick={() => handleOAuthSignIn("google")}
         >
@@ -185,14 +185,14 @@ const LoginPage = () => {
             alt="Google"
             width={20}
             height={20}
-            className="size-4"
+            className="w-4 h-4 sm:w-5 sm:h-5"
           />
           <span>
             {isOAuthLoading ? "Signing in..." : "Sign In using Google"}
           </span>
         </WhiteButton>
         <WhiteButton
-          className="w-full flex items-center justify-center gap-2 rounded-xl font-bold shadow-[inset_0_-2px_7px_0_rgba(183,159,255,0.22)]"
+          className="w-full flex items-center justify-center gap-2 rounded-xl font-bold text-sm sm:text-base py-3 shadow-[inset_0_-2px_7px_0_rgba(183,159,255,0.22)]"
           disabled={isOAuthLoading}
           onClick={() => handleOAuthSignIn("linkedin")}
         >
@@ -201,21 +201,21 @@ const LoginPage = () => {
             alt="LinkedIn"
             width={20}
             height={20}
-            className="size-4"
+            className="w-4 h-4 sm:w-5 sm:h-5"
           />
           <span>
             {isOAuthLoading ? "Signing in..." : "Sign In using LinkedIn"}
           </span>
         </WhiteButton>
       </div>
-      <p className="text-sm text-gray-500 text-center font-bold self-center">
+      <p className="text-xs sm:text-sm text-gray-500 text-center font-bold self-center mt-2">
         Don&apos;t have an account?{" "}
-        <Link href="/register" className="text-orange-500 font-bold">
+        <Link href="/register" className="text-orange-500 font-bold hover:underline">
           Sign up
         </Link>
       </p>
-      <span className="text-sm text-gray-500 text-center font-bold self-center">
-        <Link href="/forgot-password" className="text-orange-500 font-bold">
+      <span className="text-xs sm:text-sm text-gray-500 text-center font-bold self-center">
+        <Link href="/forgot-password" className="text-orange-500 font-bold hover:underline">
           Forgot password?
         </Link>
       </span>

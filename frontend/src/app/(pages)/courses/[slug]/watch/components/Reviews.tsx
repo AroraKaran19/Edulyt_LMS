@@ -63,8 +63,11 @@ const Reviews = memo(
     const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-    const { createReview, validateReview, isLoading: isSubmittingReview } =
-      useReview();
+    const {
+      createReview,
+      validateReview,
+      isLoading: isSubmittingReview,
+    } = useReview();
 
     const handleImageError = useCallback((id: string) => {
       setImageErrors((prev) => ({ ...prev, [id]: true }));
@@ -78,7 +81,7 @@ const Reviews = memo(
           (typeof review.userId === "object" &&
             `${review.userId.firstName || ""} ${review.userId.lastName || ""}`
               .toLowerCase()
-              .includes(search.toLowerCase()))
+              .includes(search.toLowerCase())),
       );
     }, [reviews, search]);
 
@@ -87,9 +90,7 @@ const Reviews = memo(
         <Star
           key={index}
           className={`size-4 ${
-            index < rating
-              ? "text-yellow-500 fill-yellow-500"
-              : "text-gray-400"
+            index < rating ? "text-yellow-500 fill-yellow-500" : "text-gray-400"
           }`}
         />
       ));
@@ -275,7 +276,9 @@ const Reviews = memo(
             <div className="text-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mx-auto mb-4"></div>
               <p className="text-gray-500 font-plus-jakarta">
-                {isSubmittingReview ? "Posting review..." : "Loading reviews..."}
+                {isSubmittingReview
+                  ? "Posting review..."
+                  : "Loading reviews..."}
               </p>
             </div>
           )}
@@ -288,7 +291,7 @@ const Reviews = memo(
                 typeof review.userId === "object" ? review.userId : null;
               const userName = user?.firstName
                 ? `${user.firstName} ${user.lastName || ""}`.trim()
-                : user?.email ?? "Anonymous User";
+                : (user?.email ?? "Anonymous User");
               const userAvatar = user?.profilePicture ?? "/user.svg";
               const nameForInitials = user?.firstName
                 ? `${user.firstName} ${user.lastName || ""}`.trim()
@@ -314,7 +317,7 @@ const Reviews = memo(
                         ) : (
                           <div
                             className={`w-full h-full flex items-center justify-center text-white font-semibold text-sm ${getAvatarColor(
-                              nameForInitials
+                              nameForInitials,
                             )}`}
                           >
                             {getInitials(nameForInitials)}
@@ -368,7 +371,7 @@ const Reviews = memo(
   (prevProps, nextProps) => {
     // Only re-render if courseId changes
     return prevProps.courseId === nextProps.courseId;
-  }
+  },
 );
 
 Reviews.displayName = "Reviews";

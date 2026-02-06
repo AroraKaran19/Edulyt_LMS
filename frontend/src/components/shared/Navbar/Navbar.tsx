@@ -5,6 +5,7 @@ import Link from "next/link";
 import NavLink from "./components/NavLink";
 import { useEffect, useState } from "react";
 import NavbarContent from "./components/NavbarContent";
+import MobileMenu from "./components/MobileMenu";
 import { NavItem } from "@/types";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -12,6 +13,7 @@ import { Manrope } from "next/font/google";
 import useAuth from "@/hooks/useAuth";
 import UserMenu from "../User/UserMenu";
 import { API_BASE_URL } from "@/constants/endpoints";
+import { Menu, X } from "lucide-react";
 
 const manrope = Manrope({
   subsets: ["latin"],
@@ -76,6 +78,7 @@ const Navbar = () => {
   const [isAnimating, setIsAnimating] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [isDropdownClicked, setIsDropdownClicked] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     if (isHoverContainerVisible) {
@@ -143,26 +146,30 @@ const Navbar = () => {
     <>
       <header
         className={cn(
-          "navbar w-full h-[78px] fixed top-0 bg-white z-9999 px-8 flex items-center",
+          "navbar w-full h-[78px] fixed top-0 bg-white z-9999 flex items-center justify-between",
+          "px-4 sm:px-6 lg:px-8",
           !isHoverContainerVisible && "shadow-[0_0_10px_2px_rgba(0,0,0,0.2)]",
           isHoverContainerVisible && "border-b border-gray-200",
           manrope.className
         )}
       >
-        <Link href="/" className="h-full w-max flex items-center shrink-0">
+        <Link
+          href="/"
+          className="h-full flex items-center shrink-0"
+        >
           <ImageComponent
             src="/logo.svg"
             alt="Logo"
             width={100}
             height={100}
-            className="h-[52px] w-max"
+            className="h-[44px] sm:h-[52px] w-auto"
             loading="eager"
             draggable={false}
             unoptimized
           />
         </Link>
         <nav
-          className="hidden lg:flex h-full w-full items-center justify-center gap-4 lg:gap-5 xl:gap-9"
+          className="hidden lg:flex h-full absolute left-1/2 -translate-x-1/2 items-center gap-4 lg:gap-5 xl:gap-9"
           onMouseEnter={() => setIsTransitioning(false)}
         >
           {navItems.map((item) => (
@@ -181,22 +188,36 @@ const Navbar = () => {
             />
           ))}
         </nav>
-        <div className="ml-auto action-btns flex items-center gap-4 shrink-0">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           {isAuthenticated ? (
             <UserMenu />
           ) : (
-            <>
-              <OrangeButton
-                className="text-xs font-semibold lg:px-4 lg:py-2.5"
-                blinkIcon
-                onClick={() => router.push("/register")}
-              >
-                Get Started
-              </OrangeButton>
-            </>
+            <OrangeButton
+              className="text-xs font-semibold px-4 py-2 sm:px-5 lg:px-4 lg:py-2.5 whitespace-nowrap"
+              blinkIcon
+              onClick={() => router.push("/register")}
+            >
+              Get Started
+            </OrangeButton>
           )}
+          {/* Mobile Menu Button */}
+          <button
+            className="lg:hidden p-2 hover:bg-orange-50 rounded-lg text-gray-700 hover:text-[#F77124] transition-all"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            aria-label="Toggle mobile menu"
+          >
+            {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
         </div>
       </header>
+
+      {/* Mobile Menu */}
+      <MobileMenu
+        isOpen={isMobileMenuOpen}
+        navItems={navItems}
+        onClose={() => setIsMobileMenuOpen(false)}
+      />
+      
 
       {/* Hover Container - Hidden on mobile */}
       {hoveredNavLink &&

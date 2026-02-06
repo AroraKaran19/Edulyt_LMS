@@ -8,14 +8,11 @@ const categorySchema = new mongoose.Schema<Category>(
       required: true,
       trim: true,
       unique: true,
-      minlength: 2,
-      maxlength: 50,
     },
     description: {
       type: String,
       required: false,
       trim: true,
-      maxlength: 200,
     },
     isActive: {
       type: Boolean,

@@ -345,8 +345,6 @@ const Screen1 = () => {
             required
             ref={descriptionEditorRef}
             rows={6}
-            minLength={25}
-            maxLength={1000}
             showWordCount={true}
             className="w-full max-w-full"
             initialHtml={descriptionValue || ""}
@@ -357,18 +355,6 @@ const Screen1 = () => {
             type="hidden"
             {...control.register("description", {
               required: "Course description is required",
-              validate: (value) => {
-                if (!value) return "Course description is required";
-                const textContent = getTextFromHtml(value);
-
-                if (textContent.length < 25) {
-                  return "Description must be at least 25 characters long";
-                }
-                if (textContent.length > 1000) {
-                  return "Description must be less than 1000 characters";
-                }
-                return true;
-              },
             })}
           />
         </div>
@@ -377,8 +363,6 @@ const Screen1 = () => {
             title="Short Description (Required)"
             ref={shortDescriptionEditorRef}
             rows={2}
-            minLength={10}
-            maxLength={300}
             showWordCount={true}
             className="w-full max-w-full"
             initialHtml={shortDescriptionValue || ""}
@@ -390,18 +374,6 @@ const Screen1 = () => {
             type="hidden"
             {...control.register("shortDescription", {
               required: "Short description is required",
-              validate: (value) => {
-                if (!value) return "Short description is required";
-                const textContent = getTextFromHtml(value);
-
-                if (textContent.length < 10) {
-                  return "Short description must be at least 10 characters";
-                }
-                if (textContent.length > 300) {
-                  return "Short description must be less than 300 characters";
-                }
-                return true;
-              },
             })}
           />
         </div>

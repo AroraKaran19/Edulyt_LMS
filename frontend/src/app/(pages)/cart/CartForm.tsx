@@ -45,7 +45,7 @@ const CartForm = ({
   const [showFirstNameModal, setShowFirstNameModal] = useState(false);
   const [firstNameInput, setFirstNameInput] = useState("");
   const [isUpdatingFirstName, setIsUpdatingFirstName] = useState(false);
-  
+
   // Coupon state
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<{
@@ -87,7 +87,7 @@ const CartForm = ({
       const discountInfo = calculateDiscountDisplay(
         planPrice,
         planDiscount,
-        courseDiscount
+        courseDiscount,
       );
       const purchaseAmount = discountInfo.discountPrice;
 
@@ -113,7 +113,9 @@ const CartForm = ({
         toast.error(result?.message || "Invalid coupon code");
       }
     } catch (error: any) {
-      toast.error(error.response?.data?.error?.message || "Failed to validate coupon");
+      toast.error(
+        error.response?.data?.error?.message || "Failed to validate coupon",
+      );
     } finally {
       setIsValidatingCoupon(false);
     }
@@ -161,7 +163,7 @@ const CartForm = ({
     } catch (error: any) {
       toast.error(
         error.response?.data?.error?.message ||
-          "Failed to update first name. Please try again."
+          "Failed to update first name. Please try again.",
       );
     } finally {
       setIsUpdatingFirstName(false);
@@ -226,7 +228,7 @@ const CartForm = ({
         termsAndConditions: z
           .boolean()
           .refine((val) => val, "You must accept the terms and conditions"),
-      })
+      }),
     ),
     defaultValues: {
       name: user.firstName
@@ -251,7 +253,7 @@ const CartForm = ({
     if (index === 0) {
       // Application step - always allow going back to it
       setCartSteps((prev) =>
-        prev.map((step, i) => ({ ...step, isActive: i === index }))
+        prev.map((step, i) => ({ ...step, isActive: i === index })),
       );
       return;
     }
@@ -262,7 +264,7 @@ const CartForm = ({
         return; // Block if Application not completed
       }
       setCartSteps((prev) =>
-        prev.map((step, i) => ({ ...step, isActive: i === index }))
+        prev.map((step, i) => ({ ...step, isActive: i === index })),
       );
       return;
     }
@@ -273,7 +275,7 @@ const CartForm = ({
         return; // Block if previous steps not completed
       }
       setCartSteps((prev) =>
-        prev.map((step, i) => ({ ...step, isActive: i === index }))
+        prev.map((step, i) => ({ ...step, isActive: i === index })),
       );
       return;
     }
@@ -343,7 +345,7 @@ const CartForm = ({
                           pattern="[0-9]*"
                           inputMode="numeric"
                           onKeyDown={(
-                            e: React.KeyboardEvent<HTMLInputElement>
+                            e: React.KeyboardEvent<HTMLInputElement>,
                           ) => {
                             // Allow: backspace, delete, tab, escape, enter, home, end, left, right, up, down
                             if (
@@ -369,7 +371,7 @@ const CartForm = ({
                             }
                           }}
                           onPaste={(
-                            e: React.ClipboardEvent<HTMLInputElement>
+                            e: React.ClipboardEvent<HTMLInputElement>,
                           ) => {
                             // Get pasted data
                             const paste = e.clipboardData.getData("text");
@@ -454,7 +456,7 @@ const CartForm = ({
                                 ...step,
                                 completed: i === 0 ? true : step.completed,
                                 isActive: i === 1,
-                              }))
+                              })),
                             );
                           }
                         }}
@@ -477,7 +479,7 @@ const CartForm = ({
                       <div className="w-full h-96 flex flex-col gap-2">
                         <iframe
                           src={encodeURI(
-                            "/course-certificates/Certificates/Airkrit India Course Certificate - AI-01171 - Template.pdf"
+                            "/course-certificates/Certificates/Airkrit India Course Certificate - AI-01171 - Template.pdf",
                           )}
                           title="Terms & Conditions"
                           className="w-full h-full"
@@ -521,7 +523,7 @@ const CartForm = ({
                                 ...step,
                                 completed: i === 1 ? true : step.completed,
                                 isActive: i === 2,
-                              }))
+                              })),
                             );
                           }
                         }}
@@ -555,9 +557,11 @@ const CartForm = ({
                                 type="text"
                                 placeholder="Enter coupon code"
                                 value={couponCode}
-                                onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                                onChange={(e) =>
+                                  setCouponCode(e.target.value.toUpperCase())
+                                }
                                 onKeyPress={(e) => {
-                                  if (e.key === 'Enter') {
+                                  if (e.key === "Enter") {
                                     handleApplyCoupon();
                                   }
                                 }}
@@ -566,7 +570,9 @@ const CartForm = ({
                               />
                               <OrangeButton
                                 onClick={handleApplyCoupon}
-                                disabled={isValidatingCoupon || !couponCode.trim()}
+                                disabled={
+                                  isValidatingCoupon || !couponCode.trim()
+                                }
                                 className="px-6 whitespace-nowrap"
                               >
                                 {isValidatingCoupon ? "Checking..." : "Apply"}
@@ -579,7 +585,9 @@ const CartForm = ({
                                 <span className="font-bold text-green-800 font-mono">
                                   {appliedCoupon.code}
                                 </span>
-                                <span className="text-sm text-green-600 font-medium">applied</span>
+                                <span className="text-sm text-green-600 font-medium">
+                                  applied
+                                </span>
                               </div>
                               <button
                                 onClick={handleRemoveCoupon}
@@ -610,14 +618,18 @@ const CartForm = ({
                             const discountInfo = calculateDiscountDisplay(
                               planPrice,
                               planDiscount,
-                              courseDiscount
+                              courseDiscount,
                             );
 
-                            const finalAmount = appliedCoupon ? appliedCoupon.finalAmount : discountInfo.discountPrice;
+                            const finalAmount = appliedCoupon
+                              ? appliedCoupon.finalAmount
+                              : discountInfo.discountPrice;
 
                             // Round to 2 decimal places for display to avoid floating-point precision issues (e.g. 0.34999999999999964 → 0.35)
                             const formatPrice = (n: number) =>
-                              Number.isInteger(n) ? String(n) : Number(n.toFixed(2)).toString();
+                              Number.isInteger(n)
+                                ? String(n)
+                                : Number(n.toFixed(2)).toString();
 
                             return (
                               <div className="space-y-2">
@@ -633,10 +645,14 @@ const CartForm = ({
                                 {discountInfo.discountLabel && (
                                   <div className="flex justify-between items-center text-green-600">
                                     <span className="text-sm">
-                                      Plan Discount ({discountInfo.discountLabel})
+                                      Plan Discount (
+                                      {discountInfo.discountLabel})
                                     </span>
                                     <span className="text-sm font-medium">
-                                      -₹{formatPrice(planPrice - discountInfo.discountPrice)}
+                                      -₹
+                                      {formatPrice(
+                                        planPrice - discountInfo.discountPrice,
+                                      )}
                                     </span>
                                   </div>
                                 )}
@@ -647,7 +663,10 @@ const CartForm = ({
                                       Coupon ({appliedCoupon.code})
                                     </span>
                                     <span className="text-sm font-bold">
-                                      -₹{formatPrice(appliedCoupon.discountAmount)}
+                                      -₹
+                                      {formatPrice(
+                                        appliedCoupon.discountAmount,
+                                      )}
                                     </span>
                                   </div>
                                 )}
@@ -657,7 +676,9 @@ const CartForm = ({
                                     Total Amount
                                   </span>
                                   <span className="font-bold text-orange-600 text-xl">
-                                    {finalAmount < 1 ? "FREE" : `₹${formatPrice(finalAmount)}`}
+                                    {finalAmount < 1
+                                      ? "FREE"
+                                      : `₹${formatPrice(finalAmount)}`}
                                   </span>
                                 </div>
                               </div>
@@ -672,7 +693,7 @@ const CartForm = ({
                             // Ensure user is authenticated and has an ID
                             if (!user?._id) {
                               toast.error(
-                                "User authentication required. Please log in again."
+                                "User authentication required. Please log in again.",
                               );
                               router.push("/login");
                               return;
@@ -688,7 +709,7 @@ const CartForm = ({
                               const discountInfo = calculateDiscountDisplay(
                                 planPrice,
                                 course.plans?.[planType]?.discount,
-                                course.discount
+                                course.discount,
                               );
                               const totalAmount = appliedCoupon
                                 ? appliedCoupon.finalAmount
@@ -709,7 +730,7 @@ const CartForm = ({
 
                               const response = await apiClient.post(
                                 "/orders",
-                                orderData
+                                orderData,
                               );
                               const order = response.data.data;
 

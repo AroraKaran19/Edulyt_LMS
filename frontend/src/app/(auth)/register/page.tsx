@@ -260,48 +260,48 @@ const RegisterPage = () => {
   }
 
   return (
-    <div className="login-page h-full lg:h-auto w-full lg:max-w-3xl flex flex-col gap-4 px-8 my-auto justify-center items-center lg:items-start lg:justify-start">
-      <div className="header flex flex-col gap-2 mb-2">
-        <h1 className="text-3xl lg:text-4xl font-regular font-coolvetica text-center lg:text-start text-text-primary">
+    <>
+      <div className="header flex flex-col gap-2 mb-2 w-full">
+        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-regular font-coolvetica text-center lg:text-start text-text-primary">
           Sign up for Free at Airkrit!
         </h1>
-        <p className="text-base font-regular text-center lg:text-start text-text-primary">
+        <p className="text-sm sm:text-base font-regular text-center lg:text-start text-text-primary">
           Welcome! Enter your details to continue using Airkrit
         </p>
       </div>
       <form
-        className="form w-full max-w-lg flex flex-col gap-4 lg:max-w-full"
+        className="form w-full flex flex-col gap-3 sm:gap-4"
         onSubmit={handleSubmit}
       >
-        <div className="email-input w-full flex gap-3 bg-white rounded-md p-3 border border-gray-300">
-          <label htmlFor="email" className="text-sm text-gray-500">
-            <Mail className="w-full h-full" />
+        <div className="email-input w-full flex gap-2 sm:gap-3 bg-white rounded-lg p-3 sm:p-3.5 border border-gray-300 focus-within:border-orange-400 transition-colors">
+          <label htmlFor="email" className="text-sm text-gray-500 flex-shrink-0">
+            <Mail className="w-5 h-5" />
           </label>
           <input
             type="email"
             placeholder="Email"
-            className="w-full bg-transparent outline-none font-bold"
+            className="w-full bg-transparent outline-none font-semibold text-sm sm:text-base placeholder:font-normal"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
           />
         </div>
-        <div className="name-inputs w-full flex gap-3">
-          <div className="flex-1 flex gap-3 bg-white rounded-md p-3 border border-gray-300">
+        <div className="name-inputs w-full flex flex-col sm:flex-row gap-3">
+          <div className="flex-1 flex gap-2 sm:gap-3 bg-white rounded-lg p-3 sm:p-3.5 border border-gray-300 focus-within:border-orange-400 transition-colors">
             <input
               type="text"
               placeholder="First Name"
-              className="w-full bg-transparent outline-none font-bold"
+              className="w-full bg-transparent outline-none font-semibold text-sm sm:text-base placeholder:font-normal"
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
               required
             />
           </div>
-          <div className="flex-1 flex gap-3 bg-white rounded-md p-3 border border-gray-300">
+          <div className="flex-1 flex gap-2 sm:gap-3 bg-white rounded-lg p-3 sm:p-3.5 border border-gray-300 focus-within:border-orange-400 transition-colors">
             <input
               type="text"
               placeholder="Last Name"
-              className="w-full bg-transparent outline-none font-bold"
+              className="w-full bg-transparent outline-none font-semibold text-sm sm:text-base placeholder:font-normal"
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
             />
@@ -309,27 +309,27 @@ const RegisterPage = () => {
         </div>
         <div className="w-full">
           <div
-            className={`password-input w-full flex gap-3 bg-white rounded-md p-3 border ${
+            className={`password-input w-full flex gap-2 sm:gap-3 bg-white rounded-lg p-3 sm:p-3.5 border transition-colors ${
               showPasswordValidation && Object.keys(passwordErrors).length > 0
                 ? "border-red-300"
                 : showPasswordValidation && isPasswordValid(password)
                 ? "border-green-300"
-                : "border-gray-300"
+                : "border-gray-300 focus-within:border-orange-400"
             } relative`}
           >
-            <label htmlFor="password" className="text-sm text-gray-500">
-              <Lock className="w-full h-full" />
+            <label htmlFor="password" className="text-sm text-gray-500 flex-shrink-0">
+              <Lock className="w-5 h-5" />
             </label>
             <input
               type={showPassword ? "text" : "password"}
               placeholder="Password"
-              className="w-full bg-transparent outline-none font-bold pr-20"
+              className="w-full bg-transparent outline-none font-semibold text-sm sm:text-base pr-10 placeholder:font-normal"
               value={password}
               onChange={handlePasswordChange}
               onFocus={() => password && setShowPasswordValidation(true)}
               required
             />
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+            <div className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
               <button
                 type="button"
                 onClick={togglePasswordVisibility}
@@ -408,21 +408,21 @@ const RegisterPage = () => {
         </div>
         <div className="w-full">
           <div
-            className={`confirm-password-input w-full flex gap-3 bg-white rounded-md p-3 border ${
+            className={`confirm-password-input w-full flex gap-2 sm:gap-3 bg-white rounded-lg p-3 sm:p-3.5 border transition-colors ${
               passwordErrors.confirmPassword
                 ? "border-red-300"
                 : confirmPassword && password === confirmPassword
                 ? "border-green-300"
-                : "border-gray-300"
+                : "border-gray-300 focus-within:border-orange-400"
             } relative`}
           >
-            <label htmlFor="confirm-password" className="text-sm text-gray-500">
-              <Lock className="w-full h-full" />
+            <label htmlFor="confirm-password" className="text-sm text-gray-500 flex-shrink-0">
+              <Lock className="w-5 h-5" />
             </label>
             <input
               type={showConfirmPassword ? "text" : "password"}
               placeholder="Confirm Password"
-              className="w-full bg-transparent outline-none font-bold pr-10"
+              className="w-full bg-transparent outline-none font-semibold text-sm sm:text-base pr-10 placeholder:font-normal"
               value={confirmPassword}
               onChange={handleConfirmPasswordChange}
               required
@@ -430,7 +430,7 @@ const RegisterPage = () => {
             <button
               type="button"
               onClick={toggleConfirmPasswordVisibility}
-              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 transition-colors"
+              className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 transition-colors"
             >
               {showConfirmPassword ? (
                 <EyeOff className="w-4 h-4" />
@@ -446,23 +446,23 @@ const RegisterPage = () => {
           )}
         </div>
         <OrangeButton
-          className="w-full mt-1 lg:mt-2 rounded-xl font-bold"
+          className="w-full mt-2 sm:mt-3 rounded-xl font-bold text-sm sm:text-base py-3"
           type="submit"
           disabled={loading}
         >
           {loading ? "Registering..." : "Register"}
         </OrangeButton>
       </form>
-      <div className="breaker w-full flex items-center justify-center gap-4 my-4">
-        <div className="w-1/4 h-[4px] bg-gray-200"></div>
-        <span className="text-base text-gray-500 uppercase whitespace-nowrap">
+      <div className="breaker w-full flex items-center justify-center gap-3 sm:gap-4 my-3 sm:my-4">
+        <div className="flex-1 h-[3px] sm:h-[4px] bg-gray-200 max-w-[100px]"></div>
+        <span className="text-sm sm:text-base text-gray-500 uppercase whitespace-nowrap font-medium">
           OR
         </span>
-        <div className="w-1/4 h-[4px] bg-gray-200"></div>
+        <div className="flex-1 h-[3px] sm:h-[4px] bg-gray-200 max-w-[100px]"></div>
       </div>
-      <div className="oauth-buttons w-full max-w-lg lg:max-w-full flex flex-col items-center justify-center gap-6">
+      <div className="oauth-buttons w-full flex flex-col items-center justify-center gap-3 sm:gap-4">
         <WhiteButton
-          className="w-full flex items-center justify-center gap-2 rounded-xl font-bold shadow-[inset_0_-2px_7px_0_rgba(183,159,255,0.22)]"
+          className="w-full flex items-center justify-center gap-2 rounded-xl font-bold text-sm sm:text-base py-3 shadow-[inset_0_-2px_7px_0_rgba(183,159,255,0.22)]"
           onClick={() => handleOAuthSignIn("google")}
           disabled={isOAuthLoading}
         >
@@ -471,14 +471,14 @@ const RegisterPage = () => {
             alt="Google"
             width={20}
             height={20}
-            className="size-4"
+            className="w-4 h-4 sm:w-5 sm:h-5"
           />
           <span>
             {isOAuthLoading ? "Signing up..." : "Sign Up using Google"}
           </span>
         </WhiteButton>
         <WhiteButton
-          className="w-full flex items-center justify-center gap-2 rounded-xl font-bold shadow-[inset_0_-2px_7px_0_rgba(183,159,255,0.22)]"
+          className="w-full flex items-center justify-center gap-2 rounded-xl font-bold text-sm sm:text-base py-3 shadow-[inset_0_-2px_7px_0_rgba(183,159,255,0.22)]"
           onClick={() => handleOAuthSignIn("linkedin")}
           disabled={isOAuthLoading}
         >
@@ -487,20 +487,20 @@ const RegisterPage = () => {
             alt="LinkedIn"
             width={20}
             height={20}
-            className="size-4"
+            className="w-4 h-4 sm:w-5 sm:h-5"
           />
           <span>
             {isOAuthLoading ? "Signing up..." : "Sign Up using LinkedIn"}
           </span>
         </WhiteButton>
       </div>
-      <p className="text-sm text-gray-500 text-center font-bold self-center">
+      <p className="text-xs sm:text-sm text-gray-500 text-center font-bold self-center mt-2">
         Already have an account?{" "}
-        <Link href="/login" className="text-orange-500 font-bold">
+        <Link href="/login" className="text-orange-500 font-bold hover:underline">
           Sign in
         </Link>
       </p>
-    </div>
+    </>
   );
 };
 
