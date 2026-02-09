@@ -33,6 +33,8 @@ export const getAllCoursesService = async (
   const skip = (page - 1) * limit;
 
   let filters: any = {};
+  let hasCategoryFilter = false;
+  let categoryObjectIds: mongoose.Types.ObjectId[] = [];
 
   // Active filter - only show active courses for non-admin users
   if (!isAdmin) {
@@ -64,19 +66,16 @@ export const getAllCoursesService = async (
     }
   }
   if (categories) {
-    // Handle multiple categories separated by commas
-    // Categories are now ObjectIds, so we need to convert string IDs to ObjectIds
     const categoryList = categories
       .split(",")
       .map((cat) => cat.trim())
       .filter((cat) => mongoose.Types.ObjectId.isValid(cat));
     if (categoryList.length > 0) {
-      // Convert string IDs to ObjectIds for querying
-      const categoryObjectIds = categoryList.map(
+      categoryObjectIds = categoryList.map(
         (cat) => new mongoose.Types.ObjectId(cat)
       );
-      // Since category is now an array of ObjectIds in the course document, use $in to match any category in the array
       filters.category = { $in: categoryObjectIds };
+      hasCategoryFilter = true;
     }
   }
   if (audience && !isAdmin) {
@@ -86,19 +85,55 @@ export const getAllCoursesService = async (
   // Build aggregation pipeline
   const pipeline: any[] = [{ $match: filters }];
 
-  // For regular users, add random field for random sorting
-  // For admin, sort by updatedAt
+  // Sorting:
+  // - For regular users with a single category filter, use categoryOrders (per-category screenshot order)
+  // - For other regular users, keep random sorting (discovery)
+  // - For admin, sort by updatedAt
   if (!isAdmin) {
-    // Add a random field for sorting
-    pipeline.push({
-      $addFields: {
-        _randomSort: { $rand: {} },
-      },
-    });
-    // Sort by random value
-    pipeline.push({
-      $sort: { _randomSort: 1 },
-    });
+    if (hasCategoryFilter && categoryObjectIds.length === 1) {
+      const singleCategoryId = categoryObjectIds[0];
+      pipeline.push({
+        $addFields: {
+          _categorySortKey: {
+            $let: {
+              vars: {
+                entry: {
+                  $arrayElemAt: [
+                    {
+                      $filter: {
+                        input: { $ifNull: ["$categoryOrders", []] },
+                        as: "e",
+                        cond: { $eq: ["$$e.categoryId", singleCategoryId] },
+                      },
+                    },
+                    0,
+                  ],
+                },
+              },
+              in: { $ifNull: ["$$entry.order", 999999] },
+            },
+          },
+        },
+      });
+      pipeline.push({
+        $sort: { _categorySortKey: 1, createdAt: 1 },
+      });
+    } else if (hasCategoryFilter) {
+      pipeline.push({
+        $sort: { createdAt: 1 },
+      });
+    } else {
+      // Add a random field for sorting
+      pipeline.push({
+        $addFields: {
+          _randomSort: { $rand: {} },
+        },
+      });
+      // Sort by random value
+      pipeline.push({
+        $sort: { _randomSort: 1 },
+      });
+    }
   } else {
     // For admin, always sort by updatedAt
     const sortDirection = sortOrder === "asc" ? 1 : -1;

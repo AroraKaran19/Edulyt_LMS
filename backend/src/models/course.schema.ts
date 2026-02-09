@@ -288,7 +288,20 @@ const courseSchema = new mongoose.Schema<Course>(
       },
       _id: false,
     },
-  },
+
+    // Per-category display order (order within each category page, from mapping/screenshot)
+    categoryOrders: {
+      type: [
+        {
+          categoryId: { type: mongoose.Schema.Types.ObjectId, ref: "Category" },
+          order: { type: Number, required: true },
+        },
+      ],
+      required: false,
+      default: [],
+      _id: false,
+    },
+  } as mongoose.SchemaDefinition<Course>,
   { timestamps: true }
 );
 

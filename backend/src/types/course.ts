@@ -236,6 +236,7 @@ export interface Course {
   createdAt?: Date;
   updatedAt?: Date;
   createdBy: User["_id"];
+  sortOrder?: number;
   tags?: string[];
   audience: "college-students" | "professionals";
 
@@ -273,4 +274,7 @@ export interface Course {
       dropoffRate: number;
     }[];
   };
+
+  // Per-category display order (order within each category page)
+  categoryOrders?: { categoryId: Category["_id"]; order: number }[];
 }

@@ -7,7 +7,10 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
-    "dev:watch": "nodemon --exec ts-node src/server.ts"
+    "dev:watch": "nodemon --exec ts-node src/server.ts",
+    "scripts:list": "ts-node src/scripts/list-courses-and-categories.ts",
+    "scripts:list:out": "ts-node src/scripts/list-courses-and-categories.ts --output-dir=./scripts-output",
+    "scripts:assign": "ts-node src/scripts/assign-courses-to-categories.ts"
   },
   "keywords": [
     "airkrit",

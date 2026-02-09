@@ -1,0 +1,10 @@
+[
+  {
+    "courseName": "Exact course title as in database",
+    "categoryName": "Exact category name as in database"
+  },
+  {
+    "courseName": "Another Course Title",
+    "categoryId": "507f1f77bcf86cd799439011"
+  }
+]
