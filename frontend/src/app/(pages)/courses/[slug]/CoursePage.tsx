@@ -1,6 +1,6 @@
 "use client";
-import { useState, useEffect } from "react";
-import { Course, Testimonial } from "@/types";
+import { useState, useEffect, useMemo } from "react";
+import { Course, Testimonial, CourseModule, CourseLesson, Content } from "@/types";
 import { cn } from "@/lib/utils";
 import CourseHeader from "./components/CourseHeader";
 import ScholarshipBanner from "./components/ScholarshipBanner";
@@ -23,6 +23,42 @@ const CoursePage = ({ course }: { course: Course }) => {
 
   const { data: session, status } = useSession();
   const { checkEnrollment } = useEnrollment();
+
+  // Filter course to show only active content for this specific course
+  const filteredCourse = useMemo(() => {
+    const deactivatedModules = course.deactivatedModules || [];
+    const deactivatedLessons = course.deactivatedLessons || [];
+    const deactivatedContents = course.deactivatedContents || [];
+
+    // Filter modules
+    const activeModules = (course.modules as CourseModule[] || [])
+      .filter((module) => !deactivatedModules.includes(module._id || ""))
+      .map((module) => {
+        // Filter lessons within this module
+        const activeLessons = (module.lessons as CourseLesson[] || [])
+          .filter((lesson) => !deactivatedLessons.includes(lesson._id || ""))
+          .map((lesson) => {
+            // Filter contents within this lesson
+            const activeContents = (lesson.contents as Content[] || [])
+              .filter((content) => !deactivatedContents.includes(content._id || ""));
+
+            return {
+              ...lesson,
+              contents: activeContents,
+            };
+          });
+
+        return {
+          ...module,
+          lessons: activeLessons,
+        };
+      });
+
+    return {
+      ...course,
+      modules: activeModules,
+    };
+  }, [course]);
 
   // Check enrollment status when user is authenticated
   useEffect(() => {
@@ -110,17 +146,17 @@ const CoursePage = ({ course }: { course: Course }) => {
           isCheckingEnrollment={isCheckingEnrollment}
         />
       </div>
-      {course?.scholarship && <ScholarshipBanner course={course} />}
-      <TestimonialSection testimonials={course.testimonials as Testimonial[]} />
-      <CourseOverviewSection course={course} />
-      <CourseInstructorSection course={course} />
+      {filteredCourse?.scholarship && <ScholarshipBanner course={filteredCourse} />}
+      <TestimonialSection testimonials={filteredCourse.testimonials as Testimonial[]} />
+      <CourseOverviewSection course={filteredCourse} />
+      <CourseInstructorSection course={filteredCourse} />
       <CertificateSection
-        course={course}
+        course={filteredCourse}
         onEnrollClick={() => setIsEnrollmentModalOpen(true)}
       />
       <VerticalCarouselSection />
-      <CurriculumSection course={course} />
-      <FAQSection course={course} />
+      <CurriculumSection course={filteredCourse} />
+      <FAQSection course={filteredCourse} />
     </div>
   );
 };

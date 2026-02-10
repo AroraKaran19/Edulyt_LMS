@@ -150,6 +150,7 @@ export interface CreateLessonData {
   moduleId: string;
   title: string;
   description?: string;
+  isActive?: boolean;
 }
 
 export interface UpdateLessonData extends Partial<CreateLessonData> {

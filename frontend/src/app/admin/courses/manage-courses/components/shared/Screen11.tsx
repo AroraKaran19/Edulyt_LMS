@@ -12,6 +12,8 @@ import {
   HelpCircle,
   FileText,
   GripVertical,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import Container from "@/app/admin/components/ui/Container";
 import Input from "@/components/ui/inputs/Input";
@@ -40,6 +42,7 @@ import {
   loadModulesFromStorage,
 } from "@/lib/courseFormUtils";
 import { toast } from "react-toastify";
+import apiClient from "@/configs/apiConfig";
 
 const Screen11 = () => {
   const { isEditMode, courseId, getCreatedCourseId } = useCourseFormContext();
@@ -115,7 +118,7 @@ const Screen11 = () => {
     createContent,
     updateContent,
     deleteContent,
-    getCourseById,
+    getAdminCourseById,
     reorderModules,
     reorderLessons,
     reorderContent,
@@ -150,21 +153,28 @@ const Screen11 = () => {
 
       try {
         if (isEditMode && effectiveCourseId) {
-          // In edit mode, try to load from localStorage first, then from API if needed
-          const storedModules = loadModulesFromLocalStorage();
-          if (storedModules.length > 0) {
-            setModules(storedModules);
-          } else {
-            // If no localStorage data, fetch from API
-            try {
-              const courseData = await getCourseById(effectiveCourseId);
-              if (courseData?.modules) {
-                initializeModulesFromCourseData(courseData);
+          // In edit mode, always fetch from API to ensure we have the latest data
+          try {
+            const courseData = await getAdminCourseById(effectiveCourseId);
+            
+            if (courseData?.modules && Array.isArray(courseData.modules) && courseData.modules.length > 0) {
+              initializeModulesFromCourseData(courseData);
+            } else {
+              // If API returns no modules, try localStorage as fallback
+              const storedModules = loadModulesFromLocalStorage();
+              if (storedModules.length > 0) {
+                setModules(storedModules);
               } else {
                 setModules([]);
               }
-            } catch (apiError) {
-              console.error("Screen11: Error fetching course data:", apiError);
+            }
+          } catch (apiError) {
+            console.error("Screen11: Error fetching course data:", apiError);
+            // Try localStorage as fallback
+            const storedModules = loadModulesFromLocalStorage();
+            if (storedModules.length > 0) {
+              setModules(storedModules);
+            } else {
               setModules([]);
             }
           }
@@ -182,7 +192,7 @@ const Screen11 = () => {
     };
 
     loadModules();
-  }, [isEditMode, effectiveCourseId, modulesStorageKey, getCourseById]);
+  }, [isEditMode, effectiveCourseId, modulesStorageKey, getAdminCourseById]);
 
   // Save modules to localStorage whenever modules change
   useEffect(() => {
@@ -191,26 +201,78 @@ const Screen11 = () => {
     }
   }, [modules, modulesStorageKey]);
 
+  // Helper function to transform content with active status
+  const transformContentWithActiveStatus = (
+    content: any,
+    deactivatedContents: string[]
+  ) => {
+    const isContentActive = !deactivatedContents.includes(content._id);
+    return {
+      ...content,
+      isActive: isContentActive,
+    };
+  };
+
+  // Helper function to transform lesson with active status
+  const transformLessonWithActiveStatus = (
+    lesson: any,
+    deactivatedLessons: string[],
+    deactivatedContents: string[]
+  ) => {
+    const isLessonActive = !deactivatedLessons.includes(lesson._id);
+    const transformedContents = (lesson.contents || []).map((content: any) =>
+      transformContentWithActiveStatus(content, deactivatedContents)
+    );
+
+    return {
+      ...lesson,
+      isActive: isLessonActive,
+      contents: transformedContents,
+    };
+  };
+
+  // Helper function to transform module with active status
+  const transformModuleWithActiveStatus = (
+    selectedModule: any,
+    deactivatedModules: string[],
+    deactivatedLessons: string[],
+    deactivatedContents: string[]
+  ) => {
+    const isModuleActive = !deactivatedModules.includes(selectedModule._id);
+    const transformedLessons = (selectedModule.lessons || []).map((lesson: any) =>
+      transformLessonWithActiveStatus(lesson, deactivatedLessons, deactivatedContents)
+    );
+
+    return {
+      _id: selectedModule._id,
+      title: selectedModule.title,
+      description: selectedModule.description,
+      thumbnailUrl: selectedModule.thumbnailUrl,
+      thumbnailSource: selectedModule.thumbnailSource || "url",
+      thumbnailS3Key: selectedModule.thumbnailS3Key || "",
+      lessonIds: selectedModule.lessonIds || [],
+      isCompleted: selectedModule.isCompleted || false,
+      isActive: isModuleActive,
+      isLocked: selectedModule.isLocked || false,
+      lessons: transformedLessons,
+    };
+  };
+
   // Function to initialize modules from course data
   const initializeModulesFromCourseData = (courseData: any) => {
     if (courseData?.modules && Array.isArray(courseData.modules)) {
+      const deactivatedModules = courseData.deactivatedModules || [];
+      const deactivatedLessons = courseData.deactivatedLessons || [];
+      const deactivatedContents = courseData.deactivatedContents || [];
+
       const transformedModules: CourseModule[] = courseData.modules.map(
-        (selectedModule: any) => ({
-          _id: selectedModule._id,
-          title: selectedModule.title,
-          description: selectedModule.description,
-          thumbnailUrl: selectedModule.thumbnailUrl,
-          thumbnailSource: selectedModule.thumbnailSource || "url",
-          thumbnailS3Key: selectedModule.thumbnailS3Key || "",
-          lessonIds: selectedModule.lessonIds || [],
-          isCompleted: selectedModule.isCompleted || false,
-          isActive:
-            selectedModule.isActive !== undefined
-              ? selectedModule.isActive
-              : true,
-          isLocked: selectedModule.isLocked || false,
-          lessons: selectedModule.lessons || [],
-        })
+        (selectedModule: any) =>
+          transformModuleWithActiveStatus(
+            selectedModule,
+            deactivatedModules,
+            deactivatedLessons,
+            deactivatedContents
+          )
       );
 
       setModules(transformedModules);
@@ -334,6 +396,172 @@ const Screen11 = () => {
       newExpanded.add(lessonId);
     }
     setExpandedLessons(newExpanded);
+  };
+
+  // Toggle module active status for this course
+  const toggleModuleActive = async (moduleId: string) => {
+    if (!effectiveCourseId) {
+      toast.error("Course ID is required");
+      return;
+    }
+
+    try {
+      const module = modules.find((m) => m._id === moduleId);
+      if (!module) return;
+
+      const newActiveStatus = !module.isActive;
+
+      // Call the new API endpoint to toggle per-course status
+      await apiClient.put(
+        `/courses/${effectiveCourseId}/toggle-content-status`,
+        {
+          contentType: "module",
+          contentId: moduleId,
+        }
+      );
+
+      // Update local state
+      const updatedModules = modules.map((m) =>
+        m._id === moduleId ? { ...m, isActive: newActiveStatus } : m
+      );
+      setModules(updatedModules);
+      toast.success(
+        `Module ${newActiveStatus ? "activated" : "deactivated"} for this course!`
+      );
+    } catch (error) {
+      console.error("Error toggling module active status:", error);
+      toast.error("Failed to update module status");
+    }
+  };
+
+  // Toggle lesson active status for this course
+  const toggleLessonActive = async (
+    moduleId: string,
+    lessonId: string
+  ) => {
+    if (!effectiveCourseId) {
+      toast.error("Course ID is required");
+      return;
+    }
+
+    try {
+      const module = modules.find((m) => m._id === moduleId);
+      if (!module) return;
+
+      const lesson = (module.lessons as CourseLesson[])?.find(
+        (l) => l._id === lessonId
+      );
+      if (!lesson) return;
+
+      const newActiveStatus = !lesson.isActive;
+
+      // Call the new API endpoint to toggle per-course status
+      await apiClient.put(
+        `/courses/${effectiveCourseId}/toggle-content-status`,
+        {
+          contentType: "lesson",
+          contentId: lessonId,
+        }
+      );
+
+      // Update local state
+      const updatedModules = modules.map((m) =>
+        m._id === moduleId
+          ? {
+              ...m,
+              lessons: (m.lessons as CourseLesson[])?.map((l) =>
+                l._id === lessonId ? { ...l, isActive: newActiveStatus } : l
+              ),
+            }
+          : m
+      );
+      setModules(updatedModules);
+      toast.success(
+        `Lesson ${newActiveStatus ? "activated" : "deactivated"} for this course!`
+      );
+    } catch (error) {
+      console.error("Error toggling lesson active status:", error);
+      toast.error("Failed to update lesson status");
+    }
+  };
+
+  // Helper to update content active status in module structure
+  const updateContentActiveStatus = (
+    modules: CourseModule[],
+    moduleId: string,
+    lessonId: string,
+    contentId: string,
+    newActiveStatus: boolean
+  ) => {
+    return modules.map((m) => {
+      if (m._id !== moduleId) return m;
+
+      const updatedLessons = (m.lessons as CourseLesson[])?.map((l) => {
+        if (l._id !== lessonId) return l;
+
+        const updatedContents = (l.contents as Content[])?.map((c) =>
+          c._id === contentId ? { ...c, isActive: newActiveStatus } : c
+        );
+
+        return { ...l, contents: updatedContents };
+      });
+
+      return { ...m, lessons: updatedLessons };
+    });
+  };
+
+  // Toggle content active status for this course
+  const toggleContentActive = async (
+    moduleId: string,
+    lessonId: string,
+    contentId: string
+  ) => {
+    if (!effectiveCourseId) {
+      toast.error("Course ID is required");
+      return;
+    }
+
+    try {
+      const module = modules.find((m) => m._id === moduleId);
+      if (!module) return;
+
+      const lesson = (module.lessons as CourseLesson[])?.find(
+        (l) => l._id === lessonId
+      );
+      if (!lesson) return;
+
+      const content = (lesson.contents as Content[])?.find(
+        (c) => c._id === contentId
+      );
+      if (!content) return;
+
+      const newActiveStatus = !content.isActive;
+
+      // Call the new API endpoint to toggle per-course status
+      await apiClient.put(
+        `/courses/${effectiveCourseId}/toggle-content-status`,
+        {
+          contentType: "content",
+          contentId: contentId,
+        }
+      );
+
+      // Update local state
+      const updatedModules = updateContentActiveStatus(
+        modules,
+        moduleId,
+        lessonId,
+        contentId,
+        newActiveStatus
+      );
+      setModules(updatedModules);
+      toast.success(
+        `Content ${newActiveStatus ? "activated" : "deactivated"} for this course!`
+      );
+    } catch (error) {
+      console.error("Error toggling content active status:", error);
+      toast.error("Failed to update content status");
+    }
   };
 
   const addModule = async () => {
@@ -535,6 +763,11 @@ const Screen11 = () => {
       return;
     }
 
+    if (!effectiveCourseId) {
+      toast.error("Course ID is required to create a lesson");
+      return;
+    }
+
     try {
       // Prepare lesson data for API
       const lessonData = {
@@ -579,9 +812,9 @@ const Screen11 = () => {
       } else {
         toast.error("Failed to create lesson");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating lesson:", error);
-      toast.error("Error creating lesson");
+      toast.error(error?.response?.data?.message || "Error creating lesson");
     }
   };
 
@@ -975,41 +1208,58 @@ const Screen11 = () => {
       );
 
       if (result) {
-        // Update content in local state
-        const updatedModules = modules.map((selectedModule) =>
-          selectedModule._id === moduleId
-            ? {
-                ...selectedModule,
-                lessons: (selectedModule.lessons as CourseLesson[])?.map(
-                  (lesson) =>
-                    lesson._id === lessonId
-                      ? {
-                          ...lesson,
-                          contents: (lesson.contents as Content[])?.map(
-                            (content) =>
-                              content._id === editingContent._id
-                                ? {
-                                    ...content,
-                                    title: result.title,
-                                    description: result.description,
-                                    ...(result.type === "video" && {
-                                      sources: result.sources || [],
-                                      thumbnailUrl: result.thumbnailUrl,
-                                    }),
-                                    ...(result.type === "document" && {
-                                      documentUrl: result.documentUrl,
-                                    }),
-                                    ...(result.type === "quiz" && {
-                                      questions: result.questions || [],
-                                    }),
-                                  }
-                                : content
-                          ),
-                        }
-                      : lesson
-                ),
+        // Helper to update content in nested structure
+        const updateContentInModules = (
+          modules: CourseModule[],
+          moduleId: string,
+          lessonId: string,
+          contentId: string,
+          updatedData: any
+        ) => {
+          return modules.map((selectedModule) => {
+            if (selectedModule._id !== moduleId) return selectedModule;
+
+            const updatedLessons = (selectedModule.lessons as CourseLesson[])?.map(
+              (lesson) => {
+                if (lesson._id !== lessonId) return lesson;
+
+                const updatedContents = (lesson.contents as Content[])?.map(
+                  (content) => {
+                    if (content._id !== contentId) return content;
+
+                    return {
+                      ...content,
+                      title: updatedData.title,
+                      description: updatedData.description,
+                      ...(updatedData.type === "video" && {
+                        sources: updatedData.sources || [],
+                        thumbnailUrl: updatedData.thumbnailUrl,
+                      }),
+                      ...(updatedData.type === "document" && {
+                        documentUrl: updatedData.documentUrl,
+                      }),
+                      ...(updatedData.type === "quiz" && {
+                        questions: updatedData.questions || [],
+                      }),
+                    };
+                  }
+                );
+
+                return { ...lesson, contents: updatedContents };
               }
-            : selectedModule
+            );
+
+            return { ...selectedModule, lessons: updatedLessons };
+          });
+        };
+
+        // Update content in local state
+        const updatedModules = updateContentInModules(
+          modules,
+          moduleId,
+          lessonId,
+          editingContent._id,
+          result
         );
         setModules(updatedModules);
 
@@ -1092,24 +1342,38 @@ const Screen11 = () => {
       );
 
       if (result) {
-        // Remove content from local state
-        const updatedModules = modules.map((selectedModule) =>
-          selectedModule._id === moduleId
-            ? {
-                ...selectedModule,
-                lessons: (selectedModule.lessons as CourseLesson[])?.map(
-                  (lesson) =>
-                    lesson._id === lessonId
-                      ? {
-                          ...lesson,
-                          contents: (lesson.contents as Content[])?.filter(
-                            (content) => content._id !== contentId
-                          ),
-                        }
-                      : lesson
-                ),
+        // Helper to remove content from nested structure
+        const removeContentFromModules = (
+          modules: CourseModule[],
+          moduleId: string,
+          lessonId: string,
+          contentId: string
+        ) => {
+          return modules.map((selectedModule) => {
+            if (selectedModule._id !== moduleId) return selectedModule;
+
+            const updatedLessons = (selectedModule.lessons as CourseLesson[])?.map(
+              (lesson) => {
+                if (lesson._id !== lessonId) return lesson;
+
+                const filteredContents = (lesson.contents as Content[])?.filter(
+                  (content) => content._id !== contentId
+                );
+
+                return { ...lesson, contents: filteredContents };
               }
-            : selectedModule
+            );
+
+            return { ...selectedModule, lessons: updatedLessons };
+          });
+        };
+
+        // Remove content from local state
+        const updatedModules = removeContentFromModules(
+          modules,
+          moduleId,
+          lessonId,
+          contentId
         );
         setModules(updatedModules);
 
@@ -1900,6 +2164,22 @@ const Screen11 = () => {
                           {selectedModule.lessons?.length || 0} lessons
                         </span>
                         <button
+                          onClick={() => toggleModuleActive(selectedModule._id!)}
+                          disabled={isApiLoading}
+                          className={`p-1 rounded disabled:opacity-50 ${
+                            selectedModule.isActive
+                              ? "hover:bg-green-100 text-green-600"
+                              : "hover:bg-gray-100 text-gray-400"
+                          }`}
+                          title={selectedModule.isActive ? "Deactivate module" : "Activate module"}
+                        >
+                          {selectedModule.isActive ? (
+                            <Eye className="w-4 h-4" />
+                          ) : (
+                            <EyeOff className="w-4 h-4" />
+                          )}
+                        </button>
+                        <button
                           onClick={() => startEditingModule(selectedModule)}
                           disabled={isApiLoading}
                           className="p-1 hover:bg-gray-100 rounded disabled:opacity-50"
@@ -2147,6 +2427,27 @@ const Screen11 = () => {
                                       <span className="text-sm text-gray-500">
                                         {lesson.contents?.length || 0} content
                                       </span>
+                                      <button
+                                        onClick={() =>
+                                          toggleLessonActive(
+                                            selectedModule._id!,
+                                            lesson._id!
+                                          )
+                                        }
+                                        disabled={isApiLoading}
+                                        className={`p-1 rounded disabled:opacity-50 ${
+                                          lesson.isActive
+                                            ? "hover:bg-green-100 text-green-600"
+                                            : "hover:bg-gray-200 text-gray-400"
+                                        }`}
+                                        title={lesson.isActive ? "Deactivate lesson" : "Activate lesson"}
+                                      >
+                                        {lesson.isActive ? (
+                                          <Eye className="w-4 h-4" />
+                                        ) : (
+                                          <EyeOff className="w-4 h-4" />
+                                        )}
+                                      </button>
                                       <button
                                         onClick={() =>
                                           startEditingLesson(lesson)
@@ -2830,6 +3131,28 @@ const Screen11 = () => {
                                                   <span className="text-xs text-gray-500 capitalize">
                                                     {content.type}
                                                   </span>
+                                                  <button
+                                                    onClick={() =>
+                                                      toggleContentActive(
+                                                        selectedModule._id!,
+                                                        lesson._id!,
+                                                        content._id!
+                                                      )
+                                                    }
+                                                    disabled={isApiLoading}
+                                                    className={`p-1 rounded disabled:opacity-50 ${
+                                                      content.isActive
+                                                        ? "hover:bg-green-100 text-green-600"
+                                                        : "hover:bg-gray-200 text-gray-400"
+                                                    }`}
+                                                    title={content.isActive ? "Deactivate content" : "Activate content"}
+                                                  >
+                                                    {content.isActive ? (
+                                                      <Eye className="w-3 h-3" />
+                                                    ) : (
+                                                      <EyeOff className="w-3 h-3" />
+                                                    )}
+                                                  </button>
                                                   <button
                                                     onClick={() =>
                                                       startEditingContent(

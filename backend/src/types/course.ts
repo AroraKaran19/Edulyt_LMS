@@ -214,6 +214,11 @@ export interface Course {
   // Content
   modules?: CourseModule["_id"][];
 
+  // Per-course deactivation tracking (for shared content)
+  deactivatedModules?: string[]; // Array of module IDs that are deactivated for this course
+  deactivatedLessons?: string[]; // Array of lesson IDs that are deactivated for this course
+  deactivatedContents?: string[]; // Array of content IDs that are deactivated for this course
+
   // Instructor
   instructor: Instructor["_id"][]; // can be multiple instructors
 

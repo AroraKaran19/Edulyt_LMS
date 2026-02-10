@@ -18,6 +18,7 @@ import { useFormContext, Controller } from "react-hook-form";
 import { useCourseFormContext } from "@/contexts/CourseFormContext";
 import { getTextFromHtml } from "@/lib/courseFormUtils";
 import { useSlugCheck } from "@/hooks/useSlugCheck";
+import { useCategory } from "@/hooks/useCategory";
 
 const Screen8 = () => {
   // Form context
@@ -32,7 +33,11 @@ const Screen8 = () => {
     isChecking: isSlugChecking,
   } = useSlugCheck();
 
+  // Category hook to fetch category details
+  const { getCategoryById } = useCategory();
+
   const [isGenerating, setIsGenerating] = useState(false);
+  const [categoryNames, setCategoryNames] = useState<string[]>([]);
 
   // Watch form values
   const title = watch("title") || "";
@@ -54,6 +59,30 @@ const Screen8 = () => {
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  // Fetch category names when category IDs change
+  useEffect(() => {
+    const fetchCategoryNames = async () => {
+      if (Array.isArray(category) && category.length > 0) {
+        try {
+          const names = await Promise.all(
+            category.map(async (catId: string) => {
+              const categoryData = await getCategoryById(catId);
+              return categoryData?.name || catId;
+            })
+          );
+          setCategoryNames(names);
+        } catch (error) {
+          console.error("Error fetching category names:", error);
+          setCategoryNames([]);
+        }
+      } else {
+        setCategoryNames([]);
+      }
+    };
+
+    fetchCategoryNames();
+  }, [category, getCategoryById]);
 
   // Slug validation state
   const [slugValidation, setSlugValidation] = useState<{
@@ -130,11 +159,14 @@ const Screen8 = () => {
       // Generate slug from course title using hook
       const slug = generateSlug(title || "course");
 
-      // Generate meta title based on course title and category
-      const categoryStr = Array.isArray(category) 
-        ? category.join(", ") 
-        : category || "Online Learning";
-      const metaTitle = `${title || "Course"} - ${categoryStr} | Airkrit`;
+      // Use the fetched category names
+      const categoryStr = categoryNames.length > 0 
+        ? categoryNames.join(", ") 
+        : "Online Learning";
+      
+      // Remove "(Copy)" from title if present for cleaner meta title
+      const cleanTitle = (title || "Course").replace(/\s*\(Copy\)\s*$/i, "").trim();
+      const metaTitle = `${cleanTitle} - ${categoryStr} | Airkrit`;
 
       // Generate meta description based on course details (strip HTML and limit to 160 chars)
       const getPlainText = (html: string) => getTextFromHtml(html || "");
@@ -142,9 +174,8 @@ const Screen8 = () => {
       const descText = getPlainText(description || "");
 
       const baseDescription = shortDescText || descText || "Learn";
-      const categoryLower = Array.isArray(category) 
-        ? category[0]?.toLowerCase() || "course"
-        : category?.toLowerCase() || "course";
+      // Use the first fetched category name for description
+      const categoryLower = (categoryNames[0] || "course").toLowerCase();
       const fullDescription = `${baseDescription} in this comprehensive ${categoryLower}. Perfect for ${
         audience === "college-students" ? "college students" : "professionals"
       }. Enroll now and advance your career!`;
@@ -156,12 +187,11 @@ const Screen8 = () => {
           : fullDescription;
 
       // Generate keywords based on course content (max 10)
-      const categoryKeywords = Array.isArray(category)
-        ? category.map(c => c.toLowerCase())
-        : [category?.toLowerCase() || "course"];
+      // Use the fetched category names for keywords
+      const categoryKeywords = categoryNames.map(name => name.toLowerCase());
       const baseKeywords = [
         ...categoryKeywords,
-        title?.toLowerCase() || "learning",
+        cleanTitle?.toLowerCase() || "learning",
         audience === "college-students" ? "college students" : "professionals",
         "online learning",
         "education",

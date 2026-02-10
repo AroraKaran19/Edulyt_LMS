@@ -715,6 +715,42 @@ const PreviewCourse = ({ course }: { course: Course }) => {
   const [isLoadingReviews, setIsLoadingReviews] = useState(false);
   const [shouldAutoPlay, setShouldAutoPlay] = useState(false);
 
+  // Filter course to show only active content for this specific course
+  const filteredCourse = useMemo(() => {
+    const deactivatedModules = course.deactivatedModules || [];
+    const deactivatedLessons = course.deactivatedLessons || [];
+    const deactivatedContents = course.deactivatedContents || [];
+
+    // Filter modules
+    const activeModules = (course.modules as CourseModule[] || [])
+      .filter((module) => !deactivatedModules.includes(module._id || ""))
+      .map((module) => {
+        // Filter lessons within this module
+        const activeLessons = (module.lessons as CourseLesson[] || [])
+          .filter((lesson) => !deactivatedLessons.includes(lesson._id || ""))
+          .map((lesson) => {
+            // Filter contents within this lesson
+            const activeContents = (lesson.contents as Content[] || [])
+              .filter((content) => !deactivatedContents.includes(content._id || ""));
+
+            return {
+              ...lesson,
+              contents: activeContents,
+            };
+          });
+
+        return {
+          ...module,
+          lessons: activeLessons,
+        };
+      });
+
+    return {
+      ...course,
+      modules: activeModules,
+    };
+  }, [course]);
+
   const { getQnAs } = useQnA();
   const { getReviewsByReviewable } = useReview();
 
@@ -823,7 +859,7 @@ const PreviewCourse = ({ course }: { course: Course }) => {
     toggleModule,
     toggleLesson,
     isInitialized,
-  } = useLessonNavigation(course, accessControl, enrollment?.lastContentAccessed);
+  } = useLessonNavigation(filteredCourse, accessControl, enrollment?.lastContentAccessed);
 
   // Wrapper for navigateToNext that enables autoplay
   const handleNavigateToNext = useCallback(() => {
@@ -847,14 +883,14 @@ const PreviewCourse = ({ course }: { course: Course }) => {
   const selectedLessonId = selectedLesson?._id || "";
   const selectedContentId = selectedContent?._id || "";
   const courseId = course._id || "";
-  const modulesCount = course.modules?.length || 0;
+  const modulesCount = filteredCourse.modules?.length || 0;
   const isMobile = width < 1024;
 
   // Memoize tab components separately to prevent recreation
   const mobileContentTabComponent = useMemo(
     () => (
       <CourseContentSection
-        course={course}
+        course={filteredCourse}
         selectedModule={selectedModule}
         selectedLesson={selectedLesson}
         selectedContent={selectedContent}
@@ -864,7 +900,7 @@ const PreviewCourse = ({ course }: { course: Course }) => {
       />
     ),
     [
-      course,
+      filteredCourse,
       selectedModuleId,
       selectedLessonId,
       selectedContentId,
@@ -977,7 +1013,7 @@ const PreviewCourse = ({ course }: { course: Course }) => {
   }
 
   // Show empty state if no modules exist
-  if (!course.modules || course.modules.length === 0) {
+  if (!filteredCourse.modules || filteredCourse.modules.length === 0) {
     return (
       <div className="w-full h-screen flex items-center justify-center">
         <div className="text-center">
@@ -986,7 +1022,7 @@ const PreviewCourse = ({ course }: { course: Course }) => {
             No Content Available
           </h2>
           <p className="text-gray-600">
-            This course doesn't have any modules or lessons yet.
+            This course doesn't have any active modules or lessons yet.
           </p>
         </div>
       </div>
@@ -996,7 +1032,7 @@ const PreviewCourse = ({ course }: { course: Course }) => {
   return (
     <VideoTimeProvider>
       <CourseContentLayout
-        course={course}
+        course={filteredCourse}
         selectedContent={selectedContent}
         selectedLesson={selectedLesson}
         selectedModule={selectedModule}

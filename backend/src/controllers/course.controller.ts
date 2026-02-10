@@ -21,6 +21,7 @@ import {
   UpdateCourseMetadataService,
   UpdateCourseModuleService,
   UpdateCourseStatusService,
+  ToggleCourseContentStatusService,
   getAllCoursesService,
   getCourseByIdService,
   getCourseBySlugService,
@@ -622,6 +623,32 @@ export const updateCourseStatus = asyncHandler(
       throw new AppError("Failed to update course status", 500);
     }
     sendSuccessResponse(res, result, "Course status updated successfully", 200);
+    return;
+  }
+);
+
+export const toggleCourseContentStatus = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { courseId } = req.params;
+    const { contentType, contentId } = req.body;
+
+    if (!courseId) {
+      throw new AppError("Course ID is required", 400);
+    }
+
+    if (!contentType || !["module", "lesson", "content"].includes(contentType)) {
+      throw new AppError("Valid content type is required (module, lesson, or content)", 400);
+    }
+
+    if (!contentId) {
+      throw new AppError("Content ID is required", 400);
+    }
+
+    const result = await ToggleCourseContentStatusService(courseId, contentType, contentId);
+    if (!result) {
+      throw new AppError("Failed to toggle content status", 500);
+    }
+    sendSuccessResponse(res, result, "Content status toggled successfully", 200);
     return;
   }
 );

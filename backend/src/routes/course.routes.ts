@@ -27,6 +27,7 @@ import {
   updateCourseMetadata,
   updateCourseModule,
   updateCourseStatus,
+  toggleCourseContentStatus,
   checkSlugAvailability,
   reorderModules,
   reorderLessons,
@@ -263,6 +264,13 @@ router.post(
  * @access  Admin
  */
 router.put("/:courseId/status", verifyUser, verifyAdmin, updateCourseStatus);
+
+/**
+ * @route   PUT /api/courses/:courseId/toggle-content-status
+ * @desc    Toggle module/lesson/content active status for a specific course
+ * @access  Admin
+ */
+router.put("/:courseId/toggle-content-status", verifyUser, verifyAdmin, toggleCourseContentStatus);
 
 /**
  * @route   PUT /api/courses/:courseId/metadata

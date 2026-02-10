@@ -109,10 +109,10 @@ const LoginPage = () => {
   return (
     <>
       <div className="header flex flex-col gap-2 mb-2 w-full">
-        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-regular font-coolvetica text-center lg:text-start text-text-primary">
+        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-regular font-coolvetica text-center text-text-primary">
           Login to your Airkrit account
         </h1>
-        <p className="text-sm sm:text-base font-regular text-center lg:text-start text-text-primary">
+        <p className="text-sm sm:text-base font-regular text-center text-text-primary">
           Welcome back! Enter your details to continue using Airkrit
         </p>
       </div>

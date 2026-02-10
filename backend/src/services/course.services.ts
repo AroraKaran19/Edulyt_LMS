@@ -597,10 +597,19 @@ export const UpdateCourseModuleService = async (
     throw new AppError("Course not found", 404);
   }
 
+  // Verify the module is referenced in this course's modules array
+  const moduleIdStr = moduleId.toString();
+  const isModuleInCourse = course.modules?.some(
+    (m: any) => m.toString() === moduleIdStr
+  );
+  
+  if (!isModuleInCourse) {
+    throw new AppError("Module is not part of this course", 400);
+  }
+
   const module = await CourseModuleModel.findOneAndUpdate(
     {
       _id: moduleId,
-      courseId: course._id,
     },
     {
       ...moduleData,
@@ -660,6 +669,9 @@ export const CreateCourseLessonService = async (
     throw new AppError("Module not found", 404);
   }
 
+  // Note: We don't strictly validate that module.courseId === courseId
+  // because modules can be shared between courses (e.g., duplicated courses)
+
   // Get the count of existing lessons in this module to set the order
   const lessonCount = await CourseLessonModel.countDocuments({ moduleId });
 
@@ -669,6 +681,7 @@ export const CreateCourseLessonService = async (
     contents: [],
     order: lessonData.order !== undefined ? lessonData.order : lessonCount,
   };
+  
   const lesson = new CourseLessonModel(cleanedLessonData);
 
   const savedLesson = await lesson.save();
@@ -677,16 +690,17 @@ export const CreateCourseLessonService = async (
     return null;
   }
 
-  await CourseModuleModel.findOneAndUpdate(
-    {
-      _id: moduleId,
-      courseId: course._id,
-    },
+  // Update the module to add the lesson
+  // Note: We don't check courseId here because modules can be shared between courses
+  await CourseModuleModel.findByIdAndUpdate(
+    moduleId,
     {
       $push: { lessons: savedLesson._id },
       updatedAt: new Date(),
-    }
+    },
+    { new: true }
   );
+  
   return savedLesson as CourseLesson;
 };
 
@@ -1120,21 +1134,8 @@ export const DuplicateCourseMetadataService = async (
 export const DuplicateCourseWithModulesService = async (
   courseId: string
 ): Promise<Course | null> => {
-  // Find the original course with all populated data
-  const course = await CourseModel.findById(courseId)
-    .populate({
-      path: "modules",
-      options: { sort: { order: 1 } },
-      populate: {
-        path: "lessons",
-        options: { sort: { order: 1 } },
-        populate: {
-          path: "contents",
-          options: { sort: { order: 1 } },
-        },
-      },
-    })
-    .lean();
+  // Find the original course (no need to populate - we'll share the module references)
+  const course = await CourseModel.findById(courseId).lean();
 
   if (!course) {
     throw new AppError("Course not found", 404);
@@ -1151,11 +1152,10 @@ export const DuplicateCourseWithModulesService = async (
   delete cleanedCourseData.metaTitle;
   delete cleanedCourseData.metaDescription;
   delete cleanedCourseData.keywords;
-  delete cleanedCourseData.modules; // Will be recreated
-  delete cleanedCourseData.instructor; // Keep original instructors
+  // Keep modules array - share the same module references
+  // Keep faqs - share the same FAQs as original
   delete cleanedCourseData.reviews;
   delete cleanedCourseData.testimonials;
-  delete cleanedCourseData.faqs;
   delete cleanedCourseData.scholarshipRef;
   delete cleanedCourseData.createdBy;
   delete cleanedCourseData.analytics;
@@ -1199,146 +1199,8 @@ export const DuplicateCourseWithModulesService = async (
         throw new AppError("Failed to duplicate course", 500);
       }
 
-      // Now duplicate modules, lessons, and contents
-      const newModuleIds: mongoose.Types.ObjectId[] = [];
-      const moduleIdMap = new Map<string, mongoose.Types.ObjectId>(); // old -> new module ID mapping
-      const lessonIdMap = new Map<string, mongoose.Types.ObjectId>(); // old -> new lesson ID mapping
-
-      if (courseData.modules && Array.isArray(courseData.modules)) {
-        // Duplicate modules
-        for (const oldModule of courseData.modules) {
-          if (!oldModule || !oldModule._id) continue;
-
-          const moduleData: any = {
-            courseId: savedCourse._id,
-            title: oldModule.title,
-            thumbnailUrl: oldModule.thumbnailUrl,
-            description: oldModule.description,
-            isActive: oldModule.isActive !== false,
-            lessons: [],
-          };
-
-          const newModule = new CourseModuleModel(moduleData);
-          const savedModule = await newModule.save();
-
-          if (savedModule) {
-            newModuleIds.push(
-              savedModule._id as unknown as mongoose.Types.ObjectId
-            );
-            moduleIdMap.set(
-              oldModule._id.toString(),
-              savedModule._id as unknown as mongoose.Types.ObjectId
-            );
-
-            // Duplicate lessons for this module
-            if (oldModule.lessons && Array.isArray(oldModule.lessons)) {
-              const newLessonIds: mongoose.Types.ObjectId[] = [];
-
-              for (const oldLesson of oldModule.lessons) {
-                if (!oldLesson || !oldLesson._id) continue;
-
-                const lessonData: any = {
-                  moduleId: savedModule._id,
-                  title: oldLesson.title,
-                  description: oldLesson.description,
-                  contents: [],
-                };
-
-                const newLesson = new CourseLessonModel(lessonData);
-                const savedLesson = await newLesson.save();
-
-                if (savedLesson) {
-                  newLessonIds.push(
-                    savedLesson._id as unknown as mongoose.Types.ObjectId
-                  );
-                  lessonIdMap.set(
-                    oldLesson._id.toString(),
-                    savedLesson._id as unknown as mongoose.Types.ObjectId
-                  );
-
-                  // Duplicate contents for this lesson
-                  if (oldLesson.contents && Array.isArray(oldLesson.contents)) {
-                    const newContentIds: mongoose.Types.ObjectId[] = [];
-
-                    for (const oldContent of oldLesson.contents) {
-                      if (!oldContent || !oldContent._id) continue;
-
-                      // Prepare content data based on type
-                      const contentData: any = {
-                        lessonId: savedLesson._id,
-                        moduleId: savedModule._id,
-                        title: oldContent.title,
-                        description: oldContent.description,
-                        type: oldContent.type,
-                      };
-
-                      // Copy type-specific fields
-                      if (oldContent.type === "video" && oldContent.sources) {
-                        contentData.sources = oldContent.sources;
-                        contentData.thumbnailUrl = oldContent.thumbnailUrl;
-                        contentData.duration = oldContent.duration;
-                      } else if (
-                        oldContent.type === "quiz" &&
-                        oldContent.questions
-                      ) {
-                        contentData.questions = oldContent.questions;
-                        contentData.passingScore = oldContent.passingScore;
-                        contentData.maxAttempts = oldContent.maxAttempts;
-                      } else if (
-                        oldContent.type === "document" &&
-                        oldContent.documentUrl
-                      ) {
-                        contentData.documentUrl = oldContent.documentUrl;
-                      }
-
-                      // Copy reading materials if present
-                      if (oldContent.readingMaterials) {
-                        contentData.readingMaterials =
-                          oldContent.readingMaterials;
-                      }
-
-                      // Create content using the appropriate discriminator model
-                      let newContent;
-                      if (oldContent.type === "video") {
-                        newContent = new VideoContentModel(contentData);
-                      } else if (oldContent.type === "quiz") {
-                        newContent = new QuizContentModel(contentData);
-                      } else if (oldContent.type === "document") {
-                        newContent = new DocumentContentModel(contentData);
-                      } else {
-                        newContent = new ContentModel(contentData);
-                      }
-
-                      const savedContent = await newContent.save();
-                      if (savedContent) {
-                        newContentIds.push(savedContent._id);
-                      }
-                    }
-
-                    // Update lesson with new content IDs
-                    await CourseLessonModel.findByIdAndUpdate(savedLesson._id, {
-                      $set: { contents: newContentIds },
-                    });
-                  }
-                }
-              }
-
-              // Update module with new lesson IDs
-              await CourseModuleModel.findByIdAndUpdate(savedModule._id, {
-                $set: { lessons: newLessonIds },
-              });
-            }
-          }
-        }
-      }
-
-      // Update course with new module IDs
-      await CourseModel.findByIdAndUpdate(savedCourse._id, {
-        $set: { modules: newModuleIds },
-      });
-
       // Fetch and return the fully populated course
-      const finalCourse = await CourseModel.findById(savedCourse._id)
+      const populatedCourse = await CourseModel.findById(savedCourse._id)
         .populate({
           path: "modules",
           options: { sort: { order: 1 } },
@@ -1351,9 +1213,10 @@ export const DuplicateCourseWithModulesService = async (
             },
           },
         })
+        .populate("instructor")
         .lean();
 
-      return finalCourse as Course;
+      return populatedCourse as Course;
     } catch (error: any) {
       // Check if error is due to duplicate slug
       if (
@@ -1395,6 +1258,58 @@ export const UpdateCourseStatusService = async (
   if (!updatedCourse) {
     throw new AppError("Course not found", 404);
   }
+
+  return updatedCourse as Course;
+};
+
+// Toggle module/lesson/content active status for a specific course
+export const ToggleCourseContentStatusService = async (
+  courseId: string,
+  contentType: "module" | "lesson" | "content",
+  contentId: string
+): Promise<Course | null> => {
+  const course = await CourseModel.findById(courseId);
+  
+  if (!course) {
+    throw new AppError("Course not found", 404);
+  }
+
+  let fieldName: string;
+  let deactivatedList: string[];
+
+  switch (contentType) {
+    case "module":
+      fieldName = "deactivatedModules";
+      deactivatedList = course.deactivatedModules || [];
+      break;
+    case "lesson":
+      fieldName = "deactivatedLessons";
+      deactivatedList = course.deactivatedLessons || [];
+      break;
+    case "content":
+      fieldName = "deactivatedContents";
+      deactivatedList = course.deactivatedContents || [];
+      break;
+    default:
+      throw new AppError("Invalid content type", 400);
+  }
+
+  // Toggle: if exists, remove it (activate); if not exists, add it (deactivate)
+  const index = deactivatedList.indexOf(contentId);
+  if (index > -1) {
+    // Remove from deactivated list (activate)
+    deactivatedList.splice(index, 1);
+  } else {
+    // Add to deactivated list (deactivate)
+    deactivatedList.push(contentId);
+  }
+
+  // Update the course
+  const updatedCourse = await CourseModel.findByIdAndUpdate(
+    courseId,
+    { [fieldName]: deactivatedList },
+    { new: true }
+  ).lean();
 
   return updatedCourse as Course;
 };

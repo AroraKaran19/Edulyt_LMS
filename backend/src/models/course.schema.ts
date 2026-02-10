@@ -118,6 +118,22 @@ const courseSchema = new mongoose.Schema<Course>(
       ref: "CourseModule",
       default: [],
     },
+    // Per-course deactivation tracking (for shared content)
+    deactivatedModules: {
+      type: [String],
+      required: false,
+      default: [],
+    },
+    deactivatedLessons: {
+      type: [String],
+      required: false,
+      default: [],
+    },
+    deactivatedContents: {
+      type: [String],
+      required: false,
+      default: [],
+    },
     instructor: {
       type: [mongoose.Schema.Types.ObjectId],
       required: false,
