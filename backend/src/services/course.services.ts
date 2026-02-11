@@ -1323,7 +1323,16 @@ export const UpdateCourseMetadataService = async (
   const cleanedData: any = { updatedAt: new Date() };
 
   // Fields that should never be updated via metadata endpoint
-  const excludedFields = ["modules", "_id"];
+  const excludedFields = [
+    "modules",
+    "_id",
+    // Per-course activation state should ONLY be managed via
+    // ToggleCourseContentStatusService to avoid being overwritten
+    // by stale form data coming from the admin metadata screens.
+    "deactivatedModules",
+    "deactivatedLessons",
+    "deactivatedContents",
+  ];
 
   Object.keys(courseData).forEach((key) => {
     // Skip excluded fields (like modules) - metadata updates shouldn't touch these
