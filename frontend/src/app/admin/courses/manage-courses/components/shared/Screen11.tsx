@@ -802,6 +802,7 @@ const Screen11 = () => {
         moduleId,
         title: lessonData.title,
         description: lessonData.description,
+        isActive: lessonData.isActive,
       };
 
       const result = await createLesson(effectiveCourseId!, lessonDataForApi);
@@ -814,6 +815,7 @@ const Screen11 = () => {
           moduleId,
           contents: [],
           order: ((modules.find(m => m._id === moduleId)?.lessons as CourseLesson[])?.length || 0),
+          isActive: result.isActive !== undefined ? result.isActive : true,
         };
 
         const updatedModules = modules.map((m) =>
@@ -996,6 +998,7 @@ const Screen11 = () => {
         ],
         thumbnailUrl: contentData.videoThumbnailUrl,
         duration: Number(contentData.videoDuration),
+        isActive: contentData.isActive,
       };
     } else if (contentData.type === "document") {
       if (!contentData.documentUrl.trim()) {
@@ -1008,6 +1011,7 @@ const Screen11 = () => {
         description: contentData.description,
         type: "document",
         documentUrl: contentData.documentUrl,
+        isActive: contentData.isActive,
       };
     } else {
       // Quiz content
@@ -1017,6 +1021,7 @@ const Screen11 = () => {
         description: contentData.description,
         type: "quiz",
         questions: [],
+        isActive: contentData.isActive,
       };
     }
 
@@ -1047,6 +1052,7 @@ const Screen11 = () => {
             duration: result.duration || 0,
             lessonId,
             order: contentOrder,
+            isActive: result.isActive !== undefined ? result.isActive : true,
           } as VideoContent;
         } else if (result.type === "document") {
           content = {
@@ -1057,6 +1063,7 @@ const Screen11 = () => {
             documentUrl: result.documentUrl,
             lessonId,
             order: contentOrder,
+            isActive: result.isActive !== undefined ? result.isActive : true,
           } as DocumentContent;
         } else {
           content = {
@@ -1067,6 +1074,7 @@ const Screen11 = () => {
             questions: result.questions || [],
             lessonId,
             order: contentOrder,
+            isActive: result.isActive !== undefined ? result.isActive : true,
           } as QuizContent;
         }
 
