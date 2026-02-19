@@ -301,13 +301,14 @@ const Screen11 = () => {
   // Support multiple content forms per lesson - each form has unique id, lessonId, and type
   const [openContentForms, setOpenContentForms] = useState<Array<{ id: string; lessonId: string; type: "video" | "quiz" | "document" }>>([]);
   const [editingContentIds, setEditingContentIds] = useState<Set<string>>(new Set());
-  const [isUploadingVideo, setIsUploadingVideo] = useState(false);
-  const [isUploadingVideoThumbnail, setIsUploadingVideoThumbnail] =
-    useState(false);
-  const [isUploadingDocument, setIsUploadingDocument] = useState(false);
+  
+  // Track uploads per form/content to enable parallel uploads
+  const [uploadingVideoForms, setUploadingVideoForms] = useState<Set<string>>(new Set());
+  const [uploadingVideoThumbnailForms, setUploadingVideoThumbnailForms] = useState<Set<string>>(new Set());
+  const [uploadingDocumentForms, setUploadingDocumentForms] = useState<Set<string>>(new Set());
+  const [extractingDurationForms, setExtractingDurationForms] = useState<Set<string>>(new Set());
   const [isUploadingModuleThumbnail, setIsUploadingModuleThumbnail] =
     useState(false);
-  const [isExtractingDuration, setIsExtractingDuration] = useState(false);
   
   // Drag and drop state
   const [draggedModuleIndex, setDraggedModuleIndex] = useState<number | null>(null);
@@ -1472,8 +1473,10 @@ const Screen11 = () => {
 
   const handleContentVideoUpload = async (file: File, folderName: string, context?: UploadContext) => {
     const ctx = context || currentUploadContext;
-    setIsUploadingVideo(true);
-    setIsExtractingDuration(true);
+    const formKey = ctx?.contentFormId || ctx?.contentId || 'default';
+    
+    setUploadingVideoForms((prev) => new Set(prev).add(formKey));
+    setExtractingDurationForms((prev) => new Set(prev).add(formKey));
     try {
       const result = await uploadFile(file, folderName);
       if (result.success && result.data) {
@@ -1505,8 +1508,16 @@ const Screen11 = () => {
       console.error("Error uploading content video:", error);
       throw error;
     } finally {
-      setIsUploadingVideo(false);
-      setIsExtractingDuration(false);
+      setUploadingVideoForms((prev) => {
+        const next = new Set(prev);
+        next.delete(formKey);
+        return next;
+      });
+      setExtractingDurationForms((prev) => {
+        const next = new Set(prev);
+        next.delete(formKey);
+        return next;
+      });
     }
   };
 
@@ -1519,9 +1530,12 @@ const Screen11 = () => {
 
   const handleContentVideoUrlSubmit = async (url: string, context?: UploadContext) => {
     const ctx = context || currentUploadContext;
+    const formKey = ctx?.contentFormId || ctx?.contentId || 'default';
+    
     if (ctx?.contentFormId) updateNewContentData(ctx.contentFormId, { videoUrl: url, videoSource: "url", videoS3Key: "" });
     else if (ctx?.contentId) updateEditingContentData(ctx.contentId, { videoUrl: url, videoSource: "url", videoS3Key: "" });
-    setIsExtractingDuration(true);
+    
+    setExtractingDurationForms((prev) => new Set(prev).add(formKey));
     try {
       const duration = await getVideoDuration(url);
       if (ctx?.contentFormId) updateNewContentData(ctx.contentFormId, { videoDuration: duration.toString() });
@@ -1529,7 +1543,11 @@ const Screen11 = () => {
     } catch (error) {
       console.error("Error extracting video duration from URL:", error);
     } finally {
-      setIsExtractingDuration(false);
+      setExtractingDurationForms((prev) => {
+        const next = new Set(prev);
+        next.delete(formKey);
+        return next;
+      });
     }
   };
 
@@ -1539,7 +1557,9 @@ const Screen11 = () => {
     context?: UploadContext
   ) => {
     const ctx = context || currentUploadContext;
-    setIsUploadingDocument(true);
+    const formKey = ctx?.contentFormId || ctx?.contentId || 'default';
+    
+    setUploadingDocumentForms((prev) => new Set(prev).add(formKey));
     try {
       const result = await uploadFile(file, folderName);
       if (result.success && result.data) {
@@ -1553,7 +1573,11 @@ const Screen11 = () => {
       console.error("Error uploading document:", error);
       throw error;
     } finally {
-      setIsUploadingDocument(false);
+      setUploadingDocumentForms((prev) => {
+        const next = new Set(prev);
+        next.delete(formKey);
+        return next;
+      });
     }
   };
 
@@ -1577,7 +1601,9 @@ const Screen11 = () => {
     context?: UploadContext
   ) => {
     const ctx = context || currentUploadContext;
-    setIsUploadingVideoThumbnail(true);
+    const formKey = ctx?.contentFormId || ctx?.contentId || 'default';
+    
+    setUploadingVideoThumbnailForms((prev) => new Set(prev).add(formKey));
     try {
       const result = await uploadFile(file, folderName);
       if (result.success && result.data) {
@@ -1591,7 +1617,11 @@ const Screen11 = () => {
       console.error("Error uploading video thumbnail:", error);
       throw error;
     } finally {
-      setIsUploadingVideoThumbnail(false);
+      setUploadingVideoThumbnailForms((prev) => {
+        const next = new Set(prev);
+        next.delete(formKey);
+        return next;
+      });
     }
   };
 
@@ -2649,30 +2679,30 @@ const Screen11 = () => {
                                                     uploadContext={`${contentData.title || "content"}-${lesson.title || "lesson"}`}
                                                     onFileUpload={(file, folder) => handleContentVideoUpload(file, folder, ctx)}
                                                     onFileRemove={() => handleContentVideoRemove(ctx)}
-                                                    onUrlSubmit={(url) => handleContentVideoUrlSubmit(url, ctx)}
-                                                    allowUrlInput={true}
-                                                    maxSize={10000}
-                                                    className="w-full"
-                                                    required
-                                                    isUploading={isUploadingVideo}
-                                                  />
-                                                  <UploadMediaContainer
-                                                    title="Video Thumbnail (Optional)"
-                                                    description="Upload a thumbnail image for this video"
-                                                    type="image"
-                                                    mediaUrl={contentData.videoThumbnailUrl}
-                                                    mediaSource={contentData.videoThumbnailSource}
-                                                    s3Key={contentData.videoThumbnailS3Key}
-                                                    folderName={contentFolderName}
-                                                    uploadContext={`${contentData.title || "content"}-thumbnail-${lesson.title || "lesson"}`}
-                                                    onFileUpload={(file, folder) => handleContentVideoThumbnailUpload(file, folder, ctx)}
-                                                    onFileRemove={() => handleContentVideoThumbnailRemove(ctx)}
-                                                    onUrlSubmit={(url) => handleContentVideoThumbnailUrlSubmit(url, ctx)}
-                                                    allowUrlInput={true}
-                                                    maxSize={10}
-                                                    className="w-full"
-                                                    isUploading={isUploadingVideoThumbnail}
-                                                  />
+                                                  onUrlSubmit={(url) => handleContentVideoUrlSubmit(url, ctx)}
+                                                  allowUrlInput={true}
+                                                  maxSize={10000}
+                                                  className="w-full"
+                                                  required
+                                                  isUploading={uploadingVideoForms.has(form.id)}
+                                                />
+                                                <UploadMediaContainer
+                                                  title="Video Thumbnail (Optional)"
+                                                  description="Upload a thumbnail image for this video"
+                                                  type="image"
+                                                  mediaUrl={contentData.videoThumbnailUrl}
+                                                  mediaSource={contentData.videoThumbnailSource}
+                                                  s3Key={contentData.videoThumbnailS3Key}
+                                                  folderName={contentFolderName}
+                                                  uploadContext={`${contentData.title || "content"}-thumbnail-${lesson.title || "lesson"}`}
+                                                  onFileUpload={(file, folder) => handleContentVideoThumbnailUpload(file, folder, ctx)}
+                                                  onFileRemove={() => handleContentVideoThumbnailRemove(ctx)}
+                                                  onUrlSubmit={(url) => handleContentVideoThumbnailUrlSubmit(url, ctx)}
+                                                  allowUrlInput={true}
+                                                  maxSize={10}
+                                                  className="w-full"
+                                                  isUploading={uploadingVideoThumbnailForms.has(form.id)}
+                                                />
                                                   <Input
                                                     label="Video Duration (in seconds)"
                                                     placeholder="Enter duration in seconds (e.g., 150 for 2 minutes 30 seconds)"
@@ -2701,7 +2731,7 @@ const Screen11 = () => {
                                                   maxSize={50}
                                                   className="w-full"
                                                   required
-                                                  isUploading={isUploadingDocument}
+                                                  isUploading={uploadingDocumentForms.has(form.id)}
                                                 />
                                               )}
 
@@ -2723,18 +2753,18 @@ const Screen11 = () => {
                                                 onClick={() => addContent(form.id, selectedModule._id!)}
                                                 disabled={
                                                   !contentData.title.trim() ||
-                                                  isUploadingVideo ||
-                                                  isUploadingVideoThumbnail ||
-                                                  isUploadingDocument ||
-                                                  isExtractingDuration
+                                                  uploadingVideoForms.has(form.id) ||
+                                                  uploadingVideoThumbnailForms.has(form.id) ||
+                                                  uploadingDocumentForms.has(form.id) ||
+                                                  extractingDurationForms.has(form.id)
                                                 }
                                                 glow={false}
                                                 className="flex items-center gap-2 text-sm"
                                               >
-                                                {isUploadingVideo || isUploadingVideoThumbnail || isUploadingDocument || isExtractingDuration ? (
+                                                {(uploadingVideoForms.has(form.id) || uploadingVideoThumbnailForms.has(form.id) || uploadingDocumentForms.has(form.id) || extractingDurationForms.has(form.id)) ? (
                                                   <>
                                                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                                    {isExtractingDuration ? "Extracting duration..." : "Uploading..."}
+                                                    {extractingDurationForms.has(form.id) ? "Extracting duration..." : "Uploading..."}
                                                   </>
                                                 ) : (
                                                   `Add ${contentType.charAt(0).toUpperCase() + contentType.slice(1)}`
@@ -2750,10 +2780,10 @@ const Screen11 = () => {
                                                   });
                                                 }}
                                                 disabled={
-                                                  isUploadingVideo ||
-                                                  isUploadingVideoThumbnail ||
-                                                  isUploadingDocument ||
-                                                  isExtractingDuration
+                                                  uploadingVideoForms.has(form.id) ||
+                                                  uploadingVideoThumbnailForms.has(form.id) ||
+                                                  uploadingDocumentForms.has(form.id) ||
+                                                  extractingDurationForms.has(form.id)
                                                 }
                                                 className="text-sm"
                                               >
