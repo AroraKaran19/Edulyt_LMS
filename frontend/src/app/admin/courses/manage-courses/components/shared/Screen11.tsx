@@ -387,21 +387,23 @@ const Screen11 = () => {
 
   // Helper: update content form data by form id (allows multiple forms per lesson)
   const updateNewContentData = (formId: string, updates: Partial<typeof newContentData extends Map<string, infer T> ? T : never>) => {
-    const currentData = newContentData.get(formId);
-    if (currentData) {
-      const newData = new Map(newContentData);
-      newData.set(formId, { ...currentData, ...updates });
-      setNewContentData(newData);
-    }
+    setNewContentData((prev) => {
+      const currentData = prev.get(formId);
+      if (!currentData) return prev;
+      const next = new Map(prev);
+      next.set(formId, { ...currentData, ...updates });
+      return next;
+    });
   };
 
   const updateEditingContentData = (contentId: string, updates: Partial<typeof editingContentData extends Map<string, infer T> ? T : never>) => {
-    const currentData = editingContentData.get(contentId);
-    if (currentData) {
-      const newData = new Map(editingContentData);
-      newData.set(contentId, { ...currentData, ...updates });
-      setEditingContentData(newData);
-    }
+    setEditingContentData((prev) => {
+      const currentData = prev.get(contentId);
+      if (!currentData) return prev;
+      const next = new Map(prev);
+      next.set(contentId, { ...currentData, ...updates });
+      return next;
+    });
   };
 
   const toggleModuleExpansion = (moduleId: string) => {
