@@ -1205,6 +1205,7 @@ const Screen11 = () => {
         title: contentData.title,
         description: contentData.description,
         type: "video",
+        isActive: contentData.isActive,
         sources: [
           {
             quality: "720p",
@@ -1223,6 +1224,7 @@ const Screen11 = () => {
         title: contentData.title,
         description: contentData.description,
         type: "document",
+        isActive: contentData.isActive,
         documentUrl: contentData.documentUrl,
       };
     } else {
@@ -1231,6 +1233,7 @@ const Screen11 = () => {
         title: contentData.title,
         description: contentData.description,
         type: "quiz",
+        isActive: contentData.isActive,
         questions: [],
       };
     }
@@ -1269,6 +1272,7 @@ const Screen11 = () => {
                       ...content,
                       title: updatedData.title,
                       description: updatedData.description,
+                      ...(updatedData.isActive !== undefined && { isActive: updatedData.isActive }),
                       ...(updatedData.type === "video" && {
                         sources: updatedData.sources || [],
                         thumbnailUrl: updatedData.thumbnailUrl,
@@ -1305,13 +1309,16 @@ const Screen11 = () => {
         saveModulesToLocalStorage(updatedModules);
 
         // Clear this specific content edit form
-        const newData = new Map(editingContentData);
-        newData.delete(contentId);
-        setEditingContentData(newData);
-        
-        const newEditingSet = new Set(editingContentIds);
-        newEditingSet.delete(contentId);
-        setEditingContentIds(newEditingSet);
+        setEditingContentData((prev) => {
+          const next = new Map(prev);
+          next.delete(contentId);
+          return next;
+        });
+        setEditingContentIds((prev) => {
+          const next = new Set(prev);
+          next.delete(contentId);
+          return next;
+        });
 
         toast.success("Content updated successfully!");
       } else {
@@ -1325,34 +1332,30 @@ const Screen11 = () => {
 
   const startEditingContent = (content: Content) => {
     const contentId = content._id || "";
-    
-    // Add to editing set
-    const newEditingSet = new Set(editingContentIds);
-    newEditingSet.add(contentId);
-    setEditingContentIds(newEditingSet);
-    
-    // Set content data
-    const newData = new Map(editingContentData);
-    newData.set(contentId, {
-      _id: contentId,
-      title: content.title || "",
-      description: content.description || "",
-      type: content.type || "video",
-      videoUrl: (content as VideoContent).sources?.[0]?.videoUrl || "",
-      videoSource: "url",
-      videoS3Key: "",
-      videoThumbnailUrl: (content as VideoContent).thumbnailUrl || "",
-      videoThumbnailSource: "url",
-      videoThumbnailS3Key: "",
-      videoDuration: (content as VideoContent).duration
-        ? (content as VideoContent).duration!.toString()
-        : "",
-      documentUrl: (content as DocumentContent).documentUrl || "",
-      documentSource: "url",
-      documentS3Key: "",
-      isActive: true,
+    setEditingContentIds((prev) => new Set(prev).add(contentId));
+    setEditingContentData((prev) => {
+      const next = new Map(prev);
+      next.set(contentId, {
+        _id: contentId,
+        title: content.title || "",
+        description: content.description || "",
+        type: content.type || "video",
+        videoUrl: (content as VideoContent).sources?.[0]?.videoUrl || "",
+        videoSource: "url",
+        videoS3Key: "",
+        videoThumbnailUrl: (content as VideoContent).thumbnailUrl || "",
+        videoThumbnailSource: "url",
+        videoThumbnailS3Key: "",
+        videoDuration: (content as VideoContent).duration
+          ? (content as VideoContent).duration!.toString()
+          : "",
+        documentUrl: (content as DocumentContent).documentUrl || "",
+        documentSource: "url",
+        documentS3Key: "",
+        isActive: content.isActive ?? true,
+      });
+      return next;
     });
-    setEditingContentData(newData);
   };
 
   const deleteContentHandler = async (
@@ -2612,8 +2615,6 @@ const Screen11 = () => {
                                       </div>
                                     </div>
 
-                                    {/* Edit Content Form - TODO: Implement with Map state for multiple simultaneous edits */}
-
                                     {/* Add Content Forms - multiple per lesson (video, document, quiz) */}
                                     {openContentForms
                                       .filter((f) => f.lessonId === lesson._id!)
@@ -2915,6 +2916,168 @@ const Screen11 = () => {
                                                   </button>
                                                 </div>
                                               </div>
+
+                                              {/* Edit Content Form */}
+                                              {editingContentIds.has(content._id!) && (() => {
+                                                const contentData = editingContentData.get(content._id!);
+                                                if (!contentData) return null;
+                                                const contentType = contentData.type;
+                                                const ctx = { contentId: content._id! };
+                                                return (
+                                                  <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                                    <div className="flex items-center justify-between mb-3">
+                                                      <h6 className="text-sm font-medium text-gray-800">
+                                                        Edit {contentType.charAt(0).toUpperCase() + contentType.slice(1)} Content
+                                                      </h6>
+                                                    </div>
+                                                    <div className="flex flex-col gap-3">
+                                                      <Input
+                                                        label="Content Title"
+                                                        placeholder="Enter content title"
+                                                        value={contentData.title}
+                                                        onChange={(e) => updateEditingContentData(content._id!, { title: e.target.value })}
+                                                        required
+                                                      />
+                                                      <TextArea
+                                                        label="Description"
+                                                        placeholder="Enter content description (optional)"
+                                                        value={contentData.description}
+                                                        onChange={(e) => updateEditingContentData(content._id!, { description: e.target.value })}
+                                                      />
+                                                      <CheckBoxContainer
+                                                        label="Active Content"
+                                                        description="Enable this content for students to access"
+                                                        checked={contentData.isActive}
+                                                        onChange={(checked) => updateEditingContentData(content._id!, { isActive: checked })}
+                                                      />
+
+                                                      {contentType === "video" && (
+                                                        <>
+                                                          <UploadMediaContainer
+                                                            title="Video Content"
+                                                            description="Upload video file or add video URL"
+                                                            type="video"
+                                                            mediaUrl={contentData.videoUrl}
+                                                            mediaSource={contentData.videoSource}
+                                                            s3Key={contentData.videoS3Key}
+                                                            folderName={contentFolderName}
+                                                            uploadContext={`edit-${contentData.title}-${lesson.title || "lesson"}`}
+                                                            onFileUpload={(file, folder) => handleContentVideoUpload(file, folder, ctx)}
+                                                            onFileRemove={() => handleContentVideoRemove(ctx)}
+                                                            onUrlSubmit={(url) => handleContentVideoUrlSubmit(url, ctx)}
+                                                            allowUrlInput={true}
+                                                            maxSize={10000}
+                                                            className="w-full"
+                                                            required
+                                                            isUploading={uploadingVideoForms.has(content._id!)}
+                                                          />
+                                                          <UploadMediaContainer
+                                                            title="Video Thumbnail (Optional)"
+                                                            description="Upload a thumbnail image for this video"
+                                                            type="image"
+                                                            mediaUrl={contentData.videoThumbnailUrl}
+                                                            mediaSource={contentData.videoThumbnailSource}
+                                                            s3Key={contentData.videoThumbnailS3Key}
+                                                            folderName={contentFolderName}
+                                                            uploadContext={`edit-thumb-${contentData.title}-${lesson.title || "lesson"}`}
+                                                            onFileUpload={(file, folder) => handleContentVideoThumbnailUpload(file, folder, ctx)}
+                                                            onFileRemove={() => handleContentVideoThumbnailRemove(ctx)}
+                                                            onUrlSubmit={(url) => handleContentVideoThumbnailUrlSubmit(url, ctx)}
+                                                            allowUrlInput={true}
+                                                            maxSize={10}
+                                                            className="w-full"
+                                                            isUploading={uploadingVideoThumbnailForms.has(content._id!)}
+                                                          />
+                                                          <Input
+                                                            label="Video Duration (in seconds)"
+                                                            placeholder="Enter duration in seconds"
+                                                            value={contentData.videoDuration}
+                                                            onChange={(e) => updateEditingContentData(content._id!, { videoDuration: e.target.value })}
+                                                            required
+                                                            className="w-full"
+                                                          />
+                                                        </>
+                                                      )}
+
+                                                      {contentType === "document" && (
+                                                        <UploadMediaContainer
+                                                          title="Document Content"
+                                                          description="Upload document file or add document URL"
+                                                          type="document"
+                                                          mediaUrl={contentData.documentUrl}
+                                                          mediaSource={contentData.documentSource}
+                                                          s3Key={contentData.documentS3Key}
+                                                          folderName={contentFolderName}
+                                                          uploadContext={`edit-doc-${contentData.title}-${lesson.title || "lesson"}`}
+                                                          onFileUpload={(file, folder) => handleContentDocumentUpload(file, folder, ctx)}
+                                                          onFileRemove={() => handleContentDocumentRemove(ctx)}
+                                                          onUrlSubmit={(url) => handleContentDocumentUrlSubmit(url, ctx)}
+                                                          allowUrlInput={true}
+                                                          maxSize={50}
+                                                          className="w-full"
+                                                          required
+                                                          isUploading={uploadingDocumentForms.has(content._id!)}
+                                                        />
+                                                      )}
+
+                                                      {contentType === "quiz" && (
+                                                        <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+                                                          <p className="text-sm text-purple-700">
+                                                            Quiz questions are configured in the next step.
+                                                          </p>
+                                                        </div>
+                                                      )}
+
+                                                      <div className="flex items-end gap-2 mt-2">
+                                                        <OrangeButton
+                                                          onClick={() => editContent(lesson._id!, selectedModule._id!, content._id!)}
+                                                          disabled={
+                                                            !contentData.title.trim() ||
+                                                            uploadingVideoForms.has(content._id!) ||
+                                                            uploadingVideoThumbnailForms.has(content._id!) ||
+                                                            uploadingDocumentForms.has(content._id!) ||
+                                                            extractingDurationForms.has(content._id!)
+                                                          }
+                                                          glow={false}
+                                                          className="flex items-center gap-2 text-sm"
+                                                        >
+                                                          {(uploadingVideoForms.has(content._id!) || uploadingVideoThumbnailForms.has(content._id!) || uploadingDocumentForms.has(content._id!) || extractingDurationForms.has(content._id!)) ? (
+                                                            <>
+                                                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                                              Uploading...
+                                                            </>
+                                                          ) : (
+                                                            "Save Changes"
+                                                          )}
+                                                        </OrangeButton>
+                                                        <WhiteButton
+                                                          onClick={() => {
+                                                            setEditingContentIds((prev) => {
+                                                              const next = new Set(prev);
+                                                              next.delete(content._id!);
+                                                              return next;
+                                                            });
+                                                            setEditingContentData((prev) => {
+                                                              const next = new Map(prev);
+                                                              next.delete(content._id!);
+                                                              return next;
+                                                            });
+                                                          }}
+                                                          disabled={
+                                                            uploadingVideoForms.has(content._id!) ||
+                                                            uploadingVideoThumbnailForms.has(content._id!) ||
+                                                            uploadingDocumentForms.has(content._id!) ||
+                                                            extractingDurationForms.has(content._id!)
+                                                          }
+                                                          className="text-sm"
+                                                        >
+                                                          Cancel
+                                                        </WhiteButton>
+                                                      </div>
+                                                    </div>
+                                                  </div>
+                                                );
+                                              })()}
 
                                               {/* Video Preview for Video Content */}
                                               {content.type === "video" &&
