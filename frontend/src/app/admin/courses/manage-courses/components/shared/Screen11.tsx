@@ -107,7 +107,7 @@ const Screen11 = () => {
     }
   }, [titleValue]);
 
-  const { uploadFile } = useUpload();
+  const { uploadFile, deleteFile } = useUpload();
   const {
     createModule,
     updateModule,
@@ -1464,7 +1464,16 @@ const Screen11 = () => {
     }));
   };
 
-  const handleModuleThumbnailUrlSubmit = (url: string) => {
+  const handleModuleThumbnailUrlSubmit = async (url: string) => {
+    // If there's an existing uploaded file, delete it from S3
+    if (newModule.thumbnailS3Key && newModule.thumbnailSource === "upload") {
+      try {
+        await deleteFile(newModule.thumbnailS3Key);
+      } catch (error) {
+        console.error("Failed to delete old module thumbnail from S3:", error);
+      }
+    }
+    
     setNewModule((prev) => ({
       ...prev,
       thumbnailUrl: url,
@@ -1536,10 +1545,33 @@ const Screen11 = () => {
   const handleContentVideoUrlSubmit = async (url: string, context?: UploadContext) => {
     const ctx = context || currentUploadContext;
     const formKey = ctx?.contentFormId || ctx?.contentId || 'default';
+
+    // Get current content data to check for existing S3 file
+    let currentVideoS3Key: string | undefined;
+    let currentVideoSource: string | undefined;
     
+    if (ctx?.contentFormId) {
+      const contentData = newContentData.get(ctx.contentFormId);
+      currentVideoS3Key = contentData?.videoS3Key;
+      currentVideoSource = contentData?.videoSource;
+    } else if (ctx?.contentId) {
+      const contentData = editingContentData.get(ctx.contentId);
+      currentVideoS3Key = contentData?.videoS3Key;
+      currentVideoSource = contentData?.videoSource;
+    }
+
+    // If there's an existing uploaded file, delete it from S3
+    if (currentVideoS3Key && currentVideoSource === "upload") {
+      try {
+        await deleteFile(currentVideoS3Key);
+      } catch (error) {
+        console.error("Failed to delete old video from S3:", error);
+      }
+    }
+
     if (ctx?.contentFormId) updateNewContentData(ctx.contentFormId, { videoUrl: url, videoSource: "url", videoS3Key: "" });
     else if (ctx?.contentId) updateEditingContentData(ctx.contentId, { videoUrl: url, videoSource: "url", videoS3Key: "" });
-    
+
     setExtractingDurationForms((prev) => new Set(prev).add(formKey));
     try {
       const duration = await getVideoDuration(url);
@@ -1593,8 +1625,32 @@ const Screen11 = () => {
     else if (ctx?.contentId) updateEditingContentData(ctx.contentId, clear);
   };
 
-  const handleContentDocumentUrlSubmit = (url: string, context?: UploadContext) => {
+  const handleContentDocumentUrlSubmit = async (url: string, context?: UploadContext) => {
     const ctx = context || currentUploadContext;
+    
+    // Get current content data to check for existing S3 file
+    let currentDocumentS3Key: string | undefined;
+    let currentDocumentSource: string | undefined;
+    
+    if (ctx?.contentFormId) {
+      const contentData = newContentData.get(ctx.contentFormId);
+      currentDocumentS3Key = contentData?.documentS3Key;
+      currentDocumentSource = contentData?.documentSource;
+    } else if (ctx?.contentId) {
+      const contentData = editingContentData.get(ctx.contentId);
+      currentDocumentS3Key = contentData?.documentS3Key;
+      currentDocumentSource = contentData?.documentSource;
+    }
+
+    // If there's an existing uploaded file, delete it from S3
+    if (currentDocumentS3Key && currentDocumentSource === "upload") {
+      try {
+        await deleteFile(currentDocumentS3Key);
+      } catch (error) {
+        console.error("Failed to delete old document from S3:", error);
+      }
+    }
+    
     const updates = { documentUrl: url, documentSource: "url" as const, documentS3Key: "" };
     if (ctx?.contentFormId) updateNewContentData(ctx.contentFormId, updates);
     else if (ctx?.contentId) updateEditingContentData(ctx.contentId, updates);
@@ -1637,8 +1693,32 @@ const Screen11 = () => {
     else if (ctx?.contentId) updateEditingContentData(ctx.contentId, clear);
   };
 
-  const handleContentVideoThumbnailUrlSubmit = (url: string, context?: UploadContext) => {
+  const handleContentVideoThumbnailUrlSubmit = async (url: string, context?: UploadContext) => {
     const ctx = context || currentUploadContext;
+    
+    // Get current content data to check for existing S3 file
+    let currentThumbnailS3Key: string | undefined;
+    let currentThumbnailSource: string | undefined;
+    
+    if (ctx?.contentFormId) {
+      const contentData = newContentData.get(ctx.contentFormId);
+      currentThumbnailS3Key = contentData?.videoThumbnailS3Key;
+      currentThumbnailSource = contentData?.videoThumbnailSource;
+    } else if (ctx?.contentId) {
+      const contentData = editingContentData.get(ctx.contentId);
+      currentThumbnailS3Key = contentData?.videoThumbnailS3Key;
+      currentThumbnailSource = contentData?.videoThumbnailSource;
+    }
+
+    // If there's an existing uploaded file, delete it from S3
+    if (currentThumbnailS3Key && currentThumbnailSource === "upload") {
+      try {
+        await deleteFile(currentThumbnailS3Key);
+      } catch (error) {
+        console.error("Failed to delete old video thumbnail from S3:", error);
+      }
+    }
+    
     const updates = { videoThumbnailUrl: url, videoThumbnailSource: "url" as const, videoThumbnailS3Key: "" };
     if (ctx?.contentFormId) updateNewContentData(ctx.contentFormId, updates);
     else if (ctx?.contentId) updateEditingContentData(ctx.contentId, updates);

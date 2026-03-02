@@ -49,7 +49,7 @@ const CategoryInputWithManagement: React.FC<
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
 
-  const { uploadFile } = useUpload();
+  const { uploadFile, deleteFile } = useUpload();
 
   // Count categories with showOnHomePage: true
   const homePageCategoriesCount = categories.filter(
@@ -144,11 +144,20 @@ const CategoryInputWithManagement: React.FC<
   );
 
   // Handle URL submission for category image
-  const handleCategoryImageUrlSubmit = useCallback((url: string) => {
+  const handleCategoryImageUrlSubmit = useCallback(async (url: string) => {
+    // If there's an existing uploaded file, delete it from S3
+    if (categoryImageS3Key && categoryImageSource === "upload") {
+      try {
+        await deleteFile(categoryImageS3Key);
+      } catch (error) {
+        console.error("Failed to delete old category image from S3:", error);
+      }
+    }
+    
     setCategoryImage(url);
     setCategoryImageSource("url");
     setCategoryImageS3Key(""); // No S3 key for URL-based images
-  }, []);
+  }, [categoryImageS3Key, categoryImageSource, deleteFile]);
 
   // Handle category image removal
   const handleCategoryImageRemove = useCallback(() => {

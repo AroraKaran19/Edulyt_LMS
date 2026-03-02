@@ -38,7 +38,7 @@ const LiveClassModal: React.FC<LiveClassModalProps> = ({
   courses,
   isSaving,
 }) => {
-  const { uploadFile, isUploading } = useUpload();
+  const { uploadFile, deleteFile, isUploading } = useUpload();
   const { getCourseById } = useCourse();
   const { user } = useAuth();
   const isAdmin = user?.userType === "admin";
@@ -163,11 +163,21 @@ const LiveClassModal: React.FC<LiveClassModalProps> = ({
   };
 
   // Handle image URL submit
-  const handleImageUrlSubmit = (url: string) => {
+  const handleImageUrlSubmit = async (url: string) => {
+    // If there's an existing uploaded file, delete it from S3
+    if (formData.imageS3Key && formData.imageSource === "upload") {
+      try {
+        await deleteFile(formData.imageS3Key);
+      } catch (error) {
+        console.error("Failed to delete old live class image from S3:", error);
+      }
+    }
+    
     setFormData((prev) => ({
       ...prev,
       imageUrl: url,
       imageSource: "url",
+      imageS3Key: "",
     }));
   };
 

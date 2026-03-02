@@ -75,7 +75,7 @@ const CurriculumSection = ({ course }: { course: Course }) => {
         className="text-sm md:text-base text-center prose prose-sm max-w-none"
         dangerouslySetInnerHTML={{ __html: course.shortDescription || "" }}
       />
-      {course.curriculum && course.curriculum !== "" && (
+      {/* {course.curriculum && course.curriculum !== "" && (
         <OrangeButton
           glow={false}
           className="w-fit self-center font-bold"
@@ -108,7 +108,7 @@ const CurriculumSection = ({ course }: { course: Course }) => {
         >
           Download Curriculum
         </OrangeButton>
-      )}
+      )} */}
     </SectionContainer>
   );
 };

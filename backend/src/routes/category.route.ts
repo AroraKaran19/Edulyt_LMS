@@ -26,6 +26,35 @@ router.get("/", getAllCategories);
  */
 router.get("/homepage", getHomePageCategories);
 
+// Admin routes MUST be defined before /:id so that "admin" is not matched as an id
+/**
+ * @route   GET /api/categories/admin
+ * @desc    Get all categories for admin (with full data)
+ * @access  Admin
+ */
+router.get("/admin", verifyUser, verifyAdmin, getAllCategories);
+
+/**
+ * @route   GET /api/categories/admin/:id
+ * @desc    Get a category by ID for admin (with full data)
+ * @access  Admin
+ */
+router.get("/admin/:id", verifyUser, verifyAdmin, getCategoryById);
+
+/**
+ * @route   PUT /api/categories/admin/:id
+ * @desc    Update a category (Admin can update any category)
+ * @access  Admin
+ */
+router.put("/admin/:id", verifyUser, verifyAdmin, updateCategory);
+
+/**
+ * @route   DELETE /api/categories/admin/:id
+ * @desc    Delete a category (Admin can delete any category)
+ * @access  Admin
+ */
+router.delete("/admin/:id", verifyUser, verifyAdmin, deleteCategory);
+
 /**
  * @route   GET /api/categories/:id
  * @desc    Get a category by ID
@@ -53,37 +82,5 @@ router.put("/:id", verifyUser, verifyAdmin, updateCategory);
  * @access  Admin
  */
 router.delete("/:id", verifyUser, verifyAdmin, deleteCategory);
-
-// ===================
-// Admin Routes
-// ===================
-
-/**
- * @route   GET /api/admin/categories
- * @desc    Get all categories for admin (with full data)
- * @access  Admin
- */
-router.get("/admin", verifyUser, verifyAdmin, getAllCategories);
-
-/**
- * @route   GET /api/admin/categories/:id
- * @desc    Get a category by ID for admin (with full data)
- * @access  Admin
- */
-router.get("/admin/:id", verifyUser, verifyAdmin, getCategoryById);
-
-/**
- * @route   PUT /api/admin/categories/:id
- * @desc    Update a category (Admin can update any category)
- * @access  Admin
- */
-router.put("/admin/:id", verifyUser, verifyAdmin, updateCategory);
-
-/**
- * @route   DELETE /api/admin/categories/:id
- * @desc    Delete a category (Admin can delete any category)
- * @access  Admin
- */
-router.delete("/admin/:id", verifyUser, verifyAdmin, deleteCategory);
 
 export default router;

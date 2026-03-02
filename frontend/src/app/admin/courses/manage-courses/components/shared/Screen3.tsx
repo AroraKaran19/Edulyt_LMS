@@ -24,6 +24,7 @@ const Screen3 = () => {
   const {
     uploadCourseThumbnail,
     uploadFile,
+    deleteFile,
     isUploading,
     error: uploadError,
   } = useUpload();
@@ -95,13 +96,31 @@ const Screen3 = () => {
   };
 
   // Handle URL input changes
-  const handleThumbnailUrlChange = (url: string) => {
+  const handleThumbnailUrlChange = async (url: string) => {
+    // If there's an existing uploaded file, delete it from S3
+    if (thumbnailS3Key && thumbnailSource === "upload") {
+      try {
+        await deleteFile(thumbnailS3Key);
+      } catch (error) {
+        console.error("Failed to delete old thumbnail from S3:", error);
+      }
+    }
+    
     setValue("thumbnail", url);
     setValue("thumbnailSource", "url");
     setValue("thumbnailS3Key", "");
   };
 
-  const handlePreviewVideoUrlChange = (url: string) => {
+  const handlePreviewVideoUrlChange = async (url: string) => {
+    // If there's an existing uploaded file, delete it from S3
+    if (previewVideoS3Key && previewVideoSource === "upload") {
+      try {
+        await deleteFile(previewVideoS3Key);
+      } catch (error) {
+        console.error("Failed to delete old preview video from S3:", error);
+      }
+    }
+    
     setValue("previewVideoUrl", url);
     setValue("previewVideoSource", "url");
     setValue("previewVideoS3Key", "");

@@ -31,7 +31,7 @@ const AuthenticationMediaPage = () => {
     isLoading,
   } = useAuthenticationMedia();
 
-  const { uploadFile } = useUpload();
+  const { uploadFile, deleteFile } = useUpload();
 
   const [mediaList, setMediaList] = useState<AuthenticationMedia[]>([]);
   const [showModal, setShowModal] = useState(false);
@@ -94,11 +94,20 @@ const AuthenticationMediaPage = () => {
   );
 
   // Handle URL submit
-  const handleUrlSubmit = useCallback((url: string) => {
+  const handleUrlSubmit = useCallback(async (url: string) => {
+    // If there's an existing uploaded file, delete it from S3
+    if (s3Key && mediaSource === "upload") {
+      try {
+        await deleteFile(s3Key);
+      } catch (error) {
+        console.error("Failed to delete old authentication media from S3:", error);
+      }
+    }
+    
     setImageUrl(url);
     setMediaSource("url");
     setS3Key(undefined);
-  }, []);
+  }, [s3Key, mediaSource, deleteFile]);
 
   // Handle file remove
   const handleFileRemove = useCallback(() => {

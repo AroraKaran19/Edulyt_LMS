@@ -11,7 +11,9 @@ export interface CourseFilters {
   limit?: number;
   search?: string;
   categories?: string;
+  instructors?: string;
   audience?: "college-students" | "professionals";
+  isActive?: boolean;
   skillLevel?: string;
   isFeatured?: boolean;
   isCertified?: boolean;
@@ -352,7 +354,10 @@ export const useCourse = () => {
         if (filters.limit) params.append("limit", filters.limit.toString());
         if (filters.search) params.append("search", filters.search);
         if (filters.categories) params.append("categories", filters.categories);
+        if (filters.instructors) params.append("instructors", filters.instructors);
         if (filters.audience) params.append("audience", filters.audience);
+        if (filters.isActive !== undefined)
+          params.append("isActive", filters.isActive.toString());
         if (filters.skillLevel) params.append("skillLevel", filters.skillLevel);
         if (filters.isFeatured !== undefined)
           params.append("isFeatured", filters.isFeatured.toString());

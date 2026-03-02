@@ -3,7 +3,11 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useCourse } from "@/hooks/useCourse";
+import { useCategory } from "@/hooks/useCategory";
+import { useInstructor } from "@/hooks/useInstructor";
 import { Course } from "@/types/course";
+import { Category } from "@/types/category";
+import { Instructor } from "@/types/user";
 import { toast } from "react-toastify";
 import {
   Search,
@@ -18,8 +22,13 @@ import {
   Copy,
   Languages,
   Star,
+  Filter,
+  ChevronDown,
 } from "lucide-react";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
+import { InfiniteScrollSelect } from "@/components/ui/dropdown/InfiniteScrollSelect";
+
+type AudienceFilter = "" | "college-students" | "professionals";
 
 const ManageCoursesPage = () => {
   const router = useRouter();
@@ -31,6 +40,8 @@ const ManageCoursesPage = () => {
     duplicateCourseWithModules,
     isLoading,
   } = useCourse();
+  const { getAdminCategories } = useCategory();
+  const { getInstructors } = useInstructor();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // State management
@@ -39,6 +50,11 @@ const ManageCoursesPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCourses, setTotalCourses] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
+  const [filterCategoryIds, setFilterCategoryIds] = useState<string[]>([]);
+  const [filterInstructorIds, setFilterInstructorIds] = useState<string[]>([]);
+  const [filterAudience, setFilterAudience] = useState<AudienceFilter>("");
+  const [filterStatus, setFilterStatus] = useState<string>("");
+  const [sortOrder, setSortOrder] = useState<string>("newest");
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
   const [courseToDelete, setCourseToDelete] = useState<Course | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -46,39 +62,63 @@ const ManageCoursesPage = () => {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [duplicatingCourseId, setDuplicatingCourseId] = useState<string | null>(
-    null
+    null,
   );
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
   const [courseToDuplicate, setCourseToDuplicate] = useState<Course | null>(
-    null
+    null,
   );
 
   // Load courses (with appending for infinite scroll)
   const loadCourses = useCallback(
-    async (page: number = 1, search: string = "", append: boolean = false) => {
+    async (
+      page: number = 1,
+      search: string = "",
+      append: boolean = false,
+      filters?: {
+        categoryIds: string[];
+        instructorIds: string[];
+        audience: AudienceFilter;
+        status: string;
+        sort: string;
+      },
+    ) => {
+      const categoryIds = filters?.categoryIds ?? filterCategoryIds;
+      const instructorIds = filters?.instructorIds ?? filterInstructorIds;
+      const audience = filters?.audience ?? filterAudience;
+      const status = filters?.status ?? filterStatus;
+      const sort = filters?.sort ?? sortOrder;
+
       try {
         const response = await getAdminCourses({
           page,
           limit: 12,
           search: search || undefined,
-          sortBy: "updatedAt",
-          sortOrder: "desc",
+          categories:
+            categoryIds.length > 0 ? categoryIds.join(",") : undefined,
+          instructors:
+            instructorIds.length > 0 ? instructorIds.join(",") : undefined,
+          audience: audience || undefined,
+          isActive:
+            status === "active"
+              ? true
+              : status === "inactive"
+                ? false
+                : undefined,
+          sortBy: sort === "a-z" || sort === "z-a" ? "title" : "updatedAt",
+          sortOrder: sort === "z-a" ? "desc" : sort === "a-z" ? "asc" : "desc",
         });
 
         if (response) {
           if (append) {
-            // Append new courses to existing ones
             setCourses((prev) => [...prev, ...response.courses]);
           } else {
-            // Replace courses (initial load or search)
             setCourses(response.courses);
           }
 
           setTotalPages(response.totalPages);
           setTotalCourses(response.total);
           setCurrentPage(page);
-
-          // Update hasMore flag
           setHasMore(page < response.totalPages);
         }
       } catch (error) {
@@ -88,13 +128,122 @@ const ManageCoursesPage = () => {
         setIsLoadingMore(false);
       }
     },
-    [getAdminCourses]
+    [getAdminCourses, filterCategoryIds, filterInstructorIds, filterAudience, filterStatus, sortOrder],
   );
 
   // Initial load
   useEffect(() => {
     loadCourses();
   }, [loadCourses]);
+
+  // Auto-apply filters on change
+  const handleCategoryFilterChange = useCallback(
+    (value: string | string[]) => {
+      const ids = Array.isArray(value) ? value : value ? [value] : [];
+      setFilterCategoryIds(ids);
+      setHasMore(true);
+      loadCourses(1, searchTerm, false, {
+        categoryIds: ids,
+        instructorIds: filterInstructorIds,
+        audience: filterAudience,
+        status: filterStatus,
+        sort: sortOrder,
+      });
+    },
+    [
+      searchTerm,
+      filterInstructorIds,
+      filterAudience,
+      filterStatus,
+      sortOrder,
+      loadCourses,
+    ],
+  );
+
+  const handleInstructorFilterChange = useCallback(
+    (value: string | string[]) => {
+      const ids = Array.isArray(value) ? value : value ? [value] : [];
+      setFilterInstructorIds(ids);
+      setHasMore(true);
+      loadCourses(1, searchTerm, false, {
+        categoryIds: filterCategoryIds,
+        instructorIds: ids,
+        audience: filterAudience,
+        status: filterStatus,
+        sort: sortOrder,
+      });
+    },
+    [searchTerm, filterCategoryIds, filterAudience, filterStatus, sortOrder, loadCourses],
+  );
+
+  const handleAudienceFilterChange = useCallback(
+    (value: string | string[]) => {
+      const aud = (Array.isArray(value) ? value[0] : value) as AudienceFilter;
+      setFilterAudience(aud);
+      setHasMore(true);
+      loadCourses(1, searchTerm, false, {
+        categoryIds: filterCategoryIds,
+        instructorIds: filterInstructorIds,
+        audience: aud,
+        status: filterStatus,
+        sort: sortOrder,
+      });
+    },
+    [
+      searchTerm,
+      filterCategoryIds,
+      filterInstructorIds,
+      filterStatus,
+      sortOrder,
+      loadCourses,
+    ],
+  );
+
+  const handleStatusFilterChange = useCallback(
+    (value: string | string[]) => {
+      const stat = Array.isArray(value) ? value[0] : value;
+      setFilterStatus(stat);
+      setHasMore(true);
+      loadCourses(1, searchTerm, false, {
+        categoryIds: filterCategoryIds,
+        instructorIds: filterInstructorIds,
+        audience: filterAudience,
+        status: stat,
+        sort: sortOrder,
+      });
+    },
+    [
+      searchTerm,
+      filterCategoryIds,
+      filterInstructorIds,
+      filterAudience,
+      sortOrder,
+      loadCourses,
+    ],
+  );
+
+  const handleSortOrderChange = useCallback(
+    (value: string | string[]) => {
+      const sort = Array.isArray(value) ? value[0] : value;
+      setSortOrder(sort);
+      setHasMore(true);
+      loadCourses(1, searchTerm, false, {
+        categoryIds: filterCategoryIds,
+        instructorIds: filterInstructorIds,
+        audience: filterAudience,
+        status: filterStatus,
+        sort: sort,
+      });
+    },
+    [
+      searchTerm,
+      filterCategoryIds,
+      filterInstructorIds,
+      filterAudience,
+      filterStatus,
+      loadCourses,
+    ],
+  );
 
   // Handle search
   const handleSearch = useCallback(
@@ -103,7 +252,7 @@ const ManageCoursesPage = () => {
       setHasMore(true);
       loadCourses(1, value, false);
     },
-    [loadCourses]
+    [loadCourses],
   );
 
   // Handle infinite scroll
@@ -130,13 +279,13 @@ const ManageCoursesPage = () => {
       searchTerm,
       loadCourses,
       totalPages,
-    ]
+    ],
   );
 
   // Handle status toggle
   const handleStatusToggle = async (
     courseId: string,
-    currentStatus: boolean
+    currentStatus: boolean,
   ) => {
     if (!courseId) return;
 
@@ -148,11 +297,11 @@ const ManageCoursesPage = () => {
           prev.map((course) =>
             course._id === courseId
               ? { ...course, isActive: !currentStatus }
-              : course
-          )
+              : course,
+          ),
         );
         toast.success(
-          `Course ${!currentStatus ? "activated" : "deactivated"} successfully`
+          `Course ${!currentStatus ? "activated" : "deactivated"} successfully`,
         );
       }
     } catch (error) {
@@ -199,7 +348,7 @@ const ManageCoursesPage = () => {
         toast.success("Course metadata duplicated successfully!");
         // Navigate to edit page for the duplicated course
         router.push(
-          `/admin/courses/manage-courses/edit/${duplicatedCourse._id}`
+          `/admin/courses/manage-courses/edit/${duplicatedCourse._id}`,
         );
       } else {
         toast.error("Failed to duplicate course");
@@ -226,7 +375,7 @@ const ManageCoursesPage = () => {
         toast.success("Course with modules duplicated successfully!");
         // Navigate to edit page for the duplicated course
         router.push(
-          `/admin/courses/manage-courses/edit/${duplicatedCourse._id}`
+          `/admin/courses/manage-courses/edit/${duplicatedCourse._id}`,
         );
       } else {
         toast.error("Failed to duplicate course with modules");
@@ -268,7 +417,7 @@ const ManageCoursesPage = () => {
       if (success) {
         // Remove course from list
         setCourses((prev) =>
-          prev.filter((course) => course._id !== courseToDelete._id)
+          prev.filter((course) => course._id !== courseToDelete._id),
         );
         setTotalCourses((prev) => prev - 1);
         toast.success("Course deleted successfully");
@@ -322,6 +471,143 @@ const ManageCoursesPage = () => {
           </OrangeButton>
         </div>
 
+        {/* Filters: Category, Instructor, Audience, Status */}
+        <div className="mb-4 p-4 bg-white rounded-lg border border-gray-200">
+          <div className="flex items-center gap-2 text-gray-700 mb-3">
+            <Filter className="w-4 h-4" />
+            <span className="text-sm font-medium">Filters</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div>
+            <InfiniteScrollSelect<Category>
+              label="Category"
+              placeholder="All categories"
+              value={filterCategoryIds}
+              onChange={handleCategoryFilterChange}
+              multi
+              fetchOptions={async (page, search) => {
+                const res = await getAdminCategories({
+                  page,
+                  limit: 15,
+                  search: search || undefined,
+                });
+                return res
+                  ? {
+                      items: res.categories as {
+                        _id?: string;
+                        name?: string;
+                      }[],
+                      totalPages: res.totalPages,
+                    }
+                  : { items: [], totalPages: 0 };
+              }}
+              getOptionLabel={(c) => c.name ?? ""}
+              getOptionValue={(c) => c._id ?? ""}
+              searchPlaceholder="Search categories..."
+              emptyMessage="No categories found"
+            />
+          </div>
+          <div>
+            <InfiniteScrollSelect<Instructor>
+              label="Instructor"
+              placeholder="All instructors"
+              value={filterInstructorIds}
+              onChange={handleInstructorFilterChange}
+              multi
+              fetchOptions={async (page, search) => {
+                const res = await getInstructors({
+                  page,
+                  limit: 15,
+                  search: search || undefined,
+                });
+                return res
+                  ? {
+                      items: res.instructors as {
+                        _id?: string;
+                        name?: string;
+                      }[],
+                      totalPages: res.totalPages,
+                    }
+                  : { items: [], totalPages: 0 };
+              }}
+              getOptionLabel={(i) => {
+                const inst = i as Instructor;
+                return (
+                  ([inst.firstName, inst.lastName].filter(Boolean).join(" ") ||
+                    inst.email ||
+                    inst._id) ??
+                  ""
+                );
+              }}
+              getOptionValue={(i) => (i as Instructor)._id ?? ""}
+              searchPlaceholder="Search instructors..."
+              emptyMessage="No instructors found"
+            />
+          </div>
+          <div>
+            <InfiniteScrollSelect
+              label="Audience"
+              placeholder="All audiences"
+              value={filterAudience}
+              onChange={handleAudienceFilterChange}
+              multi={false}
+              fetchOptions={async () => {
+                return {
+                  items: [
+                    { value: "college-students", label: "College Students" },
+                    { value: "professionals", label: "Professionals" },
+                  ],
+                  totalPages: 1,
+                };
+              }}
+              searchPlaceholder="Search audiences..."
+              emptyMessage="No audiences found"
+            />
+          </div>
+          <div>
+            <InfiniteScrollSelect
+              label="Status"
+              placeholder="All statuses"
+              value={filterStatus}
+              onChange={handleStatusFilterChange}
+              multi={false}
+              fetchOptions={async () => {
+                return {
+                  items: [
+                    { value: "active", label: "Active" },
+                    { value: "inactive", label: "Inactive" },
+                  ],
+                  totalPages: 1,
+                };
+              }}
+              searchPlaceholder="Search status..."
+              emptyMessage="No status found"
+            />
+          </div>
+          <div>
+            <InfiniteScrollSelect
+              label="Sort By"
+              placeholder="Newest first"
+              value={sortOrder}
+              onChange={handleSortOrderChange}
+              multi={false}
+              fetchOptions={async () => {
+                return {
+                  items: [
+                    { value: "newest", label: "Newest First" },
+                    { value: "a-z", label: "A-Z" },
+                    { value: "z-a", label: "Z-A" },
+                  ],
+                  totalPages: 1,
+                };
+              }}
+              searchPlaceholder="Search sort..."
+              emptyMessage="No sort options found"
+            />
+          </div>
+          </div>
+        </div>
+
         {/* Search Bar */}
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -367,7 +653,7 @@ const ManageCoursesPage = () => {
                   <div className="absolute top-3 right-3">
                     <span
                       className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(
-                        course.isActive
+                        course.isActive,
                       )}`}
                     >
                       {course.isActive ? "Active" : "Inactive"}
@@ -402,7 +688,7 @@ const ManageCoursesPage = () => {
                     <div className="flex items-center gap-1">
                       <Calendar className="w-3 h-3" />
                       {formatDate(
-                        course.updatedAt || course.createdAt || new Date()
+                        course.updatedAt || course.createdAt || new Date(),
                       )}
                     </div>
                     <div className="flex items-center gap-1">
@@ -435,7 +721,7 @@ const ManageCoursesPage = () => {
                             setOpenMenuId(
                               openMenuId === course._id
                                 ? null
-                                : course._id || null
+                                : course._id || null,
                             );
                           }}
                           className="flex items-center justify-center gap-2 px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors border border-gray-200 cursor-pointer"
@@ -658,9 +944,7 @@ const ManageCoursesPage = () => {
                 <h3 className="text-lg font-semibold text-gray-900">
                   Duplicate Course
                 </h3>
-                <p className="text-sm text-gray-600">
-                  Choose duplication type
-                </p>
+                <p className="text-sm text-gray-600">Choose duplication type</p>
               </div>
             </div>
 
@@ -692,9 +976,7 @@ const ManageCoursesPage = () => {
 
               <button
                 onClick={() =>
-                  handleDuplicateCourseWithModules(
-                    courseToDuplicate._id || ""
-                  )
+                  handleDuplicateCourseWithModules(courseToDuplicate._id || "")
                 }
                 disabled={duplicatingCourseId === courseToDuplicate._id}
                 className={`w-full p-4 border-2 rounded-lg text-left transition-colors ${

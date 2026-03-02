@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useState, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 type Tab = {
@@ -12,10 +13,12 @@ type Tab = {
 interface TabSwitcherProps {
   tabs: Tab[];
   className?: string;
+  activeTabIndex?: number;
+  onTabChange?: (index: number) => void;
 }
 
-const TabSwitcher = ({ tabs, className }: TabSwitcherProps) => {
-  const [activeTabLabel, setActiveTabLabel] = useState<string | null>(null);
+const TabSwitcher = ({ tabs, className, activeTabIndex, onTabChange }: TabSwitcherProps) => {
+  const [internalActiveTabLabel, setInternalActiveTabLabel] = useState<string | null>(null);
   const tabRefs = useRef<(HTMLDivElement | null)[]>([]);
   const prevTabsLabelsRef = useRef<string>("");
 
@@ -28,17 +31,29 @@ const TabSwitcher = ({ tabs, className }: TabSwitcherProps) => {
     if (prevTabsLabelsRef.current !== tabsLabels) {
       prevTabsLabelsRef.current = tabsLabels;
       // Only set if we don't have an active tab or if the current active tab no longer exists
-      if (!activeTabLabel || !tabs.some(t => t.label === activeTabLabel)) {
-        setActiveTabLabel(tabs[0]?.label || null);
+      if (!internalActiveTabLabel || !tabs.some(t => t.label === internalActiveTabLabel)) {
+        setInternalActiveTabLabel(tabs[0]?.label || null);
       }
     }
-  }, [tabsLabels, activeTabLabel, tabs]);
+  }, [tabsLabels, internalActiveTabLabel, tabs]);
+
+  // If activeTabIndex is controlled externally, use it
+  useEffect(() => {
+    if (activeTabIndex !== undefined && tabs[activeTabIndex]) {
+      setInternalActiveTabLabel(tabs[activeTabIndex].label);
+    }
+  }, [activeTabIndex, tabs]);
 
   // Find active tab by label (stable reference)
-  const activeTab = tabs.find(t => t.label === activeTabLabel) || tabs[0] || null;
+  const activeTab = tabs.find(t => t.label === internalActiveTabLabel) || tabs[0] || null;
 
   const handleTabClick = (tab: Tab, index: number) => {
-    setActiveTabLabel(tab.label);
+    setInternalActiveTabLabel(tab.label);
+    
+    // Notify parent component if callback is provided
+    if (onTabChange) {
+      onTabChange(index);
+    }
     
     // Scroll to the clicked tab in mobile view
     if (tabRefs.current[index]) {
@@ -102,7 +117,22 @@ const TabSwitcher = ({ tabs, className }: TabSwitcherProps) => {
           </div>
         ))}
       </div>
-      {activeTab && activeTab.component}
+      <AnimatePresence mode="wait">
+        {activeTab && (
+          <motion.div
+            key={activeTab.label}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{
+              duration: 0.3,
+              ease: "easeInOut"
+            }}
+          >
+            {activeTab.component}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

@@ -22,7 +22,9 @@ export const getAllCoursesService = async (
   audience?: string,
   isAdmin?: boolean,
   sortBy: string = "updatedAt",
-  sortOrder: string = "desc"
+  sortOrder: string = "desc",
+  instructors?: string,
+  isActive?: boolean
 ): Promise<{
   courses: Course[];
   total: number;
@@ -39,6 +41,9 @@ export const getAllCoursesService = async (
   // Active filter - only show active courses for non-admin users
   if (!isAdmin) {
     filters.isActive = true;
+  } else if (isActive !== undefined) {
+    // Admin can filter by isActive explicitly
+    filters.isActive = isActive;
   }
 
   if (search) {
@@ -78,8 +83,20 @@ export const getAllCoursesService = async (
       hasCategoryFilter = true;
     }
   }
-  if (audience && !isAdmin) {
-    filters.audience = { $regex: audience, $options: "i" };
+  if (audience) {
+    filters.audience = isAdmin ? audience : { $regex: audience, $options: "i" };
+  }
+  if (instructors) {
+    const instructorList = instructors
+      .split(",")
+      .map((id) => id.trim())
+      .filter((id) => mongoose.Types.ObjectId.isValid(id));
+    if (instructorList.length > 0) {
+      const instructorObjectIds = instructorList.map(
+        (id) => new mongoose.Types.ObjectId(id)
+      );
+      filters.instructor = { $in: instructorObjectIds };
+    }
   }
 
   // Build aggregation pipeline
@@ -135,10 +152,10 @@ export const getAllCoursesService = async (
       });
     }
   } else {
-    // For admin, always sort by updatedAt
+    // For admin, sort by the specified field (sortBy parameter)
     const sortDirection = sortOrder === "asc" ? 1 : -1;
     pipeline.push({
-      $sort: { updatedAt: sortDirection },
+      $sort: { [sortBy]: sortDirection },
     });
   }
 

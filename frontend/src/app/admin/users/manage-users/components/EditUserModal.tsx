@@ -129,7 +129,16 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
 
   // Handle URL submit
   const handleUrlSubmit = useCallback(
-    (url: string) => {
+    async (url: string) => {
+      // If there's an existing uploaded file, delete it from S3
+      if (profileImageS3Key && mediaSource === "upload") {
+        try {
+          await deleteFile(profileImageS3Key);
+        } catch (error) {
+          console.error("Failed to delete old profile image from S3:", error);
+        }
+      }
+      
       setProfileImageUrl(url);
       setMediaSource("url");
       setProfileImageS3Key("");
@@ -142,7 +151,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
 
       toast.success("Profile image URL added successfully!");
     },
-    [formData, onFormDataChange]
+    [formData, onFormDataChange, profileImageS3Key, mediaSource, deleteFile]
   );
 
   // Handle file remove

@@ -33,7 +33,7 @@ const Screen1 = () => {
   useEffect(() => {
     setIsMounted(true);
   }, []);
-  const { uploadFile, isUploading, error: uploadError } = useUpload();
+  const { uploadFile, deleteFile, isUploading, error: uploadError } = useUpload();
 
   // Watch form values
   const descriptionValue = watch("description");
@@ -150,7 +150,16 @@ const Screen1 = () => {
   };
 
   // Handle URL input changes
-  const handleCurriculumUrlChange = (url: string) => {
+  const handleCurriculumUrlChange = async (url: string) => {
+    // If there's an existing uploaded file (s3Key exists and source is upload), delete it from S3
+    if (curriculumS3Key && curriculumSource === "upload") {
+      try {
+        await deleteFile(curriculumS3Key);
+      } catch (error) {
+        console.error("Failed to delete old curriculum file from S3:", error);
+      }
+    }
+    
     setValue("curriculum", url, { shouldDirty: true, shouldTouch: true });
     setValue("curriculumSource", "url", {
       shouldDirty: true,
@@ -159,7 +168,16 @@ const Screen1 = () => {
     setValue("curriculumS3Key", "", { shouldDirty: true, shouldTouch: true });
   };
 
-  const handleBrochureUrlChange = (url: string) => {
+  const handleBrochureUrlChange = async (url: string) => {
+    // If there's an existing uploaded file (s3Key exists and source is upload), delete it from S3
+    if (brochureS3Key && brochureSource === "upload") {
+      try {
+        await deleteFile(brochureS3Key);
+      } catch (error) {
+        console.error("Failed to delete old brochure file from S3:", error);
+      }
+    }
+    
     setValue("brochure", url, { shouldDirty: true, shouldTouch: true });
     setValue("brochureSource", "url", { shouldDirty: true, shouldTouch: true });
     setValue("brochureS3Key", "", { shouldDirty: true, shouldTouch: true });
