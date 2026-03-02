@@ -121,9 +121,20 @@ const NavbarContent = ({
   // Update courses when data changes
   useEffect(() => {
     if (data?.data?.data) {
-      const newCourses = data.data.data.courses || [];
-      const totalPages = data.data.data.totalPages || 1;
-      const currentPage = data.data.data.page || 1;
+      const responseData = data.data.data;
+      
+      // Handle both response formats:
+      // 1. { courses: [], totalPages: ..., page: ... } - normal response
+      // 2. [] - empty array when no courses found
+      const newCourses = Array.isArray(responseData) 
+        ? [] 
+        : (responseData.courses || []);
+      const totalPages = Array.isArray(responseData) 
+        ? 1 
+        : (responseData.totalPages || 1);
+      const currentPage = Array.isArray(responseData) 
+        ? 1 
+        : (responseData.page || 1);
 
       // Only update if this is the current page we're expecting
       if (currentPage === page) {
