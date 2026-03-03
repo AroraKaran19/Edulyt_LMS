@@ -27,6 +27,7 @@ const Screen1 = () => {
     control,
     formState: { errors },
     setValue,
+    getValues,
     watch,
   } = useFormContext<CourseFormData>();
   // Ensure component is mounted on client side
@@ -38,6 +39,7 @@ const Screen1 = () => {
   // Watch form values
   const descriptionValue = watch("description");
   const shortDescriptionValue = watch("shortDescription");
+  const categoryNamesValue = watch("categoryNames");
   const curriculumValue = watch("curriculum");
   const curriculumS3Key = watch("curriculumS3Key");
   const curriculumSource = watch("curriculumSource");
@@ -314,6 +316,11 @@ const Screen1 = () => {
                 className="w-full max-w-full"
                 setChange={field.onChange}
                 required={true}
+                initialCategoryNames={categoryNamesValue}
+                onCategoryNameAdded={(id, name) => {
+                  const current = getValues("categoryNames") || {};
+                  setValue("categoryNames", { ...current, [id]: name });
+                }}
               />
             )}
           />

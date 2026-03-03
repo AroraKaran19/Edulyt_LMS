@@ -56,8 +56,11 @@ export const transformFormDataToCourse = (
     completedScreens,
     isEditMode,
     courseId,
+    categoryNames,
     ...courseData
   } = formData;
+
+  void categoryNames;
 
   void thumbnailSource;
   void thumbnailS3Key;
@@ -127,6 +130,15 @@ export const transformCourseToFormData = (
           typeof c === "string" ? c : c._id || ""
         ).filter((id: string) => id && id.trim().length > 0)
       : [],
+    // Preserve category names from populated course data (avoids extra API calls)
+    categoryNames: Array.isArray(course.category)
+      ? course.category.reduce((acc: Record<string, string>, c: any) => {
+          if (typeof c === "object" && c?._id && c?.name) {
+            acc[c._id] = c.name;
+          }
+          return acc;
+        }, {})
+      : undefined,
 
     // Convert testimonials and FAQs to string arrays (IDs)
     testimonials: Array.isArray(course.testimonials)

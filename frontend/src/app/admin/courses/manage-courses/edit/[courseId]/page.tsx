@@ -40,6 +40,7 @@ const EditCoursePageContent = ({ courseId }: { courseId: string }) => {
     canGoNext,
     updateCourseMetadata,
     isUpdating,
+    isCourseDataLoading,
     goToScreen,
   } = useCourseFormContext();
 
@@ -139,7 +140,7 @@ const EditCoursePageContent = ({ courseId }: { courseId: string }) => {
         <div className="flex items-center gap-5 w-full justify-center">
           <OrangeButton
             onClick={handleNavigateToBasicInformation}
-            disabled={isUpdating || currentScreen === 1}
+            disabled={isCourseDataLoading || isUpdating || currentScreen === 1}
             className={`flex items-center gap-2 cursor-pointer ${
               currentScreen === 1 ? "opacity-60" : ""
             }`}
@@ -151,7 +152,7 @@ const EditCoursePageContent = ({ courseId }: { courseId: string }) => {
           </OrangeButton>
           <OrangeButton
             onClick={handleNavigateToModules}
-            disabled={isUpdating || currentScreen === 11}
+            disabled={isCourseDataLoading || isUpdating || currentScreen === 11}
             className={`flex items-center gap-2 cursor-pointer ${
               currentScreen === 11 ? "opacity-60" : ""
             }`}
@@ -163,7 +164,7 @@ const EditCoursePageContent = ({ courseId }: { courseId: string }) => {
           </OrangeButton>
           <OrangeButton
             onClick={handleNavigateToInstructors}
-            disabled={isUpdating || currentScreen === 12}
+            disabled={isCourseDataLoading || isUpdating || currentScreen === 12}
             className={`flex items-center gap-2 cursor-pointer ${
               currentScreen === 12 ? "opacity-60" : ""
             }`}
@@ -176,25 +177,34 @@ const EditCoursePageContent = ({ courseId }: { courseId: string }) => {
         </div>
       </div>
       <div className="flex-1 min-h-0 max-h-full">
-        {currentScreen === 1 && <Screen1 />}
-        {currentScreen === 2 && <Screen2 />}
-        {currentScreen === 3 && <Screen3 />}
-        {currentScreen === 4 && <Screen4 />}
-        {currentScreen === 5 && <Screen5 />}
-        {currentScreen === 6 && <Screen6 />}
-        {currentScreen === 7 && <Screen7 />}
-        {currentScreen === 8 && <Screen8 />}
-        {currentScreen === 9 && <Screen9 />}
-        {currentScreen === 10 && <Screen10 />}
-        {currentScreen === 11 && <Screen11 />}
-        {currentScreen === 12 && <Screen12 />}
-        {currentScreen === 13 && <Screen13 />}
+        {isCourseDataLoading ? (
+          <div className="flex flex-col items-center justify-center min-h-[300px] gap-4">
+            <div className="w-10 h-10 border-4 border-orange-300 border-t-orange-600 rounded-full animate-spin" />
+            <p className="text-gray-600">Loading course data...</p>
+          </div>
+        ) : (
+          <>
+            {currentScreen === 1 && <Screen1 />}
+            {currentScreen === 2 && <Screen2 />}
+            {currentScreen === 3 && <Screen3 />}
+            {currentScreen === 4 && <Screen4 />}
+            {currentScreen === 5 && <Screen5 />}
+            {currentScreen === 6 && <Screen6 />}
+            {currentScreen === 7 && <Screen7 />}
+            {currentScreen === 8 && <Screen8 />}
+            {currentScreen === 9 && <Screen9 />}
+            {currentScreen === 10 && <Screen10 />}
+            {currentScreen === 11 && <Screen11 />}
+            {currentScreen === 12 && <Screen12 />}
+            {currentScreen === 13 && <Screen13 />}
+          </>
+        )}
       </div>
       <div className="flex justify-between items-center h-fit p-4">
         <WhiteButton
           className="flex gap-2 items-center"
           onClick={handlePrevious}
-          disabled={isUpdating}
+          disabled={isCourseDataLoading || isUpdating}
         >
           <ArrowLeftIcon className="size-4" />{" "}
           {currentScreen === 1 ? "Back to Courses" : "Previous"}
@@ -202,7 +212,7 @@ const EditCoursePageContent = ({ courseId }: { courseId: string }) => {
         <WhiteButton
           className="flex gap-2 items-center"
           onClick={handleNext}
-          disabled={!canGoNext || isUpdating}
+          disabled={isCourseDataLoading || !canGoNext || isUpdating}
         >
           {isUpdating ? (
             <>
@@ -214,14 +224,14 @@ const EditCoursePageContent = ({ courseId }: { courseId: string }) => {
               {currentScreen === 9
                 ? "Update Course Metadata"
                 : currentScreen === 10
-                ? "Next Page"
-                : currentScreen === 11
-                ? "Review Course"
-                : currentScreen === 12
-                ? "Select Instructors"
-                : currentScreen === 13
-                ? "Save Changes"
-                : "Next"}
+                  ? "Next Page"
+                  : currentScreen === 11
+                    ? "Review Course"
+                    : currentScreen === 12
+                      ? "Select Instructors"
+                      : currentScreen === 13
+                        ? "Save Changes"
+                        : "Next"}
               <ArrowRightIcon className="size-4" />
             </>
           )}

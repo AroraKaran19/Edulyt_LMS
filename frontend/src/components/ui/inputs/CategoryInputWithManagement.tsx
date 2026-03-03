@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useCategory } from "@/hooks/useCategory";
 import { Category } from "@/types";
 import { Plus, X, Edit3, Trash2, Check, AlertCircle } from "lucide-react";
@@ -15,13 +15,18 @@ interface CategoryInputWithManagementProps {
   setChange: (value: string[]) => void;
   className?: string;
   required?: boolean;
+  /** Category names from course data - avoids getCategoryById API calls */
+  initialCategoryNames?: Record<string, string>;
+  /** Called when a category is added so the form can persist its name (for display after navigation) */
+  onCategoryNameAdded?: (id: string, name: string) => void;
 }
 
 const CategoryInputWithManagement: React.FC<
   CategoryInputWithManagementProps
-> = ({ label, value, setChange, className = "", required = false }) => {
+> = ({ label, value, setChange, className = "", required = false, initialCategoryNames, onCategoryNameAdded }) => {
   const {
     getActiveCategories,
+    getCategoryById,
     createCategory,
     updateCategory,
     deleteCategory,
@@ -31,6 +36,14 @@ const CategoryInputWithManagement: React.FC<
   } = useCategory();
 
   const [categories, setCategories] = useState<Category[]>([]);
+  const [resolvedNames, setResolvedNames] = useState<Record<string, string>>(
+    {},
+  );
+  const [categoryPage, setCategoryPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const dropdownScrollRef = useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -53,7 +66,7 @@ const CategoryInputWithManagement: React.FC<
 
   // Count categories with showOnHomePage: true
   const homePageCategoriesCount = categories.filter(
-    (cat) => cat.showOnHomePage === true
+    (cat) => cat.showOnHomePage === true,
   ).length;
   const maxHomePageCategories = 4;
   const canAddToHomePage = homePageCategoriesCount < maxHomePageCategories;
@@ -62,30 +75,94 @@ const CategoryInputWithManagement: React.FC<
   const selectedCategoryIds = Array.isArray(value)
     ? value
     : value
-    ? [value]
-    : [];
+      ? [value]
+      : [];
 
-  // Load categories when dropdown opens
+  const PAGE_SIZE = 20;
+
+  // Load initial categories when dropdown opens
   const loadCategories = useCallback(async () => {
     try {
-      const result = await getActiveCategories();
+      const result = await getActiveCategories({ limit: PAGE_SIZE, page: 1 });
       if (result && result.categories) {
         setCategories(result.categories);
+        setTotalPages(result.totalPages ?? 1);
+        setCategoryPage(1);
+        setHasMore((result.totalPages ?? 1) > 1);
       } else {
         setCategories([]);
+        setHasMore(false);
       }
     } catch (err) {
       console.error("Error loading categories:", err);
       setCategories([]);
+      setHasMore(false);
     }
   }, [getActiveCategories]);
 
-  // Load categories on mount and when dropdown opens
-  useEffect(() => {
-    loadCategories();
-  }, [loadCategories]);
+  // Load next page for infinite scroll
+  const loadMoreCategories = useCallback(async () => {
+    if (!hasMore || isLoadingMore) return;
 
-  // Reload categories when dropdown opens to ensure fresh data
+    setIsLoadingMore(true);
+    try {
+      const nextPage = categoryPage + 1;
+      const result = await getActiveCategories({
+        limit: PAGE_SIZE,
+        page: nextPage,
+      });
+      if (result && result.categories && result.categories.length > 0) {
+        setCategories((prev) => [...prev, ...result.categories]);
+        setCategoryPage(nextPage);
+        setHasMore(nextPage < (result.totalPages ?? 1));
+      } else {
+        setHasMore(false);
+      }
+    } catch (err) {
+      console.error("Error loading more categories:", err);
+      setHasMore(false);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [getActiveCategories, hasMore, isLoadingMore, categoryPage]);
+
+  // Handle scroll for infinite loading
+  const handleDropdownScroll = useCallback(
+    (e: React.UIEvent<HTMLDivElement>) => {
+      const el = e.currentTarget;
+      const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+      if (nearBottom && hasMore && !isLoadingMore) {
+        loadMoreCategories();
+      }
+    },
+    [hasMore, isLoadingMore, loadMoreCategories],
+  );
+
+  // Resolve names for selected IDs not in categories list - skip when course provided names
+  useEffect(() => {
+    if (initialCategoryNames) return;
+
+    const unresolved = selectedCategoryIds.filter(
+      (id) => !categories.find((c) => c._id === id),
+    );
+    if (unresolved.length === 0) return;
+
+    let cancelled = false;
+    unresolved.forEach((id) => {
+      getCategoryById(id)
+        .then((cat) => {
+          if (!cancelled && cat?.name) {
+            setResolvedNames((prev) => ({ ...prev, [id]: cat.name }));
+          }
+        })
+        .catch(() => {});
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedCategoryIds, categories, getCategoryById, initialCategoryNames]);
+
+  // Load categories only when dropdown opens (not on mount - avoids redundant calls)
   useEffect(() => {
     if (isOpen) {
       loadCategories();
@@ -106,11 +183,13 @@ const CategoryInputWithManagement: React.FC<
   const handleCategoryToggle = (categoryId: string) => {
     const isSelected = selectedCategoryIds.includes(categoryId);
     if (isSelected) {
-      // Remove category
       setChange(selectedCategoryIds.filter((id) => id !== categoryId));
     } else {
-      // Add category
       setChange([...selectedCategoryIds, categoryId]);
+      const category = categories.find((c) => c._id === categoryId);
+      if (category?.name && onCategoryNameAdded) {
+        onCategoryNameAdded(categoryId, category.name);
+      }
     }
   };
 
@@ -140,24 +219,27 @@ const CategoryInputWithManagement: React.FC<
         setIsUploadingImage(false);
       }
     },
-    [uploadFile]
+    [uploadFile],
   );
 
   // Handle URL submission for category image
-  const handleCategoryImageUrlSubmit = useCallback(async (url: string) => {
-    // If there's an existing uploaded file, delete it from S3
-    if (categoryImageS3Key && categoryImageSource === "upload") {
-      try {
-        await deleteFile(categoryImageS3Key);
-      } catch (error) {
-        console.error("Failed to delete old category image from S3:", error);
+  const handleCategoryImageUrlSubmit = useCallback(
+    async (url: string) => {
+      // If there's an existing uploaded file, delete it from S3
+      if (categoryImageS3Key && categoryImageSource === "upload") {
+        try {
+          await deleteFile(categoryImageS3Key);
+        } catch (error) {
+          console.error("Failed to delete old category image from S3:", error);
+        }
       }
-    }
-    
-    setCategoryImage(url);
-    setCategoryImageSource("url");
-    setCategoryImageS3Key(""); // No S3 key for URL-based images
-  }, [categoryImageS3Key, categoryImageSource, deleteFile]);
+
+      setCategoryImage(url);
+      setCategoryImageSource("url");
+      setCategoryImageS3Key(""); // No S3 key for URL-based images
+    },
+    [categoryImageS3Key, categoryImageSource, deleteFile],
+  );
 
   // Handle category image removal
   const handleCategoryImageRemove = useCallback(() => {
@@ -183,6 +265,9 @@ const CategoryInputWithManagement: React.FC<
         // Add the new category ID to selected categories
         if (!selectedCategoryIds.includes(result._id)) {
           setChange([...selectedCategoryIds, result._id]);
+        }
+        if (result.name && onCategoryNameAdded) {
+          onCategoryNameAdded(result._id, result.name);
         }
         setNewCategory({ name: "", showOnHomePage: false });
         setCategoryImage("");
@@ -227,7 +312,7 @@ const CategoryInputWithManagement: React.FC<
       return;
 
     const oldName = categories.find(
-      (cat) => cat._id === editingCategory._id
+      (cat) => cat._id === editingCategory._id,
     )?.name;
     setIsUpdating(true);
     try {
@@ -240,8 +325,8 @@ const CategoryInputWithManagement: React.FC<
       if (result) {
         setCategories((prev) =>
           (prev || []).map((cat) =>
-            cat._id === editingCategory._id ? result : cat
-          )
+            cat._id === editingCategory._id ? result : cat,
+          ),
         );
 
         // If the category was selected, keep it selected (ID doesn't change on update)
@@ -264,11 +349,11 @@ const CategoryInputWithManagement: React.FC<
   // Handle delete category
   const handleDeleteCategory = async (
     categoryId: string,
-    categoryName: string
+    categoryName: string,
   ) => {
     if (
       !confirm(
-        `Are you sure you want to delete the category "${categoryName}"? This action cannot be undone.`
+        `Are you sure you want to delete the category "${categoryName}"? This action cannot be undone.`,
       )
     ) {
       return;
@@ -280,7 +365,7 @@ const CategoryInputWithManagement: React.FC<
 
       if (result) {
         setCategories((prev) =>
-          (prev || []).filter((cat) => cat._id !== categoryId)
+          (prev || []).filter((cat) => cat._id !== categoryId),
         );
         // Remove from selected categories if it was selected
         if (selectedCategoryIds.includes(categoryId)) {
@@ -307,7 +392,11 @@ const CategoryInputWithManagement: React.FC<
         <div className="flex flex-wrap gap-2 mb-2">
           {selectedCategoryIds.map((categoryId) => {
             const category = categories.find((cat) => cat._id === categoryId);
-            const categoryName = category?.name || categoryId;
+            const categoryName =
+              category?.name ||
+              initialCategoryNames?.[categoryId] ||
+              resolvedNames[categoryId] ||
+              categoryId;
             return (
               <div
                 key={categoryId}
@@ -317,7 +406,7 @@ const CategoryInputWithManagement: React.FC<
                 <button
                   type="button"
                   onClick={() => handleRemoveCategory(categoryId)}
-                  className="ml-1 text-orange-600 hover:text-orange-800 focus:outline-none"
+                  className="ml-1 text-orange-600 hover:text-orange-800 focus:outline-none cursor-pointer"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -375,7 +464,11 @@ const CategoryInputWithManagement: React.FC<
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+        <div
+          ref={dropdownScrollRef}
+          className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-xl shadow-lg min-h-[240px] max-h-60 overflow-y-auto"
+          onScroll={handleDropdownScroll}
+        >
           {isLoading ? (
             <div className="p-4 text-center text-gray-500">
               <div className="w-5 h-5 border-2 border-orange-300 border-t-orange-600 rounded-full animate-spin mx-auto mb-2" />
@@ -403,7 +496,7 @@ const CategoryInputWithManagement: React.FC<
                       className="flex-1 text-left flex items-center gap-3"
                     >
                       <div
-                        className={`w-5 h-5 border-2 rounded flex items-center justify-center transition-colors ${
+                        className={`shrink-0 w-5 h-5 min-w-5 min-h-5 border-2 rounded flex items-center justify-center transition-colors ${
                           isSelected
                             ? "bg-orange-500 border-orange-500"
                             : "border-gray-300"
@@ -456,6 +549,11 @@ const CategoryInputWithManagement: React.FC<
                   </div>
                 );
               })}
+              {isLoadingMore && (
+                <div className="py-3 flex justify-center">
+                  <div className="w-5 h-5 border-2 border-orange-300 border-t-orange-600 rounded-full animate-spin" />
+                </div>
+              )}
             </div>
           ) : (
             <div className="p-4 text-center text-gray-500">
@@ -632,7 +730,7 @@ const CategoryInputWithManagement: React.FC<
                 value={editingCategory.name}
                 onChange={(e) =>
                   setEditingCategory((prev) =>
-                    prev ? { ...prev, name: e.target.value } : null
+                    prev ? { ...prev, name: e.target.value } : null,
                   )
                 }
                 placeholder="Enter category name"
@@ -651,7 +749,7 @@ const CategoryInputWithManagement: React.FC<
                       const otherHomePageCount = categories.filter(
                         (cat) =>
                           cat.showOnHomePage === true &&
-                          cat._id !== editingCategory._id
+                          cat._id !== editingCategory._id,
                       ).length;
                       if (otherHomePageCount >= maxHomePageCategories) {
                         return; // Prevent checking if limit reached
@@ -660,7 +758,7 @@ const CategoryInputWithManagement: React.FC<
                     setEditingCategory((prev) =>
                       prev
                         ? { ...prev, showOnHomePage: e.target.checked }
-                        : null
+                        : null,
                     );
                   }}
                   disabled={
@@ -668,7 +766,7 @@ const CategoryInputWithManagement: React.FC<
                     categories.filter(
                       (cat) =>
                         cat.showOnHomePage === true &&
-                        cat._id !== editingCategory._id
+                        cat._id !== editingCategory._id,
                     ).length >= maxHomePageCategories
                   }
                   className="w-4 h-4 text-orange-600 bg-gray-100 border-gray-300 rounded focus:ring-orange-500 focus:ring-2 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -680,7 +778,7 @@ const CategoryInputWithManagement: React.FC<
                     categories.filter(
                       (cat) =>
                         cat.showOnHomePage === true &&
-                        cat._id !== editingCategory._id
+                        cat._id !== editingCategory._id,
                     ).length >= maxHomePageCategories
                       ? "text-gray-400 cursor-not-allowed"
                       : "text-gray-700 cursor-pointer"
@@ -691,7 +789,7 @@ const CategoryInputWithManagement: React.FC<
                     categories.filter(
                       (cat) =>
                         cat.showOnHomePage === true &&
-                        cat._id !== editingCategory._id
+                        cat._id !== editingCategory._id,
                     ).length >= maxHomePageCategories && (
                       <span className="ml-1 text-xs text-gray-500">
                         (Max 4 reached)

@@ -59,6 +59,9 @@ export const useCourseForm = (
   const [isCreating, setIsCreating] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isCourseDataLoading, setIsCourseDataLoading] = useState(
+    mode === "edit" && !!courseId
+  );
   const [createError, setCreateError] = useState<string>("");
   const [updateError, setUpdateError] = useState<string>("");
   const [validationErrors, setValidationErrors] = useState<
@@ -153,9 +156,13 @@ export const useCourseForm = (
   // ===================
 
   const loadCourseData = useCallback(async () => {
-    if (!isEditMode || !currentCourseId) return;
+    if (!isEditMode || !currentCourseId) {
+      setIsCourseDataLoading(false);
+      return;
+    }
 
     try {
+      setIsCourseDataLoading(true);
       setIsSaving(true);
       const response = await getCourseByIdAdmin(currentCourseId);
 
@@ -178,6 +185,11 @@ export const useCourseForm = (
           const mergedData = {
             ...localData,
             ...apiFormData,
+            // Merge categoryNames so user-added category names persist after navigation
+            categoryNames: {
+              ...(apiFormData.categoryNames || {}),
+              ...(localData.categoryNames || {}),
+            },
             // Preserve these fields from localStorage if they exist
             curriculum: localData.curriculum || apiFormData.curriculum,
             brochure: localData.brochure || apiFormData.brochure,
@@ -205,6 +217,7 @@ export const useCourseForm = (
       console.error("Failed to load course data:", error);
       setUpdateError("Failed to load course data");
     } finally {
+      setIsCourseDataLoading(false);
       setIsSaving(false);
     }
   }, [isEditMode, currentCourseId, getCourseByIdAdmin, reset, mode]);
@@ -636,6 +649,7 @@ export const useCourseForm = (
     isUpdating,
     isDeleting: false,
     isSaving,
+    isCourseDataLoading,
 
     // Error states
     createError,

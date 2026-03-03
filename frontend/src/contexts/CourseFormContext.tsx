@@ -69,6 +69,7 @@ export const CourseFormProvider: React.FC<CourseFormProviderProps> = ({
     isUpdating: courseFormHook.isUpdating,
     isDeleting: courseFormHook.isDeleting,
     isSaving: courseFormHook.isSaving,
+    isCourseDataLoading: courseFormHook.isCourseDataLoading,
 
     // Error states
     createError: courseFormHook.createError,

@@ -35,6 +35,9 @@ export interface CourseFormData
   completedScreens: number[];
   isEditMode: boolean;
   courseId?: string;
+
+  // Category names from course (populated) - used for display without extra API calls
+  categoryNames?: Record<string, string>;
 }
 
 // ===================
@@ -78,6 +81,7 @@ export interface CourseFormContextType {
   isUpdating: boolean;
   isDeleting: boolean;
   isSaving: boolean;
+  isCourseDataLoading: boolean;
 
   // Error states
   createError: string;
@@ -233,6 +237,7 @@ export interface UseCourseFormReturn {
   isUpdating: boolean;
   isDeleting: boolean;
   isSaving: boolean;
+  isCourseDataLoading: boolean;
 
   // Error states
   createError: string;
