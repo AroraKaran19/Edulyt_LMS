@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { CheckCircle, XCircle, Download, Loader2 } from "lucide-react";
+import { CheckCircle, XCircle, Loader2 } from "lucide-react";
 import apiClient from "@/configs/apiConfig";
 import ImageComponent from "@/components/ui/ImageComponent";
 import { CertificateVerificationData } from "@/types/certificate";
@@ -15,7 +15,6 @@ const VerifyCertificatePage = () => {
     useState<CertificateVerificationData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isDownloading, setIsDownloading] = useState(false);
 
   useEffect(() => {
     const fetchCertificate = async () => {
@@ -46,62 +45,6 @@ const VerifyCertificatePage = () => {
 
     fetchCertificate();
   }, [verificationCode]);
-
-  const handleDownload = async () => {
-    if (!certificate?.fileUrl) {
-      setError("Certificate file not available");
-      return;
-    }
-
-    try {
-      setIsDownloading(true);
-      // Fetch the file as a blob to ensure proper download with filename
-      const response = await fetch(certificate.fileUrl);
-      if (!response.ok) {
-        throw new Error("Failed to fetch certificate file");
-      }
-
-      const blob = await response.blob();
-
-      // Create a temporary URL for the blob
-      const blobUrl = window.URL.createObjectURL(blob);
-
-      // Create download link with proper filename
-      const link = document.createElement("a");
-      link.href = blobUrl;
-
-      // Sanitize filename: remove special characters, replace spaces with underscores
-      const sanitizeFilename = (str: string): string => {
-        return str
-          .replace(/[^a-zA-Z0-9\s-]/g, "") // Remove special characters
-          .replace(/\s+/g, "_") // Replace spaces with underscores
-          .replace(/_+/g, "_") // Replace multiple underscores with single
-          .replace(/^_|_$/g, "") // Remove leading/trailing underscores
-          .substring(0, 100); // Limit length
-      };
-
-      const sanitizedCourseName = sanitizeFilename(
-        certificate.courseName || ""
-      );
-      const sanitizedStudentName = sanitizeFilename(
-        certificate.studentName || ""
-      );
-      link.download = `Airkrit_${sanitizedCourseName}_${sanitizedStudentName}.pdf`;
-
-      // Trigger download
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      // Clean up the blob URL
-      window.URL.revokeObjectURL(blobUrl);
-    } catch (err: any) {
-      setError("Failed to download certificate");
-      console.error("Certificate download error:", err);
-    } finally {
-      setIsDownloading(false);
-    }
-  };
 
   if (isLoading) {
     return (
@@ -142,44 +85,18 @@ const VerifyCertificatePage = () => {
       <div className="max-w-4xl mx-auto">
         {/* Success Header with Action Buttons */}
         <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="bg-green-100 rounded-full p-3">
-                <CheckCircle className="w-8 h-8 text-green-600" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">
-                  Certificate Verified
-                </h1>
-                <p className="text-gray-600 text-sm">
-                  This certificate is authentic and has been verified
-                </p>
-              </div>
+          <div className="flex items-center gap-4">
+            <div className="bg-green-100 rounded-full p-3">
+              <CheckCircle className="w-8 h-8 text-green-600" />
             </div>
-
-            {/* Action Buttons - Prominently placed */}
-            {certificate.fileUrl && (
-              <div className="flex flex-col sm:flex-row gap-3 md:ml-4">
-                <button
-                  type="button"
-                  onClick={handleDownload}
-                  disabled={isDownloading}
-                  className="flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white py-3 px-6 rounded-lg font-bold text-base transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
-                >
-                  {isDownloading ? (
-                    <>
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                      Downloading...
-                    </>
-                  ) : (
-                    <>
-                      <Download className="w-5 h-5" />
-                      Download Certificate
-                    </>
-                  )}
-                </button>
-              </div>
-            )}
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">
+                Certificate Verified
+              </h1>
+              <p className="text-gray-600 text-sm">
+                This certificate is authentic and has been verified
+              </p>
+            </div>
           </div>
         </div>
 
@@ -261,29 +178,6 @@ const VerifyCertificatePage = () => {
           </div>
         )}
 
-        {/* Secondary Download Button at Bottom (for mobile/scroll) */}
-        {certificate.fileUrl && (
-          <div className="bg-white rounded-xl shadow-lg p-6 sticky bottom-4 z-10">
-            <button
-              type="button"
-              onClick={handleDownload}
-              disabled={isDownloading}
-              className="w-full flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white py-4 px-6 rounded-lg font-bold text-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
-            >
-              {isDownloading ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  Downloading...
-                </>
-              ) : (
-                <>
-                  <Download className="w-5 h-5" />
-                  Download Certificate
-                </>
-              )}
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );

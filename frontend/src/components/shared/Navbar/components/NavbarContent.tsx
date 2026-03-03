@@ -26,15 +26,15 @@ const NavbarContent = ({
       value: "college-students",
     },
     {
-      label: "Professionals",
+      label: "Working Professionals",
       value: "professionals",
     },
   ];
   const [selectedAudience, setSelectedAudience] = useState<string>(
-    audiences[0].value
+    audiences[0].value,
   );
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(
-    null
+    null,
   );
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoadingCategories, setIsLoadingCategories] = useState(false);
@@ -47,13 +47,10 @@ const NavbarContent = ({
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // When audience changes, we only reset which category is selected;
-  // categories themselves are fetched once (with pagination) and reused.
   useEffect(() => {
     setSelectedCategory(null);
   }, [selectedAudience]);
 
-  // Fetch categories (initial + pagination); cached and not re-fetched per audience
   useEffect(() => {
     const fetchCategories = async () => {
       if (!categoryHasMore && categoryPage > 1) return;
@@ -70,7 +67,7 @@ const NavbarContent = ({
           const currentPage = response.page || categoryPage;
 
           setCategories((prev) =>
-            currentPage === 1 ? newCats : [...prev, ...newCats]
+            currentPage === 1 ? newCats : [...prev, ...newCats],
           );
           setCategoryHasMore(currentPage < totalPages);
         }
@@ -122,21 +119,17 @@ const NavbarContent = ({
   useEffect(() => {
     if (data?.data?.data) {
       const responseData = data.data.data;
-      
-      // Handle both response formats:
-      // 1. { courses: [], totalPages: ..., page: ... } - normal response
-      // 2. [] - empty array when no courses found
-      const newCourses = Array.isArray(responseData) 
-        ? [] 
-        : (responseData.courses || []);
-      const totalPages = Array.isArray(responseData) 
-        ? 1 
-        : (responseData.totalPages || 1);
-      const currentPage = Array.isArray(responseData) 
-        ? 1 
-        : (responseData.page || 1);
 
-      // Only update if this is the current page we're expecting
+      const newCourses = Array.isArray(responseData)
+        ? []
+        : responseData.courses || [];
+      const totalPages = Array.isArray(responseData)
+        ? 1
+        : responseData.totalPages || 1;
+      const currentPage = Array.isArray(responseData)
+        ? 1
+        : responseData.page || 1;
+
       if (currentPage === page) {
         if (currentPage === 1) {
           setAllCourses(newCourses);
@@ -252,7 +245,7 @@ const NavbarContent = ({
                 key={category._id}
                 onClick={() => setSelectedCategory(category)}
                 className={cn(
-                  "w-full flex flex-row max-h-[100px] xl:max-h-[80px] items-center hover:bg-linear-to-tr from-orange-500/10 to-white gap-3 hover:bg-gray-100 transition-all duration-300 cursor-pointer rounded-xl p-1"
+                  "w-full flex flex-row max-h-[100px] xl:max-h-[80px] items-center hover:bg-linear-to-tr from-orange-500/10 to-white gap-3 hover:bg-gray-100 transition-all duration-300 cursor-pointer rounded-xl p-1",
                 )}
               >
                 <div className="w-1/3 h-full shrink-0 relative">
@@ -362,7 +355,7 @@ const NavbarContent = ({
                     }, 150);
                   }}
                   className={cn(
-                    "w-full flex flex-row max-h-[100px] xl:max-h-[80px] items-center hover:bg-linear-to-tr from-orange-500/10 to-white gap-3 hover:bg-gray-100 transition-all duration-300 cursor-pointer rounded-xl"
+                    "w-full flex flex-row max-h-[100px] xl:max-h-[80px] items-center hover:bg-linear-to-tr from-orange-500/10 to-white gap-3 hover:bg-gray-100 transition-all duration-300 cursor-pointer rounded-xl",
                   )}
                   draggable={false}
                 >
@@ -430,7 +423,7 @@ const NavbarContent = ({
               key={index}
               className={cn(
                 "category w-full px-8 py-4 flex items-center justify-between hover:bg-gray-200 transition-all duration-300 cursor-pointer rounded-xl shrink-0",
-                selectedAudience === audience.value && "bg-gray-200"
+                selectedAudience === audience.value && "bg-gray-200",
               )}
               onClick={() => {
                 setSelectedAudience(audience.value);

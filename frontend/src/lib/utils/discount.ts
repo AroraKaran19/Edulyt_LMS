@@ -91,6 +91,8 @@ export const calculateDiscountDisplay = (
           discountLabel += ` + ₹${courseDiscount.value} off`;
         } else {
           discountLabel = `₹${courseDiscount.value} off`;
+          discountType = "fixed";
+          discountValue = courseDiscount.value;
         }
       } else {
         const courseDiscountAmount = (planPrice * courseDiscount.value) / 100;
@@ -100,6 +102,8 @@ export const calculateDiscountDisplay = (
           discountLabel += ` + ${courseDiscount.value}% off`;
         } else {
           discountLabel = `${courseDiscount.value}% off`;
+          discountType = "percentage";
+          discountValue = courseDiscount.value;
         }
       }
     }

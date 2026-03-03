@@ -18,7 +18,7 @@ const CourseOverviewSection = ({ course }: { course: Course }) => {
       component: <AboutTheCourseComponent course={course} />,
     },
     {
-      label: "Lessons",
+      label: "Course Curriculum",
       activeTabIcon: <LockIcon className="size-4 lg:size-5" />,
       component: (
         <VideoShowcase
@@ -32,7 +32,7 @@ const CourseOverviewSection = ({ course }: { course: Course }) => {
     },
   ];
 
-  // Auto-switch tabs every 8 seconds (only if enabled)
+  // Auto-switch tabs every 20 seconds (only if enabled)
   useEffect(() => {
     if (!isAutoSwitchEnabled) {
       return;
@@ -40,7 +40,7 @@ const CourseOverviewSection = ({ course }: { course: Course }) => {
 
     autoSwitchIntervalRef.current = setInterval(() => {
       setCurrentTabIndex((prevIndex) => (prevIndex + 1) % tabs.length);
-    }, 8000);
+    }, 20000);
 
     return () => {
       if (autoSwitchIntervalRef.current) {

@@ -163,38 +163,60 @@ const ManageUsersPage = () => {
     }
   };
 
-  // Handle edit user
-  const handleEditUser = (user: User) => {
+  // Handle edit user - fetch full data for instructors to get previousExperience
+  const handleEditUser = async (user: User) => {
     setSelectedUser(user);
+    let dataToUse = user;
+
+    if (user.userType === "instructor" && user._id) {
+      const fullData = await getUserById(user._id);
+      if (fullData) {
+        dataToUse = fullData;
+      }
+    }
+
+    const instructorData = dataToUse as Instructor;
     setEditFormData({
-      firstName: user.firstName || "",
-      lastName: user.lastName || "",
-      email: user.email || "",
-      phone: user.phone || "",
-      whatsappNumber: user.whatsappNumber || "",
-      dob: user.dob ? new Date(user.dob) : undefined,
-      status: user.status || "active",
-      profilePicture: user.profilePicture || "",
-      address: user.address || {
+      firstName: dataToUse.firstName || "",
+      lastName: dataToUse.lastName || "",
+      email: dataToUse.email || "",
+      phone: dataToUse.phone || "",
+      whatsappNumber: dataToUse.whatsappNumber || "",
+      dob: dataToUse.dob ? new Date(dataToUse.dob) : undefined,
+      status: dataToUse.status || "active",
+      profilePicture: dataToUse.profilePicture || "",
+      address: dataToUse.address || {
         address: "",
         city: "",
         state: "",
         country: "",
         pincode: "",
       },
-      ...(user.userType === "instructor" && {
-        bio: (user as Instructor).bio || "",
-        currentPosition: (user as Instructor).currentPosition || "",
-        currentCompany: (user as Instructor).currentCompany || "",
-        linkedinUrl: (user as Instructor).linkedinUrl || "",
+      ...(dataToUse.userType === "instructor" && {
+        bio: instructorData.bio || "",
+        currentPosition: instructorData.currentPosition || "",
+        currentCompany: instructorData.currentCompany || "",
+        linkedinUrl: instructorData.linkedinUrl || "",
+        previousExperience:
+          instructorData.previousExperience?.map((exp: any) => ({
+            companyName: exp.companyName || "",
+            position: exp.position || "",
+            duration: {
+              from: exp.duration?.from
+                ? new Date(exp.duration.from)
+                : new Date(),
+              to: exp.duration?.to ? new Date(exp.duration.to) : new Date(),
+            },
+            description: exp.description || "",
+          })) || [],
       }),
-      ...(user.userType === "student" && {
-        collegeName: (user as Student).collegeName || "",
-        degreeName: (user as Student).degreeName || "",
-        currentPosition: (user as Student).currentPosition || "",
-        currentCompany: (user as Student).currentCompany || "",
-        domain: (user as Student).domain || "",
-        portfolio: (user as Student).portfolio || "",
+      ...(dataToUse.userType === "student" && {
+        collegeName: (dataToUse as Student).collegeName || "",
+        degreeName: (dataToUse as Student).degreeName || "",
+        currentPosition: (dataToUse as Student).currentPosition || "",
+        currentCompany: (dataToUse as Student).currentCompany || "",
+        domain: (dataToUse as Student).domain || "",
+        portfolio: (dataToUse as Student).portfolio || "",
       }),
     });
     setShowEditModal(true);
@@ -206,7 +228,40 @@ const ManageUsersPage = () => {
 
     setIsUpdating(true);
     try {
-      const result = await updateUser(selectedUser._id, editFormData);
+      // Prepare update data - filter instructor previousExperience to valid entries only
+      let updateData = { ...editFormData };
+      if (
+        selectedUser.userType === "instructor" &&
+        (updateData as any).previousExperience
+      ) {
+        const validExperiences = ((updateData as any).previousExperience || [])
+          .filter(
+            (exp: any) =>
+              exp.companyName?.trim() &&
+              exp.position?.trim() &&
+              exp.duration?.from &&
+              exp.duration?.to &&
+              exp.description?.trim()
+          )
+          .map((exp: any) => ({
+            companyName: exp.companyName.trim(),
+            position: exp.position.trim(),
+            description: exp.description.trim(),
+            duration: {
+              from:
+                exp.duration.from instanceof Date
+                  ? exp.duration.from.toISOString()
+                  : new Date(exp.duration.from).toISOString(),
+              to:
+                exp.duration.to instanceof Date
+                  ? exp.duration.to.toISOString()
+                  : new Date(exp.duration.to).toISOString(),
+            },
+          }));
+        (updateData as any).previousExperience = validExperiences;
+      }
+
+      const result = await updateUser(selectedUser._id, updateData);
       if (result) {
         toast.success("User updated successfully");
         setShowEditModal(false);
@@ -1076,6 +1131,49 @@ const ManageUsersPage = () => {
                           </p>
                         </div>
                       )}
+                      {/* Previous Experience */}
+                      <div className="md:col-span-2 mt-4">
+                        <span className="text-sm font-medium text-gray-700 block mb-2">
+                          Previous Experience:
+                        </span>
+                        {((fullUserData as Instructor).previousExperience
+                          ?.length ?? 0) > 0 ? (
+                          <div className="space-y-3">
+                            {(fullUserData as Instructor).previousExperience!.map(
+                              (exp, idx) => (
+                                <div
+                                  key={idx}
+                                  className="p-3 bg-gray-50 rounded-lg border border-gray-100"
+                                >
+                                  <div className="font-medium text-gray-900">
+                                    {exp.position} at {exp.companyName}
+                                  </div>
+                                  <div className="text-xs text-gray-500 mt-1">
+                                    {exp.duration?.from &&
+                                      new Date(
+                                        exp.duration.from
+                                      ).toLocaleDateString()}{" "}
+                                    –{" "}
+                                    {exp.duration?.to &&
+                                      new Date(
+                                        exp.duration.to
+                                      ).toLocaleDateString()}
+                                  </div>
+                                  {exp.description && (
+                                    <p className="text-sm text-gray-600 mt-1">
+                                      {exp.description}
+                                    </p>
+                                  )}
+                                </div>
+                              )
+                            )}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-gray-500 italic">
+                            No previous experience added yet.
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}
@@ -1229,7 +1327,11 @@ const ManageUsersPage = () => {
         }}
         onUpdate={handleUpdateUser}
         isUpdating={isUpdating}
-        onFormDataChange={setEditFormData}
+        onFormDataChange={(data) =>
+          setEditFormData((prev) =>
+            typeof data === "function" ? data(prev) : data
+          )
+        }
       />
 
       {/* Change Password Modal */}

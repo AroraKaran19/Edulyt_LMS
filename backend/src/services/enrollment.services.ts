@@ -266,10 +266,16 @@ export const GetUserEnrollmentsService = async (
               ],
             }
           : {},
-        populate: {
-          path: "instructor",
-          select: "firstName lastName email profilePicture",
-        },
+        populate: [
+          {
+            path: "instructor",
+            select: "firstName lastName email profilePicture",
+          },
+          {
+            path: "category",
+            select: "name",
+          },
+        ],
       })
       .sort(sortObj)
       .skip(skip)
