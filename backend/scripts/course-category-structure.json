@@ -1,0 +1,137 @@
+{
+  "description": "Category order and course order within each category. Top row (1-5), bottom row (6-10). Edit this file to match the desired grid layout.",
+  "structure": [
+    {
+      "categoryName": "Python",
+      "courses": [
+        "Python - Basics",
+        "Data Science using Python - NumPy & Pandas",
+        "Data Science using Python - Data Visualization (Python)",
+        "Python - Intermediate",
+        "Python - Expert",
+        "Machine Learning - Python",
+        "Excel 365 - Python"
+      ]
+    },
+    {
+      "categoryName": "Data Analytics",
+      "courses": [
+        "Python - Basics",
+        "Data Science using Python - NumPy & Pandas",
+        "Data Science using Python - Data Visualization (Python)",
+        "Python - Intermediate",
+        "SQL - Oracle & MySQL (Structured Query Language)",
+        "Power BI - Beginner",
+        "Machine Learning - Python",
+        "Machine Learning - Beginner",
+        "SAS Programming Essentials (Base SAS - 1)",
+        "Excel Power Toolkit for Data Professionals"
+      ]
+    },
+    {
+      "categoryName": "Data Science",
+      "courses": [
+        "Python - Basics",
+        "Data Science using Python - NumPy & Pandas",
+        "Data Science using Python - Data Visualization (Python)",
+        "Python - Intermediate",
+        "Python - Expert",
+        "Data Science using R",
+        "Applied Data Science - Insight to Prediction",
+        "Machine Learning - Python",
+        "Applied Machine Learning with BigML"
+      ]
+    },
+    {
+      "categoryName": "SAS Ecosystem - Base, SQL, Macros & BI",
+      "courses": [
+        "SAS Programming Essentials (Base SAS - 1)",
+        "SAS Programming - Data Manipulation Techniques (Base SAS - 2)",
+        "SAS Programming - Advanced Techniques (Base SAS - 3)",
+        "SAS SQL",
+        "SAS Macro Language - Essentials",
+        "SAS Macro Language - Advanced Techniques",
+        "SAS - Microsoft Excel",
+        "SAS - JSON Files",
+        "SAS Report Writing",
+        "SAS Data Visualization Using ODS Graphics"
+      ]
+    },
+    {
+      "categoryName": "SAS - Tools & Modeling",
+      "courses": [
+        "SAS Enterprise Guide for SAS Programmers",
+        "SAS Studio for SAS Programmers",
+        "SAS Enterprise Guide - Querying and Reporting",
+        "SAS Enterprise Guide - Advanced Tasks and Querying",
+        "SAS Enterprise Guide - ANOVA, Regression, and Logistic Regression",
+        "SAS Enterprise Guide - Creating Reports and Graphs",
+        "SAS Enterprise Guide - for Experienced SAS Programmers",
+        "Statistical Concepts - Introduction",
+        "Statistics - Introduction to ANOVA, Regression, and Logistic Regression",
+        "Statistics - ANOVA and Regression"
+      ]
+    },
+    {
+      "categoryName": "Data Visualization (Power BI, Tableau, SAS, Excel-",
+      "courses": [
+        "Power BI - Beginner",
+        "Power BI - Expert",
+        "Tableau",
+        "SAS Data Visualization Using ODS Graphics",
+        "Excel 365 - Visualization",
+        "Data Science using Python - Data Visualization (Python)",
+        "Advanced Data Visualization with BI Tools"
+      ]
+    },
+    {
+      "categoryName": "Artificial Intelligence (AI & NLP)",
+      "courses": [
+        "Artificial Intelligence - Basic",
+        "Artificial Intelligence - Advance",
+        "Artificial Intelligence - (AI) Chatbots",
+        "AI - Natural Language Processing - Beginner",
+        "AI - Natural Language Processing - Expert",
+        "Applied Machine Learning with BigML"
+      ]
+    },
+    {
+      "categoryName": "Machine Learning & Deep Learning",
+      "courses": [
+        "Machine Learning - Python",
+        "Machine Learning - Beginner",
+        "Machine Learning - Intermediate",
+        "Machine Learning - Expert",
+        "Machine Learning - AWS",
+        "Machine Learning - Neural Networks - Beginner",
+        "Machine Learning - Neural Networks - Expert",
+        "Machine Learning - TensorFlow",
+        "Applied Data Science - Insight to Prediction"
+      ]
+    },
+    {
+      "categoryName": "Business Intelligence & Analytics",
+      "courses": [
+        "Excel Power Toolkit for Data Professionals",
+        "Advanced Data Visualization with BI Tools",
+        "Analytics with Python & SQL",
+        "Applied Machine Learning with BigML",
+        "Excel 365 - Basics",
+        "Excel 365 - Visualization",
+        "Excel 365 - Python",
+        "Power BI - Beginner",
+        "Tableau",
+        "Visual Basic for Applications - (VBA)"
+      ]
+    },
+    {
+      "categoryName": "Data Science - Architecture & Engineering",
+      "courses": [
+        "Data Architecture & Engineering Foundations",
+        "Data Science - Data Wrangling",
+        "Data Science - Data Operations",
+        "Applied Data Science - Insight to Prediction"
+      ]
+    }
+  ]
+}
