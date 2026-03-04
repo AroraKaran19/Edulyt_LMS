@@ -30,6 +30,32 @@ import { InfiniteScrollSelect } from "@/components/ui/dropdown/InfiniteScrollSel
 
 type AudienceFilter = "" | "college-students" | "professionals";
 
+const STORAGE_KEY = "manage-courses-filters";
+
+function readStoredFilters() {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    return {
+      categoryIds: Array.isArray(parsed.categoryIds) ? parsed.categoryIds : [],
+      instructorIds: Array.isArray(parsed.instructorIds) ? parsed.instructorIds : [],
+      audience: (parsed.audience === "college-students" || parsed.audience === "professionals")
+        ? (parsed.audience as AudienceFilter)
+        : "",
+      status: (parsed.status === "active" || parsed.status === "inactive")
+        ? (parsed.status as string)
+        : "",
+      sortOrder: ["newest", "a-z", "z-a"].includes(parsed.sortOrder as string)
+        ? (parsed.sortOrder as string)
+        : "newest",
+    };
+  } catch {
+    return null;
+  }
+}
+
 const ManageCoursesPage = () => {
   const router = useRouter();
   const {
@@ -42,7 +68,6 @@ const ManageCoursesPage = () => {
   } = useCourse();
   const { getAdminCategories } = useCategory();
   const { getInstructors } = useInstructor();
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // State management
   const [courses, setCourses] = useState<Course[]>([]);
@@ -50,11 +75,26 @@ const ManageCoursesPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCourses, setTotalCourses] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterCategoryIds, setFilterCategoryIds] = useState<string[]>([]);
-  const [filterInstructorIds, setFilterInstructorIds] = useState<string[]>([]);
-  const [filterAudience, setFilterAudience] = useState<AudienceFilter>("");
-  const [filterStatus, setFilterStatus] = useState<string>("");
-  const [sortOrder, setSortOrder] = useState<string>("newest");
+  const [filterCategoryIds, setFilterCategoryIds] = useState<string[]>(() => {
+    const stored = readStoredFilters();
+    return stored?.categoryIds ?? [];
+  });
+  const [filterInstructorIds, setFilterInstructorIds] = useState<string[]>(() => {
+    const stored = readStoredFilters();
+    return stored?.instructorIds ?? [];
+  });
+  const [filterAudience, setFilterAudience] = useState<AudienceFilter>(() => {
+    const stored = readStoredFilters();
+    return stored?.audience ?? "";
+  });
+  const [filterStatus, setFilterStatus] = useState<string>(() => {
+    const stored = readStoredFilters();
+    return stored?.status ?? "";
+  });
+  const [sortOrder, setSortOrder] = useState<string>(() => {
+    const stored = readStoredFilters();
+    return stored?.sortOrder ?? "newest";
+  });
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
   const [courseToDelete, setCourseToDelete] = useState<Course | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -135,6 +175,20 @@ const ManageCoursesPage = () => {
   useEffect(() => {
     loadCourses();
   }, [loadCourses]);
+
+  // Persist filters to sessionStorage
+  useEffect(() => {
+    sessionStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        categoryIds: filterCategoryIds,
+        instructorIds: filterInstructorIds,
+        audience: filterAudience,
+        status: filterStatus,
+        sortOrder,
+      })
+    );
+  }, [filterCategoryIds, filterInstructorIds, filterAudience, filterStatus, sortOrder]);
 
   // Auto-apply filters on change
   const handleCategoryFilterChange = useCallback(
@@ -255,32 +309,27 @@ const ManageCoursesPage = () => {
     [loadCourses],
   );
 
-  // Handle infinite scroll
-  const handleScroll = useCallback(
-    (e: React.UIEvent<HTMLDivElement>) => {
-      const container = e.currentTarget;
-      const scrollTop = container.scrollTop;
-      const scrollHeight = container.scrollHeight;
-      const clientHeight = container.clientHeight;
+  // Sentinel ref for IntersectionObserver (works with any scroll container, including mobile)
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
-      // Trigger when user is 300px from bottom
-      const distanceFromBottom = scrollHeight - (scrollTop + clientHeight);
+  // Handle infinite scroll via IntersectionObserver - works on mobile when parent layout scrolls
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel || !hasMore || isLoadingMore || isLoading) return;
 
-      if (distanceFromBottom < 300 && hasMore && !isLoadingMore && !isLoading) {
-        setIsLoadingMore(true);
-        loadCourses(currentPage + 1, searchTerm, true);
-      }
-    },
-    [
-      hasMore,
-      isLoadingMore,
-      isLoading,
-      currentPage,
-      searchTerm,
-      loadCourses,
-      totalPages,
-    ],
-  );
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (entry?.isIntersecting && hasMore && !isLoadingMore && !isLoading) {
+          setIsLoadingMore(true);
+          loadCourses(currentPage + 1, searchTerm, true);
+        }
+      },
+      { root: null, rootMargin: "200px", threshold: 0 }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, isLoadingMore, isLoading, currentPage, searchTerm, loadCourses]);
 
   // Handle status toggle
   const handleStatusToggle = async (
@@ -448,11 +497,7 @@ const ManageCoursesPage = () => {
   };
 
   return (
-    <div
-      ref={scrollContainerRef}
-      onScroll={handleScroll}
-      className="w-full min-h-screen bg-gray-50 p-6 overflow-y-auto"
-    >
+    <div className="w-full min-h-screen bg-gray-50 p-6">
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-6">
@@ -857,6 +902,11 @@ const ManageCoursesPage = () => {
                 </button>
               )}
             </div>
+          )}
+
+          {/* Sentinel for IntersectionObserver - triggers load when visible */}
+          {hasMore && courses.length > 0 && (
+            <div ref={sentinelRef} className="h-1 w-full" aria-hidden />
           )}
 
           {/* Infinite Scroll Loading Indicator */}

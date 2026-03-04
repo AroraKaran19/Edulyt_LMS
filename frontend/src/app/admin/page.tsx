@@ -1,4 +1,3 @@
-import AdminTopHeader from "@/components/admin/AdminTopHeader";
 import AdminDashboard from "@/components/admin/dashboard/AdminDashboard";
 import { notFound } from "next/navigation";
 
@@ -18,11 +17,8 @@ const AdminPage = () => {
   }
 
   return (
-    <div className="w-full h-full flex flex-col overflow-hidden">
-      <AdminTopHeader />
-      <div className="flex-1 overflow-y-auto">
-        <AdminDashboard />
-      </div>
+    <div className="w-full h-full overflow-y-auto">
+      <AdminDashboard />
     </div>
   );
 };

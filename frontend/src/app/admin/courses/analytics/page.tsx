@@ -1,10 +1,8 @@
-import AdminTopHeader from "@/components/admin/AdminTopHeader";
 import Analytics from "@/components/admin/courses/Analytics";
 
 const AdminCourseAnalytics = () => {
   return (
-    <div className="w-full h-full flex-col gap-4">
-      <AdminTopHeader />
+    <div className="w-full h-full overflow-y-auto">
       <Analytics />
     </div>
   );

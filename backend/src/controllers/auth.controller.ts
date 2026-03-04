@@ -12,6 +12,7 @@ import {
   registerUser,
   resetUserPassword,
 } from "../services/auth.services";
+import { downloadImageAndUploadToS3 } from "../services/upload.services";
 import bcrypt from "bcryptjs";
 import { Student, User } from "../types";
 
@@ -161,6 +162,18 @@ export const oauthSignin = asyncHandler(async (req: Request, res: Response) => {
   let user = await UserModel.findOne({ email });
   if (!user) {
     // create a new user
+    const originalImageUrl =
+      providerDetails?.picture || providerDetails?.image || "";
+    let profilePictureUrl = originalImageUrl;
+
+    // Download OAuth profile image and store on S3 for reliability
+    if (originalImageUrl) {
+      const s3Url = await downloadImageAndUploadToS3(
+        originalImageUrl,
+        "profile-images"
+      );
+      if (s3Url) profilePictureUrl = s3Url;
+    }
 
     let accountDetails: User["accounts"]["google" | "linkedin"] = {};
     if (provider === "google") {
@@ -168,7 +181,7 @@ export const oauthSignin = asyncHandler(async (req: Request, res: Response) => {
         id: providerDetails?.id,
         name: providerDetails?.name,
         email: providerDetails?.email,
-        image: providerDetails?.picture || providerDetails?.image,
+        image: profilePictureUrl,
         email_verified: providerDetails?.email_verified,
         access_token: providerDetails?.access_token,
       };
@@ -178,7 +191,7 @@ export const oauthSignin = asyncHandler(async (req: Request, res: Response) => {
         name: providerDetails?.name,
         given_name: providerDetails?.given_name,
         family_name: providerDetails?.family_name,
-        image: providerDetails?.image,
+        image: profilePictureUrl,
         locale: providerDetails?.locale,
         providerAccountId: providerDetails?.providerAccountId,
         id_token: providerDetails?.id_token,
@@ -195,7 +208,7 @@ export const oauthSignin = asyncHandler(async (req: Request, res: Response) => {
       lastName: providerDetails?.name?.split(" ")[1] || "",
       password: hashedPassword,
       provider,
-      profilePicture: providerDetails?.picture || providerDetails?.image,
+      profilePicture: profilePictureUrl,
       userType: "student",
       accounts: {
         [provider]: accountDetails,

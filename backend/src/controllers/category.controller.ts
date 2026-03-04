@@ -15,8 +15,14 @@ import {
 
 export const getAllCategories = asyncHandler(
   async (req: Request, res: Response) => {
-    const { page = 1, limit = 10, search = "" } = req.query;
+    const { page = 1, limit = 10, search = "", audience } = req.query;
     const isAdmin = req.user?.userType === "admin";
+    const validAudience =
+      audience &&
+      typeof audience === "string" &&
+      ["college-students", "professionals"].includes(audience)
+        ? (audience as "college-students" | "professionals")
+        : undefined;
 
     if (Number(page) < 1 || Number(limit) < 1) {
       throw new AppError("Page and limit must be positive numbers", 400);
@@ -26,7 +32,8 @@ export const getAllCategories = asyncHandler(
       Number(page),
       Number(limit),
       String(search),
-      isAdmin
+      isAdmin,
+      validAudience
     );
 
     if (!result || result.categories.length === 0) {
@@ -61,13 +68,16 @@ export const getCategoryById = asyncHandler(
 
 export const createCategory = asyncHandler(
   async (req: Request, res: Response) => {
-    const { name, description, showOnHomePage, categoryImage } = req.body;
+    const { name, description, showOnHomePage, categoryImage, audience } = req.body;
     if (!name) {
       throw new AppError("Category name is required", 400);
     }
+    if (!audience || !["college-students", "professionals"].includes(audience)) {
+      throw new AppError("Audience is required and must be 'college-students' or 'professionals'", 400);
+    }
 
     try {
-      const result = await createCategoryService(name, description, showOnHomePage, categoryImage);
+      const result = await createCategoryService(name, description, showOnHomePage, categoryImage, audience);
       if (!result) {
         throw new AppError("Failed to create category", 500);
       }
@@ -86,15 +96,18 @@ export const createCategory = asyncHandler(
 export const updateCategory = asyncHandler(
   async (req: Request, res: Response) => {
     const { id } = req.params;
-    const { name, description, isActive, showOnHomePage, categoryImage } = req.body;
+    const { name, description, isActive, showOnHomePage, categoryImage, audience } = req.body;
     if (!id) {
       throw new AppError("Category ID is required", 400);
     }
-    if (!name && !description && isActive === undefined && showOnHomePage === undefined && categoryImage === undefined) {
+    if (!name && !description && isActive === undefined && showOnHomePage === undefined && categoryImage === undefined && audience === undefined) {
       throw new AppError(
-        "At least one field (name, description, isActive, showOnHomePage, or categoryImage) is required",
+        "At least one field (name, description, isActive, showOnHomePage, categoryImage, or audience) is required",
         400
       );
+    }
+    if (audience !== undefined && !["college-students", "professionals"].includes(audience)) {
+      throw new AppError("Audience must be 'college-students' or 'professionals'", 400);
     }
 
     try {
@@ -104,6 +117,7 @@ export const updateCategory = asyncHandler(
         isActive,
         showOnHomePage,
         categoryImage,
+        audience,
       });
       if (!result) {
         throw new AppError("Failed to update category", 500);

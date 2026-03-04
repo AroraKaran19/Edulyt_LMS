@@ -39,8 +39,9 @@ const AdminDashboard = () => {
   } = useSWR(`/admin/dashboard-stats?duration=${duration}`, fetcher, {
     revalidateOnFocus: false,
     revalidateOnReconnect: false,
-    revalidateIfStale: false,
+    revalidateIfStale: true,
     revalidateOnMount: true,
+    dedupingInterval: 0, // Always fetch when duration changes
   });
 
   if (error) {
@@ -53,15 +54,19 @@ const AdminDashboard = () => {
     if (!data) return null;
 
     const usersByType = data.usersByType;
-    const notCount = (usersByType?.admin || 0) + (data.blockedUsers || 0);
-    const totalUsers = data.totalUsers - notCount;
+    const totalUsers = data.totalUsers; // Backend excludes admin/super-admin
 
-    const instructorPercentage = usersByType?.instructor
-      ? Math.round((usersByType.instructor / totalUsers) * 100)
+    const instructorCount = usersByType?.instructor || 0;
+    const studentCount = usersByType?.student || 0;
+    const collaboratorCount = usersByType?.collaborator || 0;
+    const totalForDistribution = instructorCount + studentCount + collaboratorCount;
+
+    const instructorPercentage = totalForDistribution > 0
+      ? Math.round((instructorCount / totalForDistribution) * 100)
       : 0;
 
-    const studentPercentage = usersByType?.student
-      ? Math.round((usersByType.student / totalUsers) * 100)
+    const studentPercentage = totalForDistribution > 0
+      ? Math.round((studentCount / totalForDistribution) * 100)
       : 0;
 
     return {
@@ -69,28 +74,22 @@ const AdminDashboard = () => {
       inactiveUsers: data.inactiveUsers,
       blockedUsers: data.blockedUsers,
       usersByType,
-      notCount,
       totalUsers,
       instructorPercentage,
       studentPercentage,
-      totalUsersRaw: data.totalUsers,
       growthRate: data.timePeriod?.growthRate,
-      chartData: data.chartData,
+      chartData: data.chartData || [],
       timePeriod: data.timePeriod,
     };
   }, [dashboardStatsData?.data?.data]);
 
   const {
-    usersByType,
-    notCount,
     totalUsers = 0,
     activeUsers = 0,
     inactiveUsers = 0,
-    blockedUsers = 0,
     chartData = [],
     instructorPercentage = 0,
     studentPercentage = 0,
-    totalUsersRaw = 0,
     growthRate = 0,
     timePeriod,
   } = dashboardStats || {};
@@ -127,7 +126,7 @@ const AdminDashboard = () => {
                     <ButtonLoader />
                   ) : (
                     <span className="text-xl sm:text-3xl font-extrabold text-[#1D2939]">
-                      {totalUsersRaw}
+                      {totalUsers}
                     </span>
                   )}
                   <div className="flex items-center gap-1 text-xs font-medium">
@@ -158,7 +157,6 @@ const AdminDashboard = () => {
                 filters={filters}
                 activeFilter={duration}
                 setFilter={setDuration}
-                isLoading={isLoading}
               />
             </div>
           </div>
@@ -275,7 +273,10 @@ const AdminDashboard = () => {
               </div>
             </div>
             <div>
-              <NewSignpUsers />
+              <NewSignpUsers
+                monthlyBreakdown={timePeriod?.monthlyBreakdown || []}
+                duration={duration}
+              />
             </div>
           </div>
         </div>

@@ -258,9 +258,9 @@ export function InfiniteScrollSelect<T = unknown>({
                 {emptyMessage}
               </div>
             ) : (
-              options.map((opt) => (
+              options.map((opt, index) => (
                 <button
-                  key={opt.value}
+                  key={index}
                   type="button"
                   onClick={() => toggleOption(opt)}
                   className={cn(

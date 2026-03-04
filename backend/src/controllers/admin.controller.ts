@@ -5,6 +5,7 @@ import {
 } from "../middlewares/error.middleware";
 import { Request, Response } from "express";
 import { getDashboardStats } from "../services/admin.services";
+import { getCourseAnalytics } from "../services/course-analytics.services";
 
 /**
  * @route   GET /api/admin/dashboard-stats
@@ -51,6 +52,43 @@ export const getDashboardStatsController = asyncHandler(
       res,
       dashboardStats,
       "Dashboard statistics retrieved successfully"
+    );
+  }
+);
+
+/**
+ * @route   GET /api/admin/courses-analytics
+ * @desc    Get course analytics for admin (completion rate, enrollments, popular courses, etc.)
+ * @access  Admin
+ * @query   sortBy - "enrollments" | "revenue" | "rating"
+ * @query   search - optional search for popular courses
+ */
+export const getCourseAnalyticsController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { sortBy = "enrollments", search, filter, courseId } = req.query;
+    const validSort =
+      sortBy === "revenue" || sortBy === "rating" ? sortBy : "enrollments";
+    const searchStr = typeof search === "string" ? search.trim() || undefined : undefined;
+    const validFilter =
+      filter === "in_progress" || filter === "completed"
+        ? filter
+        : "all";
+    const validCourseId =
+      typeof courseId === "string" && courseId.trim()
+        ? courseId.trim()
+        : undefined;
+
+    const analytics = await getCourseAnalytics(
+      validSort,
+      searchStr,
+      validFilter,
+      validCourseId
+    );
+
+    sendSuccessResponse(
+      res,
+      analytics,
+      "Course analytics retrieved successfully"
     );
   }
 );

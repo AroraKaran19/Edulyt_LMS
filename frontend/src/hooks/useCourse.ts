@@ -10,6 +10,7 @@ export interface CourseFilters {
   page?: number;
   limit?: number;
   search?: string;
+  searchTitleOnly?: boolean;
   categories?: string;
   instructors?: string;
   audience?: "college-students" | "professionals";
@@ -353,6 +354,7 @@ export const useCourse = () => {
         if (filters.page) params.append("page", filters.page.toString());
         if (filters.limit) params.append("limit", filters.limit.toString());
         if (filters.search) params.append("search", filters.search);
+        if (filters.searchTitleOnly) params.append("searchTitleOnly", "true");
         if (filters.categories) params.append("categories", filters.categories);
         if (filters.instructors) params.append("instructors", filters.instructors);
         if (filters.audience) params.append("audience", filters.audience);

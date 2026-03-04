@@ -51,7 +51,17 @@ const NavbarContent = ({
     setSelectedCategory(null);
   }, [selectedAudience]);
 
+  // Reset category list when audience changes
   useEffect(() => {
+    setCategoryPage(1);
+    setCategories([]);
+    setCategoryHasMore(true);
+  }, [selectedAudience]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const audienceForFetch = selectedAudience;
+
     const fetchCategories = async () => {
       if (!categoryHasMore && categoryPage > 1) return;
       setIsLoadingCategories(categoryPage === 1);
@@ -60,7 +70,9 @@ const NavbarContent = ({
         const response = await getActiveCategories({
           page: categoryPage,
           limit: 12,
+          audience: audienceForFetch as "college-students" | "professionals",
         });
+        if (cancelled) return;
         if (response?.categories) {
           const newCats = response.categories;
           const totalPages = response.totalPages || 1;
@@ -72,15 +84,25 @@ const NavbarContent = ({
           setCategoryHasMore(currentPage < totalPages);
         }
       } catch (error) {
-        console.error("Failed to fetch categories:", error);
+        if (!cancelled) console.error("Failed to fetch categories:", error);
       } finally {
-        setIsLoadingCategories(false);
-        setIsLoadingMoreCategories(false);
+        if (!cancelled) {
+          setIsLoadingCategories(false);
+          setIsLoadingMoreCategories(false);
+        }
       }
     };
 
     fetchCategories();
-  }, [categoryPage, categoryHasMore, getActiveCategories]);
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    categoryPage,
+    categoryHasMore,
+    getActiveCategories,
+    selectedAudience,
+  ]);
 
   // Reset courses state when audience or category changes
   useEffect(() => {
@@ -227,7 +249,7 @@ const NavbarContent = ({
     const audienceLabel =
       audiences.find((aud) => aud.value === selectedAudience)?.label ||
       "Categories";
-    const headingText = `${audienceLabel}'s Categories`;
+    const headingText = `${audienceLabel === "College Students" ? "Pick Your Learning Domain" : audienceLabel === "Working Professionals" ? "Select Your Career Specialisation" : "Categories"}`;
 
     return (
       <div className="w-full h-full flex flex-col gap-4">
@@ -425,7 +447,7 @@ const NavbarContent = ({
                 "category w-full px-8 py-4 flex items-center justify-between hover:bg-gray-200 transition-all duration-300 cursor-pointer rounded-xl shrink-0",
                 selectedAudience === audience.value && "bg-gray-200",
               )}
-              onClick={() => {
+              onMouseEnter={() => {
                 setSelectedAudience(audience.value);
                 setSelectedCategory(null); // Reset category when audience changes
               }}

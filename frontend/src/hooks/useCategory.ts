@@ -12,6 +12,7 @@ export interface CategoryFilters {
   limit?: number;
   search?: string;
   isActive?: boolean;
+  audience?: "college-students" | "professionals";
   sortBy?: "name" | "createdAt" | "updatedAt";
   sortOrder?: "asc" | "desc";
 }
@@ -33,6 +34,7 @@ export interface SingleCategoryResponse {
 
 export interface CreateCategoryData {
   name: string;
+  audience: "college-students" | "professionals";
   description?: string;
   showOnHomePage?: boolean;
   categoryImage?: string;
@@ -90,6 +92,7 @@ export const useCategory = () => {
         if (filters.search) params.append("search", filters.search);
         if (filters.isActive !== undefined)
           params.append("isActive", filters.isActive.toString());
+        if (filters.audience) params.append("audience", filters.audience);
         if (filters.sortBy) params.append("sortBy", filters.sortBy);
         if (filters.sortOrder) params.append("sortOrder", filters.sortOrder);
 
@@ -406,10 +409,16 @@ export const useCategory = () => {
 
       if (!data.name?.trim()) {
         errors.push("Category name is required");
-      } else if (data.name.trim().length < 2) {
+      }
+      if (!data.audience || !["college-students", "professionals"].includes(data.audience)) {
+        errors.push("Audience is required (college-students or professionals)");
+      }
+      if (data.name?.trim()) {
+      if (data.name.trim().length < 2) {
         errors.push("Category name must be at least 2 characters long");
       } else if (data.name.trim().length > 100) {
         errors.push("Category name must be less than 100 characters");
+      }
       }
 
       if (data.description && data.description.length > 500) {

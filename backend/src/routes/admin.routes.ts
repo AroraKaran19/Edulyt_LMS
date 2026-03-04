@@ -1,7 +1,10 @@
 import { Router } from "express";
 import { verifyUser } from "../middlewares/user.middleware";
 import { verifyAdmin } from "../middlewares/admin.middleware";
-import { getDashboardStatsController } from "../controllers/admin.controller";
+import {
+  getDashboardStatsController,
+  getCourseAnalyticsController,
+} from "../controllers/admin.controller";
 
 const router = Router();
 
@@ -11,5 +14,8 @@ router.use(verifyAdmin);
 
 // Admin dashboard route
 router.get("/dashboard-stats", getDashboardStatsController);
+
+// Course analytics route
+router.get("/courses-analytics", getCourseAnalyticsController);
 
 export default router;

@@ -30,7 +30,7 @@ const LoginPage = () => {
       const user = session.user as any;
       // Check if user is admin or super-admin
       if (user?.userType === "admin" || user?.userType === "super-admin") {
-        router.push("/admin/dashboard");
+        router.push("/admin");
       } else {
         router.push(callbackUrl);
       }

@@ -5,7 +5,8 @@ export const getAllCategoriesService = async (
   page: number,
   limit: number,
   search: string,
-  isAdmin?: boolean
+  isAdmin?: boolean,
+  audience?: "college-students" | "professionals"
 ): Promise<{
   categories: Category[];
   total: number;
@@ -19,6 +20,11 @@ export const getAllCategoriesService = async (
   // Active filter - only show active items for non-admin users
   if (!isAdmin) {
     filters.isActive = true;
+  }
+
+  // Audience filter
+  if (audience && ["college-students", "professionals"].includes(audience)) {
+    filters.audience = audience;
   }
 
   // Search filter
@@ -76,8 +82,13 @@ export const createCategoryService = async (
   name: string,
   description?: string,
   showOnHomePage?: boolean,
-  categoryImage?: string
+  categoryImage?: string,
+  audience?: "college-students" | "professionals"
 ): Promise<Category | null> => {
+  const validAudience = audience && ["college-students", "professionals"].includes(audience)
+    ? audience
+    : "college-students";
+
   // Check if trying to set showOnHomePage to true
   if (showOnHomePage === true) {
     // Count existing categories with showOnHomePage: true
@@ -92,6 +103,7 @@ export const createCategoryService = async (
     description,
     showOnHomePage: showOnHomePage ?? false,
     categoryImage: categoryImage || "",
+    audience: validAudience,
   });
   const savedCategory = await category.save();
 
@@ -110,6 +122,7 @@ export const updateCategoryService = async (
     isActive?: boolean;
     showOnHomePage?: boolean;
     categoryImage?: string;
+    audience?: "college-students" | "professionals";
   }
 ): Promise<Category | null> => {
   // Check if trying to set showOnHomePage to true

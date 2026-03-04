@@ -12,6 +12,8 @@ interface DropDownProps {
   label?: string;
   required?: boolean;
   options: string[];
+  /** Map option values to display labels (e.g. { "college-students": "College Students" }) */
+  optionLabels?: Record<string, string>;
   className?: string;
   defaultValue?: string;
   value?: string; // Add controlled value prop
@@ -24,11 +26,13 @@ const DropDown = ({
   label,
   required = false,
   options,
+  optionLabels,
   className,
   defaultValue = "Select an option",
   value,
   ...props
 }: DropDownProps) => {
+  const getDisplayLabel = (opt: string) => optionLabels?.[opt] ?? opt;
   const [isOpen, setIsOpen] = useState(false);
   // Use value prop if provided (controlled), otherwise use internal state (uncontrolled)
   const [internalValue, setInternalValue] = useState(defaultValue);
@@ -58,7 +62,7 @@ const DropDown = ({
         plusJakartaSans.className,
         "text-sm relative",
         "w-full",
-        className
+        className,
       )}
     >
       {label && (
@@ -80,17 +84,17 @@ const DropDown = ({
             "flex items-center justify-between",
             "disabled:opacity-50 disabled:cursor-not-allowed",
             "shadow-sm hover:shadow-md",
-            isOpen && "border-orange-500 ring-2 ring-orange-500/20"
+            isOpen && "border-orange-500 ring-2 ring-orange-500/20",
           )}
           disabled={props.disabled}
         >
           <span
             className={cn(
               "text-sm",
-              selectedValue === defaultValue ? "text-gray-500" : "text-black"
+              selectedValue === defaultValue ? "text-gray-500" : "text-black",
             )}
           >
-            {selectedValue}
+            {getDisplayLabel(selectedValue)}
           </span>
           <div className="flex items-center">
             {isOpen ? (
@@ -133,10 +137,10 @@ const DropDown = ({
                   "first:rounded-t-xl last:rounded-b-xl",
                   "focus:bg-orange-50 focus:outline-none",
                   selectedValue === option &&
-                    "bg-orange-100 text-orange-700 font-medium"
+                    "bg-orange-100 text-orange-700 font-medium",
                 )}
               >
-                {option}
+                {getDisplayLabel(option)}
               </button>
             ))}
           </div>

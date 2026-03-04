@@ -9,45 +9,31 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-const NewSignupusersGraph = () => {
-  // const [isLoading, setIsLoading] = useState(true);
-  // const router = useRouter();
+const MONTH_LABELS = [
+  "", "JAN", "FEB", "MAR", "APR", "MAY", "JUN",
+  "JUL", "AUG", "SEP", "OCT", "NOV", "DEC",
+];
 
-  // useEffect(() => {
-  //   const token = localStorage.getItem('adminToken')
-  //   if (!token) {
-  //     router.push('/admin/login')
-  //     return
-  //   }
-  //   setIsLoading(false);
-  // }, [router])
+const NewSignupusersGraph = ({
+  monthlyBreakdown = [],
+  duration = 12,
+}: {
+  monthlyBreakdown?: Array<{ _id: { year: number; month: number }; count: number }>;
+  duration?: number;
+}) => {
+  // Build chart data from API monthlyBreakdown
+  const chartData = (() => {
+    if (!monthlyBreakdown.length) return [];
 
-  // if (isLoading) {
-  //   return (
-  //     <div className="flex w-full h-full bg-[#F8F8F8] items-center justify-center">
-  //       <div className="text-center">
-  //         <div className="animate-spin rounded-full h-8 w-8 lg:h-12 lg:w-12 border-b-2 border-black mx-auto"></div>
-  //         <p className="mt-2 lg:mt-4 text-black text-sm lg:text-base">Loading dashboard...</p>
-  //       </div>
-  //     </div>
-  //   )
-  // }
-
-  // Chart data matching the image trend
-  const chartData = [
-    { month: "JAN", value: 15 },
-    { month: "FEB", value: 18 },
-    { month: "MAR", value: 16 },
-    { month: "APR", value: 24 },
-    { month: "MAY", value: 28 },
-    { month: "JUN", value: 32 },
-    { month: "JUL", value: 35 },
-    { month: "AUG", value: 30 },
-    { month: "SEP", value: 25 },
-    { month: "OCT", value: 20 },
-    { month: "NOV", value: 22 },
-    { month: "DEC", value: 18 },
-  ];
+    return monthlyBreakdown
+      .map((item) => ({
+        month: MONTH_LABELS[item._id.month] || `${item._id.month}`,
+        value: item.count,
+        sortKey: item._id.year * 12 + item._id.month,
+      }))
+      .sort((a, b) => a.sortKey - b.sortKey)
+      .map(({ month, value }) => ({ month, value }));
+  })();
 
   return (
     <div className="flex h-full w-full">
@@ -61,8 +47,8 @@ const NewSignupusersGraph = () => {
               <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
                 {/* Graph Area */}
                 <div className="flex-1 min-w-0">
-                  {/* Graph Container */}
-                  <div className="h-full min-h-80">
+                  {/* Graph Container - explicit height required for ResponsiveContainer on mobile */}
+                  <div className="w-full h-[240px] sm:h-[280px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={chartData}>
                         <defs>
@@ -95,8 +81,7 @@ const NewSignupusersGraph = () => {
                           tick={false}
                           axisLine={false}
                           tickLine={false}
-                          domain={[0, 40]}
-                          ticks={[0, 10, 20, 30, 40]}
+                          domain={[0, "auto"]}
                         />
                         <Tooltip
                           cursor={{

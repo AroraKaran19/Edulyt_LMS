@@ -17,9 +17,11 @@ interface MenuItem {
 const SidebarMenuItem = ({
   menuItem,
   isCollapsed,
+  onNavigate,
 }: {
   menuItem: MenuItem;
   isCollapsed?: boolean;
+  onNavigate?: () => void;
 }) => {
   const pathname = usePathname();
   const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({});
@@ -85,7 +87,10 @@ const SidebarMenuItem = ({
           },
           isCollapsed && "flex justify-center"
         )}
-        onClick={() => handleSubmenuToggle(menuItem)}
+        onClick={() => {
+          handleSubmenuToggle(menuItem);
+          onNavigate?.();
+        }}
         title={isCollapsed ? menuItem.label : undefined}
       >
         <div className="flex admin-sidebar-menu-item w-full gap-2 items-center">
@@ -131,6 +136,7 @@ const SidebarMenuItem = ({
                 key={index}
                 href={submenu.href}
                 className="w-full flex items-center transition-all duration-300"
+                onClick={onNavigate}
               >
                 {isSubmenuActive && (
                   <span className="text-orange-500 mx-2 animate-fade-from-left duration-300">

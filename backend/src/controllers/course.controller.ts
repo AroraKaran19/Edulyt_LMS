@@ -187,7 +187,7 @@ export const getCourseBySlug = asyncHandler(
 
 export const getAdminCourses = asyncHandler(
   async (req: Request, res: Response) => {
-    const { page = 1, limit = 10, search, categories, audience, instructors, isActive, sortBy = "updatedAt", sortOrder = "desc" } = req.query;
+    const { page = 1, limit = 10, search, categories, audience, instructors, isActive, sortBy = "updatedAt", sortOrder = "desc", searchTitleOnly } = req.query;
 
     if (Number(page) < 1 || Number(limit) < 1) {
       throw new AppError("Page and limit must be positive numbers", 400);
@@ -203,7 +203,8 @@ export const getAdminCourses = asyncHandler(
       sortBy as string,
       sortOrder as string,
       instructors as string,
-      isActive === "true" ? true : isActive === "false" ? false : undefined
+      isActive === "true" ? true : isActive === "false" ? false : undefined,
+      searchTitleOnly === "true" || searchTitleOnly === "1"
     );
     sendSuccessResponse(res, result, "Courses retrieved successfully", 200);
     return;

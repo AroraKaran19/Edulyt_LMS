@@ -84,8 +84,8 @@ const AllUsersGraph = ({
               <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
                 {/* Graph Area */}
                 <div className="flex-1 min-w-0">
-                  {/* Graph Container */}
-                  <div className="h-full min-h-72">
+                  {/* Graph Container - explicit height required for ResponsiveContainer on mobile */}
+                  <div className="w-full h-[240px] sm:h-[280px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={chartData}>
                         <CartesianGrid
@@ -94,7 +94,7 @@ const AllUsersGraph = ({
                           vertical={false}
                         />
                         <XAxis
-                          dataKey="year"
+                          dataKey="month"
                           tick={{ fontSize: 10, fill: "#6B7280" }}
                           axisLine={false}
                           tickLine={false}
@@ -103,8 +103,7 @@ const AllUsersGraph = ({
                           tick={{ fontSize: 10, fill: "#6B7280" }}
                           axisLine={false}
                           tickLine={false}
-                          domain={[0, totalUsers]}
-                          ticks={[0, totalUsers]}
+                          domain={[0, "auto"]}
                         />
                         <Tooltip
                           content={({ active, payload }) => {

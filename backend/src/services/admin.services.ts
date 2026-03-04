@@ -1,20 +1,35 @@
 import { UserModel } from "../models";
 import { AppError } from "../middlewares/error.middleware";
 
+// User types to include in analytics (exclude admin, super-admin)
+const ANALYTICS_USER_TYPES = ["student", "instructor", "collaborator"];
+
 export const getDashboardStats = async (durationMonths: number) => {
   // Calculate date range
   const endDate = new Date();
   const startDate = new Date();
   startDate.setMonth(endDate.getMonth() - durationMonths);
 
-  // Get total users and status breakdown
-  const totalUsers = await UserModel.countDocuments();
-  const activeUsers = await UserModel.countDocuments({ status: "active" });
-  const inactiveUsers = await UserModel.countDocuments({ status: "inactive" });
-  const blockedUsers = await UserModel.countDocuments({ status: "blocked" });
+  const userTypeFilter = { userType: { $in: ANALYTICS_USER_TYPES } };
 
-  // Get users by type (instructors and students)
+  // Get total users and status breakdown (exclude admin/super-admin)
+  const totalUsers = await UserModel.countDocuments(userTypeFilter);
+  const activeUsers = await UserModel.countDocuments({
+    ...userTypeFilter,
+    status: "active",
+  });
+  const inactiveUsers = await UserModel.countDocuments({
+    ...userTypeFilter,
+    status: "inactive",
+  });
+  const blockedUsers = await UserModel.countDocuments({
+    ...userTypeFilter,
+    status: "blocked",
+  });
+
+  // Get users by type (instructors and students - only analytics types)
   const usersByType = await UserModel.aggregate([
+    { $match: userTypeFilter },
     {
       $group: {
         _id: "$userType",
@@ -23,22 +38,22 @@ export const getDashboardStats = async (durationMonths: number) => {
     },
   ]);
 
-  // Get new users in the time period
+  const createdAtFilter = {
+    createdAt: { $gte: startDate, $lte: endDate },
+  };
+
+  // Get new users in the time period (exclude admin/super-admin)
   const newUsersInDuration = await UserModel.countDocuments({
-    createdAt: {
-      $gte: startDate,
-      $lte: endDate,
-    },
+    ...userTypeFilter,
+    ...createdAtFilter,
   });
 
   // Get new users by type in the time period
   const newUsersByType = await UserModel.aggregate([
     {
       $match: {
-        createdAt: {
-          $gte: startDate,
-          $lte: endDate,
-        },
+        ...userTypeFilter,
+        ...createdAtFilter,
       },
     },
     {
@@ -54,6 +69,7 @@ export const getDashboardStats = async (durationMonths: number) => {
   previousStartDate.setMonth(previousStartDate.getMonth() - durationMonths);
 
   const previousPeriodUsers = await UserModel.countDocuments({
+    ...userTypeFilter,
     createdAt: {
       $gte: previousStartDate,
       $lt: startDate,
@@ -72,10 +88,11 @@ export const getDashboardStats = async (durationMonths: number) => {
   }
   // If both periods have 0 users, growth rate remains 0
 
-  // Get monthly breakdown for the duration
+  // Get monthly breakdown for the duration (exclude admin/super-admin)
   const monthlyBreakdown = await UserModel.aggregate([
     {
       $match: {
+        ...userTypeFilter,
         createdAt: {
           $gte: startDate,
           $lte: endDate,
@@ -96,10 +113,11 @@ export const getDashboardStats = async (durationMonths: number) => {
     },
   ]);
 
-  // Get yearly active/inactive breakdown for chart data (filtered by duration)
-  const yearlyStatusBreakdown = await UserModel.aggregate([
+  // Get monthly active/inactive breakdown for chart data (filtered by duration)
+  const monthlyStatusBreakdown = await UserModel.aggregate([
     {
       $match: {
+        ...userTypeFilter,
         createdAt: {
           $gte: startDate,
           $lte: endDate,
@@ -110,38 +128,52 @@ export const getDashboardStats = async (durationMonths: number) => {
       $group: {
         _id: {
           year: { $year: "$createdAt" },
+          month: { $month: "$createdAt" },
           status: "$status",
         },
         count: { $sum: 1 },
       },
     },
     {
-      $sort: { "_id.year": 1 },
+      $sort: { "_id.year": 1, "_id.month": 1 },
     },
   ]);
 
-  // Format chart data for active/inactive users by year
-  const chartDataMap = new Map();
-  yearlyStatusBreakdown.forEach((item) => {
+  const MONTH_LABELS = [
+    "", "JAN", "FEB", "MAR", "APR", "MAY", "JUN",
+    "JUL", "AUG", "SEP", "OCT", "NOV", "DEC",
+  ];
+
+  // Format chart data for active/inactive users by month
+  const chartDataMap = new Map<string, { month: string; year: number; monthNum: number; Active: number; Inactive: number }>();
+  monthlyStatusBreakdown.forEach((item) => {
     const year = item._id.year;
+    const monthNum = item._id.month;
     const status = item._id.status;
     const count = item.count;
+    const key = `${year}-${monthNum}`;
 
-    if (!chartDataMap.has(year)) {
-      chartDataMap.set(year, { year, Active: 0, Inactive: 0 });
+    if (!chartDataMap.has(key)) {
+      chartDataMap.set(key, {
+        month: MONTH_LABELS[monthNum],
+        year,
+        monthNum,
+        Active: 0,
+        Inactive: 0,
+      });
     }
 
-    const yearData = chartDataMap.get(year);
+    const monthData = chartDataMap.get(key)!;
     if (status === "active") {
-      yearData.Active = count;
+      monthData.Active = count;
     } else if (status === "inactive") {
-      yearData.Inactive = count;
+      monthData.Inactive = count;
     }
   });
 
-  // Convert map to array and sort by year
+  // Convert map to array and sort by year, month
   const chartData = Array.from(chartDataMap.values()).sort(
-    (a, b) => a.year - b.year
+    (a, b) => a.year - b.year || a.monthNum - b.monthNum
   );
 
   // Format the response

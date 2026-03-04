@@ -341,6 +341,10 @@ const Screen1 = () => {
                   field.onChange(e.target.value)
                 }
                 options={["college-students", "professionals"]}
+                optionLabels={{
+                  "college-students": "College Students",
+                  professionals: "Working Professionals",
+                }}
                 error={errors.audience?.message}
                 required={true}
               />

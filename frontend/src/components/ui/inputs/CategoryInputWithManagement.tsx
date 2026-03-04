@@ -1,10 +1,19 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useCategory } from "@/hooks/useCategory";
 import { Category } from "@/types";
-import { Plus, X, Edit3, Trash2, Check, AlertCircle } from "lucide-react";
+import {
+  Plus,
+  X,
+  Edit3,
+  Trash2,
+  Check,
+  AlertCircle,
+  ChevronDown,
+} from "lucide-react";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import Input from "@/components/ui/inputs/Input";
+import DropDown from "@/components/ui/dropdown/DropDown";
 import UploadMediaContainer from "@/components/ui/container/UploadMediaContainer";
 import { useUpload } from "@/hooks/useUpload";
 
@@ -23,7 +32,15 @@ interface CategoryInputWithManagementProps {
 
 const CategoryInputWithManagement: React.FC<
   CategoryInputWithManagementProps
-> = ({ label, value, setChange, className = "", required = false, initialCategoryNames, onCategoryNameAdded }) => {
+> = ({
+  label,
+  value,
+  setChange,
+  className = "",
+  required = false,
+  initialCategoryNames,
+  onCategoryNameAdded,
+}) => {
   const {
     getActiveCategories,
     getCategoryById,
@@ -48,8 +65,13 @@ const CategoryInputWithManagement: React.FC<
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
-  const [newCategory, setNewCategory] = useState({
+  const [newCategory, setNewCategory] = useState<{
+    name: string;
+    audience: "college-students" | "professionals";
+    showOnHomePage: boolean;
+  }>({
     name: "",
+    audience: "college-students",
     showOnHomePage: false,
   });
   const [categoryImage, setCategoryImage] = useState<string>("");
@@ -251,11 +273,13 @@ const CategoryInputWithManagement: React.FC<
   // Handle create new category
   const handleCreateCategory = async () => {
     if (!newCategory.name || !newCategory.name.trim()) return;
+    if (!newCategory.audience) return;
 
     setIsCreating(true);
     try {
       const result = await createCategory({
         name: newCategory.name.trim(),
+        audience: newCategory.audience,
         showOnHomePage: newCategory.showOnHomePage || false,
         categoryImage: categoryImage || undefined,
       });
@@ -269,7 +293,11 @@ const CategoryInputWithManagement: React.FC<
         if (result.name && onCategoryNameAdded) {
           onCategoryNameAdded(result._id, result.name);
         }
-        setNewCategory({ name: "", showOnHomePage: false });
+        setNewCategory({
+          name: "",
+          audience: "college-students",
+          showOnHomePage: false,
+        });
         setCategoryImage("");
         setCategoryImageS3Key("");
         setCategoryImageSource("upload");
@@ -318,6 +346,7 @@ const CategoryInputWithManagement: React.FC<
     try {
       const result = await updateCategory(editingCategory._id, {
         name: editingCategory.name.trim(),
+        audience: editingCategory.audience || "college-students",
         showOnHomePage: editingCategory.showOnHomePage,
         categoryImage: categoryImage || undefined,
       });
@@ -443,21 +472,11 @@ const CategoryInputWithManagement: React.FC<
             >
               <Plus className="w-4 h-4" />
             </div>
-            <svg
-              className={`w-5 h-5 transition-transform ${
+            <ChevronDown
+              className={`w-5 h-5 transition-transform cursor-pointer ${
                 isOpen ? "rotate-180" : ""
               }`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M19 9l-7 7-7-7"
-              />
-            </svg>
+            />
           </div>
         </div>
       </button>
@@ -572,8 +591,8 @@ const CategoryInputWithManagement: React.FC<
       {/* Create Category Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full">
-            <div className="p-6 border-b border-gray-200">
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[90vh] flex flex-col">
+            <div className="p-6 border-b border-gray-200 shrink-0">
               <div className="flex items-center justify-between">
                 <h3 className="text-xl font-semibold text-gray-800">
                   Create New Category
@@ -581,7 +600,11 @@ const CategoryInputWithManagement: React.FC<
                 <button
                   onClick={() => {
                     setShowCreateModal(false);
-                    setNewCategory({ name: "", showOnHomePage: false });
+                    setNewCategory({
+                      name: "",
+                      audience: "college-students",
+                      showOnHomePage: false,
+                    });
                     setCategoryImage("");
                     setCategoryImageS3Key("");
                     setCategoryImageSource("upload");
@@ -594,7 +617,7 @@ const CategoryInputWithManagement: React.FC<
               </div>
             </div>
 
-            <div className="p-6 space-y-4">
+            <div className="p-6 space-y-4 overflow-y-auto min-h-0 flex-1">
               <Input
                 label="Category Name"
                 value={newCategory.name}
@@ -603,6 +626,25 @@ const CategoryInputWithManagement: React.FC<
                 }
                 placeholder="Enter category name"
                 required
+              />
+
+              <DropDown
+                label="Audience"
+                required
+                options={["college-students", "professionals"]}
+                optionLabels={{
+                  "college-students": "College Students",
+                  professionals: "Working Professionals",
+                }}
+                value={newCategory.audience}
+                onChange={(e) =>
+                  setNewCategory((prev) => ({
+                    ...prev,
+                    audience: e.target.value as
+                      | "college-students"
+                      | "professionals",
+                  }))
+                }
               />
 
               <div className="flex items-center gap-2">
@@ -664,11 +706,15 @@ const CategoryInputWithManagement: React.FC<
               )}
             </div>
 
-            <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
+            <div className="p-6 border-t border-gray-200 flex justify-end gap-3 shrink-0">
               <WhiteButton
                 onClick={() => {
                   setShowCreateModal(false);
-                  setNewCategory({ name: "", showOnHomePage: false });
+                  setNewCategory({
+                    name: "",
+                    audience: "college-students",
+                    showOnHomePage: false,
+                  });
                   setCategoryImage("");
                   setCategoryImageS3Key("");
                   setCategoryImageSource("upload");
@@ -681,7 +727,10 @@ const CategoryInputWithManagement: React.FC<
               <OrangeButton
                 onClick={handleCreateCategory}
                 disabled={
-                  !newCategory.name || !newCategory.name.trim() || isCreating
+                  !newCategory.name ||
+                  !newCategory.name.trim() ||
+                  !newCategory.audience ||
+                  isCreating
                 }
                 className="flex items-center gap-2"
               >
@@ -705,8 +754,8 @@ const CategoryInputWithManagement: React.FC<
       {/* Edit Category Modal */}
       {showEditModal && editingCategory && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full">
-            <div className="p-6 border-b border-gray-200">
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[90vh] flex flex-col">
+            <div className="p-6 border-b border-gray-200 shrink-0">
               <div className="flex items-center justify-between">
                 <h3 className="text-xl font-semibold text-gray-800">
                   Edit Category
@@ -717,14 +766,14 @@ const CategoryInputWithManagement: React.FC<
                     setEditingCategory(null);
                     clearError();
                   }}
-                  className="text-gray-500 hover:text-gray-700 p-1"
+                  className="text-gray-500 hover:text-gray-700 p-1 cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
             </div>
 
-            <div className="p-6 space-y-4">
+            <div className="p-6 space-y-4 overflow-y-auto min-h-0 flex-1">
               <Input
                 label="Category Name"
                 value={editingCategory.name}
@@ -735,6 +784,29 @@ const CategoryInputWithManagement: React.FC<
                 }
                 placeholder="Enter category name"
                 required
+              />
+
+              <DropDown
+                label="Audience"
+                required
+                options={["college-students", "professionals"]}
+                optionLabels={{
+                  "college-students": "College Students",
+                  professionals: "Working Professionals",
+                }}
+                value={editingCategory.audience || "college-students"}
+                onChange={(e) =>
+                  setEditingCategory((prev) =>
+                    prev
+                      ? {
+                          ...prev,
+                          audience: e.target.value as
+                            | "college-students"
+                            | "professionals",
+                        }
+                      : null,
+                  )
+                }
               />
 
               <div className="flex items-center gap-2">
@@ -823,7 +895,7 @@ const CategoryInputWithManagement: React.FC<
               )}
             </div>
 
-            <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
+            <div className="p-6 border-t border-gray-200 flex justify-end gap-3 shrink-0">
               <WhiteButton
                 onClick={() => {
                   setShowEditModal(false);

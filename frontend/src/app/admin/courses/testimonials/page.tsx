@@ -69,7 +69,7 @@ const ProfileImage: React.FC<ProfileImageProps> = ({
   if (!src || imageError) {
     return (
       <div
-        className={`${className} bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm`}
+        className={`${className} bg-linear-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm`}
       >
         {getInitials(name)}
       </div>
@@ -149,7 +149,7 @@ const TestimonialsManagementPage = () => {
 
   // Expanded state for details
   const [expandedTestimonials, setExpandedTestimonials] = useState<Set<string>>(
-    new Set()
+    new Set(),
   );
 
   // Debounce search term
@@ -200,7 +200,7 @@ const TestimonialsManagementPage = () => {
         toast.error("Failed to load testimonials");
       }
     },
-    [isLoading, searchDebounced, getTestimonials]
+    [isLoading, searchDebounced, getTestimonials],
   );
 
   // Infinite scroll handler
@@ -216,7 +216,7 @@ const TestimonialsManagementPage = () => {
         loadTestimonials(page);
       }
     },
-    [hasMore, isLoading, page, loadTestimonials]
+    [hasMore, isLoading, page, loadTestimonials],
   );
 
   // Load initial testimonials
@@ -303,8 +303,8 @@ const TestimonialsManagementPage = () => {
       if (result) {
         setTestimonials((prev) =>
           prev.map((testimonial) =>
-            testimonial._id === editingTestimonial._id ? result : testimonial
-          )
+            testimonial._id === editingTestimonial._id ? result : testimonial,
+          ),
         );
         setShowEditModal(false);
         setEditingTestimonial(null);
@@ -323,7 +323,7 @@ const TestimonialsManagementPage = () => {
   const handleDeleteTestimonial = async (testimonialId: string) => {
     if (
       !confirm(
-        "Are you sure you want to delete this testimonial? This action cannot be undone."
+        "Are you sure you want to delete this testimonial? This action cannot be undone.",
       )
     ) {
       return;
@@ -335,7 +335,7 @@ const TestimonialsManagementPage = () => {
 
       if (result) {
         setTestimonials((prev) =>
-          prev.filter((testimonial) => testimonial._id !== testimonialId)
+          prev.filter((testimonial) => testimonial._id !== testimonialId),
         );
         setTotalTestimonials((prev) => prev - 1);
         toast.success("Testimonial deleted successfully!");
@@ -363,14 +363,11 @@ const TestimonialsManagementPage = () => {
   };
 
   return (
-    <div className="w-full min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4 sm:p-6 lg:p-8">
-      <div className="max-w-7xl mx-auto">
+    <div className="w-full min-h-screen bg-linear-to-br from-gray-50 to-gray-100 p-4 sm:p-6 lg:p-8">
+      <div className="mx-auto">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
-              <Users className="w-6 h-6 text-white" />
-            </div>
             <div>
               <h1 className="text-3xl font-bold text-gray-900">
                 Manage Testimonials
@@ -448,7 +445,7 @@ const TestimonialsManagementPage = () => {
 
             {/* Testimonials List */}
             {testimonials.length === 0 && !isLoading ? (
-              <div className="bg-gradient-to-br from-gray-50 to-white rounded-xl border-2 border-dashed border-gray-300 p-12 text-center">
+              <div className="bg-linear-to-br from-gray-50 to-white rounded-xl border-2 border-dashed border-gray-300 p-12 text-center">
                 <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">
                   {searchTerm
@@ -473,9 +470,7 @@ const TestimonialsManagementPage = () => {
                 {testimonials.map((testimonial) => {
                   if (!testimonial._id) return null;
 
-                  const isExpanded = expandedTestimonials.has(
-                    testimonial._id
-                  );
+                  const isExpanded = expandedTestimonials.has(testimonial._id);
 
                   return (
                     <div
@@ -556,14 +551,14 @@ const TestimonialsManagementPage = () => {
                                 <span>
                                   Created:{" "}
                                   {new Date(
-                                    testimonial.createdAt!
+                                    testimonial.createdAt!,
                                   ).toLocaleDateString()}
                                 </span>
                                 {testimonial.updatedAt && (
                                   <span>
                                     Updated:{" "}
                                     {new Date(
-                                      testimonial.updatedAt
+                                      testimonial.updatedAt,
                                     ).toLocaleDateString()}
                                   </span>
                                 )}
@@ -853,7 +848,7 @@ const TestimonialsManagementPage = () => {
                   value={editingTestimonial.name}
                   onChange={(e) =>
                     setEditingTestimonial((prev) =>
-                      prev ? { ...prev, name: e.target.value } : null
+                      prev ? { ...prev, name: e.target.value } : null,
                     )
                   }
                   placeholder="Enter full name"
@@ -865,7 +860,7 @@ const TestimonialsManagementPage = () => {
                   value={editingTestimonial.profileImage}
                   onChange={(e) =>
                     setEditingTestimonial((prev) =>
-                      prev ? { ...prev, profileImage: e.target.value } : null
+                      prev ? { ...prev, profileImage: e.target.value } : null,
                     )
                   }
                   placeholder="https://example.com/profile.jpg"
@@ -877,7 +872,7 @@ const TestimonialsManagementPage = () => {
                   value={editingTestimonial.currentRole}
                   onChange={(e) =>
                     setEditingTestimonial((prev) =>
-                      prev ? { ...prev, currentRole: e.target.value } : null
+                      prev ? { ...prev, currentRole: e.target.value } : null,
                     )
                   }
                   placeholder="e.g., Senior Software Engineer"
@@ -889,7 +884,7 @@ const TestimonialsManagementPage = () => {
                   value={editingTestimonial.currentCompany}
                   onChange={(e) =>
                     setEditingTestimonial((prev) =>
-                      prev ? { ...prev, currentCompany: e.target.value } : null
+                      prev ? { ...prev, currentCompany: e.target.value } : null,
                     )
                   }
                   placeholder="e.g., Google"
@@ -901,7 +896,7 @@ const TestimonialsManagementPage = () => {
                   value={editingTestimonial.pastRole}
                   onChange={(e) =>
                     setEditingTestimonial((prev) =>
-                      prev ? { ...prev, pastRole: e.target.value } : null
+                      prev ? { ...prev, pastRole: e.target.value } : null,
                     )
                   }
                   placeholder="e.g., Junior Developer"
@@ -913,7 +908,7 @@ const TestimonialsManagementPage = () => {
                   value={editingTestimonial.pastCompany}
                   onChange={(e) =>
                     setEditingTestimonial((prev) =>
-                      prev ? { ...prev, pastCompany: e.target.value } : null
+                      prev ? { ...prev, pastCompany: e.target.value } : null,
                     )
                   }
                   placeholder="e.g., Startup Inc."
@@ -925,7 +920,7 @@ const TestimonialsManagementPage = () => {
                   value={editingTestimonial.college}
                   onChange={(e) =>
                     setEditingTestimonial((prev) =>
-                      prev ? { ...prev, college: e.target.value } : null
+                      prev ? { ...prev, college: e.target.value } : null,
                     )
                   }
                   placeholder="e.g., Stanford University"
@@ -937,7 +932,7 @@ const TestimonialsManagementPage = () => {
                   value={editingTestimonial.linkedin}
                   onChange={(e) =>
                     setEditingTestimonial((prev) =>
-                      prev ? { ...prev, linkedin: e.target.value } : null
+                      prev ? { ...prev, linkedin: e.target.value } : null,
                     )
                   }
                   placeholder="https://linkedin.com/in/username"
@@ -952,7 +947,7 @@ const TestimonialsManagementPage = () => {
                   checked={editingTestimonial.verified || false}
                   onChange={(e) =>
                     setEditingTestimonial((prev) =>
-                      prev ? { ...prev, verified: e.target.checked } : null
+                      prev ? { ...prev, verified: e.target.checked } : null,
                     )
                   }
                   className="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500 focus:ring-2"
@@ -1006,4 +1001,3 @@ const TestimonialsManagementPage = () => {
 };
 
 export default TestimonialsManagementPage;
-

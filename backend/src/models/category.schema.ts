@@ -9,6 +9,12 @@ const categorySchema = new mongoose.Schema<Category>(
       trim: true,
       unique: true,
     },
+    audience: {
+      type: String,
+      required: true,
+      enum: ["college-students", "professionals"],
+      default: "college-students",
+    },
     description: {
       type: String,
       required: false,

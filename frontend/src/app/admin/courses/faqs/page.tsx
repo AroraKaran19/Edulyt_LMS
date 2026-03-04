@@ -100,7 +100,7 @@ const FAQsManagementPage = () => {
         toast.error("Failed to load FAQs");
       }
     },
-    [isLoading, searchDebounced, getFAQs]
+    [isLoading, searchDebounced, getFAQs],
   );
 
   // Infinite scroll handler
@@ -116,7 +116,7 @@ const FAQsManagementPage = () => {
         loadFAQs(page);
       }
     },
-    [hasMore, isLoading, page, loadFAQs]
+    [hasMore, isLoading, page, loadFAQs],
   );
 
   // Load initial FAQs
@@ -172,7 +172,7 @@ const FAQsManagementPage = () => {
 
       if (result) {
         setFaqs((prev) =>
-          prev.map((faq) => (faq._id === editingFAQ._id ? result : faq))
+          prev.map((faq) => (faq._id === editingFAQ._id ? result : faq)),
         );
         setShowEditModal(false);
         setEditingFAQ(null);
@@ -191,7 +191,7 @@ const FAQsManagementPage = () => {
   const handleDeleteFAQ = async (faqId: string) => {
     if (
       !confirm(
-        "Are you sure you want to delete this FAQ? This action cannot be undone."
+        "Are you sure you want to delete this FAQ? This action cannot be undone.",
       )
     ) {
       return;
@@ -234,9 +234,6 @@ const FAQsManagementPage = () => {
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-12 h-12 bg-linear-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
-              <HelpCircle className="w-6 h-6 text-white" />
-            </div>
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Manage FAQs</h1>
               <p className="text-gray-600 mt-1">
@@ -534,7 +531,7 @@ const FAQsManagementPage = () => {
                 value={editingFAQ.question}
                 onChange={(e) =>
                   setEditingFAQ((prev) =>
-                    prev ? { ...prev, question: e.target.value } : null
+                    prev ? { ...prev, question: e.target.value } : null,
                   )
                 }
                 placeholder="Enter the frequently asked question"
@@ -546,7 +543,7 @@ const FAQsManagementPage = () => {
                 value={editingFAQ.answer}
                 onChange={(e) =>
                   setEditingFAQ((prev) =>
-                    prev ? { ...prev, answer: e.target.value } : null
+                    prev ? { ...prev, answer: e.target.value } : null,
                   )
                 }
                 placeholder="Provide a comprehensive answer to the question"

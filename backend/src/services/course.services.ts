@@ -24,7 +24,8 @@ export const getAllCoursesService = async (
   sortBy: string = "updatedAt",
   sortOrder: string = "desc",
   instructors?: string,
-  isActive?: boolean
+  isActive?: boolean,
+  searchTitleOnly?: boolean
 ): Promise<{
   courses: Course[];
   total: number;
@@ -47,27 +48,25 @@ export const getAllCoursesService = async (
   }
 
   if (search) {
-    // Use fuzzy search for better matching
-    const fuzzySearchFilter = createFuzzySearchOrFilter(search, [
-      "title",
-      "description",
-      "shortDescription",
-    ]);
+    const searchFields = searchTitleOnly
+      ? ["title"]
+      : ["title", "description", "shortDescription"];
+    const fuzzySearchFilter = createFuzzySearchOrFilter(search, searchFields);
 
     if (fuzzySearchFilter && fuzzySearchFilter.$or) {
-      // If we already have a $or filter, we need to combine them
       if (filters.$or) {
         filters.$or = [...filters.$or, ...fuzzySearchFilter.$or];
       } else {
         filters.$or = fuzzySearchFilter.$or;
       }
     } else {
-      // Fallback to simple regex if fuzzy search fails
-      filters.$or = [
-        { title: { $regex: search, $options: "i" } },
-        { description: { $regex: search, $options: "i" } },
-        { shortDescription: { $regex: search, $options: "i" } },
-      ];
+      filters.$or = searchTitleOnly
+        ? [{ title: { $regex: search, $options: "i" } }]
+        : [
+            { title: { $regex: search, $options: "i" } },
+            { description: { $regex: search, $options: "i" } },
+            { shortDescription: { $regex: search, $options: "i" } },
+          ];
     }
   }
   if (categories) {

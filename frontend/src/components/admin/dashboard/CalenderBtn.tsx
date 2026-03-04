@@ -7,12 +7,10 @@ const CalenderBtn = ({
   filters,
   activeFilter,
   setFilter,
-	isLoading,
 }: {
   filters: { label: string; value: number }[];
   activeFilter: number;
   setFilter: (filter: number) => void;
-  isLoading: boolean;
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -40,11 +38,7 @@ const CalenderBtn = ({
   return (
     <div className="relative" ref={dropdownRef}>
       <button
-        onClick={() => {
-          if (!isLoading) {
-            setIsOpen(!isOpen);
-          }
-        }}
+        onClick={() => setIsOpen(!isOpen)}
         className={`p-2 rounded-lg transition-all duration-200 ease-in-out hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 cursor-pointer ${
           isOpen ? "bg-gray-100 shadow-sm" : ""
         }`}
@@ -66,9 +60,7 @@ const CalenderBtn = ({
               <button
                 key={index}
                 onClick={() => {
-                  if (!isLoading) {
-                    setFilter(filter.value);
-                  }
+                  setFilter(filter.value);
                   setIsOpen(false);
                 }}
                 className={cn(
@@ -76,10 +68,12 @@ const CalenderBtn = ({
                   activeFilter === filter.value && "bg-gray-200 text-gray-900"
                 )}
               >
-                <span className="flex items-center justify-between">
+                <span className="flex items-center justify-between w-full">
                   {filter.label}
-                  <span className="text-xs text-gray-400 font-normal">
-                    {filter.value === 0 ? "All" : `${filter.value} days`}
+                  <span className="text-xs text-gray-400 font-normal shrink-0 ml-2">
+                    {filter.value === 0
+                      ? "All"
+                      : `${filter.value} ${filter.value === 1 ? "month" : "months"}`}
                   </span>
                 </span>
               </button>

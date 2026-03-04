@@ -1,9 +1,24 @@
+"use client";
+
 import UserMenu from "../shared/User/UserMenu";
-import ImageComponent from "../ui/ImageComponent";
+import { Menu } from "lucide-react";
+import { useSidebar } from "@/app/admin/context/SidebarProvider";
 
 const AdminTopHeader = () => {
+  const { toggleMobileSidebar } = useSidebar();
+
   return (
-    <div className="flex items-center justify-between w-full bg-white py-4 px-6">
+    <div className="flex items-center justify-between w-full bg-white py-4 px-4 sm:px-6 gap-3">
+      {/* Mobile menu button */}
+      <button
+        type="button"
+        onClick={toggleMobileSidebar}
+        aria-label="Open menu"
+        className="lg:hidden p-2 -ml-2 rounded-lg hover:bg-gray-100 transition-colors text-gray-700"
+      >
+        <Menu className="size-6" />
+      </button>
+
       {/* Search Bar */}
       {/* <div className="relative">
         <input
@@ -21,8 +36,11 @@ const AdminTopHeader = () => {
         </div>
       </div> */}
 
+      {/* Spacer for mobile (balances hamburger on left) */}
+      <div className="flex-1 min-w-0" />
+
       {/* User Profile Section */}
-      <div className="ml-auto flex items-center gap-8">
+      <div className="flex items-center gap-4 sm:gap-8 shrink-0">
         {/* Notifications */}
         {/* <div className="relative">
           <div className="w-10 h-10 bg-white border border-[#F2F4F7] rounded-xl flex items-center justify-center cursor-pointer">

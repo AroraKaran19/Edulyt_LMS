@@ -29,7 +29,7 @@ const AdminLoginPage = () => {
       const user = session.user as any;
       if (user?.userType === "admin" || user?.userType === "super-admin") {
         toast.success("Admin login successful!");
-        router.push("/admin/dashboard");
+        router.push("/admin");
       } else {
         toast.error("Access denied. Admin privileges required.");
         // Sign out the user since they don't have admin access
@@ -50,7 +50,7 @@ const AdminLoginPage = () => {
         email,
         password,
         redirect: false, // Don't redirect automatically
-        callbackUrl: "/admin/dashboard",
+        callbackUrl: "/admin",
       });
 
       if (result?.error) {

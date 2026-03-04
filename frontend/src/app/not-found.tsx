@@ -1,52 +1,81 @@
 "use client";
+
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Home, ArrowLeft } from "lucide-react";
+import ImageComponent from "@/components/ui/ImageComponent";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
+import WhiteButton from "@/components/ui/buttons/WhiteButton";
+import NotFoundMeta from "@/components/ui/NotFoundMeta";
 
-const NotFound = () => {
+export default function NotFound() {
+  const router = useRouter();
+
   return (
-    <div className="min-h-[calc(100vh-78px)] bg-linear-to-br from-gray-50 to-gray-100 flex items-center justify-center px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto text-center">
-        {/* 404 Animation */}
-        <div className="relative mb-8">
-          <div className="text-8xl sm:text-9xl lg:text-[12rem] font-bold text-gray-200 select-none">
-            404
-          </div>
-        </div>
+    <>
+      <NotFoundMeta />
+      <main
+        className="flex-1 flex items-center justify-center px-4 sm:px-6 lg:px-8 bg-[#F3F3F3]"
+        role="main"
+        aria-label="Page not found"
+      >
+        <div className="max-w-2xl mx-auto text-center">
+          {/* Logo */}
+          <Link
+            href="/"
+            className="inline-block mb-8"
+            aria-label="Airkrit home"
+          >
+            <ImageComponent
+              src="/logo.svg"
+              alt="Airkrit - Education to Employment"
+              width={160}
+              height={48}
+              className="object-contain select-none"
+            />
+          </Link>
 
-        {/* Main Content */}
-        <div className="space-y-6">
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-800">
-            Oops! Page Not Found
+          {/* 404 */}
+          <p
+            className="text-7xl sm:text-8xl lg:text-9xl font-bold font-coolvetica text-[#F77124]/20 select-none mb-6"
+            aria-hidden
+          >
+            404
+          </p>
+
+          {/* Content */}
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold font-coolvetica text-[#1D2939] mb-4">
+            Page Not Found
           </h1>
 
-          <p className="text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
-            The page you&apos;re looking for seems to have wandered off.
-            Don&apos;t worry, even the best students sometimes take a wrong
-            turn!
+          <p className="text-base sm:text-lg text-[#475467] max-w-md mx-auto leading-relaxed mb-8">
+            The page you&apos;re looking for doesn&apos;t exist or may have been
+            moved. Let&apos;s get you back on track.
           </p>
 
           {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mt-8">
-            <Link href="/">
-              <OrangeButton className="flex items-center gap-2 min-w-[160px] justify-center">
-                <Home className="w-4 h-4" />
-                Go Home
-              </OrangeButton>
-            </Link>
-
-            <button
-              onClick={() => window.history.back()}
-              className="flex items-center gap-2 px-6 py-3 bg-white text-gray-700 rounded-2xl border-2 border-gray-300 hover:border-[#F77124] hover:text-[#F77124] transition-all duration-300 min-w-[160px] justify-center"
+          <nav
+            className="flex flex-col sm:flex-row gap-4 justify-center items-stretch sm:items-center"
+            aria-label="Navigation options"
+          >
+            <OrangeButton
+              onClick={() => router.push("/")}
+              className="flex items-center gap-2 justify-center w-full sm:w-[160px] sm:min-w-[160px] h-12"
             >
-              <ArrowLeft className="w-4 h-4" />
-              Go Back
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
+              <Home className="size-4 shrink-0" aria-hidden />
+              Go Home
+            </OrangeButton>
 
-export default NotFound;
+            <WhiteButton
+              onClick={() => router.back()}
+              className="flex items-center gap-2 justify-center w-full sm:w-[160px] sm:min-w-[160px] h-12 px-6! py-3!"
+            >
+              <ArrowLeft className="size-4 shrink-0" aria-hidden />
+              Go Back
+            </WhiteButton>
+          </nav>
+        </div>
+      </main>
+    </>
+  );
+}

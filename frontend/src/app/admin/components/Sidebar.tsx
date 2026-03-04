@@ -17,9 +17,16 @@ interface MenuItem {
 interface AdminSidebarProps {
   isCollapsed: boolean;
   setIsCollapsed: (collapsed: boolean) => void;
+  onNavigate?: () => void;
+  isMobileOverlay?: boolean;
 }
 
-const AdminSidebar = ({ isCollapsed, setIsCollapsed }: AdminSidebarProps) => {
+const AdminSidebar = ({
+  isCollapsed,
+  setIsCollapsed,
+  onNavigate,
+  isMobileOverlay = false,
+}: AdminSidebarProps) => {
   const { handleSignOut } = useAuth();
   const menuItems: MenuItem[] = [
     {
@@ -113,15 +120,26 @@ const AdminSidebar = ({ isCollapsed, setIsCollapsed }: AdminSidebarProps) => {
   return (
     <div
       className={cn(
-        "flex admin-sidebar h-full bg-orange-500/10 transition-all duration-300 relative overflow-y-auto",
-        isCollapsed ? "w-12 py-4" : "w-full py-10 flex-col gap-4"
+        "flex admin-sidebar h-full bg-orange-50 transition-[width] duration-200 ease-out relative overflow-visible",
+        isCollapsed ? "w-12 py-4" : "w-full py-10 flex-col gap-4",
       )}
-      style={{ scrollbarWidth: "thin" }}
     >
-      {/* Collapse/Expand Button */}
+      {/* Collapse/Expand Button - on mobile when overlay open; always on desktop */}
       <button
-        onClick={() => setIsCollapsed(!isCollapsed)}
-        className="absolute -right-3 top-8 z-9999 bg-orange-500 hover:bg-orange-600 text-white rounded-full p-1.5 shadow-lg transition-all duration-300"
+        onClick={() =>
+          isMobileOverlay ? onNavigate?.() : setIsCollapsed(!isCollapsed)
+        }
+        className={cn(
+          "absolute -right-3 top-8 z-100 bg-orange-500 hover:bg-orange-600 text-white rounded-full p-1.5 shadow-lg transition-colors duration-150 shrink-0 items-center justify-center",
+          isMobileOverlay ? "flex" : "hidden lg:flex",
+        )}
+        aria-label={
+          isMobileOverlay
+            ? "Close menu"
+            : isCollapsed
+              ? "Expand sidebar"
+              : "Collapse sidebar"
+        }
       >
         {isCollapsed ? (
           <ChevronRight className="size-4" />
@@ -131,36 +149,49 @@ const AdminSidebar = ({ isCollapsed, setIsCollapsed }: AdminSidebarProps) => {
       </button>
 
       {!isCollapsed && (
-        <>
-          <div className="flex admin-sidebar-header w-full justify-center">
-            <ImageComponent
-              src="/logo.svg"
-              alt="logo"
-              width={170}
-              height={50}
-              className="object-contain aspect-video select-none"
-            />
-          </div>
+        <div className="flex flex-col h-full min-h-0">
+          {/* Fixed header - logo */}
+          <ImageComponent
+            src="/logo.svg"
+            alt="logo"
+            width={170}
+            height={50}
+            className="object-contain aspect-video h-[70px] select-none mx-auto"
+            loading="eager"
+            draggable={false}
+            unoptimized
+          />
 
-          <div className="flex admin-sidebar-menu w-full flex-col gap-4 px-8">
-            <h2 className="text-sm font-medium text-gray-500 uppercase tracking-wider">
-              MENU
-            </h2>
-            <div className="flex admin-sidebar-menu-items w-full flex-col gap-4">
-              {menuItems.map((item, index) => (
-                <SidebarMenuItem
-                  key={index}
-                  menuItem={item}
-                  isCollapsed={isCollapsed}
-                />
-              ))}
+          {/* Scrollable menu */}
+          <div
+            className="flex flex-col flex-1 min-h-0 overflow-y-auto px-8"
+            style={{ scrollbarWidth: "thin" }}
+          >
+            <div className="flex admin-sidebar-menu w-full flex-col gap-4">
+              <h2 className="text-sm font-medium text-gray-500 uppercase tracking-wider">
+                MENU
+              </h2>
+              <div className="flex admin-sidebar-menu-items w-full flex-col gap-4">
+                {menuItems.map((item, index) => (
+                  <SidebarMenuItem
+                    key={index}
+                    menuItem={item}
+                    isCollapsed={isCollapsed}
+                    onNavigate={onNavigate}
+                  />
+                ))}
+              </div>
             </div>
           </div>
 
-          <div className="flex admin-sidebar-footer w-full mt-auto px-8">
+          {/* Fixed footer - Sign Out & Help & Support */}
+          <div className="flex flex-col shrink-0 gap-4 px-8 py-4 border-t border-gray-200/50">
             <div
               className="flex gap-2 items-center cursor-pointer"
-              onClick={() => handleSignOut()}
+              onClick={() => {
+                onNavigate?.();
+                handleSignOut();
+              }}
             >
               <ImageComponent
                 src="/admin/logout-icon.svg"
@@ -172,13 +203,10 @@ const AdminSidebar = ({ isCollapsed, setIsCollapsed }: AdminSidebarProps) => {
                 Sign Out
               </span>
             </div>
-          </div>
-
-          <div className="flex admin-sidebar-footer w-full px-8 mt-2">
             <div className="flex gap-2 items-center cursor-pointer">
               <ImageComponent
                 src="/admin/help-support-icon.svg"
-                alt="logout"
+                alt="help"
                 width={20}
                 height={20}
               />
@@ -187,7 +215,7 @@ const AdminSidebar = ({ isCollapsed, setIsCollapsed }: AdminSidebarProps) => {
               </span>
             </div>
           </div>
-        </>
+        </div>
       )}
     </div>
   );

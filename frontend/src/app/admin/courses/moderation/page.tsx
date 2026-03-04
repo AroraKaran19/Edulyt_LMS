@@ -287,13 +287,10 @@ const ModerationPage = () => {
 
   return (
     <div className="w-full min-h-screen bg-linear-to-br from-gray-50 to-gray-100 p-4 sm:p-6 lg:p-8">
-      <div className="max-w-7xl mx-auto">
+      <div className="mx-auto">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-12 h-12 bg-linear-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center shadow-lg">
-              <Filter className="w-6 h-6 text-white" />
-            </div>
             <div>
               <h1 className="text-3xl font-bold text-gray-900">
                 Content Moderation
@@ -466,15 +463,15 @@ const ModerationPage = () => {
                           {filterType === "pending"
                             ? "All reviews have been reviewed"
                             : searchTerm
-                            ? "Try adjusting your search terms"
-                            : "No reviews match your criteria"}
+                              ? "Try adjusting your search terms"
+                              : "No reviews match your criteria"}
                         </p>
                       </div>
                     ) : (
                       reviews.map((review) => {
                         const userName = getUserDisplayName(review.userId);
                         const nameForInitials = getNameForInitials(
-                          review.userId
+                          review.userId,
                         );
                         const userAvatar =
                           typeof review.userId === "object" &&
@@ -505,7 +502,7 @@ const ModerationPage = () => {
                                 ) : (
                                   <div
                                     className={`w-full h-full flex items-center justify-center text-white font-semibold text-sm ${getAvatarColor(
-                                      nameForInitials
+                                      nameForInitials,
                                     )}`}
                                   >
                                     {getInitials(nameForInitials)}
@@ -621,8 +618,8 @@ const ModerationPage = () => {
                           {filterType === "pending"
                             ? "All Q&As have been reviewed"
                             : searchTerm
-                            ? "Try adjusting your search terms"
-                            : "No Q&As match your criteria"}
+                              ? "Try adjusting your search terms"
+                              : "No Q&As match your criteria"}
                         </p>
                       </div>
                     ) : (
@@ -661,7 +658,7 @@ const ModerationPage = () => {
                                   ) : (
                                     <div
                                       className={`w-full h-full flex items-center justify-center text-white font-semibold text-sm ${getAvatarColor(
-                                        nameForInitials
+                                        nameForInitials,
                                       )}`}
                                     >
                                       {getInitials(nameForInitials)}
@@ -792,7 +789,7 @@ const ModerationPage = () => {
                                   {qna.replies.map(
                                     (reply: QnAReply, idx: number) => {
                                       const replyUserName = getUserDisplayName(
-                                        reply.userId
+                                        reply.userId,
                                       );
                                       const replyNameForInitials =
                                         getNameForInitials(reply.userId);
@@ -818,18 +815,18 @@ const ModerationPage = () => {
                                                 height={40}
                                                 onError={() =>
                                                   handleImageError(
-                                                    reply._id || ""
+                                                    reply._id || "",
                                                   )
                                                 }
                                               />
                                             ) : (
                                               <div
                                                 className={`w-full h-full flex items-center justify-center text-white font-semibold text-xs ${getAvatarColor(
-                                                  replyNameForInitials
+                                                  replyNameForInitials,
                                                 )}`}
                                               >
                                                 {getInitials(
-                                                  replyNameForInitials
+                                                  replyNameForInitials,
                                                 )}
                                               </div>
                                             )}
@@ -841,7 +838,7 @@ const ModerationPage = () => {
                                               </span>
                                               <span className="text-xs text-gray-500">
                                                 {formatDate(
-                                                  reply.createdAt || new Date()
+                                                  reply.createdAt || new Date(),
                                                 )}
                                               </span>
                                             </div>
@@ -851,7 +848,7 @@ const ModerationPage = () => {
                                           </div>
                                         </div>
                                       );
-                                    }
+                                    },
                                   )}
                                 </div>
                               </div>
