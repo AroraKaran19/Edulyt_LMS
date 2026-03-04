@@ -1,24 +1,26 @@
+"use client";
 import AdminDashboard from "@/components/admin/dashboard/AdminDashboard";
-import { notFound } from "next/navigation";
+import SuperAdminDashboard from "@/components/admin/dashboard/SuperAdminDashboard";
+import useAuth from "@/hooks/useAuth";
 
 const AdminPage = () => {
-  const user = {
-    name: "John Doe",
-    email: "john.doe@example.com",
-    role: "admin",
-    avatar: "https://via.placeholder.com/150",
-    createdAt: "2021-01-01",
-    updatedAt: "2021-01-01",
-    lastLogin: "2021-01-01",
-  };
+  const { user, isLoading } = useAuth();
 
-  if (!user || user.role !== "admin") {
-    return notFound();
+  if (isLoading || !user) {
+    return (
+      <div className="w-full h-full flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500" />
+      </div>
+    );
   }
 
   return (
     <div className="w-full h-full overflow-y-auto">
-      <AdminDashboard />
+      {user.userType === "super-admin" ? (
+        <SuperAdminDashboard />
+      ) : (
+        <AdminDashboard />
+      )}
     </div>
   );
 };

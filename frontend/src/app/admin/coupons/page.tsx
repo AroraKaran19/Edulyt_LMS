@@ -148,15 +148,12 @@ const CouponsPage = () => {
 
   return (
     <div className="min-h-screen w-full bg-linear-to-br from-gray-50 via-orange-50/20 to-gray-50 p-4 sm:p-6 lg:p-8">
-      <div className="max-w-7xl mx-auto">
+      <div className="mx-auto">
         {/* Header */}
         <div className="mb-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
             <div>
               <div className="flex items-center gap-3 mb-2">
-                <div className="p-3 bg-linear-to-br from-orange-500 to-orange-600 rounded-xl shadow-lg">
-                  <Tag className="w-7 h-7 text-white" />
-                </div>
                 <div>
                   <h1 className="text-3xl sm:text-4xl font-bold text-gray-900">
                     Coupon Management

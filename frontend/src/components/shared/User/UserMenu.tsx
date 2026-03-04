@@ -90,7 +90,7 @@ const UserMenu = () => {
     "flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 transition-colors shrink-0";
   const iconClass = "size-4 text-gray-600 group-hover:text-orange-600";
 
-  if (user.userType == "admin") {
+  if (user.userType === "admin" || user.userType === "super-admin") {
     return (
       <div
         className="flex items-center gap-3 cursor-pointer relative user-icon select-none"

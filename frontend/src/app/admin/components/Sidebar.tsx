@@ -130,7 +130,7 @@ const AdminSidebar = ({
           isMobileOverlay ? onNavigate?.() : setIsCollapsed(!isCollapsed)
         }
         className={cn(
-          "absolute -right-3 top-8 z-100 bg-orange-500 hover:bg-orange-600 text-white rounded-full p-1.5 shadow-lg transition-colors duration-150 shrink-0 items-center justify-center",
+          "absolute -right-3 top-8 z-100 bg-orange-500 hover:bg-orange-600 text-white rounded-full p-1.5 shadow-lg transition-colors duration-150 shrink-0 items-center justify-center cursor-pointer",
           isMobileOverlay ? "flex" : "hidden lg:flex",
         )}
         aria-label={
@@ -201,17 +201,6 @@ const AdminSidebar = ({
               />
               <span className="text-base text-[#00000099] font-medium">
                 Sign Out
-              </span>
-            </div>
-            <div className="flex gap-2 items-center cursor-pointer">
-              <ImageComponent
-                src="/admin/help-support-icon.svg"
-                alt="help"
-                width={20}
-                height={20}
-              />
-              <span className="text-base text-[#00000099] font-medium">
-                Help & Support
               </span>
             </div>
           </div>

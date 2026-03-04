@@ -1,6 +1,7 @@
 import React from "react";
-import { Search } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/buttons/button";
+import OrangeButton from "@/components/ui/buttons/OrangeButton";
 
 interface LiveClassFiltersProps {
   searchTerm: string;
@@ -8,6 +9,7 @@ interface LiveClassFiltersProps {
   viewMode: "all" | "ongoing";
   onViewModeChange: (mode: "all" | "ongoing") => void;
   totalLiveClasses: number;
+  onCreateClick?: () => void;
 }
 
 const LiveClassFilters: React.FC<LiveClassFiltersProps> = ({
@@ -16,16 +18,27 @@ const LiveClassFilters: React.FC<LiveClassFiltersProps> = ({
   viewMode,
   onViewModeChange,
   totalLiveClasses,
+  onCreateClick,
 }) => {
   return (
     <div className="mb-8">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Live Classes</h1>
           <p className="text-gray-600 mt-1">
-            {totalLiveClasses} {totalLiveClasses === 1 ? "live class" : "live classes"} total
+            {totalLiveClasses}{" "}
+            {totalLiveClasses === 1 ? "live class" : "live classes"} total
           </p>
         </div>
+        {onCreateClick && (
+          <OrangeButton
+            onClick={onCreateClick}
+            className="flex items-center gap-2 cursor-pointer shrink-0"
+          >
+            <Plus className="w-5 h-5" />
+            Create Live Class
+          </OrangeButton>
+        )}
       </div>
 
       {/* View Mode Tabs */}
@@ -72,4 +85,3 @@ const LiveClassFilters: React.FC<LiveClassFiltersProps> = ({
 };
 
 export default LiveClassFilters;
-

@@ -4,8 +4,6 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useLiveClasses } from "@/hooks/useLiveClasses";
 import { LiveClass } from "@/types";
 import { toast } from "react-toastify";
-import { Plus } from "lucide-react";
-import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import { useCourse } from "@/hooks/useCourse";
 import { Course } from "@/types/course";
 import LiveClassFilters from "./components/LiveClassFilters";
@@ -36,7 +34,7 @@ const LiveClassesManagementPage = () => {
   const [viewMode, setViewMode] = useState<"all" | "ongoing">("all");
   const [showModal, setShowModal] = useState(false);
   const [editingLiveClass, setEditingLiveClass] = useState<LiveClass | null>(
-    null
+    null,
   );
   const [courses, setCourses] = useState<Course[]>([]);
   const [isSaving, setIsSaving] = useState(false);
@@ -55,7 +53,11 @@ const LiveClassesManagementPage = () => {
 
   // Load live classes
   const loadLiveClasses = useCallback(
-    async (page: number = 1, mode: "all" | "ongoing" = "all", loadAll: boolean = false) => {
+    async (
+      page: number = 1,
+      mode: "all" | "ongoing" = "all",
+      loadAll: boolean = false,
+    ) => {
       try {
         let response;
         if (mode === "ongoing") {
@@ -84,7 +86,7 @@ const LiveClassesManagementPage = () => {
         toast.error("Failed to load live classes");
       }
     },
-    [getAllLiveClasses, getOngoingLiveClasses]
+    [getAllLiveClasses, getOngoingLiveClasses],
   );
 
   // Initial load - load all data for search functionality
@@ -115,7 +117,7 @@ const LiveClassesManagementPage = () => {
   // Filter live classes based on search term and handle pagination
   useEffect(() => {
     let filtered: LiveClass[] = [];
-    
+
     if (!debouncedSearchTerm.trim()) {
       filtered = allLiveClasses;
     } else {
@@ -123,16 +125,20 @@ const LiveClassesManagementPage = () => {
       filtered = allLiveClasses.filter((liveClass) => {
         const title = liveClass.title?.toLowerCase() || "";
         const description = liveClass.description?.toLowerCase() || "";
-        
+
         // Check course title if populated
-        const courseTitle = typeof liveClass.course === "object" 
-          ? liveClass.course.title?.toLowerCase() || ""
-          : "";
-        
+        const courseTitle =
+          typeof liveClass.course === "object"
+            ? liveClass.course.title?.toLowerCase() || ""
+            : "";
+
         // Check instructor name if populated
-        const instructorName = typeof liveClass.instructor === "object"
-          ? `${liveClass.instructor.firstName || ""} ${liveClass.instructor.lastName || ""}`.toLowerCase().trim()
-          : "";
+        const instructorName =
+          typeof liveClass.instructor === "object"
+            ? `${liveClass.instructor.firstName || ""} ${liveClass.instructor.lastName || ""}`
+                .toLowerCase()
+                .trim()
+            : "";
 
         return (
           title.includes(searchLower) ||
@@ -145,7 +151,10 @@ const LiveClassesManagementPage = () => {
 
     // Calculate pagination for filtered results
     const itemsPerPage = 10;
-    const filteredTotalPages = Math.max(1, Math.ceil(filtered.length / itemsPerPage));
+    const filteredTotalPages = Math.max(
+      1,
+      Math.ceil(filtered.length / itemsPerPage),
+    );
     const validPage = Math.min(currentPage, filteredTotalPages);
     const startIndex = (validPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
@@ -263,10 +272,10 @@ const LiveClassesManagementPage = () => {
       }
     } catch (error: any) {
       console.error("Failed to save live class:", error);
-      const errorMessage = 
-        error?.response?.data?.error?.message || 
+      const errorMessage =
+        error?.response?.data?.error?.message ||
         error?.response?.data?.message ||
-        error?.message || 
+        error?.message ||
         "Failed to save live class";
       toast.error(errorMessage);
     } finally {
@@ -293,7 +302,11 @@ const LiveClassesManagementPage = () => {
       return;
     }
 
-    if (!window.confirm(`Are you sure you want to delete "${liveClass.title}"? This action cannot be undone.`)) {
+    if (
+      !window.confirm(
+        `Are you sure you want to delete "${liveClass.title}"? This action cannot be undone.`,
+      )
+    ) {
       return;
     }
 
@@ -311,10 +324,10 @@ const LiveClassesManagementPage = () => {
       }
     } catch (error: any) {
       console.error("Failed to delete live class:", error);
-      const errorMessage = 
-        error?.response?.data?.error?.message || 
+      const errorMessage =
+        error?.response?.data?.error?.message ||
         error?.response?.data?.message ||
-        error?.message || 
+        error?.message ||
         "Failed to delete live class";
       toast.error(errorMessage);
     }
@@ -322,24 +335,14 @@ const LiveClassesManagementPage = () => {
 
   return (
     <div className="w-full min-h-screen bg-gray-50 p-6">
-      {/* Header with Create Button */}
-      <div className="mb-6 flex justify-end">
-        <OrangeButton
-          onClick={handleOpenCreateModal}
-          className="flex items-center gap-2 cursor-pointer"
-        >
-          <Plus className="w-5 h-5" />
-          Create Live Class
-        </OrangeButton>
-      </div>
-
-      {/* Filters */}
+      {/* Filters and header with Create button on same line */}
       <LiveClassFilters
         searchTerm={searchTerm}
         onSearchChange={handleSearchChange}
         viewMode={viewMode}
         onViewModeChange={handleViewModeChange}
         totalLiveClasses={totalLiveClasses}
+        onCreateClick={handleOpenCreateModal}
       />
 
       {/* Live Classes List */}

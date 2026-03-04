@@ -13,8 +13,8 @@ export const verifyAdmin = async (
     return next(new AppError("Authentication required", 401));
   }
 
-  // Check if user is admin
-  if (user.userType !== "admin") {
+  // Check if user is admin or super-admin
+  if (user.userType !== "admin" && user.userType !== "super-admin") {
     return next(new AppError("Admin access required", 403));
   }
 

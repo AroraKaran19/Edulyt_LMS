@@ -1,10 +1,13 @@
-import { UserModel } from "../models";
+import { UserModel, CourseModel } from "../models";
 import { AppError } from "../middlewares/error.middleware";
 
 // User types to include in analytics (exclude admin, super-admin)
 const ANALYTICS_USER_TYPES = ["student", "instructor", "collaborator"];
 
-export const getDashboardStats = async (durationMonths: number) => {
+export const getDashboardStats = async (
+  durationMonths: number,
+  userType?: string
+) => {
   // Calculate date range
   const endDate = new Date();
   const startDate = new Date();
@@ -176,6 +179,22 @@ export const getDashboardStats = async (durationMonths: number) => {
     (a, b) => a.year - b.year || a.monthNum - b.monthNum
   );
 
+  // Platform-wide stats (super-admin only)
+  let platformStats: {
+    totalCourses: number;
+    adminCount: number;
+    superAdminCount: number;
+  } | undefined;
+
+  if (userType === "super-admin") {
+    const [totalCourses, adminCount, superAdminCount] = await Promise.all([
+      CourseModel.countDocuments({}),
+      UserModel.countDocuments({ userType: "admin" }),
+      UserModel.countDocuments({ userType: "super-admin" }),
+    ]);
+    platformStats = { totalCourses, adminCount, superAdminCount };
+  }
+
   // Format the response
   const response = {
     // Total user statistics
@@ -206,6 +225,9 @@ export const getDashboardStats = async (durationMonths: number) => {
       growthRate: parseFloat(growthRate.toFixed(2)),
       monthlyBreakdown,
     },
+
+    // Platform stats (super-admin only)
+    ...(platformStats && { platformStats }),
   };
 
   return response;

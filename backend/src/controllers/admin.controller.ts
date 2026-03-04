@@ -46,7 +46,8 @@ export const getDashboardStatsController = asyncHandler(
       );
     }
 
-    const dashboardStats = await getDashboardStats(durationMonths);
+    const userType = (req.user as { userType?: string })?.userType;
+    const dashboardStats = await getDashboardStats(durationMonths, userType);
 
     sendSuccessResponse(
       res,
