@@ -22,6 +22,8 @@ import { useTestimonial } from "@/hooks/useTestimonial";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import Input from "@/components/ui/inputs/Input";
+import TextArea from "@/components/ui/inputs/TextArea";
+import DropDown from "@/components/ui/dropdown/DropDown";
 import { toast } from "react-toastify";
 
 interface ProfileImageProps {
@@ -134,6 +136,9 @@ const TestimonialsManagementPage = () => {
     companyProfileUrl: "",
     profileImage: "",
     verified: false,
+    category: "" as "" | "college-students" | "professionals" | "internships",
+    feedback: "",
+    heading2: "",
   });
 
   // Edit modal state
@@ -235,7 +240,14 @@ const TestimonialsManagementPage = () => {
 
     setCreating(true);
     try {
-      const createdTestimonial = await createTestimonial(newTestimonial);
+      const { category, feedback, heading2, ...rest } = newTestimonial;
+      const payload = {
+        ...rest,
+        ...(category && { category }),
+        ...(feedback?.trim() && { feedback: feedback.trim() }),
+        ...(heading2?.trim() && { heading2: heading2.trim() }),
+      };
+      const createdTestimonial = await createTestimonial(payload);
       if (createdTestimonial) {
         setTestimonials((prev) => [createdTestimonial, ...prev]);
         setTotalTestimonials((prev) => prev + 1);
@@ -253,6 +265,9 @@ const TestimonialsManagementPage = () => {
           companyProfileUrl: "",
           profileImage: "",
           verified: false,
+          category: "",
+          feedback: "",
+          heading2: "",
         });
         setShowCreateModal(false);
         toast.success("Testimonial created successfully!");
@@ -298,6 +313,9 @@ const TestimonialsManagementPage = () => {
         companyProfileUrl: editingTestimonial.companyProfileUrl,
         profileImage: editingTestimonial.profileImage,
         verified: editingTestimonial.verified,
+        category: editingTestimonial.category,
+        feedback: editingTestimonial.feedback,
+        heading2: editingTestimonial.heading2,
       });
 
       if (result) {
@@ -784,6 +802,51 @@ const TestimonialsManagementPage = () => {
                   Mark as verified testimonial
                 </label>
               </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <DropDown
+                  label="Category"
+                  options={["", "college-students", "professionals", "internships"]}
+                  optionLabels={{
+                    "": "Select category",
+                    "college-students": "College Students",
+                    professionals: "Professionals",
+                    internships: "Internships",
+                  }}
+                  value={newTestimonial.category ?? ""}
+                  defaultValue="Select category"
+                  onChange={(e) =>
+                    setNewTestimonial((prev) => ({
+                      ...prev,
+                      category: e.target.value as "" | "college-students" | "professionals" | "internships",
+                    }))
+                  }
+                />
+                <Input
+                  label="Heading 2"
+                  value={newTestimonial.heading2}
+                  onChange={(e) =>
+                    setNewTestimonial((prev) => ({
+                      ...prev,
+                      heading2: e.target.value,
+                    }))
+                  }
+                  placeholder="e.g., Subheadline"
+                />
+              </div>
+
+              <TextArea
+                label="Feedback"
+                value={newTestimonial.feedback}
+                onChange={(e) =>
+                  setNewTestimonial((prev) => ({
+                    ...prev,
+                    feedback: e.target.value,
+                  }))
+                }
+                placeholder="Testimonial feedback or quote"
+                rows={4}
+              />
             </div>
 
             <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
@@ -959,6 +1022,59 @@ const TestimonialsManagementPage = () => {
                   Mark as verified testimonial
                 </label>
               </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <DropDown
+                  label="Category"
+                  options={["", "college-students", "professionals", "internships"]}
+                  optionLabels={{
+                    "": "Select category",
+                    "college-students": "College Students",
+                    professionals: "Professionals",
+                    internships: "Internships",
+                  }}
+                  value={editingTestimonial.category ?? ""}
+                  defaultValue="Select category"
+                  onChange={(e) =>
+                    setEditingTestimonial((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            category:
+                              e.target.value === ""
+                                ? undefined
+                                : (e.target.value as
+                                    | "college-students"
+                                    | "professionals"
+                                    | "internships"),
+                          }
+                        : null,
+                    )
+                  }
+                />
+                <Input
+                  label="Heading 2"
+                  value={editingTestimonial.heading2 || ""}
+                  onChange={(e) =>
+                    setEditingTestimonial((prev) =>
+                      prev ? { ...prev, heading2: e.target.value } : null,
+                    )
+                  }
+                  placeholder="e.g., Subheadline"
+                />
+              </div>
+
+              <TextArea
+                label="Feedback"
+                value={editingTestimonial.feedback || ""}
+                onChange={(e) =>
+                  setEditingTestimonial((prev) =>
+                    prev ? { ...prev, feedback: e.target.value } : null,
+                  )
+                }
+                placeholder="Testimonial feedback or quote"
+                rows={4}
+              />
             </div>
 
             <div className="p-6 border-t border-gray-200 flex justify-end gap-3">

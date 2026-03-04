@@ -1,5 +1,7 @@
 import { Router } from "express";
 import { verifyUser } from "../middlewares/user.middleware";
+import { verifyAdmin } from "../middlewares/admin.middleware";
+import { verifyEnrollmentOwnership } from "../middlewares/enrollment.middleware";
 import {
   createEnrollment,
   getEnrollment,
@@ -24,10 +26,10 @@ const router = Router();
 
 /**
  * @route   POST /api/enrollments
- * @desc    Create a new enrollment
- * @access  User
+ * @desc    Create a new enrollment (gift, trial, manual - admin/super-admin only)
+ * @access  Admin, Super-admin
  */
-router.post("/", verifyUser, createEnrollment);
+router.post("/", verifyUser, verifyAdmin, createEnrollment);
 
 /**
  * @route   GET /api/enrollments/check/:courseId
@@ -53,62 +55,63 @@ router.get("/dashboard-stats", verifyUser, getUserDashboardStats);
 /**
  * @route   GET /api/enrollments/:enrollmentId
  * @desc    Get specific enrollment details
- * @access  User
+ * @access  Owner or Admin
  */
-router.get("/:enrollmentId", verifyUser, getEnrollment);
+router.get("/:enrollmentId", verifyUser, verifyEnrollmentOwnership, getEnrollment);
 
 /**
  * @route   GET /api/enrollments/:enrollmentId/progress
  * @desc    Get detailed progress for an enrollment
- * @access  User
+ * @access  Owner or Admin
  */
-router.get("/:enrollmentId/progress", verifyUser, getDetailedProgress);
+router.get("/:enrollmentId/progress", verifyUser, verifyEnrollmentOwnership, getDetailedProgress);
 
 /**
  * @route   PUT /api/enrollments/:enrollmentId/progress
  * @desc    Update enrollment progress
- * @access  User
+ * @access  Owner or Admin
  */
-router.put("/:enrollmentId/progress", verifyUser, updateEnrollmentProgress);
+router.put("/:enrollmentId/progress", verifyUser, verifyEnrollmentOwnership, updateEnrollmentProgress);
 
 /**
  * @route   POST /api/enrollments/:enrollmentId/recalculate-progress
  * @desc    Recalculate enrollment progress (useful for fixing existing enrollments)
- * @access  User
+ * @access  Owner or Admin
  */
 router.post(
   "/:enrollmentId/recalculate-progress",
   verifyUser,
+  verifyEnrollmentOwnership,
   recalculateEnrollmentProgress
 );
 
 /**
  * @route   PUT /api/enrollments/:enrollmentId/status
  * @desc    Update enrollment status
- * @access  User
+ * @access  Owner or Admin
  */
-router.put("/:enrollmentId/status", verifyUser, updateEnrollmentStatus);
+router.put("/:enrollmentId/status", verifyUser, verifyEnrollmentOwnership, updateEnrollmentStatus);
 
 /**
  * @route   PUT /api/enrollments/:enrollmentId/pause
  * @desc    Pause an enrollment
- * @access  User
+ * @access  Owner or Admin
  */
-router.put("/:enrollmentId/pause", verifyUser, pauseEnrollment);
+router.put("/:enrollmentId/pause", verifyUser, verifyEnrollmentOwnership, pauseEnrollment);
 
 /**
  * @route   PUT /api/enrollments/:enrollmentId/resume
  * @desc    Resume a paused enrollment
- * @access  User
+ * @access  Owner or Admin
  */
-router.put("/:enrollmentId/resume", verifyUser, resumeEnrollment);
+router.put("/:enrollmentId/resume", verifyUser, verifyEnrollmentOwnership, resumeEnrollment);
 
 /**
  * @route   POST /api/enrollments/:enrollmentId/certificate
  * @desc    Issue certificate for completed enrollment
- * @access  User
+ * @access  Owner or Admin
  */
-router.post("/:enrollmentId/certificate", verifyUser, issueCertificate);
+router.post("/:enrollmentId/certificate", verifyUser, verifyEnrollmentOwnership, issueCertificate);
 
 /**
  * @route   GET /api/enrollments/stats/user/:userId
@@ -141,8 +144,8 @@ router.get("/history/:userId", verifyUser, getEnrollmentHistory);
 /**
  * @route   DELETE /api/enrollments/:enrollmentId
  * @desc    Delete an enrollment (soft delete - mark as dropped)
- * @access  User
+ * @access  Owner or Admin
  */
-router.delete("/:enrollmentId", verifyUser, deleteEnrollment);
+router.delete("/:enrollmentId", verifyUser, verifyEnrollmentOwnership, deleteEnrollment);
 
 export default router;

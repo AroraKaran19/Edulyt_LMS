@@ -3,6 +3,7 @@ import {
   deleteQnA,
   getAllQnAs,
   getQnAById,
+  getQnAReplies,
   updateQnA,
   addReply,
   removeReply,
@@ -23,7 +24,14 @@ const router = Router();
 router.get("/", verifyUser, getAllQnAs);
 
 /**
- * @route   GET /api/qnas/:id
+ * @route   GET /api/qna/:qnaId/replies
+ * @desc    Get paginated replies for a QnA
+ * @access  Authenticated Users
+ */
+router.get("/:qnaId/replies", verifyUser, getQnAReplies);
+
+/**
+ * @route   GET /api/qna/:id
  * @desc    Get a QnA by ID
  * @access  Public
  */

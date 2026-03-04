@@ -1,4 +1,6 @@
 import Input from "@/components/ui/inputs/Input";
+import TextArea from "@/components/ui/inputs/TextArea";
+import DropDown from "@/components/ui/dropdown/DropDown";
 import React, { useState, useEffect, useCallback } from "react";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
@@ -138,6 +140,9 @@ const Screen7 = () => {
     companyProfileUrl: "",
     profileImage: "",
     verified: false,
+    category: "" as "" | "college-students" | "professionals" | "internships",
+    feedback: "",
+    heading2: "",
   });
 
   const [showEditModal, setShowEditModal] = useState(false);
@@ -157,7 +162,7 @@ const Screen7 = () => {
     useState<string[]>(testimonialsValue);
 
   const [expandedTestimonials, setExpandedTestimonials] = useState<Set<string>>(
-    new Set()
+    new Set(),
   );
 
   // Client-side mounting
@@ -218,7 +223,7 @@ const Screen7 = () => {
           setHasMore(
             result.testimonials?.length === 10 &&
               (testimonials?.length || 0) + (result.testimonials?.length || 0) <
-                result.total
+                result.total,
           );
           setPage(pageNum + 1);
         }
@@ -232,7 +237,7 @@ const Screen7 = () => {
       getTestimonials,
       clearError,
       testimonials?.length,
-    ]
+    ],
   );
 
   const handleScroll = useCallback(
@@ -247,7 +252,7 @@ const Screen7 = () => {
         loadTestimonials(page);
       }
     },
-    [hasMore, isLoading, page, loadTestimonials]
+    [hasMore, isLoading, page, loadTestimonials],
   );
 
   // Load initial testimonials
@@ -267,7 +272,6 @@ const Screen7 = () => {
     });
   };
 
-
   const handleCreateTestimonial = async () => {
     if (
       !newTestimonial.name.trim() ||
@@ -278,7 +282,14 @@ const Screen7 = () => {
 
     setCreating(true);
     try {
-      const createdTestimonial = await createTestimonial(newTestimonial);
+      const { category, feedback, heading2, ...rest } = newTestimonial;
+      const payload = {
+        ...rest,
+        ...(category && { category }),
+        ...(feedback?.trim() && { feedback: feedback.trim() }),
+        ...(heading2?.trim() && { heading2: heading2.trim() }),
+      };
+      const createdTestimonial = await createTestimonial(payload);
       if (createdTestimonial) {
         setTestimonials((prev) => [createdTestimonial, ...(prev || [])]);
         setNewTestimonial({
@@ -295,6 +306,9 @@ const Screen7 = () => {
           companyProfileUrl: "",
           profileImage: "",
           verified: false,
+          category: "",
+          feedback: "",
+          heading2: "",
         });
         setShowCreateModal(false);
         clearError();
@@ -336,14 +350,17 @@ const Screen7 = () => {
         companyProfileUrl: editingTestimonial.companyProfileUrl,
         profileImage: editingTestimonial.profileImage,
         verified: editingTestimonial.verified,
+        category: editingTestimonial.category,
+        feedback: editingTestimonial.feedback,
+        heading2: editingTestimonial.heading2,
       });
 
       if (result) {
         // Update the testimonial in the local state
         setTestimonials((prev) =>
           (prev || []).map((testimonial) =>
-            testimonial._id === editingTestimonial._id ? result : testimonial
-          )
+            testimonial._id === editingTestimonial._id ? result : testimonial,
+          ),
         );
         setShowEditModal(false);
         setEditingTestimonial(null);
@@ -359,7 +376,7 @@ const Screen7 = () => {
   const handleDeleteTestimonial = async (testimonialId: string) => {
     if (
       !confirm(
-        "Are you sure you want to delete this testimonial? This action cannot be undone."
+        "Are you sure you want to delete this testimonial? This action cannot be undone.",
       )
     ) {
       return;
@@ -372,13 +389,13 @@ const Screen7 = () => {
       if (result) {
         setTestimonials((prev) =>
           (prev || []).filter(
-            (testimonial) => testimonial._id !== testimonialId
-          )
+            (testimonial) => testimonial._id !== testimonialId,
+          ),
         );
 
         // Calculate new selected testimonials
         const newSelected = selectedTestimonialIds.filter(
-          (id) => id !== testimonialId
+          (id) => id !== testimonialId,
         );
 
         // Update both local state and form value
@@ -457,9 +474,15 @@ const Screen7 = () => {
         <div className="flex items-center gap-2">
           <WhiteButton
             onClick={() => {
-              const allTestimonialIds = testimonials?.map(testimonial => testimonial._id).filter((id): id is string => !!id) || [];
+              const allTestimonialIds =
+                testimonials
+                  ?.map((testimonial) => testimonial._id)
+                  .filter((id): id is string => !!id) || [];
               setSelectedTestimonialIds(allTestimonialIds);
-              setValue("testimonials", allTestimonialIds, { shouldDirty: true, shouldTouch: true });
+              setValue("testimonials", allTestimonialIds, {
+                shouldDirty: true,
+                shouldTouch: true,
+              });
             }}
             className="flex items-center gap-2"
             disabled={!testimonials || testimonials.length === 0}
@@ -470,7 +493,10 @@ const Screen7 = () => {
           <WhiteButton
             onClick={() => {
               setSelectedTestimonialIds([]);
-              setValue("testimonials", [], { shouldDirty: true, shouldTouch: true });
+              setValue("testimonials", [], {
+                shouldDirty: true,
+                shouldTouch: true,
+              });
             }}
             className="flex items-center gap-2"
             disabled={selectedTestimonialIds.length === 0}
@@ -661,7 +687,6 @@ const Screen7 = () => {
                   }
                   placeholder="https://example.com/company/profile"
                 />
-
               </div>
 
               <div className="flex items-center gap-3">
@@ -684,6 +709,60 @@ const Screen7 = () => {
                   Mark as verified testimonial
                 </label>
               </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <DropDown
+                  label="Category"
+                  options={[
+                    "",
+                    "college-students",
+                    "professionals",
+                    "internships",
+                  ]}
+                  optionLabels={{
+                    "": "Select category",
+                    "college-students": "College Students",
+                    professionals: "Professionals",
+                    internships: "Internships",
+                  }}
+                  value={newTestimonial.category ?? ""}
+                  defaultValue="Select category"
+                  onChange={(e) =>
+                    setNewTestimonial((prev) => ({
+                      ...prev,
+                      category: e.target.value as
+                        | ""
+                        | "college-students"
+                        | "professionals"
+                        | "internships",
+                    }))
+                  }
+                />
+                <Input
+                  label="Heading 2"
+                  value={newTestimonial.heading2}
+                  onChange={(e) =>
+                    setNewTestimonial((prev) => ({
+                      ...prev,
+                      heading2: e.target.value,
+                    }))
+                  }
+                  placeholder="e.g., Subheadline"
+                />
+              </div>
+
+              <TextArea
+                label="Feedback"
+                value={newTestimonial.feedback}
+                onChange={(e) =>
+                  setNewTestimonial((prev) => ({
+                    ...prev,
+                    feedback: e.target.value,
+                  }))
+                }
+                placeholder="Testimonial feedback or quote"
+                rows={4}
+              />
             </div>
 
             <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
@@ -747,7 +826,7 @@ const Screen7 = () => {
                   value={editingTestimonial.name}
                   onChange={(e) =>
                     setEditingTestimonial((prev) =>
-                      prev ? { ...prev, name: e.target.value } : null
+                      prev ? { ...prev, name: e.target.value } : null,
                     )
                   }
                   placeholder="Enter full name"
@@ -759,7 +838,7 @@ const Screen7 = () => {
                   value={editingTestimonial.profileImage}
                   onChange={(e) =>
                     setEditingTestimonial((prev) =>
-                      prev ? { ...prev, profileImage: e.target.value } : null
+                      prev ? { ...prev, profileImage: e.target.value } : null,
                     )
                   }
                   placeholder="https://example.com/profile.jpg"
@@ -771,7 +850,7 @@ const Screen7 = () => {
                   value={editingTestimonial.currentRole}
                   onChange={(e) =>
                     setEditingTestimonial((prev) =>
-                      prev ? { ...prev, currentRole: e.target.value } : null
+                      prev ? { ...prev, currentRole: e.target.value } : null,
                     )
                   }
                   placeholder="e.g., Senior Software Engineer"
@@ -783,7 +862,7 @@ const Screen7 = () => {
                   value={editingTestimonial.currentCompany}
                   onChange={(e) =>
                     setEditingTestimonial((prev) =>
-                      prev ? { ...prev, currentCompany: e.target.value } : null
+                      prev ? { ...prev, currentCompany: e.target.value } : null,
                     )
                   }
                   placeholder="e.g., Google"
@@ -795,7 +874,7 @@ const Screen7 = () => {
                   value={editingTestimonial.pastRole}
                   onChange={(e) =>
                     setEditingTestimonial((prev) =>
-                      prev ? { ...prev, pastRole: e.target.value } : null
+                      prev ? { ...prev, pastRole: e.target.value } : null,
                     )
                   }
                   placeholder="e.g., Junior Developer"
@@ -807,7 +886,7 @@ const Screen7 = () => {
                   value={editingTestimonial.pastCompany}
                   onChange={(e) =>
                     setEditingTestimonial((prev) =>
-                      prev ? { ...prev, pastCompany: e.target.value } : null
+                      prev ? { ...prev, pastCompany: e.target.value } : null,
                     )
                   }
                   placeholder="e.g., Startup Inc."
@@ -819,7 +898,7 @@ const Screen7 = () => {
                   value={editingTestimonial.college}
                   onChange={(e) =>
                     setEditingTestimonial((prev) =>
-                      prev ? { ...prev, college: e.target.value } : null
+                      prev ? { ...prev, college: e.target.value } : null,
                     )
                   }
                   placeholder="e.g., Stanford University"
@@ -831,7 +910,7 @@ const Screen7 = () => {
                   value={editingTestimonial.linkedin}
                   onChange={(e) =>
                     setEditingTestimonial((prev) =>
-                      prev ? { ...prev, linkedin: e.target.value } : null
+                      prev ? { ...prev, linkedin: e.target.value } : null,
                     )
                   }
                   placeholder="https://linkedin.com/in/username"
@@ -845,7 +924,7 @@ const Screen7 = () => {
                   value={editingTestimonial.collegeUrl || ""}
                   onChange={(e) =>
                     setEditingTestimonial((prev) =>
-                      prev ? { ...prev, collegeUrl: e.target.value } : null
+                      prev ? { ...prev, collegeUrl: e.target.value } : null,
                     )
                   }
                   placeholder="https://example.com/college"
@@ -856,7 +935,9 @@ const Screen7 = () => {
                   value={editingTestimonial.collegeProfileUrl || ""}
                   onChange={(e) =>
                     setEditingTestimonial((prev) =>
-                      prev ? { ...prev, collegeProfileUrl: e.target.value } : null
+                      prev
+                        ? { ...prev, collegeProfileUrl: e.target.value }
+                        : null,
                     )
                   }
                   placeholder="https://example.com/college/profile"
@@ -867,7 +948,7 @@ const Screen7 = () => {
                   value={editingTestimonial.companyUrl || ""}
                   onChange={(e) =>
                     setEditingTestimonial((prev) =>
-                      prev ? { ...prev, companyUrl: e.target.value } : null
+                      prev ? { ...prev, companyUrl: e.target.value } : null,
                     )
                   }
                   placeholder="https://example.com/company"
@@ -878,12 +959,13 @@ const Screen7 = () => {
                   value={editingTestimonial.companyProfileUrl || ""}
                   onChange={(e) =>
                     setEditingTestimonial((prev) =>
-                      prev ? { ...prev, companyProfileUrl: e.target.value } : null
+                      prev
+                        ? { ...prev, companyProfileUrl: e.target.value }
+                        : null,
                     )
                   }
                   placeholder="https://example.com/company/profile"
                 />
-
               </div>
 
               <div className="flex items-center gap-3">
@@ -893,7 +975,7 @@ const Screen7 = () => {
                   checked={editingTestimonial.verified || false}
                   onChange={(e) =>
                     setEditingTestimonial((prev) =>
-                      prev ? { ...prev, verified: e.target.checked } : null
+                      prev ? { ...prev, verified: e.target.checked } : null,
                     )
                   }
                   className="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500 focus:ring-2"
@@ -905,6 +987,64 @@ const Screen7 = () => {
                   Mark as verified testimonial
                 </label>
               </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <DropDown
+                  label="Category"
+                  options={[
+                    "",
+                    "college-students",
+                    "professionals",
+                    "internships",
+                  ]}
+                  optionLabels={{
+                    "": "Select category",
+                    "college-students": "College Students",
+                    professionals: "Professionals",
+                    internships: "Internships",
+                  }}
+                  value={editingTestimonial.category ?? ""}
+                  defaultValue="Select category"
+                  onChange={(e) =>
+                    setEditingTestimonial((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            category:
+                              e.target.value === ""
+                                ? undefined
+                                : (e.target.value as
+                                    | "college-students"
+                                    | "professionals"
+                                    | "internships"),
+                          }
+                        : null,
+                    )
+                  }
+                />
+                <Input
+                  label="Heading 2"
+                  value={editingTestimonial.heading2 || ""}
+                  onChange={(e) =>
+                    setEditingTestimonial((prev) =>
+                      prev ? { ...prev, heading2: e.target.value } : null,
+                    )
+                  }
+                  placeholder="e.g., Subheadline"
+                />
+              </div>
+
+              <TextArea
+                label="Feedback"
+                value={editingTestimonial.feedback || ""}
+                onChange={(e) =>
+                  setEditingTestimonial((prev) =>
+                    prev ? { ...prev, feedback: e.target.value } : null,
+                  )
+                }
+                placeholder="Testimonial feedback or quote"
+                rows={4}
+              />
             </div>
 
             <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
@@ -1084,14 +1224,14 @@ const Screen7 = () => {
                         <span>
                           Created:{" "}
                           {new Date(
-                            testimonial.createdAt!
+                            testimonial.createdAt!,
                           ).toLocaleDateString()}
                         </span>
                         {testimonial.updatedAt && (
                           <span>
                             Updated:{" "}
                             {new Date(
-                              testimonial.updatedAt
+                              testimonial.updatedAt,
                             ).toLocaleDateString()}
                           </span>
                         )}

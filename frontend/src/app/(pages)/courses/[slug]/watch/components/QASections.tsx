@@ -1,5 +1,13 @@
 import { useState, memo } from "react";
-import { MessageCircle, Search, Plus, X, Send } from "lucide-react";
+import {
+  MessageCircle,
+  Search,
+  Plus,
+  X,
+  Send,
+  Loader2,
+  ChevronDown,
+} from "lucide-react";
 import Image from "next/image";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import { Button } from "@/components/ui/buttons/button";
@@ -53,6 +61,8 @@ const QASections = memo(
     lessonId = "",
     contentId = "",
     onRefresh,
+    onLoadMoreReplies,
+    loadingRepliesForId = null,
   }: {
     questions: QnA[];
     search: string;
@@ -62,9 +72,23 @@ const QASections = memo(
     lessonId?: string;
     contentId?: string;
     onRefresh?: () => void;
+    onLoadMoreReplies?: (qnaId: string) => void;
+    loadingRepliesForId?: string | null;
   }) => {
     const [openReplyId, setOpenReplyId] = useState<string | null>(null);
+    const [expandedReplies, setExpandedReplies] = useState<Set<string>>(
+      new Set(),
+    );
     const [isAskingQuestion, setIsAskingQuestion] = useState(false);
+
+    const toggleRepliesExpanded = (qnaId: string) => {
+      setExpandedReplies((prev) => {
+        const next = new Set(prev);
+        if (next.has(qnaId)) next.delete(qnaId);
+        else next.add(qnaId);
+        return next;
+      });
+    };
     const [newQuestion, setNewQuestion] = useState("");
     const [replyText, setReplyText] = useState("");
     const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
@@ -141,15 +165,15 @@ const QASections = memo(
                     {lessonId && contentId
                       ? "This question will be associated with the current lesson and content you're viewing."
                       : lessonId
-                      ? "This question will be associated with the current lesson you're viewing."
-                      : "This question will be associated with the current content you're viewing."}
+                        ? "This question will be associated with the current lesson you're viewing."
+                        : "This question will be associated with the current content you're viewing."}
                   </p>
                 </div>
               ) : (
                 <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                   <p className="text-sm text-yellow-800">
-                    <span className="font-medium">Note:</span> No specific lesson
-                    or content is selected. This will be a general course
+                    <span className="font-medium">Note:</span> No specific
+                    lesson or content is selected. This will be a general course
                     question.
                   </p>
                 </div>
@@ -207,8 +231,8 @@ const QASections = memo(
                         newQuestion.length > 1000
                           ? "text-red-500"
                           : newQuestion.length < 10
-                          ? "text-orange-500"
-                          : "text-gray-500"
+                            ? "text-orange-500"
+                            : "text-gray-500"
                       }`}
                     >
                       {newQuestion.length}/1000
@@ -258,7 +282,7 @@ const QASections = memo(
               const user = typeof qna.userId === "object" ? qna.userId : null;
               const userName = user?.firstName
                 ? `${user.firstName} ${user.lastName || ""}`.trim()
-                : user?.email ?? "Anonymous User";
+                : (user?.email ?? "Anonymous User");
               const userAvatar = user?.profilePicture || "/user.svg";
               const nameForInitials = user?.firstName
                 ? `${user.firstName} ${user.lastName || ""}`.trim()
@@ -281,7 +305,7 @@ const QASections = memo(
                       ) : (
                         <div
                           className={`w-full h-full flex items-center justify-center text-white font-semibold text-sm ${getAvatarColor(
-                            nameForInitials
+                            nameForInitials,
                           )}`}
                         >
                           {getInitials(nameForInitials)}
@@ -307,93 +331,150 @@ const QASections = memo(
                     </p>
                   </div>
 
-                  {/* Replies */}
+                  {/* Replies - collapsed by default, expand on click */}
                   {qna.replies && qna.replies.length > 0 && (
                     <div className="ml-13 mb-4">
-                      <h4 className="text-sm font-semibold text-gray-700 mb-2">
-                        {qna.replies.length}{" "}
-                        {qna.replies.length === 1 ? "Reply" : "Replies"}
-                      </h4>
-                      {qna.replies.map((reply: QnAReply) => {
-                        const replyUser =
-                          typeof reply.userId === "object" ? reply.userId : null;
-                        const replyUserName = replyUser?.firstName
-                          ? `${replyUser.firstName} ${
-                              replyUser.lastName || ""
-                            }`.trim()
-                          : replyUser?.email ?? "Anonymous User";
-                        const replyUserAvatar =
-                          replyUser?.profilePicture ?? "/user.svg";
-                        const replyNameForInitials = replyUser?.firstName
-                          ? `${replyUser.firstName} ${
-                              replyUser.lastName || ""
-                            }`.trim()
-                          : "Anonymous User";
-
-                        return (
-                          <div
-                            key={reply._id}
-                            className="flex items-start gap-3 mb-3 p-3 bg-gray-50 rounded-lg"
-                          >
-                            <div className="w-8 h-8 rounded-full overflow-hidden shrink-0">
-                              {replyUser?.profilePicture &&
-                              !imageErrors[reply._id || ""] ? (
-                                <Image
-                                  src={replyUserAvatar}
-                                  alt={replyUserName}
-                                  className="w-full h-full object-cover"
-                                  width={32}
-                                  height={32}
-                                  onError={() =>
-                                    handleImageError(reply._id || "")
-                                  }
-                                />
-                              ) : (
-                                <div
-                                  className={`w-full h-full flex items-center justify-center text-white font-semibold text-xs ${getAvatarColor(
-                                    replyNameForInitials
-                                  )}`}
-                                >
-                                  {getInitials(replyNameForInitials)}
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex-1">
-                              <h5 className="font-medium text-sm text-gray-900">
-                                {replyUserName}
-                              </h5>
-                              <p className="text-sm text-gray-700 mt-1">
-                                {reply.message}
-                              </p>
-                              <p className="text-xs text-gray-500 mt-1">
-                                {reply.createdAt
-                                  ? new Date(reply.createdAt).toLocaleDateString()
-                                  : ""}
-                              </p>
-                            </div>
+                      {expandedReplies.has(qna._id || "") ? (
+                        <>
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="text-sm font-semibold text-gray-700">
+                              {qna.totalReplies ?? qna.replies.length}{" "}
+                              {(qna.totalReplies ?? qna.replies.length) === 1
+                                ? "Reply"
+                                : "Replies"}
+                            </h4>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                toggleRepliesExpanded(qna._id || "")
+                              }
+                              className="text-sm font-medium text-orange-600 hover:text-orange-700 cursor-pointer"
+                            >
+                              Hide replies
+                            </button>
                           </div>
-                        );
-                      })}
+                          {qna.replies.map((reply: QnAReply) => {
+                            const replyUser =
+                              typeof reply.userId === "object"
+                                ? reply.userId
+                                : null;
+                            const replyUserName = replyUser?.firstName
+                              ? `${replyUser.firstName} ${
+                                  replyUser.lastName || ""
+                                }`.trim()
+                              : (replyUser?.email ?? "Anonymous User");
+                            const replyUserAvatar =
+                              replyUser?.profilePicture ?? "/user.svg";
+                            const replyNameForInitials = replyUser?.firstName
+                              ? `${replyUser.firstName} ${
+                                  replyUser.lastName || ""
+                                }`.trim()
+                              : "Anonymous User";
+
+                            return (
+                              <div
+                                key={reply._id}
+                                className="flex items-start gap-3 mb-3 p-3 bg-gray-50 rounded-lg"
+                              >
+                                <div className="w-8 h-8 rounded-full overflow-hidden shrink-0">
+                                  {replyUser?.profilePicture &&
+                                  !imageErrors[reply._id || ""] ? (
+                                    <Image
+                                      src={replyUserAvatar}
+                                      alt={replyUserName}
+                                      className="w-full h-full object-cover"
+                                      width={32}
+                                      height={32}
+                                      onError={() =>
+                                        handleImageError(reply._id || "")
+                                      }
+                                    />
+                                  ) : (
+                                    <div
+                                      className={`w-full h-full flex items-center justify-center text-white font-semibold text-xs ${getAvatarColor(
+                                        replyNameForInitials,
+                                      )}`}
+                                    >
+                                      {getInitials(replyNameForInitials)}
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="flex-1">
+                                  <h5 className="font-medium text-sm text-gray-900">
+                                    {replyUserName}
+                                  </h5>
+                                  <p className="text-sm text-gray-700 mt-1">
+                                    {reply.message}
+                                  </p>
+                                  <p className="text-xs text-gray-500 mt-1">
+                                    {reply.createdAt
+                                      ? new Date(
+                                          reply.createdAt,
+                                        ).toLocaleDateString()
+                                      : ""}
+                                  </p>
+                                </div>
+                              </div>
+                            );
+                          })}
+                          {onLoadMoreReplies &&
+                            (qna.totalReplies ?? 0) > qna.replies.length && (
+                              <button
+                                type="button"
+                                onClick={() => onLoadMoreReplies?.(qna._id!)}
+                                disabled={loadingRepliesForId === qna._id}
+                                className="mt-2 flex items-center gap-2 text-sm font-medium text-orange-600 hover:text-orange-700 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                {loadingRepliesForId === qna._id ? (
+                                  <>
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    Loading...
+                                  </>
+                                ) : (
+                                  <>
+                                    <ChevronDown className="w-4 h-4" />
+                                    Load 5 more replies
+                                  </>
+                                )}
+                              </button>
+                            )}
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => toggleRepliesExpanded(qna._id || "")}
+                          className="flex items-center gap-2 text-sm font-medium text-orange-600 hover:text-orange-700 cursor-pointer"
+                        >
+                          <ChevronDown className="w-4 h-4" />
+                          View {qna.totalReplies ?? qna.replies.length}{" "}
+                          {(qna.totalReplies ?? qna.replies.length) === 1
+                            ? "reply"
+                            : "replies"}
+                        </button>
+                      )}
                     </div>
                   )}
 
-                  {/* Reply Button */}
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      title="Reply"
-                      className="cursor-pointer flex items-center gap-2 hover:text-gray-800 transition-colors border border-[#00000021] rounded-xl py-2 px-4 shadow-[0px_-3px_3.7px_0px_#0146E721_inset]"
-                      onClick={() =>
-                        setOpenReplyId(
-                          openReplyId === qna._id ? null : qna._id || null
-                        )
-                      }
-                    >
-                      <MessageCircle className="size-6 text-black" />
-                      <span className="text-base font-bold font-plus-jakarta text-black">
-                        Reply
-                      </span>
-                    </button>
+                  {/* Reply Button - align with question content (avatar + gap) */}
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 shrink-0" aria-hidden />
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        title="Reply"
+                        className="cursor-pointer flex items-center gap-2 hover:text-gray-800 transition-colors border border-[#00000021] rounded-xl py-2 px-4 shadow-[0px_-3px_3.7px_0px_#0146E721_inset]"
+                        onClick={() =>
+                          setOpenReplyId(
+                            openReplyId === qna._id ? null : qna._id || null,
+                          )
+                        }
+                      >
+                        <MessageCircle className="size-6 text-black" />
+                        <span className="text-base font-bold font-plus-jakarta text-black">
+                          Reply
+                        </span>
+                      </button>
+                    </div>
                   </div>
 
                   {openReplyId === qna._id && (
@@ -458,8 +539,8 @@ const QASections = memo(
                                 replyText.length > 500
                                   ? "text-red-500"
                                   : replyText.length < 5
-                                  ? "text-orange-500"
-                                  : "text-gray-500"
+                                    ? "text-orange-500"
+                                    : "text-gray-500"
                               }`}
                             >
                               {replyText.length}/500
@@ -524,7 +605,7 @@ const QASections = memo(
       prevProps.search === nextProps.search &&
       prevProps.isLoading === nextProps.isLoading
     );
-  }
+  },
 );
 
 QASections.displayName = "QASections";

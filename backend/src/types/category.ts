@@ -6,6 +6,7 @@ export interface Category {
   isActive: boolean;
   showOnHomePage?: boolean;
   categoryImage?: string;
+  sortOrder?: number;
   createdAt?: Date;
   updatedAt?: Date;
 }

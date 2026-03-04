@@ -442,25 +442,79 @@ export const regenerateCertificateService = async (
 };
 
 /**
- * Get all certificates for a user (including old versions)
+ * Get certificates for a user with optional pagination (including old versions)
+ * When page/limit are provided, returns paginated format. Otherwise returns all as array (backward compat).
  */
 export const getUserCertificatesService = async (
   userId: string,
-  includeOldVersions: boolean = false
-): Promise<Certificate[]> => {
+  options: {
+    includeOldVersions?: boolean;
+    page?: number;
+    limit?: number;
+    search?: string;
+    recentOnly?: boolean;
+  } = {}
+): Promise<
+  | Certificate[]
+  | { certificates: Certificate[]; total: number; totalPages: number; page: number }
+> => {
   try {
+    const {
+      includeOldVersions = false,
+      page,
+      limit = 12,
+      search,
+      recentOnly = false,
+    } = options;
+
     const query: any = { userId, isActive: true };
     if (!includeOldVersions) {
       query.isLatest = true;
     }
 
+    if (recentOnly) {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      query.issuedAt = { $gte: thirtyDaysAgo };
+    }
+
+    if (search && search.trim()) {
+      const searchRegex = new RegExp(search.trim(), "i");
+      query.$or = [
+        { courseName: searchRegex },
+        { studentName: searchRegex },
+        { certificateId: searchRegex },
+      ];
+    }
+
+    // Backward compat: when page not provided, return all as array (for useCourseCompletion etc.)
+    if (page === undefined) {
+      const certificates = await CertificateModel.find(query)
+        .populate("courseId", "title thumbnail slug")
+        .populate("userId", "firstName lastName email")
+        .sort({ issuedAt: -1 })
+        .lean();
+      return certificates as Certificate[];
+    }
+
+    const total = await CertificateModel.countDocuments(query);
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+    const skip = (page - 1) * limit;
+
     const certificates = await CertificateModel.find(query)
       .populate("courseId", "title thumbnail slug")
       .populate("userId", "firstName lastName email")
       .sort({ issuedAt: -1 })
+      .skip(skip)
+      .limit(limit)
       .lean();
 
-    return certificates as Certificate[];
+    return {
+      certificates: certificates as Certificate[],
+      total,
+      totalPages,
+      page,
+    };
   } catch (error) {
     console.error("Error getting user certificates:", error);
     throw new AppError("Failed to get certificates", 500);

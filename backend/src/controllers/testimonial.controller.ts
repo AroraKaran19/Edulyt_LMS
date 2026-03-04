@@ -74,6 +74,9 @@ export const createTestimonial = asyncHandler(
       companyProfileUrl,
       verified,
       profileImage,
+      category,
+      feedback,
+      heading2,
     } = req.body;
 
     if (
@@ -105,6 +108,9 @@ export const createTestimonial = asyncHandler(
       companyProfileUrl,
       verified,
       profileImage,
+      category,
+      feedback,
+      heading2,
     });
 
     if (!result) {
@@ -133,6 +139,9 @@ export const updateTestimonial = asyncHandler(
       companyProfileUrl,
       verified,
       profileImage,
+      category,
+      feedback,
+      heading2,
     } = req.body;
 
     if (!id) {
@@ -152,7 +161,10 @@ export const updateTestimonial = asyncHandler(
       companyUrl === undefined &&
       companyProfileUrl === undefined &&
       verified === undefined &&
-      !profileImage
+      profileImage === undefined &&
+      category === undefined &&
+      feedback === undefined &&
+      heading2 === undefined
     ) {
       throw new AppError("At least one field is required for update", 400);
     }
@@ -171,6 +183,9 @@ export const updateTestimonial = asyncHandler(
       companyProfileUrl,
       verified,
       profileImage,
+      category,
+      feedback,
+      heading2,
     });
 
     if (!result) {

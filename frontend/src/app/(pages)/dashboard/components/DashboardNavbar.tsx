@@ -41,14 +41,14 @@ const DashboardNavbar = () => {
   return (
     <div className="dashboard-navbar w-full fixed top-0 left-0 z-9999 bg-white">
       <div className="w-full py-4 px-4 lg:px-20 flex items-center gap-4">
-        <Link href="/" className="w-max">
+        <Link href="/" className="shrink-0 flex items-center">
           <ImageComponent
             src="/logo.svg"
             alt="logo"
             width={100}
             height={100}
             loading="eager"
-            className="h-[52px] w-max"
+            className="h-[52px] w-auto object-contain"
             draggable={false}
           />
         </Link>

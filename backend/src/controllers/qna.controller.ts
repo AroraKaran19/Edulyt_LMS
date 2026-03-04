@@ -9,6 +9,7 @@ import {
   deleteQnAService,
   getAllQnAsService,
   getQnAByIdService,
+  getRepliesForQnAService,
   updateQnAService,
   addReplyToQnAService,
   removeReplyFromQnAService,
@@ -25,8 +26,9 @@ export const getAllQnAs = asyncHandler(async (req: Request, res: Response) => {
     lessonId,
     contentId,
     approved,
+    repliesLimit,
   } = req.query;
-  const isAdmin = req.user?.userType === "admin";
+  const isAdmin = req.user?.userType === "admin" || req.user?.userType === "super-admin";
 
   if (Number(page) < 1 || Number(limit) < 1) {
     throw new AppError("Page and limit must be positive numbers", 400);
@@ -40,7 +42,8 @@ export const getAllQnAs = asyncHandler(async (req: Request, res: Response) => {
     lessonId as string,
     contentId as string,
     isAdmin,
-    approved !== undefined ? approved === "true" : undefined
+    approved !== undefined ? approved === "true" : undefined,
+    repliesLimit !== undefined ? Number(repliesLimit) : undefined
   );
 
   // Always return a consistent response shape for the frontend:
@@ -64,9 +67,36 @@ export const getAllQnAs = asyncHandler(async (req: Request, res: Response) => {
   return;
 });
 
+export const getQnAReplies = asyncHandler(async (req: Request, res: Response) => {
+  const { qnaId } = req.params;
+  const { page = 1, limit = 5 } = req.query;
+  const isAdmin = req.user?.userType === "admin" || req.user?.userType === "super-admin";
+
+  if (!qnaId) {
+    throw new AppError("QnA ID is required", 400);
+  }
+  if (Number(page) < 1 || Number(limit) < 1) {
+    throw new AppError("Page and limit must be positive numbers", 400);
+  }
+
+  const result = await getRepliesForQnAService(
+    qnaId,
+    Number(page),
+    Number(limit),
+    isAdmin
+  );
+
+  if (!result) {
+    sendSuccessResponse(res, { replies: [], total: 0, page: Number(page), totalPages: 0 }, "No replies found", 200);
+    return;
+  }
+
+  sendSuccessResponse(res, result, "Replies fetched successfully", 200);
+});
+
 export const getQnAById = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
-  const isAdmin = req.user?.userType === "admin";
+  const isAdmin = req.user?.userType === "admin" || req.user?.userType === "super-admin";
   
   if (!id) {
     throw new AppError("QnA ID is required", 400);
@@ -112,7 +142,7 @@ export const createQnA = asyncHandler(async (req: Request, res: Response) => {
 export const updateQnA = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
   const { message } = req.body;
-  const isAdmin = req.user?.userType === "admin";
+  const isAdmin = req.user?.userType === "admin" || req.user?.userType === "super-admin";
 
   if (!id) {
     throw new AppError("QnA ID is required", 400);

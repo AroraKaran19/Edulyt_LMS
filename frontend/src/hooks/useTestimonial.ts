@@ -18,6 +18,9 @@ export interface Testimonial {
   companyProfileUrl?: string;
   verified?: boolean;
   profileImage?: string;
+  category?: "college-students" | "professionals" | "internships";
+  feedback?: string;
+  heading2?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -64,6 +67,9 @@ export interface CreateTestimonialData {
   companyProfileUrl?: string;
   verified?: boolean;
   profileImage?: string;
+  category?: "college-students" | "professionals" | "internships";
+  feedback?: string;
+  heading2?: string;
 }
 
 export interface UpdateTestimonialData {
@@ -80,6 +86,9 @@ export interface UpdateTestimonialData {
   companyProfileUrl?: string;
   verified?: boolean;
   profileImage?: string;
+  category?: "college-students" | "professionals" | "internships";
+  feedback?: string;
+  heading2?: string;
 }
 
 export const useTestimonial = () => {

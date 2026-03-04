@@ -199,15 +199,22 @@ export const getUserEnrollments = asyncHandler(
   async (req: Request, res: Response) => {
     const { userId } = req.params;
     const { status, page = 1, limit = 10, search, sortBy } = req.query;
+    const currentUser = req.user;
+    const isAdmin =
+      currentUser?.userType === "admin" || currentUser?.userType === "super-admin";
 
     // Handle "me" route - use current user's ID
     let targetUserId: string;
     if (userId === "me") {
-      if (!req.user?._id) {
+      if (!currentUser?._id) {
         throw new AppError("User not authenticated", 401);
       }
-      targetUserId = req.user._id;
+      targetUserId = currentUser._id;
     } else {
+      // Only admins can view another user's enrollments
+      if (!isAdmin) {
+        throw new AppError("You can only view your own enrollments", 403);
+      }
       if (!userId) {
         throw new AppError("User ID is required", 400);
       }
@@ -393,9 +400,17 @@ export const issueCertificate = asyncHandler(
 export const getEnrollmentStats = asyncHandler(
   async (req: Request, res: Response) => {
     const { userId } = req.params;
+    const currentUser = req.user;
+    const isAdmin =
+      currentUser?.userType === "admin" || currentUser?.userType === "super-admin";
 
     if (!userId) {
       throw new AppError("User ID is required", 400);
+    }
+
+    // Users can only view their own stats unless admin
+    if (!isAdmin && String(userId) !== String(currentUser?._id)) {
+      throw new AppError("You can only view your own enrollment statistics", 403);
     }
 
     const result = await GetEnrollmentStatsService(userId);
@@ -463,9 +478,17 @@ export const getEnrollmentAnalytics = asyncHandler(
   async (req: Request, res: Response) => {
     const { userId } = req.params;
     const { period = "30" } = req.query; // days
+    const currentUser = req.user;
+    const isAdmin =
+      currentUser?.userType === "admin" || currentUser?.userType === "super-admin";
 
     if (!userId) {
       throw new AppError("User ID is required", 400);
+    }
+
+    // Users can only view their own analytics unless admin
+    if (!isAdmin && String(userId) !== String(currentUser?._id)) {
+      throw new AppError("You can only view your own enrollment analytics", 403);
     }
 
     const result = await GetEnrollmentAnalyticsService(userId, Number(period));
@@ -510,9 +533,17 @@ export const getEnrollmentHistory = asyncHandler(
   async (req: Request, res: Response) => {
     const { userId } = req.params;
     const { page = 1, limit = 10 } = req.query;
+    const currentUser = req.user;
+    const isAdmin =
+      currentUser?.userType === "admin" || currentUser?.userType === "super-admin";
 
     if (!userId) {
       throw new AppError("User ID is required", 400);
+    }
+
+    // Users can only view their own history unless admin
+    if (!isAdmin && String(userId) !== String(currentUser?._id)) {
+      throw new AppError("You can only view your own enrollment history", 403);
     }
 
     if (Number(page) < 1 || Number(limit) < 1) {

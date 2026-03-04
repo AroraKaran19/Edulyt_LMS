@@ -369,8 +369,12 @@ const Reviews = memo(
     );
   },
   (prevProps, nextProps) => {
-    // Only re-render if courseId changes
-    return prevProps.courseId === nextProps.courseId;
+    // Re-render when courseId, reviews, or isLoading changes
+    return (
+      prevProps.courseId === nextProps.courseId &&
+      prevProps.reviews === nextProps.reviews &&
+      prevProps.isLoading === nextProps.isLoading
+    );
   },
 );
 

@@ -38,7 +38,7 @@ export const getAllCategoriesService = async (
   const categories = await CategoryModel.find(filters)
     .skip(skip)
     .limit(limit)
-    .sort({ createdAt: -1 });
+    .sort({ sortOrder: 1, createdAt: -1 });
 
   const total = await CategoryModel.countDocuments(filters);
 
@@ -72,7 +72,7 @@ export const getHomePageCategoriesService = async (): Promise<Category[]> => {
     isActive: true,
     showOnHomePage: true,
   })
-    .sort({ createdAt: -1 })
+    .sort({ sortOrder: 1, createdAt: -1 })
     .limit(4);
 
   return categories as Category[];

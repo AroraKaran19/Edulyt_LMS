@@ -26,7 +26,7 @@ export const getAllReviews = asyncHandler(
       rating,
       approved,
     } = req.query;
-    const isAdmin = req.user?.userType === "admin";
+    const isAdmin = req.user?.userType === "admin" || req.user?.userType === "super-admin";
 
     if (Number(page) < 1 || Number(limit) < 1) {
       throw new AppError("Page and limit must be positive numbers", 400);
@@ -56,7 +56,7 @@ export const getAllReviews = asyncHandler(
 export const getReviewById = asyncHandler(
   async (req: Request, res: Response) => {
     const { id } = req.params;
-    const isAdmin = req.user?.userType === "admin";
+    const isAdmin = req.user?.userType === "admin" || req.user?.userType === "super-admin";
 
     if (!id) {
       throw new AppError("Review ID is required", 400);
@@ -118,7 +118,7 @@ export const updateReview = asyncHandler(
     const { id } = req.params;
     const { rating, comment } = req.body;
     const user = req.user;
-    const isAdmin = req.user?.userType === "admin";
+    const isAdmin = req.user?.userType === "admin" || req.user?.userType === "super-admin";
 
     if (!id) {
       throw new AppError("Review ID is required", 400);
@@ -159,7 +159,7 @@ export const deleteReview = asyncHandler(
   async (req: Request, res: Response) => {
     const { id } = req.params;
     const user = req.user;
-    const isAdmin = req.user?.userType === "admin";
+    const isAdmin = req.user?.userType === "admin" || req.user?.userType === "super-admin";
 
     if (!id) {
       throw new AppError("Review ID is required", 400);

@@ -16,6 +16,7 @@ import {
   ChevronUp,
   Reply,
   Loader2,
+  Trash2,
 } from "lucide-react";
 import apiClient from "@/configs/apiConfig";
 import { Review } from "@/types/review";
@@ -178,7 +179,7 @@ const ModerationPage = () => {
   const approveReview = async (id: string) => {
     setProcessingId(id);
     try {
-      await apiClient.put(`/reviews/admin/${id}/approve`);
+      await apiClient.patch(`/reviews/admin/${id}/approve`);
       toast.success("Review approved successfully");
       fetchReviews();
     } catch (error) {
@@ -193,7 +194,7 @@ const ModerationPage = () => {
   const rejectReview = async (id: string) => {
     setProcessingId(id);
     try {
-      await apiClient.put(`/reviews/admin/${id}/reject`);
+      await apiClient.patch(`/reviews/admin/${id}/reject`);
       toast.success("Review rejected successfully");
       fetchReviews();
     } catch (error) {
@@ -204,11 +205,27 @@ const ModerationPage = () => {
     }
   };
 
+  // Delete review
+  const deleteReview = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this review? This action cannot be undone.")) return;
+    setProcessingId(id);
+    try {
+      await apiClient.delete(`/reviews/admin/${id}`);
+      toast.success("Review deleted successfully");
+      fetchReviews();
+    } catch (error) {
+      console.error("Failed to delete review:", error);
+      toast.error("Failed to delete review");
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
   // Approve Q&A
   const approveQnA = async (id: string) => {
     setProcessingId(id);
     try {
-      await apiClient.put(`/qna/admin/${id}/approve`);
+      await apiClient.patch(`/qna/admin/${id}/approve`);
       toast.success("Q&A approved successfully");
       fetchQnAs();
     } catch (error) {
@@ -223,12 +240,28 @@ const ModerationPage = () => {
   const rejectQnA = async (id: string) => {
     setProcessingId(id);
     try {
-      await apiClient.put(`/qna/admin/${id}/reject`);
+      await apiClient.patch(`/qna/admin/${id}/reject`);
       toast.success("Q&A rejected successfully");
       fetchQnAs();
     } catch (error) {
       console.error("Failed to reject Q&A:", error);
       toast.error("Failed to reject Q&A");
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  // Delete Q&A
+  const deleteQnA = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this Q&A? This action cannot be undone.")) return;
+    setProcessingId(id);
+    try {
+      await apiClient.delete(`/qna/admin/${id}`);
+      toast.success("Q&A deleted successfully");
+      fetchQnAs();
+    } catch (error) {
+      console.error("Failed to delete Q&A:", error);
+      toast.error("Failed to delete Q&A");
     } finally {
       setProcessingId(null);
     }
@@ -259,6 +292,45 @@ const ModerationPage = () => {
       return `${user.firstName} ${user.lastName || ""}`.trim();
     }
     return "Anonymous User";
+  };
+
+  // Get course info from QnA for display
+  const getQnACourseDisplay = (qna: {
+    courseId: { title?: string; slug?: string } | string;
+  }): { title: string; slug?: string } => {
+    const course = qna.courseId;
+    if (typeof course === "object" && course) {
+      return {
+        title: course.title || "Unknown Course",
+        slug: course.slug,
+      };
+    }
+    return { title: "Course" };
+  };
+
+  // Get course/instructor name from review for display
+  const getReviewableDisplay = (review: {
+    reviewableType: string;
+    reviewableId: { title?: string; name?: string; slug?: string } | string;
+  }): { label: string; title: string; slug?: string } => {
+    const ref = review.reviewableId;
+    if (typeof ref === "object" && ref) {
+      if (review.reviewableType === "Course") {
+        return {
+          label: "Course",
+          title: ref.title || "Unknown Course",
+          slug: ref.slug,
+        };
+      }
+      return {
+        label: "Instructor",
+        title: ref.name || "Unknown Instructor",
+      };
+    }
+    return {
+      label: review.reviewableType,
+      title: review.reviewableType === "Course" ? "Course" : "Instructor",
+    };
   };
 
   const renderStars = (rating: number) => {
@@ -473,6 +545,7 @@ const ModerationPage = () => {
                         const nameForInitials = getNameForInitials(
                           review.userId,
                         );
+                        const reviewableInfo = getReviewableDisplay(review);
                         const userAvatar =
                           typeof review.userId === "object" &&
                           review.userId?.profilePicture
@@ -537,21 +610,33 @@ const ModerationPage = () => {
                                   {review.comment}
                                 </p>
 
-                                <div className="flex items-center gap-4 text-sm text-gray-500">
+                                <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
                                   <div className="flex items-center gap-1.5">
                                     <Calendar className="w-4 h-4" />
                                     {formatDate(review.createdAt || new Date())}
                                   </div>
-                                  <div className="flex items-center gap-1.5">
-                                    <BookOpen className="w-4 h-4" />
-                                    Course Review
+                                  <div className="flex items-center gap-1.5" title={reviewableInfo.title}>
+                                    <BookOpen className="w-4 h-4 shrink-0" />
+                                    <span className="font-medium text-gray-700">
+                                      {reviewableInfo.label}: {reviewableInfo.title}
+                                    </span>
+                                    {reviewableInfo.slug && (
+                                      <a
+                                        href={`/courses/${reviewableInfo.slug}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-orange-600 hover:text-orange-700 hover:underline ml-1"
+                                      >
+                                        View course →
+                                      </a>
+                                    )}
                                   </div>
                                 </div>
                               </div>
                             </div>
 
                             {/* Action Buttons */}
-                            <div className="flex gap-3 pt-4 border-t border-gray-100">
+                            <div className="flex flex-wrap gap-3 pt-4 border-t border-gray-100">
                               {!review.approved ? (
                                 <>
                                   <button
@@ -559,7 +644,7 @@ const ModerationPage = () => {
                                       approveReview(review._id || "")
                                     }
                                     disabled={processingId === review._id}
-                                    className="flex-1 flex items-center cursor-pointer justify-center gap-2 px-4 py-2.5 bg-linear-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-md shadow-green-200"
+                                    className="flex items-center cursor-pointer justify-center gap-2 px-4 py-2.5 bg-linear-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-md shadow-green-200"
                                   >
                                     {processingId === review._id ? (
                                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -573,7 +658,7 @@ const ModerationPage = () => {
                                       rejectReview(review._id || "")
                                     }
                                     disabled={processingId === review._id}
-                                    className="flex-1 flex items-center justify-center cursor-pointer gap-2 px-4 py-2.5 bg-linear-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-md shadow-red-200"
+                                    className="flex items-center justify-center cursor-pointer gap-2 px-4 py-2.5 bg-linear-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-md shadow-red-200"
                                   >
                                     {processingId === review._id ? (
                                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -597,6 +682,18 @@ const ModerationPage = () => {
                                   Unapprove
                                 </button>
                               )}
+                              <button
+                                onClick={() => deleteReview(review._id || "")}
+                                disabled={processingId === review._id}
+                                className="flex items-center justify-center cursor-pointer gap-2 px-4 py-2.5 bg-gray-100 hover:bg-red-50 text-gray-700 hover:text-red-600 border border-gray-300 hover:border-red-300 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                              >
+                                {processingId === review._id ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <Trash2 className="w-4 h-4" />
+                                )}
+                                Delete
+                              </button>
                             </div>
                           </div>
                         );
@@ -626,6 +723,7 @@ const ModerationPage = () => {
                       qnas.map((qna) => {
                         const userName = getUserDisplayName(qna.userId);
                         const nameForInitials = getNameForInitials(qna.userId);
+                        const courseInfo = getQnACourseDisplay(qna);
                         const userAvatar =
                           typeof qna.userId === "object" &&
                           qna.userId?.profilePicture
@@ -690,14 +788,26 @@ const ModerationPage = () => {
                                     {qna.message}
                                   </h3>
 
-                                  <div className="flex items-center gap-4 text-sm text-gray-500">
+                                  <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
                                     <div className="flex items-center gap-1.5">
                                       <Calendar className="w-4 h-4" />
                                       {formatDate(qna.createdAt || new Date())}
                                     </div>
-                                    <div className="flex items-center gap-1.5">
-                                      <BookOpen className="w-4 h-4" />
-                                      Course Q&A
+                                    <div className="flex items-center gap-1.5" title={courseInfo.title}>
+                                      <BookOpen className="w-4 h-4 shrink-0" />
+                                      <span className="font-medium text-gray-700">
+                                        Course: {courseInfo.title}
+                                      </span>
+                                      {courseInfo.slug && (
+                                        <a
+                                          href={`/courses/${courseInfo.slug}`}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-orange-600 hover:text-orange-700 hover:underline ml-1"
+                                        >
+                                          View course →
+                                        </a>
+                                      )}
                                     </div>
                                     {hasReplies && (
                                       <div className="flex items-center gap-1.5">
@@ -713,13 +823,13 @@ const ModerationPage = () => {
                               </div>
 
                               {/* Action Buttons */}
-                              <div className="flex gap-3 pt-4 border-t border-gray-100">
+                              <div className="flex flex-wrap gap-3 pt-4 border-t border-gray-100">
                                 {!qna.approved ? (
                                   <>
                                     <button
                                       onClick={() => approveQnA(qna._id || "")}
                                       disabled={processingId === qna._id}
-                                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-linear-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-md shadow-green-200"
+                                      className="flex items-center justify-center cursor-pointer gap-2 px-4 py-2.5 bg-linear-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-md shadow-green-200"
                                     >
                                       {processingId === qna._id ? (
                                         <Loader2 className="w-4 h-4 animate-spin" />
@@ -731,7 +841,7 @@ const ModerationPage = () => {
                                     <button
                                       onClick={() => rejectQnA(qna._id || "")}
                                       disabled={processingId === qna._id}
-                                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-linear-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-md shadow-red-200"
+                                      className="flex items-center justify-center cursor-pointer gap-2 px-4 py-2.5 bg-linear-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-md shadow-red-200"
                                     >
                                       {processingId === qna._id ? (
                                         <Loader2 className="w-4 h-4 animate-spin" />
@@ -745,7 +855,7 @@ const ModerationPage = () => {
                                   <button
                                     onClick={() => rejectQnA(qna._id || "")}
                                     disabled={processingId === qna._id}
-                                    className="flex items-center justify-center gap-2 px-4 py-2.5 bg-linear-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-md shadow-red-200"
+                                    className="flex items-center justify-center cursor-pointer gap-2 px-4 py-2.5 bg-linear-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-md shadow-red-200"
                                   >
                                     {processingId === qna._id ? (
                                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -755,6 +865,18 @@ const ModerationPage = () => {
                                     Unapprove
                                   </button>
                                 )}
+                                <button
+                                  onClick={() => deleteQnA(qna._id || "")}
+                                  disabled={processingId === qna._id}
+                                  className="flex items-center justify-center cursor-pointer gap-2 px-4 py-2.5 bg-gray-100 hover:bg-red-50 text-gray-700 hover:text-red-600 border border-gray-300 hover:border-red-300 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                                >
+                                  {processingId === qna._id ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <Trash2 className="w-4 h-4" />
+                                  )}
+                                  Delete
+                                </button>
                                 {hasReplies && (
                                   <button
                                     onClick={() =>

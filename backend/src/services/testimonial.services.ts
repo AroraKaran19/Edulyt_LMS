@@ -78,6 +78,9 @@ export const createTestimonialService = async (testimonialData: {
   companyProfileUrl?: string;
   verified?: boolean;
   profileImage?: string;
+  category?: "college-students" | "professionals" | "internships";
+  feedback?: string;
+  heading2?: string;
 }): Promise<Testimonial | null> => {
   const testimonial = new TestimonialModel(testimonialData);
   const savedTestimonial = await testimonial.save();
@@ -105,6 +108,9 @@ export const updateTestimonialService = async (
     companyProfileUrl?: string;
     verified?: boolean;
     profileImage?: string;
+    category?: "college-students" | "professionals" | "internships";
+    feedback?: string;
+    heading2?: string;
   }
 ): Promise<Testimonial | null> => {
   const testimonial = await TestimonialModel.findByIdAndUpdate(id, updateData, {

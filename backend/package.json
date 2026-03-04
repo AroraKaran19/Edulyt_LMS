@@ -13,6 +13,7 @@
     "scripts:assign": "ts-node src/scripts/assign-courses-to-categories.ts",
     "scripts:sort-courses": "ts-node src/scripts/sort-courses-by-category-structure.ts",
     "scripts:sort-courses:apply": "ts-node src/scripts/sort-courses-by-category-structure.ts --apply",
+    "scripts:update-category-order": "ts-node src/scripts/update-category-sort-order.ts",
     "scripts:update-brochures": "ts-node src/scripts/updateCourseBrochures.ts"
   },
   "keywords": [

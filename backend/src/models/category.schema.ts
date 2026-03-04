@@ -36,6 +36,11 @@ const categorySchema = new mongoose.Schema<Category>(
       trim: true,
       default: "",
     },
+    sortOrder: {
+      type: Number,
+      required: false,
+      default: 999,
+    },
   },
   {
     timestamps: true,
@@ -44,6 +49,7 @@ const categorySchema = new mongoose.Schema<Category>(
 
 // Index for better query performance
 categorySchema.index({ isActive: 1 });
+categorySchema.index({ sortOrder: 1 });
 
 export const CategoryModel = mongoose.model<Category>(
   "Category",

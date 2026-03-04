@@ -197,9 +197,47 @@ const CoursesPage = () => {
   const hasEnrollments = enrollments.length > 0;
   const isSearching = search !== debouncedSearch && search.trim().length > 0;
 
+  // Empty state config when no courses match current filter (tabs stay visible)
+  const emptyStateConfig = !isSearchActive
+    ? (() => {
+        switch (activeTab) {
+          case "Completed":
+            return {
+              title: "Completed",
+              description:
+                "You haven't completed any courses yet. Keep learning to complete your courses!",
+              buttonText: "See All Courses",
+              onClick: () => handleTabChange("All"),
+            };
+          case "In Progress":
+            return {
+              title: "In Progress",
+              description:
+                "You don't have any courses in progress. Start learning to see your progress!",
+              buttonText: "See All Courses",
+              onClick: () => handleTabChange("All"),
+            };
+          case "Newly bought":
+            return {
+              title: "Newly Bought",
+              description:
+                "You haven't purchased any courses recently. Your newly bought courses will appear here.",
+              buttonText: "See All Courses",
+              onClick: () => handleTabChange("All"),
+            };
+          default:
+            return {
+              title: "Courses",
+              description: "No courses found! Buy courses to get courses.",
+              buttonText: "Explore for Courses!",
+              href: "/courses",
+            };
+        }
+      })()
+    : null;
+
   return (
     <div className="py-4">
-      {/* Conditional rendering based on enrollments array length */}
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
@@ -209,40 +247,14 @@ const CoursesPage = () => {
           <p className="text-red-500 mb-4">Error: {error}</p>
           <button
             onClick={fetchEnrollments}
-            className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition"
+            className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition cursor-pointer"
           >
             Retry
           </button>
         </div>
-      ) : !hasEnrollments && !isSearchActive ? (
-        <EmptyState
-          title="Courses"
-          description={
-            activeTab === "Completed"
-              ? "You haven't completed any courses yet. Keep learning to complete your courses!"
-              : activeTab === "In Progress"
-              ? "You don't have any courses in progress. Start learning to see your progress!"
-              : "No courses found! Buy courses to get courses."
-          }
-          buttonText={
-            activeTab === "Completed" || activeTab === "In Progress"
-              ? "See your courses"
-              : "Explore for Courses!"
-          }
-          href={
-            activeTab === "Completed" || activeTab === "In Progress"
-              ? undefined
-              : "/courses"
-          }
-          onClick={
-            activeTab === "Completed" || activeTab === "In Progress"
-              ? () => handleTabChange("All")
-              : undefined
-          }
-        />
       ) : (
         <>
-          {/* Header and Tabs */}
+          {/* Header and Tabs - always visible */}
           <div className="flex flex-col mb-4 sm:mb-6">
             <div>
               <h1 className="text-xl sm:text-2xl font-bold text-text-primary mb-3 sm:mb-4">
@@ -338,15 +350,13 @@ const CoursesPage = () => {
             </div>
           </div>
 
-          {/* Results Section - Independent from search bar */}
+          {/* Results Section */}
           {isSearching ? (
-            // Loading State - when search is being debounced
             <div className="flex flex-col items-center justify-center min-h-[40vh] py-12">
               <Loader2 className="w-12 h-12 text-orange-500 animate-spin mb-4" />
               <p className="text-gray-600">Searching courses...</p>
             </div>
           ) : isSearchActive && !hasEnrollments ? (
-            // Not Found State - when searching and no results
             <div className="flex flex-col items-center justify-center min-h-[40vh] py-12">
               <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-6">
                 <FileX className="w-12 h-12 text-gray-400" />
@@ -365,6 +375,16 @@ const CoursesPage = () => {
               >
                 Clear Search
               </button>
+            </div>
+          ) : !hasEnrollments && emptyStateConfig ? (
+            <div className="mt-8">
+              <EmptyState
+                title={emptyStateConfig.title}
+                description={emptyStateConfig.description}
+                buttonText={emptyStateConfig.buttonText}
+                href={"href" in emptyStateConfig ? emptyStateConfig.href : undefined}
+                onClick={"onClick" in emptyStateConfig ? emptyStateConfig.onClick : undefined}
+              />
             </div>
           ) : (
             <>

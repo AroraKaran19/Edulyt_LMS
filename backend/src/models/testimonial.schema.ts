@@ -60,6 +60,13 @@ const testimonialSchema = new Schema<Testimonial>(
     },
     verified: { type: Boolean, default: false },
     profileImage: { type: String, required: false },
+    category: {
+      type: String,
+      required: false,
+      enum: ["college-students", "professionals", "internships"],
+    },
+    feedback: { type: String, required: false },
+    heading2: { type: String, required: false },
   },
   {
     timestamps: true,

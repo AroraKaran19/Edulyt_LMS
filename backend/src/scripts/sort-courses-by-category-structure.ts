@@ -110,6 +110,25 @@ function main() {
     console.log("\n[DRY RUN] Use --apply to run the assign script after generating the mapping.");
   }
 
+  if (args.includes("--update-category-order") || shouldApply) {
+    console.log("\n🔄 Updating category sort order in database...");
+    const orderResult = spawnSync(
+      "npx",
+      [
+        "ts-node",
+        path.resolve(__dirname, "update-category-sort-order.ts"),
+        ...(dryRun ? ["--dry-run"] : []),
+      ],
+      {
+        stdio: "inherit",
+        cwd: path.resolve(__dirname, "../.."),
+      }
+    );
+    if (orderResult.status !== 0) {
+      process.exit(orderResult.status);
+    }
+  }
+
   if (shouldApply) {
     console.log("\n🔄 Running assign script...");
     const result = spawnSync(

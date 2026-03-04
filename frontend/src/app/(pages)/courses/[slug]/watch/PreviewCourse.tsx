@@ -751,14 +751,20 @@ const PreviewCourse = ({ course }: { course: Course }) => {
     };
   }, [course]);
 
-  const { getQnAs } = useQnA();
+  const { getQnAs, getQnAReplies } = useQnA();
   const { getReviewsByReviewable } = useReview();
 
-  // Store getQnAs in ref to prevent dependency changes
+  const [qnasPage, setQnasPage] = useState(1);
+  const [qnasTotal, setQnasTotal] = useState(0);
+  const [isLoadingMoreQnAs, setIsLoadingMoreQnAs] = useState(false);
+  const [loadingRepliesForId, setLoadingRepliesForId] = useState<string | null>(null);
+
   const getQnAsRef = useRef(getQnAs);
+  const getQnARepliesRef = useRef(getQnAReplies);
   useEffect(() => {
     getQnAsRef.current = getQnAs;
-  }, [getQnAs]);
+    getQnARepliesRef.current = getQnAReplies;
+  }, [getQnAs, getQnAReplies]);
 
   // Store getReviewsByReviewable in ref to prevent dependency changes
   const getReviewsByReviewableRef = useRef(getReviewsByReviewable);
@@ -766,19 +772,23 @@ const PreviewCourse = ({ course }: { course: Course }) => {
     getReviewsByReviewableRef.current = getReviewsByReviewable;
   }, [getReviewsByReviewable]);
 
-  // Fetch Q&As for this course - stable callback
+  // Fetch Q&As for this course (initial load)
   const fetchQnas = useCallback(async () => {
     if (!course._id) return;
 
     setIsLoadingQnas(true);
+    setQnasPage(1);
     try {
       const result = await getQnAsRef.current({
         courseId: course._id,
         page: 1,
-        limit: 50,
+        limit: 5,
+        repliesLimit: 5,
+        search: search.trim() || undefined,
       });
 
       setQnas(result?.qnas ?? []);
+      setQnasTotal(result?.total ?? 0);
     } catch (error) {
       console.error("Failed to fetch Q&As:", error);
     } finally {
@@ -786,9 +796,78 @@ const PreviewCourse = ({ course }: { course: Course }) => {
     }
   }, [course._id]);
 
+  // Load 5 more Q&As
+  const loadMoreQnAs = useCallback(async () => {
+    if (!course._id || isLoadingMoreQnAs) return;
+
+    setIsLoadingMoreQnAs(true);
+    const nextPage = qnasPage + 1;
+    try {
+      const result = await getQnAsRef.current({
+        courseId: course._id,
+        page: nextPage,
+        limit: 5,
+        repliesLimit: 5,
+        search: search.trim() || undefined,
+      });
+
+      setQnas((prev) => [...prev, ...(result?.qnas ?? [])]);
+      setQnasTotal((prev) => result?.total ?? prev);
+      setQnasPage(nextPage);
+    } catch (error) {
+      console.error("Failed to load more Q&As:", error);
+    } finally {
+      setIsLoadingMoreQnAs(false);
+    }
+  }, [course._id, qnasPage, isLoadingMoreQnAs]);
+
+  // Load 5 more replies for a QnA
+  const loadMoreReplies = useCallback(async (qnaId: string) => {
+    if (loadingRepliesForId) return;
+
+    const qna = qnas.find((q) => q._id === qnaId);
+    if (!qna) return;
+
+    const loadedCount = qna.replies?.length ?? 0;
+    const nextPage = Math.floor(loadedCount / 5) + 1;
+
+    setLoadingRepliesForId(qnaId);
+    try {
+      const result = await getQnARepliesRef.current({
+        qnaId,
+        page: nextPage,
+        limit: 5,
+      });
+
+      if (result?.replies?.length) {
+        setQnas((prev) =>
+          prev.map((q) =>
+            q._id === qnaId
+              ? { ...q, replies: [...(q.replies ?? []), ...result.replies] }
+              : q
+          )
+        );
+      }
+    } catch (error) {
+      console.error("Failed to load more replies:", error);
+    } finally {
+      setLoadingRepliesForId(null);
+    }
+  }, [qnas, loadingRepliesForId]);
+
   useEffect(() => {
     fetchQnas();
   }, [fetchQnas]);
+
+  // Refetch when search changes (debounced elsewhere)
+  const debouncedSearchRef = useRef(search);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      debouncedSearchRef.current = search;
+      fetchQnas();
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   // Fetch Reviews for this course - stable callback (same pattern as QnA)
   const fetchReviews = useCallback(async () => {
@@ -926,6 +1005,8 @@ const PreviewCourse = ({ course }: { course: Course }) => {
         lessonId={selectedLessonId}
         contentId={selectedContentId}
         onRefresh={fetchQnas}
+        onLoadMoreReplies={loadMoreReplies}
+        loadingRepliesForId={loadingRepliesForId}
       />
     ),
     [
@@ -937,6 +1018,8 @@ const PreviewCourse = ({ course }: { course: Course }) => {
       selectedLessonId,
       selectedContentId,
       fetchQnas,
+      loadMoreReplies,
+      loadingRepliesForId,
     ]
   );
 

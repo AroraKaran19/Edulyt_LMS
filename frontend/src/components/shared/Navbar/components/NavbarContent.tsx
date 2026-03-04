@@ -36,7 +36,7 @@ const NavbarContent = ({
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(
     null,
   );
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [allCategoriesCache, setAllCategoriesCache] = useState<Category[]>([]);
   const [isLoadingCategories, setIsLoadingCategories] = useState(false);
   const [categoryPage, setCategoryPage] = useState(1);
   const [categoryHasMore, setCategoryHasMore] = useState(true);
@@ -51,16 +51,9 @@ const NavbarContent = ({
     setSelectedCategory(null);
   }, [selectedAudience]);
 
-  // Reset category list when audience changes
-  useEffect(() => {
-    setCategoryPage(1);
-    setCategories([]);
-    setCategoryHasMore(true);
-  }, [selectedAudience]);
-
+  // Fetch all categories once (no audience filter); filter client-side when audience changes
   useEffect(() => {
     let cancelled = false;
-    const audienceForFetch = selectedAudience;
 
     const fetchCategories = async () => {
       if (!categoryHasMore && categoryPage > 1) return;
@@ -69,8 +62,7 @@ const NavbarContent = ({
       try {
         const response = await getActiveCategories({
           page: categoryPage,
-          limit: 12,
-          audience: audienceForFetch as "college-students" | "professionals",
+          // No audience filter - fetch all once, filter client-side. No limit to get all categories.
         });
         if (cancelled) return;
         if (response?.categories) {
@@ -78,7 +70,7 @@ const NavbarContent = ({
           const totalPages = response.totalPages || 1;
           const currentPage = response.page || categoryPage;
 
-          setCategories((prev) =>
+          setAllCategoriesCache((prev) =>
             currentPage === 1 ? newCats : [...prev, ...newCats],
           );
           setCategoryHasMore(currentPage < totalPages);
@@ -97,12 +89,14 @@ const NavbarContent = ({
     return () => {
       cancelled = true;
     };
-  }, [
-    categoryPage,
-    categoryHasMore,
-    getActiveCategories,
-    selectedAudience,
-  ]);
+  }, [categoryPage, categoryHasMore, getActiveCategories]);
+
+  // Filter categories by selected audience (no API call)
+  const categories = allCategoriesCache.filter(
+    (c) =>
+      c.audience === selectedAudience ||
+      (!c.audience && selectedAudience === "college-students"),
+  );
 
   // Reset courses state when audience or category changes
   useEffect(() => {

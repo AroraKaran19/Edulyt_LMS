@@ -88,7 +88,7 @@ export const getAllReviewsService = async (
 
   const reviews = await ReviewModel.find(filters)
     .populate("userId", isAdmin ? "-__v" : "firstName lastName email profilePicture")
-    .populate("reviewableId", "title name")
+    .populate("reviewableId", "title name slug")
     .skip(skip)
     .limit(limit)
     .sort({ createdAt: -1 });

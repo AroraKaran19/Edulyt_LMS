@@ -176,6 +176,9 @@ export interface Testimonial {
   companyProfileUrl?: string;
   verified?: boolean;
   profileImage?: string;
+  category?: "college-students" | "professionals" | "internships";
+  feedback?: string;
+  heading2?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }

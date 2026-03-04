@@ -1,77 +1,82 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import EmptyState from "../components/applications/EmptyState";
 import { Download, Search, FileX, Loader2 } from "lucide-react";
 import ImageComponent from "@/components/ui/ImageComponent";
 import useCertificates from "@/hooks/useCertificates";
+import { cn } from "@/lib/utils";
 
 const CertificatesPage = () => {
   const [activeTab, setActiveTab] = useState("All");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
   const router = useRouter();
+
+  const {
+    certificates,
+    isLoading,
+    downloadCertificate,
+    total,
+    totalPages,
+    hasFetched,
+    fetchCertificates,
+  } = useCertificates();
 
   // Debounce search input
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(search);
-    }, 500); // 500ms delay
-
+    }, 500);
     return () => clearTimeout(timer);
   }, [search]);
 
   const tabs = [{ label: "All" }, { label: "Recent" }];
 
-  const { certificates, isLoading, downloadCertificate } = useCertificates();
-
   const handleCertificateClick = (certificateId: string) => {
     router.push(`/dashboard/certificates/${certificateId}`);
   };
 
-  // Filter certificates based on search and tab
-  const filteredCertificates = useMemo(() => {
-    let filtered = certificates;
+  // Fetch certificates with pagination (server-side filtering)
+  const loadCertificates = useCallback(() => {
+    fetchCertificates({
+      page: currentPage,
+      limit: 12,
+      search: debouncedSearch.trim() || undefined,
+      recent: activeTab === "Recent",
+    });
+  }, [currentPage, debouncedSearch, activeTab, fetchCertificates]);
 
-    // Filter by debounced search
-    if (debouncedSearch.trim()) {
-      const searchLower = debouncedSearch.toLowerCase();
-      filtered = filtered.filter(
-        (cert) =>
-          cert.courseName?.toLowerCase().includes(searchLower) ||
-          cert.studentName?.toLowerCase().includes(searchLower) ||
-          cert.certificateId?.toLowerCase().includes(searchLower)
-      );
-    }
+  useEffect(() => {
+    loadCertificates();
+  }, [loadCertificates]);
 
-    // Filter by tab
-    if (activeTab === "Recent") {
-      // Show certificates issued in the last 30 days
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      filtered = filtered.filter(
-        (cert) => new Date(cert.issuedAt) >= thirtyDaysAgo
-      );
-    }
+  const handleTabChange = useCallback((tab: string) => {
+    setActiveTab(tab);
+    setCurrentPage(1);
+  }, []);
 
-    return filtered;
-  }, [certificates, debouncedSearch, activeTab]);
+  const handleSearchChange = useCallback((value: string) => {
+    setSearch(value);
+    setCurrentPage(1);
+  }, []);
 
   // Check if we're showing search results
   const isSearchActive = debouncedSearch.trim().length > 0;
-  const hasCertificates = certificates.length > 0;
-  const hasSearchResults = filteredCertificates.length > 0;
+  const hasCertificates = total > 0;
+  const hasSearchResults = certificates.length > 0;
   const isSearching = search !== debouncedSearch && search.trim().length > 0;
 
   return (
     <div className="flex flex-col min-h-[60vh]">
       <div className="py-4">
-        {isLoading ? (
+        {!hasFetched || (isLoading && total === 0) ? (
           <div className="flex items-center justify-center min-h-[60vh]">
             <div className="text-gray-600">Loading certificates...</div>
           </div>
-        ) : !hasCertificates ? (
+        ) : !hasCertificates && !isSearchActive ? (
           // Empty State - when no certificates at all
           <EmptyState
             title="Certificates"
@@ -96,7 +101,7 @@ const CertificatesPage = () => {
                         ? "bg-orange-500 text-white shadow"
                         : "text-black hover:bg-gray-200"
                     }`}
-                    onClick={() => setActiveTab(tab.label)}
+                    onClick={() => handleTabChange(tab.label)}
                   >
                     {tab.label}
                   </button>
@@ -110,7 +115,7 @@ const CertificatesPage = () => {
                     type="text"
                     placeholder="Search a certificate by its name or course name"
                     value={search}
-                    onChange={(e) => setSearch(e.target.value)}
+                    onChange={(e) => handleSearchChange(e.target.value)}
                     className="placeholder:text-[#0000003D] placeholder:text-xs w-full sm:w-[240px] md:w-[320px] lg:w-[380px] h-10 sm:h-12 px-3 sm:px-4 pr-10 sm:pr-12 bg-[#F5F5F5] rounded-xl border border-[#00000026] text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 shadow-[0px_4px_4px_0px_#00000012_inset]"
                   />
                   <button
@@ -153,9 +158,10 @@ const CertificatesPage = () => {
                 </button>
               </div>
             ) : (
-              // Results Grid
-              <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4 md:gap-5 lg:gap-6">
-                {filteredCertificates.map((certificate, index: number) => (
+              <>
+                {/* Results Grid */}
+                <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4 md:gap-5 lg:gap-6">
+                  {certificates.map((certificate, index: number) => (
                   // certificate card
                   <div
                     key={`${index}`}
@@ -218,7 +224,80 @@ const CertificatesPage = () => {
                     </button>
                   </div>
                 ))}
-              </div>
+                </div>
+
+                {/* Pagination */}
+                {totalPages > 1 &&
+                  !isSearching &&
+                  !(isSearchActive && !hasSearchResults) && (
+                    <div className="flex items-center justify-center gap-2 mt-8">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setCurrentPage((prev) => Math.max(prev - 1, 1))
+                        }
+                        disabled={currentPage === 1}
+                        className={cn(
+                          "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+                          currentPage === 1
+                            ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                            : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 cursor-pointer"
+                        )}
+                      >
+                        Previous
+                      </button>
+                      <div className="flex items-center gap-1">
+                        {Array.from(
+                          { length: Math.min(totalPages, 5) },
+                          (_, i) => {
+                            let pageNum;
+                            if (totalPages <= 5) {
+                              pageNum = i + 1;
+                            } else if (currentPage <= 3) {
+                              pageNum = i + 1;
+                            } else if (currentPage >= totalPages - 2) {
+                              pageNum = totalPages - 4 + i;
+                            } else {
+                              pageNum = currentPage - 2 + i;
+                            }
+                            return (
+                              <button
+                                key={pageNum}
+                                type="button"
+                                onClick={() => setCurrentPage(pageNum)}
+                                className={cn(
+                                  "px-3 py-2 rounded-lg text-sm font-medium transition-colors min-w-[40px]",
+                                  currentPage === pageNum
+                                    ? "bg-orange-500 text-white"
+                                    : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 cursor-pointer"
+                                )}
+                              >
+                                {pageNum}
+                              </button>
+                            );
+                          }
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setCurrentPage((prev) =>
+                            Math.min(prev + 1, totalPages)
+                          )
+                        }
+                        disabled={currentPage === totalPages}
+                        className={cn(
+                          "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+                          currentPage === totalPages
+                            ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                            : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 cursor-pointer"
+                        )}
+                      >
+                        Next
+                      </button>
+                    </div>
+                  )}
+              </>
             )}
           </>
         )}

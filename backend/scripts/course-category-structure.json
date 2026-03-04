@@ -1,5 +1,17 @@
 {
   "description": "Category order and course order within each category. Top row (1-5), bottom row (6-10). Edit this file to match the desired grid layout.",
+  "categoryOrder": [
+    "Python - Advanced Programming & Development",
+    "Data Analytics & Business Insights",
+    "Applied Data Science & Advanced Analytics",
+    "SAS Programming & Business Intelligence Ecosystem",
+    "SAS Analytical Tools & Statistical Modeling",
+    "Enterprise Data Visualization & Reporting Solutions",
+    "Artificial Intelligence & Natural Language Processing",
+    "Machine Learning & Deep Learning Engineering",
+    "Business Intelligence & Performance Analytics",
+    "Data Science Architecture & Data Engineering"
+  ],
   "structure": [
     {
       "categoryName": "Python",

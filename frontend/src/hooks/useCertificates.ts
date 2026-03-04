@@ -1,21 +1,54 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import apiClient from "@/configs/apiConfig";
 import { Certificate } from "@/types/certificate";
+
+export interface FetchCertificatesParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  recent?: boolean;
+  includeOldVersions?: boolean;
+}
+
+const transformCertificate = (cert: any) => ({
+  ...cert,
+  completionDate: new Date(cert.completionDate),
+  issuedAt: new Date(cert.issuedAt),
+  lastDownloadedAt: cert.lastDownloadedAt
+    ? new Date(cert.lastDownloadedAt)
+    : undefined,
+});
 
 const useCertificates = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [certificates, setCertificates] = useState<Certificate[]>([]);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasFetched, setHasFetched] = useState(false);
 
   const fetchCertificates = useCallback(
-    async (includeOldVersions: boolean = false) => {
+    async (params: FetchCertificatesParams = {}) => {
       setIsLoading(true);
       setError(null);
 
       try {
         const queryParams = new URLSearchParams();
-        if (includeOldVersions) {
+        if (params.includeOldVersions) {
           queryParams.append("includeOldVersions", "true");
+        }
+        if (params.page !== undefined) {
+          queryParams.append("page", String(params.page));
+        }
+        if (params.limit !== undefined) {
+          queryParams.append("limit", String(params.limit));
+        }
+        if (params.search) {
+          queryParams.append("search", params.search);
+        }
+        if (params.recent) {
+          queryParams.append("recent", "true");
         }
 
         const response = await apiClient.get(
@@ -24,17 +57,23 @@ const useCertificates = () => {
 
         const data = response.data.data;
 
-        // Transform dates
-        const transformedCertificates = data.map((cert: any) => ({
-          ...cert,
-          completionDate: new Date(cert.completionDate),
-          issuedAt: new Date(cert.issuedAt),
-          lastDownloadedAt: cert.lastDownloadedAt
-            ? new Date(cert.lastDownloadedAt)
-            : undefined,
-        }));
-
-        setCertificates(transformedCertificates);
+        // Paginated response
+        if (data && typeof data === "object" && "certificates" in data) {
+          const transformed = (data.certificates || []).map(transformCertificate);
+          setCertificates(transformed);
+          setTotal(data.total ?? 0);
+          setTotalPages(data.totalPages ?? 1);
+          setCurrentPage(data.page ?? 1);
+        } else {
+          // Legacy array response (e.g. from useCourseCompletion)
+          const transformed = (Array.isArray(data) ? data : []).map(
+            transformCertificate
+          );
+          setCertificates(transformed);
+          setTotal(transformed.length);
+          setTotalPages(1);
+          setCurrentPage(1);
+        }
       } catch (err: any) {
         const errorMsg =
           err.response?.data?.error?.message ||
@@ -44,18 +83,18 @@ const useCertificates = () => {
         console.error("Certificates fetch error:", err);
       } finally {
         setIsLoading(false);
+        setHasFetched(true);
       }
     },
     []
   );
 
-  useEffect(() => {
-    fetchCertificates();
-  }, [fetchCertificates]);
-
-  const refreshCertificates = useCallback(() => {
-    fetchCertificates();
-  }, [fetchCertificates]);
+  const refreshCertificates = useCallback(
+    (params?: FetchCertificatesParams) => {
+      fetchCertificates(params);
+    },
+    [fetchCertificates]
+  );
 
   const downloadCertificate = useCallback(async (certificate: Certificate) => {
     if (!certificate.fileUrl) {
@@ -118,6 +157,11 @@ const useCertificates = () => {
     certificates,
     isLoading,
     error,
+    total,
+    totalPages,
+    currentPage,
+    hasFetched,
+    fetchCertificates,
     refreshCertificates,
     downloadCertificate,
   };

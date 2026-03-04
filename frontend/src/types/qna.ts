@@ -17,6 +17,7 @@ export interface QnA {
   message: string;
   approved: boolean; // Instructor/Admin approval required to show question
   replies: QnAReply[];
+  totalReplies?: number; // Total count when replies are paginated
   createdAt?: Date;
   updatedAt?: Date;
 }

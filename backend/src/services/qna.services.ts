@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { QnAModel } from "../models";
 import { QnA } from "../types/qna";
 
@@ -9,7 +10,8 @@ export const getAllQnAsService = async (
   lessonId?: string,
   contentId?: string,
   isAdmin?: boolean,
-  approved?: boolean
+  approved?: boolean,
+  repliesLimit?: number
 ): Promise<{
   qnas: QnA[];
   total: number;
@@ -37,36 +39,87 @@ export const getAllQnAsService = async (
     ];
   }
 
-
   if (courseId) {
     filters.courseId = courseId;
   }
-
-  // Lesson filter
   if (lessonId) {
     filters.lessonId = lessonId;
   }
-
-  // Content filter
   if (contentId) {
     filters.contentId = contentId;
   }
 
-  const qnas = await QnAModel.find(filters)
+  const rawQnas = await QnAModel.find(filters)
     .populate("userId", isAdmin ? "-__v" : "firstName lastName email profilePicture")
+    .populate("courseId", "title slug")
     .populate("replies.userId", isAdmin ? "-__v" : "firstName lastName email profilePicture")
     .skip(skip)
     .limit(limit)
-    .sort({ createdAt: -1 });
+    .sort({ createdAt: -1 })
+    .lean();
 
   const total = await QnAModel.countDocuments(filters);
   const totalPages = Math.ceil(total / limit);
+
+  // Limit replies per QnA for optimized payload (chronological order, first N)
+  const qnas: QnA[] =
+    repliesLimit !== undefined && repliesLimit > 0
+      ? rawQnas.map((qna: any) => {
+          const replies = (qna.replies || []).sort(
+            (a: any, b: any) =>
+              new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+          );
+          return {
+            ...qna,
+            totalReplies: replies.length,
+            replies: replies.slice(0, repliesLimit),
+          };
+        }) as QnA[]
+      : (rawQnas as QnA[]);
 
   return {
     qnas,
     total,
     totalPages,
     page,
+  };
+};
+
+export const getRepliesForQnAService = async (
+  qnaId: string,
+  page: number,
+  limit: number,
+  isAdmin?: boolean
+): Promise<{ replies: any[]; total: number; page: number; totalPages: number } | null> => {
+  const qna = await QnAModel.findById(qnaId).select("replies").lean();
+  if (!qna || !qna.replies) {
+    return { replies: [], total: 0, page, totalPages: 0 };
+  }
+
+  const sortedReplies = (qna.replies as any[])
+    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+  const total = sortedReplies.length;
+  const totalPages = Math.ceil(total / limit);
+  const skip = (page - 1) * limit;
+  const paginatedReplies = sortedReplies.slice(skip, skip + limit);
+
+  const replyIds = paginatedReplies.map((r) => r.userId).filter(Boolean);
+  const users = await mongoose.model("User").find({ _id: { $in: replyIds } })
+    .select(isAdmin ? "-__v" : "firstName lastName email profilePicture")
+    .lean();
+
+  const userMap = new Map(users.map((u: any) => [u._id.toString(), u]));
+  const populatedReplies = paginatedReplies.map((reply) => ({
+    ...reply,
+    userId: userMap.get(reply.userId?.toString?.() || reply.userId) || reply.userId,
+  }));
+
+  return {
+    replies: populatedReplies,
+    total,
+    page,
+    totalPages,
   };
 };
 

@@ -9,6 +9,20 @@ export interface GetQnAsParams {
   courseId?: string;
   lessonId?: string;
   contentId?: string;
+  repliesLimit?: number;
+}
+
+export interface GetQnARepliesParams {
+  qnaId: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface GetQnARepliesResult {
+  replies: QnAReply[];
+  total: number;
+  page: number;
+  totalPages: number;
 }
 
 export interface GetQnAsResult {
@@ -20,8 +34,8 @@ export interface GetQnAsResult {
 
 export interface CreateQnAData {
   courseId: string;
-  lessonId: string;
-  contentId: string;
+  lessonId?: string;
+  contentId?: string;
   message: string;
 }
 
@@ -67,6 +81,7 @@ const useQnA = () => {
       if (params.courseId) queryParams.append("courseId", params.courseId);
       if (params.lessonId) queryParams.append("lessonId", params.lessonId);
       if (params.contentId) queryParams.append("contentId", params.contentId);
+      if (params.repliesLimit) queryParams.append("repliesLimit", params.repliesLimit.toString());
 
       return handleRequest(async () => {
         const response = await apiClient.get(`/qna?${queryParams.toString()}`);
@@ -90,6 +105,23 @@ const useQnA = () => {
 
         return payload as GetQnAsResult;
       }, "Failed to fetch Q&As");
+    },
+    [handleRequest]
+  );
+
+  // Get paginated replies for a QnA
+  const getQnAReplies = useCallback(
+    async (params: GetQnARepliesParams): Promise<GetQnARepliesResult | null> => {
+      const queryParams = new URLSearchParams();
+      if (params.page) queryParams.append("page", params.page.toString());
+      if (params.limit) queryParams.append("limit", params.limit.toString());
+
+      return handleRequest(async () => {
+        const response = await apiClient.get(
+          `/qna/${params.qnaId}/replies?${queryParams.toString()}`
+        );
+        return response.data?.data;
+      }, "Failed to fetch replies");
     },
     [handleRequest]
   );
@@ -162,20 +194,12 @@ const useQnA = () => {
     [handleRequest]
   );
 
-  // Client-side validation
+  // Client-side validation (lessonId and contentId are optional - for course-level questions)
   const validateQnA = useCallback((data: CreateQnAData): string[] => {
     const errors: string[] = [];
 
     if (!data.courseId) {
       errors.push("Course ID is required");
-    }
-
-    if (!data.lessonId) {
-      errors.push("Lesson ID is required");
-    }
-
-    if (!data.contentId) {
-      errors.push("Content ID is required");
     }
 
     if (!data.message || data.message.trim().length === 0) {
@@ -211,6 +235,7 @@ const useQnA = () => {
     // Methods
     getQnAs,
     getQnAById,
+    getQnAReplies,
     createQnA,
     updateQnA,
     deleteQnA,

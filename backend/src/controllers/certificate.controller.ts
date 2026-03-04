@@ -15,9 +15,10 @@ import {
 } from "../services/certificateJob.services";
 
 /**
- * Get all certificates for the authenticated user
+ * Get all certificates for the authenticated user (supports pagination)
  * @route GET /api/certificates
  * @access User
+ * @query page, limit, search, recent (true = last 30 days), includeOldVersions
  */
 export const getUserCertificates = asyncHandler(
   async (req: Request, res: Response) => {
@@ -28,14 +29,22 @@ export const getUserCertificates = asyncHandler(
     }
 
     const includeOldVersions = req.query.includeOldVersions === "true";
-    const certificates = await getUserCertificatesService(
-      userId.toString(),
-      includeOldVersions
-    );
+    const page = req.query.page ? Number(req.query.page) : undefined;
+    const limit = req.query.limit ? Number(req.query.limit) : 12;
+    const search = (req.query.search as string)?.trim() || undefined;
+    const recentOnly = req.query.recent === "true";
+
+    const result = await getUserCertificatesService(userId.toString(), {
+      includeOldVersions,
+      page,
+      limit,
+      search,
+      recentOnly,
+    });
 
     sendSuccessResponse(
       res,
-      certificates,
+      result,
       "Certificates retrieved successfully",
       200
     );
