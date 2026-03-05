@@ -15,7 +15,9 @@ import {
 
 export const getAllCategories = asyncHandler(
   async (req: Request, res: Response) => {
-    const { page = 1, limit = 10, search = "", audience } = req.query;
+    const { page = 1, search = "", audience } = req.query;
+    const limit =
+      req.query.limit !== undefined ? Number(req.query.limit) : undefined;
     const isAdmin = req.user?.userType === "admin";
     const validAudience =
       audience &&
@@ -24,13 +26,16 @@ export const getAllCategories = asyncHandler(
         ? (audience as "college-students" | "professionals")
         : undefined;
 
-    if (Number(page) < 1 || Number(limit) < 1) {
-      throw new AppError("Page and limit must be positive numbers", 400);
+    if (Number(page) < 1) {
+      throw new AppError("Page must be a positive number", 400);
+    }
+    if (limit !== undefined && limit < 1) {
+      throw new AppError("Limit must be a positive number when provided", 400);
     }
 
     const result = await getAllCategoriesService(
       Number(page),
-      Number(limit),
+      limit,
       String(search),
       isAdmin,
       validAudience

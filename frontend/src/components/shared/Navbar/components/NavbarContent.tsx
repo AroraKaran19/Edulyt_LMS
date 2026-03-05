@@ -62,7 +62,6 @@ const NavbarContent = ({
       try {
         const response = await getActiveCategories({
           page: categoryPage,
-          // No audience filter - fetch all once, filter client-side. No limit to get all categories.
         });
         if (cancelled) return;
         if (response?.categories) {

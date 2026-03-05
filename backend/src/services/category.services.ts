@@ -3,7 +3,7 @@ import { Category } from "../types/category";
 
 export const getAllCategoriesService = async (
   page: number,
-  limit: number,
+  limit: number | undefined,
   search: string,
   isAdmin?: boolean,
   audience?: "college-students" | "professionals"
@@ -13,7 +13,7 @@ export const getAllCategoriesService = async (
   page: number;
   totalPages: number;
 }> => {
-  const skip = (page - 1) * limit;
+  const skip = limit !== undefined ? (page - 1) * limit : 0;
 
   let filters: any = {};
 
@@ -35,14 +35,18 @@ export const getAllCategoriesService = async (
     ];
   }
 
-  const categories = await CategoryModel.find(filters)
+  let query = CategoryModel.find(filters)
     .skip(skip)
-    .limit(limit)
     .sort({ sortOrder: 1, createdAt: -1 });
+  if (limit !== undefined) {
+    query = query.limit(limit);
+  }
+  const categories = await query;
 
   const total = await CategoryModel.countDocuments(filters);
 
-  const totalPages = Math.ceil(total / limit);
+  const totalPages =
+    limit !== undefined ? Math.ceil(total / limit) : total > 0 ? 1 : 0;
 
   return {
     categories,
