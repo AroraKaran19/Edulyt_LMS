@@ -21,6 +21,9 @@ import Modal from "@/components/ui/Modal";
 import { User as UserIcon, Tag, X, Check } from "lucide-react";
 import { useCoupon } from "@/hooks/useCoupon";
 
+// PDF from public/assets (served at /assets/...)
+const TERMS_PDF_PATH = "/assets/Terms and Conditions - Courses.pdf";
+
 interface EnrollmentFormData {
   name: string;
   email: string;
@@ -478,9 +481,7 @@ const CartForm = ({
                       </div>
                       <div className="w-full h-96 flex flex-col gap-2">
                         <iframe
-                          src={encodeURI(
-                            "/course-certificates/Certificates/Airkrit India Course Certificate - AI-01171 - Template.pdf",
-                          )}
+                          src={encodeURI(TERMS_PDF_PATH)}
                           title="Terms & Conditions"
                           className="w-full h-full"
                           loading="lazy"

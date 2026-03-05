@@ -1,21 +1,23 @@
 /**
  * Sorts courses and categories according to the structure defined in course-category-structure.json.
  *
- * The structure file defines:
- * - Category order (grid: top row 1-5, bottom row 6-10)
- * - Course order within each category
- *
- * Output: A flat mapping array compatible with assign-courses-to-categories.ts
+ * Fetches all courses from DB, resolves course names to IDs, outputs mapping with courseId.
  *
  * Usage (from backend root):
  *   npx ts-node src/scripts/sort-courses-by-category-structure.ts
  *   npx ts-node src/scripts/sort-courses-by-category-structure.ts --output scripts/course-category-mapping.json
  *   npx ts-node src/scripts/sort-courses-by-category-structure.ts --apply   # Also run the assign script
+ *   npx ts-node src/scripts/sort-courses-by-category-structure.ts --list-courses  # Output courses list for reference
  */
 
 import path from "path";
 import fs from "fs";
+import dotenv from "dotenv";
 import { spawnSync } from "child_process";
+import { connectDB, disconnectDB } from "../config/database";
+import { CourseModel } from "../models";
+
+dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 
 const DEFAULT_STRUCTURE_PATH = path.resolve(
   __dirname,
@@ -24,6 +26,10 @@ const DEFAULT_STRUCTURE_PATH = path.resolve(
 const DEFAULT_OUTPUT_PATH = path.resolve(
   __dirname,
   "../../scripts/course-category-mapping.json"
+);
+const DEFAULT_COURSES_LIST_PATH = path.resolve(
+  __dirname,
+  "../../scripts-output/courses-list.json"
 );
 
 interface CategoryStructure {
@@ -34,11 +40,18 @@ interface CategoryStructure {
 interface StructureFile {
   description?: string;
   structure: CategoryStructure[];
+  structureProfessionals?: CategoryStructure[];
 }
 
-interface MappingEntry {
+interface MappingEntryByName {
   courseName: string;
   categoryName: string;
+}
+
+interface MappingEntryById {
+  courseId: string;
+  categoryName: string;
+  courseTitle?: string;
 }
 
 function loadStructure(filePath: string): StructureFile {
@@ -57,8 +70,8 @@ function loadStructure(filePath: string): StructureFile {
   }
 }
 
-function structureToMapping(structure: StructureFile): MappingEntry[] {
-  const mapping: MappingEntry[] = [];
+function structureToMappingByName(structure: StructureFile): MappingEntryByName[] {
+  const mapping: MappingEntryByName[] = [];
 
   for (const cat of structure.structure) {
     const categoryName = (cat.categoryName || "").trim();
@@ -75,7 +88,7 @@ function structureToMapping(structure: StructureFile): MappingEntry[] {
   return mapping;
 }
 
-function main() {
+async function main() {
   const args = process.argv.slice(2);
   const outputIdx = args.indexOf("--output");
   const outputPath =
@@ -84,27 +97,103 @@ function main() {
       : DEFAULT_OUTPUT_PATH;
   const shouldApply = args.includes("--apply");
   const dryRun = args.includes("--dry-run");
+  const listCoursesOnly = args.includes("--list-courses");
+
+  if (listCoursesOnly) {
+    await connectDB();
+    const courses = await CourseModel.find({}).select("_id title").lean();
+    const list = courses.map((c) => ({
+      _id: String(c._id),
+      title: c.title,
+    }));
+    const dir = path.dirname(DEFAULT_COURSES_LIST_PATH);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(DEFAULT_COURSES_LIST_PATH, JSON.stringify(list, null, 2), "utf-8");
+    console.log(`✅ Wrote ${list.length} courses to: ${DEFAULT_COURSES_LIST_PATH}`);
+    await disconnectDB();
+    process.exit(0);
+    return;
+  }
 
   console.log("📁 Loading structure from:", DEFAULT_STRUCTURE_PATH);
-
   const structure = loadStructure(DEFAULT_STRUCTURE_PATH);
-  const mapping = structureToMapping(structure);
 
-  console.log(`📊 Categories: ${structure.structure.length}`);
-  console.log(`📝 Mapping entries: ${mapping.length}`);
+  let mappingByName = structureToMappingByName(structure);
+  if (structure.structureProfessionals?.length) {
+    const profMapping = structureToMappingByName({
+      structure: structure.structureProfessionals,
+    });
+    mappingByName = [...mappingByName, ...profMapping];
+    console.log(
+      `📊 Categories: ${structure.structure.length} college + ${structure.structureProfessionals.length} professionals`
+    );
+  } else {
+    console.log(`📊 Categories: ${structure.structure.length}`);
+  }
 
-  // Ensure output directory exists
+  console.log("🔄 Connecting to DB and fetching courses...");
+  await connectDB();
+  const courses = await CourseModel.find({}).select("_id title").lean();
+  const titleToId = new Map<string, string>();
+  const idToTitle = new Map<string, string>();
+  for (const c of courses) {
+    const id = String(c._id);
+    const title = (c.title || "").trim();
+    titleToId.set(title, id);
+    idToTitle.set(id, title);
+  }
+  console.log(`📋 Loaded ${courses.length} courses from DB`);
+
+  // Optionally write courses list for reference
+  const listPath = path.resolve(path.dirname(outputPath), "courses-list.json");
+  const listDir = path.dirname(listPath);
+  if (!fs.existsSync(listDir)) fs.mkdirSync(listDir, { recursive: true });
+  const coursesList = Array.from(courses).map((c) => ({
+    _id: String(c._id),
+    title: c.title,
+  }));
+  fs.writeFileSync(listPath, JSON.stringify(coursesList, null, 2), "utf-8");
+  console.log(`📄 Courses list written to: ${listPath}`);
+
+  // Resolve course names to IDs
+  const mapping: MappingEntryById[] = [];
+  const notFound: string[] = [];
+  for (const entry of mappingByName) {
+    const courseName = entry.courseName.trim();
+    const courseId = titleToId.get(courseName);
+    if (courseId) {
+      mapping.push({
+        courseId,
+        categoryName: entry.categoryName,
+        courseTitle: idToTitle.get(courseId),
+      });
+    } else {
+      notFound.push(courseName);
+    }
+  }
+
+  const uniqueNotFound = [...new Set(notFound)];
+  if (uniqueNotFound.length > 0) {
+    console.warn("\n⚠️  Course names in structure not found in DB (exact title match):");
+    uniqueNotFound.forEach((n) => console.warn("  -", n));
+  }
+
+  console.log(`📝 Mapping entries (resolved to IDs): ${mapping.length}`);
+
   const outputDir = path.dirname(outputPath);
   if (!fs.existsSync(outputDir)) {
     fs.mkdirSync(outputDir, { recursive: true });
   }
 
-  fs.writeFileSync(
-    outputPath,
-    JSON.stringify(mapping, null, 2),
-    "utf-8"
-  );
-  console.log("✅ Wrote mapping to:", outputPath);
+  // Write mapping with courseId (assign script will use IDs directly)
+  const mappingForAssign = mapping.map(({ courseId, categoryName }) => ({
+    courseId,
+    categoryName,
+  }));
+  fs.writeFileSync(outputPath, JSON.stringify(mappingForAssign, null, 2), "utf-8");
+  console.log("✅ Wrote mapping (with course IDs) to:", outputPath);
+
+  await disconnectDB();
 
   if (dryRun) {
     console.log("\n[DRY RUN] Use --apply to run the assign script after generating the mapping.");
@@ -148,4 +237,7 @@ function main() {
   }
 }
 
-main();
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

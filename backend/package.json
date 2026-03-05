@@ -10,6 +10,7 @@
     "dev:watch": "nodemon --exec ts-node src/server.ts",
     "scripts:list": "ts-node src/scripts/list-courses-and-categories.ts",
     "scripts:list:out": "ts-node src/scripts/list-courses-and-categories.ts --output-dir=./scripts-output",
+    "scripts:list-courses": "ts-node src/scripts/sort-courses-by-category-structure.ts --list-courses",
     "scripts:assign": "ts-node src/scripts/assign-courses-to-categories.ts",
     "scripts:sort-courses": "ts-node src/scripts/sort-courses-by-category-structure.ts",
     "scripts:sort-courses:apply": "ts-node src/scripts/sort-courses-by-category-structure.ts --apply",

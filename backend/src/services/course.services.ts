@@ -132,7 +132,7 @@ export const getAllCoursesService = async (
         },
       });
       pipeline.push({
-        $sort: { _categorySortKey: 1, createdAt: 1 },
+        $sort: { _categorySortKey: 1, title: 1, createdAt: 1 },
       });
     } else if (hasCategoryFilter) {
       pipeline.push({

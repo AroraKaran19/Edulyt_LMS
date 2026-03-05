@@ -2,18 +2,17 @@
  * Assigns courses to categories using a mapping file.
  * Run from backend root: npx ts-node src/scripts/assign-courses-to-categories.ts path/to/mapping.json
  *
- * Mapping file format (JSON):
+ * Mapping file format (JSON) - prefer courseId for reliability:
+ * [
+ *   { "courseId": "507f1f77bcf86cd799439011", "categoryName": "Category Name" },
+ *   ...
+ * ]
+ * OR by course name (exact title match):
  * [
  *   { "courseName": "Exact Course Title", "categoryName": "Exact Category Name" },
  *   ...
  * ]
- * OR by category ID:
- * [
- *   { "courseName": "Exact Course Title", "categoryId": "507f1f77bcf86cd799439011" },
- *   ...
- * ]
- *
- * Matching is exact by course title (case-sensitive). Category can be name or _id.
+ * Category can be name or _id.
  */
 
 import path from "path";
@@ -25,20 +24,26 @@ import { CourseModel, CategoryModel } from "../models";
 
 dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 
-interface MappingByCategoryName {
-  courseName: string;
-  categoryName: string;
+interface MappingByCourseId {
+  courseId: string;
+  categoryName?: string;
+  categoryId?: string;
 }
 
-interface MappingByCategoryId {
+interface MappingByCourseName {
   courseName: string;
-  categoryId: string;
+  categoryName?: string;
+  categoryId?: string;
 }
 
-type MappingEntry = MappingByCategoryName | MappingByCategoryId;
+type MappingEntry = MappingByCourseId | MappingByCourseName;
 
-function isByCategoryId(entry: MappingEntry): entry is MappingByCategoryId {
-  return "categoryId" in entry && typeof (entry as MappingByCategoryId).categoryId === "string";
+function isByCourseId(entry: MappingEntry): entry is MappingByCourseId {
+  return "courseId" in entry && typeof (entry as MappingByCourseId).courseId === "string";
+}
+
+function isByCategoryId(entry: MappingEntry): boolean {
+  return "categoryId" in entry && typeof (entry as any).categoryId === "string";
 }
 
 async function main() {
@@ -73,7 +78,7 @@ async function main() {
   const idToId = new Map<string, string>();
   const idPriority = new Map<string, number>();
 
-  // Desired display / storage order for categories (matches screenshot order)
+  // Desired display / storage order for categories (college + professionals from course-category-structure)
   const desiredCategoryOrder = [
     "Python",
     "Data Analytics",
@@ -85,6 +90,16 @@ async function main() {
     "Machine Learning & Deep Learning",
     "Business Intelligence & Analytics",
     "Data Science - Architecture & Engineering",
+    "Python - Advanced Programming & Development",
+    "Data Analytics & Business Insights",
+    "Applied Data Science & Advanced Analytics",
+    "SAS Programming & Business Intelligence Ecosystem",
+    "SAS Analytical Tools & Statistical Modeling",
+    "Enterprise Data Visualization & Reporting Solutions",
+    "Artificial Intelligence & Natural Language Processing",
+    "Machine Learning & Deep Learning Engineering",
+    "Business Intelligence & Performance Analytics",
+    "Data Science Architecture & Data Engineering",
   ];
 
   for (const c of categories) {
@@ -100,46 +115,76 @@ async function main() {
   }
 
   const courseNameToId = new Map<string, string>();
+  const courseIdToTitle = new Map<string, string>();
   const courses = await CourseModel.find({}).select("_id title").lean();
   for (const c of courses) {
-    courseNameToId.set(c.title.trim(), String(c._id));
+    const id = String(c._id);
+    const title = (c.title || "").trim();
+    courseNameToId.set(title, id);
+    courseIdToTitle.set(id, title);
   }
 
   const updates: { courseId: string; courseTitle: string; categoryId: string; categoryName?: string }[] = [];
   const notFoundCourses: string[] = [];
   const notFoundCategories: string[] = [];
+  const invalidCourseIds: string[] = [];
 
   for (const entry of mapping) {
-    const courseName = (entry.courseName || "").trim();
+    let courseId: string | null = null;
+    let courseTitle: string | undefined;
+
+    if (isByCourseId(entry)) {
+      const id = (entry.courseId || "").trim();
+      if (mongoose.Types.ObjectId.isValid(id)) {
+        courseTitle = courseIdToTitle.get(id);
+        if (courseTitle !== undefined) {
+          courseId = id;
+        } else {
+          invalidCourseIds.push(id);
+          continue;
+        }
+      } else {
+        invalidCourseIds.push(id);
+        continue;
+      }
+    } else {
+      const courseName = (entry.courseName || "").trim();
+      courseId = courseNameToId.get(courseName) ?? null;
+      courseTitle = courseId ? courseIdToTitle.get(courseId) : undefined;
+      if (!courseId) {
+        notFoundCourses.push(courseName);
+        continue;
+      }
+    }
+
     let categoryId: string | null = null;
     let categoryName: string | undefined;
 
     if (isByCategoryId(entry)) {
-      const id = entry.categoryId.trim();
+      const id = (entry as any).categoryId.trim();
       categoryId = idToId.get(id) ?? null;
     } else {
-      categoryName = entry.categoryName.trim();
-      categoryId = nameToId.get(categoryName) ?? null;
+      categoryName = (entry as any).categoryName?.trim();
+      categoryId = categoryName ? nameToId.get(categoryName) ?? null : null;
     }
 
-    const courseId = courseNameToId.get(courseName) ?? null;
-
-    if (!courseId) {
-      notFoundCourses.push(courseName);
-      continue;
-    }
     if (!categoryId) {
-      const catLabel = categoryName ?? (isByCategoryId(entry) ? entry.categoryId : "?");
+      const catLabel = categoryName ?? (isByCategoryId(entry) ? (entry as any).categoryId : "?");
       notFoundCategories.push(catLabel);
       continue;
     }
 
     updates.push({
       courseId,
-      courseTitle: courseName,
+      courseTitle: courseTitle ?? String(courseId),
       categoryId,
       categoryName,
     });
+  }
+
+  if (invalidCourseIds.length > 0) {
+    console.warn("\n⚠️  Invalid or unknown course IDs:");
+    [...new Set(invalidCourseIds)].forEach((id) => console.warn("  -", id));
   }
 
   const uniqueNotFoundCourses = [...new Set(notFoundCourses)];

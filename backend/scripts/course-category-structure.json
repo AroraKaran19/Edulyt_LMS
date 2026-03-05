@@ -1,5 +1,5 @@
 {
-  "description": "Category order and course order within each category. Top row (1-5), bottom row (6-10). Edit this file to match the desired grid layout.",
+  "description": "Category order and course order within each category. Top row (1-5), bottom row (6-10). categoryOrder + structureProfessionals = Professionals audience. structure = College students audience.",
   "categoryOrder": [
     "Python - Advanced Programming & Development",
     "Data Analytics & Business Insights",
@@ -143,6 +143,140 @@
         "Data Science - Data Wrangling",
         "Data Science - Data Operations",
         "Applied Data Science - Insight to Prediction"
+      ]
+    }
+  ],
+  "structureProfessionals": [
+    {
+      "categoryName": "Python - Advanced Programming & Development",
+      "courses": [
+        "Python for Absolute Beginners",
+        "Data Analysis with NumPy & Pandas",
+        "Data Visualization & Storytelling with Python",
+        "Intermediate Python for Data & Automation",
+        "Advanced Python Engineering",
+        "Machine Learning with Python: Industry Applications",
+        "Python Integration with Excel 365"
+      ]
+    },
+    {
+      "categoryName": "Data Analytics & Business Insights",
+      "courses": [
+        "Python for Absolute Beginners",
+        "Data Analysis with NumPy & Pandas",
+        "Data Visualization & Storytelling with Python",
+        "Intermediate Python for Data & Automation",
+        "SQL for Data Analytics",
+        "Power BI Foundations",
+        "Machine Learning with Python: Industry Applications",
+        "Machine Learning Foundations",
+        "SAS Programming Foundations (Base SAS - 1)",
+        "Excel Power Toolkit for Data Experts"
+      ]
+    },
+    {
+      "categoryName": "Applied Data Science & Advanced Analytics",
+      "courses": [
+        "Python for Absolute Beginners",
+        "Data Analysis with NumPy & Pandas",
+        "Data Visualization & Storytelling with Python",
+        "Intermediate Python for Data & Automation",
+        "Advanced Python Engineering",
+        "Data Science & Analytics with R",
+        "Applied Data Science: From Insights to Predictive Models",
+        "Machine Learning with Python: Industry Applications",
+        "No-Code Machine Learning with BigML"
+      ]
+    },
+    {
+      "categoryName": "SAS Programming & Business Intelligence Ecosystem",
+      "courses": [
+        "SAS Programming Foundations (Base SAS - 1)",
+        "Advanced Data Manipulation in SAS (Base SAS - 2)",
+        "Advanced SAS Programming Mastery (Base SAS - 3)",
+        "SQL Programming in SAS",
+        "SAS Macro Programming Fundamentals",
+        "Advanced SAS Macro Development",
+        "Integrating SAS with Microsoft Excel",
+        "Working with JSON Data in SAS",
+        "Professional Report Writing in SAS",
+        "Advanced Data Visualization with SAS ODS Graphics"
+      ]
+    },
+    {
+      "categoryName": "SAS Analytical Tools & Statistical Modeling",
+      "courses": [
+        "SAS Enterprise Guide: Professional Edition",
+        "SAS Studio for Advanced Users",
+        "Querying & Reporting with SAS Enterprise Guide",
+        "Advanced Analytics with SAS Enterprise Guide",
+        "Statistical Modeling in SAS Enterprise Guide",
+        "Professional Reporting & Visualization in SAS",
+        "SAS Enterprise Guide: Advanced Practitioner",
+        "Statistics Essentials for Data Professionals",
+        "Statistics: ANOVA, Regression & Logistic Modeling",
+        "Applied ANOVA & Regression Techniques"
+      ]
+    },
+    {
+      "categoryName": "Enterprise Data Visualization & Reporting Solutions",
+      "courses": [
+        "Power BI Foundations",
+        "Power BI Advanced Analytics & Dashboards",
+        "Tableau for Business Intelligence Professionals",
+        "Advanced Data Visualization with SAS ODS Graphics",
+        "Advanced Data Visualization in Excel 365",
+        "Data Visualization & Storytelling with Python",
+        "Advanced BI & Data Visualization"
+      ]
+    },
+    {
+      "categoryName": "Artificial Intelligence & Natural Language Processing",
+      "courses": [
+        "AI Foundations for Professionals",
+        "Advanced Artificial Intelligence Mastery",
+        "Building Intelligent Chatbots for Business",
+        "Practical NLP: Foundations for Real-World Applications",
+        "Advanced NLP & Language Intelligence Systems",
+        "No-Code Machine Learning with BigML"
+      ]
+    },
+    {
+      "categoryName": "Machine Learning & Deep Learning Engineering",
+      "courses": [
+        "Machine Learning with Python: Industry Applications",
+        "Machine Learning Foundations",
+        "Applied Machine Learning Practitioner",
+        "Advanced Machine Learning Specialist",
+        "Cloud-Based Machine Learning with AWS",
+        "Neural Networks Fundamentals",
+        "Deep Neural Networks & Advanced Architectures",
+        "Production ML with TensorFlow",
+        "Applied Data Science: From Insights to Predictive Models"
+      ]
+    },
+    {
+      "categoryName": "Business Intelligence & Performance Analytics",
+      "courses": [
+        "Excel Power Toolkit for Data Experts",
+        "Advanced BI & Data Visualization",
+        "Business Analytics with Python & SQL",
+        "No-Code Machine Learning with BigML",
+        "Excel 365 Fundamentals",
+        "Advanced Data Visualization in Excel 365",
+        "Python Integration with Excel 365",
+        "Power BI Foundations",
+        "Tableau for Business Intelligence Professionals",
+        "VBA Automation for Business Professionals"
+      ]
+    },
+    {
+      "categoryName": "Data Science Architecture & Data Engineering",
+      "courses": [
+        "Foundations of Data Architecture & Engineering",
+        "Data Wrangling & Preparation Techniques",
+        "Modern Data Operations & Governance",
+        "Applied Data Science: From Insights to Predictive Models"
       ]
     }
   ]

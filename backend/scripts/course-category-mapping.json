@@ -1,330 +1,658 @@
 [
   {
-    "courseName": "Python - Basics",
+    "courseId": "69a54f79b7d77e87b722a850",
     "categoryName": "Python"
   },
   {
-    "courseName": "Data Science using Python - NumPy & Pandas",
+    "courseId": "69a54ea9b7d77e87b722803e",
     "categoryName": "Python"
   },
   {
-    "courseName": "Data Science using Python - Data Visualization (Python)",
+    "courseId": "69a54e18b7d77e87b7227146",
     "categoryName": "Python"
   },
   {
-    "courseName": "Python - Intermediate",
+    "courseId": "69a549bab7d77e87b721c473",
     "categoryName": "Python"
   },
   {
-    "courseName": "Python - Expert",
+    "courseId": "69a53c9df4b54cf4dd100d8a",
     "categoryName": "Python"
   },
   {
-    "courseName": "Machine Learning - Python",
+    "courseId": "69a54c72b7d77e87b7223c0c",
     "categoryName": "Python"
   },
   {
-    "courseName": "Excel 365 - Python",
+    "courseId": "69a54743b7d77e87b7215443",
     "categoryName": "Python"
   },
   {
-    "courseName": "Python - Basics",
+    "courseId": "69a54f79b7d77e87b722a850",
     "categoryName": "Data Analytics"
   },
   {
-    "courseName": "Data Science using Python - NumPy & Pandas",
+    "courseId": "69a54ea9b7d77e87b722803e",
     "categoryName": "Data Analytics"
   },
   {
-    "courseName": "Data Science using Python - Data Visualization (Python)",
+    "courseId": "69a54e18b7d77e87b7227146",
     "categoryName": "Data Analytics"
   },
   {
-    "courseName": "Python - Intermediate",
+    "courseId": "69a549bab7d77e87b721c473",
     "categoryName": "Data Analytics"
   },
   {
-    "courseName": "SQL - Oracle & MySQL (Structured Query Language)",
+    "courseId": "69a5576fb7d77e87b72373de",
     "categoryName": "Data Analytics"
   },
   {
-    "courseName": "Power BI - Beginner",
+    "courseId": "69a54a44b7d77e87b721eeaf",
     "categoryName": "Data Analytics"
   },
   {
-    "courseName": "Machine Learning - Python",
+    "courseId": "69a54c72b7d77e87b7223c0c",
     "categoryName": "Data Analytics"
   },
   {
-    "courseName": "Machine Learning - Beginner",
+    "courseId": "69a549e7b7d77e87b721d58a",
     "categoryName": "Data Analytics"
   },
   {
-    "courseName": "SAS Programming Essentials (Base SAS - 1)",
+    "courseId": "69a560d0b7d77e87b7248b6a",
     "categoryName": "Data Analytics"
   },
   {
-    "courseName": "Excel Power Toolkit for Data Professionals",
+    "courseId": "69a54a10b7d77e87b721e0fa",
     "categoryName": "Data Analytics"
   },
   {
-    "courseName": "Python - Basics",
+    "courseId": "69a54f79b7d77e87b722a850",
     "categoryName": "Data Science"
   },
   {
-    "courseName": "Data Science using Python - NumPy & Pandas",
+    "courseId": "69a54ea9b7d77e87b722803e",
     "categoryName": "Data Science"
   },
   {
-    "courseName": "Data Science using Python - Data Visualization (Python)",
+    "courseId": "69a54e18b7d77e87b7227146",
     "categoryName": "Data Science"
   },
   {
-    "courseName": "Python - Intermediate",
+    "courseId": "69a549bab7d77e87b721c473",
     "categoryName": "Data Science"
   },
   {
-    "courseName": "Python - Expert",
+    "courseId": "69a53c9df4b54cf4dd100d8a",
     "categoryName": "Data Science"
   },
   {
-    "courseName": "Data Science using R",
+    "courseId": "69a54de8b7d77e87b72265d5",
     "categoryName": "Data Science"
   },
   {
-    "courseName": "Applied Data Science - Insight to Prediction",
+    "courseId": "69a5460db7d77e87b72131b7",
     "categoryName": "Data Science"
   },
   {
-    "courseName": "Machine Learning - Python",
+    "courseId": "69a54c72b7d77e87b7223c0c",
     "categoryName": "Data Science"
   },
   {
-    "courseName": "Applied Machine Learning with BigML",
+    "courseId": "69a54ef0b7d77e87b7228bb8",
     "categoryName": "Data Science"
   },
   {
-    "courseName": "SAS Programming Essentials (Base SAS - 1)",
+    "courseId": "69a560d0b7d77e87b7248b6a",
     "categoryName": "SAS Ecosystem - Base, SQL, Macros & BI"
   },
   {
-    "courseName": "SAS Programming - Data Manipulation Techniques (Base SAS - 2)",
+    "courseId": "69a560f7b7d77e87b724925b",
     "categoryName": "SAS Ecosystem - Base, SQL, Macros & BI"
   },
   {
-    "courseName": "SAS Programming - Advanced Techniques (Base SAS - 3)",
+    "courseId": "69a49988f4b54cf4dd0f5758",
     "categoryName": "SAS Ecosystem - Base, SQL, Macros & BI"
   },
   {
-    "courseName": "SAS SQL",
+    "courseId": "69a49964f4b54cf4dd0f507a",
     "categoryName": "SAS Ecosystem - Base, SQL, Macros & BI"
   },
   {
-    "courseName": "SAS Macro Language - Essentials",
+    "courseId": "69a49945f4b54cf4dd0f4abe",
     "categoryName": "SAS Ecosystem - Base, SQL, Macros & BI"
   },
   {
-    "courseName": "SAS Macro Language - Advanced Techniques",
+    "courseId": "69a49928f4b54cf4dd0f4503",
     "categoryName": "SAS Ecosystem - Base, SQL, Macros & BI"
   },
   {
-    "courseName": "SAS - Microsoft Excel",
+    "courseId": "69a49a10f4b54cf4dd0f6bf8",
     "categoryName": "SAS Ecosystem - Base, SQL, Macros & BI"
   },
   {
-    "courseName": "SAS - JSON Files",
+    "courseId": "69a499f3f4b54cf4dd0f651d",
     "categoryName": "SAS Ecosystem - Base, SQL, Macros & BI"
   },
   {
-    "courseName": "SAS Report Writing",
+    "courseId": "69a496a9f4b54cf4dd0f1d77",
     "categoryName": "SAS Ecosystem - Base, SQL, Macros & BI"
   },
   {
-    "courseName": "SAS Data Visualization Using ODS Graphics",
+    "courseId": "69a49854f4b54cf4dd0f3956",
     "categoryName": "SAS Ecosystem - Base, SQL, Macros & BI"
   },
   {
-    "courseName": "SAS Enterprise Guide for SAS Programmers",
+    "courseId": "69a49b96f4b54cf4dd0f8b1c",
     "categoryName": "SAS - Tools & Modeling"
   },
   {
-    "courseName": "SAS Studio for SAS Programmers",
+    "courseId": "69a49b5ef4b54cf4dd0f8319",
     "categoryName": "SAS - Tools & Modeling"
   },
   {
-    "courseName": "SAS Enterprise Guide - Querying and Reporting",
+    "courseId": "69a498f3f4b54cf4dd0f3f3f",
     "categoryName": "SAS - Tools & Modeling"
   },
   {
-    "courseName": "SAS Enterprise Guide - Advanced Tasks and Querying",
+    "courseId": "69a49766f4b54cf4dd0f2922",
     "categoryName": "SAS - Tools & Modeling"
   },
   {
-    "courseName": "SAS Enterprise Guide - ANOVA, Regression, and Logistic Regression",
+    "courseId": "69a496e2f4b54cf4dd0f2462",
     "categoryName": "SAS - Tools & Modeling"
   },
   {
-    "courseName": "SAS Enterprise Guide - Creating Reports and Graphs",
+    "courseId": "69a49b30f4b54cf4dd0f7b1a",
     "categoryName": "SAS - Tools & Modeling"
   },
   {
-    "courseName": "SAS Enterprise Guide - for Experienced SAS Programmers",
+    "courseId": "69a49b04f4b54cf4dd0f743a",
     "categoryName": "SAS - Tools & Modeling"
   },
   {
-    "courseName": "Statistical Concepts - Introduction",
+    "courseId": "69a499c8f4b54cf4dd0f5e3e",
     "categoryName": "SAS - Tools & Modeling"
   },
   {
-    "courseName": "Statistics - Introduction to ANOVA, Regression, and Logistic Regression",
+    "courseId": "69a497adf4b54cf4dd0f336c",
     "categoryName": "SAS - Tools & Modeling"
   },
   {
-    "courseName": "Statistics - ANOVA and Regression",
+    "courseId": "69a49639f4b54cf4dd0f1678",
     "categoryName": "SAS - Tools & Modeling"
   },
   {
-    "courseName": "Power BI - Beginner",
+    "courseId": "69a54a44b7d77e87b721eeaf",
     "categoryName": "Data Visualization (Power BI, Tableau, SAS, Excel-"
   },
   {
-    "courseName": "Power BI - Expert",
+    "courseId": "69a54686b7d77e87b72148a4",
     "categoryName": "Data Visualization (Power BI, Tableau, SAS, Excel-"
   },
   {
-    "courseName": "Tableau",
+    "courseId": "69a557bbb7d77e87b7238873",
     "categoryName": "Data Visualization (Power BI, Tableau, SAS, Excel-"
   },
   {
-    "courseName": "SAS Data Visualization Using ODS Graphics",
+    "courseId": "69a49854f4b54cf4dd0f3956",
     "categoryName": "Data Visualization (Power BI, Tableau, SAS, Excel-"
   },
   {
-    "courseName": "Excel 365 - Visualization",
+    "courseId": "69a54894b7d77e87b7219c48",
     "categoryName": "Data Visualization (Power BI, Tableau, SAS, Excel-"
   },
   {
-    "courseName": "Data Science using Python - Data Visualization (Python)",
+    "courseId": "69a54e18b7d77e87b7227146",
     "categoryName": "Data Visualization (Power BI, Tableau, SAS, Excel-"
   },
   {
-    "courseName": "Advanced Data Visualization with BI Tools",
+    "courseId": "69a542bbd4eb082166975203",
     "categoryName": "Data Visualization (Power BI, Tableau, SAS, Excel-"
   },
   {
-    "courseName": "Artificial Intelligence - Basic",
+    "courseId": "69a56018b7d77e87b7245c82",
     "categoryName": "Artificial Intelligence (AI & NLP)"
   },
   {
-    "courseName": "Artificial Intelligence - Advance",
+    "courseId": "69a55ec3b7d77e87b7241c39",
     "categoryName": "Artificial Intelligence (AI & NLP)"
   },
   {
-    "courseName": "Artificial Intelligence - (AI) Chatbots",
+    "courseId": "69a54aaab7d77e87b7220354",
     "categoryName": "Artificial Intelligence (AI & NLP)"
   },
   {
-    "courseName": "AI - Natural Language Processing - Beginner",
+    "courseId": "69a54267d4eb082166973c59",
     "categoryName": "Artificial Intelligence (AI & NLP)"
   },
   {
-    "courseName": "AI - Natural Language Processing - Expert",
+    "courseId": "69a5429cd4eb0821669748e1",
     "categoryName": "Artificial Intelligence (AI & NLP)"
   },
   {
-    "courseName": "Applied Machine Learning with BigML",
+    "courseId": "69a54ef0b7d77e87b7228bb8",
     "categoryName": "Artificial Intelligence (AI & NLP)"
   },
   {
-    "courseName": "Machine Learning - Python",
+    "courseId": "69a54c72b7d77e87b7223c0c",
     "categoryName": "Machine Learning & Deep Learning"
   },
   {
-    "courseName": "Machine Learning - Beginner",
+    "courseId": "69a549e7b7d77e87b721d58a",
     "categoryName": "Machine Learning & Deep Learning"
   },
   {
-    "courseName": "Machine Learning - Intermediate",
+    "courseId": "69a54995b7d77e87b721b5a2",
     "categoryName": "Machine Learning & Deep Learning"
   },
   {
-    "courseName": "Machine Learning - Expert",
+    "courseId": "69a547e3b7d77e87b7218b06",
     "categoryName": "Machine Learning & Deep Learning"
   },
   {
-    "courseName": "Machine Learning - AWS",
+    "courseId": "69a54763b7d77e87b72160d1",
     "categoryName": "Machine Learning & Deep Learning"
   },
   {
-    "courseName": "Machine Learning - Neural Networks - Beginner",
+    "courseId": "69a54912b7d77e87b721a8f5",
     "categoryName": "Machine Learning & Deep Learning"
   },
   {
-    "courseName": "Machine Learning - Neural Networks - Expert",
+    "courseId": "69a54f3bb7d77e87b7229977",
     "categoryName": "Machine Learning & Deep Learning"
   },
   {
-    "courseName": "Machine Learning - TensorFlow",
+    "courseId": "69a5478cb7d77e87b7216d61",
     "categoryName": "Machine Learning & Deep Learning"
   },
   {
-    "courseName": "Applied Data Science - Insight to Prediction",
+    "courseId": "69a5460db7d77e87b72131b7",
     "categoryName": "Machine Learning & Deep Learning"
   },
   {
-    "courseName": "Excel Power Toolkit for Data Professionals",
+    "courseId": "69a54a10b7d77e87b721e0fa",
     "categoryName": "Business Intelligence & Analytics"
   },
   {
-    "courseName": "Advanced Data Visualization with BI Tools",
+    "courseId": "69a542bbd4eb082166975203",
     "categoryName": "Business Intelligence & Analytics"
   },
   {
-    "courseName": "Analytics with Python & SQL",
+    "courseId": "69a545dcb7d77e87b7212767",
     "categoryName": "Business Intelligence & Analytics"
   },
   {
-    "courseName": "Applied Machine Learning with BigML",
+    "courseId": "69a54ef0b7d77e87b7228bb8",
     "categoryName": "Business Intelligence & Analytics"
   },
   {
-    "courseName": "Excel 365 - Basics",
+    "courseId": "69a547b0b7d77e87b72178ce",
     "categoryName": "Business Intelligence & Analytics"
   },
   {
-    "courseName": "Excel 365 - Visualization",
+    "courseId": "69a54894b7d77e87b7219c48",
     "categoryName": "Business Intelligence & Analytics"
   },
   {
-    "courseName": "Excel 365 - Python",
+    "courseId": "69a54743b7d77e87b7215443",
     "categoryName": "Business Intelligence & Analytics"
   },
   {
-    "courseName": "Power BI - Beginner",
+    "courseId": "69a54a44b7d77e87b721eeaf",
     "categoryName": "Business Intelligence & Analytics"
   },
   {
-    "courseName": "Tableau",
+    "courseId": "69a557bbb7d77e87b7238873",
     "categoryName": "Business Intelligence & Analytics"
   },
   {
-    "courseName": "Visual Basic for Applications - (VBA)",
+    "courseId": "69a54d73b7d77e87b7225a4d",
     "categoryName": "Business Intelligence & Analytics"
   },
   {
-    "courseName": "Data Architecture & Engineering Foundations",
+    "courseId": "69a49bc0f4b54cf4dd0f931a",
     "categoryName": "Data Science - Architecture & Engineering"
   },
   {
-    "courseName": "Data Science - Data Wrangling",
+    "courseId": "69a54669b7d77e87b7213c18",
     "categoryName": "Data Science - Architecture & Engineering"
   },
   {
-    "courseName": "Data Science - Data Operations",
+    "courseId": "69a54a85b7d77e87b721f906",
     "categoryName": "Data Science - Architecture & Engineering"
   },
   {
-    "courseName": "Applied Data Science - Insight to Prediction",
+    "courseId": "69a5460db7d77e87b72131b7",
     "categoryName": "Data Science - Architecture & Engineering"
+  },
+  {
+    "courseId": "691e1ba7bf1e45f45ed1b51a",
+    "categoryName": "Python - Advanced Programming & Development"
+  },
+  {
+    "courseId": "691ee761bf1e45f45ed281ec",
+    "categoryName": "Python - Advanced Programming & Development"
+  },
+  {
+    "courseId": "691eecccbf1e45f45ed28555",
+    "categoryName": "Python - Advanced Programming & Development"
+  },
+  {
+    "courseId": "691e1dc5bf1e45f45ed1b923",
+    "categoryName": "Python - Advanced Programming & Development"
+  },
+  {
+    "courseId": "691e213fbf1e45f45ed1bc91",
+    "categoryName": "Python - Advanced Programming & Development"
+  },
+  {
+    "courseId": "691eaf42bf1e45f45ed1f3bc",
+    "categoryName": "Python - Advanced Programming & Development"
+  },
+  {
+    "courseId": "691e9b07bf1e45f45ed1e2a5",
+    "categoryName": "Python - Advanced Programming & Development"
+  },
+  {
+    "courseId": "691e1ba7bf1e45f45ed1b51a",
+    "categoryName": "Data Analytics & Business Insights"
+  },
+  {
+    "courseId": "691ee761bf1e45f45ed281ec",
+    "categoryName": "Data Analytics & Business Insights"
+  },
+  {
+    "courseId": "691eecccbf1e45f45ed28555",
+    "categoryName": "Data Analytics & Business Insights"
+  },
+  {
+    "courseId": "691e1dc5bf1e45f45ed1b923",
+    "categoryName": "Data Analytics & Business Insights"
+  },
+  {
+    "courseId": "6915ff33bf1e45f45ed0e3e3",
+    "categoryName": "Data Analytics & Business Insights"
+  },
+  {
+    "courseId": "691e2e9ebf1e45f45ed1c918",
+    "categoryName": "Data Analytics & Business Insights"
+  },
+  {
+    "courseId": "691eaf42bf1e45f45ed1f3bc",
+    "categoryName": "Data Analytics & Business Insights"
+  },
+  {
+    "courseId": "691eb021bf1e45f45ed1fccd",
+    "categoryName": "Data Analytics & Business Insights"
+  },
+  {
+    "courseId": "691a0789bf1e45f45ed10510",
+    "categoryName": "Data Analytics & Business Insights"
+  },
+  {
+    "courseId": "691eb9a0bf1e45f45ed2226c",
+    "categoryName": "Data Analytics & Business Insights"
+  },
+  {
+    "courseId": "691e1ba7bf1e45f45ed1b51a",
+    "categoryName": "Applied Data Science & Advanced Analytics"
+  },
+  {
+    "courseId": "691ee761bf1e45f45ed281ec",
+    "categoryName": "Applied Data Science & Advanced Analytics"
+  },
+  {
+    "courseId": "691eecccbf1e45f45ed28555",
+    "categoryName": "Applied Data Science & Advanced Analytics"
+  },
+  {
+    "courseId": "691e1dc5bf1e45f45ed1b923",
+    "categoryName": "Applied Data Science & Advanced Analytics"
+  },
+  {
+    "courseId": "691e213fbf1e45f45ed1bc91",
+    "categoryName": "Applied Data Science & Advanced Analytics"
+  },
+  {
+    "courseId": "691ed0ebbf1e45f45ed26376",
+    "categoryName": "Applied Data Science & Advanced Analytics"
+  },
+  {
+    "courseId": "691ecf4abf1e45f45ed25c29",
+    "categoryName": "Applied Data Science & Advanced Analytics"
+  },
+  {
+    "courseId": "691eaf42bf1e45f45ed1f3bc",
+    "categoryName": "Applied Data Science & Advanced Analytics"
+  },
+  {
+    "courseId": "691ec62ebf1e45f45ed24e9f",
+    "categoryName": "Applied Data Science & Advanced Analytics"
+  },
+  {
+    "courseId": "691a0789bf1e45f45ed10510",
+    "categoryName": "SAS Programming & Business Intelligence Ecosystem"
+  },
+  {
+    "courseId": "691a1195bf1e45f45ed109b3",
+    "categoryName": "SAS Programming & Business Intelligence Ecosystem"
+  },
+  {
+    "courseId": "691a1455bf1e45f45ed10cc1",
+    "categoryName": "SAS Programming & Business Intelligence Ecosystem"
+  },
+  {
+    "courseId": "698c7e81f18796a3888729b4",
+    "categoryName": "SAS Programming & Business Intelligence Ecosystem"
+  },
+  {
+    "courseId": "691a2444bf1e45f45ed11345",
+    "categoryName": "SAS Programming & Business Intelligence Ecosystem"
+  },
+  {
+    "courseId": "691b45a1bf1e45f45ed12011",
+    "categoryName": "SAS Programming & Business Intelligence Ecosystem"
+  },
+  {
+    "courseId": "691e0266bf1e45f45ed19843",
+    "categoryName": "SAS Programming & Business Intelligence Ecosystem"
+  },
+  {
+    "courseId": "691e0472bf1e45f45ed19b4e",
+    "categoryName": "SAS Programming & Business Intelligence Ecosystem"
+  },
+  {
+    "courseId": "691e0607bf1e45f45ed19e3f",
+    "categoryName": "SAS Programming & Business Intelligence Ecosystem"
+  },
+  {
+    "courseId": "691e0751bf1e45f45ed1a12f",
+    "categoryName": "SAS Programming & Business Intelligence Ecosystem"
+  },
+  {
+    "courseId": "691b62e2bf1e45f45ed12cb4",
+    "categoryName": "SAS Analytical Tools & Statistical Modeling"
+  },
+  {
+    "courseId": "691dbf80bf1e45f45ed18015",
+    "categoryName": "SAS Analytical Tools & Statistical Modeling"
+  },
+  {
+    "courseId": "691dd213bf1e45f45ed184a6",
+    "categoryName": "SAS Analytical Tools & Statistical Modeling"
+  },
+  {
+    "courseId": "691dd3b4bf1e45f45ed1877b",
+    "categoryName": "SAS Analytical Tools & Statistical Modeling"
+  },
+  {
+    "courseId": "691dda24bf1e45f45ed18a6b",
+    "categoryName": "SAS Analytical Tools & Statistical Modeling"
+  },
+  {
+    "courseId": "691ddbf4bf1e45f45ed18de2",
+    "categoryName": "SAS Analytical Tools & Statistical Modeling"
+  },
+  {
+    "courseId": "691ddd89bf1e45f45ed191a6",
+    "categoryName": "SAS Analytical Tools & Statistical Modeling"
+  },
+  {
+    "courseId": "691e0901bf1e45f45ed1a420",
+    "categoryName": "SAS Analytical Tools & Statistical Modeling"
+  },
+  {
+    "courseId": "691e10dfbf1e45f45ed1a8c1",
+    "categoryName": "SAS Analytical Tools & Statistical Modeling"
+  },
+  {
+    "courseId": "691e1412bf1e45f45ed1abd7",
+    "categoryName": "SAS Analytical Tools & Statistical Modeling"
+  },
+  {
+    "courseId": "691e2e9ebf1e45f45ed1c918",
+    "categoryName": "Enterprise Data Visualization & Reporting Solutions"
+  },
+  {
+    "courseId": "691e3036bf1e45f45ed1cc79",
+    "categoryName": "Enterprise Data Visualization & Reporting Solutions"
+  },
+  {
+    "courseId": "691e15e6bf1e45f45ed1af23",
+    "categoryName": "Enterprise Data Visualization & Reporting Solutions"
+  },
+  {
+    "courseId": "691e0751bf1e45f45ed1a12f",
+    "categoryName": "Enterprise Data Visualization & Reporting Solutions"
+  },
+  {
+    "courseId": "691e9841bf1e45f45ed1df87",
+    "categoryName": "Enterprise Data Visualization & Reporting Solutions"
+  },
+  {
+    "courseId": "691eecccbf1e45f45ed28555",
+    "categoryName": "Enterprise Data Visualization & Reporting Solutions"
+  },
+  {
+    "courseId": "691ec306bf1e45f45ed246f9",
+    "categoryName": "Enterprise Data Visualization & Reporting Solutions"
+  },
+  {
+    "courseId": "691e2448bf1e45f45ed1c075",
+    "categoryName": "Artificial Intelligence & Natural Language Processing"
+  },
+  {
+    "courseId": "691e28fabf1e45f45ed1c397",
+    "categoryName": "Artificial Intelligence & Natural Language Processing"
+  },
+  {
+    "courseId": "6913b8d7819f7c7c210991a4",
+    "categoryName": "Artificial Intelligence & Natural Language Processing"
+  },
+  {
+    "courseId": "691e31bdbf1e45f45ed1cf84",
+    "categoryName": "Artificial Intelligence & Natural Language Processing"
+  },
+  {
+    "courseId": "691e3334bf1e45f45ed1d292",
+    "categoryName": "Artificial Intelligence & Natural Language Processing"
+  },
+  {
+    "courseId": "691ec62ebf1e45f45ed24e9f",
+    "categoryName": "Artificial Intelligence & Natural Language Processing"
+  },
+  {
+    "courseId": "691eaf42bf1e45f45ed1f3bc",
+    "categoryName": "Machine Learning & Deep Learning Engineering"
+  },
+  {
+    "courseId": "691eb021bf1e45f45ed1fccd",
+    "categoryName": "Machine Learning & Deep Learning Engineering"
+  },
+  {
+    "courseId": "691eb0c8bf1e45f45ed202cf",
+    "categoryName": "Machine Learning & Deep Learning Engineering"
+  },
+  {
+    "courseId": "691eae76bf1e45f45ed1f096",
+    "categoryName": "Machine Learning & Deep Learning Engineering"
+  },
+  {
+    "courseId": "691eb39abf1e45f45ed20ed9",
+    "categoryName": "Machine Learning & Deep Learning Engineering"
+  },
+  {
+    "courseId": "691eaca6bf1e45f45ed1ed17",
+    "categoryName": "Machine Learning & Deep Learning Engineering"
+  },
+  {
+    "courseId": "691eb167bf1e45f45ed20654",
+    "categoryName": "Machine Learning & Deep Learning Engineering"
+  },
+  {
+    "courseId": "691eb253bf1e45f45ed20ba0",
+    "categoryName": "Machine Learning & Deep Learning Engineering"
+  },
+  {
+    "courseId": "691ecf4abf1e45f45ed25c29",
+    "categoryName": "Machine Learning & Deep Learning Engineering"
+  },
+  {
+    "courseId": "691eb9a0bf1e45f45ed2226c",
+    "categoryName": "Business Intelligence & Performance Analytics"
+  },
+  {
+    "courseId": "691ec306bf1e45f45ed246f9",
+    "categoryName": "Business Intelligence & Performance Analytics"
+  },
+  {
+    "courseId": "691ec526bf1e45f45ed24b54",
+    "categoryName": "Business Intelligence & Performance Analytics"
+  },
+  {
+    "courseId": "691ec62ebf1e45f45ed24e9f",
+    "categoryName": "Business Intelligence & Performance Analytics"
+  },
+  {
+    "courseId": "691e95b4bf1e45f45ed1d955",
+    "categoryName": "Business Intelligence & Performance Analytics"
+  },
+  {
+    "courseId": "691e9841bf1e45f45ed1df87",
+    "categoryName": "Business Intelligence & Performance Analytics"
+  },
+  {
+    "courseId": "691e9b07bf1e45f45ed1e2a5",
+    "categoryName": "Business Intelligence & Performance Analytics"
+  },
+  {
+    "courseId": "691e2e9ebf1e45f45ed1c918",
+    "categoryName": "Business Intelligence & Performance Analytics"
+  },
+  {
+    "courseId": "691e15e6bf1e45f45ed1af23",
+    "categoryName": "Business Intelligence & Performance Analytics"
+  },
+  {
+    "courseId": "691e1853bf1e45f45ed1b21f",
+    "categoryName": "Business Intelligence & Performance Analytics"
+  },
+  {
+    "courseId": "691ec7a1bf1e45f45ed251e9",
+    "categoryName": "Data Science Architecture & Data Engineering"
+  },
+  {
+    "courseId": "691eca33bf1e45f45ed25590",
+    "categoryName": "Data Science Architecture & Data Engineering"
+  },
+  {
+    "courseId": "691ecdffbf1e45f45ed258de",
+    "categoryName": "Data Science Architecture & Data Engineering"
+  },
+  {
+    "courseId": "691ecf4abf1e45f45ed25c29",
+    "categoryName": "Data Science Architecture & Data Engineering"
   }
 ]

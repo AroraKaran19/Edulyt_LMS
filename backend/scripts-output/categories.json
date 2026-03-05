@@ -1,0 +1,82 @@
+[
+  {
+    "_id": "692feba39914e8b38ddbf198",
+    "name": "SAS - Tools & Modeling"
+  },
+  {
+    "_id": "6953a90e5ea6dba702698b5e",
+    "name": "SAS Ecosystem - Base, SQL, Macros & BI"
+  },
+  {
+    "_id": "6953a9425ea6dba702698cbc",
+    "name": "Artificial Intelligence (AI & NLP)"
+  },
+  {
+    "_id": "6953a9595ea6dba702698e0d",
+    "name": "Machine Learning & Deep Learning"
+  },
+  {
+    "_id": "6953a9705ea6dba702698f5e",
+    "name": "Data Science - Architecture & Engineering"
+  },
+  {
+    "_id": "6953a98a5ea6dba7026990ae",
+    "name": "Business Intelligence & Analytics"
+  },
+  {
+    "_id": "6953a9e85ea6dba70269940d",
+    "name": "Data Visualization (Power BI, Tableau, SAS, Excel & Python)"
+  },
+  {
+    "_id": "6953a9fb5ea6dba70269955b",
+    "name": "Data Analytics"
+  },
+  {
+    "_id": "6953aa085ea6dba7026996a7",
+    "name": "Data Science"
+  },
+  {
+    "_id": "6953aa165ea6dba7026997f4",
+    "name": "Python"
+  },
+  {
+    "_id": "69a6958459cdadc2c2dbcc55",
+    "name": "Python - Advanced Programming & Development"
+  },
+  {
+    "_id": "69a6959a59cdadc2c2dbceaf",
+    "name": "Data Analytics & Business Insights"
+  },
+  {
+    "_id": "69a695a859cdadc2c2dbd105",
+    "name": "Applied Data Science & Advanced Analytics"
+  },
+  {
+    "_id": "69a695b659cdadc2c2dbd35c",
+    "name": "SAS Programming & Business Intelligence Ecosystem"
+  },
+  {
+    "_id": "69a695c959cdadc2c2dbd5b4",
+    "name": "SAS Analytical Tools & Statistical Modeling"
+  },
+  {
+    "_id": "69a695de59cdadc2c2dbd80d",
+    "name": "Enterprise Data Visualization & Reporting Solutions"
+  },
+  {
+    "_id": "69a695ef59cdadc2c2dbda65",
+    "name": "Artificial Intelligence & Natural Language Processing"
+  },
+  {
+    "_id": "69a695fb59cdadc2c2dbdcbb",
+    "name": "Machine Learning & Deep Learning Engineering"
+  },
+  {
+    "_id": "69a6961859cdadc2c2dbe167",
+    "name": "Business Intelligence & Performance Analytics"
+  },
+  {
+    "_id": "69a6962559cdadc2c2dbe3bd",
+    "name": "Data Science Architecture & Data Engineering"
+  }
+]
