@@ -34,8 +34,9 @@ export const validateEmail = (email: string) => {
 
 export const validatePhoneNumber = (phone: string) => {
   if (!phone || phone.trim() === "") return true; // Allow empty strings for optional fields
-  // Accept +91 followed by 10-12 digits
-  return /^\+91[0-9]{10,12}$/.test(phone);
+  const cleaned = phone.trim();
+  // Accept +91 followed by 10-12 digits, or plain 10-digit Indian number
+  return /^\+91[0-9]{10,12}$/.test(cleaned) || /^[0-9]{10}$/.test(cleaned);
 };
 
 export const validateGithubUrl = (url: string) => {

@@ -37,8 +37,12 @@ const protectedUser = (user: User) => {
     userType: user.userType,
     provider: user.provider,
     profilePicture: user.profilePicture,
+    phone: user.phone,
     ...(user.userType === "student" && {
       enrollments: (user as Student).enrollments,
+      collegeName: (user as Student).collegeName,
+      degreeName: (user as Student).degreeName,
+      fatherOccupation: (user as Student).fatherOccupation,
     }),
   };
 };

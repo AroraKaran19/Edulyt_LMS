@@ -11,6 +11,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import z from "zod";
 import Input from "@/components/ui/inputs/Input";
 import CollegeSelect from "@/components/ui/inputs/CollegeSelect";
+import Select from "@/components/ui/inputs/Select";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import CheckBoxContainer from "@/components/ui/inputs/CheckBoxContainer";
 import useAuth from "@/hooks/useAuth";
@@ -23,6 +24,113 @@ import { useCoupon } from "@/hooks/useCoupon";
 
 // PDF from public/assets (served at /assets/...)
 const TERMS_PDF_PATH = "/assets/Terms and Conditions - Courses.pdf";
+
+const FATHER_OCCUPATION_OPTIONS = [
+  {
+    value: "Professional",
+    label: "Professional (Doctors, Engineers, Teachers, Lawyers, Accountants)",
+  },
+  { value: "Managerial/Executive", label: "Managerial/Executive" },
+  {
+    value: "Skilled Worker/Technician",
+    label: "Skilled Worker/Technician (Electricians, Mechanics, Technicians)",
+  },
+  {
+    value: "Service Worker",
+    label: "Service Worker (Sales, Food Service, Protective Services)",
+  },
+  { value: "Agriculture/Farming", label: "Agriculture/Farming" },
+  { value: "Homemaker", label: "Homemaker" },
+  { value: "Unemployed/Retired", label: "Unemployed/Retired" },
+  { value: "Other", label: "Other/Not Specified" },
+];
+
+const DEGREE_OPTIONS = [
+  { value: "BA", label: "BA" },
+  { value: "BSc", label: "BSc" },
+  { value: "BCom", label: "BCom" },
+  { value: "BBA", label: "BBA" },
+  { value: "BCA", label: "BCA" },
+  { value: "BTech/BE", label: "BTech/BE" },
+  { value: "BArch", label: "BArch" },
+  { value: "BDes", label: "BDes" },
+  { value: "BFA", label: "BFA" },
+  { value: "LLB", label: "LLB" },
+  { value: "MBBS", label: "MBBS" },
+  { value: "BDS", label: "BDS" },
+  { value: "BPharm", label: "BPharm" },
+  { value: "BPT", label: "BPT" },
+  { value: "BHMS", label: "BHMS" },
+  { value: "BAMS", label: "BAMS" },
+  { value: "BNYS", label: "BNYS" },
+  { value: "BSc Nursing", label: "BSc Nursing" },
+  { value: "B.VSc & AH", label: "B.VSc & AH" },
+  { value: "BSW", label: "BSW" },
+  { value: "BEd", label: "BEd" },
+  { value: "B.Lib.Sc", label: "B.Lib.Sc" },
+  { value: "BJMC", label: "BJMC" },
+  { value: "BHM", label: "BHM" },
+  { value: "BFTech", label: "BFTech" },
+  { value: "B.Sc. Agriculture", label: "B.Sc. Agriculture" },
+  { value: "BSc IT", label: "BSc IT" },
+  { value: "BSc Biotechnology", label: "BSc Biotechnology" },
+  { value: "BSc Animation", label: "BSc Animation" },
+  { value: "BSc Fashion Designing", label: "BSc Fashion Designing" },
+  { value: "B.Voc", label: "B.Voc" },
+  {
+    value: "BSc Nursing (Post Basic)",
+    label: "BSc Nursing (Post Basic) - For diploma holders advancing to degree",
+  },
+  { value: "MA", label: "MA" },
+  { value: "MSc", label: "MSc" },
+  { value: "MCom", label: "MCom" },
+  { value: "MBA", label: "MBA" },
+  { value: "MCA", label: "MCA" },
+  { value: "MTech/ME", label: "MTech/ME" },
+  { value: "MArch", label: "MArch" },
+  { value: "MDes", label: "MDes" },
+  { value: "MFA", label: "MFA" },
+  { value: "LLM", label: "LLM" },
+  { value: "MS", label: "MS" },
+  { value: "MDS", label: "MDS" },
+  { value: "MPharm", label: "MPharm" },
+  { value: "MPT", label: "MPT" },
+  { value: "MPH", label: "MPH" },
+  { value: "M.Lib.Sc", label: "M.Lib.Sc" },
+  { value: "MJMC", label: "MJMC" },
+  { value: "MEd", label: "MEd" },
+  { value: "M.Voc", label: "M.Voc" },
+  { value: "MD (Postgraduate Medical)", label: "MD (Postgraduate Medical)" },
+  { value: "PhD/DPhil", label: "PhD/DPhil" },
+  { value: "DM", label: "DM" },
+  { value: "MCh", label: "MCh" },
+  { value: "MD (Ayurveda)", label: "MD (Ayurveda)" },
+  {
+    value: "MDS (Ayurveda/Homeopathy)",
+    label: "MDS (Ayurveda/Homeopathy)",
+  },
+  { value: "DPharm", label: "DPharm" },
+  { value: "PGDM", label: "PGDM (Post Graduate Diploma in Management)" },
+  {
+    value: "PGDBA",
+    label: "PGDBA (Post Graduate Diploma in Business Administration)",
+  },
+  { value: "DMLT", label: "DMLT (Diploma in Medical Laboratory Technology)" },
+  { value: "DPT", label: "DPT (Diploma in Physiotherapy)" },
+  {
+    value: "BTech + MTech (5-year integrated)",
+    label: "BTech + MTech (5-year integrated)",
+  },
+  {
+    value: "BA + MA (5-year integrated)",
+    label: "BA + MA (5-year integrated)",
+  },
+  {
+    value: "BBA + MBA (5-year integrated)",
+    label: "BBA + MBA (5-year integrated)",
+  },
+  { value: "Other", label: "Other/Not Specified" },
+];
 
 interface EnrollmentFormData {
   name: string;
@@ -49,6 +157,13 @@ const CartForm = ({
   const [firstNameInput, setFirstNameInput] = useState("");
   const [isUpdatingFirstName, setIsUpdatingFirstName] = useState(false);
 
+  // Father occupation: track dropdown selection for "Other" case
+  const [selectedFatherOccupation, setSelectedFatherOccupation] =
+    useState<string>("");
+
+  // Degree: track dropdown selection for "Other" case
+  const [selectedDegree, setSelectedDegree] = useState<string>("");
+
   // Coupon state
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState<{
@@ -68,6 +183,26 @@ const CartForm = ({
       setShowFirstNameModal(true);
     }
   }, [user, isLoading]);
+
+  // Initialize father occupation dropdown from user data
+  useEffect(() => {
+    const occupation = (user as Student)?.fatherOccupation || "";
+    if (occupation) {
+      const isPreset = FATHER_OCCUPATION_OPTIONS.some(
+        (o) => o.value === occupation,
+      );
+      setSelectedFatherOccupation(isPreset ? occupation : "Other");
+    }
+  }, [user]);
+
+  // Initialize degree dropdown from user data
+  useEffect(() => {
+    const degree = (user as Student)?.degreeName || "";
+    if (degree) {
+      const isPreset = DEGREE_OPTIONS.some((o) => o.value === degree);
+      setSelectedDegree(isPreset ? degree : "Other");
+    }
+  }, [user]);
 
   // Handle coupon application
   const handleApplyCoupon = async () => {
@@ -219,6 +354,7 @@ const CartForm = ({
     watch,
     setValue,
     trigger,
+    getValues,
   } = useForm<EnrollmentFormData>({
     resolver: zodResolver(
       z.object({
@@ -245,6 +381,43 @@ const CartForm = ({
       termsAndConditions: false,
     },
   });
+
+  // Fetch full profile from API (session may lack phone, college, degree, occupation)
+  // and populate form when profile has more data than session
+  useEffect(() => {
+    if (!user?._id) return;
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await apiClient.get("/users/me");
+        const profile = res.data?.data;
+        if (!mounted || !profile) return;
+        // Update form fields with profile data
+        setValue("phone", profile.phone || "");
+        setValue("collegeName", profile.collegeName || "");
+        setValue("degreeName", profile.degreeName || "");
+        setValue("fatherOccupation", profile.fatherOccupation || "");
+        // Sync dropdown selections
+        const degree = profile.degreeName || "";
+        if (degree) {
+          const isPreset = DEGREE_OPTIONS.some((o) => o.value === degree);
+          setSelectedDegree(isPreset ? degree : "Other");
+        }
+        const occupation = profile.fatherOccupation || "";
+        if (occupation) {
+          const isPreset = FATHER_OCCUPATION_OPTIONS.some(
+            (o) => o.value === occupation,
+          );
+          setSelectedFatherOccupation(isPreset ? occupation : "Other");
+        }
+      } catch {
+        // Ignore - session data will be used
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [user?._id, setValue]);
 
   const handleStepClick = (index: number) => {
     const currentActiveIndex = cartSteps.findIndex((step) => step.isActive);
@@ -402,41 +575,99 @@ const CartForm = ({
                         </div>
                         <CollegeSelect
                           label="College Name"
+                          labelClassName="text-base text-text-primary font-bold"
                           required
                           placeholder="Search and select your college"
                           value={watch("collegeName")}
                           onChange={(value) => setValue("collegeName", value)}
                           error={errors.collegeName?.message}
                         />
-                        <Input
-                          label="Degree Name"
-                          labelClassName="text-base text-text-primary font-bold"
-                          placeholder="Enter your degree name"
-                          type="text"
-                          required
-                          {...register("degreeName")}
-                          className={errors.degreeName ? "border-red-500" : ""}
-                        />
-                        {errors.degreeName && (
-                          <p className="text-red-500 text-sm">
-                            {errors.degreeName.message}
-                          </p>
-                        )}
-                        <Input
-                          label="Father Occupation"
-                          labelClassName="text-base text-text-primary font-bold"
-                          placeholder="Enter your father occupation"
-                          required
-                          {...register("fatherOccupation")}
-                          className={
-                            errors.fatherOccupation ? "border-red-500" : ""
-                          }
-                        />
-                        {errors.fatherOccupation && (
-                          <p className="text-red-500 text-sm">
-                            {errors.fatherOccupation.message}
-                          </p>
-                        )}
+                        <div className="flex flex-col gap-2">
+                          <Select
+                            label="Degree Name"
+                            labelClassName="text-base text-text-primary font-bold"
+                            placeholder="Select your degree"
+                            required
+                            options={DEGREE_OPTIONS}
+                            searchable
+                            searchPlaceholder="Search degrees..."
+                            value={selectedDegree}
+                            onChange={(value) => {
+                              setSelectedDegree(value);
+                              if (value !== "Other") {
+                                setValue("degreeName", value);
+                              } else {
+                                setValue("degreeName", "");
+                              }
+                            }}
+                            error={errors.degreeName?.message}
+                            className={
+                              errors.degreeName ? "border-red-500" : ""
+                            }
+                          />
+                          {selectedDegree === "Other" && (
+                            <Input
+                              label="Specify Degree"
+                              labelClassName="text-base text-text-primary font-bold"
+                              placeholder="Enter your degree name"
+                              value={watch("degreeName")}
+                              onChange={(e) =>
+                                setValue("degreeName", e.target.value)
+                              }
+                              className={
+                                errors.degreeName ? "border-red-500" : ""
+                              }
+                            />
+                          )}
+                          {errors.degreeName && (
+                            <p className="text-red-500 text-sm">
+                              {errors.degreeName.message}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex flex-col gap-2">
+                          <Select
+                            label="Father Occupation"
+                            labelClassName="text-base text-text-primary font-bold"
+                            placeholder="Select father occupation"
+                            required
+                            options={FATHER_OCCUPATION_OPTIONS}
+                            searchable
+                            searchPlaceholder="Search occupations..."
+                            value={selectedFatherOccupation}
+                            onChange={(value) => {
+                              setSelectedFatherOccupation(value);
+                              if (value !== "Other") {
+                                setValue("fatherOccupation", value);
+                              } else {
+                                setValue("fatherOccupation", "");
+                              }
+                            }}
+                            error={errors.fatherOccupation?.message}
+                            className={
+                              errors.fatherOccupation ? "border-red-500" : ""
+                            }
+                          />
+                          {selectedFatherOccupation === "Other" && (
+                            <Input
+                              label="Specify Occupation"
+                              labelClassName="text-base text-text-primary font-bold"
+                              placeholder="Enter your father occupation"
+                              value={watch("fatherOccupation")}
+                              onChange={(e) =>
+                                setValue("fatherOccupation", e.target.value)
+                              }
+                              className={
+                                errors.fatherOccupation ? "border-red-500" : ""
+                              }
+                            />
+                          )}
+                          {errors.fatherOccupation && (
+                            <p className="text-red-500 text-sm">
+                              {errors.fatherOccupation.message}
+                            </p>
+                          )}
+                        </div>
                       </div>
                       <OrangeButton
                         className="w-full text-base font-bold py-3 px-6 font-plus-jakarta"
@@ -702,6 +933,24 @@ const CartForm = ({
 
                             setIsCreatingOrder(true);
                             try {
+                              // Update user profile with form data (college, degree, father occupation, etc.)
+                              const formData = getValues();
+                              const nameParts = (formData.name || "")
+                                .trim()
+                                .split(/\s+/);
+                              const firstName = nameParts[0] || "";
+                              const lastName =
+                                nameParts.slice(1).join(" ") || "";
+                              await apiClient.put("/users/me", {
+                                firstName,
+                                lastName,
+                                email: formData.email,
+                                phone: formData.phone,
+                                collegeName: formData.collegeName,
+                                degreeName: formData.degreeName,
+                                fatherOccupation: formData.fatherOccupation,
+                              });
+
                               // Same calculation as Order Summary — send exact total so Paytm matches UI
                               const planPrice =
                                 planType === "elite"

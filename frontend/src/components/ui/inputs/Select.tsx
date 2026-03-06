@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { cn } from "@/lib/utils";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Search } from "lucide-react";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -15,6 +15,7 @@ export interface SelectOption {
 
 interface SelectProps {
   label?: string;
+  labelClassName?: string;
   required?: boolean;
   options: SelectOption[];
   className?: string;
@@ -23,10 +24,13 @@ interface SelectProps {
   disabled?: boolean;
   onChange?: (value: string) => void;
   error?: string;
+  searchable?: boolean;
+  searchPlaceholder?: string;
 }
 
 const Select = ({
   label,
+  labelClassName,
   required = false,
   options,
   className,
@@ -35,9 +39,23 @@ const Select = ({
   disabled = false,
   onChange,
   error,
+  searchable = false,
+  searchPlaceholder = "Search options...",
 }: SelectProps) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  // Reset search when dropdown closes
+  useEffect(() => {
+    if (!isOpen) {
+      setSearchTerm("");
+    } else if (searchable) {
+      // Focus search input when dropdown opens
+      setTimeout(() => searchRef.current?.focus(), 0);
+    }
+  }, [isOpen, searchable]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -56,8 +74,17 @@ const Select = ({
     };
   }, []);
 
-  const selectedOption = options.find(option => option.value === value);
+  const selectedOption = options.find((option) => option.value === value);
   const displayValue = selectedOption ? selectedOption.label : placeholder;
+
+  // Filter options by search term (matches label or value)
+  const filteredOptions = searchable && searchTerm.trim()
+    ? options.filter(
+        (option) =>
+          option.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          option.value.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    : options;
 
   return (
     <div
@@ -69,7 +96,12 @@ const Select = ({
       )}
     >
       {label && (
-        <label className="font-medium text-black mb-2 block">
+        <label
+          className={cn(
+            "font-medium text-black mb-2 block",
+            labelClassName
+          )}
+        >
           {label} {required && <span className="text-red-500">*</span>}
         </label>
       )}
@@ -114,12 +146,34 @@ const Select = ({
         {/* Dropdown Options */}
         {isOpen && (
           <div
-            className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-y-auto"
+            className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-80 overflow-hidden"
             style={{
               animation: "fadeIn 0.2s ease-out",
             }}
           >
-            {options.map((option) => (
+            {searchable && (
+              <div className="p-3 border-b border-gray-200">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    ref={searchRef}
+                    type="text"
+                    placeholder={searchPlaceholder}
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onKeyDown={(e) => e.stopPropagation()}
+                    className="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none"
+                  />
+                </div>
+              </div>
+            )}
+            <div className="max-h-60 overflow-y-auto">
+            {filteredOptions.length === 0 ? (
+              <div className="p-4 text-center text-gray-500">
+                {searchTerm.trim() ? "No options found" : "No options available"}
+              </div>
+            ) : (
+              filteredOptions.map((option) => (
               <button
                 key={option.value}
                 type="button"
@@ -140,7 +194,9 @@ const Select = ({
               >
                 {option.label}
               </button>
-            ))}
+              ))
+            )}
+            </div>
           </div>
         )}
       </div>

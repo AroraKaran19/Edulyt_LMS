@@ -103,6 +103,7 @@ const VirtualizedCollegeList = React.memo(
 
 interface CollegeSelectProps {
   label?: string;
+  labelClassName?: string;
   required?: boolean;
   className?: string;
   placeholder?: string;
@@ -114,6 +115,7 @@ interface CollegeSelectProps {
 
 const CollegeSelect = ({
   label,
+  labelClassName,
   required = false,
   className,
   placeholder = "Search and select your college",
@@ -263,7 +265,12 @@ const CollegeSelect = ({
       )}
     >
       {label && (
-        <label className="font-medium text-black mb-2 block">
+        <label
+          className={cn(
+            "font-medium text-black mb-2 block",
+            labelClassName
+          )}
+        >
           {label} {required && <span className="text-red-500">*</span>}
         </label>
       )}
