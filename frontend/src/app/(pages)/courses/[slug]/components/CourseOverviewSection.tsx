@@ -6,8 +6,17 @@ import SectionContainer from "@/components/ui/course/SectionContainer";
 import VideoShowcase from "./VideoShowcase";
 import { Course, CourseModule } from "@/types";
 import { LockIcon } from "../../../../../../public/icons";
+import { Play } from "lucide-react";
 
-const CourseOverviewSection = ({ course }: { course: Course }) => {
+const CourseOverviewSection = ({
+  course,
+  isEnrolled = false,
+  courseSlug,
+}: {
+  course: Course;
+  isEnrolled?: boolean;
+  courseSlug?: string;
+}) => {
   const [currentTabIndex, setCurrentTabIndex] = useState(0);
   const [isAutoSwitchEnabled, setIsAutoSwitchEnabled] = useState(true);
   const autoSwitchIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -19,15 +28,21 @@ const CourseOverviewSection = ({ course }: { course: Course }) => {
     },
     {
       label: "Course Curriculum",
-      activeTabIcon: <LockIcon className="size-4 lg:size-5" />,
+      activeTabIcon: isEnrolled ? (
+        <Play className="size-4 lg:size-5" />
+      ) : (
+        <LockIcon className="size-4 lg:size-5" />
+      ),
       component: (
         <VideoShowcase
           modules={(course?.modules as CourseModule[]) || []}
+          isEnrolled={isEnrolled}
+          courseSlug={courseSlug}
         />
       ),
       showCount: (course?.modules as CourseModule[])?.reduce(
         (acc, module) => (acc || 0) + module.lessons.length,
-        0
+        0,
       ),
     },
   ];
@@ -53,7 +68,7 @@ const CourseOverviewSection = ({ course }: { course: Course }) => {
   const handleTabChange = (index: number) => {
     setCurrentTabIndex(index);
     setIsAutoSwitchEnabled(false);
-    
+
     // Clear the interval immediately
     if (autoSwitchIntervalRef.current) {
       clearInterval(autoSwitchIntervalRef.current);

@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { Course, Testimonial, CourseModule, CourseLesson, Content } from "@/types";
 import { cn } from "@/lib/utils";
 import CourseHeader from "./components/CourseHeader";
@@ -20,6 +21,7 @@ const CoursePage = ({ course }: { course: Course }) => {
   const [isEnrollmentModalOpen, setIsEnrollmentModalOpen] = useState(false);
   const [isEnrolled, setIsEnrolled] = useState(false);
   const [isCheckingEnrollment, setIsCheckingEnrollment] = useState(true);
+  const router = useRouter();
 
   const { data: session, status } = useSession();
   const { checkEnrollment } = useEnrollment();
@@ -148,11 +150,17 @@ const CoursePage = ({ course }: { course: Course }) => {
       </div>
       {filteredCourse?.scholarship && <ScholarshipBanner course={filteredCourse} />}
       <TestimonialSection testimonials={filteredCourse.testimonials as Testimonial[]} />
-      <CourseOverviewSection course={filteredCourse} />
+      <CourseOverviewSection
+        course={filteredCourse}
+        isEnrolled={isEnrolled}
+        courseSlug={course.slug}
+      />
       <CourseInstructorSection course={filteredCourse} />
       <CertificateSection
         course={filteredCourse}
         onEnrollClick={() => setIsEnrollmentModalOpen(true)}
+        isEnrolled={isEnrolled}
+        onAccessCourse={() => router.push(`/courses/${course.slug}/watch`)}
       />
       <VerticalCarouselSection />
       <CurriculumSection course={filteredCourse} />

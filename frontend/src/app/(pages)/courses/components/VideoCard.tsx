@@ -1,3 +1,4 @@
+"use client";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import { formatDuration } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -13,20 +14,26 @@ import {
 } from "lucide-react";
 import { LockIcon } from "../../../../../public/icons";
 import ImageComponent from "@/components/ui/ImageComponent";
+import { useRouter } from "next/navigation";
 
 const VideoCard = ({
   lesson,
   index,
   currentModuleImage,
+  isEnrolled = false,
+  courseSlug,
   ...props
 }: {
   lesson: CourseLesson;
   currentModuleImage: string;
   index: number;
+  isEnrolled?: boolean;
+  courseSlug?: string;
 } & {
   className?: string;
   style?: React.CSSProperties;
 }) => {
+  const router = useRouter();
   const totalDuration =
     lesson.contents?.reduce((acc, content) => {
       if (
@@ -79,15 +86,28 @@ const VideoCard = ({
             </p>
           </div>
           <div className="video-purchase-button w-full md:w-1/3 flex flex-col gap-2 mt-auto">
-            <OrangeButton
-              className="w-full bg-orange-500/30 cursor-not-allowed"
-              glow={false}
-            >
-              <span className="flex items-center justify-center gap-2">
-                <LockIcon className="size-5" />
-                <p>Play</p>
-              </span>
-            </OrangeButton>
+            {isEnrolled && courseSlug ? (
+              <OrangeButton
+                className="w-full"
+                glow={false}
+                onClick={() => router.push(`/courses/${courseSlug}/watch`)}
+              >
+                <span className="flex items-center justify-center gap-2">
+                  <Play className="size-5" />
+                  <p>Play</p>
+                </span>
+              </OrangeButton>
+            ) : (
+              <OrangeButton
+                className="w-full bg-orange-500/30 cursor-not-allowed"
+                glow={false}
+              >
+                <span className="flex items-center justify-center gap-2">
+                  <LockIcon className="size-5" />
+                  <p>Play</p>
+                </span>
+              </OrangeButton>
+            )}
           </div>
         </div>
       </div>
@@ -130,9 +150,11 @@ const VideoCard = ({
                     )}
                   </div>
                 </div>
-                <div className="flex items-center gap-1 text-xs">
-                  <LockIcon className="size-5 text-black" />
-                </div>
+                {!isEnrolled && (
+                  <div className="flex items-center gap-1 text-xs">
+                    <LockIcon className="size-5 text-black" />
+                  </div>
+                )}
               </div>
             </div>
           );

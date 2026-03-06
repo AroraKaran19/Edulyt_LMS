@@ -10,9 +10,13 @@ import { calculateDiscountDisplay } from "@/lib/utils/discount";
 const CertificateSection = ({
   course,
   onEnrollClick,
+  isEnrolled = false,
+  onAccessCourse,
 }: {
   course: Course;
   onEnrollClick?: () => void;
+  isEnrolled?: boolean;
+  onAccessCourse?: () => void;
 }) => {
   const plans: {
     type: "essential" | "elite";
@@ -111,6 +115,8 @@ const CertificateSection = ({
               totalPlans={plans.length}
               key={index}
               onEnrollClick={onEnrollClick}
+              isEnrolled={isEnrolled}
+              onAccessCourse={onAccessCourse}
             />
           ))}
         </div>

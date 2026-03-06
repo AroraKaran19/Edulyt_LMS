@@ -10,6 +10,8 @@ const PlanCard = ({
   className,
   onClick,
   onEnrollClick,
+  isEnrolled = false,
+  onAccessCourse,
 }: {
   plan: {
     icon: React.ReactNode;
@@ -27,6 +29,8 @@ const PlanCard = ({
   className?: string;
   onClick?: () => void;
   onEnrollClick?: () => void;
+  isEnrolled?: boolean;
+  onAccessCourse?: () => void;
 }) => {
   return (
     <div
@@ -113,14 +117,23 @@ const PlanCard = ({
 
       <div className="plan-button-container mt-auto w-full flex justify-center p-3">
         <WhiteButton
-          className="w-full hover:bg-[#F77124] hover:text-white! text-text-primary transition-colors duration-200 ease-in-out"
+          className={cn(
+            "w-full text-text-primary transition-colors duration-200 ease-in-out",
+            isEnrolled
+              ? "bg-green-100 hover:bg-green-200"
+              : "hover:bg-[#F77124] hover:text-white"
+          )}
           onClick={() => {
-            onEnrollClick?.();
-            onClick?.();
+            if (isEnrolled) {
+              onAccessCourse?.();
+            } else {
+              onEnrollClick?.();
+              onClick?.();
+            }
           }}
         >
           <span className="w-full text-center font-extrabold text-sm md:text-base">
-            Enroll Now
+            {isEnrolled ? "Enrolled" : "Enroll Now"}
           </span>
         </WhiteButton>
       </div>

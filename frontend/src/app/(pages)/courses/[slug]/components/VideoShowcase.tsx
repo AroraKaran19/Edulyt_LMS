@@ -2,7 +2,15 @@ import VideoCard from "@/app/(pages)/courses/components/VideoCard";
 import { CourseLesson, CourseModule } from "@/types";
 import { BookOpen } from "lucide-react";
 
-const VideoShowcase = ({ modules }: { modules: CourseModule[] | [] }) => {
+const VideoShowcase = ({
+  modules,
+  isEnrolled = false,
+  courseSlug,
+}: {
+  modules: CourseModule[] | [];
+  isEnrolled?: boolean;
+  courseSlug?: string;
+}) => {
   return (
     <div className="video-showcase w-full flex flex-col gap-6">
       {modules.length > 0 ? (
@@ -29,6 +37,8 @@ const VideoShowcase = ({ modules }: { modules: CourseModule[] | [] }) => {
                   currentModuleImage={courseModule.thumbnailUrl}
                   lesson={lesson as CourseLesson}
                   index={index}
+                  isEnrolled={isEnrolled}
+                  courseSlug={courseSlug}
                 />
               ))
             )}
