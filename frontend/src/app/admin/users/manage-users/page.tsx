@@ -1442,7 +1442,7 @@ const ManageUsersPage = () => {
                 </p>
               </div>
               <p className="text-sm text-red-600 font-medium">
-                ⚠️ This will soft delete the user (mark as deleted)
+                ⚠️ This will permanently delete the user and all their data (enrollments, orders, etc.)
               </p>
             </div>
 

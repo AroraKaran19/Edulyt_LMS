@@ -77,6 +77,7 @@ const GiftCourseModal = ({
   const [debouncedCourseSearch, setDebouncedCourseSearch] = useState("");
   const coursesScrollRef = useRef<HTMLDivElement>(null);
   const coursesObserverTarget = useRef<HTMLDivElement>(null);
+  const selectAllCheckboxRef = useRef<HTMLInputElement>(null);
   const lastCourseSearchRef = useRef<string>("");
   const isLoadingCoursesRef = useRef(false);
 
@@ -378,6 +379,65 @@ const GiftCourseModal = ({
     }
   };
 
+  // Default plan: essential if available, else elite
+  const getDefaultPlan = (
+    course: Course
+  ): "elite" | "essential" | undefined => {
+    if (!course.plans) return undefined;
+    if (course.plans.essential) return "essential";
+    if (course.plans.elite) return "elite";
+    return undefined;
+  };
+
+  // Select/deselect all currently loaded courses
+  const handleSelectAllCourses = async (selectAll: boolean) => {
+    if (selectAll) {
+      const coursesWithPlans = courses.filter(
+        (c) => c.plans && (c.plans.elite || c.plans.essential)
+      );
+      const toAdd = coursesWithPlans.filter(
+        (c) => !selectedCourses.some((s) => s._id === c._id)
+      );
+      if (toAdd.length > 0) {
+        setSelectedCourses((prev) => [...prev, ...toAdd]);
+        const defaultPlans: Record<string, "elite" | "essential"> = {};
+        toAdd.forEach((c) => {
+          const plan = getDefaultPlan(c);
+          if (c._id && plan) defaultPlans[c._id] = plan;
+        });
+        setSelectedPlans((prev) => ({ ...prev, ...defaultPlans }));
+        // Fetch details for partial access
+        await Promise.all(
+          toAdd.map((c) => c._id && fetchCourseDetails(c._id))
+        );
+      }
+    } else {
+      setSelectedCourses([]);
+      setSelectedPlans({});
+      setCoursesDetails({});
+    }
+  };
+
+  const allLoadedCoursesHavePlans =
+    courses.length > 0 &&
+    courses.every((c) => c.plans && (c.plans.elite || c.plans.essential));
+  const allLoadedSelected =
+    courses.length > 0 &&
+    courses
+      .filter((c) => c.plans && (c.plans.elite || c.plans.essential))
+      .every((c) => selectedCourses.some((s) => s._id === c._id));
+  const someLoadedSelected = courses.some((c) =>
+    selectedCourses.some((s) => s._id === c._id)
+  );
+
+  // Set indeterminate state on Select All checkbox
+  useEffect(() => {
+    const el = selectAllCheckboxRef.current;
+    if (el) {
+      el.indeterminate = someLoadedSelected && !allLoadedSelected;
+    }
+  }, [someLoadedSelected, allLoadedSelected]);
+
   // Handle course selection toggle (step 1)
   const handleCourseToggle = async (courseId: string, isSelected: boolean) => {
     const course = courses.find((c) => c._id === courseId);
@@ -386,6 +446,11 @@ const GiftCourseModal = ({
     if (isSelected) {
       // Add course to selection
       setSelectedCourses((prev) => [...prev, course]);
+      // Default plan: essential if available, else elite
+      const defaultPlan = getDefaultPlan(course);
+      if (defaultPlan) {
+        setSelectedPlans((prev) => ({ ...prev, [courseId]: defaultPlan }));
+      }
       // Fetch course details for partial access
       await fetchCourseDetails(courseId);
     } else {
@@ -1190,6 +1255,38 @@ const GiftCourseModal = ({
                       className="w-full"
                     />
                   </div>
+                  {/* Select All */}
+                  {courses.length > 0 && (
+                    <label className="flex items-center gap-2 mb-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer">
+                      <input
+                        ref={selectAllCheckboxRef}
+                        type="checkbox"
+                        checked={allLoadedSelected}
+                        onChange={(e) =>
+                          handleSelectAllCourses(e.target.checked)
+                        }
+                        className="w-5 h-5 text-orange-600 border-gray-300 rounded focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
+                      />
+                      <span className="text-sm font-medium text-gray-700">
+                        Select all{" "}
+                        {courses.filter(
+                          (c) => c.plans && (c.plans.elite || c.plans.essential)
+                        ).length}{" "}
+                        course
+                        {courses.filter(
+                          (c) => c.plans && (c.plans.elite || c.plans.essential)
+                        ).length !== 1
+                          ? "s"
+                          : ""}{" "}
+                        (loaded)
+                      </span>
+                      {!allLoadedCoursesHavePlans && (
+                        <span className="text-xs text-amber-600">
+                          Only courses with plans will be selected
+                        </span>
+                      )}
+                    </label>
+                  )}
                   <div
                     ref={coursesScrollRef}
                     className="border-2 border-gray-200 rounded-xl overflow-hidden max-h-[calc(90vh-380px)] min-h-[400px] overflow-y-auto"

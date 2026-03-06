@@ -70,7 +70,7 @@ router.put("/admin/:userId/password", adminChangeUserPassword);
 
 /**
  * @route   DELETE /api/users/admin/:userId
- * @desc    Delete user (soft delete)
+ * @desc    Delete user (permanent delete)
  * @access  Admin
  */
 router.delete("/admin/:userId", deleteUser);

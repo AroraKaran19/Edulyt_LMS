@@ -85,7 +85,7 @@ async function main() {
     "Data Science",
     "SAS Ecosystem - Base, SQL, Macros & BI",
     "SAS - Tools & Modeling",
-    "Data Visualization (Power BI, Tableau, SAS, Excel-",
+    "Data Visualization (Power BI, Tableau, SAS, Excel & Python)",
     "Artificial Intelligence (AI & NLP)",
     "Machine Learning & Deep Learning",
     "Business Intelligence & Analytics",

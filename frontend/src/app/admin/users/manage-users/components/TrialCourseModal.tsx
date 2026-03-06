@@ -43,6 +43,7 @@ const TrialCourseModal = ({
   const [debouncedCourseSearch, setDebouncedCourseSearch] = useState("");
   const coursesScrollRef = useRef<HTMLDivElement>(null);
   const coursesObserverTarget = useRef<HTMLDivElement>(null);
+  const selectAllCheckboxRef = useRef<HTMLInputElement>(null);
   const lastCourseSearchRef = useRef<string>("");
   const isLoadingCoursesRef = useRef(false);
 
@@ -277,6 +278,40 @@ const TrialCourseModal = ({
     };
   }, [userHasMore, isLoadingUsers, userCurrentPage, fetchUsers, debouncedUserSearch]);
 
+  const coursesWithPlans = courses.filter(
+    (c) => c.plans && (c.plans.elite || c.plans.essential)
+  );
+  const allLoadedSelected =
+    coursesWithPlans.length > 0 &&
+    coursesWithPlans.every((c) =>
+      selectedCourses.some((s) => s._id === c._id)
+    );
+  const someLoadedSelected = courses.some((c) =>
+    selectedCourses.some((s) => s._id === c._id)
+  );
+
+  // Select/deselect all currently loaded courses
+  const handleSelectAllCourses = (selectAll: boolean) => {
+    if (selectAll) {
+      const toAdd = coursesWithPlans.filter(
+        (c) => !selectedCourses.some((s) => s._id === c._id)
+      );
+      if (toAdd.length > 0) {
+        setSelectedCourses((prev) => [...prev, ...toAdd]);
+      }
+    } else {
+      setSelectedCourses([]);
+    }
+  };
+
+  // Set indeterminate state on Select All checkbox
+  useEffect(() => {
+    const el = selectAllCheckboxRef.current;
+    if (el) {
+      el.indeterminate = someLoadedSelected && !allLoadedSelected;
+    }
+  }, [someLoadedSelected, allLoadedSelected]);
+
   // Handle course selection
   const handleCourseToggle = (courseId: string, checked: boolean) => {
     if (checked) {
@@ -326,6 +361,7 @@ const TrialCourseModal = ({
               userId,
               courseId: course._id!,
               trialDurationDays,
+              planType: "essential",
             };
             const result = await createTrialEnrollment(trialData);
 
@@ -520,6 +556,29 @@ const TrialCourseModal = ({
                       className="w-full"
                     />
                   </div>
+                  {/* Select All */}
+                  {courses.length > 0 && (
+                    <label className="flex items-center gap-2 mb-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer">
+                      <input
+                        ref={selectAllCheckboxRef}
+                        type="checkbox"
+                        checked={allLoadedSelected}
+                        onChange={(e) =>
+                          handleSelectAllCourses(e.target.checked)
+                        }
+                        className="w-5 h-5 text-orange-600 border-gray-300 rounded focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
+                      />
+                      <span className="text-sm font-medium text-gray-700">
+                        Select all {coursesWithPlans.length} course
+                        {coursesWithPlans.length !== 1 ? "s" : ""} (loaded)
+                      </span>
+                      {coursesWithPlans.length < courses.length && (
+                        <span className="text-xs text-amber-600">
+                          Only courses with plans will be selected
+                        </span>
+                      )}
+                    </label>
+                  )}
                   <div
                     ref={coursesScrollRef}
                     className="border-2 border-gray-200 rounded-xl overflow-hidden max-h-[calc(90vh-380px)] min-h-[400px] overflow-y-auto"

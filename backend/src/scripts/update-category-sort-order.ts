@@ -1,7 +1,8 @@
 /**
  * Updates category sortOrder in the database to match the order in course-category-structure.json.
- * Categories in the structure get sortOrder 1, 2, 3, ... (by position).
- * Categories not in the structure get sortOrder 999 (appear at end).
+ * - College categories (structure): sortOrder 1–10
+ * - Professionals categories (categoryOrder): sortOrder 11–20
+ * - Others: sortOrder 999 (appear at end)
  *
  * Run from backend root:
  *   npx ts-node src/scripts/update-category-sort-order.ts
@@ -41,13 +42,21 @@ async function main() {
     process.exit(1);
   }
 
-  // Use categoryOrder if present (for display sort), else derive from structure
-  const categoryOrder =
+  // College categories from structure (sortOrder 1–10)
+  const collegeOrder = (data.structure || [])
+    .map((s) => (s.categoryName || "").trim())
+    .filter(Boolean);
+
+  // Professionals categories from categoryOrder (sortOrder 11–20)
+  const professionalsOrder =
     data.categoryOrder && Array.isArray(data.categoryOrder)
       ? data.categoryOrder.map((n) => String(n).trim()).filter(Boolean)
-      : (data.structure || []).map((s) => (s.categoryName || "").trim()).filter(Boolean);
+      : [];
 
-  console.log("📁 Loaded", categoryOrder.length, "categories from structure");
+  const allOrderedNames = [...collegeOrder, ...professionalsOrder];
+  console.log(
+    `📁 Loaded ${collegeOrder.length} college + ${professionalsOrder.length} professionals categories`
+  );
   if (dryRun) {
     console.log("[DRY RUN] No changes will be written.");
   }
@@ -57,11 +66,23 @@ async function main() {
   const updates: { name: string; sortOrder: number }[] = [];
   const notFound: string[] = [];
 
-  for (let i = 0; i < categoryOrder.length; i++) {
-    const name = categoryOrder[i];
+  // College: sortOrder 1, 2, ... 10
+  for (let i = 0; i < collegeOrder.length; i++) {
+    const name = collegeOrder[i];
     const category = await CategoryModel.findOne({ name });
     if (category) {
       updates.push({ name, sortOrder: i + 1 });
+    } else {
+      notFound.push(name);
+    }
+  }
+
+  // Professionals: sortOrder 11, 12, ... 20
+  for (let i = 0; i < professionalsOrder.length; i++) {
+    const name = professionalsOrder[i];
+    const category = await CategoryModel.findOne({ name });
+    if (category) {
+      updates.push({ name, sortOrder: 11 + i });
     } else {
       notFound.push(name);
     }
@@ -78,10 +99,10 @@ async function main() {
       console.log(`✅ ${name} → sortOrder ${sortOrder}`);
     }
 
-    // Set sortOrder 999 for categories not in structure
-    const updatedIds = (await CategoryModel.find({ name: { $in: categoryOrder } }).select("_id")).map(
-      (c) => c._id
-    );
+    // Set sortOrder 999 for categories not in either structure
+    const updatedIds = (
+      await CategoryModel.find({ name: { $in: allOrderedNames } }).select("_id")
+    ).map((c) => c._id);
     const result = await CategoryModel.updateMany(
       { _id: { $nin: updatedIds } },
       { $set: { sortOrder: 999 } }

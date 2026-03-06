@@ -1,4 +1,17 @@
-import { InstructorModel, StudentModel, UserModel } from "../models";
+import mongoose from "mongoose";
+import {
+  InstructorModel,
+  StudentModel,
+  UserModel,
+  EnrollmentModel,
+  OrderModel,
+  CertificateModel,
+  VideoNoteModel,
+  ReviewModel,
+  QnAModel,
+  AffiliateModel,
+  CourseModel,
+} from "../models";
 import { User } from "../types/user";
 import { AppError } from "../middlewares/error.middleware";
 import bcrypt from "bcrypt";
@@ -114,16 +127,38 @@ export const updateUserStatusService = async (
 export const deleteUserService = async (
   userId: string
 ): Promise<User | null> => {
-  // Soft delete - mark as deleted instead of actually deleting
-  const user = await UserModel.findByIdAndUpdate(
-    userId,
-    {
-      status: "deleted",
-      deletedAt: new Date(),
-      updatedAt: new Date(),
-    },
-    { new: true, runValidators: true }
-  ).select("-password -refreshTokens -__v");
+  const user = await UserModel.findById(userId)
+    .select("-password -refreshTokens -__v")
+    .lean();
+  if (!user) {
+    return null;
+  }
+
+  const userObjectId = new mongoose.Types.ObjectId(userId);
+
+  // Permanently delete user and all related data
+  await Promise.all([
+    EnrollmentModel.deleteMany({ userId: userObjectId }),
+    OrderModel.deleteMany({ userId: userObjectId }),
+    CertificateModel.deleteMany({ userId: userObjectId }),
+    VideoNoteModel.deleteMany({ user: userObjectId }),
+    ReviewModel.deleteMany({ userId: userObjectId }),
+    QnAModel.deleteMany({ userId: userObjectId }),
+    AffiliateModel.updateMany(
+      { users: userObjectId },
+      { $pull: { users: userObjectId } }
+    ),
+  ]);
+
+  // For instructors: unassign from their courses
+  if (user.userType === "instructor") {
+    await CourseModel.updateMany(
+      { instructor: userObjectId },
+      { $unset: { instructor: "" } }
+    );
+  }
+
+  await UserModel.findByIdAndDelete(userId);
 
   return user as User | null;
 };

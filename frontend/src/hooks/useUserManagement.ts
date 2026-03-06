@@ -31,6 +31,7 @@ export interface TrialCourseData {
   userId: string;
   courseId: string;
   trialDurationDays?: number;
+  planType?: "elite" | "essential"; // Defaults to essential when not specified
 }
 
 const useUserManagement = () => {
@@ -143,6 +144,7 @@ const useUserManagement = () => {
           courseId: data.courseId,
           isTrial: true,
           trialDurationDays: data.trialDurationDays || 7, // Default to 7 days if not specified
+          planType: data.planType || "essential", // Default to essential for trial
         };
 
         const response = await apiClient.post("/enrollments", requestBody);
