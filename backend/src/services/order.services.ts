@@ -233,7 +233,7 @@ async function resolveOrderAmount(params: {
 
       await CouponModel.findOneAndUpdate(
         { code: couponCode.toUpperCase() },
-        { $inc: { usedCount: 1 } }
+        { $inc: { usageCount: 1 } }
       );
 
       const discountAmount =
@@ -275,7 +275,7 @@ async function resolveOrderAmount(params: {
       appliedCouponCode = couponCode;
       await CouponModel.findOneAndUpdate(
         { code: couponCode.toUpperCase() },
-        { $inc: { usedCount: 1 } }
+        { $inc: { usageCount: 1 } }
       );
     }
   }

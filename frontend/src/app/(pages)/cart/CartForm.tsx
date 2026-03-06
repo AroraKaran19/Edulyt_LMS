@@ -108,8 +108,8 @@ const CartForm = ({
       if (result && result.valid) {
         setAppliedCoupon({
           code: couponCode.trim().toUpperCase(),
-          discountAmount: result.discountAmount || 0,
-          finalAmount: result.finalAmount || purchaseAmount,
+          discountAmount: result.discountAmount ?? 0,
+          finalAmount: result.finalAmount ?? purchaseAmount,
         });
         toast.success(result.message || "Coupon applied successfully!");
       } else {

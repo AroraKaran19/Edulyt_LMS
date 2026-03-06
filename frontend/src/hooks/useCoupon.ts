@@ -129,17 +129,33 @@ export const useCoupon = () => {
     [handleRequest]
   );
 
-  // Validate coupon
+  // Validate coupon - returns { valid: false, message } for invalid coupons
+  // so the caller can display the specific error (expired, min amount, etc.)
   const validateCoupon = useCallback(
     async (
       request: ValidateCouponRequest
     ): Promise<ValidateCouponResponse | null> => {
-      return handleRequest(async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
         const response = await apiClient.post("/coupons/validate", request);
         return response.data.data;
-      }, "Failed to validate coupon");
+      } catch (err: any) {
+        const msg =
+          err?.response?.data?.error?.message ||
+          err?.message ||
+          "Failed to validate coupon";
+        setError(msg);
+        // Return structured response for 400 (invalid coupon) so caller can show the message
+        if (err?.response?.status === 400) {
+          return { valid: false, message: msg };
+        }
+        return null;
+      } finally {
+        setIsLoading(false);
+      }
     },
-    [handleRequest]
+    []
   );
 
   return {
