@@ -23,6 +23,48 @@ const updatePendingPayments = async (userId: string, updateOperation: any) => {
 };
 
 
+const PENDING_ORDER_AGE_HOURS = 24;
+
+/**
+ * Delete abandoned pending orders older than the threshold
+ */
+const deleteOldPendingOrders = async () => {
+  const cutoff = new Date(Date.now() - PENDING_ORDER_AGE_HOURS * 60 * 60 * 1000);
+  const oldPendingOrders = await OrderModel.find({
+    paymentStatus: "pending",
+    createdAt: { $lt: cutoff },
+  }).lean();
+
+  if (oldPendingOrders.length === 0) return;
+
+  const orderIds = oldPendingOrders.map((o) => o._id.toString());
+  const userIdToOrderIds = new Map<string, string[]>();
+  for (const o of oldPendingOrders) {
+    const uid = o.userId?.toString();
+    if (uid) {
+      const list = userIdToOrderIds.get(uid) ?? [];
+      list.push(o._id.toString());
+      userIdToOrderIds.set(uid, list);
+    }
+  }
+
+  for (const [userId, ids] of userIdToOrderIds) {
+    try {
+      await UserModel.findByIdAndUpdate(userId, {
+        $pull: { pendingPayments: { $in: ids } },
+      });
+    } catch {
+      // User may not exist
+    }
+  }
+
+  const deleteResult = await OrderModel.deleteMany({
+    _id: { $in: orderIds },
+    paymentStatus: "pending",
+  });
+  console.log(`🗑️ Deleted ${deleteResult.deletedCount} abandoned pending order(s)`);
+};
+
 /**
  * Check payment status for all pending orders
  */
@@ -30,27 +72,27 @@ const checkPendingPayments = async () => {
   try {
     console.log("🔄 Starting payment verification cron job...");
 
-    // Find all orders with pending payment status
+    // 1. Verify recent pending orders (last 24 hours)
     const pendingOrders = await OrderModel.find({
       paymentStatus: "pending",
-      createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) }, // Only check orders from last 24 hours
-    }).limit(50); // Limit to 50 orders per run to avoid overwhelming Paytm API
+      createdAt: { $gte: new Date(Date.now() - PENDING_ORDER_AGE_HOURS * 60 * 60 * 1000) },
+    }).limit(50);
 
     if (pendingOrders.length === 0) {
       console.log("✅ No pending payments to verify");
-      return;
-    }
-
-    console.log(`🔍 Found ${pendingOrders.length} pending orders to verify`);
-
-    for (const order of pendingOrders) {
-      try {
-        await verifyOrderPayment(order);
-      } catch (error) {
-        console.error(`❌ Error verifying order ${order._id}:`, error);
-        // Continue with other orders even if one fails
+    } else {
+      console.log(`🔍 Found ${pendingOrders.length} pending orders to verify`);
+      for (const order of pendingOrders) {
+        try {
+          await verifyOrderPayment(order);
+        } catch (error) {
+          console.error(`❌ Error verifying order ${order._id}:`, error);
+        }
       }
     }
+
+    // 2. Delete abandoned pending orders older than 24 hours
+    await deleteOldPendingOrders();
 
     console.log("✅ Payment verification cron job completed");
   } catch (error) {
@@ -107,8 +149,11 @@ const verifyOrderPayment = async (order: any) => {
       await handleSuccessfulPayment(order, statusResponse.data.body);
     } else if (resultStatus === "TXN_FAILURE") {
       // Payment failed
+      const errorReason =
+        statusResponse.data.body.resultInfo?.resultMsg || "Payment declined";
+      order.paymentErrorReason = errorReason;
       await handleFailedPayment(order);
-      console.log(`❌ Payment failed for order ${order._id}`);
+      console.log(`❌ Payment failed for order ${order._id}: ${errorReason}`);
     } else {
       // Still pending
       console.log(`⏳ Payment still pending for order ${order._id}`);

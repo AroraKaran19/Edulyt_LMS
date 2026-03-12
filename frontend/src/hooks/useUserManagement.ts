@@ -10,10 +10,14 @@ export interface GetUsersParams {
   search?: string;
   userType?: "student" | "instructor" | "admin" | "super-admin";
   status?: "active" | "inactive" | "blocked";
+  /** Exclude users enrolled in any of these course IDs */
+  excludeEnrolledInCourseIds?: string[];
+  /** Add alreadyEnrolledInSelected to each user */
+  enrollmentStatusForCourseIds?: string[];
 }
 
 export interface GetUsersResult {
-  users: User[];
+  users: (User & { alreadyEnrolledInSelected?: boolean })[];
   total: number;
   page: number;
   totalPages: number;
@@ -70,6 +74,18 @@ const useUserManagement = () => {
           if (params.search) queryParams.append("search", params.search);
           if (params.userType) queryParams.append("userType", params.userType);
           if (params.status) queryParams.append("status", params.status);
+          if (params.excludeEnrolledInCourseIds?.length) {
+            queryParams.append(
+              "excludeEnrolledInCourseIds",
+              params.excludeEnrolledInCourseIds.join(",")
+            );
+          }
+          if (params.enrollmentStatusForCourseIds?.length) {
+            queryParams.append(
+              "enrollmentStatusForCourseIds",
+              params.enrollmentStatusForCourseIds.join(",")
+            );
+          }
 
           const response = await apiClient.get(
             `/users/admin?${queryParams.toString()}`
@@ -189,6 +205,22 @@ const useUserManagement = () => {
     [handleRequest]
   );
 
+  const getEnrollmentsByUserIds = useCallback(
+    async (userIds: string[]): Promise<Record<string, string[]> | null> => {
+      return handleRequest(
+        async () => {
+          const response = await apiClient.post(
+            "/enrollments/batch-by-users",
+            { userIds }
+          );
+          return response.data.data;
+        },
+        "Failed to fetch batch enrollments"
+      );
+    },
+    [handleRequest]
+  );
+
   const updateUser = useCallback(
     async (userId: string, updateData: Partial<User>): Promise<User | null> => {
       return handleRequest(
@@ -210,6 +242,83 @@ const useUserManagement = () => {
           return response.data.data;
         },
         "Failed to delete user"
+      );
+    },
+    [handleRequest]
+  );
+
+  const getCertificatesByUserId = useCallback(
+    async (userId: string): Promise<any[]> => {
+      try {
+        const response = await apiClient.get(
+          `/admin/users/${userId}/certificates?limit=100`
+        );
+        return response.data?.data?.certificates || [];
+      } catch (error) {
+        console.error("Failed to fetch user certificates:", error);
+        return [];
+      }
+    },
+    []
+  );
+
+  const getTotalSpendByUserId = useCallback(
+    async (userId: string): Promise<number> => {
+      try {
+        const response = await apiClient.get(
+          `/admin/users/${userId}/total-spend`
+        );
+        return response.data?.data?.totalSpend ?? 0;
+      } catch (error) {
+        console.error("Failed to fetch user total spend:", error);
+        return 0;
+      }
+    },
+    []
+  );
+
+  const getTimeSpentPerDay = useCallback(
+    async (
+      userId: string,
+      from: string,
+      to: string
+    ): Promise<{ date: string; minutes: number }[]> => {
+      try {
+        const response = await apiClient.get(
+          `/admin/users/${userId}/time-spent?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`
+        );
+        return response.data?.data ?? [];
+      } catch (error) {
+        console.error("Failed to fetch time spent per day:", error);
+        return [];
+      }
+    },
+    []
+  );
+
+  const getUserDetailsForAdmin = useCallback(
+    async (userId: string): Promise<{
+      user: User | null;
+      enrollments: Enrollment[];
+      certificates: any[];
+      totalSpend: number;
+      averageTimeToCompleteSeconds: number | null;
+    } | null> => {
+      return handleRequest(
+        async () => {
+          const response = await apiClient.get(
+            `/admin/users/${userId}/details`
+          );
+          const d = response.data?.data || {};
+          return {
+            user: d.user ?? null,
+            enrollments: d.enrollments ?? [],
+            certificates: d.certificates ?? [],
+            totalSpend: d.totalSpend ?? 0,
+            averageTimeToCompleteSeconds: d.averageTimeToCompleteSeconds ?? null,
+          };
+        },
+        "Failed to fetch user details"
       );
     },
     [handleRequest]
@@ -260,6 +369,11 @@ const useUserManagement = () => {
     giftCourse,
     createTrialEnrollment,
     getUserEnrollments,
+    getEnrollmentsByUserIds,
+    getCertificatesByUserId,
+    getTotalSpendByUserId,
+    getTimeSpentPerDay,
+    getUserDetailsForAdmin,
 
     // Validation
     validateGiftCourseData,

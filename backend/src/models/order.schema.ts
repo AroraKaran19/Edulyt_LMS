@@ -18,6 +18,7 @@ const orderSchema = new Schema<PaymentOrder>(
       default: "pending",
       enum: ["pending", "success", "failed"],
     },
+    paymentErrorReason: { type: String, required: false },
     couponCode: { type: String, required: false },
     couponDiscount: { type: Number, required: false, default: 0 },
   },

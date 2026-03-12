@@ -13,7 +13,7 @@ export interface UserEnrollment {
 export interface GetUserEnrollmentsParams {
   page?: number;
   limit?: number;
-  status?: "active" | "completed" | "dropped" | "paused" | "all";
+  status?: "active" | "completed" | "dropped" | "revoked" | "paused" | "all";
   search?: string;
   sortBy?:
     | "recent"

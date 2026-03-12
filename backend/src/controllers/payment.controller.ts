@@ -1,12 +1,14 @@
 import { Request, Response } from "express";
 import { asyncHandler } from "../middlewares/error.middleware";
 import { AppError, sendSuccessResponse } from "../middlewares/error.middleware";
-import { OrderModel, CourseModel, StudentModel } from "../models";
+import { OrderModel, StudentModel } from "../models";
 import { generatePaytmChecksum } from "../utils/lib/generatePaytmChecksum";
+import PaytmChecksum from "paytmchecksum";
 import axios from "axios";
 import {
   verifyPaymentGatewayToken,
   createEnrollmentAfterPayment,
+  processWebhook,
 } from "../services/order.services";
 
 /**
@@ -119,8 +121,9 @@ export const getPaymentStatus = asyncHandler(
           // The enrollment can be created manually later if needed
         }
       } else if (resultStatus === "TXN_FAILURE") {
-
         order.paymentStatus = "failed";
+        order.paymentErrorReason =
+          statusResponse.data.body.resultInfo?.resultMsg || "Payment declined";
         await order.save();
 
         // Remove from pending payments
@@ -187,5 +190,58 @@ export const verifyPaymentToken = asyncHandler(
     } catch (error) {
       throw new AppError("Invalid token", 400);
     }
+  }
+);
+
+/**
+ * @route   POST /api/payment/paytm-webhook
+ * @desc    Webhook for Paytm payment status callbacks
+ * @access  Public (Paytm server calls this)
+ */
+export const paytmWebhookHandler = asyncHandler(
+  async (req: Request, res: Response) => {
+    const body = req.body;
+
+    if (!body || typeof body !== "object") {
+      throw new AppError("Invalid webhook payload", 400);
+    }
+
+    const orderId = body.ORDERID || body.orderId;
+    const checksumHash = body.CHECKSUMHASH || body.checksumHash;
+
+    if (!orderId) {
+      throw new AppError("Order ID not found in webhook payload", 400);
+    }
+
+    if (process.env.PAYTM_KEY && checksumHash) {
+      const paramsCopy = { ...body };
+      const isValid = PaytmChecksum.verifySignature(
+        paramsCopy,
+        process.env.PAYTM_KEY,
+        checksumHash
+      );
+      if (!isValid) {
+        console.error("Paytm webhook checksum verification failed");
+        throw new AppError("Invalid checksum", 403);
+      }
+    } else if (checksumHash) {
+      console.warn("PAYTM_KEY not set, skipping webhook checksum verification");
+    }
+
+    const webhookPayload = {
+      orderId,
+      txnId: body.TXNID || body.txnId,
+      status: body.STATUS || body.status,
+      respMsg: body.RESPMSG || body.respMsg,
+    };
+
+    const result = await processWebhook(webhookPayload);
+
+    sendSuccessResponse(
+      res,
+      result,
+      "Paytm webhook processed successfully",
+      200
+    );
   }
 );

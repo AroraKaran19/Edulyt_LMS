@@ -48,6 +48,14 @@ const AdminSidebar = ({
           href: "/admin/courses/manage-courses",
         },
         {
+          label: "Enrollments",
+          href: "/admin/courses/enrollments",
+        },
+        {
+          label: "Orders",
+          href: "/admin/courses/orders",
+        },
+        {
           label: "Live Classes",
           href: "/admin/courses/live-classes",
         },
@@ -112,6 +120,10 @@ const AdminSidebar = ({
         {
           label: "Authentication Media",
           href: "/admin/settings/authentication-media",
+        },
+        {
+          label: "Certificate Jobs",
+          href: "/admin/settings/certificate-jobs",
         },
       ],
     },

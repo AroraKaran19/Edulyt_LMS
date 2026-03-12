@@ -84,7 +84,7 @@ export interface Enrollment {
   userId: User | string;
   courseId: Course | string;
   enrolledAt: Date;
-  status: "active" | "completed" | "dropped" | "paused";
+  status: "active" | "completed" | "dropped" | "revoked" | "paused";
   progress: EnrollmentProgressSummary; // Simplified progress summary
   completedContents: ContentCompletion[]; // Array of completed content with timestamps
   lastUpdated: Date;

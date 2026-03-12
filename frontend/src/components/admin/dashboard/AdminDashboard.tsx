@@ -80,6 +80,7 @@ const AdminDashboard = () => {
       growthRate: data.timePeriod?.growthRate,
       chartData: data.chartData || [],
       timePeriod: data.timePeriod,
+      todayEnrollments: data.todayEnrollments ?? 0,
     };
   }, [dashboardStatsData?.data?.data]);
 
@@ -92,6 +93,7 @@ const AdminDashboard = () => {
     studentPercentage = 0,
     growthRate = 0,
     timePeriod,
+    todayEnrollments = 0,
   } = dashboardStats || {};
 
   return (
@@ -113,7 +115,7 @@ const AdminDashboard = () => {
 
       {/* analytics banner */}
       <div className="space-y-4 sm:space-y-6 sm:pr-6">
-        {/* Top Row - Two Cards with responsive split */}
+        {/* Top Row - Three Cards */}
         <div className="grid grid-cols-1 lg:grid-cols-10 gap-4 sm:gap-6">
           <div className="lg:col-span-5 bg-white rounded-xl p-3 shadow-sm border border-[#EAECF0]">
             <div className="flex flex-row lg:items-center justify-between gap-3 lg:gap-0">
@@ -158,6 +160,23 @@ const AdminDashboard = () => {
                 activeFilter={duration}
                 setFilter={setDuration}
               />
+            </div>
+          </div>
+          <div className="lg:col-span-5 lg:col-start-6 bg-white rounded-xl p-3 shadow-sm border border-[#EAECF0]">
+            <div>
+              <h3 className="text-[#475467] font-medium text-sm sm:text-base">
+                Today&apos;s Enrollments
+              </h3>
+              <div className="flex items-baseline gap-2 mt-2">
+                {isLoading ? (
+                  <ButtonLoader />
+                ) : (
+                  <span className="text-xl sm:text-3xl font-extrabold text-[#1D2939]">
+                    {todayEnrollments}
+                  </span>
+                )}
+                <span className="text-xs text-[#475467]">today</span>
+              </div>
             </div>
           </div>
           <div className="lg:col-span-5 bg-white rounded-xl p-3 shadow-sm border border-[#EAECF0]">

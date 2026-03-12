@@ -56,7 +56,7 @@ export const CreateEnrollmentService = async (enrollmentData: {
     const existingEnrollment = await EnrollmentModel.findOne({
       userId: enrollmentData.userId,
       courseId: enrollmentData.courseId,
-      status: { $ne: "dropped" },
+      status: { $nin: ["dropped", "revoked"] },
     });
 
     if (existingEnrollment) {
@@ -218,9 +218,11 @@ export const GetUserEnrollmentsService = async (
 
     if (
       status &&
-      ["active", "completed", "dropped", "paused"].includes(status)
+      ["active", "completed", "dropped", "revoked", "paused"].includes(status)
     ) {
       filters.status = status;
+    } else if (!status) {
+      filters.status = { $nin: ["dropped", "revoked"] };
     }
 
     // Build sort object based on sortBy parameter
@@ -299,6 +301,48 @@ export const GetUserEnrollmentsService = async (
   } catch (error) {
     console.error("Database error in GetUserEnrollmentsService:", error);
     throw new AppError("Failed to get user enrollments", 500);
+  }
+};
+
+/**
+ * Get course IDs enrolled per user for multiple users (batch)
+ * Returns Record<userId, courseId[]>
+ */
+export const GetEnrollmentsByUserIdsService = async (
+  userIds: string[]
+): Promise<Record<string, string[]>> => {
+  if (!userIds?.length) return {};
+
+  const validIds = userIds.filter(
+    (id) => id && mongoose.Types.ObjectId.isValid(id)
+  );
+  if (validIds.length === 0) return {};
+
+  try {
+    const enrollments = await EnrollmentModel.find({
+      userId: { $in: validIds },
+      status: { $in: ["active", "completed", "paused"] },
+    })
+      .select("userId courseId")
+      .lean();
+
+    const result: Record<string, string[]> = {};
+    for (const e of enrollments) {
+      const uid = String(e.userId);
+      const cid =
+        typeof e.courseId === "object" && (e.courseId as any)?._id
+          ? String((e.courseId as any)._id)
+          : e.courseId
+          ? String(e.courseId)
+          : "";
+      if (!cid) continue;
+      if (!result[uid]) result[uid] = [];
+      if (!result[uid].includes(cid)) result[uid].push(cid);
+    }
+    return result;
+  } catch (error) {
+    console.error("Database error in GetEnrollmentsByUserIdsService:", error);
+    throw new AppError("Failed to get batch enrollments", 500);
   }
 };
 
@@ -669,8 +713,7 @@ export const UpdateEnrollmentProgressService = async (
           totalContents < updatedCompletedContents.length) &&
         updatedCompletedContents.length > 0
       ) {
-        // Fallback: estimate based on completed contents
-        // Use completed contents count as minimum, but estimate more if we have module/lesson info
+        // Fallback: conservative estimate - must be > completedContents to avoid false 100%
         const uniqueModules = new Set(
           updatedCompletedContents.map((c) => c.moduleId).filter(Boolean)
         );
@@ -678,9 +721,8 @@ export const UpdateEnrollmentProgressService = async (
           updatedCompletedContents.map((c) => c.lessonId).filter(Boolean)
         );
 
-        // Estimate: assume at least the number of completed contents, or estimate based on modules/lessons
         totalContents = Math.max(
-          updatedCompletedContents.length,
+          updatedCompletedContents.length + 1,
           uniqueLessons.size * 2,
           1
         );
@@ -707,18 +749,19 @@ export const UpdateEnrollmentProgressService = async (
           ? updatedProgress.totalLessons
           : Math.max(uniqueLessons.size, 1);
       totalContents =
-        updatedProgress.totalLessons > 0 && updatedProgress.totalLessons > 0
+        updatedProgress.totalModules > 0 && updatedProgress.totalLessons > 0
           ? Math.max(
-              updatedCompletedContents.length,
-              updatedProgress.totalLessons * 3
+              updatedCompletedContents.length + 1,
+              updatedProgress.totalLessons * 2
             )
-          : Math.max(updatedCompletedContents.length, 1);
+          : Math.max(updatedCompletedContents.length + 1, 1);
     }
 
     // CRITICAL: Ensure we ALWAYS have valid totals if there are completed contents
     const completedContentsCount = updatedCompletedContents.length;
 
-    // If totals are still 0 but we have completed contents, FORCE fallback values
+    // If totals are still 0 but we have completed contents, use conservative fallback
+    // Never set totalContents = completedContentsCount — that would wrongly show 100%
     if (totalContents === 0 && completedContentsCount > 0) {
       const uniqueModules = new Set(
         updatedCompletedContents.map((c) => c.moduleId).filter(Boolean)
@@ -727,10 +770,14 @@ export const UpdateEnrollmentProgressService = async (
         updatedCompletedContents.map((c) => c.lessonId).filter(Boolean)
       );
 
-      // Force minimum values
-      totalContents = Math.max(completedContentsCount, 1);
-      totalModules = Math.max(uniqueModules.size || 1, 1);
-      totalLessons = Math.max(uniqueLessons.size || 1, 1);
+      // Use conservative minimum so we never falsely mark course complete
+      // (totalContents must be > completedContentsCount)
+      totalContents = Math.max(
+        completedContentsCount + 1,
+        uniqueLessons.size || 1
+      );
+      totalModules = Math.max(uniqueModules.size || totalModules, 1);
+      totalLessons = Math.max(uniqueLessons.size || totalLessons, 1);
     }
 
     // Update progress summary with calculated totals (ALWAYS update, even if 0)
@@ -747,9 +794,12 @@ export const UpdateEnrollmentProgressService = async (
         updatedProgress.overallCompletion = 100;
       }
     } else if (completedContentsCount > 0) {
-      // Emergency fallback: if totalContents is still 0 but we have completed contents, set to 100%
-      updatedProgress.overallCompletion = 100;
-      totalContents = completedContentsCount; // Update for module/lesson calculation
+      // totalContents is 0 but we have completed contents — use conservative estimate
+      // Never set 100% when we don't know the real total
+      totalContents = Math.max(completedContentsCount + 1, 1);
+      updatedProgress.overallCompletion = Math.round(
+        (completedContentsCount / totalContents) * 100
+      );
     } else {
       // No completed contents and no total contents - set to 0
       updatedProgress.overallCompletion = 0;
@@ -860,10 +910,11 @@ export const UpdateEnrollmentProgressService = async (
     updatedProgress.completedModules = completedModulesCount;
     updatedProgress.completedLessons = completedLessonsCount;
 
-    // FINAL VERIFICATION: If we have completed contents but progress is still 0, force it
+    // Recalculate if we have completed contents but progress is still 0
+    // (e.g. due to rounding). Never use totalContents = completedContentsCount — that wrongly yields 100%
     if (completedContentsCount > 0 && updatedProgress.overallCompletion === 0) {
       if (totalContents === 0) {
-        totalContents = completedContentsCount;
+        totalContents = Math.max(completedContentsCount + 1, 1);
         updatedProgress.totalModules = Math.max(
           updatedProgress.totalModules,
           completedModulesCount || 1
@@ -900,12 +951,9 @@ export const UpdateEnrollmentProgressService = async (
     );
     const newTotalTimeSpent = totalTimeSpentMinutes * 60; // Convert minutes to seconds
 
-    // FINAL VERIFICATION before saving - ensure progress is never 0 if we have completed contents
-    if (
-      updatedCompletedContents.length > 0 &&
-      updatedProgress.overallCompletion === 0
-    ) {
-      updatedProgress.overallCompletion = 100;
+    // Ensure module/lesson counts are set when we have completed contents
+    // (Do NOT force overallCompletion to 100% — that was a bug)
+    if (updatedCompletedContents.length > 0) {
       if (updatedProgress.totalModules === 0) {
         const uniqueModules = new Set(
           updatedCompletedContents.map((c) => c.moduleId).filter(Boolean)
@@ -1042,13 +1090,6 @@ export const UpdateEnrollmentProgressService = async (
         }
         // Certificate generation failure shouldn't prevent enrollment completion
       }
-    } else {
-      if (!isCompleted) {
-        console.log(`Enrollment ${enrollmentId} not completed yet. Status: ${finalStatus}, Progress: ${updatedProgress.overallCompletion}%`);
-      }
-      if (!completedAt) {
-        console.log(`Enrollment ${enrollmentId} completed but completedAt is not set`);
-      }
     }
 
     return updatedEnrollment as Enrollment;
@@ -1061,7 +1102,7 @@ export const UpdateEnrollmentProgressService = async (
 // Update enrollment status
 export const UpdateEnrollmentStatusService = async (
   enrollmentId: string,
-  status: "active" | "completed" | "dropped" | "paused"
+  status: "active" | "completed" | "dropped" | "revoked" | "paused"
 ): Promise<Enrollment | null> => {
   try {
     const updateData: any = {
@@ -1149,7 +1190,12 @@ export const GetEnrollmentStatsService = async (
 ): Promise<UserEnrollmentStats> => {
   try {
     const stats = await EnrollmentModel.aggregate([
-      { $match: { userId: new mongoose.Types.ObjectId(userId) } },
+      {
+        $match: {
+          userId: new mongoose.Types.ObjectId(userId),
+          status: { $nin: ["dropped", "revoked"] },
+        },
+      },
       {
         $group: {
           _id: null,
@@ -1176,7 +1222,12 @@ export const GetEnrollmentStatsService = async (
 
     // Get favorite categories
     const categoryStats = await EnrollmentModel.aggregate([
-      { $match: { userId: new mongoose.Types.ObjectId(userId) } },
+      {
+        $match: {
+          userId: new mongoose.Types.ObjectId(userId),
+          status: { $nin: ["dropped", "revoked"] },
+        },
+      },
       {
         $lookup: {
           from: "courses",
@@ -1285,6 +1336,62 @@ export const GetDetailedProgressService = async (
   }
 };
 
+/**
+ * Get time spent per day for a user from completedContents (admin only).
+ * Returns array of { date: string (YYYY-MM-DD), minutes: number }.
+ */
+export const getTimeSpentPerDayService = async (
+  userId: string,
+  fromDate: Date,
+  toDate: Date
+): Promise<{ date: string; minutes: number }[]> => {
+  try {
+    const result = await EnrollmentModel.aggregate([
+      { $match: { userId: new mongoose.Types.ObjectId(userId) } },
+      { $unwind: "$completedContents" },
+      {
+        $match: {
+          "completedContents.completedAt": {
+            $gte: fromDate,
+            $lte: toDate,
+          },
+        },
+      },
+      {
+        $addFields: {
+          completionDate: {
+            $dateToString: {
+              format: "%Y-%m-%d",
+              date: "$completedContents.completedAt",
+            },
+          },
+        },
+      },
+      {
+        $group: {
+          _id: "$completionDate",
+          minutes: {
+            $sum: { $ifNull: ["$completedContents.timeSpent", 0] },
+          },
+        },
+      },
+      { $sort: { _id: 1 } },
+      {
+        $project: {
+          date: "$_id",
+          minutes: 1,
+          _id: 0,
+        },
+      },
+    ]);
+
+    return result as { date: string; minutes: number }[];
+  } catch (error) {
+    console.error("Database error in getTimeSpentPerDayService:", error);
+    throw new AppError("Failed to get time spent per day", 500);
+  }
+};
+
 // Get enrollment analytics
 export const GetEnrollmentAnalyticsService = async (
   userId: string,
@@ -1294,7 +1401,12 @@ export const GetEnrollmentAnalyticsService = async (
     const startDate = new Date(Date.now() - period * 24 * 60 * 60 * 1000);
 
     const analytics = await EnrollmentModel.aggregate([
-      { $match: { userId: new mongoose.Types.ObjectId(userId) } },
+      {
+        $match: {
+          userId: new mongoose.Types.ObjectId(userId),
+          status: { $nin: ["dropped", "revoked"] },
+        },
+      },
       {
         $group: {
           _id: null,
@@ -1344,7 +1456,10 @@ export const GetEnrollmentHistoryService = async (
   try {
     const skip = (page - 1) * limit;
 
-    const enrollments = await EnrollmentModel.find({ userId })
+    const enrollments = await EnrollmentModel.find({
+      userId,
+      status: { $nin: ["dropped", "revoked"] },
+    })
       .populate({
         path: "courseId",
         select:
@@ -1359,7 +1474,10 @@ export const GetEnrollmentHistoryService = async (
       .limit(limit)
       .lean();
 
-    const total = await EnrollmentModel.countDocuments({ userId });
+    const total = await EnrollmentModel.countDocuments({
+      userId,
+      status: { $nin: ["dropped", "revoked"] },
+    });
     const totalPages = Math.ceil(total / limit);
 
     return {
@@ -1395,7 +1513,10 @@ export const GetUserDashboardStatsService = async (
   };
 }> => {
   try {
-    const enrollments = await EnrollmentModel.find({ userId }).lean();
+    const enrollments = await EnrollmentModel.find({
+      userId,
+      status: { $nin: ["dropped", "revoked"] },
+    }).lean();
 
     // Calculate basic stats
     const totalCourses = enrollments.length;
@@ -1559,4 +1680,70 @@ export const DeleteEnrollmentService = async (
     console.error("Database error in DeleteEnrollmentService:", error);
     throw new AppError("Failed to delete enrollment", 500);
   }
+};
+
+/**
+ * Admin-only: Revoke enrollment by enrollmentId or orderId (for paid enrollments).
+ * Resolves enrollment from order when orderId is provided.
+ */
+export const revokeEnrollmentAdminService = async (
+  enrollmentId?: string,
+  orderId?: string
+): Promise<{ revoked: boolean; enrollmentId: string }> => {
+  if (!enrollmentId && !orderId) {
+    throw new AppError("Either enrollmentId or orderId is required", 400);
+  }
+
+  let targetEnrollmentId = enrollmentId;
+
+  if (!targetEnrollmentId && orderId) {
+    const { OrderModel } = await import("../models");
+    const order = await OrderModel.findById(orderId)
+      .select("userId courseId paymentStatus")
+      .lean();
+    if (!order) {
+      throw new AppError("Order not found", 404);
+    }
+    if (order.paymentStatus !== "success") {
+      throw new AppError(
+        `Order has payment status "${order.paymentStatus}". Only orders with successful payment can be revoked.`,
+        400
+      );
+    }
+    const inactiveStatuses = ["dropped", "revoked"];
+    let enrollment = await EnrollmentModel.findOne({
+      userId: order.userId,
+      courseId: order.courseId,
+      status: { $nin: inactiveStatuses },
+    }).select("_id");
+    if (!enrollment) {
+      const revokedOrDropped = await EnrollmentModel.findOne({
+        userId: order.userId,
+        courseId: order.courseId,
+        status: { $in: inactiveStatuses },
+      }).select("_id");
+      if (revokedOrDropped) {
+        throw new AppError("Enrollment is already revoked", 400);
+      }
+      throw new AppError(
+        "Enrollment not found for this order. The enrollment may not have been created (e.g. if payment completed outside normal flow).",
+        404
+      );
+    }
+    targetEnrollmentId = enrollment._id.toString();
+  }
+
+  const enrollment = await EnrollmentModel.findById(targetEnrollmentId);
+  if (!enrollment) {
+    throw new AppError("Enrollment not found", 404);
+  }
+  if (enrollment.status === "revoked" || enrollment.status === "dropped") {
+    throw new AppError("Enrollment is already revoked", 400);
+  }
+
+  await EnrollmentModel.findByIdAndUpdate(targetEnrollmentId, {
+    status: "revoked",
+    lastUpdated: new Date(),
+  });
+  return { revoked: true, enrollmentId: targetEnrollmentId! };
 };

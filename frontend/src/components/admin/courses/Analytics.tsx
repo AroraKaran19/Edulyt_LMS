@@ -1,6 +1,6 @@
 "use client";
-import { useState, useMemo } from "react";
-import { TrendingDown, TrendingUp } from "lucide-react";
+import { useState, useMemo, useEffect, useCallback } from "react";
+import { Clock, TrendingDown, TrendingUp, Calendar, BarChart3 } from "lucide-react";
 import DropDown from "@/components/ui/dropdown/DropDown";
 import Image from "next/image";
 import useSWR from "swr";
@@ -11,6 +11,17 @@ import ImageComponent from "@/components/ui/ImageComponent";
 import { InfiniteScrollSelect } from "@/components/ui/dropdown/InfiniteScrollSelect";
 import { useCourse } from "@/hooks/useCourse";
 import type { Course } from "@/types";
+import apiClient from "@/configs/apiConfig";
+import { cn } from "@/lib/utils";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
 
 function formatMinutesToHours(minutes: number): string {
   if (minutes <= 0) return "0 min";
@@ -35,6 +46,290 @@ const FILTER_MAP = {
   "In Progress": "in_progress",
   Completed: "completed",
 } as const;
+
+type TimeRangeKey = "today" | "7d" | "30d" | "6m" | "12m" | "all" | "custom";
+
+function toLocalDateStr(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function getDateRange(
+  range: TimeRangeKey,
+  customFrom?: string,
+  customTo?: string
+): { from: string; to: string } {
+  const today = new Date();
+  today.setHours(23, 59, 59, 999);
+
+  if (range === "custom" && customFrom && customTo) {
+    return { from: customFrom, to: customTo };
+  }
+
+  const from = new Date();
+  from.setHours(0, 0, 0, 0);
+
+  switch (range) {
+    case "today":
+      break;
+    case "7d":
+      from.setDate(from.getDate() - 6);
+      break;
+    case "30d":
+      from.setDate(from.getDate() - 29);
+      break;
+    case "6m":
+      from.setMonth(from.getMonth() - 5);
+      break;
+    case "12m":
+      from.setFullYear(from.getFullYear() - 1);
+      break;
+    case "all":
+      from.setFullYear(from.getFullYear() - 5);
+      break;
+    default:
+      from.setDate(from.getDate() - 6);
+  }
+  return { from: toLocalDateStr(from), to: toLocalDateStr(today) };
+}
+
+function formatSelectedRange(from: string, to: string): string {
+  const fromD = new Date(from);
+  const toD = new Date(to);
+  return `${fromD.toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  })} to ${toD.toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  })}`;
+}
+
+function fillMissingDays(
+  data: { date: string; count: number }[],
+  from: string,
+  to: string
+): { date: string; label: string; count: number }[] {
+  const map = new Map(data.map((d) => [d.date, d.count]));
+  const result: { date: string; label: string; count: number }[] = [];
+  const start = new Date(from);
+  const end = new Date(to);
+
+  for (const d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    const key = toLocalDateStr(d);
+    result.push({
+      date: key,
+      label: d.toLocaleDateString("en-IN", { day: "numeric", month: "short" }),
+      count: map.get(key) ?? 0,
+    });
+  }
+  return result;
+}
+
+const PRESET_RANGES: { key: TimeRangeKey; label: string }[] = [
+  { key: "today", label: "Today" },
+  { key: "7d", label: "Last 7 Days" },
+  { key: "30d", label: "Last 30 Days" },
+  { key: "6m", label: "Last 6 Months" },
+  { key: "12m", label: "Last 12 Months" },
+  { key: "all", label: "All Time" },
+];
+
+function EnrollmentsOverTimeGraph({
+  courseId,
+}: {
+  courseId?: string;
+}) {
+  const [range, setRange] = useState<TimeRangeKey>("7d");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
+  const [appliedCustomFrom, setAppliedCustomFrom] = useState("");
+  const [appliedCustomTo, setAppliedCustomTo] = useState("");
+  const [chartData, setChartData] = useState<
+    { date: string; label: string; count: number }[]
+  >([]);
+  const [loading, setLoading] = useState(false);
+
+  const { from, to } =
+    range === "custom"
+      ? getDateRange(range, appliedCustomFrom, appliedCustomTo)
+      : getDateRange(range);
+  const showCustomSection = range === "custom";
+
+  const fetchData = useCallback(async () => {
+    try {
+      const params = new URLSearchParams({ from, to });
+      if (courseId) params.append("courseId", courseId);
+      const response = await apiClient.get(
+        `/admin/courses-analytics/enrollments-over-time?${params.toString()}`
+      );
+      const data = (response.data?.data ?? []) as { date: string; count: number }[];
+      const filled = fillMissingDays(data, from, to);
+      setChartData(filled);
+    } catch {
+      setChartData([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [from, to, courseId]);
+
+  useEffect(() => {
+    if (range === "custom" && (!appliedCustomFrom || !appliedCustomTo)) {
+      setChartData([]);
+      return;
+    }
+    setLoading(true);
+    fetchData();
+  }, [range, appliedCustomFrom, appliedCustomTo, fetchData]);
+
+  const handleCustomRangeClick = () => {
+    setRange("custom");
+    if (!customFrom || !customTo) {
+      const today = new Date();
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 6);
+      setCustomFrom(toLocalDateStr(weekAgo));
+      setCustomTo(toLocalDateStr(today));
+      setAppliedCustomFrom(toLocalDateStr(weekAgo));
+      setAppliedCustomTo(toLocalDateStr(today));
+    }
+  };
+
+  const handleApplyDateRange = () => {
+    if (customFrom && customTo && new Date(customFrom) <= new Date(customTo)) {
+      setAppliedCustomFrom(customFrom);
+      setAppliedCustomTo(customTo);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <h4 className="text-sm font-semibold text-[#667085] uppercase flex items-center gap-2">
+        <BarChart3 className="w-4 h-4" />
+        Enrollments Over Time
+      </h4>
+      <div className="bg-white rounded-xl border border-[#EAECF0] p-4">
+        <div className="flex flex-wrap gap-2 mb-4">
+          {PRESET_RANGES.map(({ key, label }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setRange(key)}
+              className={cn(
+                "px-3 py-1.5 text-sm font-medium rounded-lg transition-colors cursor-pointer",
+                range === key
+                  ? "bg-gray-200 text-gray-800"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              )}
+            >
+              {label}
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={handleCustomRangeClick}
+            className={cn(
+              "px-3 py-1.5 text-sm font-medium rounded-lg transition-colors cursor-pointer flex items-center gap-1.5",
+              range === "custom"
+                ? "bg-orange-500 text-white"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+            )}
+          >
+            <Calendar className="w-4 h-4" />
+            Custom Range
+          </button>
+        </div>
+
+        {showCustomSection && (
+          <div className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-100 space-y-3">
+            <p className="text-sm text-gray-600">
+              Selected Range:{" "}
+              <span className="font-medium text-orange-600">
+                {appliedCustomFrom && appliedCustomTo
+                  ? formatSelectedRange(appliedCustomFrom, appliedCustomTo)
+                  : "Select dates below and click Apply"}
+              </span>
+            </p>
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-gray-700">From:</label>
+                <input
+                  type="date"
+                  value={customFrom}
+                  onChange={(e) => setCustomFrom(e.target.value)}
+                  className="border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-gray-700">To:</label>
+                <input
+                  type="date"
+                  value={customTo}
+                  onChange={(e) => setCustomTo(e.target.value)}
+                  className="border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={handleApplyDateRange}
+                className="px-4 py-2 text-sm font-medium rounded-lg bg-orange-500 text-white hover:bg-orange-600 cursor-pointer flex items-center gap-2"
+              >
+                Apply Date Range
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className="h-[200px]">
+          {loading ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500" />
+            </div>
+          ) : chartData.length === 0 ? (
+            <div className="flex items-center justify-center h-full text-gray-500 text-sm">
+              No enrollments in this period
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData}>
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="#E5E5EF"
+                  vertical={false}
+                />
+                <XAxis
+                  dataKey="label"
+                  tick={{ fontSize: 10, fill: "#6B7280" }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis
+                  tick={{ fontSize: 10, fill: "#6B7280" }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <Tooltip
+                  formatter={(value: number) => [`${value ?? 0}`, "Enrollments"]}
+                  labelFormatter={(label) => label}
+                />
+                <Bar
+                  dataKey="count"
+                  fill="#F5742C"
+                  radius={[4, 4, 0, 0]}
+                  name="count"
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const Analytics = () => {
   const { getAdminCourses } = useCourse();
@@ -70,7 +365,7 @@ const Analytics = () => {
       notCompletedCount: raw.notCompletedCount ?? 0,
       averageCompletionTimeMinutes: raw.averageCompletionTimeMinutes ?? 0,
       growthRateVsPreviousPeriod: raw.growthRateVsPreviousPeriod ?? 0,
-      popularCourses: raw.popularCourses ?? [],
+      popularCourses: (raw.popularCourses ?? []).slice(0, 5),
     };
   }, [data?.data?.data]);
 
@@ -230,13 +525,7 @@ const Analytics = () => {
               <h3 className="text-[#667085] font-medium text-sm sm:text-base">
                 Average time for completion
               </h3>
-              <Image
-                src="/clock-icon.svg"
-                alt="clock"
-                width={28}
-                height={28}
-                className="sm:w-9 sm:h-9"
-              />
+              <Clock className="size-6" />
             </div>
             <div className="mb-3 sm:mb-4">
               {isLoading ? (
@@ -277,6 +566,11 @@ const Analytics = () => {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Enrollments Over Time Graph */}
+        <div className="bg-white rounded-xl p-3 sm:p-4 shadow-sm border border-[#EAECF0] min-w-0">
+          <EnrollmentsOverTimeGraph courseId={courseIdParam} />
         </div>
 
         {/* Popular Courses */}

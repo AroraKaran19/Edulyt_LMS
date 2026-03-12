@@ -8,6 +8,7 @@ import {
   CreateEnrollmentService,
   GetEnrollmentService,
   GetUserEnrollmentsService,
+  GetEnrollmentsByUserIdsService,
   UpdateEnrollmentProgressService,
   UpdateEnrollmentStatusService,
   GetEnrollmentStatsService,
@@ -128,7 +129,7 @@ export const checkEnrollment = asyncHandler(
     const enrollment = await EnrollmentModel.findOne({
       userId,
       courseId,
-      status: { $ne: "dropped" },
+      status: { $nin: ["dropped", "revoked"] },
     })
       .populate(
         "courseId",
@@ -243,6 +244,23 @@ export const getUserEnrollments = asyncHandler(
   }
 );
 
+// Get enrollments for multiple users (batch) - admin only
+export const getEnrollmentsByUserIds = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { userIds } = req.body;
+    if (!Array.isArray(userIds) || userIds.length === 0) {
+      return sendSuccessResponse(res, {}, "No user IDs provided", 200);
+    }
+    const result = await GetEnrollmentsByUserIdsService(userIds);
+    sendSuccessResponse(
+      res,
+      result,
+      "Batch enrollments retrieved successfully",
+      200
+    );
+  }
+);
+
 // Update enrollment progress
 export const updateEnrollmentProgress = asyncHandler(
   async (req: Request, res: Response) => {
@@ -323,7 +341,7 @@ export const updateEnrollmentStatus = asyncHandler(
 
     if (
       !status ||
-      !["active", "completed", "dropped", "paused"].includes(status)
+      !["active", "completed", "dropped", "revoked", "paused"].includes(status)
     ) {
       throw new AppError("Valid status is required", 400);
     }

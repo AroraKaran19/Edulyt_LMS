@@ -73,6 +73,7 @@ const SuperAdminDashboard = () => {
       chartData: data.chartData || [],
       timePeriod: data.timePeriod,
       platformStats: data.platformStats,
+      todayEnrollments: data.todayEnrollments ?? 0,
     };
   }, [dashboardStatsData?.data?.data]);
 
@@ -86,6 +87,7 @@ const SuperAdminDashboard = () => {
     growthRate = 0,
     timePeriod,
     platformStats,
+    todayEnrollments = 0,
   } = dashboardStats || {};
 
   return (
@@ -198,6 +200,23 @@ const SuperAdminDashboard = () => {
                 activeFilter={duration}
                 setFilter={setDuration}
               />
+            </div>
+          </div>
+          <div className="lg:col-span-5 lg:col-start-6 bg-white rounded-xl p-3 shadow-sm border border-[#EAECF0]">
+            <div>
+              <h3 className="text-[#475467] font-medium text-sm sm:text-base">
+                Today&apos;s Enrollments
+              </h3>
+              <div className="flex items-baseline gap-2 mt-2">
+                {isLoading ? (
+                  <ButtonLoader />
+                ) : (
+                  <span className="text-xl sm:text-3xl font-extrabold text-[#1D2939]">
+                    {todayEnrollments}
+                  </span>
+                )}
+                <span className="text-xs text-[#475467]">today</span>
+              </div>
             </div>
           </div>
           <div className="lg:col-span-5 bg-white rounded-xl p-3 shadow-sm border border-[#EAECF0]">

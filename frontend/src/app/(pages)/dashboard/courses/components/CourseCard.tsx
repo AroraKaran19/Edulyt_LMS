@@ -22,10 +22,13 @@ const CourseCard = ({
 }: CourseCardProps) => {
   const router = useRouter();
   const isTrial = enrollment.isTrial;
-  const isExpired =
-    isTrial && enrollment.trialExpiresAt
-      ? new Date(enrollment.trialExpiresAt) < new Date()
-      : false;
+  const expiryDate = isTrial && enrollment.trialExpiresAt
+    ? new Date(enrollment.trialExpiresAt)
+    : null;
+  const isExpired = expiryDate ? expiryDate < new Date() : false;
+  const daysUntilExpiry = expiryDate && !isExpired
+    ? Math.ceil((expiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+    : null;
 
   // Get category name(s)
   const getCategoryName = (): string => {
@@ -163,15 +166,26 @@ const CourseCard = ({
         <div className="absolute top-3 left-3 flex flex-col gap-2">
           {/* Trial Badge */}
           {isTrial && (
-            <div
-              className={cn(
-                "px-3 py-1.5 w-fit rounded-full text-xs font-semibold backdrop-blur-sm border",
-                isExpired
-                  ? "bg-red-500/90 text-white border-red-600"
-                  : "bg-orange-500/90 text-white border-orange-600"
+            <div className="flex flex-col gap-1">
+              <div
+                className={cn(
+                  "px-3 py-1.5 w-fit rounded-full text-xs font-semibold backdrop-blur-sm border",
+                  isExpired
+                    ? "bg-red-500/90 text-white border-red-600"
+                    : "bg-orange-500/90 text-white border-orange-600"
+                )}
+              >
+                {isExpired ? "Trial Expired" : "Trial"}
+              </div>
+              {!isExpired && daysUntilExpiry !== null && (
+                <span className="text-[10px] font-medium text-white/95 bg-black/50 px-2 py-0.5 rounded truncate max-w-[120px]">
+                  {daysUntilExpiry === 0
+                    ? "Expires today"
+                    : daysUntilExpiry === 1
+                    ? "Expiring in 1 day"
+                    : `Expiring in ${daysUntilExpiry} days`}
+                </span>
               )}
-            >
-              {isExpired ? "Trial Expired" : "Trial"}
             </div>
           )}
 

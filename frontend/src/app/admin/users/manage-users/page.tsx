@@ -22,6 +22,8 @@ import { toast } from "react-toastify";
 import GiftCourseModal from "./components/GiftCourseModal";
 import TrialCourseModal from "./components/TrialCourseModal";
 import EditUserModal from "./components/EditUserModal";
+import UserDetailsModal from "./components/UserDetailsModal";
+import { formatUserTypeLabel } from "./components/UserDetailsModalShared";
 import {
   validatePassword,
   getPasswordRequirementsText,
@@ -41,13 +43,7 @@ const ManageUsersPage = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [loadingStudents, setLoadingStudents] = useState(false);
-  const [userEnrollments, setUserEnrollments] = useState<
-    Record<string, string[]>
-  >({});
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [fullUserData, setFullUserData] = useState<User | null>(null);
-  const [userEnrollmentsCount, setUserEnrollmentsCount] = useState<number>(0);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
@@ -65,7 +61,6 @@ const ManageUsersPage = () => {
     deleteUser,
     changeUserPassword,
     isLoading,
-    getUserEnrollments,
   } = useUserManagement();
 
   // Debounce search input
@@ -97,70 +92,10 @@ const ManageUsersPage = () => {
     fetchUsers();
   }, [currentPage, debouncedSearch, userTypeFilter, statusFilter]);
 
-  // Fetch all students for gift modal
-  const fetchAllStudents = async () => {
-    setLoadingStudents(true);
-    try {
-      const result = await getUsers({
-        page: 1,
-        limit: 1000, // Get all students
-        userType: "student", // Only students can receive courses
-      });
-
-      if (result) {
-        // Fetch enrollments for all students
-        const enrollmentsMap: Record<string, string[]> = {};
-        await Promise.all(
-          result.users.map(async (user) => {
-            if (user._id) {
-              const enrollments = await getUserEnrollments(user._id, {
-                limit: 1000,
-              });
-              if (enrollments) {
-                enrollmentsMap[user._id] = enrollments.enrollments.map(
-                  (e: any) =>
-                    typeof e === "string"
-                      ? e
-                      : e.courseId?._id || e.courseId || e._id
-                );
-              }
-            }
-          })
-        );
-        setUserEnrollments(enrollmentsMap);
-      }
-    } catch (error) {
-      console.error("Error fetching students:", error);
-      toast.error("Failed to load students");
-    } finally {
-      setLoadingStudents(false);
-    }
-  };
-
-  // Fetch full user data when viewing details
-  const handleViewUserDetails = async (user: User) => {
+  // Open user details modal (modal fetches its own data)
+  const handleViewUserDetails = (user: User) => {
     setSelectedUser(user);
     setShowUserDetails(true);
-
-    // Fetch full user data
-    if (user._id) {
-      const fullData = await getUserById(user._id);
-      if (fullData) {
-        setFullUserData(fullData);
-      }
-
-      // Fetch user enrollments count
-      const enrollments = await getUserEnrollments(user._id, {
-        limit: 1000,
-      });
-      if (enrollments) {
-        setUserEnrollmentsCount(
-          enrollments.total || enrollments.enrollments.length
-        );
-      } else {
-        setUserEnrollmentsCount(0);
-      }
-    }
   };
 
   // Handle edit user - fetch full data for instructors to get previousExperience
@@ -241,7 +176,7 @@ const ManageUsersPage = () => {
               exp.position?.trim() &&
               exp.duration?.from &&
               exp.duration?.to &&
-              exp.description?.trim()
+              exp.description?.trim(),
           )
           .map((exp: any) => ({
             companyName: exp.companyName.trim(),
@@ -270,7 +205,7 @@ const ManageUsersPage = () => {
       }
     } catch (error: any) {
       toast.error(
-        error.response?.data?.error?.message || "Failed to update user"
+        error.response?.data?.error?.message || "Failed to update user",
       );
     } finally {
       setIsUpdating(false);
@@ -290,7 +225,7 @@ const ManageUsersPage = () => {
     const passwordValidationErrors = validatePassword(newPassword);
     if (Object.keys(passwordValidationErrors).length > 0) {
       const errorMessages = Object.values(passwordValidationErrors).filter(
-        Boolean
+        Boolean,
       );
       toast.error(errorMessages.join(". "));
       return;
@@ -307,7 +242,7 @@ const ManageUsersPage = () => {
       }
     } catch (error: any) {
       toast.error(
-        error.response?.data?.error?.message || "Failed to change password"
+        error.response?.data?.error?.message || "Failed to change password",
       );
     } finally {
       setIsChangingPassword(false);
@@ -329,23 +264,16 @@ const ManageUsersPage = () => {
       }
     } catch (error: any) {
       toast.error(
-        error.response?.data?.error?.message || "Failed to delete user"
+        error.response?.data?.error?.message || "Failed to delete user",
       );
     } finally {
       setIsDeleting(false);
     }
   };
 
-  // Handle modal open
-  const handleOpenGiftModal = () => {
-    setShowGiftModal(true);
-    fetchAllStudents();
-  };
-
-  const handleOpenTrialModal = () => {
-    setShowTrialModal(true);
-    fetchAllStudents();
-  };
+  // Handle modal open (modals fetch their own users + enrollments on-demand in Step 3)
+  const handleOpenGiftModal = () => setShowGiftModal(true);
+  const handleOpenTrialModal = () => setShowTrialModal(true);
 
   // OLD CODE REMOVED - Gift course functionality moved to GiftCourseModal component
   /* const handleGiftCourse = async () => {
@@ -605,6 +533,9 @@ const ManageUsersPage = () => {
                   User
                 </th>
                 <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                  Total Spend
+                </th>
+                <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                   Type
                 </th>
                 <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
@@ -624,7 +555,7 @@ const ManageUsersPage = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {isLoading ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center">
+                  <td colSpan={7} className="px-6 py-12 text-center">
                     <div className="flex flex-col items-center justify-center">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 mb-3"></div>
                       <p className="text-gray-500 text-sm">Loading users...</p>
@@ -633,7 +564,7 @@ const ManageUsersPage = () => {
                 </tr>
               ) : users.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center">
+                  <td colSpan={7} className="px-6 py-12 text-center">
                     <div className="flex flex-col items-center justify-center">
                       <UserIcon className="w-12 h-12 text-gray-400 mb-3" />
                       <p className="text-gray-500 text-sm font-medium">
@@ -686,19 +617,22 @@ const ManageUsersPage = () => {
                         </div>
                       </div>
                     </td>
+                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
+                      ₹{(user as User & { totalSpend?: number }).totalSpend?.toLocaleString("en-IN") ?? 0}
+                    </td>
                     <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
                       <span
                         className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getUserTypeBadgeColor(
-                          user.userType
+                          user.userType,
                         )}`}
                       >
-                        {user.userType}
+                        {formatUserTypeLabel(user.userType)}
                       </span>
                     </td>
                     <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
                       <span
                         className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadgeColor(
-                          user.status
+                          user.status,
                         )}`}
                       >
                         {user.status}
@@ -843,478 +777,34 @@ const ManageUsersPage = () => {
       <GiftCourseModal
         isOpen={showGiftModal}
         onClose={() => setShowGiftModal(false)}
-        userEnrollments={userEnrollments}
-        onGiftComplete={() => {
-          fetchUsers();
-          fetchAllStudents();
-        }}
+        onGiftComplete={fetchUsers}
       />
 
       {/* Trial Course Modal */}
       <TrialCourseModal
         isOpen={showTrialModal}
         onClose={() => setShowTrialModal(false)}
-        userEnrollments={userEnrollments}
-        onTrialComplete={() => {
-          fetchUsers();
-          fetchAllStudents();
-        }}
+        onTrialComplete={fetchUsers}
       />
 
       {/* User Details Modal */}
-      {showUserDetails && selectedUser && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-2xl font-bold text-gray-900">User Details</h3>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setShowUserDetails(false);
-                  setSelectedUser(null);
-                  setFullUserData(null);
-                }}
-                className="cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </Button>
-            </div>
-
-            <div className="space-y-6">
-              {/* Profile Header */}
-              <div className="flex items-start gap-6 pb-6 border-b border-gray-200">
-                <Image
-                  src={
-                    fullUserData?.profilePicture ||
-                    selectedUser.profilePicture ||
-                    "/user.svg"
-                  }
-                  alt={`${selectedUser.firstName || "Unknown"} ${
-                    selectedUser.lastName || "User"
-                  }`}
-                  className="h-24 w-24 rounded-full object-cover border-4 border-gray-200"
-                  width={96}
-                  height={96}
-                />
-                <div className="flex-1">
-                  <h4 className="text-2xl font-bold text-gray-900 mb-2">
-                    {fullUserData?.firstName ||
-                      selectedUser.firstName ||
-                      "Unknown"}{" "}
-                    {fullUserData?.lastName || selectedUser.lastName || "User"}
-                  </h4>
-                  <p className="text-gray-600 mb-4">
-                    {fullUserData?.email || selectedUser.email}
-                  </p>
-                  <div className="flex items-center gap-4">
-                    <span
-                      className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full ${getUserTypeBadgeColor(
-                        selectedUser.userType
-                      )}`}
-                    >
-                      {selectedUser.userType}
-                    </span>
-                    <span
-                      className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full ${getStatusBadgeColor(
-                        selectedUser.status
-                      )}`}
-                    >
-                      {selectedUser.status}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setShowUserDetails(false);
-                      handleEditUser(selectedUser);
-                    }}
-                    className="cursor-pointer"
-                  >
-                    <Edit className="w-4 h-4 mr-2" />
-                    Edit
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setShowUserDetails(false);
-                      setSelectedUser(selectedUser);
-                      setShowChangePasswordModal(true);
-                    }}
-                    className="cursor-pointer"
-                  >
-                    <Key className="w-4 h-4 mr-2" />
-                    Change Password
-                  </Button>
-                </div>
-              </div>
-
-              {/* Basic Information */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h5 className="text-sm font-semibold text-gray-500 uppercase mb-3">
-                    Basic Information
-                  </h5>
-                  <div className="space-y-3">
-                    <div>
-                      <span className="text-sm font-medium text-gray-700">
-                        User ID:
-                      </span>
-                      <span className="ml-2 text-sm text-gray-600 font-mono">
-                        {selectedUser._id}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-sm font-medium text-gray-700">
-                        Email:
-                      </span>
-                      <span className="ml-2 text-sm text-gray-600">
-                        {fullUserData?.email || selectedUser.email}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-sm font-medium text-gray-700">
-                        Phone:
-                      </span>
-                      <span className="ml-2 text-sm text-gray-600">
-                        {fullUserData?.phone || selectedUser.phone || "N/A"}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-sm font-medium text-gray-700">
-                        WhatsApp:
-                      </span>
-                      <span className="ml-2 text-sm text-gray-600">
-                        {fullUserData?.whatsappNumber ||
-                          selectedUser.whatsappNumber ||
-                          "N/A"}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-sm font-medium text-gray-700">
-                        Date of Birth:
-                      </span>
-                      <span className="ml-2 text-sm text-gray-600">
-                        {fullUserData?.dob || selectedUser.dob
-                          ? new Date(
-                              fullUserData?.dob || selectedUser.dob!
-                            ).toLocaleDateString()
-                          : "N/A"}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-sm font-medium text-gray-700">
-                        Provider:
-                      </span>
-                      <span className="ml-2 text-sm text-gray-600 capitalize">
-                        {selectedUser.provider || "N/A"}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Address Information */}
-                <div>
-                  <h5 className="text-sm font-semibold text-gray-500 uppercase mb-3">
-                    Address
-                  </h5>
-                  <div className="space-y-3">
-                    {fullUserData?.address || selectedUser.address ? (
-                      <>
-                        <div>
-                          <span className="text-sm font-medium text-gray-700">
-                            Street:
-                          </span>
-                          <span className="ml-2 text-sm text-gray-600">
-                            {(fullUserData?.address || selectedUser.address)
-                              ?.address || "N/A"}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-sm font-medium text-gray-700">
-                            City:
-                          </span>
-                          <span className="ml-2 text-sm text-gray-600">
-                            {(fullUserData?.address || selectedUser.address)
-                              ?.city || "N/A"}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-sm font-medium text-gray-700">
-                            State:
-                          </span>
-                          <span className="ml-2 text-sm text-gray-600">
-                            {(fullUserData?.address || selectedUser.address)
-                              ?.state || "N/A"}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-sm font-medium text-gray-700">
-                            Country:
-                          </span>
-                          <span className="ml-2 text-sm text-gray-600">
-                            {(fullUserData?.address || selectedUser.address)
-                              ?.country || "N/A"}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-sm font-medium text-gray-700">
-                            Pin Code:
-                          </span>
-                          <span className="ml-2 text-sm text-gray-600">
-                            {(fullUserData?.address || selectedUser.address)
-                              ?.pincode || "N/A"}
-                          </span>
-                        </div>
-                      </>
-                    ) : (
-                      <p className="text-sm text-gray-500">
-                        No address information
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Instructor Specific Information */}
-              {selectedUser.userType === "instructor" &&
-                (fullUserData as Instructor) && (
-                  <div className="pt-6 border-t border-gray-200">
-                    <h5 className="text-sm font-semibold text-gray-500 uppercase mb-3">
-                      Professional Information
-                    </h5>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <span className="text-sm font-medium text-gray-700">
-                          Current Position:
-                        </span>
-                        <span className="ml-2 text-sm text-gray-600">
-                          {(fullUserData as Instructor).currentPosition ||
-                            "N/A"}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-sm font-medium text-gray-700">
-                          Current Company:
-                        </span>
-                        <span className="ml-2 text-sm text-gray-600">
-                          {(fullUserData as Instructor).currentCompany || "N/A"}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-sm font-medium text-gray-700">
-                          LinkedIn:
-                        </span>
-                        <span className="ml-2 text-sm text-gray-600">
-                          {(fullUserData as Instructor).linkedinUrl || "N/A"}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-sm font-medium text-gray-700">
-                          Rating:
-                        </span>
-                        <span className="ml-2 text-sm text-gray-600">
-                          {(fullUserData as Instructor).rating || "N/A"}
-                        </span>
-                      </div>
-                      {(fullUserData as Instructor).bio && (
-                        <div className="md:col-span-2">
-                          <span className="text-sm font-medium text-gray-700">
-                            Bio:
-                          </span>
-                          <p className="mt-1 text-sm text-gray-600 line-clamp-5">
-                            {(fullUserData as Instructor).bio}
-                          </p>
-                        </div>
-                      )}
-                      {/* Previous Experience */}
-                      <div className="md:col-span-2 mt-4">
-                        <span className="text-sm font-medium text-gray-700 block mb-2">
-                          Previous Experience:
-                        </span>
-                        {((fullUserData as Instructor).previousExperience
-                          ?.length ?? 0) > 0 ? (
-                          <div className="space-y-3">
-                            {(fullUserData as Instructor).previousExperience!.map(
-                              (exp, idx) => (
-                                <div
-                                  key={idx}
-                                  className="p-3 bg-gray-50 rounded-lg border border-gray-100"
-                                >
-                                  <div className="font-medium text-gray-900">
-                                    {exp.position} at {exp.companyName}
-                                  </div>
-                                  <div className="text-xs text-gray-500 mt-1">
-                                    {exp.duration?.from &&
-                                      new Date(
-                                        exp.duration.from
-                                      ).toLocaleDateString()}{" "}
-                                    –{" "}
-                                    {exp.duration?.to &&
-                                      new Date(
-                                        exp.duration.to
-                                      ).toLocaleDateString()}
-                                  </div>
-                                  {exp.description && (
-                                    <p className="text-sm text-gray-600 mt-1">
-                                      {exp.description}
-                                    </p>
-                                  )}
-                                </div>
-                              )
-                            )}
-                          </div>
-                        ) : (
-                          <p className="text-sm text-gray-500 italic">
-                            No previous experience added yet.
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-              {/* Student Specific Information */}
-              {selectedUser.userType === "student" &&
-                (fullUserData as Student) && (
-                  <div className="pt-6 border-t border-gray-200">
-                    <h5 className="text-sm font-semibold text-gray-500 uppercase mb-3">
-                      Student Information
-                    </h5>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <span className="text-sm font-medium text-gray-700">
-                          College:
-                        </span>
-                        <span className="ml-2 text-sm text-gray-600">
-                          {(fullUserData as Student).collegeName || "N/A"}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-sm font-medium text-gray-700">
-                          Degree:
-                        </span>
-                        <span className="ml-2 text-sm text-gray-600">
-                          {(fullUserData as Student).degreeName || "N/A"}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-sm font-medium text-gray-700">
-                          Current Position:
-                        </span>
-                        <span className="ml-2 text-sm text-gray-600">
-                          {(fullUserData as Student).currentPosition || "N/A"}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-sm font-medium text-gray-700">
-                          Domain:
-                        </span>
-                        <span className="ml-2 text-sm text-gray-600">
-                          {(fullUserData as Student).domain || "N/A"}
-                        </span>
-                      </div>
-                      {(fullUserData as Student).portfolio && (
-                        <div className="md:col-span-2">
-                          <span className="text-sm font-medium text-gray-700">
-                            Portfolio:
-                          </span>
-                          <a
-                            href={(fullUserData as Student).portfolio}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="ml-2 text-sm text-blue-600 hover:underline"
-                          >
-                            {(fullUserData as Student).portfolio}
-                          </a>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-              {/* Enrollment Information */}
-              {selectedUser.userType === "student" && (
-                <div className="pt-6 border-t border-gray-200">
-                  <h5 className="text-sm font-semibold text-gray-500 uppercase mb-3">
-                    Enrollment Information
-                  </h5>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-blue-100 rounded-lg">
-                          <Gift className="w-5 h-5 text-blue-600" />
-                        </div>
-                        <div>
-                          <span className="text-sm font-medium text-gray-700 block">
-                            Courses Enrolled
-                          </span>
-                          <span className="text-2xl font-bold text-blue-700">
-                            {userEnrollmentsCount}
-                          </span>
-                          <span className="ml-1 text-sm text-gray-500">
-                            {userEnrollmentsCount === 1 ? "course" : "courses"}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Account Information */}
-              <div className="pt-6 border-t border-gray-200">
-                <h5 className="text-sm font-semibold text-gray-500 uppercase mb-3">
-                  Account Information
-                </h5>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <span className="text-sm font-medium text-gray-700">
-                      Joined:
-                    </span>
-                    <span className="ml-2 text-sm text-gray-600">
-                      {selectedUser.createdAt
-                        ? new Date(selectedUser.createdAt).toLocaleString()
-                        : "N/A"}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-sm font-medium text-gray-700">
-                      Last Updated:
-                    </span>
-                    <span className="ml-2 text-sm text-gray-600">
-                      {fullUserData?.updatedAt || selectedUser.updatedAt
-                        ? new Date(
-                            fullUserData?.updatedAt || selectedUser.updatedAt!
-                          ).toLocaleString()
-                        : "N/A"}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-3 mt-6 pt-6 border-t border-gray-200">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setShowUserDetails(false);
-                  setSelectedUser(null);
-                  setFullUserData(null);
-                  setUserEnrollmentsCount(0);
-                }}
-                className="cursor-pointer"
-              >
-                Close
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <UserDetailsModal
+        isOpen={!!(showUserDetails && selectedUser)}
+        user={selectedUser}
+        onClose={() => {
+          setShowUserDetails(false);
+          setSelectedUser(null);
+        }}
+        onEdit={(u) => {
+          setShowUserDetails(false);
+          handleEditUser(u);
+        }}
+        onChangePassword={(u) => {
+          setShowUserDetails(false);
+          setSelectedUser(u);
+          setShowChangePasswordModal(true);
+        }}
+      />
 
       {/* Edit User Modal */}
       <EditUserModal
@@ -1329,7 +819,7 @@ const ManageUsersPage = () => {
         isUpdating={isUpdating}
         onFormDataChange={(data) =>
           setEditFormData((prev) =>
-            typeof data === "function" ? data(prev) : data
+            typeof data === "function" ? data(prev) : data,
           )
         }
       />
@@ -1438,11 +928,12 @@ const ManageUsersPage = () => {
                 </p>
                 <p className="text-sm text-gray-600">{selectedUser.email}</p>
                 <p className="text-xs text-gray-500 mt-1">
-                  User Type: {selectedUser.userType}
+                  User Type: {formatUserTypeLabel(selectedUser.userType)}
                 </p>
               </div>
               <p className="text-sm text-red-600 font-medium">
-                ⚠️ This will permanently delete the user and all their data (enrollments, orders, etc.)
+                ⚠️ This will permanently delete the user and all their data
+                (enrollments, orders, etc.)
               </p>
             </div>
 

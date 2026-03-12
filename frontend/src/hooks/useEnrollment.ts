@@ -11,7 +11,7 @@ import { PartialAccessControl } from "@/types/enrollment";
 export interface EnrollmentStatus {
   isEnrolled: boolean;
   enrollment?: Enrollment;
-  status?: "active" | "completed" | "dropped" | "paused";
+  status?: "active" | "completed" | "dropped" | "revoked" | "paused";
   canAccess: boolean;
   accessControl?: PartialAccessControl | null;
 }

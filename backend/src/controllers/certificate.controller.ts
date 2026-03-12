@@ -12,6 +12,8 @@ import {
   createCertificateJobService,
   getCertificateJobService,
   getCertificateJobByEnrollmentService,
+  getAllCertificateJobsService,
+  retryCertificateJobService,
 } from "../services/certificateJob.services";
 
 /**
@@ -252,5 +254,66 @@ export const getCertificateJobByEnrollment = asyncHandler(
     }
 
     sendSuccessResponse(res, job, "Job status retrieved successfully", 200);
+  }
+);
+
+/**
+ * Get all certificate jobs (admin)
+ * @route GET /api/admin/certificate-jobs
+ * @access Admin
+ */
+export const getAllCertificateJobs = asyncHandler(
+  async (req: Request, res: Response) => {
+    const page = req.query.page ? Number(req.query.page) : 1;
+    const limit = req.query.limit ? Number(req.query.limit) : 20;
+    const status = req.query.status as string | undefined;
+
+    const result = await getAllCertificateJobsService({
+      page,
+      limit,
+      status: status as "pending" | "processing" | "completed" | "failed" | undefined,
+    });
+
+    sendSuccessResponse(res, result, "Certificate jobs retrieved successfully", 200);
+  }
+);
+
+/**
+ * Retry a failed certificate job (admin)
+ * @route POST /api/admin/certificate-jobs/:jobId/retry
+ * @access Admin
+ */
+export const retryCertificateJob = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { jobId } = req.params;
+
+    const job = await retryCertificateJobService(jobId);
+
+    sendSuccessResponse(res, job, "Job queued for retry successfully", 200);
+  }
+);
+
+/**
+ * Get certificates for a user by userId (admin only)
+ * @route GET /api/admin/users/:userId/certificates
+ * @access Admin
+ */
+export const getCertificatesByUserId = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { userId } = req.params;
+    const limit = req.query.limit ? Number(req.query.limit) : 100;
+
+    const result = await getUserCertificatesService(userId, {
+      includeOldVersions: false,
+      limit,
+    });
+
+    const certificates = Array.isArray(result) ? result : result.certificates;
+    sendSuccessResponse(
+      res,
+      { certificates },
+      "User certificates retrieved successfully",
+      200
+    );
   }
 );

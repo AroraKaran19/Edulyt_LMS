@@ -244,7 +244,7 @@ const EnrollmentGuard = ({ course, children }: EnrollmentGuardProps) => {
   }
 
   // Dropped enrollment
-  if (enrollmentStatus.status === "dropped") {
+  if (["dropped", "revoked"].includes(enrollmentStatus.status ?? "")) {
     return (
       <div className="w-full h-screen flex items-center justify-center">
         <div className="text-center max-w-md mx-auto p-8">

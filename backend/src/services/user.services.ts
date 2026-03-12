@@ -23,10 +23,14 @@ export interface GetUsersParams {
   search?: string;
   userType?: string;
   status?: string;
+  /** Exclude users enrolled in any of these course IDs (for gift modal - show only eligible) */
+  excludeEnrolledInCourseIds?: string[];
+  /** Add alreadyEnrolledInSelected to each user (for trial modal) */
+  enrollmentStatusForCourseIds?: string[];
 }
 
 export interface GetUsersResult {
-  users: User[];
+  users: (User & { alreadyEnrolledInSelected?: boolean; totalSpend?: number })[];
   total: number;
   page: number;
   totalPages: number;
@@ -35,13 +39,19 @@ export interface GetUsersResult {
 export const getUsersService = async (
   params: GetUsersParams
 ): Promise<GetUsersResult> => {
-  const { page, limit, search, userType, status } = params;
+  const {
+    page,
+    limit,
+    search,
+    userType,
+    status,
+    excludeEnrolledInCourseIds,
+    enrollmentStatusForCourseIds,
+  } = params;
   const skip = (page - 1) * limit;
 
-  // Build filter object
   let filters: any = {};
 
-  // Add search filter
   if (search) {
     filters.$or = [
       { firstName: { $regex: search, $options: "i" } },
@@ -50,17 +60,26 @@ export const getUsersService = async (
     ];
   }
 
-  // Add user type filter
   if (userType && userType !== "all") {
     filters.userType = userType;
   }
 
-  // Add status filter
   if (status && status !== "all") {
     filters.status = status;
   }
 
-  // Get users with pagination
+  // Exclude users already enrolled in any of the given courses (gift modal)
+  if (
+    excludeEnrolledInCourseIds?.length &&
+    excludeEnrolledInCourseIds.every((id) => mongoose.Types.ObjectId.isValid(id))
+  ) {
+    const enrolledUserIds = await EnrollmentModel.distinct("userId", {
+      courseId: { $in: excludeEnrolledInCourseIds },
+      status: { $in: ["active", "completed", "paused"] },
+    });
+    filters._id = { $nin: enrolledUserIds };
+  }
+
   const users = await UserModel.find(filters)
     .select("-password -refreshTokens -__v")
     .skip(skip)
@@ -68,12 +87,53 @@ export const getUsersService = async (
     .sort({ createdAt: -1 })
     .lean();
 
-  // Get total count
   const total = await UserModel.countDocuments(filters);
   const totalPages = Math.ceil(total / limit);
 
+  let resultUsers = users as (User & { alreadyEnrolledInSelected?: boolean })[];
+
+  // Add enrollment status for trial modal
+  if (
+    enrollmentStatusForCourseIds?.length &&
+    enrollmentStatusForCourseIds.every((id) =>
+      mongoose.Types.ObjectId.isValid(id)
+    ) &&
+    resultUsers.length > 0
+  ) {
+    const userIds = resultUsers.map((u) => u._id).filter(Boolean) as string[];
+    const enrolledUserIds = await EnrollmentModel.distinct("userId", {
+      userId: { $in: userIds },
+      courseId: { $in: enrollmentStatusForCourseIds },
+      status: { $in: ["active", "completed", "paused"] },
+    });
+    const enrolledSet = new Set(enrolledUserIds.map(String));
+    resultUsers = resultUsers.map((u) => ({
+      ...u,
+      alreadyEnrolledInSelected: u._id ? enrolledSet.has(String(u._id)) : false,
+    }));
+  }
+
+  // Add total spend (successful paid orders only) for each user
+  if (resultUsers.length > 0) {
+    const userIds = resultUsers
+      .map((u) => u._id)
+      .filter((id): id is string => Boolean(id) && mongoose.Types.ObjectId.isValid(String(id)))
+      .map((id) => new mongoose.Types.ObjectId(id));
+    const spendAgg = await OrderModel.aggregate<{ _id: mongoose.Types.ObjectId; totalSpend: number }>([
+      { $match: { userId: { $in: userIds }, paymentStatus: "success" } },
+      { $group: { _id: "$userId", totalSpend: { $sum: "$amount" } } },
+    ]);
+    const spendByUser = new Map(
+      spendAgg.map((r) => [r._id.toString(), r.totalSpend])
+    );
+    resultUsers = resultUsers.map((u) => ({
+      ...u,
+      totalSpend: u._id ? (spendByUser.get(String(u._id)) ?? 0) : 0,
+    }));
+  }
+
   return {
-    users: users as User[],
+    users: resultUsers,
     total,
     page,
     totalPages,

@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   getPaymentStatus,
   verifyPaymentToken,
+  paytmWebhookHandler,
 } from "../controllers/payment.controller";
 
 const router = Router();
@@ -19,5 +20,7 @@ router.get("/status/:orderId", getPaymentStatus);
  * @access  Public
  */
 router.get("/verify-token/:token", verifyPaymentToken);
+
+router.post("/paytm-webhook", paytmWebhookHandler);
 
 export default router;

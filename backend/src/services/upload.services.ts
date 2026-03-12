@@ -1,4 +1,4 @@
-import { getS3Client, getBucketName } from "../config/s3";
+import { getS3Client, getBucketName, getPublicUrlBase } from "../config/s3";
 import { PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { v4 as uuidv4 } from "uuid";
@@ -60,8 +60,8 @@ export const generatePresignedUrl = async (
       expiresIn: 3600, // 1 hour
     });
 
-    // Generate public URL
-    const publicUrl = `https://${bucketName}.s3.amazonaws.com/${s3Key}`;
+    // Generate public URL (uses custom domain if AWS_S3_PUBLIC_BASE_URL is set)
+    const publicUrl = `${getPublicUrlBase()}/${s3Key}`;
 
     return {
       presignedUrl,
@@ -276,8 +276,8 @@ export const uploadFileToS3 = async (
     // Upload the file
     await s3Client.send(command);
 
-    // Generate public URL
-    const publicUrl = `https://${bucketName}.s3.amazonaws.com/${s3Key}`;
+    // Generate public URL (uses custom domain if AWS_S3_PUBLIC_BASE_URL is set)
+    const publicUrl = `${getPublicUrlBase()}/${s3Key}`;
 
     return publicUrl;
   } catch (error) {

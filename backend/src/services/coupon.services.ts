@@ -1,5 +1,5 @@
 import { AppError } from "../middlewares/error.middleware";
-import { CouponModel, CourseModel } from "../models";
+import { CouponModel, CourseModel, OrderModel } from "../models";
 import {
   Coupon,
   ValidateCouponRequest,
@@ -240,12 +240,32 @@ export const validateCouponService = async (
     };
   }
 
-  // Check usage limit
+  // Check total usage limit
   if (coupon.usageLimit && coupon.usageCount && coupon.usageCount >= coupon.usageLimit) {
     return {
       valid: false,
       message: "This coupon has reached its usage limit",
     };
+  }
+
+  // Check per-user usage limit
+  if (
+    userId &&
+    mongoose.Types.ObjectId.isValid(userId) &&
+    coupon.userUsageLimit
+  ) {
+    const userUsageCount = await OrderModel.countDocuments({
+      userId: new mongoose.Types.ObjectId(userId),
+      couponCode: coupon.code,
+      paymentStatus: "success",
+    });
+    if (userUsageCount >= coupon.userUsageLimit) {
+      return {
+        valid: false,
+        message:
+          "You have already used this coupon the maximum number of times",
+      };
+    }
   }
 
   // Check minimum purchase amount

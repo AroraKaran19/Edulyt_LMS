@@ -12,6 +12,7 @@ export interface PaymentOrder {
   txnId: string;
   token: string;
   paymentStatus: "pending" | "success" | "failed";
+  paymentErrorReason?: string;
   couponCode?: string;
   couponDiscount?: number;
   createdAt?: Date;

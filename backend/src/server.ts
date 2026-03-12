@@ -13,16 +13,19 @@ if (!process.env.PORT) {
 
 const PORT = process.env.PORT || 8080;
 
+const RUN_BACKGROUND_JOBS = process.env.RUN_BACKGROUND_JOBS !== "false";
+
 const startServer = async () => {
   try {
     await connectDB();
     await initializeS3();
-    
-    // Initialize cron jobs
-    initializeCronJobs();
 
-    // Start certificate generation worker
-    startCertificateWorker();
+    if (RUN_BACKGROUND_JOBS) {
+      initializeCronJobs();
+      startCertificateWorker();
+    } else {
+      console.log("⏭️  Skipping cron & worker (RUN_BACKGROUND_JOBS=false, running behind load balancer)");
+    }
 
     const server = app.listen(PORT, () => {
       console.log(`🚀 Airkrit Backend Server is running on port ${PORT}`);

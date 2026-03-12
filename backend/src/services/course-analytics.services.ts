@@ -130,10 +130,11 @@ export const getCourseAnalytics = async (
         };
   const avgTimeResult = await EnrollmentModel.aggregate([
     { $match: avgTimeMatch },
-    { $group: { _id: null, avgMinutes: { $avg: "$totalTimeSpent" } } },
+    { $group: { _id: null, avgSeconds: { $avg: "$totalTimeSpent" } } },
   ]);
+  // totalTimeSpent is stored in seconds in the enrollment model; convert to minutes for display
   const averageCompletionTimeMinutes =
-    Math.round(avgTimeResult[0]?.avgMinutes ?? 0) || 0;
+    Math.round((avgTimeResult[0]?.avgSeconds ?? 0) / 60) || 0;
 
   // Growth rate: compare last 30 days enrollments vs previous 30 days (within filter)
   const now = new Date();
@@ -209,7 +210,7 @@ export const getCourseAnalytics = async (
       },
     },
     { $sort: sortByField },
-    { $limit: 10 },
+    { $limit: 5 },
     {
       $project: {
         title: 1,
@@ -248,4 +249,38 @@ export const getCourseAnalytics = async (
     ),
     popularCourses,
   };
+};
+
+/**
+ * Get enrollments per day for courses analytics (admin only).
+ * @param fromDate - Start date (inclusive)
+ * @param toDate - End date (inclusive)
+ * @param courseId - Optional; restrict to a specific course
+ * @returns Array of { date: string (YYYY-MM-DD), count: number }
+ */
+export const getEnrollmentsPerDayService = async (
+  fromDate: Date,
+  toDate: Date,
+  courseId?: string
+): Promise<{ date: string; count: number }[]> => {
+  const match: Record<string, unknown> = {
+    enrolledAt: { $gte: fromDate, $lte: toDate },
+  };
+  if (courseId && mongoose.Types.ObjectId.isValid(courseId)) {
+    match.courseId = new mongoose.Types.ObjectId(courseId);
+  }
+
+  const result = await EnrollmentModel.aggregate([
+    { $match: match },
+    {
+      $addFields: {
+        dateStr: { $dateToString: { format: "%Y-%m-%d", date: "$enrolledAt" } },
+      },
+    },
+    { $group: { _id: "$dateStr", count: { $sum: 1 } } },
+    { $sort: { _id: 1 } },
+    { $project: { date: "$_id", count: 1, _id: 0 } },
+  ]);
+
+  return result as { date: string; count: number }[];
 };

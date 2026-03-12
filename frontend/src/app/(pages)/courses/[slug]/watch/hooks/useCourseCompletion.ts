@@ -126,12 +126,11 @@ export const useCourseCompletion = (course?: Course) => {
   // Check if user has FULL access (not partial access)
   const hasFullAccess = !accessControl || accessControl.accessType === "full";
 
-  // Check if course is completed
-  // Only check completion for full access users - partial access users should not get certificates
+  // Check if course is completed - require BOTH backend flag AND frontend verification
+  // This prevents certificate flow when backend incorrectly reports 100% (e.g. after 1 video)
   const isCourseCompleted = hasFullAccess && (
-    enrollment?.status === "completed" || 
-    (enrollment?.progress?.overallCompletion ?? 0) >= 100
-  );
+    (enrollment?.status === "completed" || (enrollment?.progress?.overallCompletion ?? 0) >= 100)
+  ) && allAccessibleContentsCompleted;
 
   // Check if course is certified
   const isCertified = enrollment?.courseId && 

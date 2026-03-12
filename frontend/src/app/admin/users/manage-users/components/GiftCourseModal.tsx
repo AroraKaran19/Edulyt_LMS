@@ -23,14 +23,12 @@ import useCourseManagement from "@/hooks/useCourseManagement";
 interface GiftCourseModalProps {
   isOpen: boolean;
   onClose: () => void;
-  userEnrollments: Record<string, string[]>;
   onGiftComplete?: () => void;
 }
 
 const GiftCourseModal = ({
   isOpen,
   onClose,
-  userEnrollments,
   onGiftComplete,
 }: GiftCourseModalProps) => {
   const [giftStep, setGiftStep] = useState<1 | 2 | 3 | 4>(1);
@@ -208,21 +206,29 @@ const GiftCourseModal = ({
     return () => clearTimeout(timer);
   }, [userSearch]);
 
-  // Fetch users with pagination and search
+  // Fetch users; backend excludes already-enrolled when excludeEnrolledInCourseIds passed
   const fetchUsers = useCallback(
-    async (page: number, append: boolean = false, search?: string) => {
-      // Prevent duplicate calls
+    async (
+      page: number,
+      append: boolean = false,
+      search?: string,
+      excludeCourseIds?: string[]
+    ) => {
       if (isLoadingUsersRef.current) return;
 
       isLoadingUsersRef.current = true;
       setIsLoadingUsers(true);
       try {
-        const limit = search ? 100 : 20; // 100 limit when searching, 20 for pagination
+        const limit = search ? 100 : 20;
         const result = await getUsers({
           page,
           limit,
           search: search || undefined,
-          userType: "student", // Only students can receive courses
+          userType: "student",
+          excludeEnrolledInCourseIds:
+            excludeCourseIds && excludeCourseIds.length > 0
+              ? excludeCourseIds
+              : undefined,
         });
 
         if (result) {
@@ -231,7 +237,6 @@ const GiftCourseModal = ({
           } else {
             setUsers(result.users);
           }
-
           setUserHasMore(page < result.totalPages);
           setUserCurrentPage(page);
         }
@@ -246,30 +251,28 @@ const GiftCourseModal = ({
     [getUsers]
   );
 
-  // Load users when step 3 is reached or search changes
+  // Load users when step 3 is reached; backend filters out already-enrolled
+  const excludeCourseIds = selectedCourses
+    .map((c) => c._id)
+    .filter((id): id is string => !!id);
+
   useEffect(() => {
-    // Only run when we're on step 3 and modal is open
     if (giftStep !== 3 || !isOpen) return;
 
-    // Check if search has actually changed to prevent duplicate calls
     if (lastSearchRef.current === debouncedUserSearch && users.length > 0) {
       return;
     }
 
     lastSearchRef.current = debouncedUserSearch;
-
-    // Reset pagination
     setUserCurrentPage(1);
     setUserHasMore(true);
 
     if (debouncedUserSearch) {
-      // Fetch with search (limit 100, no pagination)
-      fetchUsers(1, false, debouncedUserSearch);
+      fetchUsers(1, false, debouncedUserSearch, excludeCourseIds);
     } else {
-      // Initial load without search (pagination enabled)
-      fetchUsers(1, false);
+      fetchUsers(1, false, undefined, excludeCourseIds);
     }
-  }, [giftStep, isOpen, debouncedUserSearch, fetchUsers]);
+  }, [giftStep, isOpen, debouncedUserSearch, fetchUsers, excludeCourseIds.join(",")]);
 
   // Intersection Observer for courses infinite scroll
   useEffect(() => {
@@ -321,7 +324,7 @@ const GiftCourseModal = ({
           !isLoadingUsers &&
           !isLoadingUsersRef.current
         ) {
-          fetchUsers(userCurrentPage + 1, true);
+          fetchUsers(userCurrentPage + 1, true, undefined, excludeCourseIds);
         }
       },
       { threshold: 0.1 }
@@ -344,20 +347,11 @@ const GiftCourseModal = ({
     fetchUsers,
     debouncedUserSearch,
     giftStep,
+    excludeCourseIds.join(","),
   ]);
 
-  const getAvailableUsers = () => {
-    if (selectedCourses.length === 0) return users;
-
-    return users.filter((user) => {
-      if (!user._id) return false;
-      const userCourseIds = userEnrollments[user._id] || [];
-      // Show users who don't have at least one of the selected courses
-      return selectedCourses.some(
-        (course) => !userCourseIds.includes(course._id || "")
-      );
-    });
-  };
+  // Backend already excludes enrolled users when excludeEnrolledInCourseIds is passed
+  const getAvailableUsers = () => users;
 
   // Fetch course details with modules, lessons, and content
   const fetchCourseDetails = async (courseId: string) => {

@@ -48,25 +48,40 @@ export const getAllCoursesService = async (
   }
 
   if (search) {
-    const searchFields = searchTitleOnly
-      ? ["title"]
-      : ["title", "description", "shortDescription"];
-    const fuzzySearchFilter = createFuzzySearchOrFilter(search, searchFields);
+    const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const phraseRegex = { $regex: escapedSearch, $options: "i" };
 
-    if (fuzzySearchFilter && fuzzySearchFilter.$or) {
-      if (filters.$or) {
-        filters.$or = [...filters.$or, ...fuzzySearchFilter.$or];
+    if (isAdmin) {
+      // Admin panel: simple phrase matching only (no fuzzy)
+      filters.$and = filters.$and ? [...filters.$and] : [];
+      if (searchTitleOnly) {
+        filters.$and.push({ title: phraseRegex });
       } else {
-        filters.$or = fuzzySearchFilter.$or;
+        filters.$and.push({
+          $or: [
+            { title: phraseRegex },
+            { description: phraseRegex },
+            { shortDescription: phraseRegex },
+          ],
+        });
       }
     } else {
-      filters.$or = searchTitleOnly
-        ? [{ title: { $regex: search, $options: "i" } }]
-        : [
-            { title: { $regex: search, $options: "i" } },
-            { description: { $regex: search, $options: "i" } },
-            { shortDescription: { $regex: search, $options: "i" } },
-          ];
+      // Public: use fuzzy search for discoverability
+      const searchFields = searchTitleOnly
+        ? ["title"]
+        : ["title", "description", "shortDescription"];
+      const fuzzySearchFilter = createFuzzySearchOrFilter(search, searchFields);
+      if (fuzzySearchFilter?.$or) {
+        filters.$or = fuzzySearchFilter.$or;
+      } else {
+        filters.$or = searchTitleOnly
+          ? [{ title: phraseRegex }]
+          : [
+              { title: phraseRegex },
+              { description: phraseRegex },
+              { shortDescription: phraseRegex },
+            ];
+      }
     }
   }
   if (categories) {
