@@ -14,6 +14,7 @@ import {
   Copy,
   AlertCircle,
   HelpCircle,
+  Search,
 } from "lucide-react";
 import Container from "@/app/admin/components/ui/Container";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
@@ -78,8 +79,19 @@ const CertificateJobsPage = () => {
   const [page, setPage] = useState(1);
   const [limit] = useState(20);
   const [statusFilter, setStatusFilter] = useState<JobStatus | "">("");
+  const [searchInput, setSearchInput] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [retryingJobId, setRetryingJobId] = useState<string | null>(null);
+
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchQuery(searchInput.trim());
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
 
   const loadJobs = useCallback(async () => {
     setIsLoading(true);
@@ -88,6 +100,7 @@ const CertificateJobsPage = () => {
       params.set("page", String(page));
       params.set("limit", String(limit));
       if (statusFilter) params.set("status", statusFilter);
+      if (searchQuery) params.set("search", searchQuery);
 
       const response = await apiClient.get<{ data: JobsResponse }>(
         `/admin/certificate-jobs?${params.toString()}`,
@@ -107,7 +120,7 @@ const CertificateJobsPage = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [page, limit, statusFilter]);
+  }, [page, limit, statusFilter, searchQuery]);
 
   useEffect(() => {
     loadJobs();
@@ -145,11 +158,21 @@ const CertificateJobsPage = () => {
       title="Certificate Jobs"
       description="View and manage certificate generation jobs"
       className="h-full"
-      classNameBody="flex flex-col gap-6"
+      classNameBody="flex flex-col gap-6 overflow-visible"
     >
       {/* Filters & Summary */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
         <div className="flex flex-wrap items-center gap-3">
+          <div className="relative flex items-center gap-2">
+            <Search className="absolute left-3 size-4 text-gray-400 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search job ID, user, course..."
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              className="pl-9 pr-3 py-2 rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-800 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 h-[38px] min-w-[220px]"
+            />
+          </div>
           <div className="flex items-center gap-2">
             <label className="text-sm font-semibold text-gray-700">
               Status
@@ -206,24 +229,28 @@ const CertificateJobsPage = () => {
             No certificate jobs found
           </h3>
           <p className="text-gray-500 text-sm mb-4">
-            {statusFilter
-              ? `No jobs with status "${statusFilter}". Try a different filter.`
-              : "Certificate jobs will appear here when users complete courses."}
+            {searchQuery
+              ? `No jobs match "${searchQuery}". Try a different search.`
+              : statusFilter
+                ? `No jobs with status "${statusFilter}". Try a different filter.`
+                : "Certificate jobs will appear here when users complete courses."}
           </p>
-          {statusFilter && (
+          {(statusFilter || searchQuery) && (
             <WhiteButton
               onClick={() => {
                 setStatusFilter("");
+                setSearchInput("");
+                setSearchQuery("");
                 setPage(1);
               }}
             >
-              Clear filter
+              Clear filters
             </WhiteButton>
           )}
         </div>
       ) : (
         <div className="rounded-xl border border-gray-200 overflow-hidden bg-white shadow-sm">
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto overflow-y-hidden">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">

@@ -1,6 +1,6 @@
 "use client";
 import { useState, useMemo } from "react";
-import AllUsersGraph from "./AllUsersGraph";
+import EnrollmentsGraph from "./EnrollmentsGraph";
 import NewSignpUsers from "./NewSignupusersGraph";
 import useSWR from "swr";
 import { fetcher } from "@/lib/utils";
@@ -10,12 +10,20 @@ import {
   BookOpen,
   Shield,
   ShieldCheck,
+  IndianRupee,
+  Award,
+  CheckCircle2,
+  ShoppingCart,
 } from "lucide-react";
 import CalenderBtn from "./CalenderBtn";
 import { ButtonLoader } from "@/components/ui/Loader";
 import { toast } from "react-toastify";
 
-const SuperAdminDashboard = () => {
+const SuperAdminDashboard = ({
+  variant = "super-admin",
+}: {
+  variant?: "admin" | "super-admin";
+}) => {
   const filters = [
     { label: "Last 12 Months", value: 12 },
     { label: "Last 6 Months", value: 6 },
@@ -74,6 +82,12 @@ const SuperAdminDashboard = () => {
       timePeriod: data.timePeriod,
       platformStats: data.platformStats,
       todayEnrollments: data.todayEnrollments ?? 0,
+      enrollmentsMonthlyBreakdown: data.enrollmentsMonthlyBreakdown ?? [],
+      totalRevenue: data.totalRevenue ?? 0,
+      totalCertificates: data.totalCertificates ?? 0,
+      completedEnrollments: data.completedEnrollments ?? 0,
+      totalEnrollments: data.totalEnrollments ?? 0,
+      successfulOrdersCount: data.successfulOrdersCount ?? 0,
     };
   }, [dashboardStatsData?.data?.data]);
 
@@ -81,6 +95,7 @@ const SuperAdminDashboard = () => {
     totalUsers = 0,
     activeUsers = 0,
     inactiveUsers = 0,
+    blockedUsers = 0,
     chartData = [],
     instructorPercentage = 0,
     studentPercentage = 0,
@@ -88,7 +103,18 @@ const SuperAdminDashboard = () => {
     timePeriod,
     platformStats,
     todayEnrollments = 0,
+    enrollmentsMonthlyBreakdown = [],
+    totalRevenue = 0,
+    totalCertificates = 0,
+    completedEnrollments = 0,
+    totalEnrollments = 0,
+    successfulOrdersCount = 0,
   } = dashboardStats || {};
+
+  const totalEnrollmentsInPeriod = enrollmentsMonthlyBreakdown.reduce(
+    (sum: number, m: { count: number }) => sum + (m.count ?? 0),
+    0
+  );
 
   return (
     <div className="p-2 sm:px-4 sm:pb-2 flex flex-col gap-4 min-h-full">
@@ -98,7 +124,7 @@ const SuperAdminDashboard = () => {
           Platform Overview
         </h1>
         <span className="text-[#475467] font-medium font-coolvetica text-xs sm:text-sm">
-          Super Admin Dashboard
+          {variant === "super-admin" ? "Super Admin Dashboard" : "Admin Dashboard"}
         </span>
       </div>
 
@@ -171,11 +197,16 @@ const SuperAdminDashboard = () => {
                   {isLoading ? (
                     <ButtonLoader />
                   ) : (
-                    <span className="text-xl sm:text-3xl font-extrabold text-[#1D2939]">
-                      {totalUsers}
-                    </span>
+                    <>
+                      <span className="text-xl sm:text-3xl font-extrabold text-[#1D2939]">
+                        {totalUsers}
+                      </span>
+                      <span className="text-sm text-[#6B7280]">
+                        ({activeUsers} active)
+                      </span>
+                    </>
                   )}
-                  <div className="flex items-center gap-1 text-xs font-medium">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium">
                     <div className="bg-[#F6FEF9] rounded-md p-[6px] flex items-center gap-1">
                       {growthRate > 0 ? (
                         <span className="text-[#12B669] flex items-center gap-1">
@@ -192,6 +223,18 @@ const SuperAdminDashboard = () => {
                     <span className="text-[#475467]">
                       {filters.find((f) => f.value === duration)?.label}
                     </span>
+                    {!isLoading && (
+                      <>
+                        <span className="text-[#6B7280]">
+                          Active: {activeUsers}
+                        </span>
+                        {blockedUsers > 0 && (
+                          <span className="text-amber-600">
+                            Blocked: {blockedUsers}
+                          </span>
+                        )}
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -260,22 +303,108 @@ const SuperAdminDashboard = () => {
           </div>
         </div>
 
+        {/* Engagement & Business */}
+        <h2 className="text-[#1D2939] font-semibold text-lg">Engagement & Business</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6">
+          <div className="bg-white rounded-xl p-4 shadow-sm border border-[#EAECF0] flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-emerald-100">
+              <IndianRupee className="size-5 text-emerald-600" />
+            </div>
+            <div>
+              <h3 className="text-[#475467] font-medium text-sm">Total Revenue</h3>
+              {isLoading ? (
+                <ButtonLoader />
+              ) : (
+                <span className="text-xl font-extrabold text-[#1D2939]">
+                  ₹{(totalRevenue / 100000).toFixed(1)}L
+                </span>
+              )}
+              <p className="text-xs text-[#6B7280] mt-0.5">All successful orders</p>
+            </div>
+          </div>
+          <div className="bg-white rounded-xl p-4 shadow-sm border border-[#EAECF0] flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-amber-100">
+              <Award className="size-5 text-amber-600" />
+            </div>
+            <div>
+              <h3 className="text-[#475467] font-medium text-sm">Certificates</h3>
+              {isLoading ? (
+                <ButtonLoader />
+              ) : (
+                <span className="text-xl font-extrabold text-[#1D2939]">
+                  {totalCertificates.toLocaleString()}
+                </span>
+              )}
+              <p className="text-xs text-[#6B7280] mt-0.5">Course completions</p>
+            </div>
+          </div>
+          <div className="bg-white rounded-xl p-4 shadow-sm border border-[#EAECF0] flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-green-100">
+              <CheckCircle2 className="size-5 text-green-600" />
+            </div>
+            <div>
+              <h3 className="text-[#475467] font-medium text-sm">Completed</h3>
+              {isLoading ? (
+                <ButtonLoader />
+              ) : (
+                <span className="text-xl font-extrabold text-[#1D2939]">
+                  {completedEnrollments.toLocaleString()}
+                </span>
+              )}
+              <p className="text-xs text-[#6B7280] mt-0.5">Enrollments completed</p>
+            </div>
+          </div>
+          <div className="bg-white rounded-xl p-4 shadow-sm border border-[#EAECF0] flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-sky-100">
+              <BookOpen className="size-5 text-sky-600" />
+            </div>
+            <div>
+              <h3 className="text-[#475467] font-medium text-sm">Total Enrollments</h3>
+              {isLoading ? (
+                <ButtonLoader />
+              ) : (
+                <span className="text-xl font-extrabold text-[#1D2939]">
+                  {totalEnrollments.toLocaleString()}
+                </span>
+              )}
+              <p className="text-xs text-[#6B7280] mt-0.5">All time</p>
+            </div>
+          </div>
+          <div className="bg-white rounded-xl p-4 shadow-sm border border-[#EAECF0] flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-teal-100">
+              <ShoppingCart className="size-5 text-teal-600" />
+            </div>
+            <div>
+              <h3 className="text-[#475467] font-medium text-sm">Successful Orders</h3>
+              {isLoading ? (
+                <ButtonLoader />
+              ) : (
+                <span className="text-xl font-extrabold text-[#1D2939]">
+                  {successfulOrdersCount.toLocaleString()}
+                </span>
+              )}
+              <p className="text-xs text-[#6B7280] mt-0.5">Paid enrollments</p>
+            </div>
+          </div>
+        </div>
+
         {/* Graphs */}
         <div className="grid grid-cols-1 lg:grid-cols-10 gap-4 sm:gap-6">
           <div className="lg:col-span-5 bg-white rounded-xl p-3 sm:p-4 shadow-sm border border-[#EAECF0]">
             <h3 className="text-[#475467] font-medium text-sm sm:text-base">
-              Active Users
+              Course Enrollments
             </h3>
+            <p className="text-xs text-[#6B7280] mt-0.5">
+              New enrollments per month (course engagement)
+            </p>
             <span className="text-xl sm:text-3xl font-extrabold text-[#1D2939]">
-              {activeUsers}
+              {totalEnrollmentsInPeriod}
+            </span>
+            <span className="text-sm text-[#475467] ml-1">
+              in {filters.find((f) => f.value === duration)?.label?.toLowerCase()}
             </span>
             <div className="mt-2">
-              <AllUsersGraph
-                totalUsers={totalUsers}
-                activeUsers={activeUsers}
-                inactiveUsers={inactiveUsers}
-                chartData={chartData}
-              />
+              <EnrollmentsGraph monthlyBreakdown={enrollmentsMonthlyBreakdown} />
             </div>
           </div>
           <div className="lg:col-span-5 bg-white rounded-xl p-3 sm:p-4 shadow-sm border border-[#EAECF0]">

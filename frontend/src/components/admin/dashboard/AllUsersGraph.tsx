@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   BarChart,
   Bar,
@@ -23,6 +23,26 @@ const AllUsersGraph = ({
   chartData: any[];
 }) => {
   const [selectedTab, setSelectedTab] = useState("all");
+
+  // Transform to cumulative data (running total) - shows growth of active/inactive user base over time
+  // This differentiates from New Signups which shows monthly counts
+  const cumulativeChartData = useMemo(() => {
+    if (!chartData?.length) return [];
+    let cumAll = 0;
+    let cumActive = 0;
+    let cumInactive = 0;
+    return chartData.map((row) => {
+      cumAll += (row.Active ?? 0) + (row.Inactive ?? 0);
+      cumActive += row.Active ?? 0;
+      cumInactive += row.Inactive ?? 0;
+      return {
+        ...row,
+        All: cumAll,
+        Active: cumActive,
+        Inactive: cumInactive,
+      };
+    });
+  }, [chartData]);
 
   return (
     <div className="flex h-full w-full">
@@ -87,7 +107,7 @@ const AllUsersGraph = ({
                   {/* Graph Container - explicit height required for ResponsiveContainer on mobile */}
                   <div className="w-full h-[240px] sm:h-[280px]">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={chartData}>
+                      <BarChart data={cumulativeChartData}>
                         <CartesianGrid
                           strokeDasharray="3 3"
                           stroke="#E5E5EF"
@@ -151,20 +171,22 @@ const AllUsersGraph = ({
                           )}
                         />
                         {selectedTab === "all" && (
-                          <Bar
-                            dataKey="Active"
-                            fill="#4323F7"
-                            barSize={20}
-                            radius={[4, 4, 4, 4]}
-                          />
-                        )}
-                        {selectedTab === "all" && (
-                          <Bar
-                            dataKey="Unactive"
-                            fill="#F5742C"
-                            barSize={20}
-                            radius={[4, 4, 4, 4]}
-                          />
+                          <>
+                            <Bar
+                              dataKey="Active"
+                              fill="#4323F7"
+                              barSize={20}
+                              radius={[4, 4, 4, 4]}
+                              stackId="cumulative"
+                            />
+                            <Bar
+                              dataKey="Unactive"
+                              fill="#F5742C"
+                              barSize={20}
+                              radius={[4, 4, 4, 4]}
+                              stackId="cumulative"
+                            />
+                          </>
                         )}
                         {selectedTab === "active" && (
                           <Bar

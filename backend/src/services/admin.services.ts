@@ -1,4 +1,4 @@
-import { UserModel, CourseModel, EnrollmentModel } from "../models";
+import { UserModel, CourseModel, EnrollmentModel, OrderModel, CertificateModel } from "../models";
 import { AppError } from "../middlewares/error.middleware";
 import { getUserByIdService } from "./user.services";
 import { GetUserEnrollmentsService } from "./enrollment.services";
@@ -192,6 +192,39 @@ export const getDashboardStats = async (
     enrolledAt: { $gte: todayStart, $lte: todayEnd },
   });
 
+  // Enrollments per month (for distinct chart - shows course engagement)
+  const enrolledAtFilter = {
+    enrolledAt: { $gte: startDate, $lte: endDate },
+  };
+  const enrollmentsMonthlyBreakdown = await EnrollmentModel.aggregate([
+    { $match: enrolledAtFilter },
+    {
+      $group: {
+        _id: {
+          year: { $year: "$enrolledAt" },
+          month: { $month: "$enrolledAt" },
+        },
+        count: { $sum: 1 },
+      },
+    },
+    { $sort: { "_id.year": 1, "_id.month": 1 } },
+  ]);
+
+  // Business & engagement stats (revenue, certificates, enrollments)
+  const [revenueResult, totalCertificates, completedEnrollments, totalEnrollments, successfulOrdersCount] =
+    await Promise.all([
+      OrderModel.aggregate<{ total: number }>([
+        { $match: { paymentStatus: "success" } },
+        { $group: { _id: null, total: { $sum: "$amount" } } },
+      ]),
+      CertificateModel.countDocuments(),
+      EnrollmentModel.countDocuments({ status: "completed" }),
+      EnrollmentModel.countDocuments(),
+      OrderModel.countDocuments({ paymentStatus: "success" }),
+    ]);
+
+  const totalRevenue = revenueResult[0]?.total ?? 0;
+
   // Platform-wide stats (super-admin only)
   let platformStats: {
     totalCourses: number;
@@ -227,6 +260,16 @@ export const getDashboardStats = async (
 
     // Today's enrollments
     todayEnrollments,
+
+    // Enrollments per month (for chart - course engagement)
+    enrollmentsMonthlyBreakdown,
+
+    // Business & engagement stats
+    totalRevenue,
+    totalCertificates,
+    completedEnrollments,
+    totalEnrollments,
+    successfulOrdersCount,
 
     // Time period specific data
     timePeriod: {

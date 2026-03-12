@@ -6,6 +6,9 @@ export interface PaymentOrder {
   currency: "INR";
   userId: User["_id"];
   courseId: Course["_id"];
+  /** Snapshot at order creation - preserved if course/user deleted */
+  courseName?: string;
+  userName?: string;
   planType: "elite" | "essential";
   paymentMethod: "paytm";
   paymentMode: string;

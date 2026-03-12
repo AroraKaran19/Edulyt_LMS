@@ -9,10 +9,17 @@ import {
   VideoContentModel,
   QuizContentModel,
   DocumentContentModel,
+  VideoNoteModel,
+  QnAModel,
+  LiveClassModel,
 } from "../models";
 import { Content, Course, CourseLesson, CourseModule } from "../types";
 import mongoose from "mongoose";
 import { createFuzzySearchOrFilter } from "../utils/lib/fuzzySearch";
+import {
+  deleteFilesFromS3,
+  extractS3KeyFromUrl,
+} from "./upload.services";
 
 export const getAllCoursesService = async (
   page: number,
@@ -1438,6 +1445,45 @@ export const UpdateCourseMetadataService = async (
   return updatedCourse as Course;
 };
 
+/**
+ * Collect S3 keys from course, modules, contents, and live classes, then delete from S3.
+ * Call before deleting DB records so we have the URL data.
+ */
+const deleteCourseFilesFromS3 = async (
+  course: any,
+  modules: any[],
+  contents: any[],
+  liveClasses: any[] = []
+): Promise<void> => {
+  const urls: string[] = [];
+  if (course?.thumbnail) urls.push(course.thumbnail);
+  if (course?.previewVideoUrl) urls.push(course.previewVideoUrl);
+  for (const m of modules || []) {
+    if (m?.thumbnailUrl) urls.push(m.thumbnailUrl);
+  }
+  for (const lc of liveClasses || []) {
+    if (lc?.imageUrl) urls.push(lc.imageUrl);
+  }
+  for (const c of contents || []) {
+    if (c?.sources?.length) {
+      for (const s of c.sources) if (s?.videoUrl) urls.push(s.videoUrl);
+    }
+    if (c?.thumbnailUrl) urls.push(c.thumbnailUrl);
+    if (c?.documentUrl) urls.push(c.documentUrl);
+    if (c?.readingMaterials?.length) {
+      for (const rm of c.readingMaterials) {
+        if (rm?.downloadUrl) urls.push(rm.downloadUrl);
+      }
+    }
+  }
+  const keys = urls
+    .map((u) => extractS3KeyFromUrl(u))
+    .filter((k): k is string => k != null);
+  if (keys.length > 0) {
+    await deleteFilesFromS3([...new Set(keys)]);
+  }
+};
+
 export const DeleteCourseService = async (
   courseId: string
 ): Promise<boolean> => {
@@ -1457,6 +1503,20 @@ export const DeleteCourseService = async (
   });
   const lessonIds = lessons.map((lesson) => lesson._id);
 
+  // Fetch contents and live classes before deletion (needed for S3 URLs)
+  const contents =
+    lessonIds.length > 0
+      ? await ContentModel.find({ lessonId: { $in: lessonIds } }).lean()
+      : [];
+  const liveClasses = await LiveClassModel.find({ course: courseId })
+    .select("imageUrl")
+    .lean();
+
+  // Delete videos/images from S3 in background (non-blocking)
+  deleteCourseFilesFromS3(course, modules, contents, liveClasses).catch((err) =>
+    console.error("[DeleteCourseService] S3 cleanup failed:", err)
+  );
+
   // Cascade delete in reverse order (contents -> lessons -> modules -> course)
   await ContentModel.deleteMany({
     lessonId: { $in: lessonIds },
@@ -1473,6 +1533,15 @@ export const DeleteCourseService = async (
     reviewableId: courseId,
     reviewableType: "Course",
   });
+
+  // Delete video notes for this course
+  await VideoNoteModel.deleteMany({ courseId });
+
+  // Delete Q&A for this course
+  await QnAModel.deleteMany({ courseId });
+
+  // Delete live classes for this course
+  await LiveClassModel.deleteMany({ course: courseId });
 
   // Remove course from instructors' ownedCourses
   if (course.instructor) {

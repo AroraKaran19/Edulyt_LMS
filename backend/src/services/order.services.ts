@@ -213,8 +213,10 @@ export const getAdminOrdersService = async (
       {
         $project: {
           _id: 1,
-          userId: "$user",
-          courseId: "$course",
+          userId: { $ifNull: ["$user", { firstName: "$userName", lastName: "", email: "" }] },
+          courseId: { $ifNull: ["$course", { title: "$courseName", slug: "", thumbnail: "" }] },
+          courseName: 1,
+          userName: 1,
           txnId: 1,
           amount: 1,
           currency: 1,
@@ -416,7 +418,10 @@ export const createOrderService = async (
     throw new AppError("PAYTM_MID or PAYTM_WEBSITE is not set", 500);
   }
 
-  const course = await CourseModel.findById(courseId);
+  const [course, user] = await Promise.all([
+    CourseModel.findById(courseId),
+    UserModel.findById(userId).select("firstName lastName").lean(),
+  ]);
   if (!course) throw new AppError("Course not found", 404);
 
   const plan = course.plans[planType];
@@ -450,11 +455,19 @@ export const createOrderService = async (
       purchaseAmountBeforeCouponFromFrontend,
     });
 
+  const courseName = (course as any).title ?? "";
+  const userName =
+    user && ((user as any).firstName || (user as any).lastName)
+      ? `${((user as any).firstName ?? "").trim()} ${((user as any).lastName ?? "").trim()}`.trim()
+      : "";
+
   const order = new OrderModel({
     txnId: Math.random().toString(36).substring(2, 15),
     token: "", // Will be set by Paytm's txnToken
     userId,
     courseId,
+    courseName,
+    userName,
     planType,
     amount,
     currency: "INR",

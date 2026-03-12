@@ -24,8 +24,10 @@ interface OrderCourse {
 
 interface OrderItem {
   _id: string;
-  userId: OrderUser;
-  courseId: OrderCourse;
+  userId: OrderUser | null;
+  courseId: OrderCourse | null;
+  courseName?: string;
+  userName?: string;
   txnId: string;
   amount: number;
   currency: string;
@@ -55,10 +57,12 @@ const OrderDetailsModal = ({
 }: OrderDetailsModalProps) => {
   if (!order) return null;
 
-  const getUserName = (user?: OrderUser) => {
-    if (!user) return "—";
-    const name = [user.firstName, user.lastName].filter(Boolean).join(" ");
-    return name || user.email || "—";
+  const getUserName = (user?: OrderUser | null, fallback?: string) => {
+    if (user) {
+      const name = [user.firstName, user.lastName].filter(Boolean).join(" ");
+      if (name || user.email) return name || user.email || "—";
+    }
+    return fallback || "—";
   };
 
   const formatDate = (date: string) =>
@@ -122,7 +126,7 @@ const OrderDetailsModal = ({
           label="User"
           value={
             <div>
-              <div>{getUserName(order.userId)}</div>
+              <div>{getUserName(order.userId, order.userName)}</div>
               {order.userId?.email && (
                 <div className="text-gray-500 text-xs mt-0.5">
                   {order.userId.email}
@@ -135,7 +139,7 @@ const OrderDetailsModal = ({
 
         <InfoRow
           label="Course"
-          value={order.courseId?.title ?? "—"}
+          value={order.courseId?.title ?? order.courseName ?? "—"}
           icon={BookOpen}
         />
 

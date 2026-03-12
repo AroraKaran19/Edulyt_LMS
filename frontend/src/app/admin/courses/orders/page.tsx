@@ -24,8 +24,10 @@ interface OrderCourse {
 
 interface OrderItem {
   _id: string;
-  userId: OrderUser;
-  courseId: OrderCourse;
+  userId: OrderUser | null;
+  courseId: OrderCourse | null;
+  courseName?: string;
+  userName?: string;
   txnId: string;
   amount: number;
   currency: string;
@@ -139,11 +141,16 @@ const OrdersPage = () => {
     }
   };
 
-  const getUserName = (user?: OrderUser) => {
-    if (!user) return "—";
-    const name = [user.firstName, user.lastName].filter(Boolean).join(" ");
-    return name || user.email || "—";
+  const getUserName = (item: OrderItem) => {
+    if (item.userId) {
+      const name = [item.userId.firstName, item.userId.lastName].filter(Boolean).join(" ");
+      if (name || item.userId.email) return name || item.userId.email || "—";
+    }
+    return item.userName || "—";
   };
+
+  const getCourseTitle = (item: OrderItem) =>
+    item.courseId?.title || item.courseName || "—";
 
   const hasActiveFilters = debouncedSearch || paymentStatus !== "all";
 
@@ -256,7 +263,7 @@ const OrdersPage = () => {
                         </div>
                         <div>
                           <div className="text-sm font-medium text-gray-900">
-                            {getUserName(item.userId)}
+                            {getUserName(item)}
                           </div>
                           <div className="text-xs text-gray-500">
                             {item.userId?.email ?? "—"}
@@ -270,7 +277,7 @@ const OrdersPage = () => {
                           <BookOpen className="w-4 h-4 text-gray-500" />
                         </div>
                         <span className="text-sm text-gray-900 truncate block min-w-0">
-                          {item.courseId?.title ?? "—"}
+                          {getCourseTitle(item)}
                         </span>
                       </div>
                     </td>

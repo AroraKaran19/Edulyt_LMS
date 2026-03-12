@@ -4,6 +4,10 @@ import {
   CreateAuthenticationMediaData,
   UpdateAuthenticationMediaData,
 } from "../types/authentication-media";
+import {
+  deleteFilesFromS3,
+  extractS3KeyFromUrl,
+} from "./upload.services";
 
 export const getAllAuthenticationMediaService = async (
   page: number = 1,
@@ -73,8 +77,21 @@ export const updateAuthenticationMediaService = async (
 export const deleteAuthenticationMediaService = async (
   id: string
 ): Promise<boolean> => {
-  const result = await AuthenticationMediaModel.findByIdAndDelete(id);
-  return !!result;
+  const media = await AuthenticationMediaModel.findById(id).lean();
+  if (!media) return false;
+
+  // Delete image from S3 in background (non-blocking)
+  if (media.imageUrl) {
+    const key = extractS3KeyFromUrl(media.imageUrl);
+    if (key) {
+      deleteFilesFromS3([key]).catch((err) =>
+        console.error("[DeleteAuthenticationMedia] S3 cleanup failed:", err)
+      );
+    }
+  }
+
+  await AuthenticationMediaModel.findByIdAndDelete(id);
+  return true;
 };
 
 export const reorderAuthenticationMediaService = async (

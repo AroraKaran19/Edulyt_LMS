@@ -168,7 +168,7 @@ export const incrementJobRetryService = async (jobId: string): Promise<void> => 
 };
 
 /**
- * Get all certificate jobs (admin) - with pagination and status filter
+ * Get all certificate jobs (admin) - with pagination, status filter, and search
  * Enriches with user and course details from enrollment
  */
 export const getAllCertificateJobsService = async (
@@ -176,6 +176,7 @@ export const getAllCertificateJobsService = async (
     page?: number;
     limit?: number;
     status?: CertificateJobStatus;
+    search?: string;
   } = {}
 ): Promise<{
   jobs: (CertificateJob & {
@@ -190,12 +191,123 @@ export const getAllCertificateJobsService = async (
     const page = options.page ?? 1;
     const limit = options.limit ?? 20;
     const skip = (page - 1) * limit;
+    const searchTrimmed = options.search?.trim();
 
     const filter: Record<string, unknown> = {};
     if (options.status) {
       filter.status = options.status;
     }
 
+    // When search is provided, use aggregation to search across jobId, enrollmentId, userName, courseName
+    if (searchTrimmed) {
+      const searchRegex = new RegExp(
+        searchTrimmed.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+        "i"
+      );
+
+      const pipeline: mongoose.PipelineStage[] = [
+        { $match: filter },
+        {
+          $lookup: {
+            from: "enrollments",
+            let: {
+              eid: {
+                $convert: {
+                  input: "$enrollmentId",
+                  to: "objectId",
+                  onError: null,
+                  onNull: null,
+                },
+              },
+            },
+            pipeline: [
+              { $match: { $expr: { $and: [{ $ne: ["$$eid", null] }, { $eq: ["$_id", "$$eid"] }] } } },
+              { $project: { userId: 1, courseId: 1 } },
+              { $limit: 1 },
+            ],
+            as: "enrollment",
+          },
+        },
+        { $unwind: { path: "$enrollment", preserveNullAndEmptyArrays: true } },
+        {
+          $lookup: {
+            from: "users",
+            localField: "enrollment.userId",
+            foreignField: "_id",
+            as: "user",
+            pipeline: [{ $project: { firstName: 1, lastName: 1, email: 1 } }],
+          },
+        },
+        { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
+        {
+          $lookup: {
+            from: "courses",
+            localField: "enrollment.courseId",
+            foreignField: "_id",
+            as: "course",
+            pipeline: [{ $project: { title: 1 } }],
+          },
+        },
+        { $unwind: { path: "$course", preserveNullAndEmptyArrays: true } },
+        {
+          $addFields: {
+            userName: {
+              $trim: {
+                input: {
+                  $concat: [
+                    { $ifNull: ["$user.firstName", ""] },
+                    " ",
+                    { $ifNull: ["$user.lastName", ""] },
+                  ],
+                },
+              },
+            },
+            courseName: { $ifNull: ["$course.title", ""] },
+          },
+        },
+        {
+          $match: {
+            $or: [
+              { jobId: searchRegex },
+              { enrollmentId: searchRegex },
+              { userName: searchRegex },
+              { courseName: searchRegex },
+              { "user.email": searchRegex },
+            ],
+          },
+        },
+      ];
+
+      const [countResult, jobsResult] = await Promise.all([
+        CertificateJobModel.aggregate([
+          ...pipeline,
+          { $count: "total" },
+        ]),
+        CertificateJobModel.aggregate([
+          ...pipeline,
+          { $sort: { createdAt: -1 } },
+          { $skip: skip },
+          { $limit: limit },
+          {
+            $project: {
+              enrollment: 0,
+              user: 0,
+              course: 0,
+            },
+          },
+        ]),
+      ]);
+
+      const total = countResult[0]?.total ?? 0;
+      const jobs = (jobsResult as any[]).map((j) => {
+        const { userName: u, courseName: c, ...rest } = j;
+        return { ...rest, userName: u || "", courseName: c || "" };
+      });
+
+      return { jobs, total, page, limit };
+    }
+
+    // No search: use existing find + enrich flow
     const [jobs, total] = await Promise.all([
       CertificateJobModel.find(filter)
         .sort({ createdAt: -1 })

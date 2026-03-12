@@ -100,6 +100,56 @@ export const deleteFileFromS3 = async (s3Key: string): Promise<void> => {
 };
 
 /**
+ * Extract S3 key from a public URL if it points to our S3 bucket.
+ * Returns null for external URLs (e.g. YouTube, other CDNs).
+ */
+export const extractS3KeyFromUrl = (url: string): string | null => {
+  if (!url || typeof url !== "string" || !url.startsWith("http")) return null;
+  try {
+    const base = getPublicUrlBase();
+    const baseNoTrailing = base.replace(/\/$/, "");
+    const urlTrimmed = url.trim();
+    if (urlTrimmed.startsWith(baseNoTrailing + "/")) {
+      return urlTrimmed.slice(baseNoTrailing.length + 1).split("?")[0];
+    }
+    if (urlTrimmed === baseNoTrailing) return null;
+    // Also try default S3 URL pattern (bucket.s3.region.amazonaws.com)
+    const bucketName = getBucketName();
+    const s3Pattern = new RegExp(
+      `^https://${bucketName}\\.s3[.-][a-z0-9-]+\\.amazonaws\\.com/(.+?)(?:\\?|$)`,
+      "i"
+    );
+    const match = urlTrimmed.match(s3Pattern);
+    return match ? match[1] : null;
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Delete multiple files from S3 by their keys.
+ * Skips invalid/empty keys. Logs errors but does not throw.
+ */
+export const deleteFilesFromS3 = async (s3Keys: string[]): Promise<void> => {
+  const validKeys = s3Keys.filter((k) => k && typeof k === "string" && k.length > 0);
+  if (validKeys.length === 0) return;
+  const s3Client = await getS3Client();
+  const bucketName = getBucketName();
+  for (const key of validKeys) {
+    try {
+      const command = new DeleteObjectCommand({
+        Bucket: bucketName,
+        Key: key,
+      });
+      await s3Client.send(command);
+    } catch (error) {
+      console.error(`Error deleting S3 file ${key}:`, error);
+      // Continue with other files - don't throw
+    }
+  }
+};
+
+/**
  * Validate file type and size
  * @param fileType - MIME type of the file
  * @param fileSize - Size of the file in bytes
