@@ -31,7 +31,7 @@ const DashboardBanner = () => {
           <h2 className="text-xl sm:text-2xl font-bold">
             {timeMessage}, {displayName}
           </h2>
-          <p className="text-sm font-semibold">Welcome to Edulyt!</p>
+          <p className="text-sm font-semibold">Welcome to Airkrit!</p>
         </div>
         <div className="ml-auto w-max flex items-center gap-2 sm:gap-4 lg:gap-6 flex-wrap">
           <div className="flex py-2 px-2.5 w-[138px] items-center gap-2 rounded-lg border border-gray-200 overflow-hidden">
@@ -51,7 +51,7 @@ const DashboardBanner = () => {
         <h2 className="text-xl sm:text-2xl font-bold">
           {timeMessage}, {displayName}
         </h2>
-        <p className="text-sm font-semibold">Welcome to Edulyt!</p>
+        <p className="text-sm font-semibold">Welcome to Airkrit!</p>
       </div>
       <div className="ml-auto w-max flex items-center gap-2 sm:gap-4 lg:gap-6 flex-wrap">
         <Card

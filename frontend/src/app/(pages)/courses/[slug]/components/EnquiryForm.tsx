@@ -8,6 +8,7 @@ import { Plus_Jakarta_Sans } from "next/font/google";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import { Course, Student } from "@/types";
 import useAuth from "@/hooks/useAuth";
+import { toast } from "react-toastify";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -220,6 +221,7 @@ const EnquiryForm = ({ course }: { course: Course }) => {
       console.log("Enquiry form submitted:", formData);
 
       setSubmitSuccess(true);
+      toast.success("Your enquiry has been sent. We'll get back to you soon.");
       setFormData({
         name: "",
         email: "",
