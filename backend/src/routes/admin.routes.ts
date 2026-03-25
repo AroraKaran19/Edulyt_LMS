@@ -4,7 +4,19 @@ import { verifyAdmin } from "../middlewares/admin.middleware";
 import {
   getDashboardStatsController,
   getCourseAnalyticsController,
+  getEnrollmentsOverTimeController,
+  getAdminOrdersController,
+  getAdminEnrollmentsController,
+  revokeEnrollmentController,
+  getUserDetailsForAdminController,
+  getTimeSpentPerDayController,
 } from "../controllers/admin.controller";
+import {
+  getAllCertificateJobs,
+  retryCertificateJob,
+  getCertificatesByUserId,
+} from "../controllers/certificate.controller";
+import { getTotalSpendByUserId } from "../controllers/order.controller";
 
 const router = Router();
 
@@ -15,7 +27,31 @@ router.use(verifyAdmin);
 // Admin dashboard route
 router.get("/dashboard-stats", getDashboardStatsController);
 
-// Course analytics route
+// Admin orders (enrollments)
+router.get("/orders", getAdminOrdersController);
+
+// Admin enrollments (paid, gift, trial) with type filter
+router.get("/enrollments", getAdminEnrollmentsController);
+router.post("/enrollments/revoke", revokeEnrollmentController);
+
+// Course analytics routes (more specific first)
+router.get("/courses-analytics/enrollments-over-time", getEnrollmentsOverTimeController);
 router.get("/courses-analytics", getCourseAnalyticsController);
+
+// Certificate jobs (admin settings)
+router.get("/certificate-jobs", getAllCertificateJobs);
+router.post("/certificate-jobs/:jobId/retry", retryCertificateJob);
+
+// User details (aggregated: user, enrollments, certificates, totalSpend)
+router.get("/users/:userId/details", getUserDetailsForAdminController);
+
+// User certificates (admin view)
+router.get("/users/:userId/certificates", getCertificatesByUserId);
+
+// User total spend (paid purchases only, excludes gift/trial)
+router.get("/users/:userId/total-spend", getTotalSpendByUserId);
+
+// User time spent per day (learning activity)
+router.get("/users/:userId/time-spent", getTimeSpentPerDayController);
 
 export default router;

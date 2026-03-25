@@ -10,7 +10,7 @@ import React, {
 } from "react";
 import SectionContainer from "./components/SectionContainer";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
-import { Clock3, Play, FileText, Lock, CheckCircle2 } from "lucide-react";
+import { Clock3, Play, FileText, Lock, CheckCircle2, HelpCircle } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useLessonNavigation } from "./hooks/useLessonNavigation";
 import {
@@ -37,6 +37,7 @@ import {
 import { useCompletedContents } from "./hooks/useCompletedContents";
 import { useCourseCompletion } from "./hooks/useCourseCompletion";
 import { FullScreenLoader } from "@/components/ui/Loader";
+import QuizSection from "./components/QuizSection";
 
 const VideoPlayer = dynamic(() => import("@/components/video/VideoPlayer"), {
   ssr: false,
@@ -68,6 +69,7 @@ const VideoSection = memo(
   }) => {
     const { connectToVideo } = useVideoTimeContext();
     const { accessControl } = useEnrollmentContext() || { accessControl: null };
+    const { isContentCompleted } = useCompletedContents();
 
     // Use ref to track accessControl to prevent unnecessary recalculations
     const accessControlRef = useRef(accessControl);
@@ -186,8 +188,8 @@ const VideoSection = memo(
       [selectedContent?._id, connectToVideo]
     );
 
-    // Show placeholder if no video content is selected
-    if (!selectedContent || selectedContent.type !== "video") {
+    // No content selected
+    if (!selectedContent) {
       return (
         <SectionContainer
           id="video-player"
@@ -195,13 +197,42 @@ const VideoSection = memo(
         >
           <div className="text-center">
             <Play className="size-16 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600">Select a video to start watching</p>
+            <p className="text-gray-600">Select content to start</p>
           </div>
         </SectionContainer>
       );
     }
 
-    // Show locked content message if user doesn't have access
+    // Quiz content
+    if (selectedContent.type === "quiz") {
+      return (
+        <QuizSection
+          quizContent={selectedContent}
+          moduleId={selectedModule?._id}
+          lessonId={selectedLesson?._id}
+          hasContentAccess={hasContentAccess}
+          isAlreadyCompleted={!!(selectedContent._id && isContentCompleted(selectedContent._id))}
+          onQuizComplete={onVideoComplete}
+        />
+      );
+    }
+
+    // Document content - placeholder for now
+    if (selectedContent.type === "document") {
+      return (
+        <SectionContainer
+          id="video-player"
+          className="w-full aspect-video bg-gray-100 flex items-center justify-center"
+        >
+          <div className="text-center">
+            <FileText className="size-16 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-600">Document content - coming soon</p>
+          </div>
+        </SectionContainer>
+      );
+    }
+
+    // Show locked content message if user doesn't have access (video)
     if (!hasContentAccess) {
       return (
         <SectionContainer
@@ -551,6 +582,10 @@ const CourseContentSection = memo(
                                               ) : content?.type === "video" ? (
                                                 <div className="w-8 h-8 rounded-md bg-orange-100 flex items-center justify-center">
                                                   <Play className="size-4 text-orange-600 fill-orange-600" />
+                                                </div>
+                                              ) : content?.type === "quiz" ? (
+                                                <div className="w-8 h-8 rounded-md bg-purple-100 flex items-center justify-center">
+                                                  <HelpCircle className="size-4 text-purple-600" />
                                                 </div>
                                               ) : (
                                                 <div className="w-8 h-8 rounded-md bg-blue-100 flex items-center justify-center">

@@ -6,6 +6,7 @@ import {
   createEnrollment,
   getEnrollment,
   getUserEnrollments,
+  getEnrollmentsByUserIds,
   updateEnrollmentProgress,
   recalculateEnrollmentProgress,
   updateEnrollmentStatus,
@@ -51,6 +52,13 @@ router.get("/user/:userId", verifyUser, getUserEnrollments);
  * @access  User
  */
 router.get("/dashboard-stats", verifyUser, getUserDashboardStats);
+
+/**
+ * @route   POST /api/enrollments/batch-by-users
+ * @desc    Get course IDs per user for multiple users (admin only)
+ * @access  Admin, Super-admin
+ */
+router.post("/batch-by-users", verifyUser, verifyAdmin, getEnrollmentsByUserIds);
 
 /**
  * @route   GET /api/enrollments/:enrollmentId

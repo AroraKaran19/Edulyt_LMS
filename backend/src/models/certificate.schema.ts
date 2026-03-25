@@ -7,7 +7,7 @@ const certificateSchema = new mongoose.Schema<Certificate>(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Enrollment",
       required: true,
-      index: true,
+      // Indexed via compound index below: { enrollmentId: 1, isLatest: 1 }
     },
     userId: {
       type: mongoose.Schema.Types.ObjectId,

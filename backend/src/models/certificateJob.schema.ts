@@ -60,6 +60,15 @@ const certificateJobSchema = new mongoose.Schema<CertificateJob>(
 certificateJobSchema.index({ status: 1, createdAt: 1 });
 certificateJobSchema.index({ enrollmentId: 1, status: 1 });
 
+// Partial unique index: only one pending/processing job per enrollment (prevents race condition)
+certificateJobSchema.index(
+  { enrollmentId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { status: { $in: ["pending", "processing"] } },
+  }
+);
+
 export const CertificateJobModel = mongoose.model<CertificateJob>(
   "CertificateJob",
   certificateJobSchema

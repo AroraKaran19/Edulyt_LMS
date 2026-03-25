@@ -11,7 +11,9 @@ import {
   QnAModel,
   AffiliateModel,
   CourseModel,
+  LiveClassModel,
 } from "../models";
+import { deleteFilesFromS3, extractS3KeyFromUrl } from "./upload.services";
 import { User } from "../types/user";
 import { AppError } from "../middlewares/error.middleware";
 import bcrypt from "bcrypt";
@@ -23,25 +25,38 @@ export interface GetUsersParams {
   search?: string;
   userType?: string;
   status?: string;
+  /** Exclude users enrolled in any of these course IDs (for gift modal - show only eligible) */
+  excludeEnrolledInCourseIds?: string[];
+  /** Add alreadyEnrolledInSelected to each user (for trial modal) */
+  enrollmentStatusForCourseIds?: string[];
 }
 
 export interface GetUsersResult {
-  users: User[];
+  users: (User & {
+    alreadyEnrolledInSelected?: boolean;
+    totalSpend?: number;
+  })[];
   total: number;
   page: number;
   totalPages: number;
 }
 
 export const getUsersService = async (
-  params: GetUsersParams
+  params: GetUsersParams,
 ): Promise<GetUsersResult> => {
-  const { page, limit, search, userType, status } = params;
+  const {
+    page,
+    limit,
+    search,
+    userType,
+    status,
+    excludeEnrolledInCourseIds,
+    enrollmentStatusForCourseIds,
+  } = params;
   const skip = (page - 1) * limit;
 
-  // Build filter object
   let filters: any = {};
 
-  // Add search filter
   if (search) {
     filters.$or = [
       { firstName: { $regex: search, $options: "i" } },
@@ -50,17 +65,28 @@ export const getUsersService = async (
     ];
   }
 
-  // Add user type filter
   if (userType && userType !== "all") {
     filters.userType = userType;
   }
 
-  // Add status filter
   if (status && status !== "all") {
     filters.status = status;
   }
 
-  // Get users with pagination
+  // Exclude users already enrolled in any of the given courses (gift modal)
+  if (
+    excludeEnrolledInCourseIds?.length &&
+    excludeEnrolledInCourseIds.every((id) =>
+      mongoose.Types.ObjectId.isValid(id),
+    )
+  ) {
+    const enrolledUserIds = await EnrollmentModel.distinct("userId", {
+      courseId: { $in: excludeEnrolledInCourseIds },
+      status: { $in: ["active", "completed", "paused"] },
+    });
+    filters._id = { $nin: enrolledUserIds };
+  }
+
   const users = await UserModel.find(filters)
     .select("-password -refreshTokens -__v")
     .skip(skip)
@@ -68,12 +94,59 @@ export const getUsersService = async (
     .sort({ createdAt: -1 })
     .lean();
 
-  // Get total count
   const total = await UserModel.countDocuments(filters);
   const totalPages = Math.ceil(total / limit);
 
+  let resultUsers = users as (User & { alreadyEnrolledInSelected?: boolean })[];
+
+  // Add enrollment status for trial modal
+  if (
+    enrollmentStatusForCourseIds?.length &&
+    enrollmentStatusForCourseIds.every((id) =>
+      mongoose.Types.ObjectId.isValid(id),
+    ) &&
+    resultUsers.length > 0
+  ) {
+    const userIds = resultUsers.map((u) => u._id).filter(Boolean) as string[];
+    const enrolledUserIds = await EnrollmentModel.distinct("userId", {
+      userId: { $in: userIds },
+      courseId: { $in: enrollmentStatusForCourseIds },
+      status: { $in: ["active", "completed", "paused"] },
+    });
+    const enrolledSet = new Set(enrolledUserIds.map(String));
+    resultUsers = resultUsers.map((u) => ({
+      ...u,
+      alreadyEnrolledInSelected: u._id ? enrolledSet.has(String(u._id)) : false,
+    }));
+  }
+
+  // Add total spend (successful paid orders only) for each user
+  if (resultUsers.length > 0) {
+    const userIds = resultUsers
+      .map((u) => u._id)
+      .filter(
+        (id): id is string =>
+          Boolean(id) && mongoose.Types.ObjectId.isValid(String(id)),
+      )
+      .map((id) => new mongoose.Types.ObjectId(id));
+    const spendAgg = await OrderModel.aggregate<{
+      _id: mongoose.Types.ObjectId;
+      totalSpend: number;
+    }>([
+      { $match: { userId: { $in: userIds }, paymentStatus: "success" } },
+      { $group: { _id: "$userId", totalSpend: { $sum: "$amount" } } },
+    ]);
+    const spendByUser = new Map(
+      spendAgg.map((r) => [r._id.toString(), r.totalSpend]),
+    );
+    resultUsers = resultUsers.map((u) => ({
+      ...u,
+      totalSpend: u._id ? (spendByUser.get(String(u._id)) ?? 0) : 0,
+    }));
+  }
+
   return {
-    users: users as User[],
+    users: resultUsers,
     total,
     page,
     totalPages,
@@ -81,7 +154,7 @@ export const getUsersService = async (
 };
 
 export const getUserByIdService = async (
-  userId: string
+  userId: string,
 ): Promise<User | null> => {
   // First get the user to determine their type
   const baseUser = await UserModel.findById(userId).select("userType").lean();
@@ -113,19 +186,43 @@ export const getUserByIdService = async (
 
 export const updateUserStatusService = async (
   userId: string,
-  status: "active" | "inactive" | "blocked"
+  status: "active" | "inactive" | "blocked",
 ): Promise<User | null> => {
   const user = await UserModel.findByIdAndUpdate(
     userId,
     { status, updatedAt: new Date() },
-    { new: true, runValidators: true }
+    { new: true, runValidators: true },
   ).select("-password -refreshTokens -__v");
 
   return user as User | null;
 };
 
+/**
+ * Collect S3 keys from user profile and instructor live classes, then delete from S3.
+ * Run non-blocking so user deletion returns quickly.
+ */
+const deleteUserFilesFromS3 = async (
+  user: any,
+  liveClasses: { imageUrl?: string }[],
+): Promise<void> => {
+  const urls: string[] = [];
+  if (user?.profilePicture) urls.push(user.profilePicture);
+  const acc = user?.accounts;
+  if (acc?.google?.image) urls.push(acc.google.image);
+  if (acc?.linkedin?.image) urls.push(acc.linkedin.image);
+  for (const lc of liveClasses || []) {
+    if (lc?.imageUrl) urls.push(lc.imageUrl);
+  }
+  const keys = urls
+    .map((u) => extractS3KeyFromUrl(u))
+    .filter((k): k is string => k != null);
+  if (keys.length > 0) {
+    await deleteFilesFromS3([...new Set(keys)]);
+  }
+};
+
 export const deleteUserService = async (
-  userId: string
+  userId: string,
 ): Promise<User | null> => {
   const user = await UserModel.findById(userId)
     .select("-password -refreshTokens -__v")
@@ -135,6 +232,19 @@ export const deleteUserService = async (
   }
 
   const userObjectId = new mongoose.Types.ObjectId(userId);
+
+  // Fetch live classes for instructors (for S3 imageUrl) before we unassign
+  const liveClasses =
+    user.userType === "instructor"
+      ? await LiveClassModel.find({ instructor: userObjectId })
+          .select("imageUrl")
+          .lean()
+      : [];
+
+  // Delete user's S3 files in background (non-blocking)
+  deleteUserFilesFromS3(user, liveClasses).catch((err) =>
+    console.error("[DeleteUser] S3 cleanup failed:", err),
+  );
 
   // Permanently delete user and all related data
   await Promise.all([
@@ -146,7 +256,7 @@ export const deleteUserService = async (
     QnAModel.deleteMany({ userId: userObjectId }),
     AffiliateModel.updateMany(
       { users: userObjectId },
-      { $pull: { users: userObjectId } }
+      { $pull: { users: userObjectId } },
     ),
   ]);
 
@@ -154,7 +264,7 @@ export const deleteUserService = async (
   if (user.userType === "instructor") {
     await CourseModel.updateMany(
       { instructor: userObjectId },
-      { $unset: { instructor: "" } }
+      { $unset: { instructor: "" } },
     );
   }
 
@@ -203,7 +313,7 @@ export const getUserStatsService = async () => {
 };
 
 export const getCurrentUserProfileService = async (
-  userId: string
+  userId: string,
 ): Promise<User | null> => {
   const excludedFields =
     "-__v -permissions -refreshTokens -pendingPayments -orders -status -affiliation -updatedAt";
@@ -222,7 +332,7 @@ export const getCurrentUserProfileService = async (
 
 export const updateUserProfileService = async (
   userId: string,
-  updateData: Partial<User>
+  updateData: Partial<User>,
 ): Promise<User | null> => {
   // Remove sensitive fields that shouldn't be updated via profile
   const { password, refreshTokens, _id, createdAt, ...allowedFields } =
@@ -241,20 +351,20 @@ export const updateUserProfileService = async (
     updatedUser = await StudentModel.findByIdAndUpdate(
       userId,
       { ...allowedFields, updatedAt: new Date() },
-      { new: true, runValidators: true }
+      { new: true, runValidators: true },
     ).select("-password -refreshTokens -__v");
   } else if (existingUser.userType === "instructor") {
     updatedUser = await InstructorModel.findByIdAndUpdate(
       userId,
       { ...allowedFields, updatedAt: new Date() },
-      { new: true, runValidators: true }
+      { new: true, runValidators: true },
     ).select("-password -refreshTokens -__v");
   } else {
     // For other user types (collaborator, admin, etc.), use base UserModel
     updatedUser = await UserModel.findByIdAndUpdate(
       userId,
       { ...allowedFields, updatedAt: new Date() },
-      { new: true, runValidators: true }
+      { new: true, runValidators: true },
     ).select("-password -refreshTokens -__v");
   }
 
@@ -264,7 +374,7 @@ export const updateUserProfileService = async (
 export const changeUserPasswordService = async (
   userId: string,
   currentPassword: string,
-  newPassword: string
+  newPassword: string,
 ): Promise<boolean> => {
   // Get user with password field
   const user = await UserModel.findById(userId).select("+password");
@@ -275,7 +385,7 @@ export const changeUserPasswordService = async (
   // Verify current password
   const isCurrentPasswordValid = await bcrypt.compare(
     currentPassword,
-    user.password
+    user.password,
   );
   if (!isCurrentPasswordValid) {
     throw new AppError("Current password is incorrect", 400);
@@ -289,7 +399,7 @@ export const changeUserPasswordService = async (
   if (isSamePassword) {
     throw new AppError(
       "New password must be different from current password",
-      400
+      400,
     );
   }
 
@@ -304,7 +414,7 @@ export const changeUserPasswordService = async (
       password: hashedNewPassword,
       updatedAt: new Date(),
     },
-    { new: true }
+    { new: true },
   );
 
   return true;
@@ -312,7 +422,7 @@ export const changeUserPasswordService = async (
 
 export const setUserPasswordService = async (
   userId: string,
-  newPassword: string
+  newPassword: string,
 ): Promise<boolean> => {
   // Get user to verify existence
   const user = await UserModel.findById(userId);
@@ -334,7 +444,7 @@ export const setUserPasswordService = async (
       password: hashedNewPassword,
       updatedAt: new Date(),
     },
-    { new: true }
+    { new: true },
   );
 
   return true;
@@ -343,7 +453,7 @@ export const setUserPasswordService = async (
 export const changeUserEmailService = async (
   userId: string,
   currentPassword: string,
-  newEmail: string
+  newEmail: string,
 ): Promise<User | null> => {
   // Validate email format
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -360,7 +470,7 @@ export const changeUserEmailService = async (
   // Verify current password
   const isCurrentPasswordValid = await bcrypt.compare(
     currentPassword,
-    user.password
+    user.password,
   );
   if (!isCurrentPasswordValid) {
     throw new AppError("Current password is incorrect", 400);
@@ -390,7 +500,7 @@ export const changeUserEmailService = async (
       email: newEmail.toLowerCase(),
       updatedAt: new Date(),
     },
-    { new: true, runValidators: true }
+    { new: true, runValidators: true },
   ).select("-password -refreshTokens -__v");
 
   if (!updatedUser) {
@@ -404,7 +514,7 @@ export const changeUserEmailService = async (
 };
 
 export const unlinkGoogleAccountService = async (
-  userId: string
+  userId: string,
 ): Promise<{ user: User | null; needsPassword: boolean }> => {
   const user = await UserModel.findById(userId).select("+password");
   if (!user) {
@@ -428,7 +538,11 @@ export const unlinkGoogleAccountService = async (
   }
 
   // Remove profile picture if it's from Google (external URL, not S3)
-  if (user.profilePicture && !user.profilePicture.includes(".s3.") && !user.profilePicture.includes("s3.amazonaws.com")) {
+  if (
+    user.profilePicture &&
+    !user.profilePicture.includes(".s3.") &&
+    !user.profilePicture.includes("s3.amazonaws.com")
+  ) {
     updateData.$unset.profilePicture = "";
   }
 
@@ -449,7 +563,7 @@ export const unlinkGoogleAccountService = async (
 };
 
 export const unlinkLinkedInAccountService = async (
-  userId: string
+  userId: string,
 ): Promise<{ user: User | null; needsPassword: boolean }> => {
   const user = await UserModel.findById(userId).select("+password");
   if (!user) {
@@ -473,7 +587,11 @@ export const unlinkLinkedInAccountService = async (
   }
 
   // Remove profile picture if it's from LinkedIn (external URL)
-  if (user.profilePicture && !user.profilePicture.includes(".s3.") && !user.profilePicture.includes("s3.amazonaws.com")) {
+  if (
+    user.profilePicture &&
+    !user.profilePicture.includes(".s3.") &&
+    !user.profilePicture.includes("s3.amazonaws.com")
+  ) {
     updateData.$unset.profilePicture = "";
   }
 
@@ -498,7 +616,7 @@ export const unlinkLinkedInAccountService = async (
  */
 export const adminChangeUserPasswordService = async (
   userId: string,
-  newPassword: string
+  newPassword: string,
 ): Promise<boolean> => {
   // Get user to verify existence
   const user = await UserModel.findById(userId);
@@ -520,7 +638,7 @@ export const adminChangeUserPasswordService = async (
       password: hashedNewPassword,
       updatedAt: new Date(),
     },
-    { new: true }
+    { new: true },
   );
 
   return true;

@@ -1,5 +1,4 @@
 "use client";
-import AdminDashboard from "@/components/admin/dashboard/AdminDashboard";
 import SuperAdminDashboard from "@/components/admin/dashboard/SuperAdminDashboard";
 import useAuth from "@/hooks/useAuth";
 
@@ -16,11 +15,9 @@ const AdminPage = () => {
 
   return (
     <div className="w-full h-full overflow-y-auto">
-      {user.userType === "super-admin" ? (
-        <SuperAdminDashboard />
-      ) : (
-        <AdminDashboard />
-      )}
+      <SuperAdminDashboard
+        variant={user.userType === "super-admin" ? "super-admin" : "admin"}
+      />
     </div>
   );
 };

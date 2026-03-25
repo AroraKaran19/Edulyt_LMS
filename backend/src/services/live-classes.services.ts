@@ -5,6 +5,10 @@ import {
   EnrollmentModel,
   UserModel,
 } from "../models";
+import {
+  deleteFilesFromS3,
+  extractS3KeyFromUrl,
+} from "./upload.services";
 import { LiveClass } from "../types/live-classes";
 import mongoose from "mongoose";
 
@@ -422,11 +426,21 @@ export const deleteLiveClassService = async (
     throw new AppError("Invalid live class ID", 400);
   }
 
-  const liveClass = await LiveClassModel.findByIdAndDelete(liveClassId);
-
+  const liveClass = await LiveClassModel.findById(liveClassId).lean();
   if (!liveClass) {
     throw new AppError("Live class not found", 404);
   }
 
+  // Delete image from S3 in background (non-blocking)
+  if (liveClass.imageUrl) {
+    const key = extractS3KeyFromUrl(liveClass.imageUrl);
+    if (key) {
+      deleteFilesFromS3([key]).catch((err) =>
+        console.error("[DeleteLiveClass] S3 cleanup failed:", err)
+      );
+    }
+  }
+
+  await LiveClassModel.findByIdAndDelete(liveClassId);
   return true;
 };

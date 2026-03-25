@@ -98,4 +98,19 @@ const getBucketName = (): string => {
   return bucketName;
 };
 
-export { initializeS3, getS3Client, getBucketName };
+/**
+ * Gets the base URL for public file access.
+ * Use AWS_S3_PUBLIC_BASE_URL to serve files from a custom domain (e.g. CloudFront CDN).
+ * Example: https://cdn.airkrit.com or https://assets.airkrit.com
+ * If not set, falls back to default S3 URL: https://{bucket}.s3.amazonaws.com
+ */
+const getPublicUrlBase = (): string => {
+  const customBase = process.env.AWS_S3_PUBLIC_BASE_URL?.trim();
+  if (customBase) {
+    return customBase.replace(/\/$/, ""); // Remove trailing slash
+  }
+  const bucketName = getBucketName();
+  return `https://${bucketName}.s3.amazonaws.com`;
+};
+
+export { initializeS3, getS3Client, getBucketName, getPublicUrlBase };

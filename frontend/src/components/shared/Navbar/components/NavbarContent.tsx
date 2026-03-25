@@ -7,7 +7,7 @@ import { Course, NavItem, Category } from "@/types";
 import { AlertCircle, ChevronRight, Crown, ArrowLeft } from "lucide-react";
 import Loader from "@/components/ui/Loader";
 import Link from "next/link";
-import { Suspense, useState, useEffect, useRef, useCallback } from "react";
+import { Suspense, useState, useEffect, useRef, useCallback, useMemo } from "react";
 import useSWR from "swr";
 import { useCategory } from "@/hooks/useCategory";
 
@@ -66,13 +66,15 @@ const NavbarContent = ({
         if (cancelled) return;
         if (response?.categories) {
           const newCats = response.categories;
-          const totalPages = response.totalPages || 1;
-          const currentPage = response.page || categoryPage;
+          const totalPages = response.totalPages ?? 1;
+          const responsePage = response.page ?? categoryPage;
+          // Only apply if this response is for the page we requested (avoid out-of-order updates)
+          if (responsePage !== categoryPage) return;
 
           setAllCategoriesCache((prev) =>
-            currentPage === 1 ? newCats : [...prev, ...newCats],
+            responsePage === 1 ? newCats : [...prev, ...newCats],
           );
-          setCategoryHasMore(currentPage < totalPages);
+          setCategoryHasMore(responsePage < totalPages);
         }
       } catch (error) {
         if (!cancelled) console.error("Failed to fetch categories:", error);
@@ -104,24 +106,18 @@ const NavbarContent = ({
     setHasMore(true);
   }, [selectedAudience, selectedCategory]);
 
-  // Build API URL based on selected category and audience
-  const buildCoursesUrl = useCallback(() => {
-    if (!selectedCategory) return null; // Don't fetch courses if no category is selected
-
+  // Stable SWR key: only fetch when we have a valid category with _id
+  const coursesSwrKey = useMemo(() => {
+    if (!selectedCategory?._id) return null;
     const params = new URLSearchParams();
     params.append("page", page.toString());
     params.append("limit", "10");
     params.append("audience", selectedAudience);
-
-    // Add category filter
-    if (selectedCategory._id) {
-      params.append("categories", selectedCategory._id);
-    }
-
+    params.append("categories", selectedCategory._id);
     return `${ENDPOINTS.courses.all}?${params.toString()}`;
-  }, [selectedCategory, selectedAudience, page]);
+  }, [selectedCategory?._id, selectedAudience, page]);
 
-  const { data, isLoading, error } = useSWR(buildCoursesUrl(), fetcher, {
+  const { data, isLoading, error } = useSWR(coursesSwrKey, fetcher, {
     revalidateOnFocus: false,
     revalidateOnReconnect: false,
     revalidateIfStale: false,
@@ -130,33 +126,29 @@ const NavbarContent = ({
     dedupingInterval: 1000 * 60 * 5, // 5 minutes
   });
 
-  // Update courses when data changes
+  // Update courses when data changes (handle both object and empty-array API shapes)
   useEffect(() => {
-    if (data?.data?.data) {
-      const responseData = data.data.data;
+    if (!coursesSwrKey) return;
+    const payload = data?.data?.data ?? data?.data;
+    if (payload == null) return;
 
-      const newCourses = Array.isArray(responseData)
-        ? []
-        : responseData.courses || [];
-      const totalPages = Array.isArray(responseData)
-        ? 1
-        : responseData.totalPages || 1;
-      const currentPage = Array.isArray(responseData)
-        ? 1
-        : responseData.page || 1;
+    const isPayloadArray = Array.isArray(payload);
+    const newCourses = isPayloadArray
+      ? []
+      : (payload.courses && Array.isArray(payload.courses) ? payload.courses : []);
+    const totalPages = isPayloadArray ? 1 : (payload.totalPages ?? 1);
+    const currentPage = isPayloadArray ? 1 : (payload.page ?? 1);
 
-      if (currentPage === page) {
-        if (currentPage === 1) {
-          setAllCourses(newCourses);
-        } else {
-          setAllCourses((prev) => [...prev, ...newCourses]);
-        }
+    if (currentPage !== page) return;
 
-        setHasMore(currentPage < totalPages);
-        setIsLoadingMore(false);
-      }
+    if (currentPage === 1) {
+      setAllCourses(newCourses);
+    } else {
+      setAllCourses((prev) => [...prev, ...newCourses]);
     }
-  }, [data, page]);
+    setHasMore(currentPage < totalPages);
+    setIsLoadingMore(false);
+  }, [data, page, coursesSwrKey]);
 
   // Load more courses
   const loadMoreCourses = useCallback(() => {

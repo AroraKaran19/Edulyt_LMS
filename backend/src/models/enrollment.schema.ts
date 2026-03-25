@@ -111,7 +111,7 @@ const enrollmentSchema = new mongoose.Schema<Enrollment>(
     status: {
       type: String,
       required: true,
-      enum: ["active", "completed", "dropped", "paused"],
+      enum: ["active", "completed", "dropped", "revoked", "paused"],
       default: "active",
       index: true,
     },
@@ -297,7 +297,7 @@ enrollmentSchema.statics.findByUserAndCourse = function (
   userId: string,
   courseId: string
 ) {
-  return this.findOne({ userId, courseId, status: { $ne: "dropped" } });
+  return this.findOne({ userId, courseId, status: { $nin: ["dropped", "revoked"] } });
 };
 
 enrollmentSchema.statics.findActiveByUser = function (userId: string) {

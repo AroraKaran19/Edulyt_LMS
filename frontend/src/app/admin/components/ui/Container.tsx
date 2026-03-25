@@ -38,7 +38,7 @@ const Container = ({
       </div>
       <div
         className={cn(
-          "container-body w-full flex-1 gap-4 overflow-y-auto",
+          "container-body w-full flex-1 min-h-0 gap-4 overflow-y-auto",
           classNameBody
         )}
         style={{ scrollbarWidth: "thin" }}

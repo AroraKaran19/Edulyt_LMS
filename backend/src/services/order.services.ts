@@ -1,5 +1,6 @@
 import { calculateFinalDiscountedPrice } from "../utils/lib/calculateDiscount";
 import { AppError } from "../middlewares/error.middleware";
+import mongoose from "mongoose";
 import {
   OrderModel,
   CourseModel,
@@ -29,7 +30,7 @@ export const createEnrollmentAfterPayment = async (order: any) => {
     const existingEnrollment = await EnrollmentModel.findOne({
       userId: order.userId,
       courseId: order.courseId,
-      status: { $ne: "dropped" },
+      status: { $nin: ["dropped", "revoked"] },
     });
 
     if (existingEnrollment) {
@@ -142,6 +143,104 @@ export const createEnrollmentAfterPayment = async (order: any) => {
   }
 };
 
+export const getAdminOrdersService = async (
+  page: number,
+  limit: number,
+  search?: string,
+  paymentStatus?: string
+) => {
+  const skip = (page - 1) * limit;
+  const pipeline: any[] = [];
+
+  const initialMatch: Record<string, unknown> = {};
+  if (paymentStatus && ["pending", "success", "failed"].includes(paymentStatus)) {
+    initialMatch.paymentStatus = paymentStatus;
+  }
+  if (Object.keys(initialMatch).length > 0) {
+    pipeline.push({ $match: initialMatch });
+  }
+
+  pipeline.push(
+    {
+      $lookup: {
+        from: "users",
+        localField: "userId",
+        foreignField: "_id",
+        as: "user",
+        pipeline: [{ $project: { firstName: 1, lastName: 1, email: 1 } }],
+      },
+    },
+    { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
+    {
+      $lookup: {
+        from: "courses",
+        localField: "courseId",
+        foreignField: "_id",
+        as: "course",
+        pipeline: [{ $project: { title: 1, slug: 1, thumbnail: 1 } }],
+      },
+    },
+    { $unwind: { path: "$course", preserveNullAndEmptyArrays: true } }
+  );
+
+  if (search && search.trim()) {
+    const searchTrimmed = String(search).trim();
+    const searchRegex = new RegExp(
+      searchTrimmed.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+      "i"
+    );
+    const orConditions: unknown[] = [
+      { txnId: searchRegex },
+      { couponCode: searchRegex },
+      { "user.firstName": searchRegex },
+      { "user.lastName": searchRegex },
+      { "user.email": searchRegex },
+      { "course.title": searchRegex },
+    ];
+    // Exact match by Order ID (MongoDB ObjectId)
+    if (/^[a-fA-F0-9]{24}$/.test(searchTrimmed)) {
+      orConditions.push({ _id: new mongoose.Types.ObjectId(searchTrimmed) });
+    }
+    pipeline.push({ $match: { $or: orConditions } });
+  }
+
+  const [orders, countResult] = await Promise.all([
+    OrderModel.aggregate([
+      ...pipeline,
+      { $sort: { createdAt: -1 } },
+      { $skip: skip },
+      { $limit: limit },
+      {
+        $project: {
+          _id: 1,
+          userId: { $ifNull: ["$user", { firstName: "$userName", lastName: "", email: "" }] },
+          courseId: { $ifNull: ["$course", { title: "$courseName", slug: "", thumbnail: "" }] },
+          courseName: 1,
+          userName: 1,
+          txnId: 1,
+          amount: 1,
+          currency: 1,
+          planType: 1,
+          paymentMode: 1,
+          paymentMethod: 1,
+          paymentStatus: 1,
+          paymentErrorReason: 1,
+          couponCode: 1,
+          couponDiscount: 1,
+          createdAt: 1,
+          updatedAt: 1,
+        },
+      },
+    ]),
+    OrderModel.aggregate([...pipeline, { $count: "total" }]),
+  ]);
+
+  const total = countResult[0]?.total ?? 0;
+  const totalPages = Math.ceil(total / limit);
+
+  return { orders, total, totalPages, page };
+};
+
 export const getSelfOrdersService = async (
   userId: string,
   page: number,
@@ -171,6 +270,26 @@ export const getSelfOrdersService = async (
   const totalPages = Math.ceil(total / limit);
 
   return { orders, total, totalPages, page };
+};
+
+/**
+ * Get total spend for a user (paid orders only, excludes gift/trial which have no orders).
+ * @param userId - User ID
+ * @returns Total amount spent (successful payments only)
+ */
+export const getTotalSpendByUserIdService = async (
+  userId: string
+): Promise<number> => {
+  const result = await OrderModel.aggregate([
+    {
+      $match: {
+        userId: new mongoose.Types.ObjectId(userId),
+        paymentStatus: "success",
+      },
+    },
+    { $group: { _id: null, totalSpend: { $sum: "$amount" } } },
+  ]);
+  return result[0]?.totalSpend ?? 0;
 };
 
 /**
@@ -299,12 +418,28 @@ export const createOrderService = async (
     throw new AppError("PAYTM_MID or PAYTM_WEBSITE is not set", 500);
   }
 
-  const course = await CourseModel.findById(courseId);
+  const [course, user] = await Promise.all([
+    CourseModel.findById(courseId),
+    UserModel.findById(userId).select("firstName lastName").lean(),
+  ]);
   if (!course) throw new AppError("Course not found", 404);
 
   const plan = course.plans[planType];
   if (!plan)
     throw new AppError(`${planType} plan not available for this course`, 400);
+
+  // Block new order if user already has active enrollment (not dropped/revoked)
+  const existingEnrollment = await EnrollmentModel.findOne({
+    userId,
+    courseId,
+    status: { $nin: ["dropped", "revoked"] },
+  });
+  if (existingEnrollment) {
+    throw new AppError(
+      "You are already enrolled in this course. Purchase is only allowed after the previous enrollment is revoked.",
+      400
+    );
+  }
 
   const planPrice = plan.price;
 
@@ -320,11 +455,19 @@ export const createOrderService = async (
       purchaseAmountBeforeCouponFromFrontend,
     });
 
+  const courseName = (course as any).title ?? "";
+  const userName =
+    user && ((user as any).firstName || (user as any).lastName)
+      ? `${((user as any).firstName ?? "").trim()} ${((user as any).lastName ?? "").trim()}`.trim()
+      : "";
+
   const order = new OrderModel({
     txnId: Math.random().toString(36).substring(2, 15),
     token: "", // Will be set by Paytm's txnToken
     userId,
     courseId,
+    courseName,
+    userName,
     planType,
     amount,
     currency: "INR",
@@ -535,6 +678,8 @@ export const verifyPayment = async (token: string) => {
     }
   } else if (status.data.body.resultInfo.resultStatus === "TXN_FAILURE") {
     order.paymentStatus = "failed";
+    order.paymentErrorReason =
+      status.data.body.resultInfo?.resultMsg || "Payment declined";
     await order.save();
 
     await updatePendingPayments(order.userId?.toString() || "", {
@@ -596,7 +741,12 @@ export const processWebhook = async (webhookData: any) => {
         orderId,
       };
     } else if (status === "TXN_FAILURE" || status === "failed") {
-      await handleFailedPayment(order);
+      const errorReason =
+        webhookData.respMsg ||
+        webhookData.RESPMSG ||
+        webhookData.resultMsg ||
+        "Payment declined";
+      await handleFailedPayment(order, errorReason);
       return { success: true, message: "Payment failure processed", orderId };
     } else {
       return {
@@ -638,8 +788,14 @@ const handleSuccessfulPayment = async (order: any, txnId: string) => {
   }
 };
 
-const handleFailedPayment = async (order: any) => {
+const handleFailedPayment = async (
+  order: any,
+  errorReason?: string
+) => {
   order.paymentStatus = "failed";
+  if (errorReason) {
+    order.paymentErrorReason = errorReason;
+  }
   await order.save();
 
   await updatePendingPayments(order.userId?.toString() || "", {

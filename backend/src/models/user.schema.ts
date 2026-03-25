@@ -293,14 +293,14 @@ const studentSchema = new mongoose.Schema<Student>({
   // Orders
   orders: {
     type: [mongoose.Schema.Types.ObjectId],
-    ref: "PaymentOrder",
+    ref: "Order",
     required: false,
     default: [],
   },
   // Pending payments
   pendingPayments: {
     type: [mongoose.Schema.Types.ObjectId],
-    ref: "PaymentOrder",
+    ref: "Order",
     required: false,
     default: [],
   },

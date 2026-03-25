@@ -75,6 +75,7 @@ const ManageCoursesPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCourses, setTotalCourses] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
+  const [searchDebounced, setSearchDebounced] = useState("");
   const [filterCategoryIds, setFilterCategoryIds] = useState<string[]>(() => {
     const stored = readStoredFilters();
     return stored?.categoryIds ?? [];
@@ -134,6 +135,7 @@ const ManageCoursesPage = () => {
           page,
           limit: 12,
           search: search || undefined,
+          searchTitleOnly: true,
           categories:
             categoryIds.length > 0 ? categoryIds.join(",") : undefined,
           instructors:
@@ -171,10 +173,27 @@ const ManageCoursesPage = () => {
     [getAdminCourses, filterCategoryIds, filterInstructorIds, filterAudience, filterStatus, sortOrder],
   );
 
-  // Initial load
+  // Debounce search input
   useEffect(() => {
-    loadCourses();
-  }, [loadCourses]);
+    const timer = setTimeout(() => {
+      setSearchDebounced(searchTerm);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Load courses when search or filters change (replaces initial load + filter-triggered loads)
+  useEffect(() => {
+    setHasMore(true);
+    loadCourses(1, searchDebounced, false);
+  }, [
+    searchDebounced,
+    filterCategoryIds,
+    filterInstructorIds,
+    filterAudience,
+    filterStatus,
+    sortOrder,
+    loadCourses,
+  ]);
 
   // Persist filters to sessionStorage
   useEffect(() => {
@@ -190,124 +209,36 @@ const ManageCoursesPage = () => {
     );
   }, [filterCategoryIds, filterInstructorIds, filterAudience, filterStatus, sortOrder]);
 
-  // Auto-apply filters on change
-  const handleCategoryFilterChange = useCallback(
-    (value: string | string[]) => {
-      const ids = Array.isArray(value) ? value : value ? [value] : [];
-      setFilterCategoryIds(ids);
-      setHasMore(true);
-      loadCourses(1, searchTerm, false, {
-        categoryIds: ids,
-        instructorIds: filterInstructorIds,
-        audience: filterAudience,
-        status: filterStatus,
-        sort: sortOrder,
-      });
-    },
-    [
-      searchTerm,
-      filterInstructorIds,
-      filterAudience,
-      filterStatus,
-      sortOrder,
-      loadCourses,
-    ],
-  );
+  // Auto-apply filters on change (effect above handles loadCourses)
+  const handleCategoryFilterChange = useCallback((value: string | string[]) => {
+    const ids = Array.isArray(value) ? value : value ? [value] : [];
+    setFilterCategoryIds(ids);
+  }, []);
 
-  const handleInstructorFilterChange = useCallback(
-    (value: string | string[]) => {
-      const ids = Array.isArray(value) ? value : value ? [value] : [];
-      setFilterInstructorIds(ids);
-      setHasMore(true);
-      loadCourses(1, searchTerm, false, {
-        categoryIds: filterCategoryIds,
-        instructorIds: ids,
-        audience: filterAudience,
-        status: filterStatus,
-        sort: sortOrder,
-      });
-    },
-    [searchTerm, filterCategoryIds, filterAudience, filterStatus, sortOrder, loadCourses],
-  );
+  const handleInstructorFilterChange = useCallback((value: string | string[]) => {
+    const ids = Array.isArray(value) ? value : value ? [value] : [];
+    setFilterInstructorIds(ids);
+  }, []);
 
-  const handleAudienceFilterChange = useCallback(
-    (value: string | string[]) => {
-      const aud = (Array.isArray(value) ? value[0] : value) as AudienceFilter;
-      setFilterAudience(aud);
-      setHasMore(true);
-      loadCourses(1, searchTerm, false, {
-        categoryIds: filterCategoryIds,
-        instructorIds: filterInstructorIds,
-        audience: aud,
-        status: filterStatus,
-        sort: sortOrder,
-      });
-    },
-    [
-      searchTerm,
-      filterCategoryIds,
-      filterInstructorIds,
-      filterStatus,
-      sortOrder,
-      loadCourses,
-    ],
-  );
+  const handleAudienceFilterChange = useCallback((value: string | string[]) => {
+    const aud = (Array.isArray(value) ? value[0] : value) as AudienceFilter;
+    setFilterAudience(aud);
+  }, []);
 
-  const handleStatusFilterChange = useCallback(
-    (value: string | string[]) => {
-      const stat = Array.isArray(value) ? value[0] : value;
-      setFilterStatus(stat);
-      setHasMore(true);
-      loadCourses(1, searchTerm, false, {
-        categoryIds: filterCategoryIds,
-        instructorIds: filterInstructorIds,
-        audience: filterAudience,
-        status: stat,
-        sort: sortOrder,
-      });
-    },
-    [
-      searchTerm,
-      filterCategoryIds,
-      filterInstructorIds,
-      filterAudience,
-      sortOrder,
-      loadCourses,
-    ],
-  );
+  const handleStatusFilterChange = useCallback((value: string | string[]) => {
+    const stat = Array.isArray(value) ? value[0] : value;
+    setFilterStatus(stat);
+  }, []);
 
-  const handleSortOrderChange = useCallback(
-    (value: string | string[]) => {
-      const sort = Array.isArray(value) ? value[0] : value;
-      setSortOrder(sort);
-      setHasMore(true);
-      loadCourses(1, searchTerm, false, {
-        categoryIds: filterCategoryIds,
-        instructorIds: filterInstructorIds,
-        audience: filterAudience,
-        status: filterStatus,
-        sort: sort,
-      });
-    },
-    [
-      searchTerm,
-      filterCategoryIds,
-      filterInstructorIds,
-      filterAudience,
-      filterStatus,
-      loadCourses,
-    ],
-  );
+  const handleSortOrderChange = useCallback((value: string | string[]) => {
+    const sort = Array.isArray(value) ? value[0] : value;
+    setSortOrder(sort);
+  }, []);
 
-  // Handle search
-  const handleSearch = useCallback(
-    (value: string) => {
-      setSearchTerm(value);
-      setHasMore(true);
-      loadCourses(1, value, false);
-    },
-    [loadCourses],
-  );
+  // Handle search (only update input; debounced effect triggers loadCourses)
+  const handleSearch = useCallback((value: string) => {
+    setSearchTerm(value);
+  }, []);
 
   // Sentinel ref for IntersectionObserver (works with any scroll container, including mobile)
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -322,14 +253,14 @@ const ManageCoursesPage = () => {
         const [entry] = entries;
         if (entry?.isIntersecting && hasMore && !isLoadingMore && !isLoading) {
           setIsLoadingMore(true);
-          loadCourses(currentPage + 1, searchTerm, true);
+          loadCourses(currentPage + 1, searchDebounced, true);
         }
       },
       { root: null, rootMargin: "200px", threshold: 0 }
     );
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [hasMore, isLoadingMore, isLoading, currentPage, searchTerm, loadCourses]);
+  }, [hasMore, isLoadingMore, isLoading, currentPage, searchDebounced, loadCourses]);
 
   // Handle status toggle
   const handleStatusToggle = async (
@@ -886,11 +817,11 @@ const ManageCoursesPage = () => {
                 No courses found
               </h3>
               <p className="text-gray-600 mb-6">
-                {searchTerm
+                {searchDebounced
                   ? "Try adjusting your search terms"
                   : "Get started by creating your first course"}
               </p>
-              {!searchTerm && (
+              {!searchDebounced && (
                 <button
                   onClick={() =>
                     router.push("/admin/courses/manage-courses/create")

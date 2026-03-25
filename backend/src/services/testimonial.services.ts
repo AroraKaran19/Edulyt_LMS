@@ -1,11 +1,12 @@
 import TestimonialModel from "../models/testimonial.schema";
 import { Testimonial } from "../types/course";
+import { deleteFilesFromS3, extractS3KeyFromUrl } from "./upload.services";
 
 export const getAllTestimonialsService = async (
   page: number,
   limit: number,
   search: string,
-  isAdmin?: boolean
+  isAdmin?: boolean,
 ): Promise<{
   testimonials: Testimonial[];
   total: number;
@@ -52,10 +53,11 @@ export const getAllTestimonialsService = async (
 
 export const getTestimonialByIdService = async (
   id: string,
-  isAdmin?: boolean
+  isAdmin?: boolean,
 ): Promise<Testimonial | null> => {
-  const testimonial = await TestimonialModel.findById(id)
-    .where(isAdmin ? {} : { verified: true });
+  const testimonial = await TestimonialModel.findById(id).where(
+    isAdmin ? {} : { verified: true },
+  );
 
   if (!testimonial) {
     return null;
@@ -111,7 +113,7 @@ export const updateTestimonialService = async (
     category?: "college-students" | "professionals" | "internships";
     feedback?: string;
     heading2?: string;
-  }
+  },
 ): Promise<Testimonial | null> => {
   const testimonial = await TestimonialModel.findByIdAndUpdate(id, updateData, {
     new: true,
@@ -126,13 +128,28 @@ export const updateTestimonialService = async (
 };
 
 export const deleteTestimonialService = async (
-  id: string
+  id: string,
 ): Promise<Testimonial | null> => {
-  const testimonial = await TestimonialModel.findByIdAndDelete(id);
+  const testimonial = await TestimonialModel.findById(id).lean();
+  if (!testimonial) return null;
 
-  if (!testimonial) {
-    return null;
+  // Delete images from S3 in background (non-blocking)
+  const urls = [
+    testimonial.profileImage,
+    testimonial.collegeProfileUrl,
+    testimonial.companyProfileUrl,
+  ].filter(Boolean);
+  if (urls.length > 0) {
+    const keys = urls
+      .map((u) => extractS3KeyFromUrl(u!))
+      .filter((k): k is string => k != null);
+    if (keys.length > 0) {
+      deleteFilesFromS3([...new Set(keys)]).catch((err) =>
+        console.error("[DeleteTestimonial] S3 cleanup failed:", err),
+      );
+    }
   }
 
+  await TestimonialModel.findByIdAndDelete(id);
   return testimonial as Testimonial;
 };

@@ -19,14 +19,12 @@ import useCourseManagement from "@/hooks/useCourseManagement";
 interface TrialCourseModalProps {
   isOpen: boolean;
   onClose: () => void;
-  userEnrollments: Record<string, string[]>;
   onTrialComplete?: () => void;
 }
 
 const TrialCourseModal = ({
   isOpen,
   onClose,
-  userEnrollments,
   onTrialComplete,
 }: TrialCourseModalProps) => {
   const [trialStep, setTrialStep] = useState<1 | 2 | 3>(1);
@@ -163,21 +161,27 @@ const TrialCourseModal = ({
     return () => clearTimeout(timer);
   }, [userSearch]);
 
-  // Fetch users with pagination and search
+  // Fetch users; backend adds alreadyEnrolledInSelected when enrollmentStatusForCourseIds passed
   const fetchUsers = useCallback(
-    async (page: number, append: boolean = false, search?: string) => {
-      // Prevent duplicate calls
+    async (
+      page: number,
+      append: boolean = false,
+      search?: string,
+      enrollmentStatusCourseIds?: string[]
+    ) => {
       if (isLoadingUsersRef.current) return;
 
       isLoadingUsersRef.current = true;
       setIsLoadingUsers(true);
       try {
-        const limit = search ? 100 : 20; // 100 limit when searching, 20 for pagination
+        const limit = search ? 100 : 20;
         const result = await getUsers({
           page,
           limit,
           search: search || undefined,
-          userType: "student", // Only students can receive trial enrollments
+          userType: "student",
+          enrollmentStatusForCourseIds:
+            enrollmentStatusCourseIds?.length ? enrollmentStatusCourseIds : undefined,
         });
 
         if (result) {
@@ -186,7 +190,6 @@ const TrialCourseModal = ({
           } else {
             setUsers(result.users);
           }
-
           setUserHasMore(page < result.totalPages);
           setUserCurrentPage(page);
         }
@@ -217,14 +220,16 @@ const TrialCourseModal = ({
     setUserCurrentPage(1);
     setUserHasMore(true);
 
+    const enrollmentStatusCourseIds = selectedCourses
+      .map((c) => c._id)
+      .filter((id): id is string => !!id);
+
     if (debouncedUserSearch) {
-      // Fetch with search (limit 100, no pagination)
-      fetchUsers(1, false, debouncedUserSearch);
+      fetchUsers(1, false, debouncedUserSearch, enrollmentStatusCourseIds);
     } else {
-      // Initial load without search (pagination enabled)
-      fetchUsers(1, false);
+      fetchUsers(1, false, undefined, enrollmentStatusCourseIds);
     }
-  }, [trialStep, isOpen, debouncedUserSearch, fetchUsers]);
+  }, [trialStep, isOpen, debouncedUserSearch, fetchUsers, selectedCourses]);
 
   // Intersection Observer for courses infinite scroll
   useEffect(() => {
@@ -260,7 +265,12 @@ const TrialCourseModal = ({
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting && userHasMore && !isLoadingUsers) {
-          fetchUsers(userCurrentPage + 1, true);
+          fetchUsers(
+            userCurrentPage + 1,
+            true,
+            undefined,
+            selectedCourses.map((c) => c._id).filter((id): id is string => !!id)
+          );
         }
       },
       { threshold: 0.1 }
@@ -690,11 +700,9 @@ const TrialCourseModal = ({
                           const isSelected = selectedUsers.includes(
                             user._id || ""
                           );
-                          // Check if user is enrolled in any of the selected courses
-                          const userEnrolledCourses = userEnrollments[user._id || ""] || [];
-                          const isEnrolled = selectedCourses.some(
-                            (course) => userEnrolledCourses.includes(course._id || "")
-                          );
+                          const isEnrolled =
+                            (user as { alreadyEnrolledInSelected?: boolean })
+                              .alreadyEnrolledInSelected ?? false;
 
                           return (
                             <label

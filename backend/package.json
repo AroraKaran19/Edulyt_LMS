@@ -6,8 +6,11 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/server.js",
+    "start:cluster": "npm run build && pm2 start ecosystem.config.cjs",
+    "start:worker": "node dist/worker.js",
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "dev:watch": "nodemon --exec ts-node src/server.ts",
+    "scripts:debug-user": "ts-node src/scripts/debug-user-by-email.ts",
     "scripts:list": "ts-node src/scripts/list-courses-and-categories.ts",
     "scripts:list:out": "ts-node src/scripts/list-courses-and-categories.ts --output-dir=./scripts-output",
     "scripts:list-courses": "ts-node src/scripts/sort-courses-by-category-structure.ts --list-courses",
@@ -15,7 +18,9 @@
     "scripts:sort-courses": "ts-node src/scripts/sort-courses-by-category-structure.ts",
     "scripts:sort-courses:apply": "ts-node src/scripts/sort-courses-by-category-structure.ts --apply",
     "scripts:update-category-order": "ts-node src/scripts/update-category-sort-order.ts",
-    "scripts:update-brochures": "ts-node src/scripts/updateCourseBrochures.ts"
+    "scripts:update-brochures": "ts-node src/scripts/updateCourseBrochures.ts",
+    "scripts:reset-enrollments-no-cert": "ts-node src/scripts/reset-enrollments-without-certificate.ts",
+    "scripts:remove-certificates-all": "ts-node src/scripts/remove-certificates-all.ts"
   },
   "keywords": [
     "airkrit",

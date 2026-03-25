@@ -9,6 +9,7 @@ import {
   deleteOrderService,
   getOrderInfoService,
   getSelfOrdersService,
+  getTotalSpendByUserIdService,
   processWebhook,
   updateOrderService,
   verifyPayment as verifyPaymentService,
@@ -145,6 +146,26 @@ export const deleteOrder = asyncHandler(async (req: Request, res: Response) => {
   sendSuccessResponse(res, order, "Order deleted successfully", 200);
   return;
 });
+
+/**
+ * Get total spend for a user (admin only - paid purchases only, excludes gift/trial).
+ * @route GET /api/admin/users/:userId/total-spend
+ */
+export const getTotalSpendByUserId = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { userId } = req.params;
+    if (!userId) {
+      throw new AppError("User ID is required", 400);
+    }
+    const totalSpend = await getTotalSpendByUserIdService(userId);
+    sendSuccessResponse(
+      res,
+      { totalSpend },
+      "Total spend retrieved successfully",
+      200
+    );
+  }
+);
 
 // Not Tested Yet
 export const webhookHandler = asyncHandler(

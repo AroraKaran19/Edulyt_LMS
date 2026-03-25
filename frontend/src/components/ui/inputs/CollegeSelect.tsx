@@ -241,7 +241,9 @@ const CollegeSelect = ({
 
   const displayValue = selectedCollege
     ? `${selectedCollege["Name of the college"]}, ${selectedCollege["State"]}`
-    : placeholder;
+    : value && value.trim().length > 0
+      ? value
+      : placeholder;
 
   const handleCollegeSelect = useCallback(
     (college: College) => {
@@ -254,6 +256,16 @@ const CollegeSelect = ({
     },
     [onChange]
   );
+
+  const handleCustomCollegeSelect = useCallback(() => {
+    const customValue = searchDebounce.trim();
+    if (!customValue) return;
+    setIsOpen(false);
+    setSearchTerm("");
+    if (onChange) {
+      onChange(customValue);
+    }
+  }, [onChange, searchDebounce]);
 
   return (
     <div
@@ -340,10 +352,26 @@ const CollegeSelect = ({
                   Loading colleges...
                 </div>
               ) : filteredColleges.length === 0 ? (
-                <div className="p-4 text-center text-gray-500">
-                  {searchDebounce.trim()
-                    ? "No colleges found"
-                    : "Start typing to search colleges"}
+                <div className="p-4 flex flex-col items-center justify-center gap-3 text-center text-gray-500">
+                  {searchDebounce.trim() ? (
+                    <>
+                      <p className="text-sm">
+                        No colleges found for{" "}
+                        <span className="font-semibold">
+                          &quot;{searchDebounce}&quot;
+                        </span>
+                      </p>
+                      <button
+                        type="button"
+                        onClick={handleCustomCollegeSelect}
+                        className="mt-1 inline-flex items-center justify-center rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors duration-150 hover:bg-orange-600"
+                      >
+                        Use this as my college
+                      </button>
+                    </>
+                  ) : (
+                    <p className="text-sm">Start typing to search colleges</p>
+                  )}
                 </div>
               ) : (
                 <VirtualizedCollegeList

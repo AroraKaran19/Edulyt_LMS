@@ -1,5 +1,9 @@
-import { UserModel, CourseModel } from "../models";
+import { UserModel, CourseModel, EnrollmentModel, OrderModel, CertificateModel } from "../models";
 import { AppError } from "../middlewares/error.middleware";
+import { getUserByIdService } from "./user.services";
+import { GetUserEnrollmentsService } from "./enrollment.services";
+import { getUserCertificatesService } from "./certificate.services";
+import { getTotalSpendByUserIdService } from "./order.services";
 
 // User types to include in analytics (exclude admin, super-admin)
 const ANALYTICS_USER_TYPES = ["student", "instructor", "collaborator"];
@@ -179,6 +183,48 @@ export const getDashboardStats = async (
     (a, b) => a.year - b.year || a.monthNum - b.monthNum
   );
 
+  // Today's enrollments
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const todayEnd = new Date();
+  todayEnd.setHours(23, 59, 59, 999);
+  const todayEnrollments = await EnrollmentModel.countDocuments({
+    enrolledAt: { $gte: todayStart, $lte: todayEnd },
+  });
+
+  // Enrollments per month (for distinct chart - shows course engagement)
+  const enrolledAtFilter = {
+    enrolledAt: { $gte: startDate, $lte: endDate },
+  };
+  const enrollmentsMonthlyBreakdown = await EnrollmentModel.aggregate([
+    { $match: enrolledAtFilter },
+    {
+      $group: {
+        _id: {
+          year: { $year: "$enrolledAt" },
+          month: { $month: "$enrolledAt" },
+        },
+        count: { $sum: 1 },
+      },
+    },
+    { $sort: { "_id.year": 1, "_id.month": 1 } },
+  ]);
+
+  // Business & engagement stats (revenue, certificates, enrollments)
+  const [revenueResult, totalCertificates, completedEnrollments, totalEnrollments, successfulOrdersCount] =
+    await Promise.all([
+      OrderModel.aggregate<{ total: number }>([
+        { $match: { paymentStatus: "success" } },
+        { $group: { _id: null, total: { $sum: "$amount" } } },
+      ]),
+      CertificateModel.countDocuments(),
+      EnrollmentModel.countDocuments({ status: "completed" }),
+      EnrollmentModel.countDocuments(),
+      OrderModel.countDocuments({ paymentStatus: "success" }),
+    ]);
+
+  const totalRevenue = revenueResult[0]?.total ?? 0;
+
   // Platform-wide stats (super-admin only)
   let platformStats: {
     totalCourses: number;
@@ -212,6 +258,19 @@ export const getDashboardStats = async (
     // Chart data for active/inactive users by year (filtered by duration)
     chartData,
 
+    // Today's enrollments
+    todayEnrollments,
+
+    // Enrollments per month (for chart - course engagement)
+    enrollmentsMonthlyBreakdown,
+
+    // Business & engagement stats
+    totalRevenue,
+    totalCertificates,
+    completedEnrollments,
+    totalEnrollments,
+    successfulOrdersCount,
+
     // Time period specific data
     timePeriod: {
       duration: durationMonths,
@@ -231,4 +290,43 @@ export const getDashboardStats = async (
   };
 
   return response;
+};
+
+/**
+ * Get aggregated user details for admin modal (user, enrollments, certificates, totalSpend).
+ * Single API call instead of 4 separate calls.
+ */
+export const getUserDetailsForAdmin = async (userId: string) => {
+  const [user, enrollmentsResult, certificates, totalSpend] = await Promise.all([
+    getUserByIdService(userId),
+    GetUserEnrollmentsService(userId, undefined, 1, 1000),
+    getUserCertificatesService(userId, { page: 1, limit: 100 }).then((r) =>
+      Array.isArray(r) ? r : r.certificates
+    ),
+    getTotalSpendByUserIdService(userId),
+  ]);
+
+  const enrollments = enrollmentsResult?.enrollments ?? [];
+  const completedEnrollments = enrollments.filter(
+    (e: { status?: string }) => e.status === "completed"
+  );
+  let averageTimeToCompleteSeconds: number | null = null;
+  if (completedEnrollments.length > 0) {
+    const totalSeconds = completedEnrollments.reduce(
+      (sum: number, e: { totalTimeSpent?: number }) =>
+        sum + (e.totalTimeSpent ?? 0),
+      0
+    );
+    averageTimeToCompleteSeconds = Math.round(
+      totalSeconds / completedEnrollments.length
+    );
+  }
+
+  return {
+    user,
+    enrollments,
+    certificates: certificates ?? [],
+    totalSpend: totalSpend ?? 0,
+    averageTimeToCompleteSeconds,
+  };
 };

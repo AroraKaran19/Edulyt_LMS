@@ -1,4 +1,4 @@
-import { getS3Client, getBucketName } from "../config/s3";
+import { getS3Client, getBucketName, getPublicUrlBase } from "../config/s3";
 import { PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { v4 as uuidv4 } from "uuid";
@@ -60,8 +60,8 @@ export const generatePresignedUrl = async (
       expiresIn: 3600, // 1 hour
     });
 
-    // Generate public URL
-    const publicUrl = `https://${bucketName}.s3.amazonaws.com/${s3Key}`;
+    // Generate public URL (uses custom domain if AWS_S3_PUBLIC_BASE_URL is set)
+    const publicUrl = `${getPublicUrlBase()}/${s3Key}`;
 
     return {
       presignedUrl,
@@ -96,6 +96,56 @@ export const deleteFileFromS3 = async (s3Key: string): Promise<void> => {
   } catch (error) {
     console.error("Error deleting file from S3:", error);
     throw new AppError("Failed to delete file", 500);
+  }
+};
+
+/**
+ * Extract S3 key from a public URL if it points to our S3 bucket.
+ * Returns null for external URLs (e.g. YouTube, other CDNs).
+ */
+export const extractS3KeyFromUrl = (url: string): string | null => {
+  if (!url || typeof url !== "string" || !url.startsWith("http")) return null;
+  try {
+    const base = getPublicUrlBase();
+    const baseNoTrailing = base.replace(/\/$/, "");
+    const urlTrimmed = url.trim();
+    if (urlTrimmed.startsWith(baseNoTrailing + "/")) {
+      return urlTrimmed.slice(baseNoTrailing.length + 1).split("?")[0];
+    }
+    if (urlTrimmed === baseNoTrailing) return null;
+    // Also try default S3 URL pattern (bucket.s3.region.amazonaws.com)
+    const bucketName = getBucketName();
+    const s3Pattern = new RegExp(
+      `^https://${bucketName}\\.s3[.-][a-z0-9-]+\\.amazonaws\\.com/(.+?)(?:\\?|$)`,
+      "i"
+    );
+    const match = urlTrimmed.match(s3Pattern);
+    return match ? match[1] : null;
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Delete multiple files from S3 by their keys.
+ * Skips invalid/empty keys. Logs errors but does not throw.
+ */
+export const deleteFilesFromS3 = async (s3Keys: string[]): Promise<void> => {
+  const validKeys = s3Keys.filter((k) => k && typeof k === "string" && k.length > 0);
+  if (validKeys.length === 0) return;
+  const s3Client = await getS3Client();
+  const bucketName = getBucketName();
+  for (const key of validKeys) {
+    try {
+      const command = new DeleteObjectCommand({
+        Bucket: bucketName,
+        Key: key,
+      });
+      await s3Client.send(command);
+    } catch (error) {
+      console.error(`Error deleting S3 file ${key}:`, error);
+      // Continue with other files - don't throw
+    }
   }
 };
 
@@ -276,8 +326,8 @@ export const uploadFileToS3 = async (
     // Upload the file
     await s3Client.send(command);
 
-    // Generate public URL
-    const publicUrl = `https://${bucketName}.s3.amazonaws.com/${s3Key}`;
+    // Generate public URL (uses custom domain if AWS_S3_PUBLIC_BASE_URL is set)
+    const publicUrl = `${getPublicUrlBase()}/${s3Key}`;
 
     return publicUrl;
   } catch (error) {

@@ -4,8 +4,21 @@ import {
   sendSuccessResponse,
 } from "../middlewares/error.middleware";
 import { Request, Response } from "express";
-import { getDashboardStats } from "../services/admin.services";
-import { getCourseAnalytics } from "../services/course-analytics.services";
+import {
+  getDashboardStats,
+  getUserDetailsForAdmin,
+} from "../services/admin.services";
+import {
+  getCourseAnalytics,
+  getEnrollmentsPerDayService,
+} from "../services/course-analytics.services";
+import { getAdminOrdersService } from "../services/order.services";
+import {
+  getAdminEnrollmentsService,
+  EnrollmentTypeFilter,
+} from "../services/admin-enrollments.services";
+import { revokeEnrollmentAdminService } from "../services/enrollment.services";
+import { getTimeSpentPerDayService } from "../services/enrollment.services";
 
 /**
  * @route   GET /api/admin/dashboard-stats
@@ -91,5 +104,207 @@ export const getCourseAnalyticsController = asyncHandler(
       analytics,
       "Course analytics retrieved successfully"
     );
+  }
+);
+
+/**
+ * @route   GET /api/admin/users/:userId/details
+ * @desc    Get aggregated user details for admin modal (user, enrollments, certificates, totalSpend)
+ * @access  Admin
+ */
+export const getUserDetailsForAdminController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { userId } = req.params;
+    if (!userId) {
+      throw new AppError("User ID is required", 400);
+    }
+    const details = await getUserDetailsForAdmin(userId);
+    sendSuccessResponse(
+      res,
+      details,
+      "User details retrieved successfully",
+      200
+    );
+  }
+);
+
+/**
+ * @route   GET /api/admin/users/:userId/time-spent
+ * @desc    Get time spent per day for a user (from completedContents)
+ * @access  Admin
+ * @query   from - Start date ISO string (YYYY-MM-DD)
+ * @query   to - End date ISO string (YYYY-MM-DD)
+ */
+export const getTimeSpentPerDayController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { userId } = req.params;
+    const { from, to } = req.query;
+
+    if (!userId) {
+      throw new AppError("User ID is required", 400);
+    }
+    if (!from || !to || typeof from !== "string" || typeof to !== "string") {
+      throw new AppError("from and to date parameters are required", 400);
+    }
+
+    const fromDate = new Date(from);
+    const toDate = new Date(to);
+
+    if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) {
+      throw new AppError("Invalid date format for from or to", 400);
+    }
+    if (fromDate > toDate) {
+      throw new AppError("from date must be before or equal to to date", 400);
+    }
+
+    // Set to end of day for toDate
+    toDate.setHours(23, 59, 59, 999);
+    fromDate.setHours(0, 0, 0, 0);
+
+    const data = await getTimeSpentPerDayService(userId, fromDate, toDate);
+    sendSuccessResponse(res, data, "Time spent per day retrieved", 200);
+  }
+);
+
+/**
+ * @route   GET /api/admin/orders
+ * @desc    Get all orders (enrollments) for admin
+ * @access  Admin
+ * @query   page, limit, search, paymentStatus
+ */
+export const getAdminOrdersController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { page = 1, limit = 10, search, paymentStatus } = req.query;
+
+    if (Number(page) < 1 || Number(limit) < 1) {
+      throw new AppError("Page and limit must be positive numbers", 400);
+    }
+
+    const result = await getAdminOrdersService(
+      Number(page),
+      Number(limit),
+      typeof search === "string" ? search : undefined,
+      typeof paymentStatus === "string" ? paymentStatus : undefined
+    );
+
+    sendSuccessResponse(res, result, "Orders fetched successfully", 200);
+  }
+);
+
+/**
+ * @route   GET /api/admin/enrollments
+ * @desc    Get all enrollments (paid, gift, trial) for admin with type filter
+ * @access  Admin
+ * @query   page, limit, search, enrollmentType, paymentStatus
+ */
+export const getAdminEnrollmentsController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      enrollmentType = "paid",
+      paymentStatus,
+      enrollmentStatus,
+    } = req.query;
+
+    if (Number(page) < 1 || Number(limit) < 1) {
+      throw new AppError("Page and limit must be positive numbers", 400);
+    }
+
+    const validTypes: EnrollmentTypeFilter[] = ["all", "paid", "gift", "trial"];
+    const type =
+      validTypes.includes(enrollmentType as EnrollmentTypeFilter) ?
+        (enrollmentType as EnrollmentTypeFilter)
+      : "paid";
+
+    const validEnrollmentStatus = ["all", "active", "revoked"];
+    const statusFilter =
+      validEnrollmentStatus.includes(enrollmentStatus as string) ?
+        (enrollmentStatus as "all" | "active" | "revoked")
+      : undefined;
+
+    const result = await getAdminEnrollmentsService(
+      Number(page),
+      Number(limit),
+      type,
+      typeof search === "string" ? search : undefined,
+      typeof paymentStatus === "string" ? paymentStatus : undefined,
+      statusFilter
+    );
+
+    sendSuccessResponse(res, result, "Enrollments fetched successfully", 200);
+  }
+);
+
+/**
+ * @route   POST /api/admin/enrollments/revoke
+ * @desc    Force revoke an enrollment (admin only). Accepts enrollmentId or orderId.
+ * @access  Admin
+ * @body    { enrollmentId?: string, orderId?: string }
+ */
+export const revokeEnrollmentController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { enrollmentId, orderId } = req.body ?? {};
+
+    const enrollmentIdVal =
+      typeof enrollmentId === "string" && enrollmentId.trim()
+        ? enrollmentId.trim()
+        : undefined;
+    const orderIdVal =
+      typeof orderId === "string" && orderId.trim() ? orderId.trim() : undefined;
+
+    const result = await revokeEnrollmentAdminService(
+      enrollmentIdVal,
+      orderIdVal
+    );
+
+    sendSuccessResponse(
+      res,
+      result,
+      "Enrollment revoked successfully",
+      200
+    );
+  }
+);
+
+/**
+ * @route   GET /api/admin/courses-analytics/enrollments-over-time
+ * @desc    Get enrollments per day for courses analytics
+ * @access  Admin
+ * @query   from - Start date (YYYY-MM-DD)
+ * @query   to - End date (YYYY-MM-DD)
+ * @query   courseId - Optional; restrict to a specific course
+ */
+export const getEnrollmentsOverTimeController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { from, to, courseId } = req.query;
+
+    if (!from || !to || typeof from !== "string" || typeof to !== "string") {
+      throw new AppError("from and to date parameters are required", 400);
+    }
+
+    const fromDate = new Date(from);
+    const toDate = new Date(to);
+
+    if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) {
+      throw new AppError("Invalid date format for from or to", 400);
+    }
+    if (fromDate > toDate) {
+      throw new AppError("from date must be before or equal to to date", 400);
+    }
+
+    toDate.setHours(23, 59, 59, 999);
+    fromDate.setHours(0, 0, 0, 0);
+
+    const validCourseId =
+      typeof courseId === "string" && courseId.trim() ? courseId.trim() : undefined;
+
+    const data = await getEnrollmentsPerDayService(
+      fromDate,
+      toDate,
+      validCourseId
+    );
+    sendSuccessResponse(res, data, "Enrollments over time retrieved", 200);
   }
 );

@@ -21,11 +21,27 @@ import {
 } from "../services/user.services";
 
 export const getUsers = asyncHandler(async (req: Request, res: Response) => {
-  const { page = 1, limit = 10, search, userType, status } = req.query;
+  const {
+    page = 1,
+    limit = 10,
+    search,
+    userType,
+    status,
+    excludeEnrolledInCourseIds,
+    enrollmentStatusForCourseIds,
+  } = req.query;
 
   if (Number(page) < 1 || Number(limit) < 1) {
     throw new AppError("Page and limit must be positive numbers", 400);
   }
+
+  const toStringArray = (v: unknown): string[] | undefined => {
+    if (v == null) return undefined;
+    const arr = Array.isArray(v)
+      ? v.map((x) => (typeof x === "string" ? x : String(x)))
+      : (typeof v === "string" ? v.split(",") : []).filter(Boolean);
+    return arr.length ? arr : undefined;
+  };
 
   const result = await getUsersService({
     page: Number(page),
@@ -33,6 +49,8 @@ export const getUsers = asyncHandler(async (req: Request, res: Response) => {
     search: search as string,
     userType: userType as string,
     status: status as string,
+    excludeEnrolledInCourseIds: toStringArray(excludeEnrolledInCourseIds),
+    enrollmentStatusForCourseIds: toStringArray(enrollmentStatusForCourseIds),
   });
 
   sendSuccessResponse(res, result, "Users fetched successfully", 200);
