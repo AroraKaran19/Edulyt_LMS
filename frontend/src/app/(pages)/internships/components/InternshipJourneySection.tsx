@@ -1,146 +1,307 @@
-import Image from "next/image";
-import { internshipJourneySteps } from "@/constants/internshipData";
+"use client";
 
-const InternshipJourneySection = () => {
-  // Show all 6 steps including certificate
-  const displaySteps = internshipJourneySteps.slice(0, 6);
+import { useEffect, useState } from "react";
+
+const internshipJourneySteps = [
+  {
+    id: 1,
+    title: "Apply",
+    side: "right",
+    items: [
+      "Fill Out The Online Application Form",
+      "Upload Resume & Academic Details",
+      "Choose Your Preferred Domain",
+      "Complete The Assessment Test",
+    ],
+  },
+  {
+    id: 2,
+    title: "Selection & Offer Letter",
+    side: "left",
+    items: [
+      "Application Reviewed By Our Team",
+      "Receive Confirmation & Offer Letter",
+      "Sign Internship Agreement",
+      "Finish Onboarding Formalities",
+    ],
+  },
+  {
+    id: 3,
+    title: "Joining & Orientation",
+    side: "right",
+    items: [
+      "Attend Orientation Session",
+      "Meet Your Mentor",
+      "Get Access To LMS/Learning Tools",
+      "Receive Internship Roadmap",
+    ],
+  },
+  {
+    id: 4,
+    title: "Training & Mentorship",
+    side: "left",
+    items: [
+      "Work On Real Or Simulated Industry Projects",
+      "Join Weekly Mentorship Meetings",
+      "Work On Guided Exercises",
+      "Get Ongoing Doubt-Solving Support",
+    ],
+  },
+  {
+    id: 5,
+    title: "Project Work",
+    side: "right",
+    items: [
+      "Work On Real Or Simulated Industry Projects",
+      "Submit Weekly Deliverables",
+      "Attend Mid-Term Project Review",
+      "Submit Final Project For Evaluation",
+    ],
+  },
+  {
+    id: 6,
+    title: "Evaluation",
+    side: "left",
+    items: [
+      "Assessment Of Assignments & Project",
+      "Mentor Performance Review",
+      "Participation & Professionalism Check",
+      "Final Scorecard Issued",
+    ],
+  },
+  {
+    id: 7,
+    title: "Internship Completion",
+    side: "right",
+    items: [
+      "Present Final Project",
+      "Attend Closing Session",
+      "Submit Feedback",
+      "Optional Exit Interview",
+    ],
+  },
+  {
+    id: 8,
+    title: "Certification & Recognisation",
+    side: "left",
+    items: [
+      "Internship Completion Certificate",
+      "Experience Letter",
+      "Letter Of Recommendation (Performance-Based)",
+      "Digital Badge For LinkedIn/Resume",
+    ],
+  },
+  {
+    id: 9,
+    title: "Post-Internship Support",
+    side: "right",
+    items: [
+      "Resume & LinkedIn Enhancement",
+      "Interview Preparation Support",
+      "Placement Support (Referrals To Top Companies)",
+      "PPO Opportunities For Top Performers",
+    ],
+  },
+];
+
+const CheckIcon = ({ size = 26 }) => (
+  <div className="shrink-0 ">
+    <svg width={size} height={size} viewBox="0 0 26 26" fill="none">
+      <circle cx="13" cy="13" r="10" fill="none" stroke="#F77124" strokeWidth="5.5" />
+      <path d="M9.5 13L11.5 15L16.5 10" stroke="#F77124" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  </div>
+);
+
+const CONNECTOR_ZONE = 14; // left zone for vertical bar + horizontal connectors
+
+// Responsive StepCard Component
+const StepCard = ({ step, isMobile = false }: { step: (typeof internshipJourneySteps)[number]; isMobile?: boolean }) => {
+  const ICON_SIZE = isMobile ? 22 : 26;
+  const GAP = isMobile ? 6 : 7;
+  const items = step.items ?? [];
+  const lineTop = ICON_SIZE / 2;
+  const lineBottom = (items.length - 1) * (ICON_SIZE + GAP) + ICON_SIZE / 2;
+  const lineHeight = lineBottom - lineTop + 35;
+  const CONNECTOR_ZONE = isMobile ? 32 : 40; // Smaller on mobile
+  const lineCenterX = CONNECTOR_ZONE / 2;
+  const horizontalWidth = CONNECTOR_ZONE - lineCenterX;
 
   return (
-    <div className="px-4 lg:px-8 xl:px-12 mt-16 lg:pt-12 bg-[#fffbf8]">
-      {/* Title Section */}
-      <div className="text-center mb-12 max-w-4xl mx-auto">
-        <h2 className="text-3xl lg:text-4xl font-bold mb-4">
-          <span className="text-gray-900 font-extrabold">Your</span>{" "}
-          <span className="text-[#F77124] font-extrabold">Internship </span>
-          <span className="text-gray-900 font-extrabold">Journey</span>
-        </h2>
-        <p className="text-black text-base lg:text-lg mt-4">
-          A simple, step-by-step process to help you start, learn, and
-          successfully complete your internship.
-        </p>
-      </div>
+    <div className={`
+      bg-white rounded-lg sm:rounded-2xl border-2 border-[#e8a87c] 
+      relative px-3 sm:px-4 py-2.5 sm:py-3.5 
+      shadow-[0_0_0_2px_sm:shadow-[0_0_0_4px_rgba(232,168,124,0.30)]
+      ${isMobile ? 'w-[280px]' : 'w-[360px] sm:w-[400px]'}
+    `}>
+      <h3 className="text-[#F77124] font-extrabold text-xs sm:text-sm md:text-base mb-2 sm:mb-2.5 tracking-tight line-clamp-2">
+        {step.title}
+      </h3>
 
-      {/* Timeline Section */}
-      <div className="max-w-7xl mx-auto">
-        {/* Mobile (stacked timeline) */}
-        <div className="md:hidden">
-          <div className="relative pl-14">
-            {/* Left vertical dashed line - only between first and last circle centers */}
-            <div className="absolute left-7 top-[60px] bottom-[60px] w-px border-l-2 border-dashed border-gray-200" />
+      <div className="relative pl-[14px] sm:pl-[14px]">
+        {/* Vertical dashed bar */}
+        <div
+          className="absolute border-l-2 border-dashed border-gray-300 z-0 w-0"
+          style={{
+            left: lineCenterX - 1,
+            top: lineTop,
+            height: lineHeight - 30,
+          }}
+        />
+        {/* Horizontal connector at first point */}
+        <div
+          className="absolute border-t-2 border-dashed border-gray-300 z-0"
+          style={{
+            left: lineCenterX - 1,
+            top: lineTop - 1,
+            width: horizontalWidth,
+          }}
+        />
 
-            <div className="space-y-8">
-              {displaySteps.map((step) => (
-                <div key={step.id} className="relative">
-                  {/* Circle */}
-                  <div className="absolute -left-7 top-[33%] -translate-x-1/2 z-10">
-                    <Image
-                      src="/assets/Circle1.png"
-                      alt="Circle"
-                      width={56}
-                      height={56}
-                      className="w-12 h-12"
-                      priority
-                    />
-                  </div>
-
-                  {/* Connecting Line from circle to box */}
-                  <div className="absolute left-0 top-[50%] z-0">
-                    <div className="border-t-2 border-dashed border-gray-200 w-2"></div>
-                  </div>
-
-                  {/* Card */}
-                  <div className="ml-2">
-                    <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-                      <h3 className="text-lg font-bold text-[#F77124]">
-                        {step.title}
-                      </h3>
-                      <p className="text-sm text-gray-500 leading-relaxed">
-                        {step.description}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ))}
+        <div className={`flex flex-col gap-[7px]`}>
+          {items.map((item, i) => (
+            <div
+              key={i}
+              className="flex items-center bg-[#fff3ec] -ml-2 md:-ml-1 rounded-full gap-1.5 sm:gap-2 relative z-10"
+            >
+              <span className="h-full flex items-center justify-center">
+                <CheckIcon size={20} />
+              </span>
+              <div className="bg-[#fff3ec] rounded-full px-1.5 sm:px-2 py-1 sm:py-1.5 flex-1 min-w-0">
+                <span className="text-[10px] sm:text-xs md:text-[12px] text-gray-900 leading-snug font-medium line-clamp-2">
+                  {item}
+                </span>
+              </div>
             </div>
-          </div>
-        </div>
-
-        {/* Desktop (keep exactly same as current) */}
-        <div className="hidden md:block">
-          <div className="relative">
-            {/* Steps */}
-            <div className="relative space-y-12">
-              {/* Vertical Dotted Line - only between first and last circle centers */}
-              <div className="absolute left-1/2 top-[40px] bottom-[40px] w-0.5 border-l-2 border-dashed border-gray-200 transform -translate-x-1/2 hidden md:block z-0"></div>
-
-              {displaySteps.map((step, index) => (
-                <div key={step.id} className="flex items-center relative">
-                  {/* Circle - Absolutely positioned at center */}
-                  <div className="absolute left-1/2 transform -translate-x-1/2 z-10">
-                    <Image
-                      src="/assets/Circle1.png"
-                      alt="Circle"
-                      width={64}
-                      height={64}
-                      className="w-24 h-24"
-                      priority
-                    />
-                  </div>
-
-                  {/* Right Box (for even indices: 0, 2, 4) - swapped from left */}
-                  {index % 2 === 0 ? (
-                    <>
-                      {/* Empty space for alignment */}
-                      <div className="flex-1 hidden md:block"></div>
-
-                      {/* Connecting Line from center circle to right box */}
-                      <div className="absolute left-1/2 z-0 flex items-center w-40 lg:w-48">
-                        <div className="border-t-2 border-dashed border-gray-200 w-full"></div>
-                      </div>
-
-                      {/* Right Box */}
-                      <div className="flex-1 ml-16 lg:ml-96 text-left">
-                        <div className="bg-white rounded-xl p-6 shadow-sm inline-block max-w-md">
-                          <h3 className="text-xl font-bold text-[#F77124] mb-2">
-                            {step.title}
-                          </h3>
-                          <p className="text-sm text-gray-400">
-                            {step.description}
-                          </p>
-                        </div>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      {/* Left Box (for odd indices: 1, 3, 5) - swapped from right */}
-                      <div className="flex-1 mr-16 lg:mr-96 text-left">
-                        <div className="bg-white rounded-xl p-6 shadow-sm inline-block max-w-md">
-                          <h3 className="text-xl font-bold text-[#F77124] mb-2">
-                            {step.title}
-                          </h3>
-                          <p className="text-sm text-gray-400">
-                            {step.description}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Connecting Line from left box to center circle */}
-                      <div className="absolute left-1/2 transform -translate-x-full z-0 flex items-center w-40 lg:w-48">
-                        <div className="border-t-2 border-dashed border-gray-200 w-full"></div>
-                      </div>
-
-                      {/* Empty space for alignment */}
-                      <div className="flex-1 hidden md:block"></div>
-                    </>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
+          ))}
         </div>
       </div>
     </div>
   );
 };
 
-export default InternshipJourneySection;
+const StepCircle = ({ id }: { id: number }) => (
+  <div className="relative w-12 h-12 md:w-[88px] md:h-[88px] shrink-0 z-10 flex items-center justify-center">
+    <div className="absolute inset-0 rounded-full bg-[#fffbf8] z-[1]" />
+    <div className="absolute inset-0 rounded-full border border-[#F77124] z-[2]" />
+    <div className="absolute inset-[7px] rounded-full bg-[#F77124] z-[2]" />
+    <div className="absolute inset-4 rounded-full bg-white z-[2]" />
+    <span className="relative z-[3] text-[#F77124] font-black md:text-[32px] leading-none">{id}</span>
+    <div className="absolute left-[-5px] top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-white border-[3px] border-[#F77124] z-[4]" />
+    <div className="absolute right-[-5px] top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-white border-[3px] border-[#F77124] z-[4]" />
+  </div>
+);
+
+const ROW_HEIGHT = 190;
+
+export default function InternshipJourneySection() {
+
+  // Add this hook to detect screen size
+  const useIsMobile = () => {
+    const [isMobile, setIsMobile] = useState(false);
+
+    useEffect(() => {
+      const checkMobile = () => {
+        setIsMobile(window.innerWidth < 768); // Tailwind's md breakpoint
+      };
+
+      checkMobile();
+      window.addEventListener('resize', checkMobile);
+      return () => window.removeEventListener('resize', checkMobile);
+    }, []);
+
+    return isMobile;
+  };
+
+  // Then in your component:
+  const isMobile = useIsMobile();
+
+  return (
+    <div className="bg-[#fffbf8] px-6 pt-12 pb-20 min-h-screen">
+      {/* Title */}
+      <div className="text-center mb-6 sm:mb-12">
+        <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-3 sm:mb-4">
+          <span className="text-gray-900 font-extrabold">Your </span>
+          <span className="text-[#F77124] font-extrabold">Internship </span>
+          <span className="text-gray-900 font-extrabold">Journey</span>
+        </h2>
+        <p className="text-black text-sm sm:text-base lg:text-lg max-w-4xl mx-auto px-2">
+          A simple, step-by-step process to help you start, learn, and successfully complete your internship.
+        </p>
+      </div>
+
+      {/* Timeline */}
+      <div
+        className="max-w-[860px] mx-auto relative md:mt-20"
+        style={{ height: internshipJourneySteps.length * ROW_HEIGHT }}
+      >
+        {/* Vertical dashed center line */}
+        <div className="absolute left-10 md:left-1/2 -translate-x-1/2 top-16 md:top-[44px] bottom-11 border-l-2 border-dashed border-gray-300 z-[1]" />
+
+        {internshipJourneySteps.map((step, index) => {
+          const isRight = step.side === "right";
+          const topCenter = index * ROW_HEIGHT + ROW_HEIGHT / 2;
+
+          return (
+            <div key={step.id}>
+              {/* Circle */}
+              <div
+                className="absolute md:left-1/2 left-10 z-10"
+                style={{ top: topCenter, transform: "translate(-50%, -50%)" }}
+              >
+                <StepCircle id={step.id} />
+              </div>
+              {/* Mobile: Always right with responsive spacing */}
+              <div className="md:hidden relative w-10 bg-red-500">
+                <div
+                  className="absolute border-t-2 border-dashed border-gray-300 z-[2]"
+                  style={{ left: "calc(50% + 32px)", top: topCenter, width: 50, transform: "translateY(-50%)" }}
+                />
+                <div
+                  className="absolute z-[2]"
+                  style={{ left: "calc(50% + 80px)", top: topCenter, transform: "translateY(-50%)" }}
+                >
+                  <StepCard step={step} isMobile />
+                </div>
+              </div>
+              {isMobile || isRight ? (
+                // Always right on mobile, or right on desktop when isRight is true
+                <>
+
+
+                  {/* Desktop: Alternate sides */}
+                  <div className="hidden md:block">
+                    <div
+                      className="absolute border-t-2 border-dashed border-gray-300 z-[2]"
+                      style={{ left: "calc(50% + 44px)", top: topCenter, width: 60, transform: "translateY(-50%)" }}
+                    />
+                    <div
+                      className="absolute z-[2]"
+                      style={{ left: "calc(50% + 104px)", top: topCenter, transform: "translateY(-50%)" }}
+                    >
+                      <StepCard step={step} />
+                    </div>
+                  </div>
+                </>
+              ) : (
+                // Left side on desktop only
+                <>
+                  <div
+                    className="absolute border-t-2 border-dashed border-gray-300 z-[2]"
+                    style={{ right: "calc(50% + 44px)", top: topCenter, width: 60, transform: "translateY(-50%)" }}
+                  />
+                  <div
+                    className="absolute z-[2]"
+                    style={{ right: "calc(50% + 104px)", top: topCenter, transform: "translateY(-50%)" }}
+                  >
+                    <StepCard step={step} />
+                  </div>
+                </>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}

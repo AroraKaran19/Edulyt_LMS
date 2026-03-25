@@ -7,149 +7,152 @@ import { Autoplay } from "swiper/modules";
 import "swiper/css";
 import { managers } from "@/constants/internshipData";
 import { cn } from "@/lib/utils";
-import { Facebook, Twitter, Github, Globe } from "lucide-react";
+import { SiDell } from "react-icons/si";
+import { FaAmazon, FaApple } from "react-icons/fa";
 
-const KnowYourManagersSection = () => {
-  const [activeSlideIndex, setActiveSlideIndex] = useState(0);
-  const swiperRef = useRef<{ slideToLoop: (index: number) => void } | null>(
-    null
-  );
-
-  return (
-    <div className="px-4 lg:px-8 xl:px-12 mt-16 lg:mt-24 bg-white py-12">
-      {/* Title Section */}
-      <div className="text-center mb-8 max-w-4xl mx-auto">
-        <h2 className="text-3xl lg:text-4xl font-bold mb-4">
-          <span className="text-gray-900 font-extrabold">Know Your</span>{" "}
-          <span className="text-[#F77124] font-extrabold">Future Managers</span>
-        </h2>
-        <p className="text-black text-base lg:text-lg mt-4">
-          Learn from experienced industry experts and seasoned mentor
-        </p>
-      </div>
-
+const companyIcons = [SiDell, FaAmazon, FaApple];
+ 
+ const KnowYourManagersSection = () => {
+   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
+   const swiperRef = useRef<{ slideToLoop: (index: number) => void } | null>(
+     null
+   );
+ 
+   return (
+     <div className="px-4 lg:px-8 xl:px-12 mt-16 lg:mt-24 bg-white py-12">
+       {/* Title Section */}
+       <div className="text-center mb-8 max-w-4xl mx-auto">
+         <h2 className="text-3xl lg:text-4xl font-bold mb-3 sm:mb-4">
+           <span className="text-gray-900 font-extrabold">Know Your</span>{" "}
+           <span className="text-[#F77124] font-extrabold">Future Managers</span>
+         </h2>
+         <p className="text-black text-base lg:text-lg mt-2 sm:mt-3">
+           Learn from experienced industry experts and seasoned mentor
+         </p>
+       </div>
+ 
       {/* Managers Carousel */}
-      <div className="max-w-7xl mx-auto">
-        <Swiper
-          onSwiper={(swiper) => {
-            swiperRef.current = swiper;
-            setActiveSlideIndex(swiper.realIndex);
-          }}
-          modules={[Autoplay]}
-          spaceBetween={24}
-          slidesPerView={1}
-          loop={managers.length > 4}
-          grabCursor={true}
-          autoplay={{
-            delay: 3000,
-            disableOnInteraction: false,
-            pauseOnMouseEnter: true,
-          }}
-          onSlideChange={(swiper) => {
-            setActiveSlideIndex(swiper.realIndex);
-          }}
-          breakpoints={{
-            640: {
-              slidesPerView: 3,
-              loop: managers.length > 3,
-            },
-            1024: {
-              slidesPerView: 4,
-              loop: managers.length > 4,
-            },
-          }}
-          className="managers-swiper cursor-grab active:cursor-grabbing"
+      <div className="max-w-6xl mx-auto">
+         <Swiper
+           onSwiper={(swiper) => {
+             swiperRef.current = swiper;
+             setActiveSlideIndex(swiper.realIndex);
+           }}
+           modules={[Autoplay]}
+           spaceBetween={48}
+           slidesPerView={1}
+           loop={managers.length > 3}
+           autoplay={{
+             delay: 3000,
+             disableOnInteraction: false,
+           }}
+           onSlideChange={(swiper) => {
+             setActiveSlideIndex(swiper.realIndex);
+           }}
+           breakpoints={{
+             768: {
+               slidesPerView: 3,
+             },
+           }}
+           className="cursor-grab active:cursor-grabbing"
         >
-          {managers.map((manager, index) => (
+          {managers.map((manager) => (
             <SwiperSlide key={manager.id}>
-              <div className="bg-white rounded-lg p-4 m-2 shadow-md border border-gray-200 hover:shadow-lg transition-shadow h-full">
+              <div className="bg-white rounded-[32px] border-2 border-[#F77124] shadow-[0_0_0_3px_rgba(247,113,36,0.18)] px-6 pt-10 pb-8 sm:px-8 sm:pt-10 sm:pb-10 flex flex-col items-center text-center">
                 {/* Profile Picture */}
-                <div className="flex justify-center mb-4">
-                  <div className="relative w-full h-52 rounded-lg overflow-hidden">
-                    <Image
-                      src={manager.profileImage}
-                      alt={manager.name}
-                      fill
-                      className="object-cover"
-                    />
-                  </div>
+                <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-[#FFE4D4] overflow-hidden bg-gray-200 shadow-[0_10px_25px_rgba(0,0,0,0.12)] mx-auto mb-4">
+                  <Image
+                    src={manager.profileImage}
+                    alt={manager.name}
+                    width={112}
+                    height={112}
+                    className="w-full h-full object-cover"
+                  />
                 </div>
 
-                {/* Name */}
-                <h3 className="text-lg font-bold text-gray-900 text-left">
-                  {manager.name}
-                </h3>
+                <div className="w-full">
+                  {/* Name + LinkedIn */}
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <h3 className="text-lg sm:text-2xl font-bold text-gray-900">
+                      {manager.name}
+                    </h3>
+                    {manager.linkedinUrl && (
+                      <div className="shrink-0 inline-flex items-center justify-center w-7 h-7">
+                        <Image
+                          src="/assets/LinkedIn.svg"
+                          alt="LinkedIn"
+                          width={24}
+                          height={24}
+                          className="w-full h-full object-contain"
+                        />
+                      </div>
+                    )}
+                  </div>
 
-                {/* Title */}
-                <p className="text-sm text-black font-medium text-left mb-2">
-                  {manager.title}
-                </p>
+                  {/* Sector */}
+                  <p className="text-sm sm:text-lg font-medium text-black mb-2">
+                    {manager.sector}
+                  </p>
 
-                {/* Description */}
-                <p className="text-sm text-black text-left mb-4 line-clamp-3">
-                  {manager.description}
-                </p>
+                  {/* Role + Company (single line) */}
+                  <p className="text-sm sm:text-base mb-3">
+                    <span className="text-[#F77124] font-semibold">
+                      {manager.roleTitle}
+                    </span>{" "}
+                    <span className="text-black">
+                      at{" "}
+                      <span className="font-semibold">
+                        {manager.companyName}
+                      </span>
+                    </span>
+                  </p>
 
-                {/* Social Media Icons */}
-                <div className="flex justify-start items-center gap-3">
-                  <a
-                    href={manager.socialLinks.facebook}
-                    className="text-gray-400 hover:text-blue-600 transition-colors"
-                    aria-label="Facebook"
-                  >
-                    <Facebook className="w-5 h-5" />
-                  </a>
-                  <a
-                    href={manager.socialLinks.twitter}
-                    className="text-gray-400 hover:text-blue-400 transition-colors"
-                    aria-label="Twitter"
-                  >
-                    <Twitter className="w-5 h-5" />
-                  </a>
-                  <a
-                    href={manager.socialLinks.github}
-                    className="text-gray-400 hover:text-gray-900 transition-colors"
-                    aria-label="GitHub"
-                  >
-                    <Github className="w-5 h-5" />
-                  </a>
-                  <a
-                    href={manager.socialLinks.linkedin}
-                    className="text-gray-400 hover:text-blue-700 transition-colors"
-                    aria-label="LinkedIn"
-                  >
-                    <Globe className="w-5 h-5" />
-                  </a>
+                  {/* Bottom company icons row */}
+                  <div className="flex items-center justify-center gap-6 mb-4">
+                    {companyIcons.map((Icon, idx) => (
+                      <div
+                        key={idx}
+                        className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center text-gray-700"
+                      >
+                        <Icon className="w-6 h-6 sm:w-7 sm:h-7" />
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Description */}
+                  <p className="text-xs sm:text-sm text-black leading-relaxed">
+                    {manager.description}
+                  </p>
                 </div>
               </div>
             </SwiperSlide>
           ))}
-        </Swiper>
-
-        {/* Custom Pagination Dots */}
-        <div className="flex justify-center items-center gap-2 mt-8">
-          {managers.map((_, index) => (
-            <button
-              key={index}
-              onClick={() => {
-                if (swiperRef.current) {
-                  swiperRef.current.slideToLoop(index);
-                }
-              }}
-              className={cn(
-                "transition-all duration-300 rounded-full cursor-pointer",
-                activeSlideIndex === index
-                  ? "w-8 h-2 bg-[#F77124]"
-                  : "w-4 h-2 bg-gray-300 hover:bg-[#F77124]/70"
-              )}
-              aria-label={`Go to slide ${index + 1}`}
-            />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-export default KnowYourManagersSection;
+         </Swiper>
+ 
+         {/* Custom Pagination Dots */}
+         <div className="flex justify-center items-center gap-2 mt-8">
+           {managers.map((_, index) => (
+             <button
+               key={index}
+               onClick={() => {
+                 if (swiperRef.current) {
+                   swiperRef.current.slideToLoop(index);
+                 }
+               }}
+               className={cn(
+                 "transition-all duration-300 rounded-full cursor-pointer",
+                 activeSlideIndex === index
+                   ? "w-8 h-2 bg-[#F77124]"
+                   : "w-4 h-2 bg-[#FED7AA] hover:bg-[#F77124]/70"
+               )}
+               aria-label={`Go to slide ${index + 1}`}
+             />
+           ))}
+         </div>
+       </div>
+     </div>
+   );
+ };
+ 
+ export default KnowYourManagersSection;
 

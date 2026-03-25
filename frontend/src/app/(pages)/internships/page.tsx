@@ -7,6 +7,7 @@ import PrerequisitesSection from "./components/PrerequisitesSection";
 import MentorsProfileSection from "./components/MentorsProfileSection";
 import InternshipJourneySection from "./components/InternshipJourneySection";
 import LearnersTestimonialsSection from "./components/LearnersTestimonialsSection";
+import ExploreInternshipsSection from "./components/ExploreInternshipsSection";
 import ExploreCoursesSection from "./components/ExploreCoursesSection";
 import CollegesSection from "./components/CollegesSection";
 import MediaCertificateSection from "./components/MediaCertificateSection";
@@ -32,18 +33,20 @@ const InternshipPage = () => {
 
       <MentorsProfileSection />
 
-      <InternshipJourneySection />
-
-      <LearnersTestimonialsSection />
+      <ExploreInternshipsSection />
 
       <ExploreCoursesSection />
 
+      <LearnersTestimonialsSection />
+      
       <CollegesSection />
-
-      <MediaCertificateSection />
 
       <KnowYourManagersSection />
 
+      <MediaCertificateSection />
+      
+      <InternshipJourneySection />
+      
       <FAQSection />
     </div>
   );

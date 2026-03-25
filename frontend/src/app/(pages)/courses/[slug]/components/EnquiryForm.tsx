@@ -2,7 +2,8 @@
 import React, { useState, useRef, useEffect } from "react";
 import Container from "@/components/ui/Container";
 import Input from "@/components/ui/inputs/Input";
-import { MessageSquare, Send, ChevronDown, ChevronUp } from "lucide-react";
+import { Send, ChevronDown, ChevronUp } from "lucide-react";
+import { BiChat } from "react-icons/bi";
 import { cn } from "@/lib/utils";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
@@ -250,7 +251,7 @@ const EnquiryForm = ({ course }: { course: Course }) => {
 
   return isMounted ? (
     <Container
-      icon={MessageSquare}
+      icon={BiChat}
       title="Need Professional Guidance?"
       description="Fill it and our expert will help you!"
       className="max-w-full mx-auto"

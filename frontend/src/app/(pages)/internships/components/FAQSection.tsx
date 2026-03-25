@@ -32,7 +32,7 @@ const FAQSection = () => {
       </div>
 
       {/* FAQ Accordion */}
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         <div className="space-y-3 sm:space-y-4">
           {faqItems.map((item) => {
             const isOpen = openItems.has(item.id);

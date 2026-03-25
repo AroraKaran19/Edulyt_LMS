@@ -1,0 +1,95 @@
+"use client";
+
+import React from "react";
+import TimelineMarkerIcon from "./TimelineMarkerIcon";
+import { CheckCircle2, CheckIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+const FEATURES = [
+    {
+        title: "Industry-Led Mentorship",
+        description: "Learn directly from professionals.",
+    },
+    {
+        title: "Hands-On Projects",
+        description: "Work on real-world problems.",
+    },
+    {
+        title: "Internship Opportunities",
+        description: "Learn directly from professionals.",
+    },
+    {
+        title: "Career Support",
+        description: "Resume, interviews, and placement.",
+    },
+];
+
+export default function TransformationSection() {
+    return (
+        <div className="relative px-40 mt-12 sm:py-10">
+            {/* Top Header with Icon */}
+            <div className="flex items-center relative gap-4 -translate-x-12 sm:-translate-x-22">
+                <TimelineMarkerIcon size="big">
+                    <div className="w-12 h-12 shrink-0 rounded-full bg-[#F77124] flex items-center justify-center text-white shadow-sm transition-transform group-hover:scale-110">
+                        <span className="bg-white rounded-full text-[#F77124]">
+                            <CheckIcon className="w-7 h-7" />
+                        </span>
+                    </div>
+                </TimelineMarkerIcon>
+                <div >
+                    <h2 className="text-xl sm:text-xl md:text-lg relative md:left-8 font-semibold text-gray-800">
+                        It's Time to Choose the Right Path.
+                    </h2>
+                </div>
+            </div>
+
+            {/* Content Area */}
+            <div className="mt-10">
+                <div className="flex flex-col gap-1 mb-6">
+                    <h2 className="text-xl sm:text-lg lg:text-xl font-semibold leading-tight">
+                        Your <span className="text-[#F77124]">Transformation</span><br />
+                        Decision Starts <span className="text-[#F77124]">Here.</span>
+                    </h2>
+                </div>
+                <div className="flex flex-col lg:flex-row items-start gap-12 lg:gap-20">
+                    {/* Left Side: Descriptions */}
+                    <div className="flex-1 w-full space-y-8">
+                        <p className={cn("text-sm sm:text-base md:text-lg leading-relaxed", "text-gray-600")}>
+                            We help students and professionals move from confusion to clarity with <span className="font-bold text-gray-900">expert guidance and practical learning.</span>
+                        </p>
+                        <p className={cn("text-sm sm:text-base md:text-lg leading-relaxed", "text-gray-600")}>
+                            Our programs are designed around real industry demands, <span className="font-bold text-gray-900">focusing on practical skills, hands-on projects, and job-ready training.</span> Everything we offer is aligned toward meaningful career growth and real placement outcomes.
+                        </p>
+                    </div>
+
+                    {/* Right Side: Features & Sub-timeline */}
+                    <div className="flex-1 w-full relative">
+
+                        <div className="space-y-8">
+                            {FEATURES.map((feature, index) => (
+                                <div key={index} className="flex items-start gap-6 group">
+                                    {/* Feature Icon Case */}
+                                    <div className="w-15 z-9 h-15 shrink-0 rounded-full bg-[#F77124] flex items-center justify-center text-white shadow-sm transition-transform group-hover:scale-110">
+                                        <span className="bg-white rounded-full text-[#F77124]">
+                                            <CheckIcon className="w-10 h-10" />
+                                        </span>
+                                    </div>
+
+                                    {/* Feature Text Case */}
+                                    <div className="flex-1 bg-[#FFF7F0] px-8 py-5 rounded-[24px] border border-orange-100 shadow-sm group-hover:shadow-md transition-all">
+                                        <h4 className={cn("text-lg sm:text-xl md:text-2xl font-bold", "mb-1")}>
+                                            {feature.title}
+                                        </h4>
+                                        <p className={cn("text-gray-500 font-medium", "text-xs sm:text-sm font-medium")}>
+                                            {feature.description}
+                                        </p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}

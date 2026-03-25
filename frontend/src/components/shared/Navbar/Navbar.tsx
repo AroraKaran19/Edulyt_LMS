@@ -62,14 +62,26 @@ const Navbar = () => {
 
   const navItems: NavItem[] = [
     {
+      label: "Home",
+      href: "/",
+    },
+    {
       label: "courses",
       href: "/courses",
       count: coursesCount,
     },
     {
-      label: "internships",
+      label: "internship",
       href: "/internships",
       count: 101,
+    },
+    {
+      label: "community",
+      href: "/community",
+    },
+    {
+      label: "contact",
+      href: "/contact",
     },
   ];
   const [hoveredNavLink, setHoveredNavLink] = useState<NavItem | null>(null);

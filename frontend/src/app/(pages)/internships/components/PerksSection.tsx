@@ -1,15 +1,39 @@
+import Image from "next/image";
 import { internshipPerks } from "@/constants/internshipData";
 import { cn } from "@/lib/utils";
 
 const PerksSection = () => {
+  const renderIcon = (perk: (typeof internshipPerks)[number]) => {
+    if (perk.iconImage) {
+      return (
+        <Image
+          src={perk.iconImage}
+          alt={perk.title}
+          width={48}
+          height={48}
+          className="w-5 h-5 sm:w-6 sm:h-6 object-contain brightness-0 invert"
+        />
+      );
+    }
+    const IconComponent = perk.icon;
+    return (
+      <IconComponent
+        className={cn(
+          "w-5 h-5 sm:w-6 sm:h-6",
+          perk.highlighted ? "text-white" : "text-white"
+        )}
+      />
+    );
+  };
+
   return (
-    <div className="px-4 sm:px-6 lg:px-8 xl:px-12 mt-12 sm:mt-16 lg:mt-24">
+    <div className="px-4 sm:px-6 lg:px-40 mt-12 sm:mt-16 lg:mt-24">
       <div className="text-center mb-6 sm:mb-8">
         <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-3 sm:mb-4">
           <span className="text-gray-800 font-extrabold">Perks of</span>{" "}
           <span className="text-[#F77124] font-extrabold">Internship</span>
         </h2>
-        <p className="text-black text-sm sm:text-base lg:text-lg max-w-3xl mx-auto px-2">
+        <p className="text-black text-sm sm:text-base lg:text-lg max-w-2xl mx-auto px-2">
           To ensure a smooth learning experience during the internship, students
           are expected to have the following basic technology setup.
         </p>
@@ -31,18 +55,13 @@ const PerksSection = () => {
               <div className="flex items-start gap-3 sm:gap-4">
                 <div
                   className={cn(
-                    "p-2 sm:p-3 rounded-lg sm:rounded-xl shrink-0",
+                    "p-2 sm:p-3 rounded-lg sm:rounded-xl shrink-0 flex items-center justify-center",
                     perk.highlighted
                       ? "bg-white/20"
                       : "bg-[#F77124]"
                   )}
                 >
-                  <IconComponent
-                    className={cn(
-                      "w-5 h-5 sm:w-6 sm:h-6",
-                      perk.highlighted ? "text-white" : "text-white"
-                    )}
-                  />
+                  {renderIcon(perk)}
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3

@@ -2,178 +2,173 @@
 
 import React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { cn } from "@/lib/utils";
-import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import {
   FileText,
   Download,
   CheckCircle2,
   Phone,
-  Linkedin,
-  Instagram,
-  Facebook,
-  Youtube,
 } from "lucide-react";
+import {
+  SiTelegram,
+  SiFacebook,
+  SiYoutube,
+} from "react-icons/si";
+import { FaLinkedin } from "react-icons/fa";
+import { RiWhatsappFill } from "react-icons/ri";
 import { internshipDetails, socialLinks } from "@/constants/internshipData";
 
-// Custom WhatsApp SVG Icon
-const WhatsAppIcon = ({ className }: { className?: string }) => (
-  <svg
-    className={cn("w-6 h-6", className)}
-    viewBox="0 0 24 24"
-    fill="currentColor"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.488" />
-  </svg>
-);
-
-// Custom Telegram SVG Icon
-const TelegramIcon = ({ className }: { className?: string }) => (
-  <svg
-    className={cn("w-6 h-6", className)}
-    viewBox="0 0 24 24"
-    fill="currentColor"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z" />
-  </svg>
-);
-
 const socialIcons: Record<string, React.ComponentType<{ className?: string }>> = {
-  WhatsApp: WhatsAppIcon,
-  Telegram: TelegramIcon,
-  Instagram,
-  LinkedIn: Linkedin,
-  Facebook,
-  YouTube: Youtube,
+  WhatsApp: RiWhatsappFill,
+  Telegram: SiTelegram,
+  LinkedIn: FaLinkedin,
+  Facebook: SiFacebook,
+  YouTube: SiYoutube,
+};
+
+const socialImages: Record<string, string> = {
+  Instagram: "/assets/internships/instagram.svg",
 };
 
 const HeroSection = () => {
   return (
-    <div className="px-4 sm:px-6 bg-white lg:px-8 xl:px-12 py-6 sm:py-8 lg:py-12">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
-      {/* Left Section - Main Content */}
-      <div className="lg:col-span-2 relative overflow-hidden">
-        <div className="relative bg-white z-10 p-4 sm:p-6 lg:p-12 h-full flex flex-col justify-between min-h-[400px] sm:min-h-[450px] lg:min-h-[500px]">
-          {/* Title */}
-          <div className="space-y-3 sm:space-y-4">
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold">
-              <span className="text-[#F77124] font-extrabold">Intensive</span>{" "}
-              <div className="text-gray-900 font-extrabold mt-2 sm:mt-3">Internship Program</div>
+    <section
+    className="relative px-4 sm:px-6 lg:px-16 py-6 sm:py-8 lg:py-12 overflow-hidden"
+    style={{
+      backgroundColor: "#FCF9F6",
+      backgroundImage: `
+        linear-gradient(45deg, rgba(247,113,36,0.14) 2px, transparent 2px),
+        linear-gradient(-45deg, rgba(247,113,36,0.14) 2px, transparent 2px),
+        linear-gradient(135deg, rgba(247,113,36,0.14) 2px, transparent 2px),
+        linear-gradient(-135deg, rgba(247,113,36,0.14) 2px, transparent 2px)
+      `,
+      backgroundSize: "34px 34px",
+    }}
+  >
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-10 items-stretch">
+        {/* Left Section - Main Content */}
+        <div className="lg:col-span-2">
+          <div className="bg-transparent p-4 sm:p-6 lg:p-10 h-full flex flex-col justify-between min-h-[360px] sm:min-h-[420px] lg:min-h-[460px]">
+          {/* 1. Title - Figma order */}
+          <div>
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold leading-tight">
+              <span className="text-gray-900 font-bold">Intensive</span>
+              <div className="text-[#F77124] font-bold mt-1.5 sm:mt-2">
+                Internship Program
+              </div>
             </h1>
-            <p className="text-black text-sm sm:text-base lg:text-lg max-w-2xl leading-relaxed">
-              Gain hands-on experience, real project exposure, and learn
-              directly from industry mentors- all in one structured,
-              beginner-friendly internship program.
-            </p>
           </div>
 
-          {/* Key Features */}
-          <div className="flex flex-wrap items-center gap-3 sm:gap-4 lg:gap-5 mt-4 sm:mt-0">
+          {/* 2. Key Features - orange check, dark text */}
+          <div className="flex flex-wrap items-center gap-3 sm:gap-4 lg:gap-5 mt-3 sm:mt-4">
             <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 fill-[#F77124] text-[#fff] shrink-0" />
-              <span className="text-gray-800 font-bold text-sm sm:text-base lg:text-lg">
+              <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 fill-[#F77124] text-white shrink-0 rounded-full" />
+              <span className="text-[#2E2E2E] font-extrabold text-sm sm:text-base">
                 Mentor-Led Live Sessions
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 fill-[#F77124] text-[#fff] shrink-0" />
-              <span className="text-gray-800 font-bold text-sm sm:text-base lg:text-lg">
+              <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 fill-[#F77124] text-white shrink-0 rounded-full" />
+              <span className="text-[#2E2E2E] font-extrabold text-sm sm:text-base">
                 Real Industry projects
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 fill-[#F77124] text-[#fff] shrink-0" />
-              <span className="text-gray-800 font-bold text-sm sm:text-base lg:text-lg">
+              <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 fill-[#F77124] text-white shrink-0 rounded-full" />
+              <span className="text-[#2E2E2E] font-extrabold text-sm sm:text-base">
                 Online + Offline Modes
               </span>
             </div>
           </div>
-          
+
+          {/* 3. Description paragraph */}
+          <p className="text-[#000000] text-sm sm:text-base lg:text-lg max-w-2xl leading-relaxed mt-4 font-medium">
+            Gain hands-on experience, real project exposure, and learn
+            directly from industry mentors- all in one structured,
+            beginner-friendly internship program.
+          </p>
+
+          {/* 4. CTA Buttons - Job Description (solid), Download Brochure (outline) */}
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-6 sm:mt-8">
-            <div className="px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg text-[#fff] rounded-xl sm:rounded-2xl cursor-pointer bg-[#F77124] hover:bg-[#F77124]/90 transition-all duration-300 ease-in-out font-semibold text-center sm:text-left">
-              <FileText className="w-4 h-4 sm:w-5 sm:h-5 mr-2 inline" />
+            <button className="inline-flex items-center justify-center px-6 sm:px-8 py-3 sm:py-3.5 text-sm sm:text-base text-white rounded-xl cursor-pointer bg-[#F77124] hover:bg-[#e86510] transition-colors font-semibold">
+              <FileText className="w-4 h-4 sm:w-5 sm:h-5 mr-2 shrink-0" />
               Job Description
-            </div>
-            <WhiteButton className="px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg font-semibold border-2 border-[#F77124] text-[#F77124] hover:bg-[#F77124]/10 text-center sm:text-left">
-              <Download className="w-4 h-4 sm:w-5 sm:h-5 mr-2 inline" />
+            </button>
+            <WhiteButton className="inline-flex items-center bg-[#FFF6F2] justify-center px-6 sm:px-8 py-3 sm:py-3.5 text-sm sm:text-base font-semibold border-2 border-[#F77124] text-[#F77124] rounded-xl hover:bg-[#F77124]/10">
+              <Download className="w-4 h-4 sm:w-5 sm:h-5 mr-2 shrink-0" />
               Download Brochure
             </WhiteButton>
           </div>
 
-          {/* Key Benefits */}
-          <div className="mt-4 sm:mt-6">
-            <p className="text-black text-xs sm:text-sm lg:text-base text-center sm:text-left">
-              <span className="">1000+ Students Trained</span> |{" "}
-              <span className="">Beginner Friendly</span> |{" "}
-              <span className="">Certification Included</span>
-            </p>
-          </div>
+          {/* 5. Bottom line - Figma */}
+          <p className="text-[#000000] text-xs sm:text-xl mt-4 sm:mt-6">
+            1000+ Students Trained | Beginner Friendly | Certification Included
+          </p>
         </div>
       </div>
 
       {/* Right Section - Internship Details Panel */}
       <div className="lg:col-span-1">
-        <div className="bg-white rounded-2xl sm:rounded-3xl lg:rounded-[40px] shadow-xl border border-gray-800/5 overflow-hidden">
+          <div className="bg-white rounded-2xl sm:rounded-3xl lg:rounded-[40px] shadow-xl border border-black/5 overflow-hidden">
           {/* Top White Section - Internship Details */}
-          <div className="p-4 sm:p-6 lg:p-8 space-y-2">
-            <div className="flex items-center justify-between border-b border-gray-800/10 pb-2 gap-2">
-              <p className="text-xs sm:text-sm text-black/50 font-medium">Application Last Date</p>
-              <div className="bg-[#D9D9D933] px-2 sm:px-3 py-1 sm:py-1.5 rounded-full shrink-0">
-                <p className="text-xs sm:text-sm text-[#BCBCBC] font-semibold whitespace-nowrap">
+          <div className="px-2 sm:px-6 lg:px-8 pt-2 sm:pt-4 lg:pt-6 space-y-3">
+            <div className="flex items-center justify-between border-b border-black/5 pb-2 gap-2">
+              <p className="text-xs sm:text-sm text-[#434343]/95 font-medium">Application Last Date</p>
+              <div className="bg-[#D9D9D933] px-2 sm:px-6 py-1 sm:py-1.5 rounded-full shrink-0">
+                <p className="text-xs sm:text-xs text-[#282727] font-semibold whitespace-nowrap">
                   {internshipDetails.applicationLastDate}
                 </p>
               </div>
             </div>
-            <div className="flex items-center justify-between border-b border-gray-800/10 pb-2 gap-2">
-              <p className="text-xs sm:text-sm text-black/50 font-medium">Exam Date</p>
-              <div className="bg-[#D9D9D933] px-2 sm:px-3 py-1 sm:py-1.5 rounded-full shrink-0">
-                <p className="text-xs sm:text-sm text-[#BCBCBC] font-semibold whitespace-nowrap">
+            <div className="flex items-center justify-between border-b border-black/5 pb-2 gap-2">
+              <p className="text-xs sm:text-sm text-[#434343]/95 font-medium">Exam Date</p>
+              <div className="bg-[#D9D9D933] px-2 sm:px-6 py-1 sm:py-1.5 rounded-full shrink-0">
+                <p className="text-xs sm:text-xs text-[#282727] font-semibold whitespace-nowrap">
                   {internshipDetails.examDate}
                 </p>
               </div>
             </div>
-            <div className="flex items-center justify-between border-b border-gray-800/10 pb-2 gap-2">
-              <p className="text-xs sm:text-sm text-black/50 font-medium">Internship Start Date</p>
-              <div className="bg-[#D9D9D933] px-2 sm:px-3 py-1 sm:py-1.5 rounded-full shrink-0">
-                <p className="text-xs sm:text-sm text-[#BCBCBC] font-semibold whitespace-nowrap">
+            <div className="flex items-center justify-between border-b border-black/5 pb-2 gap-2">
+              <p className="text-xs sm:text-sm text-[#434343]/95 font-medium">Internship Start Date</p>
+              <div className="bg-[#D9D9D933] px-2 sm:px-6 py-1 sm:py-1.5 rounded-full shrink-0">
+                <p className="text-xs sm:text-xs text-[#282727] font-semibold whitespace-nowrap">
                   {internshipDetails.internshipStartDate}
                 </p>
               </div>
             </div>
-            <div className="flex items-center justify-between border-b border-gray-800/10 pb-2 gap-2">
-              <p className="text-xs sm:text-sm text-black/50 font-medium">WhatsApp Link</p>
+            <div className="flex items-center justify-between border-b border-black/5 pb-2 gap-2">
+              <p className="text-xs sm:text-sm text-[#434343]/95 font-medium">WhatsApp Link</p>
               <Link
                 href={internshipDetails.whatsappLink}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs sm:text-sm text-[#BCBCBC] font-semibold bg-[#D9D9D933] px-2 sm:px-3 py-1 sm:py-1.5 rounded-full cursor-pointer shrink-0 whitespace-nowrap"
+                className="text-xs sm:text-sm font-semibold bg-[#22C55E] text-white px-3 sm:px-5 py-1 sm:py-1.5 rounded-full cursor-pointer shrink-0 whitespace-nowrap"
               >
-                  Join Now
+                Join Now
               </Link>
             </div>
-            <div className="flex items-center justify-between border-b border-gray-800/10 pb-2 gap-2">
-              <p className="text-xs sm:text-sm text-black/50 font-medium">Certificate</p>
-              <div className="bg-[#D9D9D933] px-2 sm:px-3 py-1 sm:py-1.5 rounded-full shrink-0">
-                <p className="text-xs sm:text-sm text-[#BCBCBC] font-semibold whitespace-nowrap">
+            <div className="flex items-center justify-between border-b border-black/5 pb-2 gap-2">
+              <p className="text-xs sm:text-sm text-[#434343]/95 font-medium">Certificate</p>
+              <div className="bg-[#D9D9D933] px-2 sm:px-6 py-1 sm:py-1.5 rounded-full shrink-0">
+                <p className="text-xs sm:text-xs text-[#282727] font-semibold whitespace-nowrap">
                   {internshipDetails.certificate}
                 </p>
               </div>
             </div>
-            <div className="flex items-center justify-between border-b border-gray-800/10 pb-2 gap-2">
-              <p className="text-xs sm:text-sm text-black/50 font-medium">Mode</p>
-              <div className="bg-[#D9D9D933] px-2 sm:px-3 py-1 sm:py-1.5 rounded-full shrink-0">
-                <p className="text-xs sm:text-sm text-[#BCBCBC] font-semibold whitespace-nowrap">
+            <div className="flex items-center justify-between border-b border-black/5 pb-2 gap-2">
+              <p className="text-xs sm:text-sm text-[#434343]/95 font-medium">Mode</p>
+              <div className="bg-[#D9D9D933] px-2 sm:px-6 py-1 sm:py-1.5 rounded-full shrink-0">
+                <p className="text-xs sm:text-xs text-[#282727] font-semibold whitespace-nowrap">
                   {internshipDetails.mode}
                 </p>
               </div>
             </div>
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-xs sm:text-sm text-black/50 font-medium">Language</p>
-              <div className="bg-[#D9D9D933] px-2 sm:px-3 py-1 sm:py-1.5 rounded-full shrink-0">
-                <p className="text-xs sm:text-sm text-[#BCBCBC] font-semibold whitespace-nowrap">
+            <div className="flex items-center justify-between border-b border-black/5 pb-6 gap-2">
+              <p className="text-xs sm:text-sm text-[#434343]/95 font-medium">Language</p>
+              <div className="bg-[#D9D9D933] px-2 sm:px-6 py-1 sm:py-1.5 rounded-full shrink-0">
+                <p className="text-xs sm:text-xs text-[#282727] font-semibold whitespace-nowrap">
                   {internshipDetails.language}
                 </p>
               </div>
@@ -181,12 +176,15 @@ const HeroSection = () => {
           </div>
 
           {/* Bottom Light Orange Section */}
-          <div className="bg-[#F5691D1A] p-4 sm:p-6 lg:p-8 space-y-3 sm:space-y-4">
+          <div className="p-4 sm:p-6 lg:p-8 space-y-3 sm:space-y-4">
             {/* Social Media Icons */}
-            <div className="flex items-center justify-center gap-2 sm:gap-3 flex-wrap">
+            <div className="flex items-center justify-center gap-2 sm:gap-7 flex-wrap">
               {socialLinks.map((social, index) => {
+                const iconImage = socialImages[social.label];
                 const IconComponent = socialIcons[social.label] || null;
-                if (!IconComponent) return null;
+                if (!iconImage && !IconComponent) return null;
+
+                const hasRadius = social.label === "Instagram" || social.label === "LinkedIn";
 
                 return (
                   <Link
@@ -195,12 +193,26 @@ const HeroSection = () => {
                     target="_blank"
                     rel="noopener noreferrer"
                     className={cn(
-                      "transition-colors duration-200",
+                      "transition-colors duration-200 inline-flex",
+                      hasRadius && "rounded-lg",
                       social.color
                     )}
                     aria-label={social.label}
                   >
-                    <IconComponent className="w-5 h-5 sm:w-6 sm:h-6" />
+                    {iconImage ? (
+                      <Image
+                        src={iconImage}
+                        alt={social.label}
+                        width={24}
+                        height={24}
+                        className={cn(
+                          "w-5 h-5 sm:w-6 sm:h-6 object-contain",
+                          hasRadius && "rounded-lg"
+                        )}
+                      />
+                    ) : (
+                      IconComponent && <IconComponent className="w-5 h-5 sm:w-6 sm:h-6" />
+                    )}
                   </Link>
                 );
               })}
@@ -211,22 +223,21 @@ const HeroSection = () => {
               For Enquiry!
             </p>
 
-            {/* Action Buttons - Side by Side */}
+            {/* Action Buttons - Figma order: Apply Now (solid) left, Call Us (outline) right */}
             <div className="flex flex-col items-stretch sm:flex-row gap-2 sm:gap-3">
-              <div className="py-2.5 sm:py-3 border-2 border-[#F77124] hover:bg-[#F77124]/90 text-xs sm:text-sm rounded-full px-3 sm:px-4 cursor-pointer font-semibold bg-[#F77124] text-[#fff] text-center">
-                <Phone className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2 inline" />
-                Call Us: {internshipDetails.phoneNumber}
-              </div>
-              <div className="py-2.5 sm:py-3 text-xs sm:text-sm rounded-full text-center px-3 sm:px-4 cursor-pointer font-semibold border-2 border-[#F77124] text-[#F77124] hover:bg-[#F77724]/10">
-                <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2 inline" />
+              <button className="inline-flex items-center justify-center py-2.5 sm:py-3 text-xs sm:text-sm rounded-full px-3 sm:px-5 cursor-pointer font-semibold bg-[#F77124] text-white hover:bg-[#e86510] transition-colors">
                 Apply Now
-              </div>
+              </button>
+              <button className="inline-flex items-center justify-center py-2.5 sm:py-3 text-xs sm:text-sm rounded-full px-3 sm:px-5 cursor-pointer font-semibold border-2 border-[#F77124] text-[#F77124] bg-white hover:bg-[#F77124]/5 transition-colors">
+                <Phone className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2 shrink-0" />
+                Call Us: {internshipDetails.phoneNumber}
+              </button>
             </div>
           </div>
         </div>
       </div>
-    </div>
-    </div>
+      </div>
+    </section>
   );
 };
 
