@@ -1,9 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import TimelineMarkerIcon from "./TimelineMarkerIcon";
 import { cn } from "@/lib/utils";
-import TimelineSectionsWrapper from "./TimelineSectionsWrapper";
 import { RiKakaoTalkFill } from "react-icons/ri";
 import { PrimaryButton } from "../ui/PrimaryButton";
 
@@ -21,14 +19,14 @@ function PhoneIcon() {
   );
 }
 
-function SpeechBubbleIcon() {
-  return (
-    <div className="relative flex h-7 w-7 items-center justify-center rounded-full bg-[#3FD673] text-white shadow-sm">
-      <div className="absolute -bottom-1 -left-0.5 h-3 w-3 rotate-45 bg-[#3FD673]"></div>
-      <span className="relative z-10 text-[7px] font-black tracking-tighter">TALK</span>
-    </div>
-  );
-}
+// function SpeechBubbleIcon() {
+//   return (
+//     <div className="relative flex h-7 w-7 items-center justify-center rounded-full bg-[#3FD673] text-white shadow-sm">
+//       <div className="absolute -bottom-1 -left-0.5 h-3 w-3 rotate-45 bg-[#3FD673]"></div>
+//       <span className="relative z-10 text-[7px] font-black tracking-tighter">TALK</span>
+//     </div>
+//   );
+// }
 
 function CheckIcon({ size }: { size: number }) {
   return (
@@ -56,7 +54,7 @@ export default function ConsultationSection() {
         <div className="lg:col-span-6 relative overflow-hidden rounded-2xl hidden sm:block">
 
           <div className="absolute inset-y-0 left-0 w-1/3 bg-white to-transparent blur-3xl z-10" />
-          <div className="absolute inset-y-0 right-0 w-1/3 bg-gradient-to-l from-white to-transparent blur-4xl z-10" />
+          <div className="absolute inset-y-0 right-0 w-1/3 bg-linear-to-l from-white to-transparent blur-4xl z-10" />
           <Image
             src="/assets/professional-consult.png"
             alt="Industry professionals ready to help"

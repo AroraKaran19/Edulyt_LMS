@@ -3,7 +3,7 @@
 import Image from "next/image";
 import TimelineMarkerIcon from "./TimelineMarkerIcon";
 import { RiKakaoTalkFill } from "react-icons/ri";
-import TimelineSectionsWrapper from "./TimelineSectionsWrapper";
+// import TimelineSectionsWrapper from "./TimelineSectionsWrapper";
 import { cn } from "@/lib/utils";
 
 const QUESTIONS = [
@@ -119,9 +119,9 @@ export default function CareerConfusionSection() {
                   key={q}
                   className="relative flex items-center"
                 >
-                  <div className=" flex items-center items-center w-64 gap-4 rounded-full bg-[#FFF3E8] z-[1000] border border-orange-100/50">
-                  <div className="flex h-[32px] w-[32px] xl:h-[36px] xl:w-[36px] shrink-0 items-center justify-center rounded-full bg-[#F77124] text-white z-10">
-                    <span className="text-[12px] xl:text-[15px] text-[#F77124] bg-white w-3/5 h-3/5 rounded-full flex items-center justify-center font-[900]">?</span>
+                  <div className=" flex items-center w-64 gap-4 rounded-full bg-[#FFF3E8] z-1000 border border-orange-100/50">
+                  <div className="flex h-8 w-8 xl:h-9 xl:w-9 shrink-0 items-center justify-center rounded-full bg-[#F77124] text-white z-10">
+                    <span className="text-[12px] xl:text-[15px] text-[#F77124] bg-white w-3/5 h-3/5 rounded-full flex items-center justify-center font-black">?</span>
                   </div>
                     <span className={cn("whitespace-normal xl:whitespace-nowrap font-bold text-gray-800", "text-xs sm:text-sm font-semibold")}>
                       {q}
@@ -131,7 +131,7 @@ export default function CareerConfusionSection() {
                     <>
                       {/* Short connector line from main timeline to first icon */}
                       <DashedLineHorizontal
-                        className="left-[21px] sm:left-28 flex w-[700px] z-99 -translate-y-1/2 hidden sm:block"
+                        className="left-[21px] sm:left-28 w-[700px] z-99 -translate-y-1/2 hidden sm:block"
                         svgStyle="w-full"
                       >
                         <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center">
@@ -174,17 +174,17 @@ export default function CareerConfusionSection() {
           {/* </TimelineSectionsWrapper> */}
         </div>
 
-        <div className="relative w-full sm:absolute sm:w-3/5 sm:right-0 sm:bottom-[-40px] hidden md:block">
+        <div className="relative w-full sm:absolute sm:w-3/5 sm:right-0 sm:-bottom-10 hidden md:block">
 
           <div className="absolute inset-y-0 left-0 w-1/2 bg-white to-transparent blur-3xl z-10" />
-          <div className="absolute inset-y-0 right-0 w-1/2 bg-gradient-to-l from-white to-transparent blur-4xl z-10" />
+          <div className="absolute inset-y-0 right-0 w-1/2 bg-linear-to-l from-white to-transparent blur-4xl z-10" />
 
           <Image
             src="/assets/confused-student.png"
             alt="Confused student thinking about career with laptop"
             width={520}
             height={550}
-            className="h-4/5 w-4/5 absolute relative bottom-0 ml-20 object-cover"
+            className="h-4/5 w-4/5 relative bottom-0 ml-20 object-cover"
             priority
           />
         </div>

@@ -55,7 +55,7 @@ export default function TestimonialsSection() {
               "px-5 sm:px-6 py-2.5 sm:py-3 rounded-full font-medium transition-colors",
               "text-xs sm:text-sm font-medium",
               activeTab === tab.id
-                ? "bg-gradient-to-b from-[#F5891D] to-[#F5691D]  text-white"
+                ? "bg-linear-to-b from-[#F5891D] to-[#F5691D]  text-white"
                 : " text-gray-700 "
             )}
           >
@@ -67,8 +67,8 @@ export default function TestimonialsSection() {
       {/* Cards carousel - only reused component is LearnerCareerCard */}
       <div className="w-full relative">
         <div className="relative">
-          <div className="absolute left-0 top-0 bottom-0 w-12 sm:w-20 lg:w-28 bg-gradient-to-r from-white to-transparent z-10 pointer-events-none" />
-          <div className="absolute right-0 top-0 bottom-0 w-12 sm:w-20 lg:w-28 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none" />
+          <div className="absolute left-0 top-0 bottom-0 w-12 sm:w-20 lg:w-28 bg-linear-to-r from-white to-transparent z-10 pointer-events-none" />
+          <div className="absolute right-0 top-0 bottom-0 w-12 sm:w-20 lg:w-28 bg-linear-to-l from-white to-transparent z-10 pointer-events-none" />
 
           <Swiper
             onSwiper={(swiper) => {

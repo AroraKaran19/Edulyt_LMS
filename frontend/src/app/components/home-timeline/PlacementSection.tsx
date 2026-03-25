@@ -2,7 +2,7 @@
 
 import React from "react";
 import TimelineMarkerIcon from "./TimelineMarkerIcon";
-import { Plane, CheckCircle, CheckIcon } from "lucide-react";
+import { Plane, CheckIcon } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import TimelineSectionsWrapper from "./TimelineSectionsWrapper";
@@ -70,7 +70,7 @@ export default function PlacementSection() {
 
                 </div>
                 {/* Right Side: Image Placeholder */}
-                <div className="flex-1 w-full lg:max-w-2xl h-[450px] bg-gray-50 rounded-[32px] border-2 border-dashed border-gray-200 relative overflow-hidden group shadow-inner">
+                <div className="flex-1 w-full lg:max-w-2xl h-[450px] bg-gray-50 rounded-4xl border-2 border-dashed border-gray-200 relative overflow-hidden group shadow-inner">
                     <div className="w-1/4 h-full bg-white blur-3xl absolute"></div>
                     <div className="w-1/4 h-full right-0 bg-white blur-3xl absolute"></div>
                     <Image

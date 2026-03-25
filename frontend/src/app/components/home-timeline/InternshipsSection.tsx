@@ -48,7 +48,7 @@ export default function InternshipsSection() {
                 "shrink-0 inline-flex items-center h-full gap-2 rounded-full px-4 py-2.5 font-semibold transition",
                 "text-xs sm:text-sm font-medium",
                 activeCategory === cat.name
-                  ? "bg-gradient-to-b from-[#F5891D] to-[#F5691D] text-white"
+                  ? "bg-linear-to-b from-[#F5891D] to-[#F5691D] text-white"
                   : "text-gray-700"
               )}
             >

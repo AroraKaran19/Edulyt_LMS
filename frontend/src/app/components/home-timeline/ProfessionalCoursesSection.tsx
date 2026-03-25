@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import { useState, useRef } from "react";
+import Image from "next/image";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay, Navigation } from "swiper/modules";
 import "swiper/css";
@@ -8,7 +9,7 @@ import "swiper/css/navigation";
 import { courses, courseCategories } from "@/constants/internshipData";
 import { cn } from "@/lib/utils";
 import TimelineMarkerIcon from "./TimelineMarkerIcon";
-import { MousePointerClick, Star, ChevronLeft, ChevronRight } from "lucide-react";
+import { MousePointerClick, Star, ChevronRight } from "lucide-react";
 import { PrimaryButton } from "../ui/PrimaryButton";
 
 export default function ProfessionalCoursesSection() {
@@ -48,7 +49,7 @@ export default function ProfessionalCoursesSection() {
                                     className={cn(
                                         "px-6 py-3 rounded-full text-[15px] transition-all whitespace-nowrap",
                                         activeCategory === cat.name
-                                            ? "bg-gradient-to-b from-[#F5891D] to-[#F5691D] text-white"
+                                            ? "bg-linear-to-b from-[#F5891D] to-[#F5691D] text-white"
                                             : "text-gray-700"
                                     )}
                                 >
@@ -88,17 +89,19 @@ export default function ProfessionalCoursesSection() {
                                 slidesPerView: 3,
                             },
                         }}
-                        className="!pb-16"
+                        className="pb-16"
                     >
                         {courses.map((course) => (
                             <SwiperSlide key={course.id}>
-                                <div className="bg-white rounded-[24px] border border-[#FED7AA] overflow-hidden group hover:shadow-xl transition-all duration-300 h-full flex flex-col">
+                                <div className="bg-white rounded-3xl border border-[#FED7AA] overflow-hidden group hover:shadow-xl transition-all duration-300 h-full flex flex-col">
                                     {/* Thumbnail & Badge */}
-                                    <div className="relative aspect-[16/9] overflow-hidden">
-                                        <img
+                                    <div className="relative aspect-video overflow-hidden">
+                                        <Image
                                             src={course.thumbnail}
                                             alt={course.title}
-                                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                                            fill
+                                            className="object-cover group-hover:scale-110 transition-transform duration-500"
+                                            sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
                                         />
                                         <div className="absolute top-4 right-4 bg-[#F77124] text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg">
                                             {course.discount}% off
@@ -113,7 +116,7 @@ export default function ProfessionalCoursesSection() {
 
                                     {/* Body */}
                                     <div className="p-6 flex flex-col flex-1">
-                                        <h3 className={cn("text-lg sm:text-xl md:text-2xl font-bold", "mb-3 line-clamp-2 min-h-[56px]")}>
+                                        <h3 className={cn("text-lg sm:text-xl md:text-2xl font-bold", "mb-3 line-clamp-2 min-h-14")}>
                                             {course.title}
                                         </h3>
 

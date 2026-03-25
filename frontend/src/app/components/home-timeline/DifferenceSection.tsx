@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import Image from "next/image";
 import { FaRegCheckCircle } from "react-icons/fa";
 import { RxCrossCircled } from "react-icons/rx";
@@ -52,21 +51,21 @@ const TABLE_ROWS = [
 
 /** Green circle check — matches Figma exactly */
 const CheckIcon = () => (
-  <div className="flex h-[28px] w-[28px] items-center justify-center rounded-full text-2xl  text-[#34D399] mx-auto shadow-sm">
+  <div className="flex h-7 w-7 items-center justify-center rounded-full text-2xl  text-[#34D399] mx-auto shadow-sm">
     <FaRegCheckCircle />
   </div>
 );
 
 /** Red circle cross — matches Figma exactly */
 const CrossIcon = () => (
-  <div className="flex h-[28px] w-[28px] items-center justify-center rounded-full text-2xl  text-[#F87171] mx-auto shadow-sm">
+  <div className="flex h-7 w-7 items-center justify-center rounded-full text-2xl  text-[#F87171] mx-auto shadow-sm">
     <RxCrossCircled />
   </div>
 );
 
 /** Orange question-mark icon used in top cards */
 const QuestionIcon = () => (
-  <span className="flex h-[32px] w-[32px] flex-shrink-0 items-center justify-center rounded-full bg-[#F97316]">
+  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#F97316]">
     <svg
       width="16"
       height="16"
@@ -147,7 +146,7 @@ export default function DifferenceSection() {
           {VALUE_CARDS.map((card) => (
             <div
               key={card.label}
-              className="flex flex-col gap-3 rounded-[24px] bg-white py-4 px-4 shadow-[2px_2px_6px_rgb(0,0,0,0.1)] border border-white/60"
+              className="flex flex-col gap-3 rounded-3xl bg-white py-4 px-4 shadow-[2px_2px_6px_rgb(0,0,0,0.1)] border border-white/60"
             >
               <div className="w-full flex items-center gap-3 self-start rounded-full bg-[#FFF3E8]">
                 <QuestionIcon />
@@ -234,7 +233,7 @@ export default function DifferenceSection() {
           </div>
 
           {/* ── RIGHT: image + floating badges ── */}
-          <div className="relative xl:block hidden flex h-60 sm:h-80 lg:h-116 rounded-3xl overflow-hidden w-full flex-shrink-0 items-center justify-center lg:w-[42%] lg:mt-10">
+          <div className="relative xl:block hidden h-60 sm:h-80 lg:h-116 rounded-3xl overflow-hidden w-full shrink-0 items-center justify-center lg:w-[42%] lg:mt-10">
             <div className="relative h-full w-full max-w-[580px]">
               <Image
                 src="/assets/DifferenceSectionHero.png"

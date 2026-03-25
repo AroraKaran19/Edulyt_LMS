@@ -46,14 +46,14 @@ export default function CareerPrepSection() {
             <div className="mt-16 sm:mt-24">
                 <div className="flex flex-col gap-1 mb-8">
                     <h2 className={cn("text-xl sm:text-lg lg:text-xl font-semibold leading-tight", "line-clamp-1")}>
-                        We Don't Just Train, We <span className="text-[#F39200]">Prepare You.</span>
+                        We Don&apos;t Just Train, We <span className="text-[#F39200]">Prepare You.</span>
                     </h2>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl">
                     {SUPPORT_SERVICES.map((service, index) => (
                         <div
                             key={index}
-                            className="flex items-start gap-4 p-6 rounded-[24px] bg-[#FFF8F3] border border-orange-100/50 hover:shadow-md transition-shadow"
+                            className="flex items-start gap-4 p-6 rounded-3xl bg-[#FFF8F3] border border-orange-100/50 hover:shadow-md transition-shadow"
                         >
                             <div className="flex shrink-0 w-12 h-12 items-center justify-center rounded-full bg-[#F39200] text-white">
                                 <service.icon className="w-6 h-6" />

@@ -138,7 +138,7 @@ const StepCard = ({ step, isMobile = false }: { step: (typeof internshipJourneyS
         {step.title}
       </h3>
 
-      <div className="relative pl-[14px] sm:pl-[14px]">
+      <div className="relative pl-3.5 sm:pl-3.5">
         {/* Vertical dashed bar */}
         <div
           className="absolute border-l-2 border-dashed border-gray-300 z-0 w-0"
@@ -182,13 +182,13 @@ const StepCard = ({ step, isMobile = false }: { step: (typeof internshipJourneyS
 
 const StepCircle = ({ id }: { id: number }) => (
   <div className="relative w-12 h-12 md:w-[88px] md:h-[88px] shrink-0 z-10 flex items-center justify-center">
-    <div className="absolute inset-0 rounded-full bg-[#fffbf8] z-[1]" />
-    <div className="absolute inset-0 rounded-full border border-[#F77124] z-[2]" />
-    <div className="absolute inset-[7px] rounded-full bg-[#F77124] z-[2]" />
-    <div className="absolute inset-4 rounded-full bg-white z-[2]" />
-    <span className="relative z-[3] text-[#F77124] font-black md:text-[32px] leading-none">{id}</span>
-    <div className="absolute left-[-5px] top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-white border-[3px] border-[#F77124] z-[4]" />
-    <div className="absolute right-[-5px] top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-white border-[3px] border-[#F77124] z-[4]" />
+    <div className="absolute inset-0 rounded-full bg-[#fffbf8] z-1" />
+    <div className="absolute inset-0 rounded-full border border-[#F77124] z-2" />
+    <div className="absolute inset-[7px] rounded-full bg-[#F77124] z-2" />
+    <div className="absolute inset-4 rounded-full bg-white z-2" />
+    <span className="relative z-3 text-[#F77124] font-black md:text-[32px] leading-none">{id}</span>
+    <div className="absolute left-[-5px] top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-white border-[3px] border-[#F77124] z-4" />
+    <div className="absolute right-[-5px] top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-white border-[3px] border-[#F77124] z-4" />
   </div>
 );
 
@@ -236,7 +236,7 @@ export default function InternshipJourneySection() {
         style={{ height: internshipJourneySteps.length * ROW_HEIGHT }}
       >
         {/* Vertical dashed center line */}
-        <div className="absolute left-10 md:left-1/2 -translate-x-1/2 top-16 md:top-[44px] bottom-11 border-l-2 border-dashed border-gray-300 z-[1]" />
+        <div className="absolute left-10 md:left-1/2 -translate-x-1/2 top-16 md:top-11 bottom-11 border-l-2 border-dashed border-gray-300 z-1" />
 
         {internshipJourneySteps.map((step, index) => {
           const isRight = step.side === "right";
@@ -254,11 +254,11 @@ export default function InternshipJourneySection() {
               {/* Mobile: Always right with responsive spacing */}
               <div className="md:hidden relative w-10 bg-red-500">
                 <div
-                  className="absolute border-t-2 border-dashed border-gray-300 z-[2]"
+                  className="absolute border-t-2 border-dashed border-gray-300 z-2"
                   style={{ left: "calc(50% + 32px)", top: topCenter, width: 50, transform: "translateY(-50%)" }}
                 />
                 <div
-                  className="absolute z-[2]"
+                  className="absolute z-2"
                   style={{ left: "calc(50% + 80px)", top: topCenter, transform: "translateY(-50%)" }}
                 >
                   <StepCard step={step} isMobile />
@@ -272,11 +272,11 @@ export default function InternshipJourneySection() {
                   {/* Desktop: Alternate sides */}
                   <div className="hidden md:block">
                     <div
-                      className="absolute border-t-2 border-dashed border-gray-300 z-[2]"
+                      className="absolute border-t-2 border-dashed border-gray-300 z-2"
                       style={{ left: "calc(50% + 44px)", top: topCenter, width: 60, transform: "translateY(-50%)" }}
                     />
                     <div
-                      className="absolute z-[2]"
+                      className="absolute z-2"
                       style={{ left: "calc(50% + 104px)", top: topCenter, transform: "translateY(-50%)" }}
                     >
                       <StepCard step={step} />
@@ -287,11 +287,11 @@ export default function InternshipJourneySection() {
                 // Left side on desktop only
                 <>
                   <div
-                    className="absolute border-t-2 border-dashed border-gray-300 z-[2]"
+                    className="absolute border-t-2 border-dashed border-gray-300 z-2"
                     style={{ right: "calc(50% + 44px)", top: topCenter, width: 60, transform: "translateY(-50%)" }}
                   />
                   <div
-                    className="absolute z-[2]"
+                    className="absolute z-2"
                     style={{ right: "calc(50% + 104px)", top: topCenter, transform: "translateY(-50%)" }}
                   >
                     <StepCard step={step} />

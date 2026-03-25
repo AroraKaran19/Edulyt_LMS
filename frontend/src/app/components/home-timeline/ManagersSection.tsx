@@ -68,11 +68,11 @@ export default function ManagersSection() {
                                 slidesPerView: 3,
                             },
                         }}
-                        className="cursor-grab active:cursor-grabbing !pb-12"
+                        className="cursor-grab active:cursor-grabbing pb-12"
                     >
                         {managers.map((manager) => (
                             <SwiperSlide key={manager.id}>
-                                <div className="bg-white rounded-[24px] border border-[#FED7AA] shadow-sm hover:shadow-md transition-shadow px-6 pt-10 pb-8 sm:px-8 sm:pt-12 sm:pb-12 flex flex-col items-center text-center h-full">
+                                <div className="bg-white rounded-3xl order border-[#FED7AA] shadow-sm hover:shadow-md transition-shadow px-6 pt-10 pb-8 sm:px-8 sm:pt-12 sm:pb-12 flex flex-col items-center text-center h-full">
                                     {/* Profile Picture */}
                                     <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full overflow-hidden mb-6">
                                         <Image

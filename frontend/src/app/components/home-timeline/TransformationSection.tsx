@@ -2,7 +2,7 @@
 
 import React from "react";
 import TimelineMarkerIcon from "./TimelineMarkerIcon";
-import { CheckCircle2, CheckIcon } from "lucide-react";
+import { CheckIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const FEATURES = [
@@ -38,7 +38,7 @@ export default function TransformationSection() {
                 </TimelineMarkerIcon>
                 <div >
                     <h2 className="text-xl sm:text-xl md:text-lg relative md:left-8 font-semibold text-gray-800">
-                        It's Time to Choose the Right Path.
+                        It&apos;s Time to Choose the Right Path.
                     </h2>
                 </div>
             </div>
@@ -76,7 +76,7 @@ export default function TransformationSection() {
                                     </div>
 
                                     {/* Feature Text Case */}
-                                    <div className="flex-1 bg-[#FFF7F0] px-8 py-5 rounded-[24px] border border-orange-100 shadow-sm group-hover:shadow-md transition-all">
+                                    <div className="flex-1 bg-[#FFF7F0] px-8 py-5 rounded-3xl border border-orange-100 shadow-sm group-hover:shadow-md transition-all">
                                         <h4 className={cn("text-lg sm:text-xl md:text-2xl font-bold", "mb-1")}>
                                             {feature.title}
                                         </h4>

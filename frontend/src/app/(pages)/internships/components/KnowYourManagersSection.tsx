@@ -58,7 +58,7 @@ const companyIcons = [SiDell, FaAmazon, FaApple];
         >
           {managers.map((manager) => (
             <SwiperSlide key={manager.id}>
-              <div className="bg-white rounded-[32px] border-2 border-[#F77124] shadow-[0_0_0_3px_rgba(247,113,36,0.18)] px-6 pt-10 pb-8 sm:px-8 sm:pt-10 sm:pb-10 flex flex-col items-center text-center">
+              <div className="bg-white rounded-4xl border-2 border-[#F77124] shadow-[0_0_0_3px_rgba(247,113,36,0.18)] px-6 pt-10 pb-8 sm:px-8 sm:pt-10 sm:pb-10 flex flex-col items-center text-center">
                 {/* Profile Picture */}
                 <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-[#FFE4D4] overflow-hidden bg-gray-200 shadow-[0_10px_25px_rgba(0,0,0,0.12)] mx-auto mb-4">
                   <Image

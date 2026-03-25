@@ -25,7 +25,7 @@ export default function ProfessionalGrowthSection() {
                 </TimelineMarkerIcon>
                 <div >
                     <h2 className="text-xl sm:text-xl md:text-lg relative md:left-8 font-semibold text-gray-800">
-                        Your Career Path Doesn't End Here
+                        Your Career Path Doesn&apos;t End Here
                     </h2>
                 </div>
             </div>
@@ -49,15 +49,15 @@ export default function ProfessionalGrowthSection() {
                         />
                         <TimelineSectionsWrapper svgStyle="h-11/12" className="xl:ml-4">
                             <div className="flex flex-col -ml-8 gap-4">
-                                {GROWTH_POINTS.map((q, i) => (
+                                {GROWTH_POINTS.map((q) => (
                                     <div
                                         key={q}
                                         className="relative  flex items-center"
                                     >
-                                        <div className="flex h-[32px] w-[32px] xl:h-[36px] xl:w-[36px] shrink-0 items-center justify-center rounded-full bg-[#F77124] text-white shadow-[0_4px_12px_rgba(247,113,36,0.3)] z-10">
-                                            <span className="text-[12px] xl:text-[15px] text-[#F77124] bg-white w-3/5 h-3/5 rounded-full flex items-center justify-center font-[900]">?</span>
+                                        <div className="flex h-8 w-8 xl:h-9 xl:w-9 shrink-0 items-center justify-center rounded-full bg-[#F77124] text-white shadow-[0_4px_12px_rgba(247,113,36,0.3)] z-10">
+                                            <span className="text-[12px] xl:text-[15px] text-[#F77124] bg-white w-3/5 h-3/5 rounded-full flex items-center justify-center font-black">?</span>
                                         </div>
-                                        <div className="ml-[-16px] pl-8 pr-6 py-2 xl:pl-10 xl:pr-8 xl:py-3 rounded-full bg-[#FFF3E8] border border-orange-100/50">
+                                        <div className="-ml-4 pl-8 pr-6 py-2 xl:pl-10 xl:pr-8 xl:py-3 rounded-full bg-[#FFF3E8] border border-orange-100/50">
                                             <span className={cn("whitespace-normal xl:whitespace-nowrap font-bold text-gray-800", "text-xs sm:text-sm font-medium")}>
                                                 {q}
                                             </span>

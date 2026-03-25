@@ -17,7 +17,7 @@ const categories = [
 
 const CommunitySidebar = ({ activeCategory = "All" }: { activeCategory?: string }) => {
   return (
-    <div className="w-full max-w-[240px] bg-white rounded-3xl p-6 shadow-sm border border-gray-100 h-fit">
+    <div className="w-full max-w-60 bg-white rounded-3xl p-6 shadow-sm border border-gray-100 h-fit">
       <ul className="flex flex-col gap-2">
         {categories.map((category) => (
           <li key={category}>

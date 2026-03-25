@@ -3,9 +3,7 @@
 import React, { useState } from "react";
 import DropDown from "@/components/ui/dropdown/DropDown";
 import Input from "@/components/ui/inputs/Input";
-import TextArea from "@/components/ui/inputs/TextArea";
 import { Bookmark, Eye } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 const ExperienceForm = () => {
     const [category, setCategory] = useState("");
@@ -52,7 +50,7 @@ const ExperienceForm = () => {
                         </div>
 
                         <textarea
-                            className="w-full flex-grow resize-none outline-none text-gray-700 placeholder:text-gray-300"
+                            className="w-full grow resize-none outline-none text-gray-700 placeholder:text-gray-300"
                             placeholder="Write here....."
                             value={content}
                             onChange={(e) => setContent(e.target.value)}

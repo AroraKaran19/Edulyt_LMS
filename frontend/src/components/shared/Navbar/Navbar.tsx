@@ -174,7 +174,7 @@ const Navbar = () => {
             alt="Logo"
             width={100}
             height={100}
-            className="h-[44px] sm:h-[52px] w-auto"
+            className="h-11 sm:h-[52px] w-auto"
             loading="eager"
             draggable={false}
             unoptimized

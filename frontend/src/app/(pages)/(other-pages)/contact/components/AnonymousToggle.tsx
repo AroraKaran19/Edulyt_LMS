@@ -7,7 +7,7 @@ const AnonymousToggle = () => {
     const [isAnonymous, setIsAnonymous] = useState(false);
 
     return (
-        <div className="bg-white shadow-[0_4px_25px_rgba(0,0,0,0.08)] rounded-3xl p-6 shadow-[0_4px_20px_rgba(0,0,0,0,05)] border border-gray-100">
+        <div className="bg-white rounded-3xl p-6 shadow-[0_4px_20px_rgba(0,0,0,0,05)] border border-gray-100">
             <h3 className="text-sm font-bold text-black mb-4">Anonymous Post</h3>
 
             <div className="bg-gray-50 rounded-xl p-4 flex items-center justify-between">

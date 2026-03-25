@@ -67,7 +67,7 @@ const NewCourseCard = ({
             </div>
           )}
           {isBestSeller && (
-            <div className="relative h-[30%] w-full bottom-12 left-0 right-0 rounded-b-xl p-2 bg-[#f7af2a]/30 bg-gradient-to-r from-[#f7af2a]/80 to-transparent shadow-sm">
+            <div className="relative h-[30%] w-full bottom-12 left-0 right-0 rounded-b-xl p-2 bg-[#f7af2a]/30 bg-linear-to-r from-[#f7af2a]/80 to-transparent shadow-sm">
               <p className="text-sm font-black text-black">Best seller</p>
               <p className="text-[12px] font-semibold text-black">
                 (enrolled by {formatEnrolled(enrollments)} students)

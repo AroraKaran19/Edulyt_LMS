@@ -58,7 +58,7 @@ const InternshipFeaturesCarousel = () => {
         >
           {internshipFeatures.map((feature, index) => (
               <SwiperSlide key={index}>
-                <div className="relative rounded-2xl sm:rounded-3xl p-[2px] bg-gradient-to-r from-[#F77124]/20 via-[#F77124]/60 to-[#F77124] h-full">
+                <div className="relative rounded-2xl sm:rounded-3xl p-0.5 bg-linear-to-r from-[#F77124]/20 via-[#F77124]/60 to-[#F77124] h-full">
                   <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 h-full">
                     <div className="flex justify-center mb-3 sm:mb-4">
                       <Image
