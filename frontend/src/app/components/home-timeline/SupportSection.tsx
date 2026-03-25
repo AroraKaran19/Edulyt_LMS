@@ -23,27 +23,27 @@ const SUPPORT_FEATURES = [
 
 export default function SupportSection() {
     return (
-        <div className="relative px-40 mt-12 sm:py-10">
+        <div className="relative px-4 sm:px-10 lg:px-40 mt-8 sm:mt-12 sm:py-10">
             {/* Top Header with Icon */}
-            <div className="flex items-center relative gap-4 -translate-x-12 sm:-translate-x-22">
+            <div className="flex items-center relative gap-4 -translate-x-6 sm:-translate-x-22">
                 <TimelineMarkerIcon size="big">
-                    <span className="text-white text-xl sm:text-2xl font-bold">?</span>
+                    <span className="text-white text-base sm:text-xl font-bold">?</span>
                 </TimelineMarkerIcon>
                 <div className="mt-1">
-                    <h2 className="text-xl sm:text-xl md:text-lg relative md:left-8 font-semibold text-gray-800">
+                    <h2 className="text-base sm:text-xl md:text-lg relative md:left-8 font-semibold text-gray-800">
                         We are Always here for your help with
                     </h2>
                 </div>
             </div>
 
-            <div className="mt-16 sm:mt-24">
+            <div className="mt-10 sm:mt-16">
                 {/* Content Area with Vertical Dotted Line Alignment */}
-                <div className="mt-4 space-y-12 ">
+                <div className="mt-4 space-y-6 sm:space-y-8 ">
                     {SUPPORT_FEATURES.map((feature, index) => {
                         const parts = feature.title.split(feature.highlight);
                         return (
                             <div key={index} className="flex flex-col gap-2">
-                                <h3 className="text-xl sm:text-lg lg:text-xl font-semibold leading-tight">
+                                <h3 className="text-base sm:text-lg lg:text-xl font-semibold leading-tight">
                                     {parts[0]}
                                     <span className="text-[#F39200]">{feature.highlight}</span>
                                     {parts[1]}

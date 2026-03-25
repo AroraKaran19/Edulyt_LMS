@@ -21,22 +21,22 @@ export default function TestimonialsSection() {
   const swiperRef = useRef<{ slideToLoop: (index: number) => void } | null>(null);
 
   return (
-    <section className="relative px-40 mt-12 sm:py-10" aria-label="Hear from our past students">
+    <section className="relative px-4 sm:px-10 lg:px-40 mt-8 sm:mt-12 sm:py-10" aria-label="Hear from our past students">
       <div >
         {/* Title: heart + "Hear from our past students" */}
-        <div className="flex items-center relative gap-4 -translate-x-12 sm:-translate-x-22">
+        <div className="flex items-center relative gap-4 -translate-x-6 sm:-translate-x-22">
           <FaHeart
-            className="w-10 h-10 sm:w-12 sm:h-12 bg-[#F77124] text-white p-2 rounded-full shrink-0 shadow-lg "
+            className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 bg-[#F77124] text-white p-2 rounded-full shrink-0 shadow-lg "
             aria-hidden
           />
-          <span className="text-xl sm:text-xl md:text-lg relative md:left-8 font-semibold text-gray-800">
+          <span className="text-base sm:text-xl md:text-lg relative md:left-8 font-semibold text-gray-800">
             Hear from our past students
           </span>
         </div>
 
         {/* Headline with orange highlights */}
-        <div className="flex flex-col gap-1 mt-10 mb-8">
-          <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-extrabold leading-tight tracking-tight">
+        <div className="flex flex-col gap-1 mt-6 sm:mt-10 mb-6 sm:mb-8">
+          <h2 className="text-base sm:text-2xl md:text-3xl lg:text-4xl font-extrabold leading-tight tracking-tight">
             Students who started{" "}
             <span className="text-[#F77124]">just like you</span> are now placed in{" "}
             <span className="text-[#F77124]">leading companies.</span>
@@ -45,14 +45,14 @@ export default function TestimonialsSection() {
       </div>
 
       {/* Tab bar */}
-      <div className="flex scroll-x-auto bg-white justify-between w-3/4 mb-8 sm:mb-10">
+      <div className="flex scroll-x-auto bg-white justify-between w-full sm:w-3/4 mb-6 sm:mb-8">
         {TABS.map((tab) => (
           <button
             key={tab.id}
             type="button"
             onClick={() => setActiveTab(tab.id)}
             className={cn(
-              "px-5 sm:px-6 py-2.5 sm:py-3 rounded-full font-medium transition-colors",
+              "px-3 sm:px-5 lg:px-6 py-2 sm:py-2.5 lg:py-3 rounded-full font-medium transition-colors",
               "text-xs sm:text-sm font-medium",
               activeTab === tab.id
                 ? "bg-linear-to-b from-[#F5891D] to-[#F5691D]  text-white"

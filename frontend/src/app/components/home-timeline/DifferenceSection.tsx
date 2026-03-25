@@ -127,7 +127,7 @@ const Cell = ({ val }: { val: CellVal }) => {
 export default function DifferenceSection() {
   return (
     <section
-      className="relative w-full overflow-hidden py-10 px-1 sm:px-10 lg:px-56"
+      className="relative w-full overflow-hidden py-10 px-4 sm:px-10 lg:px-56"
       style={{
         backgroundColor: "#FFFCFA",
         backgroundImage: `
@@ -165,7 +165,7 @@ export default function DifferenceSection() {
         <div className="flex flex-col gap-10 relative xl:flex-row xl:items-start">
 
           {/* ── LEFT ── */}
-          <div className="flex flex-1 flex-col gap-6">
+          <div className="flex flex-1 flex-col gap-6 w-full">
 
             {/* Heading */}
             <h2 className="text-xl sm:text-lg lg:text-xl font-bold leading-tight">
@@ -174,7 +174,7 @@ export default function DifferenceSection() {
 
             {/* Comparison table card */}
             <div className="overflow-x-auto rounded-2xl bg-white shadow-[0_4px_24px_rgba(0,0,0,0.08)]">
-              <table className="min-w-[300px] sm:min-w-[600px] w-full table-fixed text-sm">
+              <table className="min-w-full sm:min-w-[600px] w-full table-fixed text-sm">
                 {/* Column widths */}
                 <colgroup>
                   <col style={{ width: "38%" }} />
@@ -185,16 +185,16 @@ export default function DifferenceSection() {
 
                 <thead>
                   <tr className="border-b border-gray-100">
-                    <th className="px-6 py-4 text-left text-xs sm:text-lg font-extrabold text-gray-900">
+                    <th className="px-3 py-3 sm:px-6 sm:py-4 text-left text-xs sm:text-lg font-extrabold text-gray-900">
                       Features
                     </th>
-                    <th className="px-3 py-4 text-center">
+                    <th className="px-2 py-3 sm:px-3 sm:py-4 text-center">
                       <EdulyLogo />
                     </th>
-                    <th className="px-3 py-4 text-center">
+                    <th className="px-2 py-3 sm:px-3 sm:py-4 text-center">
                       <YoutubeLogo />
                     </th>
-                    <th className="px-3 py-4 text-center text-xs sm:text-[14px] font-semibold text-gray-800">
+                    <th className="px-2 py-3 sm:px-3 sm:py-4 text-center text-xs sm:text-[14px] font-semibold text-gray-800">
                       Others
                     </th>
                   </tr>
@@ -206,16 +206,16 @@ export default function DifferenceSection() {
                       key={i}
                       className="border-b border-gray-100 last:border-none"
                     >
-                      <td className="px-6 py-[22px] text-xs sm:text-[15px] font-medium text-gray-800 border-r border-gray-100">
+                      <td className="px-3 py-[18px] sm:px-6 sm:py-[22px] text-xs sm:text-[15px] font-medium text-gray-800 border-r border-gray-100">
                         {row.feature}
                       </td>
-                      <td className="px-3 py-[22px] border-r border-gray-100">
+                      <td className="px-2 py-[18px] sm:px-3 sm:py-[22px] border-r border-gray-100">
                         <Cell val={row.edulyt} />
                       </td>
-                      <td className="px-3 py-[22px] border-r border-gray-100">
+                      <td className="px-2 py-[18px] sm:px-3 sm:py-[22px] border-r border-gray-100">
                         <Cell val={row.youtube} />
                       </td>
-                      <td className="px-3 py-[22px]">
+                      <td className="px-2 py-[18px] sm:px-3 sm:py-[22px]">
                         <Cell val={row.others} />
                       </td>
                     </tr>
@@ -234,7 +234,7 @@ export default function DifferenceSection() {
 
           {/* ── RIGHT: image + floating badges ── */}
           <div className="relative xl:block hidden h-60 sm:h-80 lg:h-116 rounded-3xl overflow-hidden w-full shrink-0 items-center justify-center lg:w-[42%] lg:mt-10">
-            <div className="relative h-full w-full max-w-[580px]">
+            <div className="relative h-full w-full max-w-[580px] mx-auto">
               <Image
                 src="/assets/DifferenceSectionHero.png"
                 alt="Edulyt dashboard"

@@ -22,30 +22,30 @@ export default function InternshipsSection() {
   const visible = courses.slice(start, start + perPage);
 
   return (
-    <div className="relative px-40 mt-12 sm:py-10">
+    <div className="relative px-4 sm:px-10 lg:px-40 mt-8 sm:mt-12 sm:py-10">
       {/* Marker Row */}
-      <div className="flex items-center relative gap-4 -translate-x-12 sm:-translate-x-22">
+      <div className="flex items-center relative gap-4 -translate-x-6 sm:-translate-x-22">
         <TimelineMarkerIcon size="big">💼</TimelineMarkerIcon>
-        <span className="text-xl sm:text-xl md:text-lg relative md:left-8 font-semibold text-gray-800">
+        <span className="text-base sm:text-xl md:text-lg relative md:left-8 font-semibold text-gray-800">
           We Have Two Powerful Paths for You
         </span>
       </div>
 
-      <div className="mt-10 sm:mt-6 ">
-        <div className="flex flex-col gap-1 mb-6">
-          <h2 className="text-xl sm:text-lg lg:text-xl font-semibold leading-tight">
+      <div className="mt-6 sm:mt-10 ">
+        <div className="flex flex-col gap-1 mb-4 sm:mb-6">
+          <h2 className="text-base sm:text-lg lg:text-xl font-semibold leading-tight">
             Our <span className="text-[#F77124]">Internships Programs</span>
           </h2>
         </div>
 
-        <div className="mt-6 flex gap-4 justify-between items-center h-12 rounded-full  overflow-x-auto bg-[#F66F221F] scrollbar-hide">
+        <div className="mt-4 sm:mt-6 flex gap-2 sm:gap-4 justify-between items-center h-10 sm:h-12 rounded-full  overflow-x-auto bg-[#F66F221F] scrollbar-hide">
           {courseCategories.map((cat: CourseCategory) => (
             <button
               key={cat.name}
               type="button"
               onClick={() => setActiveCategory(cat.name)}
               className={cn(
-                "shrink-0 inline-flex items-center h-full gap-2 rounded-full px-4 py-2.5 font-semibold transition",
+                "shrink-0 inline-flex items-center h-full gap-2 rounded-full px-3 sm:px-4 py-1.5 sm:py-2.5 font-semibold transition",
                 "text-xs sm:text-sm font-medium",
                 activeCategory === cat.name
                   ? "bg-linear-to-b from-[#F5891D] to-[#F5691D] text-white"
@@ -67,7 +67,7 @@ export default function InternshipsSection() {
           ))}
         </div>
 
-        <div className="mt-8 grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2 auto-rows-fr">
+        <div className="mt-6 sm:mt-8 grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2 auto-rows-fr">
           {visible.map((internship: InternshipItem, i) => (
             <InternshipCard
               key={internship.id}
@@ -78,7 +78,7 @@ export default function InternshipsSection() {
           ))}
         </div>
 
-        <div className="mt-8 flex justify-center gap-2">
+        <div className="mt-6 sm:mt-8 flex justify-center gap-2">
           {Array.from({ length: totalPages }, (_, i) => (
             <button
               key={i}
