@@ -42,7 +42,7 @@ const NavLink = ({
       {displayCount !== undefined && (
         <span
           className={cn(
-            "text-[10px] font-medium py-0.25 px-2 rounded-full transition-colors duration-400 ease-in-out select-none bg-black text-white",
+            "text-[10px] font-medium py-px px-2 rounded-full transition-colors duration-400 ease-in-out select-none bg-black text-white",
             isActive && "bg-[#F77124] text-white"
           )}
         >

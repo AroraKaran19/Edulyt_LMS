@@ -142,3 +142,7 @@ html {
   background: #F77124;
   width: 32px;
 }
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}

@@ -1,11 +1,14 @@
 "use client";
 
 import React, { useState, useRef } from "react";
+import Image from "next/image";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay } from "swiper/modules";
 import "swiper/css";
 import { cn } from "@/lib/utils";
 import { internshipFeatures } from "@/constants/internshipData";
+
+const RX_LOGO = "/assets/internships/RX-logo.svg";
 
 const InternshipFeaturesCarousel = () => {
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
@@ -53,16 +56,18 @@ const InternshipFeaturesCarousel = () => {
           }}
           className="internship-features-swiper"
         >
-          {internshipFeatures.map((feature, index) => {
-            const IconComponent = feature.icon;
-            return (
+          {internshipFeatures.map((feature, index) => (
               <SwiperSlide key={index}>
-                <div className="relative rounded-2xl sm:rounded-3xl p-[2px] bg-gradient-to-r from-[#F77124]/20 via-[#F77124]/60 to-[#F77124] h-full">
+                <div className="relative rounded-2xl sm:rounded-3xl p-0.5 bg-linear-to-r from-[#F77124]/20 via-[#F77124]/60 to-[#F77124] h-full">
                   <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 h-full">
-                    <div className="flex items-center gap-3 sm:gap-4 mb-3 sm:mb-4">
-                      <div className="bg-[#F77124] p-2 sm:p-3 rounded-lg sm:rounded-xl">
-                        <IconComponent className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-                      </div>
+                    <div className="flex justify-center mb-3 sm:mb-4">
+                      <Image
+                        src={RX_LOGO}
+                        alt={feature.title}
+                        width={42}
+                        height={42}
+                        className="w-9 h-9 sm:w-10 sm:h-10 object-contain"
+                      />
                     </div>
                     <h3 className="text-lg sm:text-xl font-bold text-[#F77124] mb-2 sm:mb-3 line-clamp-1">
                       {feature.title}
@@ -73,8 +78,7 @@ const InternshipFeaturesCarousel = () => {
                   </div>
                 </div>
               </SwiperSlide>
-            );
-          })}
+          ))}
         </Swiper>
 
         {/* Custom Pagination Dots */}

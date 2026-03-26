@@ -2,31 +2,53 @@ import { Metadata } from "next";
 import React from "react";
 
 export const metadata: Metadata = {
-  title: "Contact Us | Airkrit",
-  description: "Contact Us | Airkrit",
-  keywords: ["Contact Us", "Airkrit", "Contact Us Page", "Contact Us Form", "Contact Us Information", "Contact Us Details"],
-  robots: "index, follow",
-  icons: {
-    icon: "https://www.airkrit.com/logo.png",
-  },
+  title: "Community | Edulyt",
+  description:
+    "Join the Edulyt community to share your journey, insights, and doubts. Connect with others and grow together.",
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_APP_URL || process.env.NODE_ENV === "production"
+      ? "https://www.edulyt.com/community"
+      : "http://localhost:3000/community"
+  ),
+  keywords: [
+    "Community",
+    "Edulyt",
+    "Share Experience",
+    "Career Journey",
+    "Industry Experience",
+  ],
   openGraph: {
-    title: "Contact Us | Airkrit",
-    description: "Contact Us | Airkrit",
+    title: "Community | Edulyt",
+    description:
+      "Share your journey, doubts, or insights with the Edulyt community.",
+    url: "https://www.edulyt.com/community",
+    siteName: "Edulyt",
     type: "website",
-    url: "https://www.airkrit.com/contact",
-    siteName: "Airkrit",
-    images: [{ url: "https://www.airkrit.com/logo.png" }],
+    images: [
+      {
+        url: "https://www.edulyt.com/logo.png",
+        width: 1200,
+        height: 630,
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Contact Us | Airkrit",
-    description: "Contact Us | Airkrit",
-    images: [{ url: "https://www.airkrit.com/logo.png" }],
+    title: "Community | Edulyt",
+    description:
+      "Share your journey, doubts, or insights with the Edulyt community.",
+    images: [
+      {
+        url: "https://www.edulyt.com/logo.png",
+        width: 1200,
+        height: 630,
+      },
+    ],
   },
 };
 
-const layout = ({ children }: { children: React.ReactNode }) => {
-  return children;
+const CommunityPageLayout = ({ children }: { children: React.ReactNode }) => {
+  return <>{children}</>;
 };
 
-export default layout;
+export default CommunityPageLayout;

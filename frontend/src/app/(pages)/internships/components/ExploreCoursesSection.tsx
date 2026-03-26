@@ -6,7 +6,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import CourseSearchBar from "../../courses/components/CourseSearchBar";
 import { cn } from "@/lib/utils";
 import FilterContainer from "../../courses/components/FilterContainer";
-import CourseCard from "../../courses/components/CourseCard";
+import NewCourseCard from "../../../../components/ui/NewCourseCard";
 import { getErrorUIConfig } from "@/configs/errorUIConfig";
 import Error from "@/components/ui/Error";
 import useSWR from "swr";
@@ -258,7 +258,7 @@ const ExploreCoursesSection = () => {
       <div className="w-full h-full">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 auto-rows-fr">
           {allCourses.map((course: Course, index: number) => (
-            <CourseCard
+            <NewCourseCard
               key={`${course._id || course.slug}-${index}`}
               course={course}
               className="opacity-0 animate-course-card-fade-in"

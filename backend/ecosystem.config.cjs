@@ -28,6 +28,8 @@ module.exports = {
       instances: 1,
       env: {
         RUN_BACKGROUND_JOBS: "true",
+        // Certificate worker: poll every 5 minutes (see certificate.worker.ts)
+        CERTIFICATE_WORKER_POLL_MS: "300000",
       },
       max_memory_restart: "500M",
     },

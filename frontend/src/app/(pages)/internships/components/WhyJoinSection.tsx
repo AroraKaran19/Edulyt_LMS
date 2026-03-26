@@ -1,9 +1,26 @@
 "use client";
 
 import React from "react";
+import Image from "next/image";
 import { whyJoinItems } from "@/constants/internshipData";
 
 const WhyJoinSection = () => {
+  const renderIcon = (item: (typeof whyJoinItems)[number]) => {
+    if (item.iconImage) {
+      return (
+        <Image
+          src={item.iconImage}
+          alt={item.title}
+          width={64}
+          height={64}
+          className="w-8 h-8 sm:w-10 sm:h-10 object-contain"
+        />
+      );
+    }
+    const IconComponent = item.icon;
+    return <IconComponent className="w-6 h-6 sm:w-8 sm:h-8 text-white" />;
+  };
+
   return (
     <div className="px-4 sm:px-6 lg:px-8 xl:px-12 mt-12 sm:mt-16 lg:mt-24">
       <div className="text-center mb-6 sm:mb-8">
@@ -21,48 +38,42 @@ const WhyJoinSection = () => {
       <div className="flex flex-col gap-4 sm:gap-6 mt-8 sm:mt-12">
         {/* First Row - 3 items */}
         <div className="flex flex-wrap justify-center gap-4 sm:gap-6">
-          {whyJoinItems.slice(0, 3).map((item, index) => {
-            const IconComponent = item.icon;
-            return (
-              <div
-                key={index}
-                className="rounded-xl sm:rounded-2xl p-3 sm:p-4 transition-shadow w-full sm:max-w-md"
-              >
-                <div className="flex justify-center mb-3 sm:mb-4">
-                  <div className="bg-[#F77124] w-12 h-12 sm:w-16 sm:h-16 rounded-full flex items-center justify-center">
-                    <IconComponent className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
-                  </div>
+          {whyJoinItems.slice(0, 3).map((item, index) => (
+            <div
+              key={index}
+              className="rounded-xl sm:rounded-2xl p-3 sm:p-4 transition-shadow w-full sm:max-w-md"
+            >
+              <div className="flex justify-center mb-3 sm:mb-4">
+                <div className="bg-[#F77124] w-12 h-12 sm:w-16 sm:h-16 rounded-full flex items-center justify-center">
+                  {renderIcon(item)}
                 </div>
-                <h3 className="text-lg sm:text-xl font-bold text-black text-center mb-2 sm:mb-3">
-                  {item.title}
-                </h3>
-                <p className="text-sm sm:text-base text-[#808080] text-center">{item.description}</p>
               </div>
-            );
-          })}
+              <h3 className="text-lg sm:text-xl font-bold text-black text-center mb-2 sm:mb-3">
+                {item.title}
+              </h3>
+              <p className="text-sm sm:text-base text-[#808080] text-center">{item.description}</p>
+            </div>
+          ))}
         </div>
 
         {/* Second Row - 2 items */}
         <div className="flex flex-wrap justify-center gap-4 sm:gap-6">
-          {whyJoinItems.slice(3, 5).map((item, index) => {
-            const IconComponent = item.icon;
-            return (
-              <div
-                key={index + 3}
-                className="rounded-xl sm:rounded-2xl p-3 sm:p-4 transition-shadow w-full sm:max-w-md"
-              >
-                <div className="flex justify-center mb-3 sm:mb-4">
-                  <div className="bg-[#F77124] w-12 h-12 sm:w-16 sm:h-16 rounded-full flex items-center justify-center">
-                    <IconComponent className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
-                  </div>
+          {whyJoinItems.slice(3, 5).map((item, index) => (
+            <div
+              key={index + 3}
+              className="rounded-xl sm:rounded-2xl p-3 sm:p-4 transition-shadow w-full sm:max-w-md"
+            >
+              <div className="flex justify-center mb-3 sm:mb-4">
+                <div className="bg-[#F77124] w-12 h-12 sm:w-16 sm:h-16 rounded-full flex items-center justify-center">
+                  {renderIcon(item)}
                 </div>
-                <h3 className="text-lg sm:text-xl font-bold text-black text-center mb-2 sm:mb-3">
-                  {item.title}
-                </h3>
-                <p className="text-sm sm:text-base text-[#808080] text-center">{item.description}</p>
               </div>
-            );
-          })}
+              <h3 className="text-lg sm:text-xl font-bold text-black text-center mb-2 sm:mb-3">
+                {item.title}
+              </h3>
+              <p className="text-sm sm:text-base text-[#808080] text-center">{item.description}</p>
+            </div>
+          ))}
         </div>
       </div>
     </div>

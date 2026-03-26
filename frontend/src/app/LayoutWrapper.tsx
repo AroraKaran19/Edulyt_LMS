@@ -26,7 +26,10 @@ export default function LayoutWrapper({
     setIsMounted(true);
   }, []);
 
-  if (!isMounted) {
+  const isHomePage = pathname === "/";
+
+  // Skip the full-screen loader on the homepage so it renders immediately.
+  if (!isMounted && !isHomePage) {
     return <FullScreenLoader text="Loading..." size="lg" variant="spinner" />;
   }
 
