@@ -1,5 +1,6 @@
 "use client";
 import { Course, CourseLesson, CourseModule, Content } from "@/types";
+import type { DocumentContent } from "@/types/course";
 import React, {
   memo,
   useEffect,
@@ -36,8 +37,11 @@ import {
 } from "@/lib/accessControlUtils";
 import { useCompletedContents } from "./hooks/useCompletedContents";
 import { useCourseCompletion } from "./hooks/useCourseCompletion";
-import { FullScreenLoader } from "@/components/ui/Loader";
+import CertificatePendingModal from "./components/CertificatePendingModal";
+import AutoplayNextToggle from "./components/AutoplayNextToggle";
+import { useWatchAutoplayNext } from "./hooks/useWatchAutoplayNext";
 import QuizSection from "./components/QuizSection";
+import DocumentSection from "./components/DocumentSection";
 
 const VideoPlayer = dynamic(() => import("@/components/video/VideoPlayer"), {
   ssr: false,
@@ -217,18 +221,19 @@ const VideoSection = memo(
       );
     }
 
-    // Document content - placeholder for now
+    // Document content (PDF / files via presigned URL or direct link)
     if (selectedContent.type === "document") {
       return (
-        <SectionContainer
-          id="video-player"
-          className="w-full aspect-video bg-gray-100 flex items-center justify-center"
-        >
-          <div className="text-center">
-            <FileText className="size-16 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600">Document content - coming soon</p>
-          </div>
-        </SectionContainer>
+        <DocumentSection
+          documentContent={selectedContent as DocumentContent}
+          moduleId={selectedModule?._id}
+          lessonId={selectedLesson?._id}
+          hasContentAccess={hasContentAccess}
+          isAlreadyCompleted={
+            !!selectedContent._id && isContentCompleted(selectedContent._id)
+          }
+          onDocumentComplete={onVideoComplete}
+        />
       );
     }
 
@@ -675,6 +680,8 @@ const CourseContentLayout = memo(
     toggleLesson,
     tabs,
     shouldAutoPlay,
+    autoplayNext,
+    onAutoplayNextChange,
   }: {
     course: Course;
     selectedContent: Content | null;
@@ -686,10 +693,16 @@ const CourseContentLayout = memo(
     toggleLesson: (lesson: CourseLesson) => void;
     tabs: any[];
     shouldAutoPlay?: boolean;
+    autoplayNext: boolean;
+    onAutoplayNextChange: (value: boolean) => void;
   }) => {
     return (
       <div className="w-full min-h-screen flex gap-4 lg:flex-row flex-col">
         <div className="left-side w-full lg:w-7/10 h-full rounded-xl flex flex-col gap-4">
+          <AutoplayNextToggle
+            enabled={autoplayNext}
+            onChange={onAutoplayNextChange}
+          />
           <VideoSection
             course={course}
             selectedContent={selectedContent}
@@ -734,7 +747,9 @@ const CourseContentLayout = memo(
       prevProps.course._id === nextProps.course._id &&
       prevProps.navigateToNext === nextProps.navigateToNext &&
       prevProps.shouldAutoPlay === nextProps.shouldAutoPlay &&
-      prevProps.tabs === nextProps.tabs
+      prevProps.tabs === nextProps.tabs &&
+      prevProps.autoplayNext === nextProps.autoplayNext &&
+      prevProps.onAutoplayNextChange === nextProps.onAutoplayNextChange
     );
   }
 );
@@ -962,7 +977,10 @@ const PreviewCourse = ({ course }: { course: Course }) => {
   };
 
   // Monitor course completion and certificate generation
-  const { isGeneratingCertificate } = useCourseCompletion(course);
+  const { showCertificatePendingModal, dismissCertificatePendingModal } =
+    useCourseCompletion(course);
+
+  const { autoplayNext, setAutoplayNext } = useWatchAutoplayNext();
 
   const {
     selectedModule,
@@ -975,11 +993,12 @@ const PreviewCourse = ({ course }: { course: Course }) => {
     isInitialized,
   } = useLessonNavigation(filteredCourse, accessControl, enrollment?.lastContentAccessed);
 
-  // Wrapper for navigateToNext that enables autoplay
+  // Auto-advance to next content when a video/quiz completes (if user enabled autoplay)
   const handleNavigateToNext = useCallback(() => {
+    if (!autoplayNext) return;
     setShouldAutoPlay(true);
     navigateToNext();
-  }, [navigateToNext]);
+  }, [autoplayNext, navigateToNext]);
 
   // Reset autoplay flag when content changes
   useEffect(() => {
@@ -1107,17 +1126,6 @@ const PreviewCourse = ({ course }: { course: Course }) => {
     modulesCount,
   ]);
 
-  // Show loading screen when certificate is being generated
-  if (isGeneratingCertificate) {
-    return (
-      <FullScreenLoader
-        text="Generating your certificate..."
-        size="xl"
-        variant="spinner"
-      />
-    );
-  }
-
   // Show loading state while initializing
   if (!isInitialized) {
     return (
@@ -1149,6 +1157,10 @@ const PreviewCourse = ({ course }: { course: Course }) => {
 
   return (
     <VideoTimeProvider>
+      <CertificatePendingModal
+        isOpen={showCertificatePendingModal}
+        onClose={dismissCertificatePendingModal}
+      />
       <CourseContentLayout
         course={filteredCourse}
         selectedContent={selectedContent}
@@ -1160,6 +1172,8 @@ const PreviewCourse = ({ course }: { course: Course }) => {
         toggleLesson={toggleLesson}
         tabs={tabs}
         shouldAutoPlay={shouldAutoPlay}
+        autoplayNext={autoplayNext}
+        onAutoplayNextChange={setAutoplayNext}
       />
     </VideoTimeProvider>
   );

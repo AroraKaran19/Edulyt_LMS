@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { cn } from "@/lib/utils";
-import NewCourseCard from "@/app/(pages)/internships/components/NewCourseCard";
+import NewCourseCard from "@/components/ui/NewCourseCard";
 import { Course } from "@/types";
 import { ENDPOINTS } from "@/constants/endpoints";
 import { fetcher } from "@/lib/utils";

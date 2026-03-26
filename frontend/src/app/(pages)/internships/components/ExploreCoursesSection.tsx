@@ -6,7 +6,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import CourseSearchBar from "../../courses/components/CourseSearchBar";
 import { cn } from "@/lib/utils";
 import FilterContainer from "../../courses/components/FilterContainer";
-import NewCourseCard from "./NewCourseCard";
+import NewCourseCard from "../../../../components/ui/NewCourseCard";
 import { getErrorUIConfig } from "@/configs/errorUIConfig";
 import Error from "@/components/ui/Error";
 import useSWR from "swr";

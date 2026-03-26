@@ -11,7 +11,48 @@ import { CourseModel } from "../models/course.schema";
 import { CertificateGenerationData } from "../types/certificate";
 
 const MAX_RETRIES = 3;
-const POLL_INTERVAL = 3000; // 3 seconds
+
+/** How often the worker wakes to drain the queue (ms). Env: CERTIFICATE_WORKER_POLL_MS (default 5 minutes). */
+const POLL_INTERVAL_MS = Math.max(
+  200,
+  Number(process.env.CERTIFICATE_WORKER_POLL_MS) || 300_000
+);
+
+/** Max jobs claimed per poll tick. Env: CERTIFICATE_WORKER_MAX_JOBS_PER_TICK (default 5). */
+const MAX_JOBS_PER_TICK = Math.max(
+  1,
+  Number(process.env.CERTIFICATE_WORKER_MAX_JOBS_PER_TICK) || 5
+);
+
+/** Max jobs running at once (pool). Defaults to MAX_JOBS_PER_TICK (all claimed jobs in parallel). Env: CERTIFICATE_WORKER_MAX_PARALLEL */
+const MAX_PARALLEL = Math.max(
+  1,
+  Math.min(
+    MAX_JOBS_PER_TICK,
+    Number.isFinite(Number(process.env.CERTIFICATE_WORKER_MAX_PARALLEL))
+      ? Number(process.env.CERTIFICATE_WORKER_MAX_PARALLEL)
+      : MAX_JOBS_PER_TICK
+  )
+);
+
+/** Run tasks with at most `concurrency` in flight (sliding pool). */
+async function runPool<T>(
+  items: T[],
+  concurrency: number,
+  fn: (item: T) => Promise<void>
+): Promise<void> {
+  if (items.length === 0) return;
+  const c = Math.min(Math.max(1, concurrency), items.length);
+  let next = 0;
+  async function worker(): Promise<void> {
+    for (;;) {
+      const i = next++;
+      if (i >= items.length) return;
+      await fn(items[i]);
+    }
+  }
+  await Promise.all(Array.from({ length: c }, () => worker()));
+}
 
 /**
  * Process a single certificate generation job
@@ -135,26 +176,43 @@ async function processCertificateJob(job: any): Promise<void> {
 export function startCertificateWorker(): void {
   console.log("[Certificate Worker] Starting certificate generation worker...");
 
-  const processJobs = async () => {
-    try {
-      const job = await getNextPendingJobService();
+  let tickRunning = false;
 
-      if (job) {
-        await processCertificateJob(job);
+  const processJobs = async () => {
+    if (tickRunning) {
+      return;
+    }
+    tickRunning = true;
+    try {
+      const jobs: any[] = [];
+      for (let i = 0; i < MAX_JOBS_PER_TICK; i++) {
+        const job = await getNextPendingJobService();
+        if (!job) break;
+        jobs.push(job);
+      }
+      if (jobs.length > 0) {
+        await runPool(jobs, MAX_PARALLEL, (job) => processCertificateJob(job));
+        console.log(
+          `[Certificate Worker] Finished ${jobs.length} job(s) this tick (parallelism ${MAX_PARALLEL}, max batch ${MAX_JOBS_PER_TICK}).`
+        );
       }
     } catch (error) {
       console.error("[Certificate Worker] Error in job processing loop:", error);
+    } finally {
+      tickRunning = false;
     }
   };
 
   // Process jobs immediately on start
-  processJobs();
+  void processJobs();
 
-  // Then poll every POLL_INTERVAL milliseconds
-  setInterval(processJobs, POLL_INTERVAL);
+  // Poll on an interval; each tick claims up to MAX_JOBS_PER_TICK jobs, then runs them with bounded parallelism
+  setInterval(() => {
+    void processJobs();
+  }, POLL_INTERVAL_MS);
 
   console.log(
-    `[Certificate Worker] Worker started. Polling every ${POLL_INTERVAL}ms for pending jobs.`
+    `[Certificate Worker] Worker started. Poll every ${POLL_INTERVAL_MS}ms, batch ≤${MAX_JOBS_PER_TICK}, parallel ≤${MAX_PARALLEL}.`
   );
 }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import InternshipCard from "../../internships/components/InternshipCard";
-import NewCourseCard from "../../internships/components/NewCourseCard";
+import NewCourseCard from "../../../../components/ui/NewCourseCard";
 import { courses } from "@/constants/internshipData";
 
 const RightSidebar = () => {

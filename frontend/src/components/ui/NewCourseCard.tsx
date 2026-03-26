@@ -83,17 +83,19 @@ const NewCourseCard = ({
           {course.title}
         </h3>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500 px-2 py-0.5 text-xs font-semibold text-white">
-            <Star className="h-3.5 w-3.5 fill-white text-white" />
-            {rating > 0 ? rating.toFixed(1) : "—"} Rating
-          </span>
-          <span className="text-xs text-gray-500">
-            {reviewCount >= 1000
-              ? `${(reviewCount / 1000).toFixed(0)}k Ratings`
-              : `${reviewCount} Ratings`}
-          </span>
-        </div>
+        {reviewCount > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500 px-2 py-0.5 text-xs font-semibold text-white">
+              <Star className="h-3.5 w-3.5 fill-white text-white" />
+              {rating.toFixed(1)}
+            </span>
+            <span className="text-xs text-gray-500">
+              {reviewCount >= 1000
+                ? `${(reviewCount / 1000).toFixed(0)}k Ratings`
+                : `${reviewCount} ${reviewCount === 1 ? "Rating" : "Ratings"}`}
+            </span>
+          </div>
+        )}
 
         <div className="mt-auto flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
