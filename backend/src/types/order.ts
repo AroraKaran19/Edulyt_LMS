@@ -18,6 +18,9 @@ export interface PaymentOrder {
   paymentErrorReason?: string;
   couponCode?: string;
   couponDiscount?: number;
+  /** Partnership checkout discount (after plan/course discounts), when applicable */
+  collaborationDiscount?: number;
+  collaborationDomainId?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }

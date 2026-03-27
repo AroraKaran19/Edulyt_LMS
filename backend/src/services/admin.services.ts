@@ -183,14 +183,33 @@ export const getDashboardStats = async (
     (a, b) => a.year - b.year || a.monthNum - b.monthNum
   );
 
-  // Today's enrollments
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
-  const todayEnd = new Date();
-  todayEnd.setHours(23, 59, 59, 999);
-  const todayEnrollments = await EnrollmentModel.countDocuments({
-    enrolledAt: { $gte: todayStart, $lte: todayEnd },
-  });
+  // Today's enrollments: IST calendar day via MongoDB ($$NOW + Asia/Kolkata), no JS/UTC drift
+  const todayEnrollmentsAgg = await EnrollmentModel.aggregate<{ count: number }>([
+    {
+      $match: {
+        $expr: {
+          $eq: [
+            {
+              $dateToString: {
+                format: "%Y-%m-%d",
+                date: "$enrolledAt",
+                timezone: "Asia/Kolkata",
+              },
+            },
+            {
+              $dateToString: {
+                format: "%Y-%m-%d",
+                date: "$$NOW",
+                timezone: "Asia/Kolkata",
+              },
+            },
+          ],
+        },
+      },
+    },
+    { $group: { _id: null, count: { $sum: 1 } } },
+  ]);
+  const todayEnrollments = todayEnrollmentsAgg[0]?.count ?? 0;
 
   // Enrollments per month (for distinct chart - shows course engagement)
   const enrolledAtFilter = {

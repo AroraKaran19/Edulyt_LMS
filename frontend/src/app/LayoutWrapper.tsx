@@ -17,6 +17,7 @@ export default function LayoutWrapper({
   const visibleLayout =
     !pathname.startsWith("/dashboard") &&
     !pathname.startsWith("/admin") &&
+    !pathname.startsWith("/instructor") &&
     !pathname.startsWith("/login") &&
     !pathname.startsWith("/register") &&
     !pathname.startsWith("/payment/status") &&
@@ -26,7 +27,10 @@ export default function LayoutWrapper({
     setIsMounted(true);
   }, []);
 
-  if (!isMounted) {
+  const isHomePage = pathname === "/";
+
+  // Skip the full-screen loader on the homepage so it renders immediately.
+  if (!isMounted && !isHomePage) {
     return <FullScreenLoader text="Loading..." size="lg" variant="spinner" />;
   }
 

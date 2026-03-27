@@ -1,7 +1,15 @@
 "use client";
 import ImageComponent from "@/components/ui/ImageComponent";
 import useAuth from "@/hooks/useAuth";
-import { ChevronDown, Home, LogOut, Settings, User } from "lucide-react";
+import {
+  ChevronDown,
+  Home,
+  LayoutDashboard,
+  LogOut,
+  Settings,
+  Star,
+  User,
+} from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
@@ -19,6 +27,34 @@ const UserMenu = () => {
       label: "Dashboard",
       icon: Home,
       href: "/dashboard",
+    },
+    {
+      label: "Profile",
+      icon: User,
+      href: "/dashboard/profile",
+    },
+    {
+      label: "Settings",
+      icon: Settings,
+      href: "/dashboard/settings",
+    },
+    {
+      label: "Logout",
+      icon: LogOut,
+      href: "",
+    },
+  ];
+
+  const instructorMenuItems = [
+    {
+      label: "Instructor dashboard",
+      icon: LayoutDashboard,
+      href: "/instructor",
+    },
+    {
+      label: "Course reviews",
+      icon: Star,
+      href: "/instructor/reviews",
     },
     {
       label: "Profile",
@@ -89,6 +125,9 @@ const UserMenu = () => {
   const iconWrapperClass =
     "flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 transition-colors shrink-0";
   const iconClass = "size-4 text-gray-600 group-hover:text-orange-600";
+
+  const primaryNavItems =
+    user.userType === "instructor" ? instructorMenuItems : userMenuItems;
 
   if (user.userType === "admin" || user.userType === "super-admin") {
     return (
@@ -297,7 +336,7 @@ const UserMenu = () => {
 
             {/* Menu items */}
             <div className="py-1.5">
-              {userMenuItems
+              {primaryNavItems
                 .filter((item) => item.label !== "Logout")
                 .map((item) => (
                   <Link

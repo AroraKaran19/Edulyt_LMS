@@ -1,5 +1,6 @@
 "use client";
 import { Course, CourseLesson, CourseModule, Content } from "@/types";
+import type { DocumentContent } from "@/types/course";
 import React, {
   memo,
   useEffect,
@@ -8,6 +9,10 @@ import React, {
   useRef,
   useCallback,
 } from "react";
+import { useSearchParams } from "next/navigation";
+import { useSession } from "next-auth/react";
+import type { User } from "@/types";
+import { isUserInstructorOfCourse } from "@/lib/courseInstructor";
 import SectionContainer from "./components/SectionContainer";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import { Clock3, Play, FileText, Lock, CheckCircle2, HelpCircle } from "lucide-react";
@@ -36,8 +41,11 @@ import {
 } from "@/lib/accessControlUtils";
 import { useCompletedContents } from "./hooks/useCompletedContents";
 import { useCourseCompletion } from "./hooks/useCourseCompletion";
-import { FullScreenLoader } from "@/components/ui/Loader";
+import CertificatePendingModal from "./components/CertificatePendingModal";
+import AutoplayNextToggle from "./components/AutoplayNextToggle";
+import { useWatchAutoplayNext } from "./hooks/useWatchAutoplayNext";
 import QuizSection from "./components/QuizSection";
+import DocumentSection from "./components/DocumentSection";
 
 const VideoPlayer = dynamic(() => import("@/components/video/VideoPlayer"), {
   ssr: false,
@@ -217,18 +225,19 @@ const VideoSection = memo(
       );
     }
 
-    // Document content - placeholder for now
+    // Document content (PDF / files via presigned URL or direct link)
     if (selectedContent.type === "document") {
       return (
-        <SectionContainer
-          id="video-player"
-          className="w-full aspect-video bg-gray-100 flex items-center justify-center"
-        >
-          <div className="text-center">
-            <FileText className="size-16 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600">Document content - coming soon</p>
-          </div>
-        </SectionContainer>
+        <DocumentSection
+          documentContent={selectedContent as DocumentContent}
+          moduleId={selectedModule?._id}
+          lessonId={selectedLesson?._id}
+          hasContentAccess={hasContentAccess}
+          isAlreadyCompleted={
+            !!selectedContent._id && isContentCompleted(selectedContent._id)
+          }
+          onDocumentComplete={onVideoComplete}
+        />
       );
     }
 
@@ -675,6 +684,9 @@ const CourseContentLayout = memo(
     toggleLesson,
     tabs,
     shouldAutoPlay,
+    autoplayNext,
+    onAutoplayNextChange,
+    activeTabIndex,
   }: {
     course: Course;
     selectedContent: Content | null;
@@ -686,10 +698,18 @@ const CourseContentLayout = memo(
     toggleLesson: (lesson: CourseLesson) => void;
     tabs: any[];
     shouldAutoPlay?: boolean;
+    autoplayNext: boolean;
+    onAutoplayNextChange: (value: boolean) => void;
+    /** When set, opens this tab (e.g. Q&A deep link). */
+    activeTabIndex?: number;
   }) => {
     return (
       <div className="w-full min-h-screen flex gap-4 lg:flex-row flex-col">
         <div className="left-side w-full lg:w-7/10 h-full rounded-xl flex flex-col gap-4">
+          <AutoplayNextToggle
+            enabled={autoplayNext}
+            onChange={onAutoplayNextChange}
+          />
           <VideoSection
             course={course}
             selectedContent={selectedContent}
@@ -699,7 +719,11 @@ const CourseContentLayout = memo(
             shouldAutoPlay={shouldAutoPlay}
           />
           <SectionContainer className="p-8">
-            <TabSwitcher tabs={tabs} className="w-full" />
+            <TabSwitcher
+              tabs={tabs}
+              className="w-full"
+              activeTabIndex={activeTabIndex}
+            />
           </SectionContainer>
         </div>
         <div className="right-side hidden lg:block w-3/10 h-full rounded-xl relative">
@@ -734,7 +758,10 @@ const CourseContentLayout = memo(
       prevProps.course._id === nextProps.course._id &&
       prevProps.navigateToNext === nextProps.navigateToNext &&
       prevProps.shouldAutoPlay === nextProps.shouldAutoPlay &&
-      prevProps.tabs === nextProps.tabs
+      prevProps.tabs === nextProps.tabs &&
+      prevProps.autoplayNext === nextProps.autoplayNext &&
+      prevProps.onAutoplayNextChange === nextProps.onAutoplayNextChange &&
+      prevProps.activeTabIndex === nextProps.activeTabIndex
     );
   }
 );
@@ -786,7 +813,24 @@ const PreviewCourse = ({ course }: { course: Course }) => {
     };
   }, [course]);
 
-  const { getQnAs, getQnAReplies } = useQnA();
+  const { data: session } = useSession();
+  const canModerateQna = useMemo(() => {
+    const u = session?.user as (User & { id?: string }) | undefined;
+    if (!u) return false;
+    const uid =
+      u._id != null ? String(u._id) : u.id != null ? String(u.id) : "";
+    if (!uid) return false;
+    if (u.userType === "admin" || u.userType === "super-admin") return true;
+    if (
+      u.userType === "instructor" &&
+      isUserInstructorOfCourse(uid, filteredCourse)
+    ) {
+      return true;
+    }
+    return false;
+  }, [session?.user, filteredCourse]);
+
+  const { getQnAs, getQnAReplies, getQnAById } = useQnA();
   const { getReviewsByReviewable } = useReview();
 
   const [qnasPage, setQnasPage] = useState(1);
@@ -962,7 +1006,10 @@ const PreviewCourse = ({ course }: { course: Course }) => {
   };
 
   // Monitor course completion and certificate generation
-  const { isGeneratingCertificate } = useCourseCompletion(course);
+  const { showCertificatePendingModal, dismissCertificatePendingModal } =
+    useCourseCompletion(course);
+
+  const { autoplayNext, setAutoplayNext } = useWatchAutoplayNext();
 
   const {
     selectedModule,
@@ -975,11 +1022,92 @@ const PreviewCourse = ({ course }: { course: Course }) => {
     isInitialized,
   } = useLessonNavigation(filteredCourse, accessControl, enrollment?.lastContentAccessed);
 
-  // Wrapper for navigateToNext that enables autoplay
+  const searchParams = useSearchParams();
+  const contentDeepLinkApplied = useRef(false);
+
+  useEffect(() => {
+    contentDeepLinkApplied.current = false;
+  }, [course._id]);
+
+  const contentParam = searchParams.get("content");
+  const lessonParam = searchParams.get("lesson");
+  const qnaParam = searchParams.get("qna");
+
+  useEffect(() => {
+    if (!isInitialized || !filteredCourse.modules?.length) return;
+    if (contentDeepLinkApplied.current) return;
+
+    if (contentParam) {
+      navigateToContent(contentParam);
+      contentDeepLinkApplied.current = true;
+      return;
+    }
+
+    if (lessonParam) {
+      const modules = filteredCourse.modules as CourseModule[];
+      for (const mod of modules) {
+        const lessons = (mod.lessons || []) as CourseLesson[];
+        for (const lesson of lessons) {
+          if (String(lesson._id) !== lessonParam) continue;
+          const contents = (lesson.contents || []) as Content[];
+          const first = contents.find((c) => c._id);
+          if (first?._id) {
+            navigateToContent(first._id);
+            contentDeepLinkApplied.current = true;
+          }
+          return;
+        }
+      }
+    }
+  }, [
+    isInitialized,
+    contentParam,
+    lessonParam,
+    filteredCourse.modules,
+    navigateToContent,
+  ]);
+
+  const [forcedTabIndex, setForcedTabIndex] = useState<number | undefined>(
+    undefined
+  );
+
+  useEffect(() => {
+    if (!qnaParam) {
+      setForcedTabIndex(undefined);
+      return;
+    }
+    if (width === 0) return;
+    setForcedTabIndex(width < 1024 ? 2 : 1);
+  }, [qnaParam, width]);
+
+  const getQnAByIdRef = useRef(getQnAById);
+  useEffect(() => {
+    getQnAByIdRef.current = getQnAById;
+  }, [getQnAById]);
+
+  useEffect(() => {
+    if (!qnaParam || !course._id) return;
+    let cancelled = false;
+    void (async () => {
+      const q = await getQnAByIdRef.current(qnaParam);
+      if (cancelled || !q) return;
+      setQnas((prev) => {
+        const id = String(q._id);
+        if (prev.some((x) => String(x._id) === id)) return prev;
+        return [q, ...prev];
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [qnaParam, course._id]);
+
+  // Auto-advance to next content when a video/quiz completes (if user enabled autoplay)
   const handleNavigateToNext = useCallback(() => {
+    if (!autoplayNext) return;
     setShouldAutoPlay(true);
     navigateToNext();
-  }, [navigateToNext]);
+  }, [autoplayNext, navigateToNext]);
 
   // Reset autoplay flag when content changes
   useEffect(() => {
@@ -1042,6 +1170,8 @@ const PreviewCourse = ({ course }: { course: Course }) => {
         onRefresh={fetchQnas}
         onLoadMoreReplies={loadMoreReplies}
         loadingRepliesForId={loadingRepliesForId}
+        scrollToQnaId={qnaParam}
+        canModerateQna={canModerateQna}
       />
     ),
     [
@@ -1055,6 +1185,8 @@ const PreviewCourse = ({ course }: { course: Course }) => {
       fetchQnas,
       loadMoreReplies,
       loadingRepliesForId,
+      qnaParam,
+      canModerateQna,
     ]
   );
 
@@ -1107,17 +1239,6 @@ const PreviewCourse = ({ course }: { course: Course }) => {
     modulesCount,
   ]);
 
-  // Show loading screen when certificate is being generated
-  if (isGeneratingCertificate) {
-    return (
-      <FullScreenLoader
-        text="Generating your certificate..."
-        size="xl"
-        variant="spinner"
-      />
-    );
-  }
-
   // Show loading state while initializing
   if (!isInitialized) {
     return (
@@ -1149,6 +1270,10 @@ const PreviewCourse = ({ course }: { course: Course }) => {
 
   return (
     <VideoTimeProvider>
+      <CertificatePendingModal
+        isOpen={showCertificatePendingModal}
+        onClose={dismissCertificatePendingModal}
+      />
       <CourseContentLayout
         course={filteredCourse}
         selectedContent={selectedContent}
@@ -1160,6 +1285,9 @@ const PreviewCourse = ({ course }: { course: Course }) => {
         toggleLesson={toggleLesson}
         tabs={tabs}
         shouldAutoPlay={shouldAutoPlay}
+        autoplayNext={autoplayNext}
+        onAutoplayNextChange={setAutoplayNext}
+        activeTabIndex={forcedTabIndex}
       />
     </VideoTimeProvider>
   );

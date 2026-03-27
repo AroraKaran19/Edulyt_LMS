@@ -3,7 +3,8 @@ import { useEffect, useState, useRef, useCallback, useMemo, createContext, useCo
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import useEnrollment from "@/hooks/useEnrollment";
-import { Course } from "@/types";
+import { Course, User } from "@/types";
+import { isUserInstructorOfCourse } from "@/lib/courseInstructor";
 import { Lock, AlertCircle, Loader2 } from "lucide-react";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import { Button } from "@/components/ui/buttons/button";
@@ -29,7 +30,7 @@ export const useEnrollmentContext = () => {
 };
 
 const EnrollmentGuard = ({ course, children }: EnrollmentGuardProps) => {
-  const { status } = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
   const { checkEnrollment } = useEnrollment();
 
@@ -75,20 +76,79 @@ const EnrollmentGuard = ({ course, children }: EnrollmentGuardProps) => {
       return;
     }
 
+    const sessionUser = session?.user as (User & { id?: string }) | undefined;
+    const sessionUserId =
+      sessionUser?._id != null
+        ? String(sessionUser._id)
+        : sessionUser?.id != null
+          ? String(sessionUser.id)
+          : undefined;
+
+    const grantFullAccess = (
+      existing?: {
+        isEnrolled: boolean;
+        enrollment?: unknown;
+        status?: string;
+        canAccess: boolean;
+        accessControl?: PartialAccessControl | null;
+      } | null
+    ) => {
+      setEnrollmentStatus({
+        isEnrolled: true,
+        canAccess: true,
+        status: "active",
+        enrollment: existing?.enrollment ?? undefined,
+        accessControl: { accessType: "full" },
+      });
+    };
+
     try {
       isCheckingRef.current = true;
       setIsCheckingEnrollment(true);
       const result = await checkEnrollmentRef.current({ courseId: course._id });
+
+      if (result?.canAccess && result?.isEnrolled) {
+        setEnrollmentStatus(result);
+        return;
+      }
+
+      const isAdmin =
+        sessionUser?.userType === "admin" ||
+        sessionUser?.userType === "super-admin";
+      if (isAdmin) {
+        grantFullAccess(result);
+        return;
+      }
+
+      if (sessionUserId && isUserInstructorOfCourse(sessionUserId, course)) {
+        grantFullAccess(result);
+        return;
+      }
+
       if (result) {
         setEnrollmentStatus(result);
       }
     } catch (error) {
       console.error("Failed to check enrollment:", error);
+      const su = session?.user as (User & { id?: string }) | undefined;
+      const uid =
+        su?._id != null
+          ? String(su._id)
+          : su?.id != null
+            ? String(su.id)
+            : undefined;
+      const isAdmin =
+        su?.userType === "admin" || su?.userType === "super-admin";
+      if (isAdmin) {
+        grantFullAccess();
+      } else if (uid && isUserInstructorOfCourse(uid, course)) {
+        grantFullAccess();
+      }
     } finally {
       setIsCheckingEnrollment(false);
       isCheckingRef.current = false;
     }
-  }, [status, course._id]);
+  }, [status, course._id, course, session?.user]);
 
   // Check enrollment status only when status or courseId actually changes
   useEffect(() => {

@@ -1,5 +1,94 @@
 import { EnrollmentModel } from "../models";
 
+/**
+ * Resolve gifter display name: live user (ObjectId or string id), else snapshot, else raw id.
+ * Lookup matches whether `giftFrom` is stored as ObjectId or string.
+ */
+const giftFromLookupAndNameStages: any[] = [
+  {
+    $lookup: {
+      from: "users",
+      let: { gf: "$giftFrom" },
+      pipeline: [
+        {
+          $match: {
+            $expr: {
+              $and: [
+                { $ne: ["$$gf", null] },
+                {
+                  $eq: [{ $toString: "$_id" }, { $toString: "$$gf" }],
+                },
+              ],
+            },
+          },
+        },
+        { $project: { firstName: 1, lastName: 1, email: 1 } },
+      ],
+      as: "giftFromUser",
+    },
+  },
+  {
+    $addFields: {
+      giftFromName: {
+        $cond: {
+          if: { $gt: [{ $size: "$giftFromUser" }, 0] },
+          then: {
+            $let: {
+              vars: {
+                rawName: {
+                  $trim: {
+                    input: {
+                      $concat: [
+                        {
+                          $ifNull: [
+                            { $arrayElemAt: ["$giftFromUser.firstName", 0] },
+                            "",
+                          ],
+                        },
+                        " ",
+                        {
+                          $ifNull: [
+                            { $arrayElemAt: ["$giftFromUser.lastName", 0] },
+                            "",
+                          ],
+                        },
+                      ],
+                    },
+                  },
+                },
+              },
+              in: {
+                $cond: {
+                  if: { $gt: [{ $strLenCP: "$$rawName" }, 0] },
+                  then: "$$rawName",
+                  else: {
+                    $ifNull: [
+                      { $arrayElemAt: ["$giftFromUser.email", 0] },
+                      "",
+                    ],
+                  },
+                },
+              },
+            },
+          },
+          else: {
+            $ifNull: [
+              "$giftFromSnapshot.displayName",
+              {
+                $cond: {
+                  if: { $ne: ["$giftFrom", null] },
+                  then: { $toString: "$giftFrom" },
+                  else: "",
+                },
+              },
+            ],
+          },
+        },
+      },
+    },
+  },
+];
+
 export type EnrollmentTypeFilter = "all" | "paid" | "gift" | "trial";
 export type EnrollmentStatusFilter = "all" | "active" | "revoked";
 
@@ -182,57 +271,7 @@ export const getAdminEnrollmentsService = async (
         },
       },
       { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
-      ...(enrollmentType === "gift"
-        ? [
-            {
-              $lookup: {
-                from: "users",
-                localField: "giftFrom",
-                foreignField: "_id",
-                as: "giftFromUser",
-                pipeline: [
-                  { $project: { firstName: 1, lastName: 1, email: 1 } },
-                ],
-              },
-            },
-            {
-              $addFields: {
-                giftFromName: {
-                  $cond: {
-                    if: { $gt: [{ $size: "$giftFromUser" }, 0] },
-                    then: {
-                      $trim: {
-                        input: {
-                          $concat: [
-                            {
-                              $ifNull: [
-                                { $arrayElemAt: ["$giftFromUser.firstName", 0] },
-                                "",
-                              ],
-                            },
-                            " ",
-                            {
-                              $ifNull: [
-                                { $arrayElemAt: ["$giftFromUser.lastName", 0] },
-                                "",
-                              ],
-                            },
-                          ],
-                        },
-                      },
-                    },
-                    else: {
-                      $ifNull: [
-                        { $toString: "$giftFrom" },
-                        "",
-                      ],
-                    },
-                  },
-                },
-              },
-            },
-          ]
-        : []),
+      ...(enrollmentType === "gift" ? giftFromLookupAndNameStages : []),
       {
         $lookup: {
           from: "courses",
@@ -418,6 +457,7 @@ export const getAdminEnrollmentsService = async (
             },
           },
           { $unwind: { path: "$course", preserveNullAndEmptyArrays: true } },
+          ...giftFromLookupAndNameStages,
           ...(search && search.trim()
             ? [
                 {
@@ -545,7 +585,7 @@ export const getAdminEnrollmentsService = async (
     planType: e.planType || "essential",
     status: ["dropped", "revoked"].includes(e.status) ? "revoked" : e.status,
     date: e.enrolledAt,
-    giftFrom: e.giftFrom,
+    giftFrom: e.giftFromName ?? e.giftFrom,
   }));
 
   const trialItems = trialEnrollments.map((e: any) => ({

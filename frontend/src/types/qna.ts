@@ -16,6 +16,7 @@ export interface QnA {
   userId: User | string;
   message: string;
   approved: boolean; // Instructor/Admin approval required to show question
+  notifyInstructor?: boolean;
   replies: QnAReply[];
   totalReplies?: number; // Total count when replies are paginated
   createdAt?: Date;

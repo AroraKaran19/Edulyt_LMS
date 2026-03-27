@@ -1,4 +1,20 @@
 import { Discount, CourseDiscount } from "@/types";
+import type { CollaborationBenefit } from "@/types/collaborationDomain";
+
+/** Apply partnership checkout benefit on top of plan/course-discounted price (mirrors backend). */
+export function applyCollaborationBenefitToPrice(
+  basePrice: number,
+  benefit: CollaborationBenefit
+): number {
+  const p = Math.max(0, basePrice);
+  let next: number;
+  if (benefit.type === "percentage") {
+    next = p * (1 - benefit.value / 100);
+  } else {
+    next = p - benefit.value;
+  }
+  return Math.round(Math.max(0, next) * 100) / 100;
+}
 
 export const calculateDiscountDisplay = (
   planPrice: number,
@@ -33,17 +49,19 @@ export const calculateDiscountDisplay = (
       isPlanDiscountActive = now >= startDate && now <= endDate;
     }
     
-    if (planDiscount.discount === "fixed") {
-      totalDiscountAmount += planDiscount.value;
-      discountValue = planDiscount.value;
-      discountType = "fixed";
-      discountLabel = `₹${planDiscount.value} off`;
-    } else {
-      const planDiscountAmount = (planPrice * planDiscount.value) / 100;
-      totalDiscountAmount += planDiscountAmount;
-      discountValue = planDiscount.value;
-      discountType = "percentage";
-      discountLabel = `${planDiscount.value}% off`;
+    if (isPlanDiscountActive) {
+      if (planDiscount.discount === "fixed") {
+        totalDiscountAmount += planDiscount.value;
+        discountValue = planDiscount.value;
+        discountType = "fixed";
+        discountLabel = `₹${planDiscount.value} off`;
+      } else {
+        const planDiscountAmount = (planPrice * planDiscount.value) / 100;
+        totalDiscountAmount += planDiscountAmount;
+        discountValue = planDiscount.value;
+        discountType = "percentage";
+        discountLabel = `${planDiscount.value}% off`;
+      }
     }
     
     isActive = isPlanDiscountActive;

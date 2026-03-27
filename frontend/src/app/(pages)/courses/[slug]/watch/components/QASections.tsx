@@ -1,4 +1,5 @@
-import { useState, memo } from "react";
+import { useState, memo, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import {
   MessageCircle,
   Search,
@@ -7,10 +8,13 @@ import {
   Send,
   Loader2,
   ChevronDown,
+  Trash2,
 } from "lucide-react";
 import Image from "next/image";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
+import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import { Button } from "@/components/ui/buttons/button";
+import type { User } from "@/types";
 import { QnA, QnAReply } from "@/types/qna";
 import useQnA from "@/hooks/useQnA";
 import { toast } from "react-toastify";
@@ -51,6 +55,17 @@ const getAvatarColor = (name: string): string => {
   return colors[index % colors.length];
 };
 
+function refUserId(
+  userId: QnA["userId"] | QnAReply["userId"] | undefined,
+): string {
+  if (userId == null) return "";
+  if (typeof userId === "object" && userId !== null && "_id" in userId) {
+    const id = (userId as { _id?: unknown })._id;
+    if (id != null) return String(id);
+  }
+  return String(userId);
+}
+
 const QASections = memo(
   ({
     questions,
@@ -63,6 +78,8 @@ const QASections = memo(
     onRefresh,
     onLoadMoreReplies,
     loadingRepliesForId = null,
+    scrollToQnaId = null,
+    canModerateQna = false,
   }: {
     questions: QnA[];
     search: string;
@@ -74,6 +91,10 @@ const QASections = memo(
     onRefresh?: () => void;
     onLoadMoreReplies?: (qnaId: string) => void;
     loadingRepliesForId?: string | null;
+    /** Scroll to this thread after load (e.g. instructor deep link). */
+    scrollToQnaId?: string | null;
+    /** Instructor or admin: may delete any thread on this course. */
+    canModerateQna?: boolean;
   }) => {
     const [openReplyId, setOpenReplyId] = useState<string | null>(null);
     const [expandedReplies, setExpandedReplies] = useState<Set<string>>(
@@ -92,8 +113,106 @@ const QASections = memo(
     const [newQuestion, setNewQuestion] = useState("");
     const [replyText, setReplyText] = useState("");
     const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
+    const [deletingQnaId, setDeletingQnaId] = useState<string | null>(null);
+    const [deletingReplyKey, setDeletingReplyKey] = useState<string | null>(
+      null,
+    );
 
-    const { createQnA, addReply, validateQnA, validateReply } = useQnA();
+    const { data: session } = useSession();
+    const sessionUser = session?.user as (User & { id?: string }) | undefined;
+    const currentUserId =
+      sessionUser?._id != null
+        ? String(sessionUser._id)
+        : sessionUser?.id != null
+          ? String(sessionUser.id)
+          : "";
+
+    const {
+      createQnA,
+      addReply,
+      validateQnA,
+      validateReply,
+      deleteQnA,
+      removeReply,
+    } = useQnA();
+
+    const handleDeleteThread = async (qnaId: string) => {
+      if (
+        !window.confirm(
+          "Delete this question and all of its replies? This cannot be undone.",
+        )
+      ) {
+        return;
+      }
+      setDeletingQnaId(qnaId);
+      try {
+        const ok = await deleteQnA(qnaId);
+        if (ok) {
+          toast.success("Question deleted");
+          setOpenReplyId((prev) => (prev === qnaId ? null : prev));
+          onRefresh?.();
+        } else {
+          toast.error("Could not delete question");
+        }
+      } finally {
+        setDeletingQnaId(null);
+      }
+    };
+
+    const handleDeleteReply = async (qnaId: string, replyId: string) => {
+      if (!window.confirm("Delete this reply?")) return;
+      setDeletingReplyKey(`${qnaId}:${replyId}`);
+      try {
+        const ok = await removeReply(qnaId, replyId);
+        if (ok) {
+          toast.success("Reply deleted");
+          onRefresh?.();
+        } else {
+          toast.error("Could not delete reply");
+        }
+      } finally {
+        setDeletingReplyKey(null);
+      }
+    };
+
+    useEffect(() => {
+      if (!scrollToQnaId || isLoading) return;
+      let cancelled = false;
+      let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+      const attempt = () => {
+        if (cancelled) return;
+        const el = document.getElementById(`qna-thread-${scrollToQnaId}`);
+        if (!el) {
+          timeoutId = setTimeout(attempt, 250);
+          return;
+        }
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        el.classList.add(
+          "ring-2",
+          "ring-orange-400",
+          "ring-offset-2",
+          "rounded-lg",
+          "shadow-sm"
+        );
+        timeoutId = setTimeout(() => {
+          el.classList.remove(
+            "ring-2",
+            "ring-orange-400",
+            "ring-offset-2",
+            "rounded-lg",
+            "shadow-sm"
+          );
+        }, 4500);
+      };
+
+      const start = setTimeout(attempt, 350);
+      return () => {
+        cancelled = true;
+        clearTimeout(start);
+        if (timeoutId) clearTimeout(timeoutId);
+      };
+    }, [scrollToQnaId, isLoading, questions]);
 
     const handleImageError = (id: string) => {
       setImageErrors((prev) => ({ ...prev, [id]: true }));
@@ -144,17 +263,20 @@ const QASections = memo(
                 <h3 className="text-lg font-semibold text-gray-900">
                   Ask a Question
                 </h3>
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="sm"
                   onClick={() => {
                     setIsAskingQuestion(false);
                     setNewQuestion("");
                   }}
-                  className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                  className="h-9 w-9 shrink-0 p-0 rounded-full cursor-pointer hover:bg-gray-100"
                   title="Close"
+                  aria-label="Close ask question"
                 >
                   <X className="w-5 h-5 text-gray-500" />
-                </button>
+                </Button>
               </div>
 
               {/* Context Information */}
@@ -241,23 +363,22 @@ const QASections = memo(
                 </div>
 
                 <div className="flex items-center gap-3 justify-end">
-                  <Button
+                  <WhiteButton
                     type="button"
-                    variant="outline"
+                    className="text-sm px-4 py-2.5"
                     onClick={() => {
                       setIsAskingQuestion(false);
                       setNewQuestion("");
                     }}
-                    className="cursor-pointer"
                   >
                     Cancel
-                  </Button>
+                  </WhiteButton>
                   <OrangeButton
                     type="submit"
+                    className="text-sm px-4 py-2.5"
                     disabled={
                       !newQuestion.trim() || newQuestion.trim().length < 10
                     }
-                    className="cursor-pointer"
                   >
                     Post Question
                   </OrangeButton>
@@ -287,9 +408,19 @@ const QASections = memo(
               const nameForInitials = user?.firstName
                 ? `${user.firstName} ${user.lastName || ""}`.trim()
                 : "Anonymous User";
+              const canDeleteThread =
+                !!currentUserId &&
+                (canModerateQna ||
+                  refUserId(qna.userId) === currentUserId);
 
               return (
-                <div key={qna._id} className="bg-white rounded-lg p-6">
+                <div
+                  key={qna._id}
+                  id={
+                    qna._id ? `qna-thread-${qna._id}` : undefined
+                  }
+                  className="bg-white rounded-lg p-6 scroll-mt-24"
+                >
                   {/* User Info */}
                   <div className="flex items-start gap-3 mb-3">
                     <div className="w-10 h-10 rounded-full overflow-hidden shrink-0">
@@ -312,15 +443,35 @@ const QASections = memo(
                         </div>
                       )}
                     </div>
-                    <div className="flex-1">
-                      <h3 className="font-normal font-coolvetica text-black text-xl">
-                        {userName}
-                      </h3>
-                      <p className="text-xs font-normal font-plus-jakarta text-[#575757]">
-                        {qna.createdAt
-                          ? new Date(qna.createdAt).toLocaleDateString()
-                          : ""}
-                      </p>
+                    <div className="flex-1 flex items-start justify-between gap-2 min-w-0">
+                      <div>
+                        <h3 className="font-normal font-coolvetica text-black text-xl">
+                          {userName}
+                        </h3>
+                        <p className="text-xs font-normal font-plus-jakarta text-[#575757]">
+                          {qna.createdAt
+                            ? new Date(qna.createdAt).toLocaleDateString()
+                            : ""}
+                        </p>
+                      </div>
+                      {canDeleteThread && qna._id && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="shrink-0 h-9 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                          title="Delete question and all replies"
+                          aria-label="Delete question and all replies"
+                          disabled={deletingQnaId === qna._id}
+                          onClick={() => handleDeleteThread(qna._id!)}
+                        >
+                          {deletingQnaId === qna._id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="w-4 h-4" />
+                          )}
+                        </Button>
+                      )}
                     </div>
                   </div>
 
@@ -370,6 +521,11 @@ const QASections = memo(
                                   replyUser.lastName || ""
                                 }`.trim()
                               : "Anonymous User";
+                            const canDeleteOwnReply =
+                              !!currentUserId &&
+                              !!reply._id &&
+                              refUserId(reply.userId) === currentUserId;
+                            const replyKey = `${qna._id}:${reply._id}`;
 
                             return (
                               <div
@@ -399,7 +555,7 @@ const QASections = memo(
                                     </div>
                                   )}
                                 </div>
-                                <div className="flex-1">
+                                <div className="flex-1 min-w-0">
                                   <h5 className="font-medium text-sm text-gray-900">
                                     {replyUserName}
                                   </h5>
@@ -414,6 +570,26 @@ const QASections = memo(
                                       : ""}
                                   </p>
                                 </div>
+                                {canDeleteOwnReply && reply._id && (
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="shrink-0 h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                    title="Delete reply"
+                                    aria-label="Delete reply"
+                                    disabled={deletingReplyKey === replyKey}
+                                    onClick={() =>
+                                      handleDeleteReply(qna._id!, reply._id!)
+                                    }
+                                  >
+                                    {deletingReplyKey === replyKey ? (
+                                      <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                      <Trash2 className="w-4 h-4" />
+                                    )}
+                                  </Button>
+                                )}
                               </div>
                             );
                           })}
@@ -483,17 +659,20 @@ const QASections = memo(
                         <h4 className="text-sm font-semibold text-gray-700">
                           Add Reply
                         </h4>
-                        <button
+                        <Button
                           type="button"
+                          variant="ghost"
+                          size="sm"
                           onClick={() => {
                             setOpenReplyId(null);
                             setReplyText("");
                           }}
-                          className="p-1 hover:bg-gray-200 rounded-full transition-colors"
+                          className="h-8 w-8 shrink-0 p-0 rounded-full cursor-pointer hover:bg-gray-200"
                           title="Close"
+                          aria-label="Close reply"
                         >
                           <X className="w-4 h-4 text-gray-500" />
-                        </button>
+                        </Button>
                       </div>
 
                       <form
@@ -554,28 +733,27 @@ const QASections = memo(
                           )}
                         </div>
 
-                        <div className="flex items-center gap-2 justify-end">
-                          <Button
+                        <div className="flex items-center gap-3 justify-end flex-wrap">
+                          <WhiteButton
                             type="button"
-                            variant="outline"
-                            size="sm"
+                            className="text-sm px-4 py-2.5"
                             onClick={() => {
                               setOpenReplyId(null);
                               setReplyText("");
                             }}
-                            className="cursor-pointer"
                           >
                             Cancel
-                          </Button>
+                          </WhiteButton>
                           <OrangeButton
                             type="submit"
-                            className="px-4 py-2 text-sm cursor-pointer flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                            disabled={!replyText.trim()}
+                            className="text-sm px-4 py-2.5 inline-flex items-center gap-2"
+                            disabled={
+                              !replyText.trim() ||
+                              replyText.trim().length < 5
+                            }
                           >
-                            <Send className="size-4" />
-                            <span className="text-sm font-bold text-white disabled:text-white/50">
-                              Post Reply
-                            </span>
+                            <Send className="size-4 shrink-0" />
+                            Post Reply
                           </OrangeButton>
                         </div>
                       </form>
@@ -603,7 +781,8 @@ const QASections = memo(
     return (
       prevProps.questions === nextProps.questions &&
       prevProps.search === nextProps.search &&
-      prevProps.isLoading === nextProps.isLoading
+      prevProps.isLoading === nextProps.isLoading &&
+      prevProps.canModerateQna === nextProps.canModerateQna
     );
   },
 );

@@ -92,6 +92,8 @@ export interface Enrollment {
   // Optional metadata
   enrollmentSource?: "direct" | "gift" | "promotion" | "trial";
   giftFrom?: User["_id"] | string; // If enrolled via gift (can be user ID or system string)
+  /** Snapshot of gifter at enrollment time (shown if user doc is missing). */
+  giftFromSnapshot?: { displayName: string; email?: string };
   promotionCode?: string;
   planType?: "elite" | "essential"; // If enrolled via promotion
   
@@ -99,7 +101,10 @@ export interface Enrollment {
   // If undefined or null, user has full access to the entire course
   // If provided, specifies which modules, lessons, and contents are accessible
   accessControl?: PartialAccessControl;
-  
+
+  /** Collaboration partnership: first N contents per lesson. */
+  collaborationTopNSettings?: { contentsPerLesson: number } | null;
+
   // Completion tracking
   completedAt?: Date;
   certificateIssued?: boolean;

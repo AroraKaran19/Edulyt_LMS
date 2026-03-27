@@ -62,14 +62,26 @@ const Navbar = () => {
 
   const navItems: NavItem[] = [
     {
+      label: "Home",
+      href: "/",
+    },
+    {
       label: "courses",
       href: "/courses",
       count: coursesCount,
     },
     {
-      label: "internships",
+      label: "internship",
       href: "/internships",
       count: 101,
+    },
+    {
+      label: "community",
+      href: "/community",
+    },
+    {
+      label: "contact",
+      href: "/contact",
     },
   ];
   const [hoveredNavLink, setHoveredNavLink] = useState<NavItem | null>(null);
@@ -162,7 +174,7 @@ const Navbar = () => {
             alt="Logo"
             width={100}
             height={100}
-            className="h-[44px] sm:h-[52px] w-auto"
+            className="h-11 sm:h-[52px] w-auto"
             loading="eager"
             draggable={false}
             unoptimized

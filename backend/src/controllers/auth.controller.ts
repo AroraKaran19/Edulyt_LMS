@@ -12,6 +12,8 @@ import {
   registerUser,
   resetUserPassword,
 } from "../services/auth.services";
+import { ACCOUNT_DISABLED_MESSAGE } from "../constants/authMessages";
+import { enqueueCollaborationAllotmentAfterRegister } from "../services/collaborationAllotment.services";
 import { downloadImageAndUploadToS3 } from "../services/upload.services";
 import bcrypt from "bcryptjs";
 import { Student, User } from "../types";
@@ -88,6 +90,12 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
   if (!newUser) {
     throw new AppError("Failed to register user", 500);
   }
+
+  void enqueueCollaborationAllotmentAfterRegister(
+    newUser._id,
+    email,
+    userType
+  );
 
   const protectedNewUser = protectedUser(newUser);
 
@@ -219,12 +227,20 @@ export const oauthSignin = asyncHandler(async (req: Request, res: Response) => {
       },
     });
     user = newUser;
+    void enqueueCollaborationAllotmentAfterRegister(
+      newUser._id,
+      email,
+      "student"
+    );
   } else {
     if (user.provider !== provider) {
       throw new AppError(
         "User already registered with different provider!",
         401
       );
+    }
+    if (user.status !== "active") {
+      throw new AppError(ACCOUNT_DISABLED_MESSAGE, 403);
     }
   }
 

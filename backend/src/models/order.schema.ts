@@ -23,6 +23,12 @@ const orderSchema = new Schema<PaymentOrder>(
     paymentErrorReason: { type: String, required: false },
     couponCode: { type: String, required: false },
     couponDiscount: { type: Number, required: false, default: 0 },
+    collaborationDiscount: { type: Number, required: false, default: 0 },
+    collaborationDomainId: {
+      type: Schema.Types.ObjectId,
+      ref: "CollaborationDomain",
+      required: false,
+    },
   },
   { timestamps: true }
 );

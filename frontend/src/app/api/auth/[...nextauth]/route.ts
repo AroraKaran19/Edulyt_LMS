@@ -1,5 +1,6 @@
 import apiClient from "@/configs/apiConfig";
 import { authOptions } from "@/configs/authOption";
+import { ACCOUNT_DISABLED_MESSAGE } from "@/constants/authMessages";
 import { User } from "@/types";
 import NextAuth from "next-auth";
 
@@ -74,8 +75,16 @@ const handler = NextAuth({
                 accessTokenExpires: Date.now() + 60 * 60 * 1000, // 1 hour from now
               };
             }
-          } catch (error) {
-            console.error("OAuth signin error:", error);
+          } catch (error: any) {
+            const message =
+              error?.response?.data?.error?.message ||
+              error?.message ||
+              "OAuth sign-in failed";
+            console.error("OAuth signin error:", message);
+            if (message === ACCOUNT_DISABLED_MESSAGE) {
+              throw new Error(ACCOUNT_DISABLED_MESSAGE);
+            }
+            throw new Error(message);
           }
         }
 

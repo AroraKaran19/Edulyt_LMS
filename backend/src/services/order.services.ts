@@ -1,4 +1,6 @@
 import { calculateFinalDiscountedPrice } from "../utils/lib/calculateDiscount";
+import { applyCollaborationBenefitToPrice } from "../utils/lib/collaborationPricing";
+import { resolveCollaborationForCheckoutService } from "./collaborationDomain.services";
 import { AppError } from "../middlewares/error.middleware";
 import mongoose from "mongoose";
 import {
@@ -292,9 +294,62 @@ export const getTotalSpendByUserIdService = async (
   return result[0]?.totalSpend ?? 0;
 };
 
+async function computeCheckoutAfterCollaboration(params: {
+  planPrice: number;
+  courseId: string;
+  courseDiscount: any;
+  planDiscount: any;
+  userEmail: string | undefined;
+}): Promise<{
+  priceAfterPlanCourse: number;
+  priceAfterCollaboration: number;
+  collaborationDiscount: number;
+  collaborationDomainId?: string;
+}> {
+  const priceAfterPlanCourse = calculateFinalDiscountedPrice(
+    params.planPrice,
+    params.courseDiscount,
+    params.planDiscount
+  );
+  let priceAfterCollaboration = priceAfterPlanCourse;
+  let collaborationDiscount = 0;
+  let collaborationDomainId: string | undefined;
+
+  const email = params.userEmail?.trim();
+  if (!email) {
+    return {
+      priceAfterPlanCourse,
+      priceAfterCollaboration,
+      collaborationDiscount,
+    };
+  }
+
+  const collab = await resolveCollaborationForCheckoutService(email, [
+    params.courseId,
+  ]);
+  if (collab.applies && collab.benefit) {
+    const before = priceAfterCollaboration;
+    priceAfterCollaboration = applyCollaborationBenefitToPrice(
+      before,
+      collab.benefit
+    );
+    collaborationDiscount =
+      Math.round((before - priceAfterCollaboration) * 100) / 100;
+    collaborationDomainId = collab.collaborationDomainId;
+  }
+
+  return {
+    priceAfterPlanCourse,
+    priceAfterCollaboration,
+    collaborationDiscount,
+    collaborationDomainId,
+  };
+}
+
 /**
- * Resolve the amount to charge: use frontend total when provided and valid,
- * otherwise compute from plan/course discounts and coupon.
+ * Resolve the amount to charge: always compute on the backend from plan/course
+ * discounts, partnership collaboration, and coupon. The frontend totalAmount
+ * is ignored — the backend is the single source of truth so Paytm always matches.
  */
 async function resolveOrderAmount(params: {
   planPrice: number;
@@ -302,13 +357,14 @@ async function resolveOrderAmount(params: {
   courseDiscount: any;
   planDiscount: any;
   userId: string;
+  userEmail: string | undefined;
   couponCode?: string;
-  totalAmountFromFrontend?: number;
-  purchaseAmountBeforeCouponFromFrontend?: number;
 }): Promise<{
   amount: number;
   couponCode: string | undefined;
   couponDiscount: number;
+  collaborationDiscount: number;
+  collaborationDomainId?: string;
 }> {
   const {
     planPrice,
@@ -316,67 +372,19 @@ async function resolveOrderAmount(params: {
     courseDiscount,
     planDiscount,
     userId,
+    userEmail,
     couponCode,
-    totalAmountFromFrontend,
-    purchaseAmountBeforeCouponFromFrontend,
   } = params;
 
-  const isTotalValid =
-    typeof totalAmountFromFrontend === "number" &&
-    totalAmountFromFrontend >= 0 &&
-    totalAmountFromFrontend <= planPrice;
-
-  // Use frontend total as single source of truth when provided (Paytm will match UI)
-  if (isTotalValid && totalAmountFromFrontend !== undefined) {
-    if (couponCode) {
-      const purchaseForValidation =
-        typeof purchaseAmountBeforeCouponFromFrontend === "number" &&
-        purchaseAmountBeforeCouponFromFrontend >= 0 &&
-        purchaseAmountBeforeCouponFromFrontend <= planPrice
-          ? purchaseAmountBeforeCouponFromFrontend
-          : calculateFinalDiscountedPrice(planPrice, courseDiscount, planDiscount);
-
-      const validation = await validateCouponService({
-        code: couponCode,
-        courseId,
-        purchaseAmount: purchaseForValidation,
-        userId,
-      });
-
-      if (!validation.valid) {
-        throw new AppError(
-          validation.message || "Invalid coupon",
-          400
-        );
-      }
-
-      await CouponModel.findOneAndUpdate(
-        { code: couponCode.toUpperCase() },
-        { $inc: { usageCount: 1 } }
-      );
-
-      const discountAmount =
-        validation.discountAmount ?? purchaseForValidation - totalAmountFromFrontend;
-      return {
-        amount: Math.round(totalAmountFromFrontend * 100) / 100,
-        couponCode,
-        couponDiscount: discountAmount,
-      };
-    }
-
-    return {
-      amount: Math.round(totalAmountFromFrontend * 100) / 100,
-      couponCode: undefined,
-      couponDiscount: 0,
-    };
-  }
-
-  // Fallback: compute amount on backend (no totalAmount sent or invalid)
-  let amount = calculateFinalDiscountedPrice(
+  const checkout = await computeCheckoutAfterCollaboration({
     planPrice,
+    courseId,
     courseDiscount,
-    planDiscount
-  );
+    planDiscount,
+    userEmail,
+  });
+
+  let amount = checkout.priceAfterCollaboration;
   let appliedCouponCode: string | undefined = undefined;
   let couponDiscount = 0;
 
@@ -388,7 +396,11 @@ async function resolveOrderAmount(params: {
       userId,
     });
 
-    if (validation.valid && validation.finalAmount != null) {
+    if (!validation.valid) {
+      throw new AppError(validation.message || "Invalid coupon", 400);
+    }
+
+    if (validation.finalAmount != null) {
       couponDiscount = validation.discountAmount ?? 0;
       amount = validation.finalAmount;
       appliedCouponCode = couponCode;
@@ -403,6 +415,8 @@ async function resolveOrderAmount(params: {
     amount: Math.round(amount * 100) / 100,
     couponCode: appliedCouponCode,
     couponDiscount,
+    collaborationDiscount: checkout.collaborationDiscount,
+    collaborationDomainId: checkout.collaborationDomainId,
   };
 }
 
@@ -410,9 +424,7 @@ export const createOrderService = async (
   userId: string,
   courseId: string,
   planType: "elite" | "essential",
-  couponCode?: string,
-  totalAmountFromFrontend?: number,
-  purchaseAmountBeforeCouponFromFrontend?: number
+  couponCode?: string
 ) => {
   if (!process.env.PAYTM_MID || !process.env.PAYTM_WEBSITE) {
     throw new AppError("PAYTM_MID or PAYTM_WEBSITE is not set", 500);
@@ -420,7 +432,7 @@ export const createOrderService = async (
 
   const [course, user] = await Promise.all([
     CourseModel.findById(courseId),
-    UserModel.findById(userId).select("firstName lastName").lean(),
+    UserModel.findById(userId).select("firstName lastName email").lean(),
   ]);
   if (!course) throw new AppError("Course not found", 404);
 
@@ -443,17 +455,27 @@ export const createOrderService = async (
 
   const planPrice = plan.price;
 
-  const { amount, couponCode: appliedCouponCode, couponDiscount } =
-    await resolveOrderAmount({
-      planPrice,
-      courseId,
-      courseDiscount: course.discount,
-      planDiscount: plan.discount,
-      userId,
-      couponCode,
-      totalAmountFromFrontend,
-      purchaseAmountBeforeCouponFromFrontend,
-    });
+  const userEmailRaw = user && (user as { email?: string | null }).email;
+  const userEmail =
+    typeof userEmailRaw === "string" && userEmailRaw.trim()
+      ? userEmailRaw.trim()
+      : undefined;
+
+  const {
+    amount,
+    couponCode: appliedCouponCode,
+    couponDiscount,
+    collaborationDiscount,
+    collaborationDomainId,
+  } = await resolveOrderAmount({
+    planPrice,
+    courseId,
+    courseDiscount: course.discount,
+    planDiscount: plan.discount,
+    userId,
+    userEmail,
+    couponCode,
+  });
 
   const courseName = (course as any).title ?? "";
   const userName =
@@ -476,6 +498,10 @@ export const createOrderService = async (
     paymentStatus: "pending",
     couponCode: appliedCouponCode,
     couponDiscount,
+    collaborationDiscount: collaborationDiscount ?? 0,
+    collaborationDomainId: collaborationDomainId
+      ? new mongoose.Types.ObjectId(collaborationDomainId)
+      : undefined,
   });
   await order.save();
 

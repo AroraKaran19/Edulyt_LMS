@@ -15,6 +15,7 @@ import {
   removeReplyFromQnAService,
   approveQnAService,
   rejectQnAService,
+  assertUserCanDeleteQnA,
 } from "../services/qna.services";
 
 export const getAllQnAs = asyncHandler(async (req: Request, res: Response) => {
@@ -97,12 +98,15 @@ export const getQnAReplies = asyncHandler(async (req: Request, res: Response) =>
 export const getQnAById = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
   const isAdmin = req.user?.userType === "admin" || req.user?.userType === "super-admin";
-  
+  const isInstructor = req.user?.userType === "instructor";
+  const instructorId =
+    isInstructor && req.user?._id ? String(req.user._id) : undefined;
+
   if (!id) {
     throw new AppError("QnA ID is required", 400);
   }
 
-  const result = await getQnAByIdService(id, isAdmin);
+  const result = await getQnAByIdService(id, isAdmin, instructorId);
   if (!result) {
     sendSuccessResponse(res, null, "QnA not found", 200);
     return;
@@ -162,9 +166,15 @@ export const updateQnA = asyncHandler(async (req: Request, res: Response) => {
 
 export const deleteQnA = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
+  const user = req.user;
   if (!id) {
     throw new AppError("QnA ID is required", 400);
   }
+  if (!user?._id) {
+    throw new AppError("Unauthorized", 401);
+  }
+
+  await assertUserCanDeleteQnA(id, String(user._id), user.userType);
 
   const result = await deleteQnAService(id);
   if (!result) {
@@ -187,7 +197,12 @@ export const addReply = asyncHandler(async (req: Request, res: Response) => {
     throw new AppError("User ID and message are required", 400);
   }
 
-  const result = await addReplyToQnAService(qnaId, user._id, message);
+  const result = await addReplyToQnAService(
+    qnaId,
+    user._id,
+    message,
+    user.userType
+  );
   if (!result) {
     throw new AppError("Failed to add reply", 500);
   }

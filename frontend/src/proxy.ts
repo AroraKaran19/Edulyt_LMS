@@ -1,4 +1,4 @@
-﻿import { withAuth } from "next-auth/middleware";
+import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
 
 export default withAuth(
@@ -35,6 +35,7 @@ export default withAuth(
         if (
           pathname.startsWith("/dashboard") ||
           pathname.startsWith("/admin") ||
+          pathname.startsWith("/instructor") ||
           pathname.startsWith("/cart")
         ) {
           return !!token;
@@ -51,6 +52,7 @@ export const config = {
   matcher: [
     "/dashboard/:path*",
     "/admin/:path*",
+    "/instructor/:path*",
     "/cart/:path*",
     "/login",
     "/register",

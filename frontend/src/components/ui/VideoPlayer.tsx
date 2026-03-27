@@ -721,7 +721,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   // Error component for missing or invalid sources
   if (!hasValidSources) {
     return (
-      <div className="relative w-full h-full rounded-2xl overflow-hidden bg-gradient-to-br from-gray-900 to-black flex items-center justify-center border-2 border-gray-800">
+      <div className="relative w-full h-full rounded-2xl overflow-hidden bg-linear-to-br from-gray-900 to-black flex items-center justify-center border-2 border-gray-800">
         <div className="text-center p-8">
           <AlertCircle className="w-16 h-16 text-[#F77124] mx-auto mb-4" />
           <h3 className="text-xl font-semibold text-white mb-2">
@@ -745,7 +745,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   return (
     <div
       ref={containerRef}
-      className={cn("relative w-full h-full rounded-2xl overflow-hidden bg-gradient-to-br from-gray-900 to-black group border-2 border-gray-800 hover:border-[#F77124]/30 transition-all duration-300", className)}
+      className={cn("relative w-full h-full rounded-2xl overflow-hidden bg-linear-to-br from-gray-900 to-black group border-2 border-gray-800 hover:border-[#F77124]/30 transition-all duration-300", className)}
     >
       <video
         ref={videoRef}
@@ -773,7 +773,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       {/* Loading/Buffering Overlay */}
       {(isLoading || isBuffering) && !error && (
         <div 
-          className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-900 to-black rounded-2xl animate-in fade-in duration-300"
+          className="absolute inset-0 flex items-center justify-center bg-linear-to-br from-gray-900 to-black rounded-2xl animate-in fade-in duration-300"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="text-center animate-in slide-in-from-bottom-4 duration-500">
@@ -866,7 +866,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
       {/* Controls */}
       <div
-        className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2 sm:p-4 transition-all duration-300 ${
+        className={`absolute bottom-0 left-0 right-0 bg-linear-to-t from-black/80 to-transparent p-2 sm:p-4 transition-all duration-300 ${
           showControls || isMobile
             ? "opacity-100 translate-y-0"
             : "opacity-0 translate-y-full"
@@ -887,7 +887,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           onTouchEnd={handleProgressTouchEnd}
         >
           <div
-            className="h-full bg-gradient-to-r from-[#F77124] to-[#e6651f] rounded-full transition-all duration-150 shadow-[0_0_8px_rgba(247,113,36,0.5)]"
+            className="h-full bg-linear-to-r from-[#F77124] to-[#e6651f] rounded-full transition-all duration-150 shadow-[0_0_8px_rgba(247,113,36,0.5)]"
             style={{ width: `${progressPercentage}%` }}
           />
         </div>

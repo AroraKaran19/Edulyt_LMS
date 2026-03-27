@@ -8,7 +8,9 @@ import React, { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "react-toastify";
 import { signIn, useSession } from "next-auth/react";
-import apiClient from "@/configs/apiConfig";
+import { showLoginErrorToast } from "@/lib/showLoginErrorToast";
+import { getPostLoginRedirectPath } from "@/lib/postLoginRedirect";
+import type { User } from "@/types/user";
 
 const LoginPage = () => {
   const [email, setEmail] = useState("");
@@ -21,20 +23,19 @@ const LoginPage = () => {
   const searchParams = useSearchParams();
   const { data: session } = useSession();
 
-  // Get callbackUrl from URL parameters, default to /dashboard
-  const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
+  // Get callbackUrl from URL parameters (may be absent → role-based default)
+  const callbackUrl = searchParams.get("callbackUrl") || undefined;
 
-  // Handle role-based redirect after successful login
+  // After login: admins → /admin, instructors → /instructor, students → /dashboard,
+  // unless callbackUrl is a specific deep link (e.g. /cart, /courses/...).
   useEffect(() => {
     if (loginSuccess && session?.user) {
-      const user = session.user as any;
-      // Check if user is admin or super-admin
-      if (user?.userType === "admin" || user?.userType === "super-admin") {
-        router.push("/admin");
-      } else {
-        router.push(callbackUrl);
-      }
-      setLoginSuccess(false); // Reset the flag
+      const dest = getPostLoginRedirectPath(
+        session.user as User,
+        callbackUrl
+      );
+      router.push(dest);
+      setLoginSuccess(false);
     }
   }, [session, loginSuccess, router, callbackUrl]);
 
@@ -42,11 +43,11 @@ const LoginPage = () => {
     setIsOAuthLoading(true);
     try {
       const result = await signIn(provider, {
-        callbackUrl,
+        callbackUrl: callbackUrl || "/dashboard",
         redirect: false, // Don't redirect automatically, handle it in useEffect
       });
       if (result?.error) {
-        toast.error(result?.error as string);
+        showLoginErrorToast(result.error);
       } else if (result?.ok) {
         toast.success("Login successful!");
         // Set flag to trigger role-based redirect in useEffect
@@ -72,13 +73,11 @@ const LoginPage = () => {
         email,
         password,
         redirect: false, // Don't redirect automatically
-        callbackUrl,
+        callbackUrl: callbackUrl || "/dashboard",
       });
 
       if (result?.error) {
-        toast.error(
-          "Invalid credentials. Please check your email and password."
-        );
+        showLoginErrorToast(result.error);
       } else if (result?.ok) {
         toast.success("Login successful!");
         // Set flag to trigger role-based redirect in useEffect

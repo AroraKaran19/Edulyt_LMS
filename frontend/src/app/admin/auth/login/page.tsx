@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { signIn, useSession } from "next-auth/react";
+import { showLoginErrorToast } from "@/lib/showLoginErrorToast";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import Link from "next/link";
@@ -54,7 +55,7 @@ const AdminLoginPage = () => {
       });
 
       if (result?.error) {
-        toast.error("Invalid credentials. Please check your email and password.");
+        showLoginErrorToast(result.error);
       } else if (result?.ok) {
         // Set flag to trigger admin role checking in useEffect
         setLoginSuccess(true);

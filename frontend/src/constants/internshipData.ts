@@ -9,19 +9,18 @@ import {
   TrendingUp,
   Clock,
   Network,
-  Hand,
-  GraduationCap,
-  CheckCircle2,
   BadgeCheck,
   Globe,
   UserCog,
-  FolderKanban,
   Home,
   Building2,
   Laptop,
   FileCheck,
   LucideIcon,
 } from "lucide-react";
+import { FaHandsHolding } from "react-icons/fa6";
+import { SiCodementor } from "react-icons/si";
+import { GoProjectRoadmap } from "react-icons/go";
 
 export interface InternshipFeature {
   icon: LucideIcon;
@@ -30,16 +29,18 @@ export interface InternshipFeature {
 }
 
 export interface InternshipPerk {
-  icon: LucideIcon;
+  icon: LucideIcon | React.ComponentType<{ className?: string }>;
   title: string;
   description: string;
   highlighted?: boolean;
+  iconImage?: string;
 }
 
 export interface WhyJoinItem {
   icon: LucideIcon;
   title: string;
   description: string;
+  iconImage?: string;
 }
 
 export const internshipFeatures: InternshipFeature[] = [
@@ -107,13 +108,14 @@ export const internshipFeatures: InternshipFeature[] = [
 
 export const internshipPerks: InternshipPerk[] = [
   {
-    icon: Hand,
+    icon: FaHandsHolding,
     title: "Hands-On Learning",
     description:
       "Work on real tasks, practical assignments, and industry-level projects.",
+    iconImage: "/assets/internships/Hand-on-learning.png",
   },
   {
-    icon: GraduationCap,
+    icon: SiCodementor,
     title: "Training By Mentor",
     description:
       "Learn directly from professionals who guide you step-by-step.",
@@ -130,9 +132,10 @@ export const internshipPerks: InternshipPerk[] = [
     title: "Flexible Learning",
     description:
       "Choose online, offline, or hybrid learn at your own convenience.",
+    iconImage: "/assets/internships/Global-Learning.png",
   },
   {
-    icon: FolderKanban,
+    icon: GoProjectRoadmap,
     title: "Portfolio & Project Building",
     description:
       "Create real work samples and projects that help you stand out.",
@@ -142,6 +145,7 @@ export const internshipPerks: InternshipPerk[] = [
     title: "Career Support",
     description:
       "Gain access to resume reviews, interview prep, and job guidance.",
+    iconImage: "/assets/internships/career-support.png",
   },
 ];
 
@@ -151,30 +155,35 @@ export const whyJoinItems: WhyJoinItem[] = [
     title: "Real-World Projects",
     description:
       "This internship gives you real hands-on experience through industry-level projects and practical assignments. You'll work on real scenarios, learn actual workflows, and build a strong portfolio that boosts your confidence and sets you apart from other students.",
+    iconImage: "/assets/internships/Real-world.png",
   },
   {
     icon: Building2,
     title: "Expert Mentor Support",
     description:
       "Geared towards businesses and offices, commercial cleaning services focus on maintaining a clean and hygienic work environment, ensuring a professional and healthy workspace for employees and clients.",
+    iconImage: "/assets/internships/Expert-mentor.png",
   },
   {
     icon: Laptop,
     title: "Flexible Learning Modes",
     description:
       "Deep cleaning goes beyond regular cleaning routines, tackling hard-to-reach or neglected areas. It involves detailed and thorough cleaning of every nook and cranny, from baseboards to appliances, to eliminate deep-seated dirt and grime.",
+    iconImage: "/assets/internships/Flexible-learning.png",
   },
   {
     icon: FileCheck,
     title: "Verified Certification",
     description:
       "This category includes niche cleaning services tailored to specific needs, such as carpet cleaning to remove stains and odors, window cleaning for sparkling glass surfaces, and post-construction cleaning to eliminate debris and dust after construction or renovation projects.",
+    iconImage: "/assets/internships/verified-certifications.png",
   },
   {
     icon: Target,
     title: "Portfolio Development",
     description:
       "These eco-friendly cleaning services use environmentally conscious products and practices to reduce the impact on the environment. They prioritize the use of non-toxic, biodegradable, and sustainable cleaning solutions.",
+    iconImage: "/assets/internships/portfolio-development.png",
   }
 ];
 
@@ -223,68 +232,110 @@ export const socialLinks = [
 ];
 
 export const technologyRequirements = [
-  "Laptop Or Desktop Computer",
-  "Stable Internet Connection",
-  "Updated Web Browser",
-  "Basic Productivity Tools",
-  "Functional Webcam & Microphone",
-  "Open To School Students, College Students, And Beginners",
+  "Laptop Or Desktop",
+  "Internet Connection",
+  "Updated Browser",
+  "Webcam & Microphone",
+];
+
+export const whoCanJoinOptions = [
+  "School Students",
+  "College Students",
+  "Beginners",
+];
+
+export const internshipKeyBenefits = [
+  "Mentor-Led Live Sessions",
+  "Real Industry Projects",
+  "Online + Offline Modes",
 ];
 
 export interface MentorProfile {
   name: string;
   specialization: string;
+  designation: string;
   profileImage: string;
   linkedinUrl?: string;
-  curriculumDescription: string;
   rating: number;
+  ratingLabel: string;
+  companyLogos: string[];
 }
 
 export const mentorProfiles: MentorProfile[] = [
   {
     name: "Archit Narang",
-    specialization: "Artificial Intelligence & Machine Learning",
+    specialization: "Digital Transformation | Risk Management",
+    designation: "Senior Manager - Bank of America",
     profileImage: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&q=80",
     linkedinUrl: "https://www.linkedin.com/in/archit-narang",
-    curriculumDescription:
-      "The curriculum, designed by the faculty of Texas McCombs, Great Learning, and leading industry practitioners,",
     rating: 5,
+    ratingLabel: "10k Ratings",
+    companyLogos: [
+      "/assets/LinkedIn.svg",
+      "/assets/LinkedIn.svg",
+      "/assets/LinkedIn.svg",
+      "/assets/LinkedIn.svg",
+    ],
   },
   {
     name: "Priya Sharma",
-    specialization: "Full Stack Development",
+    specialization: "Digital Transformation | Risk Management",
+    designation: "Senior Manager - Bank of America",
     profileImage: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&q=80",
     linkedinUrl: "https://www.linkedin.com/in/priya-sharma",
-    curriculumDescription:
-      "The curriculum, designed by the faculty of Texas McCombs, Great Learning, and leading industry practitioners,",
     rating: 5,
+    ratingLabel: "10k Ratings",
+    companyLogos: [
+      "/assets/LinkedIn.svg",
+      "/assets/LinkedIn.svg",
+      "/assets/LinkedIn.svg",
+      "/assets/LinkedIn.svg",
+    ],
   },
   {
     name: "Rahul Kumar",
-    specialization: "Data Science & Analytics",
+    specialization: "Digital Transformation | Risk Management",
+    designation: "Senior Manager - Bank of America",
     profileImage: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&q=80",
     linkedinUrl: "https://www.linkedin.com/in/rahul-kumar",
-    curriculumDescription:
-      "The curriculum, designed by the faculty of Texas McCombs, Great Learning, and leading industry practitioners,",
     rating: 5,
+    ratingLabel: "10k Ratings",
+    companyLogos: [
+      "/assets/LinkedIn.svg",
+      "/assets/LinkedIn.svg",
+      "/assets/LinkedIn.svg",
+      "/assets/LinkedIn.svg",
+    ],
   },
   {
     name: "Sneha Patel",
-    specialization: "Cloud Computing & DevOps",
+    specialization: "Digital Transformation | Risk Management",
+    designation: "Senior Manager - Bank of America",
     profileImage: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&q=80",
     linkedinUrl: "https://www.linkedin.com/in/sneha-patel",
-    curriculumDescription:
-      "The curriculum, designed by the faculty of Texas McCombs, Great Learning, and leading industry practitioners,",
     rating: 5,
+    ratingLabel: "10k Ratings",
+    companyLogos: [
+      "/assets/LinkedIn.svg",
+      "/assets/LinkedIn.svg",
+      "/assets/LinkedIn.svg",
+      "/assets/LinkedIn.svg",
+    ],
   },
   {
     name: "Amit Singh",
-    specialization: "Cybersecurity",
+    specialization: "Digital Transformation | Risk Management",
+    designation: "Senior Manager - Bank of America",
     profileImage: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&q=80",
     linkedinUrl: "https://www.linkedin.com/in/amit-singh",
-    curriculumDescription:
-      "The curriculum, designed by the faculty of Texas McCombs, Great Learning, and leading industry practitioners,",
     rating: 5,
+    ratingLabel: "10k Ratings",
+    companyLogos: [
+      "/assets/LinkedIn.svg",
+      "/assets/LinkedIn.svg",
+      "/assets/LinkedIn.svg",
+      "/assets/LinkedIn.svg",
+    ],
   },
 ];
 
@@ -438,7 +489,7 @@ export const courses: Course[] = [
   {
     id: "1",
     title: "Data Science: Zero to Hundred",
-    thumbnail: "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=400&q=80",
+    thumbnail: "/CourseCardDemo.jpg",
     discount: 50,
     isBestSeller: true,
     enrolledStudents: 35000,
@@ -456,7 +507,7 @@ export const courses: Course[] = [
   {
     id: "2",
     title: "Data Science: Zero to Hundred",
-    thumbnail: "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=400&q=80",
+    thumbnail: "/CourseCardDemo.jpg",
     discount: 50,
     isBestSeller: true,
     enrolledStudents: 35000,
@@ -472,7 +523,7 @@ export const courses: Course[] = [
   {
     id: "3",
     title: "Data Science: Zero to Hundred",
-    thumbnail: "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=400&q=80",
+    thumbnail: "/CourseCardDemo.jpg",
     discount: 50,
     isBestSeller: true,
     enrolledStudents: 35000,
@@ -488,7 +539,7 @@ export const courses: Course[] = [
   {
     id: "4",
     title: "Data Science: Zero to Hundred",
-    thumbnail: "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=400&q=80",
+    thumbnail: "/CourseCardDemo.jpg",
     discount: 50,
     isBestSeller: true,
     enrolledStudents: 35000,
@@ -513,8 +564,18 @@ export interface College {
   id: string;
   name: string;
   logo: string;
-  studentCount: number;
-  students: StudentProfile[];
+  internshipParticipation: {
+    countLabel: string;
+    descriptionPrefix: string;
+    descriptionHighlight: string;
+    students: StudentProfile[];
+  };
+  coursesEnrollment: {
+    countLabel: string;
+    descriptionPrefix: string;
+    descriptionHighlight: string;
+    students: StudentProfile[];
+  };
 }
 
 export const colleges: College[] = [
@@ -522,180 +583,294 @@ export const colleges: College[] = [
     id: "1",
     name: "National College of Engineering",
     logo: "https://images.unsplash.com/photo-1562774053-701939374585?w=200&q=80",
-    studentCount: 90,
-    students: [
-      { name: "Arjun K", initial: "A", color: "bg-green-700" },
-      { name: "Pari S", initial: "P", color: "bg-[#F77124]" },
-      { name: "Kishan", initial: "K", color: "bg-purple-600" },
-      { name: "Rahul M", initial: "R", color: "bg-blue-600" },
-      { name: "Sneha P", initial: "S", color: "bg-pink-600" },
-    ],
+    internshipParticipation: {
+      countLabel: "90+ students",
+      descriptionPrefix: "joined our",
+      descriptionHighlight: "Internship Programs",
+      students: [
+        { name: "Arjun K", initial: "A", color: "bg-green-700" },
+        { name: "Pari S", initial: "P", color: "bg-[#F77124]" },
+        { name: "Kishan", initial: "K", color: "bg-purple-600" },
+        { name: "Rahul M", initial: "R", color: "bg-blue-600" },
+        { name: "Sneha P", initial: "S", color: "bg-pink-600" },
+      ],
+    },
+    coursesEnrollment: {
+      countLabel: "100+ students",
+      descriptionPrefix: "joined our",
+      descriptionHighlight: "Courses",
+      students: [
+        { name: "Arjun K", initial: "A", color: "bg-green-700" },
+        { name: "Pari S", initial: "P", color: "bg-[#F77124]" },
+        { name: "Kishan", initial: "K", color: "bg-purple-600" },
+        { name: "Rahul M", initial: "R", color: "bg-blue-600" },
+        { name: "Sneha P", initial: "S", color: "bg-pink-600" },
+      ],
+    },
   },
   {
     id: "2",
     name: "National College of Engineering",
     logo: "https://images.unsplash.com/photo-1562774053-701939374585?w=200&q=80",
-    studentCount: 90,
-    students: [
-      { name: "Arjun K", initial: "A", color: "bg-green-700" },
-      { name: "Pari S", initial: "P", color: "bg-[#F77124]" },
-      { name: "Kishan", initial: "K", color: "bg-purple-600" },
-      { name: "Rahul M", initial: "R", color: "bg-blue-600" },
-      { name: "Sneha P", initial: "S", color: "bg-pink-600" },
-    ],
+    internshipParticipation: {
+      countLabel: "90+ students",
+      descriptionPrefix: "joined our",
+      descriptionHighlight: "Internship Programs",
+      students: [
+        { name: "Arjun K", initial: "A", color: "bg-green-700" },
+        { name: "Pari S", initial: "P", color: "bg-[#F77124]" },
+        { name: "Kishan", initial: "K", color: "bg-purple-600" },
+        { name: "Rahul M", initial: "R", color: "bg-blue-600" },
+        { name: "Sneha P", initial: "S", color: "bg-pink-600" },
+      ],
+    },
+    coursesEnrollment: {
+      countLabel: "100+ students",
+      descriptionPrefix: "joined our",
+      descriptionHighlight: "Courses",
+      students: [
+        { name: "Arjun K", initial: "A", color: "bg-green-700" },
+        { name: "Pari S", initial: "P", color: "bg-[#F77124]" },
+        { name: "Kishan", initial: "K", color: "bg-purple-600" },
+        { name: "Rahul M", initial: "R", color: "bg-blue-600" },
+        { name: "Sneha P", initial: "S", color: "bg-pink-600" },
+      ],
+    },
   },
   {
     id: "3",
     name: "National College of Engineering",
     logo: "https://images.unsplash.com/photo-1562774053-701939374585?w=200&q=80",
-    studentCount: 90,
-    students: [
-      { name: "Arjun K", initial: "A", color: "bg-green-700" },
-      { name: "Pari S", initial: "P", color: "bg-[#F77124]" },
-      { name: "Kishan", initial: "K", color: "bg-purple-600" },
-      { name: "Rahul M", initial: "R", color: "bg-blue-600" },
-      { name: "Sneha P", initial: "S", color: "bg-pink-600" },
-    ],
+    internshipParticipation: {
+      countLabel: "90+ students",
+      descriptionPrefix: "joined our",
+      descriptionHighlight: "Internship Programs",
+      students: [
+        { name: "Arjun K", initial: "A", color: "bg-green-700" },
+        { name: "Pari S", initial: "P", color: "bg-[#F77124]" },
+        { name: "Kishan", initial: "K", color: "bg-purple-600" },
+        { name: "Rahul M", initial: "R", color: "bg-blue-600" },
+        { name: "Sneha P", initial: "S", color: "bg-pink-600" },
+      ],
+    },
+    coursesEnrollment: {
+      countLabel: "100+ students",
+      descriptionPrefix: "joined our",
+      descriptionHighlight: "Courses",
+      students: [
+        { name: "Arjun K", initial: "A", color: "bg-green-700" },
+        { name: "Pari S", initial: "P", color: "bg-[#F77124]" },
+        { name: "Kishan", initial: "K", color: "bg-purple-600" },
+        { name: "Rahul M", initial: "R", color: "bg-blue-600" },
+        { name: "Sneha P", initial: "S", color: "bg-pink-600" },
+      ],
+    },
   },
   {
     id: "4",
     name: "National College of Engineering",
     logo: "https://images.unsplash.com/photo-1562774053-701939374585?w=200&q=80",
-    studentCount: 90,
-    students: [
-      { name: "Arjun K", initial: "A", color: "bg-green-700" },
-      { name: "Pari S", initial: "P", color: "bg-[#F77124]" },
-      { name: "Kishan", initial: "K", color: "bg-purple-600" },
-      { name: "Rahul M", initial: "R", color: "bg-blue-600" },
-      { name: "Sneha P", initial: "S", color: "bg-pink-600" },
-    ],
+    internshipParticipation: {
+      countLabel: "90+ students",
+      descriptionPrefix: "joined our",
+      descriptionHighlight: "Internship Programs",
+      students: [
+        { name: "Arjun K", initial: "A", color: "bg-green-700" },
+        { name: "Pari S", initial: "P", color: "bg-[#F77124]" },
+        { name: "Kishan", initial: "K", color: "bg-purple-600" },
+        { name: "Rahul M", initial: "R", color: "bg-blue-600" },
+        { name: "Sneha P", initial: "S", color: "bg-pink-600" },
+      ],
+    },
+    coursesEnrollment: {
+      countLabel: "100+ students",
+      descriptionPrefix: "joined our",
+      descriptionHighlight: "Courses",
+      students: [
+        { name: "Arjun K", initial: "A", color: "bg-green-700" },
+        { name: "Pari S", initial: "P", color: "bg-[#F77124]" },
+        { name: "Kishan", initial: "K", color: "bg-purple-600" },
+        { name: "Rahul M", initial: "R", color: "bg-blue-600" },
+        { name: "Sneha P", initial: "S", color: "bg-pink-600" },
+      ],
+    },
   },
   {
     id: "5",
     name: "National College of Engineering",
     logo: "https://images.unsplash.com/photo-1562774053-701939374585?w=200&q=80",
-    studentCount: 90,
-    students: [
-      { name: "Arjun K", initial: "A", color: "bg-green-700" },
-      { name: "Pari S", initial: "P", color: "bg-[#F77124]" },
-      { name: "Kishan", initial: "K", color: "bg-purple-600" },
-      { name: "Rahul M", initial: "R", color: "bg-blue-600" },
-      { name: "Sneha P", initial: "S", color: "bg-pink-600" },
-    ],
+    internshipParticipation: {
+      countLabel: "90+ students",
+      descriptionPrefix: "joined our",
+      descriptionHighlight: "Internship Programs",
+      students: [
+        { name: "Arjun K", initial: "A", color: "bg-green-700" },
+        { name: "Pari S", initial: "P", color: "bg-[#F77124]" },
+        { name: "Kishan", initial: "K", color: "bg-purple-600" },
+        { name: "Rahul M", initial: "R", color: "bg-blue-600" },
+        { name: "Sneha P", initial: "S", color: "bg-pink-600" },
+      ],
+    },
+    coursesEnrollment: {
+      countLabel: "100+ students",
+      descriptionPrefix: "joined our",
+      descriptionHighlight: "Courses",
+      students: [
+        { name: "Arjun K", initial: "A", color: "bg-green-700" },
+        { name: "Pari S", initial: "P", color: "bg-[#F77124]" },
+        { name: "Kishan", initial: "K", color: "bg-purple-600" },
+        { name: "Rahul M", initial: "R", color: "bg-blue-600" },
+        { name: "Sneha P", initial: "S", color: "bg-pink-600" },
+      ],
+    },
   },
   {
     id: "6",
     name: "National College of Engineering",
     logo: "https://images.unsplash.com/photo-1562774053-701939374585?w=200&q=80",
-    studentCount: 90,
-    students: [
-      { name: "Arjun K", initial: "A", color: "bg-green-700" },
-      { name: "Pari S", initial: "P", color: "bg-[#F77124]" },
-      { name: "Kishan", initial: "K", color: "bg-purple-600" },
-      { name: "Rahul M", initial: "R", color: "bg-blue-600" },
-      { name: "Sneha P", initial: "S", color: "bg-pink-600" },
-    ],
+    internshipParticipation: {
+      countLabel: "90+ students",
+      descriptionPrefix: "joined our",
+      descriptionHighlight: "Internship Programs",
+      students: [
+        { name: "Arjun K", initial: "A", color: "bg-green-700" },
+        { name: "Pari S", initial: "P", color: "bg-[#F77124]" },
+        { name: "Kishan", initial: "K", color: "bg-purple-600" },
+        { name: "Rahul M", initial: "R", color: "bg-blue-600" },
+        { name: "Sneha P", initial: "S", color: "bg-pink-600" },
+      ],
+    },
+    coursesEnrollment: {
+      countLabel: "100+ students",
+      descriptionPrefix: "joined our",
+      descriptionHighlight: "Courses",
+      students: [
+        { name: "Arjun K", initial: "A", color: "bg-green-700" },
+        { name: "Pari S", initial: "P", color: "bg-[#F77124]" },
+        { name: "Kishan", initial: "K", color: "bg-purple-600" },
+        { name: "Rahul M", initial: "R", color: "bg-blue-600" },
+        { name: "Sneha P", initial: "S", color: "bg-pink-600" },
+      ],
+    },
   },
 ];
+
+export const collegesCarousel: College[] = Array.from({ length: 24 }, (_, index) => {
+  const base = colleges[index % colleges.length];
+  return {
+    ...base,
+    id: String(index + 1),
+  };
+});
 
 export interface Manager {
   id: string;
   name: string;
-  title: string;
+  sector: string;
+  roleTitle: string;
+  companyName: string;
   description: string;
   profileImage: string;
-  socialLinks: {
-    facebook?: string;
-    twitter?: string;
-    github?: string;
-    linkedin?: string;
-  };
+  companyBadges: { label: string }[];
+  linkedinUrl?: string;
 }
 
 export const managers: Manager[] = [
   {
     id: "1",
     name: "John Doe",
-    title: "Senior Project Manager",
+    sector: "Banking & Financial  Services",
+    roleTitle: "Senior Manager",
+    companyName: "Bank of America",
     description:
       "Specializes in leading high-impact projects, team coordination, and delivering industry-ready training.",
     profileImage: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&q=80",
-    socialLinks: {
-      facebook: "#",
-      twitter: "#",
-      github: "#",
-      linkedin: "#",
-    },
+    companyBadges: [
+      { label: "Dell" },
+      { label: "Amazon" },
+      { label: "Apple" },
+    ],
+    linkedinUrl: "#",
   },
   {
     id: "2",
     name: "John Doe",
-    title: "Senior Project Manager",
+    sector: "Banking & Financial  Services",
+    roleTitle: "Senior Manager",
+    companyName: "Bank of America",
     description:
       "Specializes in leading high-impact projects, team coordination, and delivering industry-ready training.",
     profileImage: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=300&q=80",
-    socialLinks: {
-      facebook: "#",
-      twitter: "#",
-      github: "#",
-      linkedin: "#",
-    },
+    companyBadges: [
+      { label: "Dell" },
+      { label: "Amazon" },
+      { label: "Apple" },
+    ],
+    linkedinUrl: "#",
   },
   {
     id: "3",
     name: "John Doe",
-    title: "Senior Project Manager",
+    sector: "Banking & Financial  Services",
+    roleTitle: "Senior Manager",
+    companyName: "Bank of America",
     description:
       "Specializes in leading high-impact projects, team coordination, and delivering industry-ready training.",
     profileImage: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=300&q=80",
-    socialLinks: {
-      facebook: "#",
-      twitter: "#",
-      github: "#",
-      linkedin: "#",
-    },
+    companyBadges: [
+      { label: "Dell" },
+      { label: "Amazon" },
+      { label: "Apple" },
+    ],
+    linkedinUrl: "#",
   },
   {
     id: "4",
     name: "John Doe",
-    title: "Senior Project Manager",
+    sector: "Banking & Financial  Services",
+    roleTitle: "Senior Manager",
+    companyName: "Bank of America",
     description:
       "Specializes in leading high-impact projects, team coordination, and delivering industry-ready training.",
     profileImage: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=300&q=80",
-    socialLinks: {
-      facebook: "#",
-      twitter: "#",
-      github: "#",
-      linkedin: "#",
-    },
+    companyBadges: [
+      { label: "Dell" },
+      { label: "Amazon" },
+      { label: "Apple" },
+    ],
+    linkedinUrl: "#",
   },
   {
     id: "5",
     name: "John Doe",
-    title: "Senior Project Manager",
+    sector: "Banking & Financial  Services",
+    roleTitle: "Senior Manager",
+    companyName: "Bank of America",
     description:
       "Specializes in leading high-impact projects, team coordination, and delivering industry-ready training.",
     profileImage: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=300&q=80",
-    socialLinks: {
-      facebook: "#",
-      twitter: "#",
-      github: "#",
-      linkedin: "#",
-    },
+    companyBadges: [
+      { label: "Dell" },
+      { label: "Amazon" },
+      { label: "Apple" },
+    ],
+    linkedinUrl: "#",
   },
   {
     id: "6",
     name: "John Doe",
-    title: "Senior Project Manager",
+    sector: "Banking & Financial  Services",
+    roleTitle: "Senior Manager",
+    companyName: "Bank of America",
     description:
       "Specializes in leading high-impact projects, team coordination, and delivering industry-ready training.",
     profileImage: "https://images.unsplash.com/photo-1507591064344-4c6ce005b128?w=300&q=80",
-    socialLinks: {
-      facebook: "#",
-      twitter: "#",
-      github: "#",
-      linkedin: "#",
-    },
+    companyBadges: [
+      { label: "Dell" },
+      { label: "Amazon" },
+      { label: "Apple" },
+    ],
+    linkedinUrl: "#",
   },
 ];
 

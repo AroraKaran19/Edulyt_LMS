@@ -1,8 +1,12 @@
 "use client";
 import { Course, Student } from "@/types";
 import CourseCardHolder from "./components/CourseCardHolder";
-import { useState, useEffect } from "react";
-import { calculateDiscountDisplay } from "@/lib/utils/discount";
+import { useState, useEffect, useMemo } from "react";
+import {
+  applyCollaborationBenefitToPrice,
+  calculateDiscountDisplay,
+} from "@/lib/utils/discount";
+import type { CollaborationCheckoutResolve } from "@/types/collaborationDomain";
 import apiClient from "@/configs/apiConfig";
 import CartFormHeader from "./components/CartFormHeader";
 import GuidanceContainer from "./components/GuidanceContainer";
@@ -173,6 +177,87 @@ const CartForm = ({
   } | null>(null);
   const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
 
+  const [collabResolve, setCollabResolve] =
+    useState<CollaborationCheckoutResolve | null>(null);
+  const [collabLoading, setCollabLoading] = useState(false);
+
+  const checkoutPricing = useMemo(() => {
+    const planPrice =
+      planType === "elite"
+        ? course.plans?.elite?.price || 0
+        : course.plans?.essential?.price || 0;
+    const planDiscount = course.plans?.[planType]?.discount;
+    const courseDiscount = course.discount;
+    const discountInfo = calculateDiscountDisplay(
+      planPrice,
+      planDiscount,
+      courseDiscount,
+    );
+    const afterPlanCourse = discountInfo.discountPrice;
+    const partnershipApplies =
+      !!(
+        collabResolve?.applies &&
+        collabResolve.benefit &&
+        collabResolve.benefit.value > 0
+      );
+    const afterCollaboration =
+      partnershipApplies && collabResolve?.benefit
+        ? applyCollaborationBenefitToPrice(
+          afterPlanCourse,
+          collabResolve.benefit,
+        )
+        : afterPlanCourse;
+    const partnershipDiscountAmount = Math.max(
+      0,
+      afterPlanCourse - afterCollaboration,
+    );
+    return {
+      planPrice,
+      planDiscount,
+      courseDiscount,
+      discountInfo,
+      afterPlanCourse,
+      afterCollaboration,
+      partnershipApplies,
+      partnershipDiscountAmount,
+      partnershipTitle: collabResolve?.title,
+    };
+  }, [planType, course, collabResolve]);
+
+  useEffect(() => {
+    if (!user?._id || !course._id) return;
+    let cancelled = false;
+    setCollabLoading(true);
+    apiClient
+      .post("/collaboration-domains/resolve", {
+        courseIds: [course._id],
+      })
+      .then((res) => {
+        if (!cancelled) {
+          setCollabResolve(
+            (res.data?.data as CollaborationCheckoutResolve) ?? {
+              applies: false,
+            },
+          );
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setCollabResolve({ applies: false });
+      })
+      .finally(() => {
+        if (!cancelled) setCollabLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user?._id, course._id]);
+
+  useEffect(() => {
+    if (collabResolve === null) return;
+    setAppliedCoupon(null);
+    setCouponCode("");
+  }, [collabResolve?.collaborationDomainId]);
+
   // Check if user has firstName before allowing enrollment
   useEffect(() => {
     if (
@@ -213,21 +298,7 @@ const CartForm = ({
 
     setIsValidatingCoupon(true);
     try {
-      // Get the base price after plan discount
-      const planPrice =
-        planType === "elite"
-          ? course.plans?.elite?.price || 0
-          : course.plans?.essential?.price || 0;
-
-      const planDiscount = course.plans?.[planType]?.discount;
-      const courseDiscount = course.discount;
-
-      const discountInfo = calculateDiscountDisplay(
-        planPrice,
-        planDiscount,
-        courseDiscount,
-      );
-      const purchaseAmount = discountInfo.discountPrice;
+      const purchaseAmount = checkoutPricing.afterCollaboration;
 
       if (!purchaseAmount || purchaseAmount <= 0) {
         toast.error("Invalid course pricing");
@@ -301,7 +372,7 @@ const CartForm = ({
     } catch (error: any) {
       toast.error(
         error.response?.data?.error?.message ||
-          "Failed to update first name. Please try again.",
+        "Failed to update first name. Please try again.",
       );
     } finally {
       setIsUpdatingFirstName(false);
@@ -838,24 +909,19 @@ const CartForm = ({
                             Order Summary
                           </h3>
                           {(() => {
-                            const planPrice =
-                              planType === "elite"
-                                ? course.plans?.elite?.price || 0
-                                : course.plans?.essential?.price || 0;
-
-                            const planDiscount =
-                              course.plans?.[planType]?.discount;
-                            const courseDiscount = course.discount;
-
-                            const discountInfo = calculateDiscountDisplay(
+                            const {
                               planPrice,
-                              planDiscount,
-                              courseDiscount,
-                            );
+                              discountInfo,
+                              afterPlanCourse,
+                              afterCollaboration,
+                              partnershipApplies,
+                              partnershipDiscountAmount,
+                              partnershipTitle,
+                            } = checkoutPricing;
 
                             const finalAmount = appliedCoupon
                               ? appliedCoupon.finalAmount
-                              : discountInfo.discountPrice;
+                              : afterCollaboration;
 
                             // Round to 2 decimal places for display to avoid floating-point precision issues (e.g. 0.34999999999999964 → 0.35)
                             const formatPrice = (n: number) =>
@@ -883,10 +949,32 @@ const CartForm = ({
                                     <span className="text-sm font-medium">
                                       -₹
                                       {formatPrice(
-                                        planPrice - discountInfo.discountPrice,
+                                        planPrice - afterPlanCourse,
                                       )}
                                     </span>
                                   </div>
+                                )}
+
+                                {partnershipApplies &&
+                                  partnershipDiscountAmount > 0 && (
+                                    <div className="flex justify-between items-center text-indigo-700">
+                                      <span className="text-sm">
+                                        Partnership Discount (
+                                        {collabResolve?.benefit?.type === "percentage"
+                                          ? `${collabResolve.benefit.value}% off`
+                                          : `₹${formatPrice(collabResolve?.benefit?.value ?? 0)} off`}
+                                        )
+                                      </span>
+                                      <span className="text-sm font-medium">
+                                        -₹{formatPrice(partnershipDiscountAmount)}
+                                      </span>
+                                    </div>
+                                  )}
+
+                                {collabLoading && (
+                                  <p className="text-xs text-gray-500">
+                                    Checking partnership pricing…
+                                  </p>
                                 )}
 
                                 {appliedCoupon && (
@@ -951,28 +1039,10 @@ const CartForm = ({
                                 fatherOccupation: formData.fatherOccupation,
                               });
 
-                              // Same calculation as Order Summary — send exact total so Paytm matches UI
-                              const planPrice =
-                                planType === "elite"
-                                  ? course.plans?.elite?.price || 0
-                                  : course.plans?.essential?.price || 0;
-                              const discountInfo = calculateDiscountDisplay(
-                                planPrice,
-                                course.plans?.[planType]?.discount,
-                                course.discount,
-                              );
-                              const totalAmount = appliedCoupon
-                                ? appliedCoupon.finalAmount
-                                : discountInfo.discountPrice;
-                              const purchaseAmountBeforeCoupon =
-                                discountInfo.discountPrice;
-
                               const orderData: any = {
                                 courseId: course._id,
                                 planType: planType,
                                 userId: user._id,
-                                totalAmount,
-                                purchaseAmountBeforeCoupon,
                               };
                               if (appliedCoupon) {
                                 orderData.couponCode = appliedCoupon.code;
