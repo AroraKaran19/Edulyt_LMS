@@ -16,6 +16,8 @@ import {
   PasswordValidationErrors,
 } from "@/lib/passwordValidation";
 import { Check, X } from "lucide-react";
+import { getPostLoginRedirectPath } from "@/lib/postLoginRedirect";
+import type { User } from "@/types/user";
 
 const RegisterPage = () => {
   const [email, setEmail] = useState("");
@@ -36,20 +38,16 @@ const RegisterPage = () => {
   const router = useRouter();
   const { data: session } = useSession();
 
-  // Get callbackUrl from URL parameters, default to /dashboard
-  const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
+  const callbackUrl = searchParams.get("callbackUrl") || undefined;
 
-  // Handle role-based redirect after successful login
   useEffect(() => {
     if (loginSuccess && session?.user) {
-      const user = session.user as any;
-      // Check if user is admin or super-admin
-      if (user?.userType === "admin" || user?.userType === "super-admin") {
-        router.push("/admin");
-      } else {
-        router.push(callbackUrl);
-      }
-      setLoginSuccess(false); // Reset the flag
+      const dest = getPostLoginRedirectPath(
+        session.user as User,
+        callbackUrl
+      );
+      router.push(dest);
+      setLoginSuccess(false);
     }
   }, [session, loginSuccess, router, callbackUrl]);
 
@@ -137,7 +135,7 @@ const RegisterPage = () => {
     setIsOAuthLoading(true);
     try {
       const result = await signIn(provider, {
-        callbackUrl,
+        callbackUrl: callbackUrl || "/dashboard",
         redirect: false, // Don't redirect automatically
       });
       if (result?.error) {
@@ -150,7 +148,7 @@ const RegisterPage = () => {
     } catch (error) {
       toast.error(
         (error as any)?.response?.data?.error?.message ||
-          "Something went wrong. Please try again."
+        "Something went wrong. Please try again."
       );
     } finally {
       setIsOAuthLoading(false);
@@ -211,7 +209,7 @@ const RegisterPage = () => {
             email,
             password,
             redirect: false, // Don't redirect automatically
-            callbackUrl,
+            callbackUrl: callbackUrl || "/dashboard",
           });
 
           if (result?.error) {
@@ -226,7 +224,7 @@ const RegisterPage = () => {
         } else {
           toast.error(
             (response.data as any)?.error?.message ||
-              "Registration failed. Please try again."
+            "Registration failed. Please try again."
           );
         }
       } catch (apiError: any) {
@@ -274,7 +272,7 @@ const RegisterPage = () => {
         onSubmit={handleSubmit}
       >
         <div className="email-input w-full flex gap-2 sm:gap-3 bg-white rounded-lg p-3 sm:p-3.5 border border-gray-300 focus-within:border-orange-400 transition-colors">
-          <label htmlFor="email" className="text-sm text-gray-500 flex-shrink-0">
+          <label htmlFor="email" className="text-sm text-gray-500 shrink-0">
             <Mail className="w-5 h-5" />
           </label>
           <input
@@ -309,15 +307,14 @@ const RegisterPage = () => {
         </div>
         <div className="w-full">
           <div
-            className={`password-input w-full flex gap-2 sm:gap-3 bg-white rounded-lg p-3 sm:p-3.5 border transition-colors ${
-              showPasswordValidation && Object.keys(passwordErrors).length > 0
+            className={`password-input w-full flex gap-2 sm:gap-3 bg-white rounded-lg p-3 sm:p-3.5 border transition-colors ${showPasswordValidation && Object.keys(passwordErrors).length > 0
                 ? "border-red-300"
                 : showPasswordValidation && isPasswordValid(password)
-                ? "border-green-300"
-                : "border-gray-300 focus-within:border-orange-400"
-            } relative`}
+                  ? "border-green-300"
+                  : "border-gray-300 focus-within:border-orange-400"
+              } relative`}
           >
-            <label htmlFor="password" className="text-sm text-gray-500 flex-shrink-0">
+            <label htmlFor="password" className="text-sm text-gray-500 shrink-0">
               <Lock className="w-5 h-5" />
             </label>
             <input
@@ -348,11 +345,10 @@ const RegisterPage = () => {
           {showPasswordValidation && password && (
             <div className="mt-2 space-y-1.5">
               <div
-                className={`flex items-center gap-2 text-xs ${
-                  checkPasswordRequirement("length")
+                className={`flex items-center gap-2 text-xs ${checkPasswordRequirement("length")
                     ? "text-green-600"
                     : "text-gray-500"
-                }`}
+                  }`}
               >
                 {checkPasswordRequirement("length") ? (
                   <Check className="w-3 h-3" />
@@ -362,11 +358,10 @@ const RegisterPage = () => {
                 <span>At least 8 characters</span>
               </div>
               <div
-                className={`flex items-center gap-2 text-xs ${
-                  checkPasswordRequirement("capital")
+                className={`flex items-center gap-2 text-xs ${checkPasswordRequirement("capital")
                     ? "text-green-600"
                     : "text-gray-500"
-                }`}
+                  }`}
               >
                 {checkPasswordRequirement("capital") ? (
                   <Check className="w-3 h-3" />
@@ -376,11 +371,10 @@ const RegisterPage = () => {
                 <span>At least one capital letter (A-Z)</span>
               </div>
               <div
-                className={`flex items-center gap-2 text-xs ${
-                  checkPasswordRequirement("small")
+                className={`flex items-center gap-2 text-xs ${checkPasswordRequirement("small")
                     ? "text-green-600"
                     : "text-gray-500"
-                }`}
+                  }`}
               >
                 {checkPasswordRequirement("small") ? (
                   <Check className="w-3 h-3" />
@@ -390,11 +384,10 @@ const RegisterPage = () => {
                 <span>At least one small letter (a-z)</span>
               </div>
               <div
-                className={`flex items-center gap-2 text-xs ${
-                  checkPasswordRequirement("symbol")
+                className={`flex items-center gap-2 text-xs ${checkPasswordRequirement("symbol")
                     ? "text-green-600"
                     : "text-gray-500"
-                }`}
+                  }`}
               >
                 {checkPasswordRequirement("symbol") ? (
                   <Check className="w-3 h-3" />
@@ -408,15 +401,14 @@ const RegisterPage = () => {
         </div>
         <div className="w-full">
           <div
-            className={`confirm-password-input w-full flex gap-2 sm:gap-3 bg-white rounded-lg p-3 sm:p-3.5 border transition-colors ${
-              passwordErrors.confirmPassword
+            className={`confirm-password-input w-full flex gap-2 sm:gap-3 bg-white rounded-lg p-3 sm:p-3.5 border transition-colors ${passwordErrors.confirmPassword
                 ? "border-red-300"
                 : confirmPassword && password === confirmPassword
-                ? "border-green-300"
-                : "border-gray-300 focus-within:border-orange-400"
-            } relative`}
+                  ? "border-green-300"
+                  : "border-gray-300 focus-within:border-orange-400"
+              } relative`}
           >
-            <label htmlFor="confirm-password" className="text-sm text-gray-500 flex-shrink-0">
+            <label htmlFor="confirm-password" className="text-sm text-gray-500 shrink-0">
               <Lock className="w-5 h-5" />
             </label>
             <input

@@ -26,6 +26,8 @@ import { CertificateModel } from "./certificate.schema";
 import LiveClassModel from "./live-classes.schema";
 import AuthenticationMediaModel from "./authentication-media.schema";
 import { CouponModel } from "./coupon.schema";
+import { CollaborationDomainModel } from "./collaborationDomain.schema";
+import { CollaborationJobModel } from "./collaborationJob.schema";
 
 export {
   UserModel,
@@ -54,4 +56,6 @@ export {
   LiveClassModel,
   AuthenticationMediaModel,
   CouponModel,
+  CollaborationDomainModel,
+  CollaborationJobModel,
 };

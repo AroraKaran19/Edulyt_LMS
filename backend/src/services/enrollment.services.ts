@@ -48,10 +48,29 @@ export const CreateEnrollmentService = async (enrollmentData: {
   giftFrom?: string;
   planType?: "elite" | "essential";
   accessControl?: PartialAccessControl;
+  /** Collaboration domain top-N rule (first N contents per lesson). */
+  collaborationTopNSettings?: { contentsPerLesson: number };
   isTrial?: boolean;
   trialDurationDays?: number;
 }): Promise<Enrollment | null> => {
   try {
+    let giftFromSnapshot: { displayName: string; email?: string } | undefined;
+    if (enrollmentData.enrollmentSource === "gift" && enrollmentData.giftFrom) {
+      const gifter = await UserModel.findById(enrollmentData.giftFrom)
+        .select("firstName lastName email")
+        .lean();
+      if (gifter) {
+        const displayName =
+          [gifter.firstName, gifter.lastName].filter(Boolean).join(" ").trim() ||
+          gifter.email ||
+          "Unknown";
+        giftFromSnapshot = {
+          displayName,
+          ...(gifter.email ? { email: gifter.email } : {}),
+        };
+      }
+    }
+
     // Check if enrollment already exists
     const existingEnrollment = await EnrollmentModel.findOne({
       userId: enrollmentData.userId,
@@ -65,6 +84,7 @@ export const CreateEnrollmentService = async (enrollmentData: {
 
     const enrollment = new EnrollmentModel({
       ...enrollmentData,
+      ...(giftFromSnapshot ? { giftFromSnapshot } : {}),
       enrolledAt: new Date(),
       status: "active",
       progress: {
@@ -77,8 +97,9 @@ export const CreateEnrollmentService = async (enrollmentData: {
       },
       lastUpdated: new Date(),
       totalTimeSpent: 0,
-      // Include accessControl if provided, otherwise it will be undefined (full access)
       accessControl: enrollmentData.accessControl || undefined,
+      collaborationTopNSettings:
+        enrollmentData.collaborationTopNSettings || undefined,
     });
 
     const savedEnrollment = await enrollment.save();

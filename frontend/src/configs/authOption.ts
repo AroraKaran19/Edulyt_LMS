@@ -26,30 +26,25 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" },
       },
       authorize: async (credentials) => {
+        if (!credentials?.email || !credentials?.password) {
+          return null;
+        }
         try {
-          if (!credentials?.email || !credentials?.password) {
-            return null;
-          }
           const response = await apiClient.post("/auth/login", {
             email: credentials.email,
             password: credentials.password,
           });
-
-          // Return both user data and access token
           return {
             ...response.data?.data?.user,
             accessToken: response.data?.data?.accessToken,
           };
-        } catch (error: any) {
-          // Log the error for debugging
-          console.error(
-            "Auth error:",
-            error?.response?.data?.error?.message || error.message
-          );
-
-          // Return null to indicate authentication failure
-          // NextAuth will handle this and return an error in the signIn result
-          return null;
+        } catch (error: unknown) {
+          const message =
+            (error as any)?.response?.data?.error?.message ||
+            (error as Error)?.message ||
+            "Login failed";
+          // Throw so NextAuth forwards the message as result.error on the client
+          throw new Error(message);
         }
       },
     }),
@@ -74,9 +69,9 @@ export const authOptions: NextAuthOptions = {
       issuer: "https://www.linkedin.com",
       wellKnown:
         "https://www.linkedin.com/oauth/.well-known/openid-configuration",
-      async profile(profile, tokens) {
+      async profile(profile) {
         return {
-          id: profile.sub, // map sub → id
+          id: profile.sub,
           name: profile.name || `${profile.given_name} ${profile.family_name}`,
           email: profile.email,
           image: profile.picture,

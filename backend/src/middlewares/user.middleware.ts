@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from "express";
+import { ACCOUNT_DISABLED_MESSAGE } from "../constants/authMessages";
 import { AppError } from "./error.middleware";
 import { UserModel } from "../models";
 import jwt from "jsonwebtoken";
@@ -35,9 +36,8 @@ export const verifyUser = async (
       return next(new AppError("User not found", 401));
     }
 
-    // Check if user is active
     if (user.status !== "active") {
-      return next(new AppError("Account is not active", 401));
+      return next(new AppError(ACCOUNT_DISABLED_MESSAGE, 403));
     }
 
     req.user = user;

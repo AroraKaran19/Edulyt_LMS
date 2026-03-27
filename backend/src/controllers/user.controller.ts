@@ -35,6 +35,15 @@ export const getUsers = asyncHandler(async (req: Request, res: Response) => {
     throw new AppError("Page and limit must be positive numbers", 400);
   }
 
+  const viewerType = (req.user as { userType?: string } | undefined)?.userType;
+  if (
+    typeof userType === "string" &&
+    userType === "super-admin" &&
+    viewerType !== "super-admin"
+  ) {
+    throw new AppError("Forbidden", 403);
+  }
+
   const toStringArray = (v: unknown): string[] | undefined => {
     if (v == null) return undefined;
     const arr = Array.isArray(v)
@@ -82,6 +91,11 @@ export const updateUserStatus = asyncHandler(
 
     if (!status || !["active", "inactive", "blocked"].includes(status)) {
       throw new AppError("Status must be active, inactive, or blocked", 400);
+    }
+
+    const adminId = req.user?._id?.toString();
+    if (adminId && userId === adminId && status !== "active") {
+      throw new AppError("You cannot disable your own account", 400);
     }
 
     const updatedUser = await updateUserStatusService(userId, status);

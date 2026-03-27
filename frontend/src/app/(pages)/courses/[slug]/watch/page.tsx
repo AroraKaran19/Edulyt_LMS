@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Error from "@/components/ui/Error";
 import { getErrorUIConfig } from "@/configs/errorUIConfig";
 import { ENDPOINTS } from "@/constants/endpoints";
@@ -98,7 +99,15 @@ const IndividualModulePage = async ({
 
   return (
     <EnrollmentGuard course={course}>
-      <PreviewCourse course={course} />
+      <Suspense
+        fallback={
+          <div className="w-full min-h-[50vh] flex items-center justify-center text-gray-500 text-sm">
+            Loading course…
+          </div>
+        }
+      >
+        <PreviewCourse course={course} />
+      </Suspense>
     </EnrollmentGuard>
   );
 };

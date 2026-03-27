@@ -18,6 +18,8 @@ import liveClassesRoutes from "./live-classes.routes";
 import authenticationMediaRoutes from "./authentication-media.routes";
 import certificateRoutes from "./certificate.routes";
 import couponRoutes from "./coupon.routes";
+import collaborationDomainRoutes from "./collaborationDomain.routes";
+import instructorDashboardRoutes from "./instructor-dashboard.routes";
 
 export {
   authRoutes,
@@ -40,4 +42,6 @@ export {
   authenticationMediaRoutes,
   certificateRoutes,
   couponRoutes,
+  collaborationDomainRoutes,
+  instructorDashboardRoutes,
 };

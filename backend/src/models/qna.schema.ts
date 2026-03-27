@@ -4,7 +4,11 @@ import mongoose from "mongoose";
 // Define static methods interface
 interface QnAModelStatic extends mongoose.Model<QnA> {
   addReply(qnaId: string, userId: string, message: string): Promise<any>;
-  removeReply(qnaId: string, replyId: string, userId: string): Promise<boolean>;
+  removeReply(
+    qnaId: string,
+    replyId: string,
+    userId: string | mongoose.Types.ObjectId
+  ): Promise<boolean>;
 }
 
 // Embedded reply schema
@@ -54,6 +58,11 @@ const qnaSchema = new mongoose.Schema<QnA>(
       default: false,
       required: true,
     }, // Requires instructor/admin approval
+    notifyInstructor: {
+      type: Boolean,
+      default: true,
+      required: true,
+    },
     replies: {
       type: [qnaReplySchema],
       required: false,
@@ -65,6 +74,7 @@ const qnaSchema = new mongoose.Schema<QnA>(
 
 // Indexes
 qnaSchema.index({ courseId: 1, lessonId: 1, contentId: 1, approved: 1, createdAt: -1 });
+qnaSchema.index({ courseId: 1, approved: 1, notifyInstructor: 1 });
 qnaSchema.index({ approved: 1, createdAt: -1 }); // For filtering by approval status
 qnaSchema.index({ userId: 1, createdAt: -1 });
 qnaSchema.index({ "replies.userId": 1, createdAt: -1 });
@@ -91,20 +101,32 @@ qnaSchema.statics.addReply = async function (
   return qna.replies[qna.replies.length - 1];
 };
 
+/** Normalize embedded ref (ObjectId or populated { _id }) for comparison. */
+function embeddedRefIdString(ref: unknown): string {
+  if (ref != null && typeof ref === "object" && "_id" in (ref as object)) {
+    return String((ref as { _id: unknown })._id);
+  }
+  return String(ref);
+}
+
 // Static method to remove reply from QnA
 qnaSchema.statics.removeReply = async function (
   qnaId: string,
   replyId: string,
-  userId: string
+  userId: string | mongoose.Types.ObjectId
 ) {
   const qna = await this.findById(qnaId);
   if (!qna) {
     throw new Error("QnA not found");
   }
 
+  const rid = String(replyId);
+  const uid = embeddedRefIdString(userId);
+
   const replyIndex = qna.replies.findIndex(
     (reply) =>
-      reply._id?.toString() === replyId && reply.userId.toString() === userId
+      String(reply._id) === rid &&
+      embeddedRefIdString(reply.userId) === uid
   );
 
   if (replyIndex === -1) {

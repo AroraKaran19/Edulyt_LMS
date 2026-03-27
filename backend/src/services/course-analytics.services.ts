@@ -274,7 +274,13 @@ export const getEnrollmentsPerDayService = async (
     { $match: match },
     {
       $addFields: {
-        dateStr: { $dateToString: { format: "%Y-%m-%d", date: "$enrolledAt" } },
+        dateStr: {
+          $dateToString: {
+            format: "%Y-%m-%d",
+            date: "$enrolledAt",
+            timezone: "Asia/Kolkata",
+          },
+        },
       },
     },
     { $group: { _id: "$dateStr", count: { $sum: 1 } } },

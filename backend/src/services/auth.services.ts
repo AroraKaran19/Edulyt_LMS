@@ -1,3 +1,4 @@
+import { ACCOUNT_DISABLED_MESSAGE } from "../constants/authMessages";
 import { AppError } from "../middlewares/error.middleware";
 import {
   CollaboratorModel,
@@ -61,6 +62,10 @@ export const loginUser = async (email: string, password: string) => {
   const isPasswordValid = await bcrypt.compare(password, user.password);
   if (!isPasswordValid) {
     throw new AppError("Invalid credentials", 401);
+  }
+
+  if (user.status !== "active") {
+    throw new AppError(ACCOUNT_DISABLED_MESSAGE, 403);
   }
 
   // Remove password from the returned user object

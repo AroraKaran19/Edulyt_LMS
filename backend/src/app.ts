@@ -26,6 +26,8 @@ import {
   authenticationMediaRoutes,
   certificateRoutes,
   couponRoutes,
+  collaborationDomainRoutes,
+  instructorDashboardRoutes,
 } from "./routes";
 
 dotenv.config();
@@ -71,6 +73,8 @@ app.use("/api/live-classes", liveClassesRoutes);
 app.use("/api/authentication-media", authenticationMediaRoutes);
 app.use("/api/certificates", certificateRoutes);
 app.use("/api/coupons", couponRoutes);
+app.use("/api/collaboration-domains", collaborationDomainRoutes);
+app.use("/api/instructor", instructorDashboardRoutes);
 
 app.use(notFoundHandler); // Handle 404 errors
 app.use(errorHandler); // Handle all other errors

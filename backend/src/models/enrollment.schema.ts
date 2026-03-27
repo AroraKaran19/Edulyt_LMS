@@ -87,6 +87,13 @@ const partialAccessControlSchema = new mongoose.Schema<PartialAccessControl>(
   { _id: false }
 );
 
+const collaborationTopNSettingsSchema = new mongoose.Schema(
+  {
+    contentsPerLesson: { type: Number, required: true, min: 1 },
+  },
+  { _id: false }
+);
+
 // Main Enrollment Schema
 const enrollmentSchema = new mongoose.Schema<Enrollment>(
   {
@@ -158,6 +165,17 @@ const enrollmentSchema = new mongoose.Schema<Enrollment>(
         message: "giftFrom must be null, a valid ObjectId, or a string",
       },
     },
+    /** Snapshot of gifter at enrollment time (survives if gifter account is deleted). */
+    giftFromSnapshot: {
+      type: new mongoose.Schema(
+        {
+          displayName: { type: String, required: true },
+          email: { type: String, required: false },
+        },
+        { _id: false }
+      ),
+      default: undefined,
+    },
     promotionCode: {
       type: String,
       default: null,
@@ -172,6 +190,11 @@ const enrollmentSchema = new mongoose.Schema<Enrollment>(
     accessControl: {
       type: partialAccessControlSchema,
       default: null,
+    },
+
+    collaborationTopNSettings: {
+      type: collaborationTopNSettingsSchema,
+      default: undefined,
     },
 
     // Completion tracking

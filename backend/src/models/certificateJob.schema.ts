@@ -12,7 +12,6 @@ const certificateJobSchema = new mongoose.Schema<CertificateJob>(
     enrollmentId: {
       type: String,
       required: true,
-      index: true,
     },
     status: {
       type: String,
@@ -58,7 +57,6 @@ const certificateJobSchema = new mongoose.Schema<CertificateJob>(
 
 // Index for efficient querying of pending jobs
 certificateJobSchema.index({ status: 1, createdAt: 1 });
-certificateJobSchema.index({ enrollmentId: 1, status: 1 });
 
 // Partial unique index: only one pending/processing job per enrollment (prevents race condition)
 certificateJobSchema.index(

@@ -1,5 +1,10 @@
+import mongoose from "mongoose";
 import { ReviewModel, CourseModel } from "../models";
 import { Review } from "../types/review";
+
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
 
 // Helper function to calculate and update course analytics
 const updateCourseAnalytics = async (courseId: string): Promise<void> => {
@@ -246,6 +251,76 @@ export const deleteReviewService = async (
   }
 
   return review as Review;
+};
+
+/** Approved course reviews for courses this instructor teaches. */
+export const getInstructorCourseReviewsService = async (
+  instructorUserId: string,
+  page: number,
+  limit: number,
+  search: string
+): Promise<{
+  reviews: Review[];
+  total: number;
+  page: number;
+  totalPages: number;
+}> => {
+  const empty = (): {
+    reviews: Review[];
+    total: number;
+    page: number;
+    totalPages: number;
+  } => ({
+    reviews: [],
+    total: 0,
+    page: page > 0 ? page : 1,
+    totalPages: 0,
+  });
+
+  if (!mongoose.Types.ObjectId.isValid(instructorUserId)) {
+    return empty();
+  }
+  const oid = new mongoose.Types.ObjectId(instructorUserId);
+  const owned = await CourseModel.find({ instructor: oid })
+    .select("_id")
+    .lean();
+  const courseIds = owned.map((c) => c._id);
+  if (courseIds.length === 0) {
+    return empty();
+  }
+
+  const safePage = page > 0 ? page : 1;
+  const safeLimit = Math.min(Math.max(limit || 20, 1), 50);
+  const skip = (safePage - 1) * safeLimit;
+
+  const filters: Record<string, unknown> = {
+    reviewableType: "Course",
+    reviewableId: { $in: courseIds },
+    approved: true,
+    isActive: true,
+  };
+  const q = search?.trim();
+  if (q) {
+    filters.comment = { $regex: escapeRegex(q), $options: "i" };
+  }
+
+  const total = await ReviewModel.countDocuments(filters);
+  const totalPages = Math.ceil(total / safeLimit) || 0;
+
+  const raw = await ReviewModel.find(filters)
+    .populate("userId", "firstName lastName email profilePicture")
+    .populate("reviewableId", "title slug")
+    .skip(skip)
+    .limit(safeLimit)
+    .sort({ createdAt: -1 })
+    .lean();
+
+  return {
+    reviews: raw as Review[],
+    total,
+    page: safePage,
+    totalPages,
+  };
 };
 
 export const getReviewsByReviewableService = async (

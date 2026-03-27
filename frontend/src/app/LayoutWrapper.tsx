@@ -17,6 +17,7 @@ export default function LayoutWrapper({
   const visibleLayout =
     !pathname.startsWith("/dashboard") &&
     !pathname.startsWith("/admin") &&
+    !pathname.startsWith("/instructor") &&
     !pathname.startsWith("/login") &&
     !pathname.startsWith("/register") &&
     !pathname.startsWith("/payment/status") &&

@@ -258,7 +258,6 @@ const SuperAdminDashboard = ({
                     {todayEnrollments}
                   </span>
                 )}
-                <span className="text-xs text-[#475467]">today</span>
               </div>
             </div>
           </div>

@@ -1,5 +1,6 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useSession } from "next-auth/react";
 import {
   Search,
   Gift,
@@ -10,6 +11,8 @@ import {
   X,
   User as UserIcon,
   Clock,
+  UserX,
+  UserCheck,
 } from "lucide-react";
 import Image from "next/image";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
@@ -30,6 +33,23 @@ import {
 } from "@/lib/passwordValidation";
 
 const ManageUsersPage = () => {
+  const { data: session } = useSession();
+  const isSuperAdmin =
+    (session?.user as { userType?: string } | undefined)?.userType ===
+    "super-admin";
+
+  const userTypeFilterOptions = useMemo(
+    () => [
+      { value: "all", label: "All Types" },
+      { value: "student", label: "Students" },
+      { value: "instructor", label: "Instructors" },
+      { value: "admin", label: "Admins" },
+      ...(isSuperAdmin
+        ? [{ value: "super-admin", label: "Super Admins" as const }]
+        : []),
+    ],
+    [isSuperAdmin],
+  );
   const [users, setUsers] = useState<User[]>([]);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -47,6 +67,9 @@ const ManageUsersPage = () => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [statusToggleUserId, setStatusToggleUserId] = useState<string | null>(
+    null,
+  );
   const [editFormData, setEditFormData] = useState<
     Partial<User & Instructor & Student>
   >({});
@@ -91,6 +114,12 @@ const ManageUsersPage = () => {
   useEffect(() => {
     fetchUsers();
   }, [currentPage, debouncedSearch, userTypeFilter, statusFilter]);
+
+  useEffect(() => {
+    if (!isSuperAdmin && userTypeFilter === "super-admin") {
+      setUserTypeFilter("all");
+    }
+  }, [isSuperAdmin, userTypeFilter]);
 
   // Open user details modal (modal fetches its own data)
   const handleViewUserDetails = (user: User) => {
@@ -246,6 +275,38 @@ const ManageUsersPage = () => {
       );
     } finally {
       setIsChangingPassword(false);
+    }
+  };
+
+  const handleToggleAccountActive = async (user: User) => {
+    if (!user._id) return;
+    const sessionUser = session?.user as { _id?: string; id?: string } | undefined;
+    const currentAdminId = sessionUser?._id ?? sessionUser?.id;
+    if (currentAdminId && user._id === currentAdminId) {
+      toast.error("You cannot disable your own account");
+      return;
+    }
+    const isListedActive = user.status === "active";
+    const nextStatus = isListedActive ? "inactive" : "active";
+    if (isListedActive) {
+      const ok = window.confirm(
+        "Disable this account? The user will not be able to sign in until re-enabled.",
+      );
+      if (!ok) return;
+    }
+    setStatusToggleUserId(user._id);
+    try {
+      const result = await updateUserStatus(user._id, nextStatus);
+      if (result) {
+        toast.success(
+          nextStatus === "active"
+            ? "Account enabled. User can sign in again."
+            : "Account disabled. User cannot sign in.",
+        );
+        fetchUsers();
+      }
+    } finally {
+      setStatusToggleUserId(null);
     }
   };
 
@@ -471,12 +532,7 @@ const ManageUsersPage = () => {
             {/* User Type Filter */}
             <div className="sm:col-span-1">
               <Select
-                options={[
-                  { value: "all", label: "All Types" },
-                  { value: "student", label: "Students" },
-                  { value: "instructor", label: "Instructors" },
-                  { value: "admin", label: "Admins" },
-                ]}
+                options={userTypeFilterOptions}
                 value={userTypeFilter}
                 onChange={setUserTypeFilter}
                 placeholder="Filter by type"
@@ -656,6 +712,28 @@ const ManageUsersPage = () => {
                           title="View Details"
                         >
                           <Eye className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleToggleAccountActive(user)}
+                          disabled={statusToggleUserId === user._id}
+                          className={
+                            user.status === "active"
+                              ? "cursor-pointer text-amber-700 hover:text-amber-800 hover:bg-amber-50"
+                              : "cursor-pointer text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50"
+                          }
+                          title={
+                            user.status === "active"
+                              ? "Disable account (cannot sign in)"
+                              : "Enable account"
+                          }
+                        >
+                          {user.status === "active" ? (
+                            <UserX className="w-4 h-4" />
+                          ) : (
+                            <UserCheck className="w-4 h-4" />
+                          )}
                         </Button>
                         <Button
                           variant="outline"
