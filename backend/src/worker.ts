@@ -1,8 +1,8 @@
 /**
- * Standalone worker process for cron jobs and certificate generation.
- * Run this as a separate process when scaling API horizontally.
+ * All-in-one worker: cron + certificate + collaboration (single process).
+ * Prefer PM2 apps `worker-cert` + `worker-collab` in production (see ecosystem.config.cjs).
  *
- * Usage: node dist/worker.js (or via PM2 ecosystem)
+ * Usage: node dist/worker.js
  */
 
 import { connectDB, disconnectDB } from "./config/database";
@@ -39,4 +39,4 @@ const startWorker = async () => {
   }
 };
 
-startWorker();
+void startWorker();

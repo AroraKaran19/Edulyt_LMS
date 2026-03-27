@@ -5,7 +5,8 @@
  *
  * This starts:
  * - 4 API instances (load balanced by PM2)
- * - 1 worker instance (cron jobs + certificate queue + collaboration allotment queue)
+ * - worker-cert: fork — cron + certificate queue (single instance; avoid duplicate crons)
+ * - worker-collab: fork — collaboration allotment queue (single instance)
  *
  * Scale API instances: pm2 scale api 8
  */
@@ -23,14 +24,23 @@ module.exports = {
       max_memory_restart: "500M",
     },
     {
-      name: "worker",
-      script: "dist/worker.js",
+      name: "worker-cert",
+      script: "dist/certificate-worker.js",
       instances: 1,
+      exec_mode: "fork",
       env: {
         RUN_BACKGROUND_JOBS: "true",
-        // Certificate worker: poll every 5 minutes (see certificate.worker.ts)
         CERTIFICATE_WORKER_POLL_MS: "300000",
-        // Collaboration allotment worker: default 120s (see collaboration.worker.ts)
+      },
+      max_memory_restart: "500M",
+    },
+    {
+      name: "worker-collab",
+      script: "dist/collaboration-worker.js",
+      instances: 1,
+      exec_mode: "fork",
+      env: {
+        RUN_BACKGROUND_JOBS: "true",
         COLLABORATION_WORKER_POLL_MS: "120000",
       },
       max_memory_restart: "500M",
