@@ -5,7 +5,7 @@
  *
  * This starts:
  * - 4 API instances (load balanced by PM2)
- * - 1 worker instance (cron jobs + certificate generation)
+ * - 1 worker instance (cron jobs + certificate queue + collaboration allotment queue)
  *
  * Scale API instances: pm2 scale api 8
  */
@@ -30,6 +30,8 @@ module.exports = {
         RUN_BACKGROUND_JOBS: "true",
         // Certificate worker: poll every 5 minutes (see certificate.worker.ts)
         CERTIFICATE_WORKER_POLL_MS: "300000",
+        // Collaboration allotment worker: default 120s (see collaboration.worker.ts)
+        COLLABORATION_WORKER_POLL_MS: "120000",
       },
       max_memory_restart: "500M",
     },

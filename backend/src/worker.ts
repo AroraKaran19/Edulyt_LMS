@@ -9,6 +9,7 @@ import { connectDB, disconnectDB } from "./config/database";
 import { initializeS3 } from "./config/s3";
 import { initializeCronJobs } from "./services/cron.services";
 import { startCertificateWorker } from "./workers/certificate.worker";
+import { startCollaborationWorker } from "./workers/collaboration.worker";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -21,8 +22,11 @@ const startWorker = async () => {
     console.log("🕐 Starting background jobs...");
     initializeCronJobs();
     startCertificateWorker();
+    startCollaborationWorker();
 
-    console.log("✅ Worker process running (cron + certificate generation)");
+    console.log(
+      "✅ Worker process running (cron + certificate + collaboration jobs)"
+    );
 
     process.on("SIGTERM", () => {
       console.log("🔄 Shutting down worker...");
