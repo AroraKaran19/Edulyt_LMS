@@ -34,7 +34,7 @@ export default function ProfessionalCoursesSection() {
             {/* Content Area */}
             <div className="mt-10 sm:mt-16">
                 <div className="flex flex-col gap-1 mb-6 sm:mb-8">
-                    <h2 className={cn("text-base sm:text-lg lg:text-xl font-semibold leading-tight", "line-clamp-1")}>
+                    <h2 className={cn("text-lg sm:text-lg lg:text-4xl font-extrabold leading-tight", "line-clamp-1")}>
                         Our <span className="text-[#F77124]">Courses</span> (For Working Professionals)
                     </h2>
                 </div>
@@ -123,15 +123,21 @@ export default function ProfessionalCoursesSection() {
                                             {course.title}
                                         </h3>
 
-                                        <div className="flex items-center gap-1 sm:gap-2 mb-4 sm:mb-6">
-                                            <div className="flex items-center gap-0.5 sm:gap-1 bg-[#22C55E] text-white px-1.5 sm:px-2 py-0.5 rounded text-[10px] sm:text-xs font-bold">
-                                                <Star className="w-2.5 h-2.5 sm:w-3 sm:h-3 fill-current" />
-                                                {course.rating.toFixed(1)} Rating
+                                        {(course.rating > 0 || course.reviewCount > 0) && (
+                                            <div className="flex items-center gap-1 sm:gap-2 mb-4 sm:mb-6">
+                                                {course.rating > 0 && (
+                                                    <div className="flex items-center gap-0.5 sm:gap-1 bg-[#22C55E] text-white px-1.5 sm:px-2 py-0.5 rounded text-[10px] sm:text-xs font-bold">
+                                                        <Star className="w-2.5 h-2.5 sm:w-3 sm:h-3 fill-current" />
+                                                        {course.rating.toFixed(1)} Rating
+                                                    </div>
+                                                )}
+                                                {course.reviewCount > 0 && (
+                                                    <span className="text-[10px] sm:text-xs text-gray-400 font-bold">
+                                                        {(course.reviewCount / 1000).toFixed(0)}k Ratings
+                                                    </span>
+                                                )}
                                             </div>
-                                            <span className="text-[10px] sm:text-xs text-gray-400 font-bold">
-                                                {(course.reviewCount / 1000).toFixed(0)}k Ratings
-                                            </span>
-                                        </div>
+                                        )}
 
                                         <div className="mt-auto flex items-center justify-between gap-2 sm:gap-4 pt-3 sm:pt-4 border-t border-gray-100">
                                             <div className="flex items-baseline gap-1 sm:gap-2">

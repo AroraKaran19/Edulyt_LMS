@@ -48,24 +48,24 @@ export default function CollegesSection() {
         {/* Shield + "Trusted by Students from Top Institutions" */}
         <div className="flex items-center relative gap-4 -translate-x-6 sm:-translate-x-22">
           <Shield
-            className="w-8 h-8 sm:w-10 sm:h-10 rounded-full px-2 py-2 text-white shrink-0 bg-[#F77124] shadow-lg "
+            className="w-8 h-8 sm:w-10 sm:h-10 rounded-full px-2 py-2 text-white shrink-0 bg-[#F77124]"
             aria-hidden
           />
-          <span className="text-base sm:text-xl md:text-lg relative md:left-8 font-semibold text-gray-800">
+          <h3 className="text-base sm:text-xl md:text-xl relative md:left-7 font-semibold text-gray-800">
             Trusted by Students from Top Institutions
-          </span>
+          </h3>
         </div>
 
         {/* Title and Heading */}
-        <div className="flex flex-col gap-1 mt-6 sm:mt-10 mb-6 sm:mb-8">
-          <h2 className="text-lg sm:text-2xl lg:text-3xl xl:text-4xl font-bold text-gray-900 mb-2 sm:mb-4 font-coolvetica">
+        <div className="flex flex-col gap-1 mt-6 mb-6 sm:mb-8">
+          <h2 className="text-lg sm:text-2xl md:text-3xl lg:text-4xl font-extrabold leading-tight tracking-tight">
             <span className="text-[#F77124]">Colleges our</span>{" "}
             <span className="text-gray-900">students comes from</span>
           </h2>
         </div>
 
         {/* Description */}
-        <p className="text-black text-xs sm:text-sm lg:text-base mt-2 sm:mt-3 max-w-4xl mb-6 sm:mb-8">
+        <p className="text-black text-xs sm:text-sm lg:text-base mt-6 max-w-4xl mb-6 sm:mb-8">
           Students from diverse academic backgrounds and leading colleges have
           joined our internship to gain real industry experience and practical
           skills. Here are some of the institutes our past interns come from.

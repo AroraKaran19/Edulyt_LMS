@@ -18,10 +18,13 @@ const NewCourseCard = ({
   course,
   className,
   style,
+  enrollHref,
 }: {
   course: Course;
   className?: string;
   style?: React.CSSProperties;
+  /** When set, Enroll navigates here instead of `/courses/[slug]`. */
+  enrollHref?: string;
 }) => {
   const router = useRouter();
 
@@ -83,17 +86,21 @@ const NewCourseCard = ({
           {course.title}
         </h3>
 
-        {reviewCount > 0 && (
+        {(rating > 0 || reviewCount > 0) && (
           <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500 px-2 py-0.5 text-xs font-semibold text-white">
-              <Star className="h-3.5 w-3.5 fill-white text-white" />
-              {rating.toFixed(1)}
-            </span>
-            <span className="text-xs text-gray-500">
-              {reviewCount >= 1000
-                ? `${(reviewCount / 1000).toFixed(0)}k Ratings`
+            {rating > 0 && (
+              <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500 px-2 py-0.5 text-xs font-semibold text-white">
+                <Star className="h-3.5 w-3.5 fill-white text-white" />
+                {rating.toFixed(1)} Rating
+              </span>
+            )}
+            {reviewCount > 0 && (
+              <span className="text-xs text-gray-500">
+                {reviewCount >= 1000
+                  ? `${(reviewCount / 1000).toFixed(0)}k Ratings`
                 : `${reviewCount} ${reviewCount === 1 ? "Rating" : "Ratings"}`}
-            </span>
+              </span>
+            )}
           </div>
         )}
 
@@ -117,7 +124,8 @@ const NewCourseCard = ({
           <PrimaryButton size="sm"
             onClick={(e) => {
               e.stopPropagation();
-              if (course.slug) router.push(`/courses/${course.slug}`);
+              if (enrollHref) router.push(enrollHref);
+              else if (course.slug) router.push(`/courses/${course.slug}`);
             }}
           >
             Enroll Now

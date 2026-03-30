@@ -235,6 +235,8 @@ export default function DifferenceSection() {
           {/* ── RIGHT: image + floating badges ── */}
           <div className="relative xl:block hidden h-60 sm:h-80 lg:h-116 rounded-3xl overflow-hidden w-full shrink-0 items-center justify-center lg:w-[42%] lg:mt-10">
             <div className="relative h-full w-full max-w-[580px] mx-auto">
+              <div className="absolute inset-y-0 right-0 w-1/4 bg-linear-to-l from-white to-transparent blur-4xl z-10" />
+              <div className="absolute inset-y-0 left-0 w-1/4 bg-linear-to-r from-white to-transparent blur-4xl z-10" />
               <Image
                 src="/assets/DifferenceSectionHero.png"
                 alt="Edulyt dashboard"
@@ -243,9 +245,7 @@ export default function DifferenceSection() {
                 className="h-full w-full object-fit object-cover"
                 priority
               />
-
             </div>
-
           </div>
         </div>
       </div>

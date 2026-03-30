@@ -34,7 +34,7 @@ export default function PlacementSection() {
             <div className="mt-10 sm:mt-14 flex flex-col lg:flex-row gap-8 lg:gap-16 ">
                 <div className="">
                     <div className="flex flex-col gap-1  mb-6 sm:mb-8">
-                        <h2 className="text-base sm:text-lg lg:text-xl font-semibold leading-tight">
+                        <h2 className="text-lg sm:text-lg lg:text-4xl font-extrabold leading-tight">
                             A structured path from <span className="text-[#F77124]">Learning</span><br />
                             to <span className="text-[#F77124]">Placement.</span>
                         </h2>
@@ -42,24 +42,24 @@ export default function PlacementSection() {
 
                     {/* Left Side: Benefits & CTA */}
                     <div className="flex-1 w-full space-y-4 sm:space-y-6 ">
-                        <TimelineSectionsWrapper className="md:ml-10">
+                        <div className="md:ml-10">
                             <div className="space-y-3 sm:space-y-4 ml-0 sm:ml-2 md:-ml-8">
                                 {BENEFITS.map((benefit, index) => (
                                     <div key={index} className="flex items-center gap-3 sm:gap-4 group">
                                         <div className="w-7 h-7 sm:w-8 sm:h-8 shrink-0 rounded-full bg-[#F77124] flex items-center justify-center text-white shadow-sm transition-transform group-hover:scale-110">
                                             <span className="bg-white rounded-full text-[#F77124]">
-                                                <CheckIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                                                <CheckIcon className="w-4 h-4 sm:w-4 sm:h-4 font-bold" />
                                             </span>
                                         </div>
-                                        <div className="flex-1 bg-[#FFF7F0] px-4 sm:px-6 py-3 sm:py-4 rounded-full border border-orange-100/50 shadow-sm transition-shadow hover:shadow-md">
-                                            <p className={cn("font-bold text-gray-800", "text-xs sm:text-sm font-medium")}>
+                                        <div className="flex-1 bg-[#FFF3E8] px-4 sm:px-6 py-3 sm:py-4 rounded-full border border-orange-100/50 shadow-sm transition-shadow hover:shadow-md">
+                                            <p className={cn("font-bold text-gray-900", "text-xs sm:text-base font-semibold")}>
                                                 {benefit}
                                             </p>
                                         </div>
                                     </div>
                                 ))}
                             </div>
-                        </TimelineSectionsWrapper>
+                        </div>
 
                         <div className="pt-6">
                             <PrimaryButton size="md">

@@ -15,6 +15,7 @@ import {
   courses as staticCourses,
 } from "@/constants/internshipData";
 import TimelineMarkerIcon from "./TimelineMarkerIcon";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface FilterItem {
   label: string;
@@ -24,7 +25,6 @@ interface FilterItem {
 
 
 export default function CoursesSection() {
-
   const [activeCategory, setActiveCategory] = useState<string>("all");
   const [filters, setFilters] = useState<FilterItem[]>(() => [
     { label: "All", value: "all" },
@@ -37,17 +37,9 @@ export default function CoursesSection() {
   const { getHomePageCategories } = useCategory();
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const [coursesList, setCoursesList] = useState<Course[]>([]);
   const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
-  const [totalPages, setTotalPages] = useState(1);
-  const isLoadingRef = useRef(false);
+  const [isPaginationHovered, setIsPaginationHovered] = useState(false);
 
-  useEffect(() => {
-    setPage(1);
-    setCoursesList([]);
-    setHasMore(true);
-  }, [activeCategory]);
   useEffect(() => {
     const loadCategories = async () => {
       const list = await getHomePageCategories();
@@ -91,62 +83,81 @@ export default function CoursesSection() {
     dedupingInterval: 1000 * 60, // 1 minute
   });
 
-  // Update coursesList when new data arrives
-  useEffect(() => {
-    if (data?.data?.data?.courses) {
-      const currentPage = data.data.data.page;
-      const total = data.data.data.totalPages;
-      setTotalPages(total || 1);
+  const apiPayload = data?.data?.data;
+  const apiCourses = apiPayload?.courses;
+  const apiTotalPages = apiPayload?.totalPages;
+  const totalPages =
+    typeof apiTotalPages === "number"
+      ? apiTotalPages
+      : typeof apiTotalPages === "string" && apiTotalPages.trim() !== ""
+        ? Number(apiTotalPages)
+        : !isLoading && page === 1
+          ? Math.ceil(staticCourses.length / 6) || 1
+          : 1;
 
-      if (currentPage === page) {
-        setCoursesList(data.data.data.courses);
-        setHasMore(currentPage < total);
-        isLoadingRef.current = false;
-      }
-    } else if (
-      data?.data?.data &&
-      Array.isArray(data.data.data) &&
-      data.data.data.length === 0
-    ) {
-      if (page === 1) {
-        setCoursesList(staticCourses as any);
-        setTotalPages(Math.ceil(staticCourses.length / 6) || 1);
-      }
-      setHasMore(false);
-      isLoadingRef.current = false;
-    }
-  }, [data, page]);
+  const safeTotalPages =
+    Number.isFinite(totalPages) && totalPages > 0 ? totalPages : 1;
+
+  const coursesList: Course[] =
+    Array.isArray(apiCourses) ? apiCourses : !isLoading && page === 1 ? staticCourses : [];
+
+  // Keep dots count small (<= 5) and slide the visible window as page changes.
+  const DOTS_TO_SHOW = 7;
+  const safeActivePage = Math.min(Math.max(page, 1), safeTotalPages);
+  const visibleDotsCount = Math.min(DOTS_TO_SHOW, safeTotalPages);
+  const halfWindow = Math.floor(visibleDotsCount / 2);
+  let startDot = Math.max(1, safeActivePage - halfWindow);
+  startDot = Math.min(startDot, safeTotalPages - visibleDotsCount + 1);
+  const endDot = Math.min(safeTotalPages, startDot + visibleDotsCount - 1);
+  const visiblePages = Array.from(
+    { length: endDot - startDot + 1 },
+    (_, i) => startDot + i
+  );
+
+  // Auto swipe: cycle pages automatically (pauses while hovering pagination).
+  useEffect(() => {
+    if (safeTotalPages <= 1 || isPaginationHovered) return;
+    const id = window.setInterval(() => {
+      setPage((p) => (p >= safeTotalPages ? 1 : p + 1));
+    }, 5000);
+    return () => window.clearInterval(id);
+  }, [safeTotalPages, isPaginationHovered]);
 
 
   return (
-    <div className="relative px-40 mt-12 sm:py-10">
+    <div className="relative px-4 sm:px-10 lg:px-40 mt-12 sm:py-10">
       {/* Marker: Node icon + Header */}
       <div className="flex items-center relative gap-4 -translate-x-12 sm:-translate-x-22">
         <TimelineMarkerIcon size="big">🎓</TimelineMarkerIcon>
-        <span className="text-xl sm:text-xl md:text-lg relative md:left-8 font-semibold text-gray-800">
+        {/* <span className="text-xl sm:text-xl md:text-lg relative md:left-8 font-semibold text-gray-800"> */}
+        <h3 className="text-base sm:text-xl md:text-xl relative md:left-7 font-semibold text-gray-800">
           We Have Two Powerful Paths for You
-        </span>
+        </h3>
       </div>
 
-      <div className="mt-10 sm:mt-4 ">
-        <div className="flex flex-col gap-1 mb-6">
-          <h2 className="text-xl sm:text-lg lg:text-xl font-semibold leading-tight">
-            Our <span className="text-[#F77124]">Courses</span> <br className="sm:hidden" /> <span className="text-gray-900">(For Students)</span>
+      <div className="">
+        <div className="flex flex-col gap-1 mt-6 mb-6">
+          <h2 className="text-lg sm:text-2xl md:text-3xl lg:text-4xl font-extrabold leading-tight tracking-tight">
+            Our <span className="text-[#F77124]">Courses</span> <br className="sm:hidden" /> <span className="text-gray-900 font-medium">(For Students)</span>
           </h2>
         </div>
 
         {/* Category filters container */}
-        <div className="mt-6 flex gap-2 overflow-x-auto pb-2 scrollbar-hide" ref={scrollRef}>
+        <div className="mt-4 sm:mt-6 flex gap-2 sm:gap-4 justify-between items-center h-10 sm:h-12 rounded-full overflow-x-auto bg-[#F66F221F] scrollbar-hide" ref={scrollRef}>
           {filters.map((cat) => (
             <button
               key={cat.value}
               type="button"
-              onClick={() => setActiveCategory(cat.value)}
+              onClick={() => {
+                setActiveCategory(cat.value);
+                setPage(1);
+              }}
               className={cn(
-                "shrink-0 inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold transition",
+                "shrink-0 inline-flex items-center h-full gap-2 rounded-full px-3 sm:px-4 py-1.5 sm:py-2.5 font-semibold transition",
+                "text-xs sm:text-sm font-medium",
                 activeCategory === cat.value
-                  ? "bg-[#F77124] text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  ? "bg-linear-to-b from-[#F5891D] to-[#F5691D] text-white"
+                  : "text-gray-700"
               )}
             >
               <span>{cat.label}</span>
@@ -193,19 +204,55 @@ export default function CoursesSection() {
         </div>
 
         {/* Pagination Controls - Dot Slider */}
-        <div className="mt-16 flex justify-center items-center gap-2">
-          {Array.from({ length: totalPages }, (_, i) => (
+        <div
+          className="mt-16 flex justify-center items-center gap-4"
+          onMouseEnter={() => setIsPaginationHovered(true)}
+          onMouseLeave={() => setIsPaginationHovered(false)}
+        >
+          <button
+            type="button"
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={safeActivePage <= 1}
+            className={cn(
+              "h-8 w-8 rounded-full border border-gray-200 flex items-center justify-center transition",
+              safeActivePage <= 1
+                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                : "bg-white text-gray-800 hover:bg-gray-50"
+            )}
+            aria-label="Previous page"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+
+          {visiblePages.map((pageNumber) => (
             <button
-              key={i}
+              key={pageNumber}
               type="button"
-              onClick={() => setPage(i + 1)}
+              onClick={() => setPage(pageNumber)}
               className={cn(
                 "h-2 rounded-full transition-all duration-300",
-                i + 1 === page ? "w-8 bg-[#F77124]" : "w-2 bg-gray-300 hover:bg-gray-400"
+                pageNumber === safeActivePage
+                  ? "w-8 bg-[#F77124]"
+                  : "w-2 bg-gray-300 hover:bg-gray-400"
               )}
-              aria-label={`Page ${i + 1}`}
+              aria-label={`Page ${pageNumber}`}
             />
           ))}
+
+          <button
+            type="button"
+            onClick={() => setPage((p) => Math.min(safeTotalPages, p + 1))}
+            disabled={safeActivePage >= safeTotalPages}
+            className={cn(
+              "h-8 w-8 rounded-full border border-gray-200 flex items-center justify-center transition",
+              safeActivePage >= safeTotalPages
+                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                : "bg-white text-gray-800 hover:bg-gray-50"
+            )}
+            aria-label="Next page"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
         </div>
       </div>
     </div >

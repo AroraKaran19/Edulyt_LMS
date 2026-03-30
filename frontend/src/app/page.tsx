@@ -19,9 +19,9 @@ import FAQSection from "./(pages)/internships/components/FAQSection";
 
 const HomePage = () => {
   return (
-    <div className="bg-[#FFF8F3]">
+    <div className="bg-[#fffcfa]">
       <DifferenceSection />
-      <TimelineSectionsWrapper className="bg-[#FFF8F3] left-0 sm:left-28 pt-10">
+      <TimelineSectionsWrapper className="bg-[#fffcfa] left-0 sm:left-28 pt-10">
         <CareerConfusionSection />
         <div className="h-4 sm:h-4" aria-hidden />
         <ConsultationSection />

@@ -5,7 +5,7 @@ import { HelpCircle } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import TimelineSectionsWrapper from "./TimelineSectionsWrapper";
-import { DashedLineHorizontal } from "./CareerConfusionSection";
+import { DashedLineHorizontal, DashedLineVertical } from "./CareerConfusionSection";
 import { GoHeartFill } from "react-icons/go";
 
 const GROWTH_POINTS = [
@@ -32,10 +32,10 @@ export default function ProfessionalGrowthSection() {
 
             {/* Content Area */}
             <div className="mt-10 sm:mt-16">
-                <div className="flex flex-col gap-1 mb-4 sm:mb-6">
-                    <h2 className="text-base sm:text-lg lg:text-xl font-semibold leading-tight">
+                <div className="flex flex-col mb-4 sm:mb-6">
+                    <h2 className="text-lg sm:text-lg lg:text-4xl font-extrabold leading-tight">
                         Not a <span className="text-[#F77124]">Student Anymore?</span><br />
-                        Already Working, <span className="text-[#F77124]">But Not Growing?</span>
+                        Already Working, <span className="text-[#F77124]"><br />But Not Growing?</span>
                     </h2>
                 </div>
                 <div className="flex flex-col lg:flex-row items-start gap-8 lg:gap-12 xl:gap-20">
@@ -44,21 +44,25 @@ export default function ProfessionalGrowthSection() {
 
 
                         <DashedLineHorizontal
-                            svgStyle="absolute bottom-0 -left-2 md:w-1/5 lg:w-1/8"
+                            svgStyle="absolute bottom-8 -left-2 md:w-1/5 lg:w-1/8"
                             className="relative z-99 w-full h-14 -left-8 sm:-left-12 "
                         />
-                        <TimelineSectionsWrapper svgStyle="h-11/12" className="xl:ml-4">
-                            <div className="flex flex-col -ml-4 sm:-ml-8 gap-3 sm:gap-4">
+                        <div className="xl:ml-4 relative pt-0 px-0 sm:px-0">
+                            <DashedLineVertical
+                                className="left-[14px] sm:left-[16px] lg:left-[18px] h-full z-0"
+                                svgStyle="h-full"
+                            />
+                            <div className="flex flex-col gap-3 sm:gap-4 relative">
                                 {GROWTH_POINTS.map((q) => (
                                     <div
                                         key={q}
-                                        className="relative  flex items-center"
+                                        className="relative flex items-center"
                                     >
                                         <div className="flex h-7 w-7 sm:h-8 sm:w-8 lg:h-9 lg:w-9 shrink-0 items-center justify-center rounded-full bg-[#F77124] text-white shadow-[0_4px_12px_rgba(247,113,36,0.3)] z-10">
                                             <span className="text-[11px] sm:text-[13px] lg:text-[15px] text-[#F77124] bg-white w-3/5 h-3/5 rounded-full flex items-center justify-center font-black">?</span>
                                         </div>
                                         <div className="-ml-3 sm:-ml-4 pl-6 sm:pl-8 pr-4 sm:pr-6 py-2 lg:pl-10 lg:pr-8 lg:py-3 rounded-full bg-[#FFF3E8] border border-orange-100/50">
-                                            <span className={cn("whitespace-normal font-bold text-gray-800", "text-xs sm:text-sm font-medium")}>
+                                            <span className={cn("whitespace-normal font-bold text-gray-800", "text-xs sm:text-base font-semibold")}>
                                                 {q}
                                             </span>
                                         </div>
@@ -70,10 +74,10 @@ export default function ProfessionalGrowthSection() {
 
                             </div>
                             <DashedLineHorizontal
-                                svgStyle="absolute bottom-6 -left-2 w-3/5"
-                                className="relative z-99 w-full h-14 "
+                                svgStyle="absolute -bottom-2 left-5 w-1/10"
+                                className="relative z-99 w-full h-24 "
                             >
-                                <div className="absolute bottom-0 left-6 sm:left-10 flex items-center">
+                                <div className="absolute -bottom-8 left-6 sm:left-20 flex items-center">
                                     <button
                                         type="button"
                                         className="group w-full relative inline-flex items-center bg-[#59CC62]/30 hover:bg-[#59CC62]/20 rounded-full transition-all"
@@ -87,15 +91,15 @@ export default function ProfessionalGrowthSection() {
                                     </button>
                                 </div>
                             </DashedLineHorizontal>
-                        </TimelineSectionsWrapper>
+                        </div>
                     </div>
 
                     {/* Right Side: Image Section */}
                     <div className="flex-1 w-full lg:max-w-lg h-[300px] sm:h-[350px] lg:h-[400px] relative rounded-xl overflow-hidden">
-                        <div className="w-1/3 h-full absolute z-9 left-0 bg-white  blur-3xl"></div>
-                        <div className="w-1/3 h-full absolute z-9 right-0 bg-white  blur-3xl"></div>
-                        <div className="h-1/4 w-full absolute z-9 top-0 bg-white  blur-3xl"></div>
-                        <div className="h-1/4 w-full absolute z-9 bottom-0 bg-white  blur-3xl"></div>
+                        <div className="w-1/2 h-full absolute z-9 left-0 bg-linear-to-r from-white to-transparent"></div>
+                        <div className="w-1/2 h-full absolute z-9 right-0 bg-linear-to-l from-white to-transparent"></div>
+                        <div className="h-1/2 w-full absolute z-9 top-0 bg-linear-to-b from-white to-transparent"></div>
+                        <div className="h-1/2 w-full absolute z-9 bottom-0 bg-linear-to-t from-white to-transparent"></div>
                         <Image
                             alt="professional-growth"
                             src="/assets/professional-growth.png"

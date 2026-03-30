@@ -41,20 +41,19 @@ export default function ConsultationSection() {
     <div className="relative px-4 sm:px-10 lg:px-40 py-8 sm:py-10 lg:py-12">
       {/* Top Header Row */}
       <div className="flex items-center relative gap-4 -translate-x-6 sm:-translate-x-22">
-        <div className="flex h-9 w-9 sm:h-11 sm:w-11 lg:h-14 lg:w-14 shrink-0 items-center justify-center rounded-full bg-[#F77124] text-white shadow-lg shadow-orange-200">
+        <div className="flex h-9 w-9 sm:h-11 sm:w-11 lg:h-14 lg:w-14 shrink-0 items-center justify-center rounded-full bg-[#F77124] text-white">
           <PhoneIcon />
         </div>
-        <h3 className="text-base sm:text-xl md:text-2xl relative md:left-8 font-semibold text-gray-800">
+        <h3 className="text-base sm:text-xl md:text-xl relative md:left-7 font-semibold text-gray-800">
           One Conversation Can Change Everything.
         </h3>
       </div>
 
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:items-center mt-8 sm:mt-10">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:items-center mt-6">
         {/* Left: Image with Overlays */}
         <div className="lg:col-span-6 relative overflow-hidden rounded-2xl hidden sm:block">
-
-          <div className="absolute inset-y-0 left-0 w-1/3 bg-white to-transparent blur-3xl z-10" />
           <div className="absolute inset-y-0 right-0 w-1/3 bg-linear-to-l from-white to-transparent blur-4xl z-10" />
+          <div className="absolute inset-y-0 left-0 w-1/3 bg-linear-to-r from-white to-transparent blur-4xl z-10" />
           <Image
             src="/assets/professional-consult.png"
             alt="Industry professionals ready to help"

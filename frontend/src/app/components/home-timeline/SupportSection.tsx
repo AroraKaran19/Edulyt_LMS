@@ -43,12 +43,12 @@ export default function SupportSection() {
                         const parts = feature.title.split(feature.highlight);
                         return (
                             <div key={index} className="flex flex-col gap-2">
-                                <h3 className="text-base sm:text-lg lg:text-xl font-semibold leading-tight">
+                                <h3 className="text-base sm:text-lg lg:text-4xl font-semibold leading-tight">
                                     {parts[0]}
-                                    <span className="text-[#F39200]">{feature.highlight}</span>
+                                    <span className="text-[#f77124]">{feature.highlight}</span>
                                     {parts[1]}
                                 </h3>
-                                <p className={cn("max-w-prose text-gray-500 leading-relaxed font-semibold", "text-xs sm:text-sm font-medium")}>
+                                <p className={cn("max-w-prose max-w-md text-gray-700 leading-relaxed font-semibold", "text-xs sm:text-sm font-medium")}>
                                     {feature.description}
                                 </p>
                             </div>
