@@ -16,6 +16,10 @@ import {
   retryCertificateJob,
   getCertificatesByUserId,
 } from "../controllers/certificate.controller";
+import {
+  getAllCollaborationJobs,
+  retryCollaborationJob,
+} from "../controllers/collaborationJob.controller";
 import { getTotalSpendByUserId } from "../controllers/order.controller";
 
 const router = Router();
@@ -41,6 +45,10 @@ router.get("/courses-analytics", getCourseAnalyticsController);
 // Certificate jobs (admin settings)
 router.get("/certificate-jobs", getAllCertificateJobs);
 router.post("/certificate-jobs/:jobId/retry", retryCertificateJob);
+
+// Collaboration allotment jobs (admin settings)
+router.get("/collaboration-jobs", getAllCollaborationJobs);
+router.post("/collaboration-jobs/:jobId/retry", retryCollaborationJob);
 
 // User details (aggregated: user, enrollments, certificates, totalSpend)
 router.get("/users/:userId/details", getUserDetailsForAdminController);

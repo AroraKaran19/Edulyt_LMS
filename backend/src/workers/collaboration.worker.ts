@@ -1,5 +1,6 @@
+import mongoose from "mongoose";
 import { AppError } from "../middlewares/error.middleware";
-import { CollaborationDomainModel } from "../models";
+import { CollaborationDomainModel, UserModel } from "../models";
 import { CollaborationEnrollmentAccess } from "../types/collaborationDomain";
 import { collaborationAccessToEnrollmentFields } from "../services/collaborationAllotment.helpers";
 import { CreateEnrollmentService } from "../services/enrollment.services";
@@ -106,6 +107,15 @@ async function processCollaborationAllotmentJob(job: {
         throw err;
       }
     }
+
+    // Align with enrollmentSource: "promotion"; do not override affiliate joins.
+    await UserModel.updateOne(
+      {
+        _id: new mongoose.Types.ObjectId(userId),
+        joinSource: { $ne: "affiliate" },
+      },
+      { $set: { joinSource: "promotion" } }
+    );
 
     await updateCollaborationJobStatusService(jobId, { status: "completed" });
     console.log(

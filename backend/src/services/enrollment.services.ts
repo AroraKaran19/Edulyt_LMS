@@ -20,7 +20,8 @@ import { createCertificateJobService } from "./certificateJob.services";
 /**
  * Check if an enrollment is still valid (not expired)
  * Trial enrollments expire based on trialExpiresAt
- * Non-trial enrollments expire after 4 years (validUntil)
+ * Non-trial enrollments expire at validUntil (default 4 years if unset; collaboration
+ * enrollments set validUntil from the domain's duration in days)
  */
 export const isEnrollmentValid = (enrollment: Enrollment): boolean => {
   if (!enrollment) return false;
@@ -50,6 +51,8 @@ export const CreateEnrollmentService = async (enrollmentData: {
   accessControl?: PartialAccessControl;
   /** Collaboration domain top-N rule (first N contents per lesson). */
   collaborationTopNSettings?: { contentsPerLesson: number };
+  /** When set (e.g. collaboration allotments), enrollment expires at this instant. */
+  validUntil?: Date;
   isTrial?: boolean;
   trialDurationDays?: number;
 }): Promise<Enrollment | null> => {

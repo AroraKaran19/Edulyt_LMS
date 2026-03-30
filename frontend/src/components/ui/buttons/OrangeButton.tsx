@@ -27,8 +27,8 @@ const OrangeButton = ({
     <button
       type={type}
       className={cn(
+        "inline-flex items-center justify-center gap-2",
         "bg-[#F77124] text-white px-6 py-3 rounded-2xl cursor-pointer",
-        blinkIcon && "flex items-center gap-2",
         glow && "shadow-[0_0_2px_3px_rgba(247,173,36,1)]",
         disabled && "opacity-50 cursor-not-allowed",
         className

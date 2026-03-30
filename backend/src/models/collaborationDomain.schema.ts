@@ -70,6 +70,21 @@ const enrollmentAccessSchema = new Schema(
     },
     partialAccess: { type: partialAccessControlSchema, default: undefined },
     topNSettings: { type: topNSettingsSchema, default: undefined },
+    plan: {
+      type: String,
+      enum: ["elite", "essential"],
+      required: true,
+    },
+    audience: {
+      type: String,
+      enum: ["college-students", "professionals"],
+      required: true,
+    },
+    durationDays: {
+      type: Number,
+      required: true,
+      min: 1,
+    },
   },
   { _id: false }
 );

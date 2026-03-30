@@ -126,6 +126,10 @@ const AdminSidebar = ({
           href: "/admin/settings/certificate-jobs",
         },
         {
+          label: "Collaboration Jobs",
+          href: "/admin/settings/collaboration-jobs",
+        },
+        {
           label: "Collaboration Domains",
           href: "/admin/settings/collaboration-domains",
         },

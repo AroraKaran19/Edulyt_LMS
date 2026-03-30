@@ -35,7 +35,7 @@ export const listCollaborationDomains = asyncHandler(
     sendSuccessResponse(
       res,
       result,
-      "Collaboration domains fetched successfully",
+      "Collaboration Domains fetched successfully",
       200
     );
     return;
@@ -47,7 +47,7 @@ export const getCollaborationDomainById = asyncHandler(
     const { collaborationDomainId } = req.params;
 
     if (!collaborationDomainId) {
-      throw new AppError("Collaboration domain ID is required", 400);
+      throw new AppError("Collaboration Domain ID is required", 400);
     }
 
     const collaborationDomain = await getCollaborationDomainByIdService(

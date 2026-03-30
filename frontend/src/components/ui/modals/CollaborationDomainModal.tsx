@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { X, Search, Check, BookOpen, Loader2 } from "lucide-react";
+import { X, Search, Check, BookOpen, Loader2, Info } from "lucide-react";
 import { useCollaborationDomain } from "@/hooks/useCollaborationDomain";
 import { useCourse } from "@/hooks/useCourse";
 import {
@@ -10,6 +10,7 @@ import {
   CollaborationEnrollmentAccess,
   CreateCollaborationDomainData,
 } from "@/types/collaborationDomain";
+import { Plan, Course as CourseType } from "@/types/course";
 import { Course, CourseModule } from "@/types";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
@@ -23,6 +24,11 @@ import {
 
 type AccessType = "full" | "partial" | "topN";
 type PartnershipOffer = "course_access" | "discount";
+
+const AUDIENCE_LABEL: Record<CourseType["audience"], string> = {
+  "college-students": "College students",
+  professionals: "Professionals",
+};
 
 interface CollaborationDomainModalProps {
   isOpen: boolean;
@@ -55,6 +61,9 @@ const CollaborationDomainModal = ({
     "percentage"
   );
   const [benefitValue, setBenefitValue] = useState<number>(0);
+  const [plan, setPlan] = useState<Plan["type"]>("elite");
+  const [audience, setAudience] = useState<CourseType["audience"]>("college-students");
+  const [durationDays, setDurationDays] = useState<number>(365);
 
   const [courseSearch, setCourseSearch] = useState("");
   const [courseResults, setCourseResults] = useState<Course[]>([]);
@@ -68,13 +77,21 @@ const CollaborationDomainModal = ({
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const loadCourses = useCallback(
-    async (page: number, search: string, append: boolean) => {
+    async (
+      page: number,
+      search: string,
+      append: boolean,
+      opts?: { applyAudienceFilter?: boolean }
+    ) => {
+      const applyAudience =
+        opts?.applyAudienceFilter ?? partnershipOffer === "course_access";
       setLoadingCourses(true);
       try {
         const res = await getAdminCourses({
           page,
           limit: 20,
           search: search.trim() || undefined,
+          ...(applyAudience ? { audience } : {}),
         });
         if (res?.courses) {
           const list = res.courses;
@@ -91,7 +108,7 @@ const CollaborationDomainModal = ({
         setLoadingCourses(false);
       }
     },
-    [getAdminCourses]
+    [getAdminCourses, partnershipOffer, audience]
   );
 
   const [courseDetailForPartial, setCourseDetailForPartial] =
@@ -133,9 +150,15 @@ const CollaborationDomainModal = ({
           setAccessType("partial");
           setTopN(5);
         }
+        setPlan(ea.plan ?? "elite");
+        setAudience(ea.audience ?? "college-students");
+        setDurationDays(ea.durationDays ?? 365);
       } else {
         setAccessType("full");
         setTopN(5);
+        setPlan("elite");
+        setAudience("college-students");
+        setDurationDays(365);
       }
       setBenefitType(editingDomain.benefit?.type ?? "percentage");
       setBenefitValue(editingDomain.benefit?.value ?? 0);
@@ -286,6 +309,9 @@ const CollaborationDomainModal = ({
     setPartnershipOffer("course_access");
     setBenefitType("percentage");
     setBenefitValue(0);
+    setPlan("elite");
+    setAudience("college-students");
+    setDurationDays(365);
     setSelectedCourses([]);
     setCourseSearch("");
     setCourseResults([]);
@@ -298,21 +324,42 @@ const CollaborationDomainModal = ({
     hydratedPartialEditKeyRef.current = null;
   };
 
-  const selectPartnershipOffer = useCallback((offer: PartnershipOffer) => {
-    setPartnershipOffer(offer);
-    if (offer === "discount") {
-      setSelectedCourses([]);
-      setShowCourseDropdown(false);
-      setAccessType("full");
-      setPartialModules(new Set());
-      setPartialLessons({});
-      setPartialContents({});
-      setCourseDetailForPartial(null);
-    } else {
-      setBenefitValue(0);
-      setBenefitType("percentage");
-    }
-  }, []);
+  const selectPartnershipOffer = useCallback(
+    (offer: PartnershipOffer) => {
+      setPartnershipOffer(offer);
+      if (offer === "discount") {
+        setSelectedCourses([]);
+        setShowCourseDropdown(false);
+        setAccessType("full");
+        setPartialModules(new Set());
+        setPartialLessons({});
+        setPartialContents({});
+        setCourseDetailForPartial(null);
+      } else {
+        setBenefitValue(0);
+        setBenefitType("percentage");
+        setCourseResults([]);
+        setCoursePage(1);
+        setHasMoreCourses(true);
+        void loadCourses(1, courseSearch, false, {
+          applyAudienceFilter: true,
+        });
+      }
+    },
+    [loadCourses, courseSearch]
+  );
+
+  const handleAudienceChange = useCallback(
+    (next: CourseType["audience"]) => {
+      setAudience(next);
+      setSelectedCourses((prev) => prev.filter((c) => c.audience === next));
+      setCourseResults([]);
+      setCoursePage(1);
+      setHasMoreCourses(true);
+      void loadCourses(1, courseSearch, false, { applyAudienceFilter: true });
+    },
+    [loadCourses, courseSearch]
+  );
 
   const handleAccessTypeSelect = useCallback((t: AccessType) => {
     setAccessType(t);
@@ -534,13 +581,26 @@ const CollaborationDomainModal = ({
       }
     }
 
+    if (durationDays < 1) {
+      toast.error("Duration must be at least 1 day");
+      return null;
+    }
+
     let enrollmentAccess: CollaborationEnrollmentAccess;
     if (accessType === "full") {
-      enrollmentAccess = { mode: "full" };
+      enrollmentAccess = {
+        mode: "full",
+        plan,
+        audience,
+        durationDays,
+      };
     } else if (accessType === "topN") {
       enrollmentAccess = {
         mode: "partial",
         topNSettings: { contentsPerLesson: topN },
+        plan,
+        audience,
+        durationDays,
       };
     } else {
       const pa = buildPartialAccessFromSelections(
@@ -555,7 +615,13 @@ const CollaborationDomainModal = ({
         );
         return null;
       }
-      enrollmentAccess = { mode: "partial", partialAccess: pa };
+      enrollmentAccess = {
+        mode: "partial",
+        partialAccess: pa,
+        plan,
+        audience,
+        durationDays,
+      };
     }
 
     return {
@@ -576,7 +642,7 @@ const CollaborationDomainModal = ({
     if (mode === "create") {
       const result = await createCollaborationDomain(payload);
       if (result) {
-        toast.success("Collaboration domain created successfully!");
+        toast.success("Collaboration Domain created successfully!");
         onSuccess();
         onClose();
       }
@@ -586,7 +652,7 @@ const CollaborationDomainModal = ({
         payload
       );
       if (result) {
-        toast.success("Collaboration domain updated successfully!");
+        toast.success("Collaboration Domain updated successfully!");
         onSuccess();
         onClose();
       }
@@ -615,6 +681,28 @@ const CollaborationDomainModal = ({
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+          <div
+            className="flex gap-3 rounded-xl border border-amber-200 bg-amber-50/90 px-4 py-3 text-sm text-amber-950"
+            role="note"
+          >
+            <Info
+              className="w-5 h-5 shrink-0 text-amber-700 mt-0.5"
+              aria-hidden
+            />
+            <div>
+              <p className="font-semibold text-amber-900 mb-1.5">
+                One audience per collaboration domain
+              </p>
+              <ul className="list-disc pl-5 space-y-1 text-amber-900/90 leading-snug">
+                <li>
+                  Each entry applies to a single audience. To cover a different
+                  audience (for example college students vs professionals),
+                  create a separate collaboration domain.
+                </li>
+              </ul>
+            </div>
+          </div>
+
           {/* Title */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1.5">
@@ -728,12 +816,79 @@ const CollaborationDomainModal = ({
             </div>
           </div>
 
+          {/* Plan, Audience, Duration (course-access partnerships only) */}
+          {partnershipOffer === "course_access" && (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                  Plan <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={plan}
+                  onChange={(e) => setPlan(e.target.value as Plan["type"])}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
+                >
+                  <option value="elite">Elite</option>
+                  <option value="essential">Essential</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                  Audience <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={audience}
+                  onChange={(e) =>
+                    handleAudienceChange(
+                      e.target.value as CourseType["audience"]
+                    )
+                  }
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
+                >
+                  <option value="college-students">College Students</option>
+                  <option value="professionals">Professionals</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                  Access duration (days) <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  value={durationDays}
+                  onChange={(e) => setDurationDays(Number(e.target.value))}
+                  min={1}
+                  placeholder="365"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
+                  aria-describedby="collab-duration-hint"
+                />
+                <p
+                  id="collab-duration-hint"
+                  className="text-xs text-gray-500 mt-1.5 leading-snug"
+                >
+                  Sets enrollment expiry: this many days after the user is
+                  enrolled, their access ends.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Courses (course-access partnerships only) */}
           {partnershipOffer === "course_access" && (
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1.5">
               Courses <span className="text-red-500">*</span>
             </label>
+            <p className="text-xs text-gray-500 mb-2 leading-snug">
+              Search is filtered to courses tagged for{" "}
+              <span className="font-medium text-gray-700">
+                {AUDIENCE_LABEL[audience]}
+              </span>
+              , matching the audience above (collaboration enrollments use
+              that audience).
+            </p>
 
             {/* Selected courses */}
             {selectedCourses.length > 0 && (

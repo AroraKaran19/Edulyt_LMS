@@ -1,4 +1,4 @@
-import type { Course } from "./course";
+import type { Course, Plan } from "./course";
 import type { User } from "./user";
 import type { PartialAccessControl } from "./enrollment";
 
@@ -12,6 +12,15 @@ export interface CollaborationEnrollmentAccess {
   mode: CollaborationEnrollmentAccessMode;
   partialAccess?: PartialAccessControl | null;
   topNSettings?: CollaborationTopNSettings | null;
+  /** Which plan this collaboration enrollment uses. */
+  plan: Plan["type"];
+  /** Target audience for this collaboration. */
+  audience: Course["audience"];
+  /**
+   * Days of access after the user is enrolled. Becomes `Enrollment.validUntil`
+   * (enrollment expiry); access checks use that date.
+   */
+  durationDays: number;
 }
 
 export type CollaborationBenefitType = "percentage" | "fixed";
