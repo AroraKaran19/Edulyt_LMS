@@ -41,7 +41,7 @@ module.exports = {
       exec_mode: "fork",
       env: {
         RUN_BACKGROUND_JOBS: "true",
-        COLLABORATION_WORKER_POLL_MS: "120000",
+        COLLABORATION_WORKER_POLL_MS: "10000",
       },
       max_memory_restart: "500M",
     },

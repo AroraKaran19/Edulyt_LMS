@@ -14,7 +14,7 @@ const MAX_RETRIES = 3;
 
 const POLL_INTERVAL_MS = Math.max(
   200,
-  Number(process.env.COLLABORATION_WORKER_POLL_MS) || 120_000
+  Number(process.env.COLLABORATION_WORKER_POLL_MS) || 10_000
 );
 
 const MAX_JOBS_PER_TICK = Math.max(
