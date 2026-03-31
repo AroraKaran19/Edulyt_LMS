@@ -23,7 +23,7 @@ const SUPPORT_FEATURES = [
 
 export default function SupportSection() {
     return (
-        <div className="relative px-6 sm:px-10 lg:px-40 mt-8 sm:mt-12 sm:py-10">
+        <div className="relative px-0 sm:px-4 mt-8 sm:mt-12 sm:py-10">
             {/* Top Header with Icon */}
             <div className="flex items-center relative gap-4 -translate-x-[22px] sm:-translate-x-22">
                 <TimelineMarkerIcon size="big">
@@ -36,9 +36,9 @@ export default function SupportSection() {
                 </div>
             </div>
 
-            <div className="mt-10 sm:mt-16">
+            <div className="mt-10 sm:mt-16 pl-8 sm:pl-0">
                 {/* Content Area with Vertical Dotted Line Alignment */}
-                <div className="mt-4 space-y-6 sm:space-y-8 ">
+                <div className="mt-4 space-y-6 sm:space-y-8">
                     {SUPPORT_FEATURES.map((feature, index) => {
                         const parts = feature.title.split(feature.highlight);
                         return (

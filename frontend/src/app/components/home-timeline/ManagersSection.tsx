@@ -21,7 +21,7 @@ export default function ManagersSection() {
     );
 
     return (
-        <div className="relative px-6 sm:px-10 lg:px-40 mt-8 sm:mt-12 sm:py-10">
+        <div className="relative px-0 sm:px-4 mt-8 sm:mt-12 sm:py-10">
             {/* Top Header with Icon */}
             <div className="flex items-center relative gap-4 -translate-x-[22px] sm:-translate-x-22">
                 <TimelineMarkerIcon size="big">
@@ -35,9 +35,9 @@ export default function ManagersSection() {
             </div>
 
             {/* Content Area with Swiper Carousel */}
-            <div className="mt-10 sm:mt-16 ">
+            <div className="mt-10 sm:mt-16 pl-8 sm:pl-0">
                 <div className="flex flex-col gap-1 mt-6 mb-6 sm:mb-8">
-                    <h2 className={cn("text-xl sm:text-2xl lg:text-4xl font-extrabold leading-tight", "line-clamp-1 overflow-visible whitespace-normal")}>
+                    <h2 className={cn("text-xl sm:text-2xl lg:text-4xl font-extrabold leading-tight", "overflow-visible")}>
                         <span className="text-[#F77124]">Learn</span>{" "}
                         From The People Who{" "}
                         <span className="text-[#F77124]">Hire.</span>

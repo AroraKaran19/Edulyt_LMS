@@ -41,7 +41,7 @@ export default function CollegesSection() {
 
   return (
     <section
-      className="relative px-6 sm:px-10 lg:px-40 mt-8 sm:mt-12 sm:py-10"
+      className="relative px-2 sm:px-5 mt-8 sm:mt-12 sm:py-10"
       aria-label="Colleges our students come from"
     >
       <div>
@@ -57,7 +57,7 @@ export default function CollegesSection() {
         </div>
 
         {/* Title and Heading */}
-        <div className="flex flex-col gap-1 mt-6 mb-6 sm:mb-8">
+        <div className="flex flex-col gap-1 mt-6 mb-6 sm:mb-8 pl-7 sm:pl-0">
           <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-extrabold leading-tight tracking-tight">
             <span className="text-[#F77124]">Colleges our</span>{" "}
             <span className="text-gray-900">students comes from</span>
@@ -65,7 +65,7 @@ export default function CollegesSection() {
         </div>
 
         {/* Description */}
-        <p className="text-black text-xs sm:text-sm lg:text-base mt-6 max-w-4xl mb-6 sm:mb-8">
+        <p className="text-black text-xs sm:text-sm lg:text-base mt-6 max-w-4xl mb-6 sm:mb-8 pl-7 sm:pl-0">
           Students from diverse academic backgrounds and leading colleges have
           joined our internship to gain real industry experience and practical
           skills. Here are some of the institutes our past interns come from.
@@ -73,7 +73,7 @@ export default function CollegesSection() {
       </div>
 
       {/* Grid of college cards (Swiper: 6 per slide, 3x2 grid on desktop, 1 per slide on mobile) */}
-      <div className="max-w-full sm:max-w-6xl">
+      <div className="max-w-full sm:max-w-6xl pl-7 sm:pl-0">
         <Swiper
           key={perSlide} // Re-initialize Swiper when chunk size changes
           onSwiper={(swiper) => {

@@ -26,7 +26,7 @@ const FEATURES = [
 
 export default function TransformationSection() {
     return (
-        <div className="relative px-6 sm:px-10 lg:px-40 mt-8 sm:mt-12 sm:py-10">
+        <div className="relative px-0 sm:px-4 mt-8 sm:mt-12 sm:py-10">
             {/* Top Header with Icon */}
             <div className="flex items-center relative gap-4 -translate-x-[22px] sm:-translate-x-22">
                 <TimelineMarkerIcon size="big">
@@ -44,7 +44,7 @@ export default function TransformationSection() {
             </div>
 
             {/* Content Area */}
-            <div className="flex flex-col lg:flex-row justify-center gap-8 lg:gap-12 mt-6 sm:mt-8">
+            <div className="flex flex-col lg:flex-row justify-center gap-8 lg:gap-12 mt-6 sm:mt-8 pl-8 sm:pl-0">
                 <div className="flex flex-col max-w-2xl gap-10 mb-4 sm:mb-6">
                     <h2 className="text-xl sm:text-2xl lg:text-4xl font-extrabold leading-tight">
                         Your <span className="text-[#F77124]">Transformation</span><br />
@@ -68,7 +68,7 @@ export default function TransformationSection() {
 
                         <div className="space-y-4 sm:space-y-6">
                             {FEATURES.map((feature, index) => (
-                                <div key={index} className="flex items-center bg-[#FFF3E8] rounded-full justify-center gap-4 sm:gap-6">
+                                <div key={index} className="flex items-center bg-[#FFF3E8] rounded-full py-1 justify-center gap-4 sm:gap-6">
                                     {/* Feature Icon Case */}
                                     <div className="w-12 h-12 sm:w-14 sm:h-14 lg:w-15 lg:h-15 shrink-0 rounded-full bg-[#F77124] flex items-center justify-center text-white">
                                         <span className="bg-white rounded-full text-[#F77124]">
@@ -77,7 +77,7 @@ export default function TransformationSection() {
                                     </div>
 
                                     {/* Feature Text Case */}
-                                    <div className="flex-1 bg-[#FFF3E8] px-4 py-3 sm:py-4">
+                                    <div className="flex-1">
                                         <h4 className={cn("text-base sm:text-xl md:text-2xl font-bold", "")}>
                                             {feature.title}
                                         </h4>

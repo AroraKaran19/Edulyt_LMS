@@ -31,7 +31,7 @@ const TRAINING_IMAGE =
 export default function TrainingSection() {
   return (
     <section
-      className="relative px-6 sm:px-10 lg:px-40 mt-8 sm:mt-12 sm:py-10"
+      className="relative px-2 sm:px-4 mt-8 sm:mt-12 sm:py-10"
       aria-label="What makes our training different"
     >
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-10 xl:gap-12 items-center">
@@ -51,7 +51,7 @@ export default function TrainingSection() {
           </div>
 
           {/* Main heading with orange highlights */}
-          <div className="flex flex-col gap-1 mt-6 mb-6 sm:mb-8">
+          <div className="flex flex-col gap-1 mt-6 mb-6 sm:mb-8 pl-7 sm:pl-0">
             <h2 className={cn("text-xl sm:text-2xl md:text-3xl lg:text-4xl font-extrabold leading-tight tracking-tight", "whitespace-normal sm:whitespace-nowrap")}>
               A <span className="text-[#F77124]">Career-Focused</span>{" "}
               Learning Model to Make <br /> You <span className="text-[#F77124] ">Job-Ready</span>
@@ -59,7 +59,7 @@ export default function TrainingSection() {
           </div>
 
           {/* Vertical timeline steps */}
-          <div className="space-y-4 sm:space-y-12">
+          <div className="space-y-4 sm:space-y-12 pl-7 sm:pl-0">
             {STEPS.map(({ icon: Icon, title, description }) => (
               <div key={title} className="flex flex-col gap-2">
                 <div className="flex align-center items-center gap-3 sm:gap-4 bg-[#fff6f1] rounded-full">

@@ -125,7 +125,7 @@ export default function CoursesSection() {
 
 
   return (
-    <div className="relative px-6 sm:px-10 lg:px-40 mt-12 sm:py-10">
+    <div className="relative px-0 sm:px-4 mt-12 sm:py-10">
       {/* Marker: Node icon + Header */}
       <div className="flex items-center relative gap-4 -translate-x-[22px] sm:-translate-x-22">
         <TimelineMarkerIcon size="big">🎓</TimelineMarkerIcon>
@@ -135,7 +135,7 @@ export default function CoursesSection() {
         </h3>
       </div>
 
-      <div className="">
+      <div className="pl-8 sm:pl-0">
         <div className="flex flex-col gap-1 mt-6 mb-6">
           <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-extrabold leading-tight tracking-tight">
             Our <span className="text-[#F77124]">Courses</span> <br className="sm:hidden" /> <span className="text-gray-900 font-medium">(For Students)</span>

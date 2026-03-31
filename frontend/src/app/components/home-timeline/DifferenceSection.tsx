@@ -142,19 +142,19 @@ export default function DifferenceSection() {
       <div className="relative mx-auto">
 
         {/* ── Row 1: 4 Info Cards ──────────────────────────────────────────── */}
-        <div className="mb-8 grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="mb-8 grid grid-cols-2 gap-3 sm:gap-6 xl:grid-cols-4">
           {VALUE_CARDS.map((card) => (
             <div
               key={card.label}
-              className="flex flex-col gap-3 rounded-3xl bg-white py-4 px-4 shadow-[2px_2px_6px_rgb(0,0,0,0.1)] border border-white/60"
+              className="flex flex-col gap-2 sm:gap-3 rounded-2xl sm:rounded-3xl bg-white py-3 px-3 sm:py-4 sm:px-4 shadow-[2px_2px_6px_rgb(0,0,0,0.1)] border border-white/60"
             >
-              <div className="w-full flex items-center gap-3 self-start rounded-full bg-[#FFF3E8]">
+              <div className="w-full flex items-center gap-2 sm:gap-3 self-start rounded-full bg-[#FFF3E8]">
                 <QuestionIcon />
-                <span className={cn("font-extrabold text-gray-800", "text-xs sm:text-sm font-medium")}>
+                <span className={cn("font-extrabold text-gray-800", "text-[10px] sm:text-sm font-medium leading-tight")}>
                   {card.label}
                 </span>
               </div>
-              <p className={cn("text-lg sm:text-lg font-extrabold", "text-gray-900 pr-4")}>
+              <p className={cn("text-xs sm:text-lg font-extrabold", "text-gray-900 pr-2 sm:pr-4")}>
                 {card.title}
               </p>
             </div>

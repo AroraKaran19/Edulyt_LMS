@@ -86,7 +86,7 @@ export function DashedLineVertical({
 
 export default function CareerConfusionSection() {
   return (
-    <div className="relative px-6 sm:px-10 lg:px-40 mb-13">
+    <div className="relative px-0 sm:px-4 mb-13">
       {/* Marker row: 👋 + "Hello Students" */}
       <div className="flex items-center relative gap-4 -translate-x-[22px] sm:-translate-x-22">
         <TimelineMarkerIcon size="big">👋</TimelineMarkerIcon>
@@ -97,7 +97,7 @@ export default function CareerConfusionSection() {
 
       {/* Two columns: left = heading + pills + CTA, right = image + thought bubble */}
       <div
-        className="grid grid-cols-1 gap-x-12 sm:grid-cols-[1fr_1fr] mt-6"
+        className="grid grid-cols-1 gap-x-12 sm:grid-cols-[1fr_1fr] mt-6 pl-8 sm:pl-0"
       >
         <div className="flex flex-col gap-8">
           <div className="flex flex-col gap-1">
@@ -109,7 +109,7 @@ export default function CareerConfusionSection() {
           {/* <TimelineSectionsWrapper svgStyle="h-11/12" className="xl:ml-4"> */}
           <div className="flex flex-col gap-4 pt-6 sm:pt-8">
             <DashedLineVertical
-              className="left-[14px] lg:left-[178px] h-79 z-0"
+              className="left-[46px] lg:left-[34px] h-40 sm:h-79 z-0"
               svgStyle="h-full"
             />
             {QUESTIONS.map((q, i) => (
@@ -174,15 +174,15 @@ export default function CareerConfusionSection() {
 
         <div className="relative w-full sm:absolute sm:w-3/5 sm:right-0 sm:-bottom-10 hidden md:block">
 
-          <div className="absolute inset-y-0 right-20 w-1/4 bg-linear-to-l from-white to-transparent blur-4xl z-10" />
-          <div className="absolute inset-y-0 left-20 w-1/4 bg-linear-to-r from-white to-transparent blur-4xl z-10" />
+          <div className="absolute inset-y-0 right-5 w-1/4 bg-linear-to-l from-[#fffcfa] to-transparent blur-sm z-10" />
+          <div className="absolute inset-y-0 left-24 w-1/4 bg-linear-to-r from-[#fffcfa] to-transparent blur-sm z-10" />
 
           <Image
             src="/assets/confused-student.png"
             alt="Confused student thinking about career with laptop"
             width={520}
             height={550}
-            className="h-4/5 w-4/5 relative bottom-0 ml-0 sm:ml-20 object-cover"
+            className="h-4/5 w-4/5 relative bottom-12 ml-0 sm:ml-28 object-cover"
             priority
           />
         </div>

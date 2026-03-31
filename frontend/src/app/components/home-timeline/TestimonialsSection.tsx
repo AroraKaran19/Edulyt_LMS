@@ -21,7 +21,7 @@ export default function TestimonialsSection() {
   const swiperRef = useRef<{ slideToLoop: (index: number) => void } | null>(null);
 
   return (
-    <section className="relative px-6 sm:px-10 lg:px-40 mt-8 sm:mt-12 sm:py-10" aria-label="Hear from our past students">
+    <section className="relative pl-2 px-0 sm:px-4 mt-8 sm:mt-12 sm:py-10" aria-label="Hear from our past students">
       <div >
         {/* Title: heart + "Hear from our past students" */}
         <div className="flex items-center relative gap-4 -translate-x-[22px] sm:-translate-x-22">
@@ -35,7 +35,7 @@ export default function TestimonialsSection() {
         </div>
 
         {/* Headline with orange highlights */}
-        <div className="flex flex-col gap-1 mt-6 mb-6 sm:mb-8">
+        <div className="flex flex-col gap-1 mt-6 mb-6 sm:mb-8 pl-8 sm:pl-0">
           <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-extrabold leading-tight tracking-tight">
             Students who started{" "}
             <span className="text-[#F77124]">just like you</span> are now placed in{" "}
@@ -45,7 +45,7 @@ export default function TestimonialsSection() {
       </div>
 
       {/* Tab bar */}
-      <div className="flex overflow-x-auto scrollbar-hide bg-white justify-between w-full sm:w-3/4 mb-6 sm:mb-8 gap-2">
+      <div className="flex overflow-x-auto scrollbar-hide bg-white justify-between w-full sm:w-3/4 mb-6 sm:mb-8 gap-2 pl-8 sm:pl-0">
         {TABS.map((tab) => (
           <button
             key={tab.id}
