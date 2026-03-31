@@ -1,8 +1,13 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import NewCourseCard from "@/components/ui/NewCourseCard";
+import { Swiper, SwiperSlide } from "swiper/react";
+import { Autoplay, Navigation } from "swiper/modules";
+import "swiper/css";
+import "swiper/css/navigation";
+import { GraduationCap, ChevronLeft, ChevronRight } from "lucide-react";
 import { Course } from "@/types";
 import { ENDPOINTS } from "@/constants/endpoints";
 import { fetcher } from "@/lib/utils";
@@ -15,7 +20,6 @@ import {
   courses as staticCourses,
 } from "@/constants/internshipData";
 import TimelineMarkerIcon from "./TimelineMarkerIcon";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface FilterItem {
   label: string;
@@ -66,7 +70,7 @@ export default function CoursesSection() {
   const buildApiUrl = useCallback(() => {
     const params = new URLSearchParams();
     params.append("page", page.toString());
-    params.append("limit", "6");
+    params.append("limit", "8");
 
     if (activeCategory && activeCategory !== "all") {
       params.append("categories", activeCategory);
@@ -101,6 +105,24 @@ export default function CoursesSection() {
   const coursesList: Course[] =
     Array.isArray(apiCourses) ? apiCourses : !isLoading && page === 1 ? staticCourses : [];
 
+  const [chunkSize, setChunkSize] = useState(6);
+  useEffect(() => {
+    const handleResize = () => {
+      setChunkSize(window.innerWidth < 1024 ? 4 : 6);
+    };
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  const courseChunks = useMemo(() => {
+    const chunks = [];
+    for (let i = 0; i < coursesList.length; i += chunkSize) {
+      chunks.push(coursesList.slice(i, i + chunkSize));
+    }
+    return chunks;
+  }, [coursesList, chunkSize]);
+
   // Keep dots count small (<= 5) and slide the visible window as page changes.
   const DOTS_TO_SHOW = 7;
   const safeActivePage = Math.min(Math.max(page, 1), safeTotalPages);
@@ -128,7 +150,9 @@ export default function CoursesSection() {
     <div className="relative px-0 sm:px-4 mt-12 sm:py-10">
       {/* Marker: Node icon + Header */}
       <div className="flex items-center relative gap-4 -translate-x-[22px] sm:-translate-x-22">
-        <TimelineMarkerIcon size="big">🎓</TimelineMarkerIcon>
+        <TimelineMarkerIcon size="big">
+          <GraduationCap className="w-6 h-6 text-white" />
+        </TimelineMarkerIcon>
         {/* <span className="text-xl sm:text-xl md:text-lg relative md:left-8 font-semibold text-gray-800"> */}
         <h3 className="text-base sm:text-xl md:text-xl relative md:left-7 font-semibold text-gray-800">
           We Have Two Powerful Paths for You
@@ -177,29 +201,47 @@ export default function CoursesSection() {
           ))}
         </div>
 
-        {/* Course grid */}
-        <div className="mt-12 grid grid-cols-1 gap-6 sm:gap-8 md:grid-cols-2 lg:gap-10">
+        {/* Course slider */}
+        <div className="mt-12">
           {isLoading && coursesList.length === 0 ? (
-            <div className="col-span-full flex justify-center py-20">
+            <div className="flex justify-center py-20">
               <Loader size="lg" variant="spinner" />
             </div>
           ) : error ? (
-            <div className="col-span-full text-center py-12 text-gray-500 font-medium">
+            <div className="text-center py-12 text-gray-500 font-medium">
               Could not load courses.
             </div>
-          ) : coursesList.length === 0 ? (
-            <div className="col-span-full text-center py-12 text-gray-500 font-medium">
+          ) : courseChunks.length === 0 ? (
+            <div className="text-center py-12 text-gray-500 font-medium">
               No courses found for this category.
             </div>
           ) : (
-            coursesList.map((course, index) => (
-              <NewCourseCard
-                key={`${course._id || course.slug}-${index}`}
-                course={course}
-                className="opacity-0 animate-course-card-fade-in"
-                style={{ animationDelay: `${index * 100}ms` }}
-              />
-            ))
+            <Swiper
+              key={`${activeCategory}-${page}-${chunkSize}`} // Re-initialize for new state
+              modules={[Autoplay, Navigation]}
+              spaceBetween={24}
+              slidesPerView={1}
+              onSlideChange={(swiper) => {
+                // Potential sync for dots if needed
+              }}
+              className="pb-8"
+              autoplay={{ delay: 5000, disableOnInteraction: false }}
+            >
+              {courseChunks.map((chunk: Course[], chunkIndex: number) => (
+                <SwiperSlide key={`chunk-${chunkIndex}`}>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
+                    {chunk.map((course: Course, index: number) => (
+                      <NewCourseCard
+                        key={`${course._id || course.slug}-${index}`}
+                        course={course}
+                        className="opacity-0 animate-course-card-fade-in"
+                        style={{ animationDelay: `${index * 100}ms` }}
+                      />
+                    ))}
+                  </div>
+                </SwiperSlide>
+              ))}
+            </Swiper>
           )}
         </div>
 

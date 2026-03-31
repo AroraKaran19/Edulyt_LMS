@@ -11,7 +11,7 @@ import {
   type Course as InternshipItem,
   type CourseCategory,
 } from "@/constants/internshipData";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Briefcase } from "lucide-react";
 
 export default function InternshipsSection() {
   const [activeCategory, setActiveCategory] = useState<string>(
@@ -52,7 +52,9 @@ export default function InternshipsSection() {
     <div className="relative px-0 sm:px-4 mt-8 sm:mt-12 sm:py-10">
       {/* Marker Row */}
       <div className="flex items-center relative gap-4 -translate-x-[22px] sm:-translate-x-22">
-        <TimelineMarkerIcon size="big">💼</TimelineMarkerIcon>
+        <TimelineMarkerIcon size="big">
+          <Briefcase className="w-6 h-6 text-white" />
+        </TimelineMarkerIcon>
         <h3 className="text-base sm:text-xl md:text-xl relative md:left-7 font-semibold text-gray-800">
           We Have Two Powerful Paths for You
         </h3>

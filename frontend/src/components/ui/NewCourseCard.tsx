@@ -73,7 +73,7 @@ const NewCourseCard = ({
       </div>
 
       {/* Right: title, rating, price, CTA */}
-      <div className="flex flex-1 flex-col justify-between gap-1 sm:gap-3 p-3 sm:p-5">
+      <div className="flex flex-1 flex-col justify-between gap-1 sm:gap-3 p-3 sm:p-4">
         <h3 className="line-clamp-1 sm:line-clamp-2 text-sm font-bold leading-snug text-gray-900 sm:text-lg">
           {course.title}
         </h3>
@@ -87,7 +87,7 @@ const NewCourseCard = ({
               </span>
             )}
             {reviewCount > 0 && (
-              <span className="text-xs text-gray-500">
+              <span className="text-[10px] sm:text-xs text-gray-500">
                 {reviewCount >= 1000
                   ? `${(reviewCount / 1000).toFixed(0)}k Ratings`
                 : `${reviewCount} ${reviewCount === 1 ? "Rating" : "Ratings"}`}
@@ -96,7 +96,7 @@ const NewCourseCard = ({
           </div>
         )}
 
-        <div className="mt-auto flex items-center justify-between gap-2 overflow-hidden">
+        <div className="mt-auto flex items-center justify-between gap-1 px-1 overflow-hidden">
           <div className="flex items-center gap-1 sm:gap-2">
             {hasDiscount ? (
               <>
@@ -113,7 +113,7 @@ const NewCourseCard = ({
               </span>
             )}
           </div>
-          <PrimaryButton className="px-3 sm:px-6 h-8 sm:h-10 text-[10px] sm:text-sm rounded-full"
+          <PrimaryButton className="px-2 py-2 my-1 sm:px-6 sm:h-10 text-[10px] sm:text-sm"
             onClick={(e) => {
               e.stopPropagation();
               if (enrollHref) router.push(enrollHref);

@@ -20,7 +20,7 @@ export default function CollegesSection() {
   React.useEffect(() => {
     setIsMounted(true);
     const handleResize = () => {
-      // Show 1 card on mobile/tablet (< 1024px) and 6 on desktop
+      // Show 1 card on mobile/tablet (< 1024px) for a slider, and 6 on desktop
       setPerSlide(window.innerWidth < 1024 ? 1 : 6);
     };
     handleResize();
@@ -30,9 +30,13 @@ export default function CollegesSection() {
 
   const slides = useMemo(() => {
     if (!isMounted) return [];
+    
+    // On mobile (< 1024px), only use the first 4 colleges
+    const data = window.innerWidth < 1024 ? collegesCarousel.slice(0, 4) : collegesCarousel;
+    
     const out: typeof collegesCarousel[] = [];
-    for (let i = 0; i < collegesCarousel.length; i += perSlide) {
-      out.push(collegesCarousel.slice(i, i + perSlide));
+    for (let i = 0; i < data.length; i += perSlide) {
+      out.push(data.slice(i, i + perSlide));
     }
     return out;
   }, [perSlide, isMounted]);
@@ -92,7 +96,7 @@ export default function CollegesSection() {
         >
           {slides.map((slideColleges, slideIdx) => (
             <SwiperSlide key={slideIdx}>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 lg:gap-6 p-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-5 lg:gap-6 p-1 sm:p-2">
                 {slideColleges.map((college) => (
                   <CollegeCard key={college.id} college={college} />
                 ))}

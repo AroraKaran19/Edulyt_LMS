@@ -3,6 +3,7 @@
 import Image from "next/image";
 import TimelineMarkerIcon from "./TimelineMarkerIcon";
 import { RiKakaoTalkFill } from "react-icons/ri";
+import { Hand } from "lucide-react";
 // import TimelineSectionsWrapper from "./TimelineSectionsWrapper";
 import { cn } from "@/lib/utils";
 
@@ -89,7 +90,9 @@ export default function CareerConfusionSection() {
     <div className="relative px-0 sm:px-4 mb-13">
       {/* Marker row: 👋 + "Hello Students" */}
       <div className="flex items-center relative gap-4 -translate-x-[22px] sm:-translate-x-22">
-        <TimelineMarkerIcon size="big">👋</TimelineMarkerIcon>
+        <TimelineMarkerIcon size="big">
+          <Hand className="w-6 h-6 text-white" />
+        </TimelineMarkerIcon>
         <h3 className="text-base sm:text-xl md:text-xl relative md:left-7 font-semibold text-gray-800">
           Hello Students
         </h3>
