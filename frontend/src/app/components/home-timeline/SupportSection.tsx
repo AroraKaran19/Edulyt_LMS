@@ -23,9 +23,9 @@ const SUPPORT_FEATURES = [
 
 export default function SupportSection() {
     return (
-        <div className="relative px-4 sm:px-10 lg:px-40 mt-8 sm:mt-12 sm:py-10">
+        <div className="relative px-6 sm:px-10 lg:px-40 mt-8 sm:mt-12 sm:py-10">
             {/* Top Header with Icon */}
-            <div className="flex items-center relative gap-4 -translate-x-5 sm:-translate-x-22">
+            <div className="flex items-center relative gap-4 -translate-x-[22px] sm:-translate-x-22">
                 <TimelineMarkerIcon size="big">
                     <span className="text-white text-base sm:text-xl font-bold">?</span>
                 </TimelineMarkerIcon>

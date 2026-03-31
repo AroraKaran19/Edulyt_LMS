@@ -86,9 +86,9 @@ export function DashedLineVertical({
 
 export default function CareerConfusionSection() {
   return (
-    <div className="relative px-4 sm:px-10 lg:px-40 mb-13">
+    <div className="relative px-6 sm:px-10 lg:px-40 mb-13">
       {/* Marker row: 👋 + "Hello Students" */}
-      <div className="flex items-center relative gap-4 -translate-x-5 sm:-translate-x-22">
+      <div className="flex items-center relative gap-4 -translate-x-[22px] sm:-translate-x-22">
         <TimelineMarkerIcon size="big">👋</TimelineMarkerIcon>
         <h3 className="text-base sm:text-xl md:text-xl relative md:left-7 font-semibold text-gray-800">
           Hello Students
@@ -102,8 +102,7 @@ export default function CareerConfusionSection() {
         <div className="flex flex-col gap-8">
           <div className="flex flex-col gap-1">
             <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-extrabold leading-tight tracking-tight">
-              Are You Feeling <span className="text-[#F77124]">Confused</span>
-              <br className="hidden sm:block" />
+              Are You Feeling <span className="text-[#F77124]">Confused</span>{" "}
               About Your <span className="text-[#F77124]">Career ?</span>
             </h2>
           </div>

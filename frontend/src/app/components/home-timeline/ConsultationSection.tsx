@@ -38,9 +38,9 @@ function CheckIcon({ size }: { size: number }) {
 
 export default function ConsultationSection() {
   return (
-    <div className="relative px-4 sm:px-10 lg:px-40 py-8 sm:py-10 lg:py-12">
+    <div className="relative px-6 sm:px-10 lg:px-40 py-8 sm:py-10 lg:py-12">
       {/* Top Header Row */}
-      <div className="flex items-center relative gap-4 -translate-x-5 sm:-translate-x-22">
+      <div className="flex items-center relative gap-4 -translate-x-[22px] sm:-translate-x-22">
         <div className="flex h-9 w-9 sm:h-11 sm:w-11 lg:h-14 lg:w-14 shrink-0 items-center justify-center rounded-full bg-[#F77124] text-white">
           <PhoneIcon />
         </div>

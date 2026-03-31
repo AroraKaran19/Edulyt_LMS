@@ -127,7 +127,7 @@ const Cell = ({ val }: { val: CellVal }) => {
 export default function DifferenceSection() {
   return (
     <section
-      className="relative w-full overflow-hidden py-10 px-4 sm:px-10 lg:px-40"
+      className="relative w-full overflow-hidden py-10 px-6 sm:px-10 lg:px-40"
       style={{
         backgroundColor: "#FFFCFA",
         backgroundImage: `

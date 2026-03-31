@@ -49,9 +49,9 @@ export default function InternshipsSection() {
   }, [safeTotalPages, isPaginationHovered]);
 
   return (
-    <div className="relative px-4 sm:px-10 lg:px-40 mt-8 sm:mt-12 sm:py-10">
+    <div className="relative px-6 sm:px-10 lg:px-40 mt-8 sm:mt-12 sm:py-10">
       {/* Marker Row */}
-      <div className="flex items-center relative gap-4 -translate-x-5 sm:-translate-x-22">
+      <div className="flex items-center relative gap-4 -translate-x-[22px] sm:-translate-x-22">
         <TimelineMarkerIcon size="big">💼</TimelineMarkerIcon>
         <h3 className="text-base sm:text-xl md:text-xl relative md:left-7 font-semibold text-gray-800">
           We Have Two Powerful Paths for You

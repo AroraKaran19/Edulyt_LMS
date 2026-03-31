@@ -17,9 +17,9 @@ const GROWTH_POINTS = [
 
 export default function ProfessionalGrowthSection() {
     return (
-        <div className="relative px-4 sm:px-10 lg:px-40 mt-8 sm:mt-12 sm:py-10">
+        <div className="relative px-6 sm:px-10 lg:px-40 mt-8 sm:mt-12 sm:py-10">
             {/* Top Header with Icon */}
-            <div className="flex items-center relative gap-4 -translate-x-5 sm:-translate-x-22">
+            <div className="flex items-center relative gap-4 -translate-x-[22px] sm:-translate-x-22">
                 <TimelineMarkerIcon size="big">
                     <HelpCircle className="text-white w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6" />
                 </TimelineMarkerIcon>

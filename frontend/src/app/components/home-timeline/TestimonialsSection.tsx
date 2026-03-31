@@ -21,10 +21,10 @@ export default function TestimonialsSection() {
   const swiperRef = useRef<{ slideToLoop: (index: number) => void } | null>(null);
 
   return (
-    <section className="relative px-4 sm:px-10 lg:px-40 mt-8 sm:mt-12 sm:py-10" aria-label="Hear from our past students">
+    <section className="relative px-6 sm:px-10 lg:px-40 mt-8 sm:mt-12 sm:py-10" aria-label="Hear from our past students">
       <div >
         {/* Title: heart + "Hear from our past students" */}
-        <div className="flex items-center relative gap-4 -translate-x-5 sm:-translate-x-22">
+        <div className="flex items-center relative gap-4 -translate-x-[22px] sm:-translate-x-22">
           <FaHeart
             className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 bg-[#F77124] text-white p-2 rounded-full shrink-0"
             aria-hidden
