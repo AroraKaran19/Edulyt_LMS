@@ -51,7 +51,7 @@ export default function InternshipsSection() {
   return (
     <div className="relative px-4 sm:px-10 lg:px-40 mt-8 sm:mt-12 sm:py-10">
       {/* Marker Row */}
-      <div className="flex items-center relative gap-4 -translate-x-6 sm:-translate-x-22">
+      <div className="flex items-center relative gap-4 -translate-x-5 sm:-translate-x-22">
         <TimelineMarkerIcon size="big">💼</TimelineMarkerIcon>
         <h3 className="text-base sm:text-xl md:text-xl relative md:left-7 font-semibold text-gray-800">
           We Have Two Powerful Paths for You
@@ -60,7 +60,7 @@ export default function InternshipsSection() {
 
       <div className="">
         <div className="flex flex-col gap-1 mt-6 mb-4 sm:mb-6">
-          <h2 className="text-lg sm:text-2xl md:text-3xl lg:text-4xl font-extrabold leading-tight tracking-tight">
+          <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-extrabold leading-tight tracking-tight">
               Our <span className="text-[#F77124]">Internships Programs</span>
             </h2>
         </div>

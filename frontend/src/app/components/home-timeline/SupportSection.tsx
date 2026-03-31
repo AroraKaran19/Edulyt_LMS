@@ -25,7 +25,7 @@ export default function SupportSection() {
     return (
         <div className="relative px-4 sm:px-10 lg:px-40 mt-8 sm:mt-12 sm:py-10">
             {/* Top Header with Icon */}
-            <div className="flex items-center relative gap-4 -translate-x-6 sm:-translate-x-22">
+            <div className="flex items-center relative gap-4 -translate-x-5 sm:-translate-x-22">
                 <TimelineMarkerIcon size="big">
                     <span className="text-white text-base sm:text-xl font-bold">?</span>
                 </TimelineMarkerIcon>
@@ -43,7 +43,7 @@ export default function SupportSection() {
                         const parts = feature.title.split(feature.highlight);
                         return (
                             <div key={index} className="flex flex-col gap-2">
-                                <h3 className="text-base sm:text-lg lg:text-4xl font-semibold leading-tight">
+                                <h3 className="text-xl sm:text-2xl lg:text-4xl font-extrabold leading-tight">
                                     {parts[0]}
                                     <span className="text-[#f77124]">{feature.highlight}</span>
                                     {parts[1]}

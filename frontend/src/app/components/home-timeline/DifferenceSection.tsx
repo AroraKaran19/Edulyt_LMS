@@ -127,7 +127,7 @@ const Cell = ({ val }: { val: CellVal }) => {
 export default function DifferenceSection() {
   return (
     <section
-      className="relative w-full overflow-hidden py-10 px-4 sm:px-10 lg:px-56"
+      className="relative w-full overflow-hidden py-10 px-4 sm:px-10 lg:px-40"
       style={{
         backgroundColor: "#FFFCFA",
         backgroundImage: `
@@ -154,7 +154,7 @@ export default function DifferenceSection() {
                   {card.label}
                 </span>
               </div>
-              <p className={cn("text-xl sm:text-lg font-extrabold", "text-gray-900 pr-4")}>
+              <p className={cn("text-lg sm:text-lg font-extrabold", "text-gray-900 pr-4")}>
                 {card.title}
               </p>
             </div>
@@ -168,7 +168,7 @@ export default function DifferenceSection() {
           <div className="flex flex-1 flex-col gap-6 w-full">
 
             {/* Heading */}
-            <h2 className="text-xl sm:text-lg lg:text-xl font-bold leading-tight">
+            <h2 className="text-lg sm:text-2xl md:text-3xl lg:text-4xl font-extrabold leading-tight">
               The <span className="text-[#F97316]">Difference</span> That Gets You <span className="text-[#F97316]">Hired !</span>
             </h2>
 
@@ -194,7 +194,7 @@ export default function DifferenceSection() {
                     <th className="px-2 py-3 sm:px-3 sm:py-4 text-center">
                       <YoutubeLogo />
                     </th>
-                    <th className="px-2 py-3 sm:px-3 sm:py-4 text-center text-xs sm:text-[14px] font-semibold text-gray-800">
+                    <th className="px-2 py-3 sm:px-3 sm:py-4 text-center text-[10px] sm:text-[14px] font-semibold text-gray-800">
                       Others
                     </th>
                   </tr>

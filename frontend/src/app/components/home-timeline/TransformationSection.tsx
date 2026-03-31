@@ -28,7 +28,7 @@ export default function TransformationSection() {
     return (
         <div className="relative px-4 sm:px-10 lg:px-40 mt-8 sm:mt-12 sm:py-10">
             {/* Top Header with Icon */}
-            <div className="flex items-center relative gap-4 -translate-x-6 sm:-translate-x-22">
+            <div className="flex items-center relative gap-4 -translate-x-5 sm:-translate-x-22">
                 <TimelineMarkerIcon size="big">
                     <div className="w-10 h-10 sm:w-12 sm:h-12 shrink-0 rounded-full bg-[#F77124] flex items-center justify-center text-white shadow-sm transition-transform group-hover:scale-110">
                         <span className="bg-white rounded-full text-[#F77124]">
@@ -44,11 +44,11 @@ export default function TransformationSection() {
             </div>
 
             {/* Content Area */}
-            <div className="flex justify-center gap-12 mt-6 sm:mt-8">
+            <div className="flex flex-col lg:flex-row justify-center gap-8 lg:gap-12 mt-6 sm:mt-8">
                 <div className="flex flex-col max-w-2xl gap-10 mb-4 sm:mb-6">
-                    <h2 className="text-lg sm:text-xl lg:text-4xl font-extrabold leading-tight">
+                    <h2 className="text-xl sm:text-2xl lg:text-4xl font-extrabold leading-tight">
                         Your <span className="text-[#F77124]">Transformation</span><br />
-                        Decision Starts With<span className="text-[#F77124]">One Decision.</span>
+                        Decision Starts With <span className="text-[#F77124]">One Decision.</span>
                     </h2>
                     <div className="flex flex-col lg:flex-row items-start gap-8 lg:gap-12 xl:gap-20">
                         {/* Left Side: Descriptions */}

@@ -40,7 +40,7 @@ export default function ConsultationSection() {
   return (
     <div className="relative px-4 sm:px-10 lg:px-40 py-8 sm:py-10 lg:py-12">
       {/* Top Header Row */}
-      <div className="flex items-center relative gap-4 -translate-x-6 sm:-translate-x-22">
+      <div className="flex items-center relative gap-4 -translate-x-5 sm:-translate-x-22">
         <div className="flex h-9 w-9 sm:h-11 sm:w-11 lg:h-14 lg:w-14 shrink-0 items-center justify-center rounded-full bg-[#F77124] text-white">
           <PhoneIcon />
         </div>
@@ -66,7 +66,7 @@ export default function ConsultationSection() {
         {/* Right: Content */}
         <div className="lg:col-span-6 flex flex-col gap-6 sm:gap-8 lg:pl-10">
           <div className="flex flex-col gap-1">
-            <h2 className="text-lg sm:text-lg lg:text-4xl whitespace-nowrap font-extrabold leading-tight">
+            <h2 className="text-xl sm:text-2xl lg:text-4xl whitespace-nowrap font-extrabold leading-tight">
               You Don&apos;t Need To Figure It<br className="hidden sm:block" />
               Out <span className="text-[#F77124]">Alone !</span>
             </h2>

@@ -46,7 +46,7 @@ export default function CollegesSection() {
     >
       <div>
         {/* Shield + "Trusted by Students from Top Institutions" */}
-        <div className="flex items-center relative gap-4 -translate-x-6 sm:-translate-x-22">
+        <div className="flex items-center relative gap-4 -translate-x-5 sm:-translate-x-22">
           <Shield
             className="w-8 h-8 sm:w-10 sm:h-10 rounded-full px-2 py-2 text-white shrink-0 bg-[#F77124]"
             aria-hidden
@@ -58,7 +58,7 @@ export default function CollegesSection() {
 
         {/* Title and Heading */}
         <div className="flex flex-col gap-1 mt-6 mb-6 sm:mb-8">
-          <h2 className="text-lg sm:text-2xl md:text-3xl lg:text-4xl font-extrabold leading-tight tracking-tight">
+          <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-extrabold leading-tight tracking-tight">
             <span className="text-[#F77124]">Colleges our</span>{" "}
             <span className="text-gray-900">students comes from</span>
           </h2>

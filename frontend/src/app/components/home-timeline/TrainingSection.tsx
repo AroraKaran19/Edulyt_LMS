@@ -31,14 +31,14 @@ const TRAINING_IMAGE =
 export default function TrainingSection() {
   return (
     <section
-      className="relative px-4 sm:px-10 lg:px-40 mt-8 sm:mt-12 sm:py-10 "
+      className="relative px-4 sm:px-10 lg:px-40 mt-8 sm:mt-12 sm:py-10"
       aria-label="What makes our training different"
     >
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-10 xl:gap-12 items-center">
         {/* Left: Title + timeline steps */}
         <div className="max-w-full sm:max-w-sm">
           {/* Header: icon + "What Makes Our Training Different?" */}
-          <div className="flex items-center relative gap-4 -translate-x-6 sm:-translate-x-22">
+          <div className="flex items-center relative gap-4 -translate-x-5 sm:-translate-x-22">
             <span
               className="flex shrink-0 items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-[#F77124] text-white"
               aria-hidden
@@ -52,7 +52,7 @@ export default function TrainingSection() {
 
           {/* Main heading with orange highlights */}
           <div className="flex flex-col gap-1 mt-6 mb-6 sm:mb-8">
-            <h2 className={cn("text-lg sm:text-2xl md:text-3xl lg:text-4xl font-extrabold leading-tight tracking-tight", "whitespace-normal sm:whitespace-nowrap")}>
+            <h2 className={cn("text-xl sm:text-2xl md:text-3xl lg:text-4xl font-extrabold leading-tight tracking-tight", "whitespace-normal sm:whitespace-nowrap")}>
               A <span className="text-[#F77124]">Career-Focused</span>{" "}
               Learning Model to Make <br /> You <span className="text-[#F77124] ">Job-Ready</span>
             </h2>

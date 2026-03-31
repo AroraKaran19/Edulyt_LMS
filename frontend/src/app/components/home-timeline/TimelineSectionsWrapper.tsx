@@ -22,7 +22,7 @@ export default function TimelineSectionsWrapper({
       <div className="relative w-full px-0 sm:px-4 bg-[#FFFCFA]">
         <div
           aria-hidden
-          className={`pointer-events-none absolute inset-y-0 w-px border-l-2 border-dashed border-[#C8C8C8] left-[21px] sm:left-28 ${svgStyle}`}
+          className={`pointer-events-none absolute inset-y-0 w-px border-l-2 border-dashed border-[#C8C8C8] left-[18px] sm:left-28 ${svgStyle}`}
         />
         <div className="relative">{children}</div>
       </div>
