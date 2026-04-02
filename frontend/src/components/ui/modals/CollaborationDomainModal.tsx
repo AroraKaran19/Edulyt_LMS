@@ -71,6 +71,7 @@ const CollaborationDomainModal = ({
   const [hasMoreCourses, setHasMoreCourses] = useState(true);
   const [selectedCourses, setSelectedCourses] = useState<Course[]>([]);
   const [loadingCourses, setLoadingCourses] = useState(false);
+  const [selectingAllCourses, setSelectingAllCourses] = useState(false);
   const [showCourseDropdown, setShowCourseDropdown] = useState(false);
   const courseSearchDebounceRef = useRef<NodeJS.Timeout | null>(null);
   const coursesScrollRef = useRef<HTMLDivElement>(null);
@@ -91,6 +92,7 @@ const CollaborationDomainModal = ({
           page,
           limit: 20,
           search: search.trim() || undefined,
+          isActive: true,
           ...(applyAudience ? { audience } : {}),
         });
         if (res?.courses) {
@@ -317,6 +319,7 @@ const CollaborationDomainModal = ({
     setCourseResults([]);
     setCoursePage(1);
     setHasMoreCourses(true);
+    setSelectingAllCourses(false);
     setCourseDetailForPartial(null);
     setPartialModules(new Set());
     setPartialLessons({});
@@ -506,6 +509,64 @@ const CollaborationDomainModal = ({
     },
     [courseDetailForPartial, partialLessons, partialContents]
   );
+
+  const handleSelectAllActiveCourses = useCallback(async () => {
+    if (accessType === "partial" || partnershipOffer !== "course_access") {
+      return;
+    }
+    setSelectingAllCourses(true);
+    try {
+      const fetched: Course[] = [];
+      let page = 1;
+      let totalPages = 1;
+      do {
+        const res = await getAdminCourses({
+          page,
+          limit: 100,
+          search: courseSearch.trim() || undefined,
+          audience,
+          isActive: true,
+        });
+        if (res?.courses?.length) {
+          fetched.push(...res.courses);
+        }
+        totalPages = res?.totalPages ?? 1;
+        page += 1;
+      } while (page <= totalPages);
+
+      let newList: Course[] = [];
+      setSelectedCourses((prev) => {
+        const merged = new Map<string, Course>();
+        prev.forEach((c) => {
+          if (c._id) merged.set(String(c._id), c);
+        });
+        fetched.forEach((c) => {
+          if (c._id) merged.set(String(c._id), c);
+        });
+        newList = Array.from(merged.values());
+        return newList;
+      });
+
+      if (fetched.length === 0) {
+        toast.info(
+          "No active courses match the current search and audience."
+        );
+      } else {
+        toast.success(`${newList.length} course(s) in your selection.`);
+      }
+      setShowCourseDropdown(false);
+    } catch {
+      toast.error("Could not load all active courses.");
+    } finally {
+      setSelectingAllCourses(false);
+    }
+  }, [
+    accessType,
+    partnershipOffer,
+    audience,
+    courseSearch,
+    getAdminCourses,
+  ]);
 
   const toggleCourse = (course: Course) => {
     setSelectedCourses((prev) => {
@@ -882,13 +943,41 @@ const CollaborationDomainModal = ({
               Courses <span className="text-red-500">*</span>
             </label>
             <p className="text-xs text-gray-500 mb-2 leading-snug">
-              Search is filtered to courses tagged for{" "}
+              Search is filtered to{" "}
+              <span className="font-medium text-gray-700">active</span> courses
+              tagged for{" "}
               <span className="font-medium text-gray-700">
                 {AUDIENCE_LABEL[audience]}
               </span>
               , matching the audience above (collaboration enrollments use
               that audience).
             </p>
+            <div className="flex flex-wrap items-center gap-2 mb-2">
+              <button
+                type="button"
+                onClick={() => void handleSelectAllActiveCourses()}
+                disabled={
+                  accessType === "partial" ||
+                  selectingAllCourses ||
+                  partnershipOffer !== "course_access"
+                }
+                className="text-xs font-medium text-orange-600 hover:text-orange-700 hover:underline disabled:opacity-50 disabled:cursor-not-allowed disabled:no-underline"
+              >
+                {selectingAllCourses ? (
+                  <span className="inline-flex items-center gap-1.5">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    Loading…
+                  </span>
+                ) : (
+                  "Select all active"
+                )}
+              </button>
+              {accessType === "partial" && (
+                <span className="text-xs text-gray-400">
+                  (Use one course for partial access)
+                </span>
+              )}
+            </div>
 
             {/* Selected courses */}
             {selectedCourses.length > 0 && (

@@ -75,22 +75,20 @@ export function CollaborationJobDetailModal({
           </div>
           <div className="md:col-span-2 space-y-3">
             <span className="text-xs font-medium text-gray-500">
-              Snapshot
+              At job creation
             </span>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
               {job.collaborationDomainSnapshot ? (
                 <>
                   <div className="space-y-1">
-                    <span className="text-xs text-gray-500">
-                      Snapshot title
-                    </span>
+                    <span className="text-xs text-gray-500">Title</span>
                     <p className="text-sm text-gray-900">
                       {job.collaborationDomainSnapshot.title}
                     </p>
                   </div>
                   <div className="space-y-1">
                     <span className="text-xs text-gray-500">
-                      Snapshot email domain
+                      Email domain
                     </span>
                     <p className="font-mono text-xs text-gray-900 break-all">
                       @{job.collaborationDomainSnapshot.domain}
