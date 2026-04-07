@@ -127,7 +127,7 @@ const Cell = ({ val }: { val: CellVal }) => {
 export default function DifferenceSection() {
   return (
     <section
-      className="relative w-full overflow-hidden py-10 px-4 sm:px-10 lg:px-56"
+      className="relative w-full overflow-hidden py-10 px-6 sm:px-10 lg:px-40"
       style={{
         backgroundColor: "#FFFCFA",
         backgroundImage: `
@@ -142,19 +142,19 @@ export default function DifferenceSection() {
       <div className="relative mx-auto">
 
         {/* ── Row 1: 4 Info Cards ──────────────────────────────────────────── */}
-        <div className="mb-8 grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="mb-8 grid grid-cols-2 gap-3 sm:gap-6 xl:grid-cols-4">
           {VALUE_CARDS.map((card) => (
             <div
               key={card.label}
-              className="flex flex-col gap-3 rounded-3xl bg-white py-4 px-4 shadow-[2px_2px_6px_rgb(0,0,0,0.1)] border border-white/60"
+              className="flex flex-col gap-2 sm:gap-3 rounded-2xl sm:rounded-3xl bg-white py-3 px-3 sm:py-4 sm:px-4 shadow-[2px_2px_6px_rgb(0,0,0,0.1)] border border-white/60"
             >
-              <div className="w-full flex items-center gap-3 self-start rounded-full bg-[#FFF3E8]">
+              <div className="w-full flex items-center gap-2 sm:gap-3 self-start rounded-full bg-[#FFF3E8]">
                 <QuestionIcon />
-                <span className={cn("font-extrabold text-gray-800", "text-xs sm:text-sm font-medium")}>
+                <span className={cn("font-extrabold text-gray-800", "text-[10px] sm:text-sm font-medium leading-tight")}>
                   {card.label}
                 </span>
               </div>
-              <p className={cn("text-xl sm:text-lg font-extrabold", "text-gray-900 pr-4")}>
+              <p className={cn("text-xs sm:text-lg font-extrabold", "text-gray-900 pr-2 sm:pr-4")}>
                 {card.title}
               </p>
             </div>
@@ -168,7 +168,7 @@ export default function DifferenceSection() {
           <div className="flex flex-1 flex-col gap-6 w-full">
 
             {/* Heading */}
-            <h2 className="text-xl sm:text-lg lg:text-xl font-bold leading-tight">
+            <h2 className="text-lg sm:text-2xl md:text-3xl lg:text-4xl font-extrabold leading-tight">
               The <span className="text-[#F97316]">Difference</span> That Gets You <span className="text-[#F97316]">Hired !</span>
             </h2>
 
@@ -194,7 +194,7 @@ export default function DifferenceSection() {
                     <th className="px-2 py-3 sm:px-3 sm:py-4 text-center">
                       <YoutubeLogo />
                     </th>
-                    <th className="px-2 py-3 sm:px-3 sm:py-4 text-center text-xs sm:text-[14px] font-semibold text-gray-800">
+                    <th className="px-2 py-3 sm:px-3 sm:py-4 text-center text-[10px] sm:text-[14px] font-semibold text-gray-800">
                       Others
                     </th>
                   </tr>
@@ -235,6 +235,8 @@ export default function DifferenceSection() {
           {/* ── RIGHT: image + floating badges ── */}
           <div className="relative xl:block hidden h-60 sm:h-80 lg:h-116 rounded-3xl overflow-hidden w-full shrink-0 items-center justify-center lg:w-[42%] lg:mt-10">
             <div className="relative h-full w-full max-w-[580px] mx-auto">
+              <div className="absolute inset-y-0 right-0 w-1/4 bg-linear-to-l from-white to-transparent blur-4xl z-10" />
+              <div className="absolute inset-y-0 left-0 w-1/4 bg-linear-to-r from-white to-transparent blur-4xl z-10" />
               <Image
                 src="/assets/DifferenceSectionHero.png"
                 alt="Edulyt dashboard"
@@ -243,9 +245,7 @@ export default function DifferenceSection() {
                 className="h-full w-full object-fit object-cover"
                 priority
               />
-
             </div>
-
           </div>
         </div>
       </div>

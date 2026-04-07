@@ -17,9 +17,9 @@ const BENEFITS = [
 
 export default function PlacementSection() {
     return (
-        <div className="relative px-4 sm:px-10 lg:px-40 mt-8 sm:mt-12 sm:py-10">
+        <div className="relative px-0 sm:px-4 mt-8 sm:mt-12 sm:py-10">
             {/* Top Header with Icon */}
-            <div className="flex items-center relative gap-4 -translate-x-6 sm:-translate-x-22">
+            <div className="flex items-center relative gap-4 -translate-x-[22px] sm:-translate-x-22">
                 <TimelineMarkerIcon size="big">
                     <Plane className="text-white w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6" />
                 </TimelineMarkerIcon>
@@ -31,10 +31,10 @@ export default function PlacementSection() {
             </div>
 
             {/* Content Area */}
-            <div className="mt-10 sm:mt-14 flex flex-col lg:flex-row gap-8 lg:gap-16 ">
+            <div className="mt-10 sm:mt-14 flex flex-col lg:flex-row gap-8 lg:gap-16 pl-8 sm:pl-0">
                 <div className="">
                     <div className="flex flex-col gap-1  mb-6 sm:mb-8">
-                        <h2 className="text-base sm:text-lg lg:text-xl font-semibold leading-tight">
+                        <h2 className="text-xl sm:text-2xl lg:text-4xl font-extrabold leading-tight">
                             A structured path from <span className="text-[#F77124]">Learning</span><br />
                             to <span className="text-[#F77124]">Placement.</span>
                         </h2>
@@ -42,24 +42,24 @@ export default function PlacementSection() {
 
                     {/* Left Side: Benefits & CTA */}
                     <div className="flex-1 w-full space-y-4 sm:space-y-6 ">
-                        <TimelineSectionsWrapper className="md:ml-10">
+                        <div className="md:ml-10">
                             <div className="space-y-3 sm:space-y-4 ml-0 sm:ml-2 md:-ml-8">
                                 {BENEFITS.map((benefit, index) => (
-                                    <div key={index} className="flex items-center gap-3 sm:gap-4 group">
-                                        <div className="w-7 h-7 sm:w-8 sm:h-8 shrink-0 rounded-full bg-[#F77124] flex items-center justify-center text-white shadow-sm transition-transform group-hover:scale-110">
+                                    <div key={index} className="flex items-center gap-3 sm:gap-4 group bg-[#FFF3E8] rounded-full">
+                                        <div className="w-7 h-7 sm:w-10 sm:h-10 shrink-0 bg-[#F77124] rounded-full flex items-center justify-center text-white">
                                             <span className="bg-white rounded-full text-[#F77124]">
-                                                <CheckIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                                                <CheckIcon className="w-4 h-4 sm:w-6 sm:h-6 font-bold" />
                                             </span>
                                         </div>
-                                        <div className="flex-1 bg-[#FFF7F0] px-4 sm:px-6 py-3 sm:py-4 rounded-full border border-orange-100/50 shadow-sm transition-shadow hover:shadow-md">
-                                            <p className={cn("font-bold text-gray-800", "text-xs sm:text-sm font-medium")}>
+                                        <div className="px-4 sm:px-6 py-3 sm:py-4">
+                                            <p className={cn("font-bold text-gray-900", "text-xs sm:text-base font-semibold")}>
                                                 {benefit}
                                             </p>
                                         </div>
                                     </div>
                                 ))}
                             </div>
-                        </TimelineSectionsWrapper>
+                        </div>
 
                         <div className="pt-6">
                             <PrimaryButton size="md">
@@ -70,7 +70,7 @@ export default function PlacementSection() {
 
                 </div>
                 {/* Right Side: Image Placeholder */}
-                <div className="flex-1 w-full lg:max-w-2xl h-[300px] sm:h-[350px] lg:h-[450px] bg-gray-50 rounded-4xl border-2 border-dashed border-gray-200 relative overflow-hidden group shadow-inner">
+                <div className="flex-1 w-full lg:max-w-2xl h-[300px] sm:h-[350px] lg:h-[450px] bg-gray-50 rounded-4xl relative overflow-hidden group shadow-inner">
                     <div className="w-1/4 h-full bg-white blur-3xl absolute"></div>
                     <div className="w-1/4 h-full right-0 bg-white blur-3xl absolute"></div>
                     <Image

@@ -38,23 +38,22 @@ function CheckIcon({ size }: { size: number }) {
 
 export default function ConsultationSection() {
   return (
-    <div className="relative px-4 sm:px-10 lg:px-40 py-8 sm:py-10 lg:py-12">
+    <div className="relative px-2 sm:px-3 py-8 sm:py-10 lg:py-12">
       {/* Top Header Row */}
-      <div className="flex items-center relative gap-4 -translate-x-6 sm:-translate-x-22">
-        <div className="flex h-9 w-9 sm:h-11 sm:w-11 lg:h-14 lg:w-14 shrink-0 items-center justify-center rounded-full bg-[#F77124] text-white shadow-lg shadow-orange-200">
+      <div className="flex items-center relative gap-4 -translate-x-[22px] sm:-translate-x-22">
+        <div className="flex h-9 w-9 sm:h-11 sm:w-11 lg:h-14 lg:w-14 shrink-0 items-center justify-center rounded-full bg-[#F77124] text-white">
           <PhoneIcon />
         </div>
-        <h3 className="text-base sm:text-xl md:text-2xl relative md:left-8 font-semibold text-gray-800">
+        <h3 className="text-base sm:text-xl md:text-xl relative md:left-7 font-semibold text-gray-800">
           One Conversation Can Change Everything.
         </h3>
       </div>
 
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:items-center mt-8 sm:mt-10">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:items-center mt-6 pl-8 sm:pl-0">
         {/* Left: Image with Overlays */}
         <div className="lg:col-span-6 relative overflow-hidden rounded-2xl hidden sm:block">
-
-          <div className="absolute inset-y-0 left-0 w-1/3 bg-white to-transparent blur-3xl z-10" />
           <div className="absolute inset-y-0 right-0 w-1/3 bg-linear-to-l from-white to-transparent blur-4xl z-10" />
+          <div className="absolute inset-y-0 left-0 w-1/3 bg-linear-to-r from-white to-transparent blur-4xl z-10" />
           <Image
             src="/assets/professional-consult.png"
             alt="Industry professionals ready to help"
@@ -67,8 +66,8 @@ export default function ConsultationSection() {
         {/* Right: Content */}
         <div className="lg:col-span-6 flex flex-col gap-6 sm:gap-8 lg:pl-10">
           <div className="flex flex-col gap-1">
-            <h2 className="text-lg sm:text-lg lg:text-4xl whitespace-nowrap font-extrabold leading-tight">
-              You Don&apos;t Need To Figure It<br className="hidden sm:block" />
+            <h2 className="text-xl sm:text-2xl lg:text-4xl font-extrabold leading-tight">
+              You Don&apos;t Need To Figure It <br className="hidden sm:block" />
               Out <span className="text-[#F77124]">Alone !</span>
             </h2>
           </div>
@@ -78,7 +77,7 @@ export default function ConsultationSection() {
             <span className="flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-full bg-[#59CC62] text-white">
               <RiKakaoTalkFill className="text-xl sm:text-2xl" />
             </span>
-            <span className={cn("pl-3 sm:pl-4 pr-3 sm:pr-4 w-full  whitespace-nowrap py-2 sm:py-3 font-bold text-gray-800", "text-xs sm:text-sm font-medium")}>
+            <span className={cn("pl-3 sm:pl-4 pr-3 sm:pr-4 w-full py-2 sm:py-3 font-bold text-gray-800", "text-xs sm:text-sm font-medium")}>
               Talk To Our Professionals And Get Clarity.
             </span>
           </div>
@@ -87,10 +86,10 @@ export default function ConsultationSection() {
           {BENEFITS.map((b) => (
             <div
               key={b}
-              className="flex relative items-center gap-3 sm:gap-5 rounded-full bg-[#FFF0E6] pr-4 sm:pr-10 shadow-sm border border-orange-50/50"
+              className="flex relative items-center gap-3 sm:gap-5 py-2 sm:py-0 rounded-full bg-[#FFF0E6] pr-4 sm:pr-10 shadow-sm border border-orange-50/50"
             >
               <div className="flex h-8 w-8 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-full bg-[#F77124]">
-                <span className="p-1 text-[#F77124] bg-white rounded-full">
+                <span className="p-0.5 sm:p-1 text-[#F77124] bg-white rounded-full">
                   <CheckIcon size={18} />
                 </span>
               </div>

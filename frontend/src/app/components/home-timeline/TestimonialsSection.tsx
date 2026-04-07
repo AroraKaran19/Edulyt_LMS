@@ -21,22 +21,22 @@ export default function TestimonialsSection() {
   const swiperRef = useRef<{ slideToLoop: (index: number) => void } | null>(null);
 
   return (
-    <section className="relative px-4 sm:px-10 lg:px-40 mt-8 sm:mt-12 sm:py-10" aria-label="Hear from our past students">
+    <section className="relative pl-2 px-0 sm:px-4 mt-8 sm:mt-12 sm:py-10" aria-label="Hear from our past students">
       <div >
         {/* Title: heart + "Hear from our past students" */}
-        <div className="flex items-center relative gap-4 -translate-x-6 sm:-translate-x-22">
+        <div className="flex items-center relative gap-4 -translate-x-[22px] sm:-translate-x-22">
           <FaHeart
-            className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 bg-[#F77124] text-white p-2 rounded-full shrink-0 shadow-lg "
+            className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 bg-[#F77124] text-white p-2 rounded-full shrink-0"
             aria-hidden
           />
-          <span className="text-base sm:text-xl md:text-lg relative md:left-8 font-semibold text-gray-800">
+          <h3 className="text-base sm:text-xl md:text-xl relative md:left-7 font-semibold text-gray-800">
             Hear from our past students
-          </span>
+          </h3>
         </div>
 
         {/* Headline with orange highlights */}
-        <div className="flex flex-col gap-1 mt-6 sm:mt-10 mb-6 sm:mb-8">
-          <h2 className="text-base sm:text-2xl md:text-3xl lg:text-4xl font-extrabold leading-tight tracking-tight">
+        <div className="flex flex-col gap-1 mt-6 mb-6 sm:mb-8 pl-8 sm:pl-0">
+          <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-extrabold leading-tight tracking-tight">
             Students who started{" "}
             <span className="text-[#F77124]">just like you</span> are now placed in{" "}
             <span className="text-[#F77124]">leading companies.</span>
@@ -45,7 +45,7 @@ export default function TestimonialsSection() {
       </div>
 
       {/* Tab bar */}
-      <div className="flex scroll-x-auto bg-white justify-between w-full sm:w-3/4 mb-6 sm:mb-8">
+      <div className="flex overflow-x-auto scrollbar-hide bg-white justify-between w-full sm:w-3/4 mb-6 sm:mb-8 gap-2 pl-8 sm:pl-0">
         {TABS.map((tab) => (
           <button
             key={tab.id}
@@ -67,9 +67,6 @@ export default function TestimonialsSection() {
       {/* Cards carousel - only reused component is LearnerCareerCard */}
       <div className="w-full relative">
         <div className="relative">
-          <div className="absolute left-0 top-0 bottom-0 w-12 sm:w-20 lg:w-28 bg-linear-to-r from-white to-transparent z-10 pointer-events-none" />
-          <div className="absolute right-0 top-0 bottom-0 w-12 sm:w-20 lg:w-28 bg-linear-to-l from-white to-transparent z-10 pointer-events-none" />
-
           <Swiper
             onSwiper={(swiper) => {
               swiperRef.current = swiper;

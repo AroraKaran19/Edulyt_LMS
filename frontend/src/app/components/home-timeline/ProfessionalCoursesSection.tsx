@@ -11,6 +11,8 @@ import { cn } from "@/lib/utils";
 import TimelineMarkerIcon from "./TimelineMarkerIcon";
 import { MousePointerClick, Star, ChevronRight } from "lucide-react";
 import { PrimaryButton } from "../ui/PrimaryButton";
+import NewCourseCard from "@/components/ui/NewCourseCard";
+import { Course as CourseType } from "@/types";
 
 export default function ProfessionalCoursesSection() {
     const [activeCategory, setActiveCategory] = useState(courseCategories[0]?.name || "Data Science");
@@ -18,9 +20,9 @@ export default function ProfessionalCoursesSection() {
     const swiperRef = useRef<any>(null);
 
     return (
-        <div className="relative px-4 sm:px-10 lg:px-40 mt-8 sm:mt-12 sm:py-10">
+        <div className="relative px-0 sm:px-4 mt-8 sm:mt-12 sm:py-10">
             {/* Top Header with Icon */}
-            <div className="flex items-center relative gap-4 -translate-x-6 sm:-translate-x-22">
+            <div className="flex items-center relative gap-4 -translate-x-[22px] sm:-translate-x-22">
                 <TimelineMarkerIcon size="big">
                     <MousePointerClick className="text-white w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6" />
                 </TimelineMarkerIcon>
@@ -32,10 +34,12 @@ export default function ProfessionalCoursesSection() {
             </div>
 
             {/* Content Area */}
-            <div className="mt-10 sm:mt-16">
+            <div className="mt-10 sm:mt-16 pl-8 sm:pl-0">
                 <div className="flex flex-col gap-1 mb-6 sm:mb-8">
-                    <h2 className={cn("text-base sm:text-lg lg:text-xl font-semibold leading-tight", "line-clamp-1")}>
-                        Our <span className="text-[#F77124]">Courses</span> (For Working Professionals)
+                    <h2 className={cn("text-xl sm:text-2xl lg:text-4xl font-extrabold leading-tight", "")}>
+                        Our <span className="text-[#F77124]">Courses</span> 
+                        <br />
+                        <span className="font-medium text-base sm:text-xl">(For Working Professionals)</span>
                     </h2>
                 </div>
                 {/* Category Filter */}
@@ -94,58 +98,44 @@ export default function ProfessionalCoursesSection() {
                         }}
                         className="pb-16"
                     >
-                        {courses.map((course) => (
-                            <SwiperSlide key={course.id}>
-                                <div className="bg-white rounded-2xl sm:rounded-3xl border border-[#FED7AA] overflow-hidden group hover:shadow-xl transition-all duration-300 h-full flex flex-col">
-                                    {/* Thumbnail & Badge */}
-                                    <div className="relative aspect-video overflow-hidden">
-                                        <Image
-                                            src={course.thumbnail}
-                                            alt={course.title}
-                                            fill
-                                            className="object-cover group-hover:scale-110 transition-transform duration-500"
-                                            sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
-                                        />
-                                        <div className="absolute top-2 sm:top-4 right-2 sm:right-4 bg-[#F77124] text-white text-xs font-bold px-2 sm:px-3 py-0.5 sm:py-1 rounded-full shadow-lg">
-                                            {course.discount}% off
-                                        </div>
-                                        {course.isBestSeller && (
-                                            <div className="absolute bottom-2 sm:bottom-4 left-2 sm:left-4 bg-white/95 backdrop-blur-sm border border-orange-200 p-1.5 sm:p-2 rounded-xl shadow-lg">
-                                                <p className="text-[9px] sm:text-[10px] font-bold text-[#F77124] uppercase tracking-wider">Best seller</p>
-                                                <p className="text-[8px] sm:text-[9px] text-gray-500 font-medium">(enrolled by {(course.enrolledStudents / 1000).toFixed(0)}k students)</p>
-                                            </div>
-                                        )}
-                                    </div>
+                        {courses.map((course) => {
+                            // Map static course data to NewCourseCard expected CourseType
+                            const mappedCourse: CourseType = {
+                                ...course,
+                                _id: course.id,
+                                isFeatured: course.isBestSeller,
+                                plans: {
+                                    essential: {
+                                        title: "Essential Plan",
+                                        type: "essential",
+                                        price: course.originalPrice,
+                                        features: [],
+                                        discount: {
+                                            discount: "percentage",
+                                            value: course.discount,
+                                            isActive: true,
+                                        },
+                                        isActive: true,
+                                    }
+                                },
+                                analytics: {
+                                    averageRating: course.rating,
+                                    totalReviews: course.reviewCount,
+                                    totalEnrollments: course.enrolledStudents,
+                                    activeEnrollments: course.enrolledStudents,
+                                    completionRate: 0,
+                                    averageCompletionTime: 0,
+                                    dropoffPoints: [],
+                                    totalRatings: course.reviewCount,
+                                }
+                            } as any;
 
-                                    {/* Body */}
-                                    <div className="p-4 sm:p-6 flex flex-col flex-1">
-                                        <h3 className={cn("text-base sm:text-xl md:text-2xl font-bold", "mb-3 line-clamp-2 min-h-12 sm:min-h-14")}>
-                                            {course.title}
-                                        </h3>
-
-                                        <div className="flex items-center gap-1 sm:gap-2 mb-4 sm:mb-6">
-                                            <div className="flex items-center gap-0.5 sm:gap-1 bg-[#22C55E] text-white px-1.5 sm:px-2 py-0.5 rounded text-[10px] sm:text-xs font-bold">
-                                                <Star className="w-2.5 h-2.5 sm:w-3 sm:h-3 fill-current" />
-                                                {course.rating.toFixed(1)} Rating
-                                            </div>
-                                            <span className="text-[10px] sm:text-xs text-gray-400 font-bold">
-                                                {(course.reviewCount / 1000).toFixed(0)}k Ratings
-                                            </span>
-                                        </div>
-
-                                        <div className="mt-auto flex items-center justify-between gap-2 sm:gap-4 pt-3 sm:pt-4 border-t border-gray-100">
-                                            <div className="flex items-baseline gap-1 sm:gap-2">
-                                                <span className={cn("text-gray-400 line-through", "text-xs sm:text-sm font-medium")}>₹{course.originalPrice}</span>
-                                                <span className={cn("font-extrabold text-gray-900", "text-base sm:text-lg md:text-xl lg:text-2xl font-bold")}>₹{course.currentPrice}</span>
-                                            </div>
-                                            <PrimaryButton size="sm">
-                                                Enroll Now
-                                            </PrimaryButton>
-                                        </div>
-                                    </div>
-                                </div>
-                            </SwiperSlide>
-                        ))}
+                            return (
+                                <SwiperSlide key={course.id}>
+                                    <NewCourseCard course={mappedCourse} className="h-full" />
+                                </SwiperSlide>
+                            );
+                        })}
                     </Swiper>
 
                     {/* Dots */}

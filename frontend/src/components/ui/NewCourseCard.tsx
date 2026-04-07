@@ -18,10 +18,13 @@ const NewCourseCard = ({
   course,
   className,
   style,
+  enrollHref,
 }: {
   course: Course;
   className?: string;
   style?: React.CSSProperties;
+  /** When set, Enroll navigates here instead of `/courses/[slug]`. */
+  enrollHref?: string;
 }) => {
   const router = useRouter();
 
@@ -44,80 +47,77 @@ const NewCourseCard = ({
   return (
     <div
       className={cn(
-        "flex h-full w-full  flex-col overflow-hidden rounded-3xl border-2 bg-white border-[#F77124] shadow-[0_0_0_4px_rgba(247,113,36,0.24)] lg:flex-row",
+        "flex h-full w-full flex-row overflow-hidden rounded-3xl border-2 bg-white border-[#F77124] shadow-[0_0_0_4px_rgba(247,113,36,0.24)]",
         className
       )}
       style={style}
     >
       {/* Left: image + badges */}
-      <div className="">
-        <div className="relative h-44 w-full sm:h-44 sm:w-50 aspect-square p-2">
+      <div className="shrink-0">
+        <div className="relative h-28 w-28 sm:h-44 sm:w-50 p-2">
           <Image
             src={course.thumbnail}
             alt={course.title}
             className="h-full w-full object-cover rounded-xl"
             draggable={false}
             loading="lazy"
-            width={1000}
-            height={1000}
+            width={400}
+            height={400}
           />
           {hasDiscount && (
-            <div className="absolute right-6 top-6 rounded-lg bg-[#f7af2a] px-2.5 py-1 text-xs font-bold text-white">
+            <div className="absolute right-3 top-3 sm:right-6 sm:top-6 rounded-lg bg-[#f7af2a] px-1.5 sm:px-2.5 py-0.5 sm:py-1 text-[10px] sm:text-xs font-bold text-white">
               {discountInfo.discountLabel}
-            </div>
-          )}
-          {isBestSeller && (
-            <div className="relative h-[30%] w-full bottom-12 left-0 right-0 rounded-b-xl p-2 bg-[#f7af2a]/30 bg-linear-to-r from-[#f7af2a]/80 to-transparent shadow-sm">
-              <p className="text-sm font-black text-black">Best seller</p>
-              <p className="text-[12px] font-semibold text-black">
-                (enrolled by {formatEnrolled(enrollments)} students)
-              </p>
             </div>
           )}
         </div>
       </div>
 
       {/* Right: title, rating, price, CTA */}
-      <div className="flex flex-1  flex-col  justify-between gap-3 p-4 sm:p-5">
-        <h3 className="line-clamp-2 text-base font-bold leading-snug text-gray-900 sm:text-lg">
+      <div className="flex flex-1 flex-col justify-between gap-1 sm:gap-3 p-3 sm:p-4">
+        <h3 className="line-clamp-1 sm:line-clamp-2 text-sm font-bold leading-snug text-gray-900 sm:text-lg">
           {course.title}
         </h3>
 
-        {reviewCount > 0 && (
+        {(rating > 0 || reviewCount > 0) && (
           <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500 px-2 py-0.5 text-xs font-semibold text-white">
-              <Star className="h-3.5 w-3.5 fill-white text-white" />
-              {rating.toFixed(1)}
-            </span>
-            <span className="text-xs text-gray-500">
-              {reviewCount >= 1000
-                ? `${(reviewCount / 1000).toFixed(0)}k Ratings`
+            {rating > 0 && (
+              <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500 px-2 py-0.5 text-xs font-semibold text-white">
+                <Star className="h-3.5 w-3.5 fill-white text-white" />
+                {rating.toFixed(1)} Rating
+              </span>
+            )}
+            {reviewCount > 0 && (
+              <span className="text-[10px] sm:text-xs text-gray-500">
+                {reviewCount >= 1000
+                  ? `${(reviewCount / 1000).toFixed(0)}k Ratings`
                 : `${reviewCount} ${reviewCount === 1 ? "Rating" : "Ratings"}`}
-            </span>
+              </span>
+            )}
           </div>
         )}
 
-        <div className="mt-auto flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
+        <div className="mt-auto flex items-center justify-between gap-1 px-1 overflow-hidden">
+          <div className="flex items-center gap-1 sm:gap-2">
             {hasDiscount ? (
               <>
-                <span className="text-sm text-gray-400 line-through">
+                <span className="text-[10px] sm:text-sm text-gray-400 line-through">
                   ₹{originalPrice}
                 </span>
-                <span className="text-lg font-bold text-gray-900">
+                <span className="text-sm sm:text-lg font-bold text-gray-900">
                   ₹{discountInfo.discountPrice}
                 </span>
               </>
             ) : (
-              <span className="text-lg font-bold text-gray-900">
+              <span className="text-sm sm:text-lg font-bold text-gray-900">
                 ₹{originalPrice}
               </span>
             )}
           </div>
-          <PrimaryButton size="sm"
+          <PrimaryButton className="px-2 py-2 my-1 sm:px-6 sm:h-10 text-[10px] sm:text-sm"
             onClick={(e) => {
               e.stopPropagation();
-              if (course.slug) router.push(`/courses/${course.slug}`);
+              if (enrollHref) router.push(enrollHref);
+              else if (course.slug) router.push(`/courses/${course.slug}`);
             }}
           >
             Enroll Now

@@ -3,13 +3,14 @@
 import { useState } from "react";
 import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import InternshipCard from "./InternshipCard";
+import NewCourseCard from "@/components/ui/NewCourseCard";
 import {
   courseCategories,
   courses,
   type Course as InternshipListingItem,
   type CourseCategory,
 } from "@/constants/internshipData";
+import { internshipListingToCourse } from "@/lib/utils/internshipListingToCourse";
 
 const ExploreInternshipsSection = () => {
   const [activeCategory, setActiveCategory] = useState<string>(
@@ -68,9 +69,10 @@ const ExploreInternshipsSection = () => {
       <div className="max-w-7xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 auto-rows-fr">
           {courses.slice(0, 4).map((internship: InternshipListingItem, index: number) => (
-            <InternshipCard
+            <NewCourseCard
               key={internship.id}
-              internship={internship}
+              course={internshipListingToCourse(internship)}
+              enrollHref="/internships"
               className="opacity-0 animate-course-card-fade-in"
               style={{ animationDelay: `${index * 100}ms` }}
             />

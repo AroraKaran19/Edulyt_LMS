@@ -19,10 +19,10 @@ export default function TimelineSectionsWrapper({
 }: TimelineSectionsWrapperProps) {
   return (
     <section className={className} aria-label="Timeline sections">
-      <div className="relative w-full px-0 sm:px-4 bg-[#FFFCFA]">
+      <div className="relative px-6 sm:px-10 lg:px-40 mb-13 bg-[#FFFCFA]">
         <div
           aria-hidden
-          className={`pointer-events-none absolute inset-y-0 w-px border-l-2 border-dashed border-[#C8C8C8] left-[21px] sm:left-28 ${svgStyle}`}
+          className={`pointer-events-none absolute inset-y-0 w-px border-l-2 border-dashed border-[#C8C8C8] left-6 sm:left-28 ${svgStyle}`}
         />
         <div className="relative">{children}</div>
       </div>

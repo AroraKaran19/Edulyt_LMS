@@ -23,9 +23,9 @@ const SUPPORT_FEATURES = [
 
 export default function SupportSection() {
     return (
-        <div className="relative px-4 sm:px-10 lg:px-40 mt-8 sm:mt-12 sm:py-10">
+        <div className="relative px-0 sm:px-4 mt-8 sm:mt-12 sm:py-10">
             {/* Top Header with Icon */}
-            <div className="flex items-center relative gap-4 -translate-x-6 sm:-translate-x-22">
+            <div className="flex items-center relative gap-4 -translate-x-[22px] sm:-translate-x-22">
                 <TimelineMarkerIcon size="big">
                     <span className="text-white text-base sm:text-xl font-bold">?</span>
                 </TimelineMarkerIcon>
@@ -36,19 +36,19 @@ export default function SupportSection() {
                 </div>
             </div>
 
-            <div className="mt-10 sm:mt-16">
+            <div className="mt-10 sm:mt-16 pl-8 sm:pl-0">
                 {/* Content Area with Vertical Dotted Line Alignment */}
-                <div className="mt-4 space-y-6 sm:space-y-8 ">
+                <div className="mt-4 space-y-6 sm:space-y-8">
                     {SUPPORT_FEATURES.map((feature, index) => {
                         const parts = feature.title.split(feature.highlight);
                         return (
                             <div key={index} className="flex flex-col gap-2">
-                                <h3 className="text-base sm:text-lg lg:text-xl font-semibold leading-tight">
+                                <h3 className="text-xl sm:text-2xl lg:text-4xl font-extrabold leading-tight">
                                     {parts[0]}
-                                    <span className="text-[#F39200]">{feature.highlight}</span>
+                                    <span className="text-[#f77124]">{feature.highlight}</span>
                                     {parts[1]}
                                 </h3>
-                                <p className={cn("max-w-prose text-gray-500 leading-relaxed font-semibold", "text-xs sm:text-sm font-medium")}>
+                                <p className={cn("max-w-prose max-w-md text-gray-700 leading-relaxed font-semibold", "text-xs sm:text-sm font-medium")}>
                                     {feature.description}
                                 </p>
                             </div>
