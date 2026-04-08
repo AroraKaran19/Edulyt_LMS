@@ -19,22 +19,18 @@ const CourseCard = ({
 }) => {
   const router = useRouter();
 
-  // Get the base price (prefer essential, fallback to elite)
   const originalPrice =
     course.plans?.essential?.price || course.plans?.elite?.price || 0;
 
-  // Determine which plan is being used for pricing
   const selectedPlan = course.plans?.essential ? "essential" : "elite";
   const planDiscount = course.plans?.[selectedPlan]?.discount;
 
-  // Calculate discount using the utility function
   const discountInfo = calculateDiscountDisplay(
     originalPrice,
-    planDiscount, // Plan-specific discount
-    course.discount // Course-wide discount (time-bound)
+    planDiscount,
+    course.discount
   );
 
-  // Flag indicating if any discount (plan and/or active course-level) is present
   const hasAnyDiscount = !!discountInfo.discountLabel;
 
   return (

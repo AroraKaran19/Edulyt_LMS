@@ -2,7 +2,7 @@ import { Metadata } from "next";
 import React from "react";
 
 export const metadata: Metadata = {
-  title: "Terms of Use | Airkrit",
+  title: "Terms of Use | Airkrit India",
   description: "Terms of Use | Airkrit",
   keywords: ["Terms of Use", "Airkrit"],
   robots: "index, follow",
@@ -10,17 +10,17 @@ export const metadata: Metadata = {
     icon: "https://www.airkrit.com/logo.png",
   },
   openGraph: {
-    title: "Terms of Use | Airkrit",
-    description: "Terms of Use | Airkrit",
+    title: "Terms of Use | Airkrit India",
+    description: "Terms of Use | Airkrit India",
     type: "website",
     url: "https://www.airkrit.com/terms-of-use",
-    siteName: "Airkrit",
+    siteName: "Airkrit India",
     images: [{ url: "https://www.airkrit.com/logo.png" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Terms of Use | Airkrit",
-    description: "Terms of Use | Airkrit",
+    title: "Terms of Use | Airkrit India",
+    description: "Terms of Use | Airkrit India",
     images: [{ url: "https://www.airkrit.com/logo.png" }],
   },
   metadataBase: new URL(

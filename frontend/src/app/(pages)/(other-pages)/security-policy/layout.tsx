@@ -2,11 +2,11 @@ import { Metadata } from "next";
 import React from "react";
 
 export const metadata: Metadata = {
-  title: "Security Policy | Airkrit",
-  description: "Security Policy | Airkrit",
+  title: "Security Policy | Airkrit India",
+  description: "Security Policy | Airkrit India",
   keywords: [
     "Security Policy",
-    "Airkrit",
+    "Airkrit India",
     "Security Policy Page",
     "Security Policy Information",
     "Security Policy Details",
@@ -16,17 +16,17 @@ export const metadata: Metadata = {
     icon: "https://www.airkrit.com/logo.png",
   },
   openGraph: {
-    title: "Security Policy | Airkrit",
-    description: "Security Policy | Airkrit",
+    title: "Security Policy | Airkrit India",
+    description: "Security Policy | Airkrit India",
     type: "website",
     url: "https://www.airkrit.com/security-policy",
-    siteName: "Airkrit",
+    siteName: "Airkrit India",
     images: [{ url: "https://www.airkrit.com/logo.png" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Security Policy | Airkrit",
-    description: "Security Policy | Airkrit",
+    title: "Security Policy | Airkrit India",
+    description: "Security Policy | Airkrit India",
     images: [{ url: "https://www.airkrit.com/logo.png" }],
   },
   metadataBase: new URL(

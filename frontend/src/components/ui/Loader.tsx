@@ -3,7 +3,6 @@
 import React from "react";
 import { cn } from "@/lib/utils";
 
-// Custom animations for the loader
 const fadeInAnimation = `
   @keyframes fade-in {
     from { opacity: 0; }
@@ -24,7 +23,6 @@ const scaleInAnimation = `
   }
 `;
 
-// Inject animations
 if (typeof document !== "undefined") {
   const style = document.createElement("style");
   style.textContent = fadeInAnimation + scaleInAnimation;

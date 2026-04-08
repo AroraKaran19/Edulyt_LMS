@@ -2,27 +2,21 @@ import { Metadata } from "next";
 import React from "react";
 
 export const metadata: Metadata = {
-  title: "Community | Airkrit",
+  title: "Contact | Airkrit India",
   description:
-    "Join the Airkrit community to share your journey, insights, and doubts. Connect with others and grow together.",
+    "Get in touch with Airkrit. We're updating this page — check back soon.",
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_APP_URL || process.env.NODE_ENV === "production"
-      ? "https://www.airkrit.com/community"
-      : "http://localhost:3000/community",
+      ? "https://www.airkrit.com/contact"
+      : "http://localhost:3000/contact",
   ),
-  keywords: [
-    "Community",
-    "Airkrit",
-    "Share Experience",
-    "Career Journey",
-    "Industry Experience",
-  ],
+  keywords: ["Contact", "Airkrit", "Support", "Get in touch"],
   openGraph: {
-    title: "Community | Airkrit",
+    title: "Contact | Airkrit India",
     description:
-      "Share your journey, doubts, or insights with the Airkrit community.",
-    url: "https://www.airkrit.com/community",
-    siteName: "Airkrit",
+      "Get in touch with Airkrit. We're updating this page — check back soon.",
+    url: "https://www.airkrit.com/contact",
+    siteName: "Airkrit India",
     type: "website",
     images: [
       {
@@ -34,9 +28,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Community | Airkrit",
+    title: "Contact | Airkrit India",
     description:
-      "Share your journey, doubts, or insights with the Airkrit community.",
+      "Get in touch with Airkrit. We're updating this page — check back soon.",
     images: [
       {
         url: "https://www.airkrit.com/logo.png",
@@ -47,8 +41,8 @@ export const metadata: Metadata = {
   },
 };
 
-const CommunityPageLayout = ({ children }: { children: React.ReactNode }) => {
+const ContactLayout = ({ children }: { children: React.ReactNode }) => {
   return children;
 };
 
-export default CommunityPageLayout;
+export default ContactLayout;

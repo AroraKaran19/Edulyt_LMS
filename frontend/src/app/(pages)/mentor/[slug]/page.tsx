@@ -84,11 +84,11 @@ export async function generateMetadata({
   const slug = (await params).slug;
   const { instructor, stats } = await fetchInstructorProfile(slug);
 
-  const siteUrl = process.env.NEXT_PUBLIC_APP_URL || "https://airkrit.com";
+  const siteUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.airkrit.com";
 
   if (!instructor) {
     return {
-      title: "Not Found | Airkrit",
+      title: "Not Found | Airkrit India",
       description: "The requested instructor could not be found.",
     };
   }
@@ -109,12 +109,12 @@ export async function generateMetadata({
   const imageUrl = instructor.profilePicture || `${siteUrl}/logo.svg`;
 
   return {
-    title: `${name} | Airkrit`,
+    title: `${name} | Airkrit India`,
     description,
     keywords: [
       "instructor",
       "mentor",
-      "airkrit",
+      "airkrit india",
       name,
       role,
       ...(instructor.field ? [instructor.field] : []),
@@ -124,11 +124,11 @@ export async function generateMetadata({
       canonical: `${siteUrl}/mentor/${slug}`,
     },
     openGraph: {
-      title: `${name} | Airkrit`,
+      title: `${name} | Airkrit India`,
       description,
       url: `${siteUrl}/mentor/${slug}`,
       type: "profile",
-      siteName: "Airkrit",
+      siteName: "Airkrit India",
       images: [
         {
           url: imageUrl,
