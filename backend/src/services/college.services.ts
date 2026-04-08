@@ -1,7 +1,8 @@
 import mongoose from "mongoose";
 import { CollegeModel } from "../models/college.schema";
 import { College } from "../types/college";
-import { createFuzzySearchOrFilter } from "../utils/lib/fuzzySearch";
+
+const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 export interface ListCollegesResult {
   colleges: College[];
@@ -31,17 +32,37 @@ const toCollege = (doc: Record<string, unknown>): College => {
   };
 };
 
-const buildSearchFilter = (search?: string) => {
+/**
+ * Each whitespace-separated word must match somewhere (name OR location OR legacy
+ * city/state/country). Words are combined with AND so "Business Schoo" requires
+ * both substrings — unlike fuzzySearch's global $or, which let "Schoo" match
+ * "School" without "Business".
+ */
+const buildSearchFilter = (search?: string): mongoose.FilterQuery<College> => {
   if (!search?.trim()) return {};
-  const q = search.trim();
-  const ors: object[] = [];
-  const main = createFuzzySearchOrFilter(q, ["name", "location"]);
-  if (main?.$or?.length) ors.push(...main.$or);
-  /** Legacy docs may still have city/state/country only */
-  const legacy = createFuzzySearchOrFilter(q, ["city", "state", "country"]);
-  if (legacy?.$or?.length) ors.push(...legacy.$or);
-  if (ors.length) return { $or: ors };
-  return {};
+  const words = search
+    .trim()
+    .replace(/\s+/g, " ")
+    .split(" ")
+    .map((w) => w.trim())
+    .filter((w) => w.length > 0);
+  if (words.length === 0) return {};
+
+  const fields = ["name", "location", "city", "state", "country"] as const;
+
+  const perWord = words.map((word) => {
+    const rx = escapeRegex(word);
+    return {
+      $or: fields.map((field) => ({
+        [field]: { $regex: rx, $options: "i" as const },
+      })),
+    };
+  });
+
+  if (perWord.length === 1) {
+    return perWord[0] as mongoose.FilterQuery<College>;
+  }
+  return { $and: perWord } as mongoose.FilterQuery<College>;
 };
 
 const totalPages = (total: number, limit: number) =>
