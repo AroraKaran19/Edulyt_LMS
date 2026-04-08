@@ -69,6 +69,31 @@ const TrialCourseModal = ({
     useUserManagement();
   const { getAdminCourseOptions } = useCourseManagement();
 
+  /** Full reset: selections, step, import summary, pagination, and dedupe refs (so reopen / next run isn’t stale). */
+  const resetTrialModalState = useCallback(() => {
+    setTrialStep(1);
+    setSelectedUsers([]);
+    setSelectedCourses([]);
+    setTrialDurationDays(7);
+    setImportSummary(null);
+    setCurrentPage(1);
+    setHasMore(true);
+    setUserCurrentPage(1);
+    setUserHasMore(true);
+    setUserSearch("");
+    setDebouncedUserSearch("");
+    lastSearchRef.current = "";
+    lastSelectedCourseIdsRef.current = "";
+    isLoadingUsersRef.current = false;
+    setCourseSearch("");
+    setDebouncedCourseSearch("");
+    setAudienceFilter("all");
+    lastCourseSearchRef.current = "";
+    lastAudienceFilterRef.current = "";
+    isLoadingCoursesRef.current = false;
+    if (userImportInputRef.current) userImportInputRef.current.value = "";
+  }, []);
+
   const parseEmailsFromFile = async (file: File): Promise<string[]> => {
     const buf = await file.arrayBuffer();
     const wb = XLSX.read(buf, { type: "array" });
@@ -254,27 +279,10 @@ const TrialCourseModal = ({
     }
   }, [trialStep, isOpen, debouncedCourseSearch, fetchCourses, audienceFilter]);
 
-  // Reset state when modal closes
+  // Reset state when modal closes (mounted with isOpen=false while parent keeps instance)
   useEffect(() => {
-    if (!isOpen) {
-      setTrialStep(1);
-      setSelectedUsers([]);
-      setSelectedCourses([]);
-      setTrialDurationDays(7);
-      // Don't reset courses and users - keep them cached for better UX
-      // Reset search when modal closes
-      setUserSearch("");
-      setDebouncedUserSearch("");
-      lastSearchRef.current = "";
-      isLoadingUsersRef.current = false;
-      setCourseSearch("");
-      setDebouncedCourseSearch("");
-      setAudienceFilter("all");
-      lastCourseSearchRef.current = "";
-      lastAudienceFilterRef.current = "";
-      isLoadingCoursesRef.current = false;
-    }
-  }, [isOpen]);
+    if (!isOpen) resetTrialModalState();
+  }, [isOpen, resetTrialModalState]);
 
   // Debounce user search
   useEffect(() => {
@@ -601,12 +609,7 @@ const TrialCourseModal = ({
         );
       }
 
-      // Reset and close modal
       if (totalSuccessCount > 0) {
-        setSelectedCourses([]);
-        setSelectedUsers([]);
-        setTrialDurationDays(7);
-        setTrialStep(1);
         onTrialComplete?.();
         onClose();
       }
