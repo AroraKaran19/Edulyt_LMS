@@ -11,6 +11,12 @@ export interface CollaborationDomainJobSnapshot {
   domain: string;
 }
 
+/** Captured when the job is created so admin history survives user updates/deletion. */
+export interface CollaborationUserJobSnapshot {
+  name: string;
+  email: string;
+}
+
 export interface CollaborationJob {
   _id?: string;
   jobId: string;
@@ -19,6 +25,8 @@ export interface CollaborationJob {
   status: CollaborationJobStatus;
   /** Point-in-time copy of the collaboration domain (title + email domain). */
   collaborationDomainSnapshot?: CollaborationDomainJobSnapshot | null;
+  /** Point-in-time copy of the user (name + email). */
+  userSnapshot?: CollaborationUserJobSnapshot | null;
   error?: string | null;
   retryCount: number;
   startedAt?: Date | null;

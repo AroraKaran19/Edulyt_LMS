@@ -10,6 +10,17 @@ import {
   CollaborationJobStatus,
 } from "../types/collaborationJob";
 
+function buildUserSnapshot(user: { firstName?: string; lastName?: string; email?: string } | null): {
+  name: string;
+  email: string;
+} | null {
+  if (!user) return null;
+  const name = `${String(user.firstName ?? "").trim()} ${String(user.lastName ?? "").trim()}`.trim();
+  const email = String(user.email ?? "").trim().toLowerCase();
+  if (!name && !email) return null;
+  return { name, email };
+}
+
 function normalizeEmailDomainForSnapshot(raw: string): string {
   const s = (raw || "").trim().toLowerCase();
   return s.startsWith("@") ? s.slice(1) : s;
@@ -36,6 +47,11 @@ export const createCollaborationAllotmentJobService = async (data: {
     domain: normalizeEmailDomainForSnapshot(domainDoc.domain),
   };
 
+  const userDoc = await UserModel.findById(data.userId)
+    .select("firstName lastName email")
+    .lean();
+  const userSnapshot = buildUserSnapshot(userDoc as any);
+
   try {
     const job = await CollaborationJobModel.findOneAndUpdate(
       {
@@ -55,6 +71,7 @@ export const createCollaborationAllotmentJobService = async (data: {
           status: "pending" as CollaborationJobStatus,
           retryCount: 0,
           collaborationDomainSnapshot,
+          userSnapshot: userSnapshot ?? undefined,
         },
       },
       { upsert: true, new: true }

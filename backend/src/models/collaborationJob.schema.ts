@@ -8,6 +8,14 @@ const collaborationDomainSnapshotSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const collaborationUserSnapshotSchema = new mongoose.Schema(
+  {
+    name: { type: String, trim: true },
+    email: { type: String, trim: true, lowercase: true },
+  },
+  { _id: false }
+);
+
 const collaborationJobSchema = new mongoose.Schema(
   {
     jobId: {
@@ -31,6 +39,11 @@ const collaborationJobSchema = new mongoose.Schema(
     /** Stored when the job is created (survives if the domain document is removed). */
     collaborationDomainSnapshot: {
       type: collaborationDomainSnapshotSchema,
+      required: false,
+    },
+    /** Stored when the job is created (survives if the user document is removed). */
+    userSnapshot: {
+      type: collaborationUserSnapshotSchema,
       required: false,
     },
     status: {
