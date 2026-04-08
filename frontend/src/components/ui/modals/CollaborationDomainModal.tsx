@@ -47,7 +47,7 @@ const CollaborationDomainModal = ({
 }: CollaborationDomainModalProps) => {
   const { createCollaborationDomain, updateCollaborationDomain, isLoading } =
     useCollaborationDomain();
-  const { getAdminCourses, getAdminCourseById } = useCourse();
+  const { getAdminCourses, getAdminCourseOptions, getAdminCourseById } = useCourse();
 
   // Form fields
   const [title, setTitle] = useState("");
@@ -58,11 +58,12 @@ const CollaborationDomainModal = ({
   const [partnershipOffer, setPartnershipOffer] =
     useState<PartnershipOffer>("course_access");
   const [benefitType, setBenefitType] = useState<"percentage" | "fixed">(
-    "percentage"
+    "percentage",
   );
   const [benefitValue, setBenefitValue] = useState<number>(0);
   const [plan, setPlan] = useState<Plan["type"]>("elite");
-  const [audience, setAudience] = useState<CourseType["audience"]>("college-students");
+  const [audience, setAudience] =
+    useState<CourseType["audience"]>("college-students");
   const [durationDays, setDurationDays] = useState<number>(365);
 
   const [courseSearch, setCourseSearch] = useState("");
@@ -82,7 +83,7 @@ const CollaborationDomainModal = ({
       page: number,
       search: string,
       append: boolean,
-      opts?: { applyAudienceFilter?: boolean }
+      opts?: { applyAudienceFilter?: boolean },
     ) => {
       const applyAudience =
         opts?.applyAudienceFilter ?? partnershipOffer === "course_access";
@@ -110,14 +111,14 @@ const CollaborationDomainModal = ({
         setLoadingCourses(false);
       }
     },
-    [getAdminCourses, partnershipOffer, audience]
+    [getAdminCourses, partnershipOffer, audience],
   );
 
   const [courseDetailForPartial, setCourseDetailForPartial] =
     useState<Course | null>(null);
   const [loadingCourseDetail, setLoadingCourseDetail] = useState(false);
   const [partialModules, setPartialModules] = useState<Set<string>>(
-    () => new Set()
+    () => new Set(),
   );
   const [partialLessons, setPartialLessons] = useState<
     Record<string, Set<string>>
@@ -136,7 +137,7 @@ const CollaborationDomainModal = ({
       setPartnershipOffer(
         editingDomain.collaborationKind === "discount"
           ? "discount"
-          : "course_access"
+          : "course_access",
       );
       const ea = editingDomain.enrollmentAccess;
       if (editingDomain.collaborationKind === "course_allot" && ea) {
@@ -280,13 +281,7 @@ const CollaborationDomainModal = ({
       setCoursePage(nextPage);
       loadCourses(nextPage, courseSearch, true);
     }
-  }, [
-    coursePage,
-    courseSearch,
-    loadingCourses,
-    hasMoreCourses,
-    loadCourses,
-  ]);
+  }, [coursePage, courseSearch, loadingCourses, hasMoreCourses, loadCourses]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -349,7 +344,7 @@ const CollaborationDomainModal = ({
         });
       }
     },
-    [loadCourses, courseSearch]
+    [loadCourses, courseSearch],
   );
 
   const handleAudienceChange = useCallback(
@@ -361,7 +356,7 @@ const CollaborationDomainModal = ({
       setHasMoreCourses(true);
       void loadCourses(1, courseSearch, false, { applyAudienceFilter: true });
     },
-    [loadCourses, courseSearch]
+    [loadCourses, courseSearch],
   );
 
   const handleAccessTypeSelect = useCallback((t: AccessType) => {
@@ -385,9 +380,13 @@ const CollaborationDomainModal = ({
         setPartialLessons(nextLessons);
         const nextContents = { ...partialContents };
         const module = (courseDetailForPartial.modules as CourseModule[]).find(
-          (m) => (typeof m === "string" ? m : m._id) === moduleId
+          (m) => (typeof m === "string" ? m : m._id) === moduleId,
         );
-        if (module && typeof module !== "string" && Array.isArray(module.lessons)) {
+        if (
+          module &&
+          typeof module !== "string" &&
+          Array.isArray(module.lessons)
+        ) {
           module.lessons.forEach((lesson) => {
             const lessonId =
               typeof lesson === "string" ? lesson : lesson._id || "";
@@ -400,7 +399,7 @@ const CollaborationDomainModal = ({
       }
       setPartialModules(newSelected);
     },
-    [courseDetailForPartial, partialModules, partialLessons, partialContents]
+    [courseDetailForPartial, partialModules, partialLessons, partialContents],
   );
 
   const togglePartialLesson = useCallback(
@@ -418,7 +417,7 @@ const CollaborationDomainModal = ({
         const cd = courseDetailForPartial;
         if (cd?.modules && Array.isArray(cd.modules)) {
           const module = (cd.modules as CourseModule[]).find(
-            (m) => (typeof m === "string" ? m : m._id) === moduleId
+            (m) => (typeof m === "string" ? m : m._id) === moduleId,
           );
           if (module && typeof module !== "string") {
             const lesson = (
@@ -446,7 +445,7 @@ const CollaborationDomainModal = ({
         [moduleId]: newModuleLessons,
       });
     },
-    [courseDetailForPartial, partialLessons, partialContents]
+    [courseDetailForPartial, partialLessons, partialContents],
   );
 
   const togglePartialContent = useCallback(
@@ -465,7 +464,7 @@ const CollaborationDomainModal = ({
         const cd = courseDetailForPartial;
         if (cd?.modules && Array.isArray(cd.modules)) {
           const module = (cd.modules as CourseModule[]).find(
-            (m) => (typeof m === "string" ? m : m._id) === moduleId
+            (m) => (typeof m === "string" ? m : m._id) === moduleId,
           );
           if (module && typeof module !== "string") {
             const lesson = (
@@ -479,7 +478,9 @@ const CollaborationDomainModal = ({
               const allContentIds = lesson.contents
                 .map((c) => (typeof c === "string" ? c : c._id))
                 .filter((id): id is string => !!id);
-              const newContentIds = allContentIds.filter((id) => id !== contentId);
+              const newContentIds = allContentIds.filter(
+                (id) => id !== contentId,
+              );
               const nextContents = { ...partialContents };
               if (newContentIds.length > 0) {
                 nextContents[lessonId] = new Set(newContentIds);
@@ -507,7 +508,7 @@ const CollaborationDomainModal = ({
         setPartialContents(nextContents);
       }
     },
-    [courseDetailForPartial, partialLessons, partialContents]
+    [courseDetailForPartial, partialLessons, partialContents],
   );
 
   const handleSelectAllActiveCourses = useCallback(async () => {
@@ -520,15 +521,14 @@ const CollaborationDomainModal = ({
       let page = 1;
       let totalPages = 1;
       do {
-        const res = await getAdminCourses({
+        const res = await getAdminCourseOptions({
           page,
-          limit: 100,
           search: courseSearch.trim() || undefined,
           audience,
           isActive: true,
         });
         if (res?.courses?.length) {
-          fetched.push(...res.courses);
+          fetched.push(...(res.courses as unknown as Course[]));
         }
         totalPages = res?.totalPages ?? 1;
         page += 1;
@@ -548,9 +548,7 @@ const CollaborationDomainModal = ({
       });
 
       if (fetched.length === 0) {
-        toast.info(
-          "No active courses match the current search and audience."
-        );
+        toast.info("No active courses match the current search and audience.");
       } else {
         toast.success(`${newList.length} course(s) in your selection.`);
       }
@@ -560,18 +558,14 @@ const CollaborationDomainModal = ({
     } finally {
       setSelectingAllCourses(false);
     }
-  }, [
-    accessType,
-    partnershipOffer,
-    audience,
-    courseSearch,
-    getAdminCourses,
-  ]);
+  }, [accessType, partnershipOffer, audience, courseSearch, getAdminCourses]);
 
   const toggleCourse = (course: Course) => {
     setSelectedCourses((prev) => {
       const exists = prev.some((c) => c._id === course._id);
-      return exists ? prev.filter((c) => c._id !== course._id) : [...prev, course];
+      return exists
+        ? prev.filter((c) => c._id !== course._id)
+        : [...prev, course];
     });
   };
 
@@ -620,7 +614,7 @@ const CollaborationDomainModal = ({
     if (accessType === "partial") {
       if (selectedCourses.length !== 1) {
         toast.error(
-          "Partial access (modules and lessons) requires exactly one course. Use full access or top N for multiple courses."
+          "Partial access (modules and lessons) requires exactly one course. Use full access or top N for multiple courses.",
         );
         return null;
       }
@@ -629,14 +623,10 @@ const CollaborationDomainModal = ({
         return null;
       }
       if (
-        !hasAnyPartialSelection(
-          partialModules,
-          partialLessons,
-          partialContents
-        )
+        !hasAnyPartialSelection(partialModules, partialLessons, partialContents)
       ) {
         toast.error(
-          "Select at least one module, lesson, or content for partial access."
+          "Select at least one module, lesson, or content for partial access.",
         );
         return null;
       }
@@ -668,11 +658,11 @@ const CollaborationDomainModal = ({
         courseDetailForPartial!,
         partialModules,
         partialLessons,
-        partialContents
+        partialContents,
       );
       if (!pa?.accessibleModules?.length) {
         toast.error(
-          "Select at least one module, lesson, or content for partial access."
+          "Select at least one module, lesson, or content for partial access.",
         );
         return null;
       }
@@ -710,7 +700,7 @@ const CollaborationDomainModal = ({
     } else {
       const result = await updateCollaborationDomain(
         editingDomain?._id!,
-        payload
+        payload,
       );
       if (result) {
         toast.success("Collaboration Domain updated successfully!");
@@ -791,15 +781,14 @@ const CollaborationDomainModal = ({
                 <input
                   type="text"
                   value={domain}
-                  onChange={(e) =>
-                    setDomain(e.target.value.replace(/^@/, ""))
-                  }
-                  placeholder="college.edu"
+                  onChange={(e) => setDomain(e.target.value.replace(/^@/, ""))}
+                  placeholder="college.edu or *.test.com"
                   className="flex-1 px-2 py-2.5 outline-none bg-transparent"
                 />
               </div>
               <p className="text-xs text-gray-500 mt-1">
-                Students with this email domain will be matched
+                Exact host (e.g. college.edu) or one-level wildcard (*.test.com
+                matches any.test.com, 1.test.com — not test.com or a.b.test.com)
               </p>
             </div>
 
@@ -810,10 +799,11 @@ const CollaborationDomainModal = ({
               <button
                 type="button"
                 onClick={() => setIsActive((v) => !v)}
-                className={`w-full py-2.5 px-4 rounded-lg border font-medium text-sm transition-all cursor-pointer ${isActive
+                className={`w-full py-2.5 px-4 rounded-lg border font-medium text-sm transition-all cursor-pointer ${
+                  isActive
                     ? "bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
                     : "bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100"
-                  }`}
+                }`}
               >
                 {isActive ? "Active" : "Inactive"}
               </button>
@@ -831,10 +821,11 @@ const CollaborationDomainModal = ({
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <label
-                className={`flex items-start gap-3 p-3 border-2 rounded-lg cursor-pointer transition-colors ${partnershipOffer === "course_access"
+                className={`flex items-start gap-3 p-3 border-2 rounded-lg cursor-pointer transition-colors ${
+                  partnershipOffer === "course_access"
                     ? "border-orange-500 bg-orange-50/60"
                     : "border-gray-200 hover:border-gray-300 bg-white"
-                  }`}
+                }`}
               >
                 <input
                   type="radio"
@@ -853,10 +844,11 @@ const CollaborationDomainModal = ({
                 </span>
               </label>
               <label
-                className={`flex items-start gap-3 p-3 border-2 rounded-lg cursor-pointer transition-colors ${partnershipOffer === "discount"
+                className={`flex items-start gap-3 p-3 border-2 rounded-lg cursor-pointer transition-colors ${
+                  partnershipOffer === "discount"
                     ? "border-orange-500 bg-orange-50/60"
                     : "border-gray-200 hover:border-gray-300 bg-white"
-                  }`}
+                }`}
               >
                 <input
                   type="radio"
@@ -902,7 +894,7 @@ const CollaborationDomainModal = ({
                   value={audience}
                   onChange={(e) =>
                     handleAudienceChange(
-                      e.target.value as CourseType["audience"]
+                      e.target.value as CourseType["audience"],
                     )
                   }
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
@@ -938,151 +930,152 @@ const CollaborationDomainModal = ({
 
           {/* Courses (course-access partnerships only) */}
           {partnershipOffer === "course_access" && (
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-              Courses <span className="text-red-500">*</span>
-            </label>
-            <p className="text-xs text-gray-500 mb-2 leading-snug">
-              Search is filtered to{" "}
-              <span className="font-medium text-gray-700">active</span> courses
-              tagged for{" "}
-              <span className="font-medium text-gray-700">
-                {AUDIENCE_LABEL[audience]}
-              </span>
-              , matching the audience above (collaboration enrollments use
-              that audience).
-            </p>
-            <div className="flex flex-wrap items-center gap-2 mb-2">
-              <button
-                type="button"
-                onClick={() => void handleSelectAllActiveCourses()}
-                disabled={
-                  accessType === "partial" ||
-                  selectingAllCourses ||
-                  partnershipOffer !== "course_access"
-                }
-                className="text-xs font-medium text-orange-600 hover:text-orange-700 hover:underline disabled:opacity-50 disabled:cursor-not-allowed disabled:no-underline"
-              >
-                {selectingAllCourses ? (
-                  <span className="inline-flex items-center gap-1.5">
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    Loading…
-                  </span>
-                ) : (
-                  "Select all active"
-                )}
-              </button>
-              {accessType === "partial" && (
-                <span className="text-xs text-gray-400">
-                  (Use one course for partial access)
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                Courses <span className="text-red-500">*</span>
+              </label>
+              <p className="text-xs text-gray-500 mb-2 leading-snug">
+                Search is filtered to{" "}
+                <span className="font-medium text-gray-700">active</span>{" "}
+                courses tagged for{" "}
+                <span className="font-medium text-gray-700">
+                  {AUDIENCE_LABEL[audience]}
                 </span>
-              )}
-            </div>
-
-            {/* Selected courses */}
-            {selectedCourses.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-2">
-                {selectedCourses.map((course) => (
-                  <div
-                    key={course._id}
-                    className="flex items-center gap-1.5 bg-orange-50 border border-orange-200 rounded-lg px-3 py-1.5 text-sm"
-                  >
-                    <BookOpen className="w-3.5 h-3.5 text-orange-600 shrink-0" />
-                    <span className="text-orange-800 font-medium max-w-[160px] truncate">
-                      {course.title}
+                , matching the audience above (collaboration enrollments use
+                that audience).
+              </p>
+              <div className="flex flex-wrap items-center gap-2 mb-2">
+                <button
+                  type="button"
+                  onClick={() => void handleSelectAllActiveCourses()}
+                  disabled={
+                    accessType === "partial" ||
+                    selectingAllCourses ||
+                    partnershipOffer !== "course_access"
+                  }
+                  className="text-xs font-medium text-orange-600 hover:text-orange-700 hover:underline disabled:opacity-50 disabled:cursor-not-allowed disabled:no-underline"
+                >
+                  {selectingAllCourses ? (
+                    <span className="inline-flex items-center gap-1.5">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      Loading…
                     </span>
-                    <button
-                      onClick={() => removeCourse(course._id!)}
-                      className="text-orange-400 hover:text-orange-700 cursor-pointer ml-0.5"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Course search */}
-            <div className="relative" ref={dropdownRef}>
-              <div className="relative">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
-                  type="text"
-                  value={courseSearch}
-                  onChange={(e) => {
-                    setCourseSearch(e.target.value);
-                    setShowCourseDropdown(true);
-                  }}
-                  onFocus={() => setShowCourseDropdown(true)}
-                  placeholder="Search and add courses..."
-                  className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
-                />
-                {loadingCourses && courseResults.length === 0 && (
-                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 animate-spin" />
+                  ) : (
+                    "Select all active"
+                  )}
+                </button>
+                {accessType === "partial" && (
+                  <span className="text-xs text-gray-400">
+                    (Use one course for partial access)
+                  </span>
                 )}
               </div>
 
-              {showCourseDropdown && (
-                <div
-                  ref={coursesScrollRef}
-                  onScroll={handleCoursesScroll}
-                  className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 max-h-52 overflow-y-auto"
-                >
-                  {!loadingCourses && courseResults.length === 0 ? (
-                    <div className="px-4 py-6 text-sm text-center text-gray-500">
-                      No courses found
+              {/* Selected courses */}
+              {selectedCourses.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {selectedCourses.map((course) => (
+                    <div
+                      key={course._id}
+                      className="flex items-center gap-1.5 bg-orange-50 border border-orange-200 rounded-lg px-3 py-1.5 text-sm"
+                    >
+                      <BookOpen className="w-3.5 h-3.5 text-orange-600 shrink-0" />
+                      <span className="text-orange-800 font-medium max-w-[160px] truncate">
+                        {course.title}
+                      </span>
+                      <button
+                        onClick={() => removeCourse(course._id!)}
+                        className="text-orange-400 hover:text-orange-700 cursor-pointer ml-0.5"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
                     </div>
-                  ) : (
-                    <>
-                      {courseResults.map((course) => {
-                        const selected = selectedCourses.some(
-                          (c) => c._id === course._id
-                        );
-                        return (
-                          <button
-                            key={course._id}
-                            type="button"
-                            onClick={() => {
-                              toggleCourse(course);
-                              setCourseSearch("");
-                              setShowCourseDropdown(false);
-                            }}
-                            className="w-full flex items-center gap-3 px-4 py-3 text-sm text-left hover:bg-orange-50 transition-colors border-b border-gray-100 last:border-0 cursor-pointer"
-                          >
-                            <div
-                              className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 ${selected
-                                  ? "bg-orange-500 border-orange-500"
-                                  : "border-gray-300"
-                                }`}
-                            >
-                              {selected && (
-                                <Check className="w-3 h-3 text-white" />
-                              )}
-                            </div>
-                            <span className="text-gray-800 font-medium truncate">
-                              {course.title}
-                            </span>
-                          </button>
-                        );
-                      })}
-                      {loadingCourses && courseResults.length > 0 && (
-                        <div className="py-2 text-center text-xs text-gray-400">
-                          Loading more…
-                        </div>
-                      )}
-                      {!loadingCourses &&
-                        courseResults.length > 0 &&
-                        !hasMoreCourses && (
-                          <div className="py-2 text-center text-[10px] text-gray-400 border-t border-gray-100">
-                            End of list
-                          </div>
-                        )}
-                    </>
-                  )}
+                  ))}
                 </div>
               )}
+
+              {/* Course search */}
+              <div className="relative" ref={dropdownRef}>
+                <div className="relative">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="text"
+                    value={courseSearch}
+                    onChange={(e) => {
+                      setCourseSearch(e.target.value);
+                      setShowCourseDropdown(true);
+                    }}
+                    onFocus={() => setShowCourseDropdown(true)}
+                    placeholder="Search and add courses..."
+                    className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
+                  />
+                  {loadingCourses && courseResults.length === 0 && (
+                    <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 animate-spin" />
+                  )}
+                </div>
+
+                {showCourseDropdown && (
+                  <div
+                    ref={coursesScrollRef}
+                    onScroll={handleCoursesScroll}
+                    className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 max-h-52 overflow-y-auto"
+                  >
+                    {!loadingCourses && courseResults.length === 0 ? (
+                      <div className="px-4 py-6 text-sm text-center text-gray-500">
+                        No courses found
+                      </div>
+                    ) : (
+                      <>
+                        {courseResults.map((course) => {
+                          const selected = selectedCourses.some(
+                            (c) => c._id === course._id,
+                          );
+                          return (
+                            <button
+                              key={course._id}
+                              type="button"
+                              onClick={() => {
+                                toggleCourse(course);
+                                setCourseSearch("");
+                                setShowCourseDropdown(false);
+                              }}
+                              className="w-full flex items-center gap-3 px-4 py-3 text-sm text-left hover:bg-orange-50 transition-colors border-b border-gray-100 last:border-0 cursor-pointer"
+                            >
+                              <div
+                                className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 ${
+                                  selected
+                                    ? "bg-orange-500 border-orange-500"
+                                    : "border-gray-300"
+                                }`}
+                              >
+                                {selected && (
+                                  <Check className="w-3 h-3 text-white" />
+                                )}
+                              </div>
+                              <span className="text-gray-800 font-medium truncate">
+                                {course.title}
+                              </span>
+                            </button>
+                          );
+                        })}
+                        {loadingCourses && courseResults.length > 0 && (
+                          <div className="py-2 text-center text-xs text-gray-400">
+                            Loading more…
+                          </div>
+                        )}
+                        {!loadingCourses &&
+                          courseResults.length > 0 &&
+                          !hasMoreCourses && (
+                            <div className="py-2 text-center text-[10px] text-gray-400 border-t border-gray-100">
+                              End of list
+                            </div>
+                          )}
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
           )}
 
           {/* Enrollment access (only when not using discount) */}
@@ -1093,10 +1086,11 @@ const CollaborationDomainModal = ({
               </label>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
                 <label
-                  className={`flex items-start gap-3 p-3 border-2 rounded-lg cursor-pointer transition-colors ${accessType === "full"
+                  className={`flex items-start gap-3 p-3 border-2 rounded-lg cursor-pointer transition-colors ${
+                    accessType === "full"
                       ? "border-orange-500 bg-orange-50/60"
                       : "border-gray-200 hover:border-gray-300 bg-white"
-                    }`}
+                  }`}
                 >
                   <input
                     type="radio"
@@ -1115,10 +1109,11 @@ const CollaborationDomainModal = ({
                   </span>
                 </label>
                 <label
-                  className={`flex items-start gap-3 p-3 border-2 rounded-lg cursor-pointer transition-colors ${accessType === "partial"
+                  className={`flex items-start gap-3 p-3 border-2 rounded-lg cursor-pointer transition-colors ${
+                    accessType === "partial"
                       ? "border-orange-500 bg-orange-50/60"
                       : "border-gray-200 hover:border-gray-300 bg-white"
-                    }`}
+                  }`}
                 >
                   <input
                     type="radio"
@@ -1137,10 +1132,11 @@ const CollaborationDomainModal = ({
                   </span>
                 </label>
                 <label
-                  className={`flex items-start gap-3 p-3 border-2 rounded-lg cursor-pointer transition-colors ${accessType === "topN"
+                  className={`flex items-start gap-3 p-3 border-2 rounded-lg cursor-pointer transition-colors ${
+                    accessType === "topN"
                       ? "border-orange-500 bg-orange-50/60"
                       : "border-gray-200 hover:border-gray-300 bg-white"
-                    }`}
+                  }`}
                 >
                   <input
                     type="radio"
@@ -1188,8 +1184,8 @@ const CollaborationDomainModal = ({
                   ) : (
                     <>
                       <p className="text-xs text-gray-600">
-                        Select modules for full access within a module, or expand
-                        to pick lessons or individual content items.
+                        Select modules for full access within a module, or
+                        expand to pick lessons or individual content items.
                       </p>
                       <CollaborationDomainPartialAccessPicker
                         courseDetails={courseDetailForPartial}
@@ -1206,7 +1202,7 @@ const CollaborationDomainModal = ({
                         !hasAnyPartialSelection(
                           partialModules,
                           partialLessons,
-                          partialContents
+                          partialContents,
                         ) && (
                           <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
                             Select at least one module, lesson, or content.

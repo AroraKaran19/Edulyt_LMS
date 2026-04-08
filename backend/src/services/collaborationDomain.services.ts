@@ -1,5 +1,6 @@
 import { AppError } from "../middlewares/error.middleware";
 import { CollaborationDomainModel } from "../models";
+import { enqueueCollaborationAllotmentForExistingUsersMatchingDomain } from "./collaborationAllotmentExistingUsers.services";
 import {
   CollaborationBenefit,
   CollaborationCheckoutResolve,
@@ -8,6 +9,7 @@ import {
   CollaborationKind,
 } from "../types/collaborationDomain";
 import mongoose from "mongoose";
+import { hostMatchesCollaborationDomain } from "../utils/collaborationDomainMatching";
 
 /**
  * API shape: one branch only — discount rows never expose linked courses;
@@ -49,26 +51,95 @@ export const emailToCollaborationDomain = (email: string): string | null => {
   return `@${host}`;
 };
 
+async function findCollaborationDomainDocForEmail(
+  email: string,
+  collaborationKind: "course_allot" | "discount"
+): Promise<CollaborationDomain | null> {
+  const domainKey = emailToCollaborationDomain(email);
+  if (!domainKey) return null;
+  const host = domainKey.slice(1);
+
+  const base: Record<string, unknown> = {
+    isActive: true,
+    collaborationKind,
+  };
+
+  const exact = await CollaborationDomainModel.findOne({
+    ...base,
+    domain: domainKey,
+  }).lean();
+
+  if (exact?._id) {
+    return exact as CollaborationDomain;
+  }
+
+  const wildcards = await CollaborationDomainModel.find({
+    ...base,
+    domain: { $regex: /^@\*\./ },
+  }).lean();
+
+  for (const w of wildcards) {
+    const d = w.domain as string;
+    if (hostMatchesCollaborationDomain(host, d)) {
+      return w as CollaborationDomain;
+    }
+  }
+
+  return null;
+}
+
+/** Checkout: one active partnership row (discount or course_allot) — exact domain wins, then wildcard. */
+async function findCollaborationDomainForCheckoutEmail(
+  email: string
+): Promise<CollaborationDomain | null> {
+  const domainKey = emailToCollaborationDomain(email);
+  if (!domainKey) return null;
+  const host = domainKey.slice(1);
+
+  const exact = await CollaborationDomainModel.findOne({
+    isActive: true,
+    domain: domainKey,
+    collaborationKind: { $in: ["discount", "course_allot"] },
+  }).lean();
+
+  if (
+    exact?._id &&
+    (exact.collaborationKind === "discount" ||
+      exact.collaborationKind === "course_allot")
+  ) {
+    return exact as CollaborationDomain;
+  }
+
+  const wildcards = await CollaborationDomainModel.find({
+    isActive: true,
+    domain: { $regex: /^@\*\./ },
+    collaborationKind: { $in: ["discount", "course_allot"] },
+  })
+    .sort({ updatedAt: -1 })
+    .lean();
+
+  for (const w of wildcards) {
+    const d = w.domain as string;
+    if (hostMatchesCollaborationDomain(host, d)) {
+      return w as CollaborationDomain;
+    }
+  }
+
+  return null;
+}
+
 /**
- * Indexed lookup for registration / jobs: active course-allot partnership for this email domain.
+ * Lookup for registration / jobs: active course-allot partnership for this email
+ * (exact domain or wildcard e.g. @*.test.com).
  */
 export const findActiveCourseAllotDomainByEmail = async (
   email: string
 ): Promise<CollaborationDomain | null> => {
-  const domainKey = emailToCollaborationDomain(email);
-  if (!domainKey) return null;
-
-  const doc = await CollaborationDomainModel.findOne({
-    isActive: true,
-    domain: domainKey,
-    collaborationKind: "course_allot",
-  }).lean();
-
+  const doc = await findCollaborationDomainDocForEmail(email, "course_allot");
   if (!doc?.collaborationKind) {
     return null;
   }
-
-  return sanitizeCollaborationDomainForApi(doc as CollaborationDomain);
+  return sanitizeCollaborationDomainForApi(doc);
 };
 
 export const listCollaborationDomainsService = async (
@@ -239,6 +310,22 @@ export const createCollaborationDomainService = async (
       { path: "courses", select: "title slug thumbnail" },
       { path: "createdBy", select: "firstName lastName email" },
     ])) as unknown as CollaborationDomain;
+
+    if (
+      saved.collaborationKind === "course_allot" &&
+      saved.isActive !== false &&
+      saved.domain
+    ) {
+      void enqueueCollaborationAllotmentForExistingUsersMatchingDomain(
+        String(saved._id),
+        saved.domain
+      ).catch((e: unknown) => {
+        console.error(
+          "[Collaboration] Failed to enqueue jobs for existing users matching new domain:",
+          e
+        );
+      });
+    }
 
     return sanitizeCollaborationDomainForApi(populated) as CollaborationDomain;
   } catch (e: unknown) {
@@ -425,10 +512,7 @@ export const resolveCollaborationForCheckoutService = async (
     return { applies: false };
   }
 
-  const doc = await CollaborationDomainModel.findOne({
-    isActive: true,
-    domain: domainKey,
-  }).lean();
+  const doc = await findCollaborationDomainForCheckoutEmail(email!);
 
   if (!doc) {
     return { applies: false };

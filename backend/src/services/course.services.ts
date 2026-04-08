@@ -249,6 +249,145 @@ export const getAllCoursesService = async (
   return { courses, total, totalPages, page };
 };
 
+type AdminCourseListSortBy = "createdAt" | "updatedAt" | "title";
+
+function buildAdminCourseListFilters(options: {
+  search?: string;
+  searchTitleOnly?: boolean;
+  categories?: string;
+  audience?: string;
+  instructors?: string;
+  isActive?: boolean;
+}): Record<string, unknown> {
+  const {
+    search,
+    searchTitleOnly,
+    categories,
+    audience,
+    instructors,
+    isActive,
+  } = options;
+
+  const filters: Record<string, unknown> = {};
+
+  if (isActive !== undefined) {
+    filters.isActive = isActive;
+  }
+
+  if (search) {
+    const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const phraseRegex = { $regex: escapedSearch, $options: "i" };
+    const and = (filters.$and as unknown[]) ?? [];
+    and.push(
+      searchTitleOnly
+        ? { title: phraseRegex }
+        : {
+            $or: [
+              { title: phraseRegex },
+              { description: phraseRegex },
+              { shortDescription: phraseRegex },
+            ],
+          }
+    );
+    filters.$and = and;
+  }
+
+  if (categories) {
+    const categoryList = categories
+      .split(",")
+      .map((cat) => cat.trim())
+      .filter((cat) => mongoose.Types.ObjectId.isValid(cat));
+    if (categoryList.length > 0) {
+      const categoryObjectIds = categoryList.map(
+        (cat) => new mongoose.Types.ObjectId(cat)
+      );
+      filters.category = { $in: categoryObjectIds };
+    }
+  }
+
+  if (audience) {
+    filters.audience = audience;
+  }
+
+  if (instructors) {
+    const instructorList = instructors
+      .split(",")
+      .map((id) => id.trim())
+      .filter((id) => mongoose.Types.ObjectId.isValid(id));
+    if (instructorList.length > 0) {
+      const instructorObjectIds = instructorList.map(
+        (id) => new mongoose.Types.ObjectId(id)
+      );
+      filters.instructor = { $in: instructorObjectIds };
+    }
+  }
+
+  return filters;
+}
+
+export const getAdminCourseOptionsService = async (options: {
+  page: number;
+  limit: number;
+  search?: string;
+  categories?: string;
+  audience?: string;
+  instructors?: string;
+  isActive?: boolean;
+  sortBy?: AdminCourseListSortBy;
+  sortOrder?: "asc" | "desc";
+  searchTitleOnly?: boolean;
+}): Promise<{
+  courses: Array<{ _id: string; title: string }>;
+  total: number;
+  page: number;
+  totalPages: number;
+}> => {
+  const {
+    page,
+    limit,
+    search,
+    categories,
+    audience,
+    instructors,
+    isActive,
+    sortBy = "updatedAt",
+    sortOrder = "desc",
+    searchTitleOnly,
+  } = options;
+
+  const skip = (page - 1) * limit;
+  const filters = buildAdminCourseListFilters({
+    search,
+    categories,
+    audience,
+    instructors,
+    isActive,
+    searchTitleOnly,
+  });
+
+  const total = await CourseModel.countDocuments(filters);
+  const dir = sortOrder === "asc" ? 1 : -1;
+
+  const raw = await CourseModel.find(filters)
+    .select({ _id: 1, title: 1 })
+    .sort({ [sortBy]: dir })
+    .skip(skip)
+    .limit(limit)
+    .lean();
+
+  const courses = (raw ?? []).map((c) => ({
+    _id: String((c as { _id: unknown })._id),
+    title: String((c as { title: unknown }).title ?? ""),
+  }));
+
+  return {
+    courses,
+    total,
+    page,
+    totalPages: Math.ceil(total / limit),
+  };
+};
+
 export const getFeaturedCoursesService = async (
   page: number,
   limit: number,

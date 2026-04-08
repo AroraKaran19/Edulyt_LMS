@@ -103,12 +103,16 @@ const collaborationDomainSchema = new Schema<CollaborationDomain>(
         validator(v: string) {
           const s = v.startsWith("@") ? v.slice(1) : v;
           if (!s || s.includes(" ") || !s.includes(".")) return false;
-          // Simple hostname-style domain (e.g. college.edu, sub.college.ac.in)
+          const hostnamePart =
+            s.startsWith("*.") && s.length > 2 ? s.slice(2) : s;
+          if (!hostnamePart) return false;
+          // Exact: college.edu, sub.college.ac.in — or wildcard *.suffix (any.sub.test.com)
           return /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i.test(
-            s
+            hostnamePart
           );
         },
-        message: "Invalid email domain (e.g. college.edu or @college.edu)",
+        message:
+          "Invalid email domain (e.g. college.edu, @college.edu, or *.test.com for any single-label subdomain)",
       },
     },
     isActive: { type: Boolean, default: true, index: true },

@@ -34,6 +34,18 @@ export interface CourseResponse {
   totalPages: number;
 }
 
+export interface AdminCourseOption {
+  _id: string;
+  title: string;
+}
+
+export interface AdminCourseOptionsResponse {
+  courses: AdminCourseOption[];
+  total: number;
+  page: number;
+  totalPages: number;
+}
+
 export interface SingleCourseResponse {
   course: Course;
 }
@@ -377,6 +389,33 @@ export const useCourse = () => {
     [handleRequest]
   );
 
+  const getAdminCourseOptions = useCallback(
+    async (
+      filters: CourseFilters = {}
+    ): Promise<AdminCourseOptionsResponse | null> => {
+      return handleRequest(async () => {
+        const params = new URLSearchParams();
+        if (filters.page) params.append("page", filters.page.toString());
+        if (filters.limit) params.append("limit", filters.limit.toString());
+        if (filters.search) params.append("search", filters.search);
+        if (filters.searchTitleOnly) params.append("searchTitleOnly", "true");
+        if (filters.categories) params.append("categories", filters.categories);
+        if (filters.instructors) params.append("instructors", filters.instructors);
+        if (filters.audience) params.append("audience", filters.audience);
+        if (filters.isActive !== undefined)
+          params.append("isActive", filters.isActive.toString());
+        if (filters.sortBy) params.append("sortBy", filters.sortBy);
+        if (filters.sortOrder) params.append("sortOrder", filters.sortOrder);
+
+        const response = await apiClient.get(
+          `/courses/admin/options?${params.toString()}`
+        );
+        return response.data.data;
+      }, "Failed to fetch admin course options");
+    },
+    [handleRequest]
+  );
+
   const getAdminCourseById = useCallback(
     async (id: string): Promise<Course | null> => {
       return handleRequest(async () => {
@@ -698,6 +737,7 @@ export const useCourse = () => {
 
     // Admin Course Methods
     getAdminCourses,
+    getAdminCourseOptions,
     getAdminCourseById,
     getAdminCourseBySlug,
     createCourse,

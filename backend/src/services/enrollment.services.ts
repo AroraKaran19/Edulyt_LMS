@@ -1,6 +1,12 @@
 import { AppError } from "../middlewares/error.middleware";
 import { EnrollmentModel } from "../models/enrollment.schema";
-import { StudentModel, CourseModel, UserModel } from "../models";
+import {
+  StudentModel,
+  CourseModel,
+  CourseLessonModel,
+  CourseModuleModel,
+  UserModel,
+} from "../models";
 import {
   Enrollment,
   EnrollmentProgressSummary,
@@ -283,7 +289,7 @@ export const GetUserEnrollmentsService = async (
       .populate({
         path: "courseId",
         select:
-          "title thumbnail description category duration slug instructor plans analytics isFeatured isCertified",
+          "title thumbnail description category duration slug instructor plans analytics isFeatured isCertified modules deactivatedModules deactivatedLessons",
         match: search
           ? {
               $or: [
@@ -312,6 +318,106 @@ export const GetUserEnrollmentsService = async (
     const filteredEnrollments = enrollments.filter(
       (enrollment) => enrollment.courseId
     );
+
+    // Add lightweight counts for dashboard cards without populating full modules tree.
+    const courseIds = Array.from(
+      new Set(
+        filteredEnrollments
+          .map((e) => String((e as any).courseId?._id ?? (e as any).courseId))
+          .filter((id) => mongoose.Types.ObjectId.isValid(id))
+      )
+    ).map((id) => new mongoose.Types.ObjectId(id));
+
+    // Lessons live as separate documents keyed by moduleId; module.lessons[] may be stale.
+    // Compute ACTIVE lessonCount by:
+    // - courseId -> modules[] excluding course.deactivatedModules
+    // - only modules with CourseModule.isActive === true
+    // - exclude lesson ids present in course.deactivatedLessons
+    const moduleIdsByCourseId = new Map<string, mongoose.Types.ObjectId[]>();
+    const allDeactivatedLessonIds: mongoose.Types.ObjectId[] = [];
+    for (const e of filteredEnrollments as any[]) {
+      const c = e.courseId;
+      if (!c?._id || !Array.isArray(c.modules)) continue;
+      const cid = String(c._id);
+      const deactivatedModuleIds = new Set(
+        Array.isArray(c.deactivatedModules)
+          ? c.deactivatedModules.map((x: unknown) => String(x))
+          : []
+      );
+      const mids = c.modules
+        .map((m: unknown) => String(m))
+        .filter((id: string) => mongoose.Types.ObjectId.isValid(id))
+        .filter((id: string) => !deactivatedModuleIds.has(id))
+        .map((id: string) => new mongoose.Types.ObjectId(id));
+      moduleIdsByCourseId.set(cid, mids);
+
+      const deactivatedLessons = Array.isArray(c.deactivatedLessons)
+        ? c.deactivatedLessons
+        : [];
+      for (const lid of deactivatedLessons) {
+        const s = String(lid);
+        if (mongoose.Types.ObjectId.isValid(s)) {
+          allDeactivatedLessonIds.push(new mongoose.Types.ObjectId(s));
+        }
+      }
+    }
+
+    const allModuleIdsRaw = Array.from(moduleIdsByCourseId.values()).flat();
+
+    const activeModules = await CourseModuleModel.find({
+      _id: { $in: allModuleIdsRaw },
+      isActive: true,
+    })
+      .select("_id")
+      .lean();
+    const activeModuleIdSet = new Set(activeModules.map((m) => String((m as any)._id)));
+
+    // Filter out inactive modules
+    for (const [cid, mids] of moduleIdsByCourseId.entries()) {
+      moduleIdsByCourseId.set(
+        cid,
+        mids.filter((mid) => activeModuleIdSet.has(String(mid)))
+      );
+    }
+
+    const allModuleIds = Array.from(moduleIdsByCourseId.values()).flat();
+    const lessonCountsByModule = await CourseLessonModel.aggregate<{
+      _id: mongoose.Types.ObjectId;
+      count: number;
+    }>([
+      {
+        $match: {
+          moduleId: { $in: allModuleIds },
+          ...(allDeactivatedLessonIds.length > 0
+            ? { _id: { $nin: allDeactivatedLessonIds } }
+            : {}),
+        },
+      },
+      { $group: { _id: "$moduleId", count: { $sum: 1 } } },
+    ]);
+
+    const lessonCountByModuleId = new Map<string, number>();
+    for (const row of lessonCountsByModule) {
+      lessonCountByModuleId.set(String(row._id), Number(row.count) || 0);
+    }
+
+    const lessonCountByCourseId = new Map<string, number>();
+    for (const [cid, mids] of moduleIdsByCourseId.entries()) {
+      let sum = 0;
+      for (const mid of mids) {
+        sum += lessonCountByModuleId.get(String(mid)) ?? 0;
+      }
+      lessonCountByCourseId.set(cid, sum);
+    }
+
+    for (const e of filteredEnrollments as any[]) {
+      const c = e.courseId;
+      if (!c) continue;
+      const cid = String(c._id ?? c);
+      const moduleCount = Array.isArray(c.modules) ? c.modules.length : 0;
+      c.moduleCount = moduleCount;
+      c.lessonCount = lessonCountByCourseId.get(cid) ?? 0;
+    }
 
     const total = await EnrollmentModel.countDocuments(filters);
     const totalPages = Math.ceil(total / limit);

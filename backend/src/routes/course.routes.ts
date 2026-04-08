@@ -16,6 +16,7 @@ import {
   getAdminCourseById,
   getAdminCourseBySlug,
   getAdminCourses,
+  getAdminCourseOptions,
   getAllCourses,
   getCourseById,
   getCourseBySlug,
@@ -91,6 +92,13 @@ router.get("/check-slug/:slug", checkSlugAvailability);
  * @access  Admin
  */
 router.get("/admin", verifyUser, verifyAdmin, getAdminCourses);
+
+/**
+ * @route   GET /api/courses/admin/options
+ * @desc    Lightweight admin course list (id + title only)
+ * @access  Admin
+ */
+router.get("/admin/options", verifyUser, verifyAdmin, getAdminCourseOptions);
 
 /**
  * @route   GET /api/courses/admin/id/:courseId

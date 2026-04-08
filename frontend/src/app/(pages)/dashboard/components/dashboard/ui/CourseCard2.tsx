@@ -21,11 +21,17 @@ const CourseCard2 = ({ course, enrollment }: CourseCard2Props) => {
     return Math.round(enrollment.progress.overallCompletion || 0);
   }, []);
 
-  const totalLessons = ((course?.modules as CourseModule[]) || []).reduce(
-    (acc, module) => acc + (module.lessons || []).length,
-    0
-  );
-  const totalModules = (course?.modules || []).length;
+  const lessonCountFromApi = (course as unknown as { lessonCount?: number })
+    ?.lessonCount;
+
+  const totalLessons =
+    typeof lessonCountFromApi === "number"
+      ? lessonCountFromApi
+      : ((course?.modules as CourseModule[]) || []).reduce(
+          (acc, module) => acc + (module.lessons || []).length,
+          0,
+        );
+
   const progress = enrollment ? calculateProgress(enrollment) : 0;
 
   const handleClick = () => {
@@ -52,9 +58,7 @@ const CourseCard2 = ({ course, enrollment }: CourseCard2Props) => {
         />
         <div className="absolute top-0 left-0 w-full h-full rounded-lg">
           <div className="content-length absolute top-2 left-2 px-1 py-0.5 bg-black/75 rounded-md text-white text-xs font-semibold">
-            {totalModules} {totalModules === 1 ? "Module" : "Modules"}
-            {totalLessons > 0 &&
-              `• ${totalLessons} ${totalLessons === 1 ? "Lesson" : "Lessons"}`}
+            {`${totalLessons} ${totalLessons === 1 ? "Module" : "Modules"}`}
           </div>
         </div>
       </div>
@@ -64,31 +68,41 @@ const CourseCard2 = ({ course, enrollment }: CourseCard2Props) => {
         </h2>
         <div className="instructors flex gap-2">
           {course.instructor && Array.isArray(course.instructor) ? (
-            course.instructor.slice(0, 2).map((instructor, index) => (
-              <InstructorCard
-                key={index}
-                instructor={instructor as Instructor}
-              />
-            ))
+            course.instructor
+              .slice(0, 2)
+              .map((instructor, index) => (
+                <InstructorCard
+                  key={index}
+                  instructor={instructor as Instructor}
+                />
+              ))
           ) : (
             <div className="text-xs text-gray-500">No instructors</div>
           )}
-          {course.instructor && Array.isArray(course.instructor) && course.instructor.length > 2 && (
-            <div className="instructor-count hidden sm:flex gap-0.25 items-center bg-[#EEEEEE] rounded-md p-1">
-              <Plus className="w-3 h-3 text-text-primary" fill="#2B1508" />
-              <span className="text-xs font-semibold text-text-primary">
-                {course.instructor.length - 2}
-              </span>
-            </div>
-          )}
+          {course.instructor &&
+            Array.isArray(course.instructor) &&
+            course.instructor.length > 2 && (
+              <div className="instructor-count hidden sm:flex gap-0.25 items-center bg-[#EEEEEE] rounded-md p-1">
+                <Plus className="w-3 h-3 text-text-primary" fill="#2B1508" />
+                <span className="text-xs font-semibold text-text-primary">
+                  {course.instructor.length - 2}
+                </span>
+              </div>
+            )}
         </div>
-        
+
         {/* Progress Section */}
         {enrollment && (
           <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
             <ProgressChart
               percentage={progress}
-              primaryColor={progress === 100 ? "#22C55E" : progress > 0 ? "#714ACA" : "#E5E7EB"}
+              primaryColor={
+                progress === 100
+                  ? "#22C55E"
+                  : progress > 0
+                    ? "#714ACA"
+                    : "#E5E7EB"
+              }
               secondaryColor="hsla(0,0%,100%,.55)"
               className="size-5"
             />
@@ -100,8 +114,8 @@ const CourseCard2 = ({ course, enrollment }: CourseCard2Props) => {
                 {progress === 100
                   ? "Course completed"
                   : progress > 0
-                  ? "In progress"
-                  : "Not started"}
+                    ? "In progress"
+                    : "Not started"}
               </span>
             </div>
           </div>

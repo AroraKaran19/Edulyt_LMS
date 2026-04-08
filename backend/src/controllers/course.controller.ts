@@ -23,6 +23,7 @@ import {
   UpdateCourseStatusService,
   ToggleCourseContentStatusService,
   getAllCoursesService,
+  getAdminCourseOptionsService,
   getCourseByIdService,
   getCourseBySlugService,
   getFeaturedCoursesService,
@@ -207,6 +208,49 @@ export const getAdminCourses = asyncHandler(
       searchTitleOnly === "true" || searchTitleOnly === "1"
     );
     sendSuccessResponse(res, result, "Courses retrieved successfully", 200);
+    return;
+  }
+);
+
+export const getAdminCourseOptions = asyncHandler(
+  async (req: Request, res: Response) => {
+    const {
+      page = 1,
+      limit,
+      search,
+      categories,
+      audience,
+      instructors,
+      isActive,
+      sortBy = "updatedAt",
+      sortOrder = "desc",
+      searchTitleOnly,
+    } = req.query;
+
+    const parsedPage = Number(page);
+    const parsedLimit =
+      limit === undefined || limit === null || String(limit).trim() === ""
+        ? 500
+        : Number(limit);
+
+    if (parsedPage < 1 || parsedLimit < 1) {
+      throw new AppError("Page and limit must be positive numbers", 400);
+    }
+
+    const result = await getAdminCourseOptionsService({
+      page: parsedPage,
+      limit: parsedLimit,
+      search: (search as string) || undefined,
+      categories: (categories as string) || undefined,
+      audience: (audience as string) || undefined,
+      instructors: (instructors as string) || undefined,
+      isActive: isActive === "true" ? true : isActive === "false" ? false : undefined,
+      sortBy: sortBy as "createdAt" | "updatedAt" | "title",
+      sortOrder: sortOrder as "asc" | "desc",
+      searchTitleOnly: searchTitleOnly === "true" || searchTitleOnly === "1",
+    });
+
+    sendSuccessResponse(res, result, "Course options retrieved successfully", 200);
     return;
   }
 );
