@@ -1,6 +1,9 @@
 /**
- * Collaboration domain matching: exact host (e.g. @college.edu) or one-level wildcard
- * (e.g. @*.test.com → any.test.com, 1.test.com; not test.com or a.b.test.com).
+ * Collaboration domain matching: exact host (e.g. @college.edu) or wildcard
+ * `@*.suffix` (e.g. @*.mait.ac.in):
+ * - matches apex `suffix` (user@mait.ac.in)
+ * - matches one subdomain label (user@cse.mait.ac.in)
+ * - does not match nested subdomains (user@a.b.mait.ac.in)
  */
 
 /** `host` = part after @ in email, lowercased. `storedDomain` = DB value e.g. @x.y or @*.x.y */
@@ -16,7 +19,10 @@ export function hostMatchesCollaborationDomain(
   if (stored.startsWith("*.")) {
     const suffix = stored.slice(2);
     if (!suffix || !h.endsWith(suffix)) return false;
-    if (h === suffix) return false;
+    // Apex: host equals suffix (e.g. @*.mait.ac.in → mait.ac.in)
+    if (h === suffix) return true;
+    // One label + suffix (e.g. cse.mait.ac.in); reject a.b.mait.ac.in
+    if (!h.endsWith("." + suffix)) return false;
     const prefix = h.slice(0, -(suffix.length + 1));
     if (!prefix || prefix.includes(".")) return false;
     return true;
@@ -33,7 +39,11 @@ export function studentEmailRegexForCollaborationDomain(
   if (d.startsWith("*.")) {
     const suffix = d.slice(2);
     const escaped = suffix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    return new RegExp(`^[^@\\s]+@[^.@]+\\.${escaped}$`, "i");
+    // Apex @suffix OR one-label.@suffix
+    return new RegExp(
+      `^[^@\\s]+@(?:${escaped}|[^.@]+\\.${escaped})$`,
+      "i"
+    );
   }
   const escaped = d.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   return new RegExp(`^[^@\\s]+@${escaped}$`, "i");

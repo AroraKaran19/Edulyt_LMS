@@ -782,13 +782,15 @@ const CollaborationDomainModal = ({
                   type="text"
                   value={domain}
                   onChange={(e) => setDomain(e.target.value.replace(/^@/, ""))}
-                  placeholder="college.edu or *.test.com"
+                  placeholder="college.edu or *.mait.ac.in"
                   className="flex-1 px-2 py-2.5 outline-none bg-transparent"
                 />
               </div>
               <p className="text-xs text-gray-500 mt-1">
-                Exact host (e.g. college.edu) or one-level wildcard (*.test.com
-                matches any.test.com, 1.test.com — not test.com or a.b.test.com)
+                Exact host (e.g. college.edu), or wildcard *.suffix — matches
+                apex (suffix) and one subdomain label (e.g. cse.mait.ac.in and
+                mait.ac.in for *.mait.ac.in). Nested hosts like a.b.mait.ac.in
+                are not matched.
               </p>
             </div>
 

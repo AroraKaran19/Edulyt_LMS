@@ -112,7 +112,7 @@ const collaborationDomainSchema = new Schema<CollaborationDomain>(
           );
         },
         message:
-          "Invalid email domain (e.g. college.edu, @college.edu, or *.test.com for any single-label subdomain)",
+          "Invalid email domain (e.g. college.edu, @college.edu, or *.college.edu for apex + single-label subdomains)",
       },
     },
     isActive: { type: Boolean, default: true, index: true },
