@@ -19,6 +19,7 @@ import certificateRoutes from "./certificate.routes";
 import couponRoutes from "./coupon.routes";
 import collaborationDomainRoutes from "./collaborationDomain.routes";
 import instructorDashboardRoutes from "./instructor-dashboard.routes";
+import collegeRoutes from "./college.routes";
 
 export {
   authRoutes,
@@ -42,4 +43,5 @@ export {
   couponRoutes,
   collaborationDomainRoutes,
   instructorDashboardRoutes,
+  collegeRoutes,
 };

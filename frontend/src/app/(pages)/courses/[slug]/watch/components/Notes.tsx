@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { PlusCircle, Clock, Edit, Trash2, X } from "lucide-react";
 import AddNotes from "./AddNotes";
+import WhiteButton from "@/components/ui/buttons/WhiteButton";
 
 const Notes = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -214,22 +215,22 @@ const Notes = () => {
 
             {/* Action buttons */}
             <div className="flex gap-2">
-              <button
+              <WhiteButton
+                glow={false}
                 type="button"
                 title="Edit"
-                className="cursor-pointer flex items-center gap-4 hover:text-gray-800 transition-colors border border-[#00000021] rounded-xl p-[11px] shadow-[0px_-3px_3.7px_0px_#0146E721_inset]"
                 onClick={handleEditClick}
               >
                 <Edit className="size-6 text-black" />
-              </button>
-              <button
+              </WhiteButton>
+              <WhiteButton
+                glow={false}
                 type="button"
                 title="Delete"
-                className="cursor-pointer flex items-center gap-4 hover:text-gray-800 transition-colors border border-[#00000021] rounded-xl p-[11px] shadow-[0px_-3px_3.7px_0px_#0146E721_inset]"
                 onClick={handleDeleteClick}
               >
                 <Trash2 className="size-6 text-black" />
-              </button>
+              </WhiteButton>
             </div>
           </div>
 

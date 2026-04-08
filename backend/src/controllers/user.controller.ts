@@ -18,6 +18,7 @@ import {
   unlinkGoogleAccountService,
   unlinkLinkedInAccountService,
   adminChangeUserPasswordService,
+  getAdminUserOptionsService,
 } from "../services/user.services";
 
 export const getUsers = asyncHandler(async (req: Request, res: Response) => {
@@ -64,6 +65,55 @@ export const getUsers = asyncHandler(async (req: Request, res: Response) => {
 
   sendSuccessResponse(res, result, "Users fetched successfully", 200);
 });
+
+export const getAdminUserOptions = asyncHandler(
+  async (req: Request, res: Response) => {
+    const {
+      page = 1,
+      limit = 20,
+      search,
+      emails,
+      userType,
+      status,
+      excludeEnrolledInCourseIds,
+      enrollmentStatusForCourseIds,
+    } = req.query;
+
+    if (Number(page) < 1 || Number(limit) < 1) {
+      throw new AppError("Page and limit must be positive numbers", 400);
+    }
+
+    const viewerType = (req.user as { userType?: string } | undefined)?.userType;
+    if (
+      typeof userType === "string" &&
+      userType === "super-admin" &&
+      viewerType !== "super-admin"
+    ) {
+      throw new AppError("Forbidden", 403);
+    }
+
+    const toStringArray = (v: unknown): string[] | undefined => {
+      if (v == null) return undefined;
+      const arr = Array.isArray(v)
+        ? v.map((x) => (typeof x === "string" ? x : String(x)))
+        : (typeof v === "string" ? v.split(",") : []).filter(Boolean);
+      return arr.length ? arr : undefined;
+    };
+
+    const result = await getAdminUserOptionsService({
+      page: Number(page),
+      limit: Number(limit),
+      search: (search as string) || undefined,
+      emails: toStringArray(emails),
+      userType: userType as string,
+      status: status as string,
+      excludeEnrolledInCourseIds: toStringArray(excludeEnrolledInCourseIds),
+      enrollmentStatusForCourseIds: toStringArray(enrollmentStatusForCourseIds),
+    });
+
+    sendSuccessResponse(res, result, "User options fetched successfully", 200);
+  },
+);
 
 export const getUserById = asyncHandler(async (req: Request, res: Response) => {
   const { userId } = req.params;

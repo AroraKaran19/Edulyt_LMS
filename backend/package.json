@@ -21,7 +21,8 @@
     "scripts:update-category-order": "ts-node src/scripts/update-category-sort-order.ts",
     "scripts:update-brochures": "ts-node src/scripts/updateCourseBrochures.ts",
     "scripts:reset-enrollments-no-cert": "ts-node src/scripts/reset-enrollments-without-certificate.ts",
-    "scripts:remove-certificates-all": "ts-node src/scripts/remove-certificates-all.ts"
+    "scripts:remove-certificates-all": "ts-node src/scripts/remove-certificates-all.ts",
+    "scripts:import-colleges": "ts-node src/scripts/import-colleges-json.ts"
   },
   "keywords": [
     "airkrit",

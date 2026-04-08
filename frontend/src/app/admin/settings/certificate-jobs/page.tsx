@@ -301,13 +301,13 @@ const CertificateJobsPage = () => {
                           <code className="font-mono text-xs text-gray-700 truncate max-w-[100px]">
                             {job.jobId.slice(0, 8)}…
                           </code>
-                          <button
+                          <WhiteButton
+                            glow={false}
                             onClick={() => copyJobId(job.jobId)}
-                            className="p-1 rounded hover:bg-gray-200 text-gray-500 hover:text-gray-700 cursor-pointer"
                             title={`Copy ${job.jobId}`}
                           >
                             <Copy className="size-3.5" />
-                          </button>
+                          </WhiteButton>
                         </div>
                       </td>
                       <td className="py-3 px-4 font-medium text-gray-800 max-w-[140px] truncate">
@@ -429,9 +429,9 @@ const CertificateJobsPage = () => {
           </p>
           <div className="flex items-center gap-2">
             <WhiteButton
+              glow={false}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page <= 1}
-              className="gap-1"
             >
               <ChevronLeft className="size-4" />
               Previous
@@ -439,14 +439,14 @@ const CertificateJobsPage = () => {
             <span className="text-sm text-gray-600 px-2">
               Page {page} of {totalPages}
             </span>
-            <WhiteButton
+            <OrangeButton
+              glow={false}
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page >= totalPages}
-              className="gap-1"
             >
               Next
               <ChevronRight className="size-4" />
-            </WhiteButton>
+            </OrangeButton>
           </div>
         </div>
       )}

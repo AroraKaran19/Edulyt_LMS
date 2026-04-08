@@ -9,6 +9,7 @@ import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import Input from "@/components/ui/inputs/Input";
 import Select from "@/components/ui/inputs/Select";
 import { toast } from "react-toastify";
+import OrangeButton from "@/components/ui/buttons/OrangeButton";
 
 interface OrderUser {
   firstName?: string;
@@ -143,7 +144,9 @@ const OrdersPage = () => {
 
   const getUserName = (item: OrderItem) => {
     if (item.userId) {
-      const name = [item.userId.firstName, item.userId.lastName].filter(Boolean).join(" ");
+      const name = [item.userId.firstName, item.userId.lastName]
+        .filter(Boolean)
+        .join(" ");
       if (name || item.userId.email) return name || item.userId.email || "—";
     }
     return item.userName || "—";
@@ -157,9 +160,7 @@ const OrdersPage = () => {
   return (
     <div className="p-4 sm:p-6">
       <div className="mb-6">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-          Orders
-        </h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Orders</h1>
         <p className="text-gray-600 mt-1">
           All payment transactions — success, pending, and failed
         </p>
@@ -297,14 +298,17 @@ const OrdersPage = () => {
                     <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
                       <span
                         className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full border capitalize ${getStatusColor(
-                          item.paymentStatus
+                          item.paymentStatus,
                         )}`}
                       >
                         {item.paymentStatus}
                       </span>
                       {item.paymentStatus === "failed" &&
                         item.paymentErrorReason && (
-                          <div className="text-red-600 text-xs mt-1 truncate max-w-[160px]" title={item.paymentErrorReason}>
+                          <div
+                            className="text-red-600 text-xs mt-1 truncate max-w-[160px]"
+                            title={item.paymentErrorReason}
+                          >
                             {item.paymentErrorReason}
                           </div>
                         )}
@@ -329,19 +333,19 @@ const OrdersPage = () => {
             </p>
             <div className="flex gap-2">
               <WhiteButton
+                glow={false}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page <= 1}
-                className="py-2 px-4 text-sm"
               >
                 Previous
               </WhiteButton>
-              <WhiteButton
+              <OrangeButton
+                glow={false}
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page >= totalPages}
-                className="py-2 px-4 text-sm"
               >
                 Next
-              </WhiteButton>
+              </OrangeButton>
             </div>
           </div>
         )}

@@ -3,6 +3,7 @@ import { verifyUser } from "../middlewares/user.middleware";
 import { verifyAdmin } from "../middlewares/admin.middleware";
 import {
   getUsers,
+  getAdminUserOptions,
   getUserById,
   updateUserStatus,
   deleteUser,
@@ -39,6 +40,13 @@ router.use(verifyAdmin);
  * @access  Admin
  */
 router.get("/admin", getUsers);
+
+/**
+ * @route   GET /api/users/admin/options
+ * @desc    Lightweight user picker options for admin modals
+ * @access  Admin
+ */
+router.get("/admin/options", getAdminUserOptions);
 
 /**
  * @route   GET /api/users/admin/:userId

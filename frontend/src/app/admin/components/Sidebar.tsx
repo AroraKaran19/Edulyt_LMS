@@ -122,6 +122,10 @@ const AdminSidebar = ({
           href: "/admin/settings/authentication-media",
         },
         {
+          label: "Colleges List",
+          href: "/admin/settings/colleges",
+        },
+        {
           label: "Certificate Jobs",
           href: "/admin/settings/certificate-jobs",
         },

@@ -44,13 +44,10 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import Zoom from "react-medium-image-zoom";
+import "react-medium-image-zoom/dist/styles.css";
 
-type TabId =
-  | "overview"
-  | "profile"
-  | "courses"
-  | "certificates"
-  | "account";
+type TabId = "overview" | "profile" | "courses" | "certificates" | "account";
 
 interface StudentDetailsModalProps {
   isOpen: boolean;
@@ -100,7 +97,9 @@ export default function StudentDetailsModal({
           setEnrollments(details.enrollments);
           setCertificates(details.certificates);
           setTotalSpend(details.totalSpend);
-          setAverageTimeToCompleteSeconds(details.averageTimeToCompleteSeconds ?? null);
+          setAverageTimeToCompleteSeconds(
+            details.averageTimeToCompleteSeconds ?? null,
+          );
         }
       } catch (err) {
         console.error("Error fetching user details:", err);
@@ -125,7 +124,17 @@ export default function StudentDetailsModal({
 
   if (!isOpen || !user) return null;
 
-  const address = displayUser?.address || (user as any).address;
+  const getInitials = (firstName: string, lastName: string): string => {
+    if (firstName && lastName) {
+      return `${firstName.charAt(0).toUpperCase()}${lastName.charAt(0).toUpperCase()}`;
+    } else if (firstName) {
+      return firstName.charAt(0).toUpperCase();
+    } else if (lastName) {
+      return lastName.charAt(0).toUpperCase();
+    } else {
+      return "N/A";
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -133,17 +142,30 @@ export default function StudentDetailsModal({
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gray-50/50">
           <div className="flex items-center gap-4">
-            <Image
-              src={
-                displayUser?.profilePicture ||
-                (user as any).profilePicture ||
-                "/user.svg"
-              }
-              alt=""
-              className="h-16 w-16 rounded-full object-cover border-2 border-white shadow"
-              width={64}
-              height={64}
-            />
+            {displayUser?.profilePicture ? (
+              <Zoom>
+                <Image
+                  src={
+                    displayUser?.profilePicture ||
+                    (user as any).profilePicture ||
+                    "/user.svg"
+                  }
+                  alt=""
+                  className="h-16 w-16 rounded-full object-cover border-2 border-white shadow"
+                  width={64}
+                  height={64}
+                />
+              </Zoom>
+            ) : (
+              <div className="h-16 w-16 rounded-full bg-gray-200 flex items-center justify-center">
+                <span className="text-sm font-medium text-gray-500">
+                  {getInitials(
+                    displayUser?.firstName || "",
+                    displayUser?.lastName || "",
+                  )}
+                </span>
+              </div>
+            )}
             <div>
               <h2 className="text-xl font-bold text-gray-900">
                 {displayUser?.firstName || (user as any).firstName || "Unknown"}{" "}
@@ -156,7 +178,7 @@ export default function StudentDetailsModal({
                 <span
                   className={cn(
                     "inline-flex px-2 py-0.5 text-xs font-semibold rounded-full",
-                    getUserTypeBadgeColor((user as any).userType)
+                    getUserTypeBadgeColor((user as any).userType),
                   )}
                 >
                   {formatUserTypeLabel((user as any).userType)}
@@ -164,7 +186,7 @@ export default function StudentDetailsModal({
                 <span
                   className={cn(
                     "inline-flex px-2 py-0.5 text-xs font-semibold rounded-full",
-                    getStatusBadgeColor((user as any).status)
+                    getStatusBadgeColor((user as any).status),
                   )}
                 >
                   {(user as any).status}
@@ -220,7 +242,7 @@ export default function StudentDetailsModal({
                     "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer",
                     activeTab === tab.id
                       ? "bg-orange-100 text-orange-700"
-                      : "text-gray-600 hover:bg-gray-100"
+                      : "text-gray-600 hover:bg-gray-100",
                   )}
                 >
                   <tab.icon className="w-4 h-4 shrink-0" />
@@ -228,7 +250,7 @@ export default function StudentDetailsModal({
                   <ChevronRight
                     className={cn(
                       "w-4 h-4 ml-auto",
-                      activeTab === tab.id ? "opacity-100" : "opacity-0"
+                      activeTab === tab.id ? "opacity-100" : "opacity-0",
                     )}
                   />
                 </button>
@@ -284,7 +306,11 @@ function toLocalDateStr(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-function getDateRange(range: TimeRangeKey, customFrom?: string, customTo?: string): { from: string; to: string } {
+function getDateRange(
+  range: TimeRangeKey,
+  customFrom?: string,
+  customTo?: string,
+): { from: string; to: string } {
   const today = new Date();
   today.setHours(23, 59, 59, 999);
 
@@ -336,7 +362,7 @@ function formatSelectedRange(from: string, to: string): string {
 function fillMissingDays(
   data: { date: string; minutes: number }[],
   from: string,
-  to: string
+  to: string,
 ): { date: string; label: string; minutes: number }[] {
   const map = new Map(data.map((d) => [d.date, d.minutes]));
   const result: { date: string; label: string; minutes: number }[] = [];
@@ -371,7 +397,7 @@ function TimeSpentGraph({
   getTimeSpentPerDay: (
     userId: string,
     from: string,
-    to: string
+    to: string,
   ) => Promise<{ date: string; minutes: number }[]>;
 }) {
   const [range, setRange] = useState<TimeRangeKey>("7d");
@@ -447,7 +473,7 @@ function TimeSpentGraph({
                 "px-3 py-1.5 text-sm font-medium rounded-lg transition-colors cursor-pointer",
                 range === key
                   ? "bg-gray-200 text-gray-800"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200",
               )}
             >
               {label}
@@ -460,7 +486,7 @@ function TimeSpentGraph({
               "px-3 py-1.5 text-sm font-medium rounded-lg transition-colors cursor-pointer flex items-center gap-1.5",
               range === "custom"
                 ? "bg-blue-500 text-white"
-                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200",
             )}
           >
             <Calendar className="w-4 h-4" />
@@ -481,7 +507,9 @@ function TimeSpentGraph({
             </p>
             <div className="flex flex-wrap items-center gap-4">
               <div className="flex items-center gap-2">
-                <label className="text-sm font-medium text-gray-700">From:</label>
+                <label className="text-sm font-medium text-gray-700">
+                  From:
+                </label>
                 <input
                   type="date"
                   value={customFrom}
@@ -540,7 +568,10 @@ function TimeSpentGraph({
                   tickFormatter={(v) => `${v}m`}
                 />
                 <Tooltip
-                  formatter={(value: number) => [`${value ?? 0} min`, "Time spent"]}
+                  formatter={(value: number) => [
+                    `${value ?? 0} min`,
+                    "Time spent",
+                  ]}
                   labelFormatter={(label) => label}
                 />
                 <Bar
@@ -586,7 +617,7 @@ function OverviewSection({
   getTimeSpentPerDay: (
     userId: string,
     from: string,
-    to: string
+    to: string,
   ) => Promise<{ date: string; minutes: number }[]>;
 }) {
   if (!user) return null;
@@ -636,7 +667,7 @@ function OverviewSection({
             key={card.label}
             className={cn(
               "p-4 rounded-xl border flex items-center gap-4",
-              card.color
+              card.color,
             )}
           >
             <div className="p-2 bg-white/60 rounded-lg">
@@ -705,40 +736,57 @@ function CoursesSection({
               typeof course === "object" && course?.title
                 ? course.title
                 : "Course";
-            const slug = typeof course === "object" && course?.slug ? course.slug : null;
-            const progress =
-              e.progress?.overallCompletion ?? 0;
+            const slug =
+              typeof course === "object" && course?.slug ? course.slug : null;
+            const progress = e.progress?.overallCompletion ?? 0;
 
-            const isTrialEnrollment = e.isTrial === true || e.enrollmentSource === "trial";
-            const trialExpiryDate = isTrialEnrollment && e.trialExpiresAt
-              ? new Date(e.trialExpiresAt)
-              : null;
-            const isTrialExpired = trialExpiryDate ? trialExpiryDate < new Date() : false;
-            const daysUntilExpiry = trialExpiryDate && !isTrialExpired
-              ? Math.ceil((trialExpiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
-              : null;
+            const isTrialEnrollment =
+              e.isTrial === true || e.enrollmentSource === "trial";
+            const trialExpiryDate =
+              isTrialEnrollment && e.trialExpiresAt
+                ? new Date(e.trialExpiresAt)
+                : null;
+            const isTrialExpired = trialExpiryDate
+              ? trialExpiryDate < new Date()
+              : false;
+            const daysUntilExpiry =
+              trialExpiryDate && !isTrialExpired
+                ? Math.ceil(
+                    (trialExpiryDate.getTime() - Date.now()) /
+                      (1000 * 60 * 60 * 24),
+                  )
+                : null;
 
-            const sourceBadge =
-              isTrialEnrollment
+            const sourceBadge = isTrialEnrollment
+              ? {
+                  label: isTrialExpired ? "Trial Expired" : "Trial",
+                  class: isTrialExpired
+                    ? "bg-red-100 text-red-800 border-red-200"
+                    : "bg-amber-100 text-amber-800 border-amber-200",
+                }
+              : e.enrollmentSource === "gift"
                 ? {
-                    label: isTrialExpired ? "Trial Expired" : "Trial",
-                    class: isTrialExpired
-                      ? "bg-red-100 text-red-800 border-red-200"
-                      : "bg-amber-100 text-amber-800 border-amber-200",
+                    label: "Gifted",
+                    class: "bg-purple-100 text-purple-800 border-purple-200",
                   }
-                : e.enrollmentSource === "gift"
-                ? { label: "Gifted", class: "bg-purple-100 text-purple-800 border-purple-200" }
                 : e.enrollmentSource === "promotion"
-                ? { label: "Promotion", class: "bg-emerald-100 text-emerald-800 border-emerald-200" }
-                : { label: "Purchased", class: "bg-blue-100 text-blue-800 border-blue-200" };
+                  ? {
+                      label: "Promotion",
+                      class:
+                        "bg-emerald-100 text-emerald-800 border-emerald-200",
+                    }
+                  : {
+                      label: "Purchased",
+                      class: "bg-blue-100 text-blue-800 border-blue-200",
+                    };
 
             const trialExpiryText =
               isTrialEnrollment && !isTrialExpired && daysUntilExpiry !== null
                 ? daysUntilExpiry === 0
                   ? "Expires today"
                   : daysUntilExpiry === 1
-                  ? "Expiring in 1 day"
-                  : `Expiring in ${daysUntilExpiry} days`
+                    ? "Expiring in 1 day"
+                    : `Expiring in ${daysUntilExpiry} days`
                 : null;
 
             return (
@@ -756,7 +804,7 @@ function CoursesSection({
                       <span
                         className={cn(
                           "inline-flex px-2 py-0.5 text-xs font-medium rounded-full border",
-                          sourceBadge.class
+                          sourceBadge.class,
                         )}
                       >
                         {sourceBadge.label}
@@ -772,8 +820,8 @@ function CoursesSection({
                       {e.status === "completed"
                         ? "Completed"
                         : e.status === "active"
-                        ? "Active"
-                        : e.status}
+                          ? "Active"
+                          : e.status}
                     </p>
                   </div>
                 </div>
@@ -813,7 +861,9 @@ function CertificatesSection({ certificates }: { certificates: any[] }) {
                 </div>
                 <div>
                   <p className="font-medium text-gray-900">
-                    {cert.courseName || (cert.courseId as any)?.title || "Course"}
+                    {cert.courseName ||
+                      (cert.courseId as any)?.title ||
+                      "Course"}
                   </p>
                   <p className="text-xs text-gray-500">
                     ID: {cert.certificateId} •{" "}
@@ -853,4 +903,3 @@ function CertificatesSection({ certificates }: { certificates: any[] }) {
     </div>
   );
 }
-

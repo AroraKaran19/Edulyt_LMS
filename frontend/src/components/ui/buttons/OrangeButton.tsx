@@ -22,7 +22,8 @@ const OrangeButton = ({
   glow = true,
   disabled = false,
   type = "button",
-}: OrangeButtonProps) => {
+  ...props
+}: OrangeButtonProps & React.ButtonHTMLAttributes<HTMLButtonElement>) => {
   return (
     <button
       type={type}
@@ -35,6 +36,7 @@ const OrangeButton = ({
       )}
       onClick={onClick}
       disabled={disabled}
+      {...props}
     >
       {blinkIcon && (
         <Circle className="w-2 h-2 animate-pulse fill-[#f7ad24] text-[#F7AD24]" />

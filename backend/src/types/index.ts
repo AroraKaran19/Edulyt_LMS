@@ -33,3 +33,4 @@ export * from "./live-classes";
 export * from "./coupon";
 export * from "./collaborationDomain";
 export * from "./collaborationJob";
+export * from "./college";

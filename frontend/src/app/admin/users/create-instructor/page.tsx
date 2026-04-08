@@ -24,6 +24,7 @@ import {
 import { User, Instructor } from "@/types/user";
 import { useUpload } from "@/hooks/useUpload";
 import InstructorCompanyImagesEditor from "../manage-users/components/InstructorCompanyImagesEditor";
+import OrangeButton from "@/components/ui/buttons/OrangeButton";
 
 // Combine User and Instructor types with form-specific fields
 type InstructorFormData = Omit<
@@ -87,9 +88,9 @@ const CreateInstructorPage = () => {
   const handlePhoneInput = (field: string, inputValue: string) => {
     // Only allow digits and + symbol
     const filteredValue = inputValue.replace(/[^\d+]/g, "");
-    
+
     let formattedValue = "";
-    
+
     if (filteredValue.length === 0) {
       formattedValue = "";
     } else if (filteredValue.startsWith("+91")) {
@@ -115,7 +116,7 @@ const CreateInstructorPage = () => {
       const digits = filteredValue.replace(/\D/g, "");
       formattedValue = "+91" + digits.slice(0, 12);
     }
-    
+
     return formattedValue;
   };
 
@@ -236,7 +237,7 @@ const CreateInstructorPage = () => {
   const handleExperienceChange = (
     index: number,
     field: string,
-    value: string | Date
+    value: string | Date,
   ) => {
     setFormData((prev) => {
       const experiences = prev.previousExperience || [];
@@ -268,7 +269,7 @@ const CreateInstructorPage = () => {
       const errorKey = `previousExperience.${index}.${field}`;
       const durationErrorKey = `previousExperience.${index}.duration`;
       const unsavedErrorKey = `previousExperience.${index}.unsaved`;
-      
+
       // Only update if there are errors to clear
       if (prev[errorKey] || prev[durationErrorKey] || prev[unsavedErrorKey]) {
         const newErrors = { ...prev };
@@ -309,7 +310,7 @@ const CreateInstructorPage = () => {
     }));
     // Remove from saved experiences and adjust indices
     setSavedExperiences((prev) =>
-      prev.filter((i) => i !== index).map((i) => (i > index ? i - 1 : i))
+      prev.filter((i) => i !== index).map((i) => (i > index ? i - 1 : i)),
     );
   };
 
@@ -324,14 +325,14 @@ const CreateInstructorPage = () => {
     const validation = validateExperience(experience);
     if (!validation.isValid) {
       toast.error(
-        `Please fix the following errors: ${validation.errors.join(", ")}`
+        `Please fix the following errors: ${validation.errors.join(", ")}`,
       );
       return;
     }
 
     setSavedExperiences((prev) => [...prev, index]);
     toast.success(
-      "Experience saved! It will be included when creating the instructor."
+      "Experience saved! It will be included when creating the instructor.",
     );
   };
 
@@ -374,7 +375,7 @@ const CreateInstructorPage = () => {
   };
 
   const validateExperience = (
-    experience: any
+    experience: any,
   ): { isValid: boolean; errors: string[] } => {
     const errors: string[] = [];
 
@@ -511,28 +512,42 @@ const CreateInstructorPage = () => {
           const validation = validateExperience(experience);
           if (!validation.isValid) {
             // Map validation errors to specific fields
-            if (!experience.companyName || experience.companyName.trim().length < 2) {
-              newErrors[`previousExperience.${index}.companyName`] = "Company name must be at least 2 characters";
+            if (
+              !experience.companyName ||
+              experience.companyName.trim().length < 2
+            ) {
+              newErrors[`previousExperience.${index}.companyName`] =
+                "Company name must be at least 2 characters";
             }
             if (!experience.position || experience.position.trim().length < 2) {
-              newErrors[`previousExperience.${index}.position`] = "Position must be at least 2 characters";
+              newErrors[`previousExperience.${index}.position`] =
+                "Position must be at least 2 characters";
             }
             if (!experience.duration?.from || !experience.duration?.to) {
-              newErrors[`previousExperience.${index}.duration`] = "Both start and end dates are required";
+              newErrors[`previousExperience.${index}.duration`] =
+                "Both start and end dates are required";
             } else if (
-              new Date(experience.duration.from) >= new Date(experience.duration.to)
+              new Date(experience.duration.from) >=
+              new Date(experience.duration.to)
             ) {
-              newErrors[`previousExperience.${index}.duration`] = "End date must be after start date";
+              newErrors[`previousExperience.${index}.duration`] =
+                "End date must be after start date";
             }
-            if (!experience.description || experience.description.trim().length === 0) {
-              newErrors[`previousExperience.${index}.description`] = "Description is required";
+            if (
+              !experience.description ||
+              experience.description.trim().length === 0
+            ) {
+              newErrors[`previousExperience.${index}.description`] =
+                "Description is required";
             } else if (experience.description.trim().length < 10) {
-              newErrors[`previousExperience.${index}.description`] = "Description must be at least 10 characters";
+              newErrors[`previousExperience.${index}.description`] =
+                "Description must be at least 10 characters";
             }
           }
         } else {
           // If experience is not saved, add error
-          newErrors[`previousExperience.${index}.unsaved`] = "Please save this experience before submitting";
+          newErrors[`previousExperience.${index}.unsaved`] =
+            "Please save this experience before submitting";
         }
       });
     }
@@ -575,12 +590,14 @@ const CreateInstructorPage = () => {
           position: exp.position.trim(),
           description: exp.description.trim(),
           duration: {
-            from: exp.duration.from instanceof Date 
-              ? exp.duration.from.toISOString() 
-              : new Date(exp.duration.from).toISOString(),
-            to: exp.duration.to instanceof Date 
-              ? exp.duration.to.toISOString() 
-              : new Date(exp.duration.to).toISOString(),
+            from:
+              exp.duration.from instanceof Date
+                ? exp.duration.from.toISOString()
+                : new Date(exp.duration.from).toISOString(),
+            to:
+              exp.duration.to instanceof Date
+                ? exp.duration.to.toISOString()
+                : new Date(exp.duration.to).toISOString(),
           },
         }));
 
@@ -592,22 +609,31 @@ const CreateInstructorPage = () => {
         // Include profile picture if uploaded
         profilePicture: profileImageUrl || formData.profilePicture || undefined,
         // Convert dates to ISO strings
-        dob: formData.dob ? (formData.dob instanceof Date ? formData.dob.toISOString() : new Date(formData.dob).toISOString()) : undefined,
+        dob: formData.dob
+          ? formData.dob instanceof Date
+            ? formData.dob.toISOString()
+            : new Date(formData.dob).toISOString()
+          : undefined,
         // Only send valid, complete experiences
-        previousExperience: validExperiences.length > 0 ? validExperiences : undefined,
+        previousExperience:
+          validExperiences.length > 0 ? validExperiences : undefined,
         // Keep confirmPassword - backend needs it for validation
       };
 
       // Remove empty address object if all fields are empty
-      if (submitData.address && 
-          (!submitData.address.address?.trim() && !submitData.address.city?.trim() && 
-           !submitData.address.state?.trim() && !submitData.address.country?.trim() && 
-           !submitData.address.pincode?.trim())) {
+      if (
+        submitData.address &&
+        !submitData.address.address?.trim() &&
+        !submitData.address.city?.trim() &&
+        !submitData.address.state?.trim() &&
+        !submitData.address.country?.trim() &&
+        !submitData.address.pincode?.trim()
+      ) {
         delete submitData.address;
       }
 
       // Remove undefined/null fields (but keep empty strings for optional fields)
-      Object.keys(submitData).forEach(key => {
+      Object.keys(submitData).forEach((key) => {
         if (submitData[key] === undefined || submitData[key] === null) {
           delete submitData[key];
         }
@@ -624,43 +650,45 @@ const CreateInstructorPage = () => {
 
       // Handle validation errors from backend
       if (error.response?.status === 400) {
-        const errorMessage = error.response?.data?.error?.message || 
-                           error.response?.data?.message || 
-                           "Validation failed. Please check all fields.";
-        
+        const errorMessage =
+          error.response?.data?.error?.message ||
+          error.response?.data?.message ||
+          "Validation failed. Please check all fields.";
+
         // Check if it's a Mongoose validation error with field-specific errors
         if (error.response?.data?.error?.details?.validationErrors) {
-          const validationErrors = error.response.data.error.details.validationErrors;
+          const validationErrors =
+            error.response.data.error.details.validationErrors;
           const backendErrors: Record<string, string> = {};
-          
+
           // Map backend validation errors to form fields
           Object.keys(validationErrors).forEach((field) => {
             const fieldErrors = validationErrors[field];
             if (Array.isArray(fieldErrors) && fieldErrors.length > 0) {
               // Map common field names
               const fieldMap: Record<string, string> = {
-                'email': 'email',
-                'password': 'password',
-                'firstName': 'firstName',
-                'lastName': 'lastName',
-                'phone': 'phone',
-                'whatsappNumber': 'whatsappNumber',
-                'linkedinUrl': 'linkedinUrl',
-                'bio': 'bio',
-                'field': 'field',
-                'industry': 'industry',
-                'currentPosition': 'currentPosition',
-                'currentCompany': 'currentCompany',
-                'dob': 'dob',
+                email: "email",
+                password: "password",
+                firstName: "firstName",
+                lastName: "lastName",
+                phone: "phone",
+                whatsappNumber: "whatsappNumber",
+                linkedinUrl: "linkedinUrl",
+                bio: "bio",
+                field: "field",
+                industry: "industry",
+                currentPosition: "currentPosition",
+                currentCompany: "currentCompany",
+                dob: "dob",
               };
-              
+
               const mappedField = fieldMap[field] || field;
-              backendErrors[mappedField] = Array.isArray(fieldErrors) 
-                ? fieldErrors[0] 
+              backendErrors[mappedField] = Array.isArray(fieldErrors)
+                ? fieldErrors[0]
                 : String(fieldErrors);
             }
           });
-          
+
           // Set errors in form state
           if (Object.keys(backendErrors).length > 0) {
             setErrors(backendErrors);
@@ -706,454 +734,505 @@ const CreateInstructorPage = () => {
           </div>
 
           <div className="p-6 sm:p-8 lg:p-10">
-
-        <form onSubmit={handleSubmit} className="space-y-10">
-          {/* Basic Information */}
-          <div className="bg-linear-to-br from-gray-50 to-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-            <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-200">
-              <div className="p-2 bg-orange-100 rounded-lg">
-                <UserIcon className="w-5 h-5 text-orange-600" />
-              </div>
-              <h2 className="text-xl font-bold text-gray-900">
-                Basic Information
-              </h2>
-            </div>
-            
-            {/* Profile Image Upload */}
-            <div className="mb-8 flex flex-col items-center md:items-start">
-              <label className="block text-sm font-semibold text-gray-700 mb-4">
-                Profile Picture <span className="text-gray-400 font-normal">(Optional)</span>
-              </label>
-              <div className="relative group">
-                <div className="w-36 h-36 rounded-full overflow-hidden bg-linear-to-br from-orange-100 via-orange-200 to-orange-300 border-4 border-white shadow-xl ring-4 ring-orange-100 transition-all duration-300 group-hover:ring-orange-200 group-hover:scale-105">
-                  {profileImageUrl ? (
-                    <img
-                      src={profileImageUrl}
-                      alt="Profile"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-orange-100 to-orange-200">
-                      <div className="text-5xl font-bold text-orange-500">
-                        {formData.firstName?.[0]?.toUpperCase() ||
-                          formData.email?.[0]?.toUpperCase() ||
-                          "U"}
-                      </div>
-                    </div>
-                  )}
+            <form onSubmit={handleSubmit} className="space-y-10">
+              {/* Basic Information */}
+              <div className="bg-linear-to-br from-gray-50 to-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+                <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-200">
+                  <div className="p-2 bg-orange-100 rounded-lg">
+                    <UserIcon className="w-5 h-5 text-orange-600" />
+                  </div>
+                  <h2 className="text-xl font-bold text-gray-900">
+                    Basic Information
+                  </h2>
                 </div>
 
-                {/* Hover Overlay */}
-                <div
-                  className="absolute inset-0 rounded-full bg-linear-to-br from-black/60 to-black/70 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 cursor-pointer backdrop-blur-sm"
-                  onClick={() =>
-                    document.getElementById("profile-image-input")?.click()
-                  }
-                >
-                  <div className="text-white text-center transform group-hover:scale-110 transition-transform">
-                    {isUploadingImage ? (
-                      <div className="animate-spin rounded-full h-8 w-8 border-2 border-white border-t-transparent mx-auto mb-2"></div>
-                    ) : (
-                      <Camera className="w-8 h-8 mx-auto mb-2 drop-shadow-lg" />
-                    )}
-                    <span className="text-sm font-semibold select-none drop-shadow-md">
-                      {isUploadingImage ? "Uploading..." : "Update Image"}
+                {/* Profile Image Upload */}
+                <div className="mb-8 flex flex-col items-center md:items-start">
+                  <label className="block text-sm font-semibold text-gray-700 mb-4">
+                    Profile Picture{" "}
+                    <span className="text-gray-400 font-normal">
+                      (Optional)
                     </span>
+                  </label>
+                  <div className="relative group">
+                    <div className="w-36 h-36 rounded-full overflow-hidden bg-linear-to-br from-orange-100 via-orange-200 to-orange-300 border-4 border-white shadow-xl ring-4 ring-orange-100 transition-all duration-300 group-hover:ring-orange-200 group-hover:scale-105">
+                      {profileImageUrl ? (
+                        <img
+                          src={profileImageUrl}
+                          alt="Profile"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-orange-100 to-orange-200">
+                          <div className="text-5xl font-bold text-orange-500">
+                            {formData.firstName?.[0]?.toUpperCase() ||
+                              formData.email?.[0]?.toUpperCase() ||
+                              "U"}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Hover Overlay */}
+                    <div
+                      className="absolute inset-0 rounded-full bg-linear-to-br from-black/60 to-black/70 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 cursor-pointer backdrop-blur-sm"
+                      onClick={() =>
+                        document.getElementById("profile-image-input")?.click()
+                      }
+                    >
+                      <div className="text-white text-center transform group-hover:scale-110 transition-transform">
+                        {isUploadingImage ? (
+                          <div className="animate-spin rounded-full h-8 w-8 border-2 border-white border-t-transparent mx-auto mb-2"></div>
+                        ) : (
+                          <Camera className="w-8 h-8 mx-auto mb-2 drop-shadow-lg" />
+                        )}
+                        <span className="text-sm font-semibold select-none drop-shadow-md">
+                          {isUploadingImage ? "Uploading..." : "Update Image"}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Hidden file input */}
+                    <input
+                      id="profile-image-input"
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          handleImageUpload(file);
+                        }
+                      }}
+                      className="hidden"
+                      disabled={isUploadingImage}
+                    />
+                  </div>
+
+                  {/* Remove Image Button */}
+                  {profileImageUrl && (
+                    <button
+                      type="button"
+                      onClick={handleImageRemove}
+                      disabled={isUploadingImage}
+                      className="cursor-pointer mt-4 px-5 py-2.5 text-sm font-medium text-red-600 bg-red-50 rounded-xl hover:bg-red-100 transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed border border-red-100"
+                    >
+                      Remove Image
+                    </button>
+                  )}
+
+                  <p className="mt-3 text-xs text-gray-500 text-center md:text-left max-w-xs">
+                    Recommended: Square image, max 5MB (JPG, PNG, WebP)
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <Input
+                    label="First Name"
+                    placeholder="Enter first name"
+                    value={formData.firstName}
+                    onChange={(e) =>
+                      handleInputChange("firstName", e.target.value)
+                    }
+                    error={errors.firstName}
+                    required
+                  />
+
+                  <Input
+                    label="Last Name"
+                    placeholder="Enter last name"
+                    value={formData.lastName}
+                    onChange={(e) =>
+                      handleInputChange("lastName", e.target.value)
+                    }
+                    error={errors.lastName}
+                    required
+                  />
+
+                  <Input
+                    label="Email Address"
+                    type="email"
+                    placeholder="Enter email address"
+                    value={formData.email}
+                    onChange={(e) => handleInputChange("email", e.target.value)}
+                    error={errors.email}
+                    required
+                  />
+
+                  <div>
+                    <DateSelector
+                      label="Date of Birth"
+                      placeholder="Select date of birth"
+                      value={formData.dob}
+                      onChange={(date) =>
+                        handleInputChange("dob", date || new Date())
+                      }
+                    />
+                    {errors.dob && (
+                      <p className="mt-1 text-sm text-red-500">{errors.dob}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <Input
+                      label="Phone Number"
+                      type="tel"
+                      placeholder="+91XXXXXXXXXX"
+                      value={formData.phone || ""}
+                      onChange={(e) =>
+                        handleInputChange("phone", e.target.value)
+                      }
+                      error={errors.phone}
+                      maxLength={15}
+                      onKeyPress={(
+                        e: React.KeyboardEvent<HTMLInputElement>,
+                      ) => {
+                        // Only allow digits and + symbol
+                        if (
+                          !/[\d+]/.test(e.key) &&
+                          ![
+                            "Backspace",
+                            "Delete",
+                            "Tab",
+                            "Escape",
+                            "Enter",
+                            "ArrowLeft",
+                            "ArrowRight",
+                            "ArrowUp",
+                            "ArrowDown",
+                          ].includes(e.key)
+                        ) {
+                          e.preventDefault();
+                        }
+                      }}
+                    />
+                    {!errors.phone && (
+                      <p className="mt-1 text-xs text-gray-500">
+                        Format: +91 followed by 10-12 digits (e.g.,
+                        +919876543210)
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <Input
+                      label="WhatsApp Number"
+                      type="tel"
+                      placeholder="+91XXXXXXXXXX"
+                      value={formData.whatsappNumber || ""}
+                      onChange={(e) =>
+                        handleInputChange("whatsappNumber", e.target.value)
+                      }
+                      error={errors.whatsappNumber}
+                      maxLength={15}
+                      onKeyPress={(
+                        e: React.KeyboardEvent<HTMLInputElement>,
+                      ) => {
+                        // Only allow digits and + symbol
+                        if (
+                          !/[\d+]/.test(e.key) &&
+                          ![
+                            "Backspace",
+                            "Delete",
+                            "Tab",
+                            "Escape",
+                            "Enter",
+                            "ArrowLeft",
+                            "ArrowRight",
+                            "ArrowUp",
+                            "ArrowDown",
+                          ].includes(e.key)
+                        ) {
+                          e.preventDefault();
+                        }
+                      }}
+                    />
+                    {!errors.whatsappNumber && (
+                      <p className="mt-1 text-xs text-gray-500">
+                        Format: +91 followed by 10-12 digits (e.g.,
+                        +919876543210)
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Password Section */}
+              <div className="bg-linear-to-br from-gray-50 to-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+                <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-200">
+                  <div className="p-2 bg-blue-100 rounded-lg">
+                    <Lock className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <h2 className="text-xl font-bold text-gray-900">
+                    Account Security
+                  </h2>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div className="relative">
+                    <Input
+                      label="Password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Enter password"
+                      value={formData.password}
+                      onChange={(e) =>
+                        handleInputChange("password", e.target.value)
+                      }
+                      error={errors.password}
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-9 text-gray-400 hover:text-gray-600"
+                    >
+                      {showPassword ? (
+                        <EyeOff className="w-5 h-5" />
+                      ) : (
+                        <Eye className="w-5 h-5" />
+                      )}
+                    </button>
+                  </div>
+
+                  <div className="relative">
+                    <Input
+                      label="Confirm Password"
+                      type={showConfirmPassword ? "text" : "password"}
+                      placeholder="Confirm password"
+                      value={formData.confirmPassword}
+                      onChange={(e) =>
+                        handleInputChange("confirmPassword", e.target.value)
+                      }
+                      error={errors.confirmPassword}
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setShowConfirmPassword(!showConfirmPassword)
+                      }
+                      className="absolute right-3 top-9 text-gray-400 hover:text-gray-600"
+                    >
+                      {showConfirmPassword ? (
+                        <EyeOff className="w-5 h-5" />
+                      ) : (
+                        <Eye className="w-5 h-5" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Address Information */}
+              <div className="bg-linear-to-br from-gray-50 to-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+                <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-200">
+                  <div className="p-2 bg-green-100 rounded-lg">
+                    <MapPin className="w-5 h-5 text-green-600" />
+                  </div>
+                  <h2 className="text-xl font-bold text-gray-900">
+                    Address Information
+                  </h2>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div className="md:col-span-2">
+                    <Input
+                      label="Street Address"
+                      placeholder="Enter street address"
+                      value={formData.address?.address || ""}
+                      onChange={(e) =>
+                        handleAddressChange("address", e.target.value)
+                      }
+                      error={errors["address.address"]}
+                    />
+                  </div>
+
+                  <Input
+                    label="City"
+                    placeholder="Enter city"
+                    value={formData.address?.city || ""}
+                    onChange={(e) =>
+                      handleAddressChange("city", e.target.value)
+                    }
+                    error={errors["address.city"]}
+                  />
+
+                  <Input
+                    label="State"
+                    placeholder="Enter state"
+                    value={formData.address?.state || ""}
+                    onChange={(e) =>
+                      handleAddressChange("state", e.target.value)
+                    }
+                    error={errors["address.state"]}
+                  />
+
+                  <Input
+                    label="Country"
+                    placeholder="Enter country"
+                    value={formData.address?.country || ""}
+                    onChange={(e) =>
+                      handleAddressChange("country", e.target.value)
+                    }
+                    error={errors["address.country"]}
+                  />
+
+                  <Input
+                    label="Pin Code"
+                    placeholder="Enter pin code"
+                    value={formData.address?.pincode || ""}
+                    onChange={(e) =>
+                      handleAddressChange("pincode", e.target.value)
+                    }
+                    error={errors["address.pincode"]}
+                  />
+                </div>
+              </div>
+
+              {/* Professional Information */}
+              <div className="bg-linear-to-br from-gray-50 to-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+                <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-200">
+                  <div className="p-2 bg-purple-100 rounded-lg">
+                    <Briefcase className="w-5 h-5 text-purple-600" />
+                  </div>
+                  <h2 className="text-xl font-bold text-gray-900">
+                    Professional Information
+                  </h2>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <Input
+                    label="Current Position"
+                    placeholder="Enter current position"
+                    value={formData.currentPosition || ""}
+                    onChange={(e) =>
+                      handleInputChange("currentPosition", e.target.value)
+                    }
+                    error={errors.currentPosition}
+                  />
+
+                  <Input
+                    label="Current Company"
+                    placeholder="Enter current company"
+                    value={formData.currentCompany || ""}
+                    onChange={(e) =>
+                      handleInputChange("currentCompany", e.target.value)
+                    }
+                    error={errors.currentCompany}
+                  />
+
+                  <Input
+                    label="Industry"
+                    placeholder="e.g., EdTech, Finance, Healthcare"
+                    value={formData.industry || ""}
+                    onChange={(e) =>
+                      handleInputChange("industry", e.target.value)
+                    }
+                    error={errors.industry}
+                  />
+
+                  <Input
+                    label="Field"
+                    placeholder="e.g., AI Python"
+                    value={formData.field || ""}
+                    onChange={(e) => handleInputChange("field", e.target.value)}
+                    error={errors.field}
+                  />
+
+                  <div className="md:col-span-2">
+                    <Input
+                      label="LinkedIn Profile URL"
+                      placeholder="https://linkedin.com/in/username"
+                      value={formData.linkedinUrl || ""}
+                      onChange={(e) =>
+                        handleInputChange("linkedinUrl", e.target.value)
+                      }
+                      error={errors.linkedinUrl}
+                    />
+                    {!errors.linkedinUrl && formData.linkedinUrl && (
+                      <p className="mt-1 text-xs text-gray-500">
+                        Make sure your LinkedIn URL is public and accessible
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Bio
+                    </label>
+                    <textarea
+                      placeholder="Write a brief bio about the instructor..."
+                      value={formData.bio || ""}
+                      onChange={(e) => handleInputChange("bio", e.target.value)}
+                      rows={4}
+                      className={`w-full px-4 py-3 border rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-400 transition-all duration-200 ease-in-out outline-none shadow-sm hover:shadow-md resize-none ${
+                        errors.bio ? "border-red-500" : "border-gray-300"
+                      }`}
+                    />
+                    {errors.bio && (
+                      <p className="mt-1 text-sm text-red-500">{errors.bio}</p>
+                    )}
+                    <p className="mt-1 text-xs text-gray-500">
+                      {formData.bio
+                        ? `${formData.bio.length}/1000 characters`
+                        : "0/1000 characters"}
+                    </p>
                   </div>
                 </div>
 
-                {/* Hidden file input */}
-                <input
-                  id="profile-image-input"
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      handleImageUpload(file);
+                <div className="mt-6 pt-6 border-t border-gray-200">
+                  <InstructorCompanyImagesEditor
+                    resetKey="create-instructor"
+                    defaultUrls={formData.companyImages || []}
+                    onUrlsChange={(urls) =>
+                      setFormData((prev) => ({ ...prev, companyImages: urls }))
                     }
-                  }}
-                  className="hidden"
-                  disabled={isUploadingImage}
-                />
-              </div>
-
-              {/* Remove Image Button */}
-              {profileImageUrl && (
-                <button
-                  type="button"
-                  onClick={handleImageRemove}
-                  disabled={isUploadingImage}
-                  className="cursor-pointer mt-4 px-5 py-2.5 text-sm font-medium text-red-600 bg-red-50 rounded-xl hover:bg-red-100 transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed border border-red-100"
-                >
-                  Remove Image
-                </button>
-              )}
-
-              <p className="mt-3 text-xs text-gray-500 text-center md:text-left max-w-xs">
-                Recommended: Square image, max 5MB (JPG, PNG, WebP)
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <Input
-                label="First Name"
-                placeholder="Enter first name"
-                value={formData.firstName}
-                onChange={(e) => handleInputChange("firstName", e.target.value)}
-                error={errors.firstName}
-                required
-              />
-
-              <Input
-                label="Last Name"
-                placeholder="Enter last name"
-                value={formData.lastName}
-                onChange={(e) => handleInputChange("lastName", e.target.value)}
-                error={errors.lastName}
-                required
-              />
-
-              <Input
-                label="Email Address"
-                type="email"
-                placeholder="Enter email address"
-                value={formData.email}
-                onChange={(e) => handleInputChange("email", e.target.value)}
-                error={errors.email}
-                required
-              />
-
-              <div>
-                <DateSelector
-                  label="Date of Birth"
-                  placeholder="Select date of birth"
-                  value={formData.dob}
-                  onChange={(date) =>
-                    handleInputChange("dob", date || new Date())
-                  }
-                />
-                {errors.dob && (
-                  <p className="mt-1 text-sm text-red-500">{errors.dob}</p>
-                )}
-              </div>
-
-              <div>
-                <Input
-                  label="Phone Number"
-                  type="tel"
-                  placeholder="+91XXXXXXXXXX"
-                  value={formData.phone || ""}
-                  onChange={(e) => handleInputChange("phone", e.target.value)}
-                  error={errors.phone}
-                  maxLength={15}
-                  onKeyPress={(e: React.KeyboardEvent<HTMLInputElement>) => {
-                    // Only allow digits and + symbol
-                    if (!/[\d+]/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
-                      e.preventDefault();
-                    }
-                  }}
-                />
-                {!errors.phone && (
-                  <p className="mt-1 text-xs text-gray-500">
-                    Format: +91 followed by 10-12 digits (e.g., +919876543210)
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <Input
-                  label="WhatsApp Number"
-                  type="tel"
-                  placeholder="+91XXXXXXXXXX"
-                  value={formData.whatsappNumber || ""}
-                  onChange={(e) =>
-                    handleInputChange("whatsappNumber", e.target.value)
-                  }
-                  error={errors.whatsappNumber}
-                  maxLength={15}
-                  onKeyPress={(e: React.KeyboardEvent<HTMLInputElement>) => {
-                    // Only allow digits and + symbol
-                    if (!/[\d+]/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
-                      e.preventDefault();
-                    }
-                  }}
-                />
-                {!errors.whatsappNumber && (
-                  <p className="mt-1 text-xs text-gray-500">
-                    Format: +91 followed by 10-12 digits (e.g., +919876543210)
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Password Section */}
-          <div className="bg-linear-to-br from-gray-50 to-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-            <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-200">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Lock className="w-5 h-5 text-blue-600" />
-              </div>
-              <h2 className="text-xl font-bold text-gray-900">
-                Account Security
-              </h2>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div className="relative">
-                <Input
-                  label="Password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Enter password"
-                  value={formData.password}
-                  onChange={(e) =>
-                    handleInputChange("password", e.target.value)
-                  }
-                  error={errors.password}
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-9 text-gray-400 hover:text-gray-600"
-                >
-                  {showPassword ? (
-                    <EyeOff className="w-5 h-5" />
-                  ) : (
-                    <Eye className="w-5 h-5" />
-                  )}
-                </button>
-              </div>
-
-              <div className="relative">
-                <Input
-                  label="Confirm Password"
-                  type={showConfirmPassword ? "text" : "password"}
-                  placeholder="Confirm password"
-                  value={formData.confirmPassword}
-                  onChange={(e) =>
-                    handleInputChange("confirmPassword", e.target.value)
-                  }
-                  error={errors.confirmPassword}
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-9 text-gray-400 hover:text-gray-600"
-                >
-                  {showConfirmPassword ? (
-                    <EyeOff className="w-5 h-5" />
-                  ) : (
-                    <Eye className="w-5 h-5" />
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Address Information */}
-          <div className="bg-linear-to-br from-gray-50 to-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-            <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-200">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <MapPin className="w-5 h-5 text-green-600" />
-              </div>
-              <h2 className="text-xl font-bold text-gray-900">
-                Address Information
-              </h2>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div className="md:col-span-2">
-                <Input
-                  label="Street Address"
-                  placeholder="Enter street address"
-                  value={formData.address?.address || ""}
-                  onChange={(e) =>
-                    handleAddressChange("address", e.target.value)
-                  }
-                  error={errors["address.address"]}
-                />
-              </div>
-
-              <Input
-                label="City"
-                placeholder="Enter city"
-                value={formData.address?.city || ""}
-                onChange={(e) => handleAddressChange("city", e.target.value)}
-                error={errors["address.city"]}
-              />
-
-              <Input
-                label="State"
-                placeholder="Enter state"
-                value={formData.address?.state || ""}
-                onChange={(e) => handleAddressChange("state", e.target.value)}
-                error={errors["address.state"]}
-              />
-
-              <Input
-                label="Country"
-                placeholder="Enter country"
-                value={formData.address?.country || ""}
-                onChange={(e) => handleAddressChange("country", e.target.value)}
-                error={errors["address.country"]}
-              />
-
-              <Input
-                label="Pin Code"
-                placeholder="Enter pin code"
-                value={formData.address?.pincode || ""}
-                onChange={(e) => handleAddressChange("pincode", e.target.value)}
-                error={errors["address.pincode"]}
-              />
-            </div>
-          </div>
-
-          {/* Professional Information */}
-          <div className="bg-linear-to-br from-gray-50 to-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-            <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-200">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <Briefcase className="w-5 h-5 text-purple-600" />
-              </div>
-              <h2 className="text-xl font-bold text-gray-900">
-                Professional Information
-              </h2>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <Input
-                label="Current Position"
-                placeholder="Enter current position"
-                value={formData.currentPosition || ""}
-                onChange={(e) =>
-                  handleInputChange("currentPosition", e.target.value)
-                }
-                error={errors.currentPosition}
-              />
-
-              <Input
-                label="Current Company"
-                placeholder="Enter current company"
-                value={formData.currentCompany || ""}
-                onChange={(e) =>
-                  handleInputChange("currentCompany", e.target.value)
-                }
-                error={errors.currentCompany}
-              />
-
-              <Input
-                label="Industry"
-                placeholder="e.g., EdTech, Finance, Healthcare"
-                value={formData.industry || ""}
-                onChange={(e) =>
-                  handleInputChange("industry", e.target.value)
-                }
-                error={errors.industry}
-              />
-
-              <Input
-                label="Field"
-                placeholder="e.g., AI Python"
-                value={formData.field || ""}
-                onChange={(e) =>
-                  handleInputChange("field", e.target.value)
-                }
-                error={errors.field}
-              />
-
-              <div className="md:col-span-2">
-                <Input
-                  label="LinkedIn Profile URL"
-                  placeholder="https://linkedin.com/in/username"
-                  value={formData.linkedinUrl || ""}
-                  onChange={(e) =>
-                    handleInputChange("linkedinUrl", e.target.value)
-                  }
-                  error={errors.linkedinUrl}
-                />
-                {!errors.linkedinUrl && formData.linkedinUrl && (
-                  <p className="mt-1 text-xs text-gray-500">
-                    Make sure your LinkedIn URL is public and accessible
-                  </p>
-                )}
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Bio
-                </label>
-                <textarea
-                  placeholder="Write a brief bio about the instructor..."
-                  value={formData.bio || ""}
-                  onChange={(e) => handleInputChange("bio", e.target.value)}
-                  rows={4}
-                  className={`w-full px-4 py-3 border rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-400 transition-all duration-200 ease-in-out outline-none shadow-sm hover:shadow-md resize-none ${
-                    errors.bio ? "border-red-500" : "border-gray-300"
-                  }`}
-                />
-                {errors.bio && (
-                  <p className="mt-1 text-sm text-red-500">{errors.bio}</p>
-                )}
-                <p className="mt-1 text-xs text-gray-500">
-                  {formData.bio
-                    ? `${formData.bio.length}/1000 characters`
-                    : "0/1000 characters"}
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-6 pt-6 border-t border-gray-200">
-              <InstructorCompanyImagesEditor
-                resetKey="create-instructor"
-                defaultUrls={formData.companyImages || []}
-                onUrlsChange={(urls) =>
-                  setFormData((prev) => ({ ...prev, companyImages: urls }))
-                }
-                uploadContext={companyUploadContextRef.current}
-                disabled={isSubmitting}
-              />
-            </div>
-          </div>
-
-          {/* Previous Experience */}
-          <ExperienceSection
-            formData={formData}
-            handleExperienceChange={handleExperienceChange}
-            addExperience={addExperience}
-            removeExperience={removeExperience}
-            saveExperience={saveExperience}
-            editExperience={editExperience}
-            savedExperiences={savedExperiences}
-            errors={errors}
-          />
-
-          {/* Submit Button */}
-          <div className="pt-8 mt-8 border-t-2 border-gray-200 bg-linear-to-r from-orange-50 to-transparent rounded-2xl p-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
-              <div className="flex items-start gap-3">
-                <div className="p-2 bg-orange-100 rounded-lg mt-0.5">
-                  <Sparkles className="w-5 h-5 text-orange-600" />
-                </div>
-                <div>
-                  <p className="font-semibold text-gray-900 mb-1">
-                    Ready to create instructor account?
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    All required fields must be filled before creating the account.
-                  </p>
+                    uploadContext={companyUploadContextRef.current}
+                    disabled={isSubmitting}
+                  />
                 </div>
               </div>
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full sm:w-auto px-10 py-4 bg-linear-to-r from-orange-500 via-orange-600 to-orange-500 text-white font-semibold rounded-xl hover:from-orange-600 hover:via-orange-700 hover:to-orange-600 transition-all duration-300 shadow-lg hover:shadow-2xl hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2 text-base"
-              >
-                {isSubmitting && (
-                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
-                )}
-                {isSubmitting ? "Creating Instructor..." : "Create Instructor"}
-              </button>
-            </div>
-          </div>
-        </form>
+
+              {/* Previous Experience */}
+              <ExperienceSection
+                formData={formData}
+                handleExperienceChange={handleExperienceChange}
+                addExperience={addExperience}
+                removeExperience={removeExperience}
+                saveExperience={saveExperience}
+                editExperience={editExperience}
+                savedExperiences={savedExperiences}
+                errors={errors}
+              />
+
+              {/* Submit Button */}
+              <div className="pt-8 mt-8 border-t-2 border-gray-200 bg-linear-to-r from-orange-50 to-transparent rounded-2xl p-6">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 bg-orange-100 rounded-lg mt-0.5">
+                      <Sparkles className="w-5 h-5 text-orange-600" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-900 mb-1">
+                        Ready to create instructor account?
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        All required fields must be filled before creating the
+                        account.
+                      </p>
+                    </div>
+                  </div>
+                  <OrangeButton
+                    glow={false}
+                    type="submit"
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting && (
+                      <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+                    )}
+                    {isSubmitting
+                      ? "Creating Instructor..."
+                      : "Create Instructor"}
+                  </OrangeButton>
+                </div>
+              </div>
+            </form>
           </div>
         </div>
       </div>
@@ -1176,7 +1255,7 @@ const ExperienceSection = ({
   handleExperienceChange: (
     index: number,
     field: string,
-    value: string | Date
+    value: string | Date,
   ) => void;
   addExperience: () => void;
   removeExperience: (index: number) => void;
@@ -1203,14 +1282,14 @@ const ExperienceSection = ({
             </p>
           </div>
         </div>
-        <button
+        <OrangeButton
+          glow={false}
           type="button"
           onClick={addExperience}
-          className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-linear-to-r from-orange-500 to-orange-600 rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all duration-200 shadow-md hover:shadow-lg"
         >
           <Plus className="w-4 h-4" />
           Add Experience
-        </button>
+        </OrangeButton>
       </div>
 
       {experiences.length === 0 ? (
@@ -1218,7 +1297,9 @@ const ExperienceSection = ({
           <div className="p-3 bg-gray-100 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
             <Briefcase className="w-8 h-8 text-gray-400" />
           </div>
-          <p className="text-sm font-medium text-gray-600">No previous experience added yet.</p>
+          <p className="text-sm font-medium text-gray-600">
+            No previous experience added yet.
+          </p>
           <p className="text-xs text-gray-400 mt-1">
             Click "Add Experience" to get started.
           </p>
@@ -1261,9 +1342,9 @@ const ExperienceSection = ({
                         <p className="text-xs text-gray-500 mt-1">
                           {experience.duration?.from && experience.duration?.to
                             ? `${new Date(
-                                experience.duration.from
+                                experience.duration.from,
                               ).toLocaleDateString()} - ${new Date(
-                                experience.duration.to
+                                experience.duration.to,
                               ).toLocaleDateString()}`
                             : "Duration not specified"}
                         </p>
@@ -1316,7 +1397,7 @@ const ExperienceSection = ({
                           handleExperienceChange(
                             index,
                             "companyName",
-                            e.target.value
+                            e.target.value,
                           )
                         }
                         error={
@@ -1334,7 +1415,7 @@ const ExperienceSection = ({
                           handleExperienceChange(
                             index,
                             "position",
-                            e.target.value
+                            e.target.value,
                           )
                         }
                         error={errors[`previousExperience.${index}.position`]}
@@ -1359,7 +1440,7 @@ const ExperienceSection = ({
                             handleExperienceChange(
                               index,
                               "from",
-                              date || new Date()
+                              date || new Date(),
                             )
                           }
                         />
@@ -1388,7 +1469,7 @@ const ExperienceSection = ({
                             handleExperienceChange(
                               index,
                               "to",
-                              date || new Date()
+                              date || new Date(),
                             )
                           }
                         />
@@ -1406,7 +1487,7 @@ const ExperienceSection = ({
                             handleExperienceChange(
                               index,
                               "description",
-                              e.target.value
+                              e.target.value,
                             )
                           }
                           rows={3}

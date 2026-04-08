@@ -238,6 +238,7 @@ export const getAllCollaborationJobsService = async (
       const uid = String(j.userId ?? "");
       const did = String(j.collaborationDomainId ?? "");
       const u = userMap.get(uid);
+      const userSnap = j.userSnapshot as { name?: string; email?: string } | null | undefined;
       const snap = j.collaborationDomainSnapshot as
         | CollaborationDomainJobSnapshot
         | undefined
@@ -249,8 +250,8 @@ export const getAllCollaborationJobsService = async (
 
       return {
         ...(j as unknown as CollaborationJob),
-        userName: u?.name || "",
-        userEmail: u?.email || "",
+        userName: u?.name || userSnap?.name || "",
+        userEmail: u?.email || userSnap?.email || "",
         domainTitle,
         domainEmail,
         collaborationDomainSnapshot:
@@ -310,7 +311,8 @@ export const getAllCollaborationJobsService = async (
                 },
               },
             },
-            userEmail: { $ifNull: ["$user.email", ""] },
+            userEmail: { $ifNull: ["$user.email", "$userSnapshot.email"] },
+            snapshotUserName: { $ifNull: ["$userSnapshot.name", ""] },
             resolvedTitle: {
               $ifNull: [
                 "$collaborationDomainSnapshot.title",
@@ -333,6 +335,8 @@ export const getAllCollaborationJobsService = async (
               { jobId: searchRegex },
               { userName: searchRegex },
               { "user.email": searchRegex },
+              { snapshotUserName: searchRegex },
+              { "userSnapshot.email": searchRegex },
               { resolvedTitle: searchRegex },
               { resolvedDomain: searchRegex },
               { "collaborationDomainSnapshot.title": searchRegex },
@@ -374,6 +378,8 @@ export const getAllCollaborationJobsService = async (
         jobsResult as (CollaborationJobAdminRow & {
           resolvedTitle?: string;
           resolvedDomain?: string;
+          snapshotUserName?: string;
+          userSnapshot?: { name?: string; email?: string } | null;
         })[]
       ).map((row) => {
         const snap = row.collaborationDomainSnapshot;
@@ -394,8 +400,8 @@ export const getAllCollaborationJobsService = async (
 
         return {
           ...(rest as unknown as CollaborationJob),
-          userName: row.userName || "",
-          userEmail: String(row.userEmail ?? "").trim(),
+          userName: row.userName || row.snapshotUserName || "",
+          userEmail: String(row.userEmail ?? row.userSnapshot?.email ?? "").trim(),
           domainTitle,
           domainEmail,
           domainRecordMissing,

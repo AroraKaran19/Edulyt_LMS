@@ -14,11 +14,12 @@ import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import Select from "@/components/ui/inputs/Select";
 import Input from "@/components/ui/inputs/Input";
 import { Course, CourseModule } from "@/types/course";
-import { User } from "@/types/user";
 import { PartialAccessControl, ModuleAccessControl } from "@/types/enrollment";
 import { toast } from "react-toastify";
 import useUserManagement, { GiftCourseData } from "@/hooks/useUserManagement";
 import useCourseManagement from "@/hooks/useCourseManagement";
+import type { AdminUserOption } from "@/hooks/useUserManagement";
+import WhiteButton from "@/components/ui/buttons/WhiteButton";
 
 interface GiftCourseModalProps {
   isOpen: boolean;
@@ -37,11 +38,13 @@ const GiftCourseModal = ({
     Record<string, "elite" | "essential">
   >({});
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
-  const [accessType, setAccessType] = useState<"full" | "partial" | "topN">("full");
+  const [accessType, setAccessType] = useState<"full" | "partial" | "topN">(
+    "full",
+  );
   const [topNCount, setTopNCount] = useState<number>(5);
   const [courseDetails, setCourseDetails] = useState<Course | null>(null);
   const [coursesDetails, setCoursesDetails] = useState<Record<string, Course>>(
-    {}
+    {},
   );
   // Track expanded state per course
   const [expandedModules, setExpandedModules] = useState<
@@ -73,14 +76,18 @@ const GiftCourseModal = ({
   const [isLoadingCourses, setIsLoadingCourses] = useState(false);
   const [courseSearch, setCourseSearch] = useState("");
   const [debouncedCourseSearch, setDebouncedCourseSearch] = useState("");
+  const [audienceFilter, setAudienceFilter] = useState<
+    "all" | "college-students" | "professionals"
+  >("all");
   const coursesScrollRef = useRef<HTMLDivElement>(null);
   const coursesObserverTarget = useRef<HTMLDivElement>(null);
   const selectAllCheckboxRef = useRef<HTMLInputElement>(null);
   const lastCourseSearchRef = useRef<string>("");
+  const lastAudienceFilterRef = useRef<string>("");
   const isLoadingCoursesRef = useRef(false);
 
   // User search and infinite scroll state
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<AdminUserOption[]>([]);
   const [userSearch, setUserSearch] = useState("");
   const [debouncedUserSearch, setDebouncedUserSearch] = useState("");
   const [userCurrentPage, setUserCurrentPage] = useState(1);
@@ -90,8 +97,9 @@ const GiftCourseModal = ({
   const usersObserverTarget = useRef<HTMLDivElement>(null);
   const isLoadingUsersRef = useRef(false);
   const lastSearchRef = useRef<string>("");
+  const lastSelectedCourseIdsRef = useRef<string>("");
 
-  const { giftCourse, isLoading, getUsers } = useUserManagement();
+  const { giftCourse, isLoading, getUserOptions } = useUserManagement();
   const { getCourses, getCourseById } = useCourseManagement();
 
   // Fetch courses with pagination and search
@@ -105,8 +113,9 @@ const GiftCourseModal = ({
       try {
         const result = await getCourses({
           page,
-          limit: search ? 100 : 20, // 100 limit when searching, 20 for pagination
+          limit: search ? 100 : 200, // 100 limit when searching, 200 for pagination
           search: search || undefined,
+          audience: audienceFilter === "all" ? undefined : audienceFilter,
           isActive: true,
         });
 
@@ -128,7 +137,7 @@ const GiftCourseModal = ({
         isLoadingCoursesRef.current = false;
       }
     },
-    [getCourses]
+    [getCourses, audienceFilter],
   );
 
   // Debounce course search
@@ -148,16 +157,19 @@ const GiftCourseModal = ({
     // Check if search has actually changed to prevent duplicate calls
     if (
       lastCourseSearchRef.current === debouncedCourseSearch &&
+      lastAudienceFilterRef.current === audienceFilter &&
       courses.length > 0
     ) {
       return;
     }
 
     lastCourseSearchRef.current = debouncedCourseSearch;
+    lastAudienceFilterRef.current = audienceFilter;
 
     // Reset pagination
     setCurrentPage(1);
     setHasMore(true);
+    setCourses([]);
 
     if (debouncedCourseSearch) {
       // Fetch with search (limit 100, no pagination)
@@ -166,7 +178,7 @@ const GiftCourseModal = ({
       // Initial load without search (pagination enabled)
       fetchCourses(1, false);
     }
-  }, [giftStep, isOpen, debouncedCourseSearch, fetchCourses]);
+  }, [giftStep, isOpen, debouncedCourseSearch, fetchCourses, audienceFilter]);
 
   // Reset state when modal closes
   useEffect(() => {
@@ -192,7 +204,9 @@ const GiftCourseModal = ({
       isLoadingUsersRef.current = false;
       setCourseSearch("");
       setDebouncedCourseSearch("");
+      setAudienceFilter("all");
       lastCourseSearchRef.current = "";
+      lastAudienceFilterRef.current = "";
       isLoadingCoursesRef.current = false;
     }
   }, [isOpen]);
@@ -206,13 +220,13 @@ const GiftCourseModal = ({
     return () => clearTimeout(timer);
   }, [userSearch]);
 
-  // Fetch users; backend excludes already-enrolled when excludeEnrolledInCourseIds passed
+  // Fetch users; backend returns enrolledCourseIds for selected courses when enrollmentStatusForCourseIds passed
   const fetchUsers = useCallback(
     async (
       page: number,
       append: boolean = false,
       search?: string,
-      excludeCourseIds?: string[]
+      enrollmentStatusCourseIds?: string[],
     ) => {
       if (isLoadingUsersRef.current) return;
 
@@ -220,20 +234,29 @@ const GiftCourseModal = ({
       setIsLoadingUsers(true);
       try {
         const limit = search ? 100 : 20;
-        const result = await getUsers({
+        const result = await getUserOptions({
           page,
           limit,
           search: search || undefined,
           userType: "student",
-          excludeEnrolledInCourseIds:
-            excludeCourseIds && excludeCourseIds.length > 0
-              ? excludeCourseIds
-              : undefined,
+          enrollmentStatusForCourseIds: enrollmentStatusCourseIds?.length
+            ? enrollmentStatusCourseIds
+            : undefined,
         });
 
         if (result) {
           if (append) {
-            setUsers((prev) => [...prev, ...result.users]);
+            setUsers((prev) => {
+              const seen = new Set(prev.map((u) => u._id).filter(Boolean));
+              const next = [...prev];
+              for (const u of result.users) {
+                const id = u?._id;
+                if (!id || seen.has(id)) continue;
+                seen.add(id);
+                next.push(u);
+              }
+              return next;
+            });
           } else {
             setUsers(result.users);
           }
@@ -248,57 +271,75 @@ const GiftCourseModal = ({
         isLoadingUsersRef.current = false;
       }
     },
-    [getUsers]
+    [getUserOptions],
   );
 
-  // Load users when step 3 is reached; backend filters out already-enrolled
-  const excludeCourseIds = selectedCourses
+  // Load users when step 3 is reached; backend provides per-course enrollment status
+  const enrollmentStatusCourseIds = selectedCourses
     .map((c) => c._id)
     .filter((id): id is string => !!id);
 
   useEffect(() => {
     if (giftStep !== 3 || !isOpen) return;
 
-    if (lastSearchRef.current === debouncedUserSearch && users.length > 0) {
+    const selectedCourseIdsKey = enrollmentStatusCourseIds.join(",");
+    if (
+      lastSearchRef.current === debouncedUserSearch &&
+      lastSelectedCourseIdsRef.current === selectedCourseIdsKey &&
+      users.length > 0
+    ) {
       return;
     }
 
     lastSearchRef.current = debouncedUserSearch;
+    lastSelectedCourseIdsRef.current = selectedCourseIdsKey;
     setUserCurrentPage(1);
     setUserHasMore(true);
+    setUsers([]);
 
     if (debouncedUserSearch) {
-      fetchUsers(1, false, debouncedUserSearch, excludeCourseIds);
+      fetchUsers(1, false, debouncedUserSearch, enrollmentStatusCourseIds);
     } else {
-      fetchUsers(1, false, undefined, excludeCourseIds);
+      fetchUsers(1, false, undefined, enrollmentStatusCourseIds);
     }
-  }, [giftStep, isOpen, debouncedUserSearch, fetchUsers, excludeCourseIds.join(",")]);
+  }, [
+    giftStep,
+    isOpen,
+    debouncedUserSearch,
+    fetchUsers,
+    enrollmentStatusCourseIds.join(","),
+  ]);
 
   // Intersection Observer for courses infinite scroll
   useEffect(() => {
-    // Don't enable infinite scroll when searching (we load all results at once)
-    if (debouncedCourseSearch) return;
+    if (!isOpen || giftStep !== 1 || debouncedCourseSearch) return;
+
+    const scrollRoot = coursesScrollRef.current;
+    const currentTarget = coursesObserverTarget.current;
+    if (!scrollRoot || !currentTarget) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasMore && !isLoadingCourses) {
+        if (
+          entries[0]?.isIntersecting &&
+          hasMore &&
+          !isLoadingCourses &&
+          !isLoadingCoursesRef.current
+        ) {
           fetchCourses(currentPage + 1, true);
         }
       },
-      { threshold: 0.1 }
+      { root: scrollRoot, rootMargin: "0px 0px 80px 0px", threshold: 0.01 },
     );
 
-    const currentTarget = coursesObserverTarget.current;
-    if (currentTarget) {
-      observer.observe(currentTarget);
-    }
+    observer.observe(currentTarget);
 
     return () => {
-      if (currentTarget) {
-        observer.unobserve(currentTarget);
-      }
+      observer.disconnect();
     };
   }, [
+    isOpen,
+    giftStep,
     hasMore,
     isLoadingCourses,
     currentPage,
@@ -306,51 +347,50 @@ const GiftCourseModal = ({
     debouncedCourseSearch,
   ]);
 
-  // Intersection Observer for users infinite scroll (only when not searching)
+  // Intersection Observer for users infinite scroll (root = list scrollport)
   useEffect(() => {
-    // Don't use infinite scroll when searching (search returns up to 100 results)
-    if (debouncedUserSearch || giftStep !== 3) return;
+    if (!isOpen || debouncedUserSearch || giftStep !== 3) return;
+
+    const scrollRoot = usersScrollRef.current;
+    const currentTarget = usersObserverTarget.current;
+    if (!scrollRoot || !currentTarget) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
-        // Only trigger if:
-        // 1. Element is intersecting
-        // 2. There are more pages
-        // 3. Not currently loading
-        // 4. Not already loading (ref check)
         if (
-          entries[0].isIntersecting &&
+          entries[0]?.isIntersecting &&
           userHasMore &&
           !isLoadingUsers &&
           !isLoadingUsersRef.current
         ) {
-          fetchUsers(userCurrentPage + 1, true, undefined, excludeCourseIds);
+          fetchUsers(
+            userCurrentPage + 1,
+            true,
+            undefined,
+            enrollmentStatusCourseIds,
+          );
         }
       },
-      { threshold: 0.1 }
+      { root: scrollRoot, rootMargin: "0px 0px 80px 0px", threshold: 0.01 },
     );
 
-    const currentTarget = usersObserverTarget.current;
-    if (currentTarget) {
-      observer.observe(currentTarget);
-    }
+    observer.observe(currentTarget);
 
     return () => {
-      if (currentTarget) {
-        observer.unobserve(currentTarget);
-      }
+      observer.disconnect();
     };
   }, [
+    isOpen,
     userHasMore,
     isLoadingUsers,
     userCurrentPage,
     fetchUsers,
     debouncedUserSearch,
     giftStep,
-    excludeCourseIds.join(","),
+    enrollmentStatusCourseIds.join(","),
   ]);
 
-  // Backend already excludes enrolled users when excludeEnrolledInCourseIds is passed
+  // Backend provides enrolledCourseIds via options endpoint
   const getAvailableUsers = () => users;
 
   // Fetch course details with modules, lessons, and content
@@ -375,7 +415,7 @@ const GiftCourseModal = ({
 
   // Default plan: essential if available, else elite
   const getDefaultPlan = (
-    course: Course
+    course: Course,
   ): "elite" | "essential" | undefined => {
     if (!course.plans) return undefined;
     if (course.plans.essential) return "essential";
@@ -387,10 +427,10 @@ const GiftCourseModal = ({
   const handleSelectAllCourses = async (selectAll: boolean) => {
     if (selectAll) {
       const coursesWithPlans = courses.filter(
-        (c) => c.plans && (c.plans.elite || c.plans.essential)
+        (c) => c.plans && (c.plans.elite || c.plans.essential),
       );
       const toAdd = coursesWithPlans.filter(
-        (c) => !selectedCourses.some((s) => s._id === c._id)
+        (c) => !selectedCourses.some((s) => s._id === c._id),
       );
       if (toAdd.length > 0) {
         setSelectedCourses((prev) => [...prev, ...toAdd]);
@@ -401,9 +441,7 @@ const GiftCourseModal = ({
         });
         setSelectedPlans((prev) => ({ ...prev, ...defaultPlans }));
         // Fetch details for partial access
-        await Promise.all(
-          toAdd.map((c) => c._id && fetchCourseDetails(c._id))
-        );
+        await Promise.all(toAdd.map((c) => c._id && fetchCourseDetails(c._id)));
       }
     } else {
       setSelectedCourses([]);
@@ -421,7 +459,7 @@ const GiftCourseModal = ({
       .filter((c) => c.plans && (c.plans.elite || c.plans.essential))
       .every((c) => selectedCourses.some((s) => s._id === c._id));
   const someLoadedSelected = courses.some((c) =>
-    selectedCourses.some((s) => s._id === c._id)
+    selectedCourses.some((s) => s._id === c._id),
   );
 
   // Set indeterminate state on Select All checkbox
@@ -468,7 +506,7 @@ const GiftCourseModal = ({
   // Handle plan selection for a specific course (step 2)
   const handlePlanSelect = (
     courseId: string,
-    planType: "elite" | "essential"
+    planType: "elite" | "essential",
   ) => {
     setSelectedPlans((prev) => ({
       ...prev,
@@ -511,7 +549,7 @@ const GiftCourseModal = ({
       const courseDetails = coursesDetails[courseId];
       if (courseDetails && courseDetails.modules) {
         const module = (courseDetails.modules as CourseModule[]).find(
-          (m) => (typeof m === "string" ? m : m._id) === moduleId
+          (m) => (typeof m === "string" ? m : m._id) === moduleId,
         );
         if (
           module &&
@@ -538,7 +576,7 @@ const GiftCourseModal = ({
   const toggleLesson = (
     courseId: string,
     moduleId: string,
-    lessonId: string
+    lessonId: string,
   ) => {
     const courseLessons = selectedLessons[courseId] || {};
     const moduleLessons = courseLessons[moduleId] || new Set<string>();
@@ -562,7 +600,7 @@ const GiftCourseModal = ({
         Array.isArray(courseDetails.modules)
       ) {
         const module = (courseDetails.modules as CourseModule[]).find(
-          (m) => (typeof m === "string" ? m : m._id) === moduleId
+          (m) => (typeof m === "string" ? m : m._id) === moduleId,
         );
 
         if (module && typeof module !== "string") {
@@ -602,7 +640,7 @@ const GiftCourseModal = ({
     courseId: string,
     moduleId: string,
     lessonId: string,
-    contentId: string
+    contentId: string,
   ) => {
     const courseLessons = selectedLessons[courseId] || {};
     const moduleLessons = courseLessons[moduleId] || new Set<string>();
@@ -626,7 +664,7 @@ const GiftCourseModal = ({
         Array.isArray(courseDetails.modules)
       ) {
         const module = (courseDetails.modules as CourseModule[]).find(
-          (m) => (typeof m === "string" ? m : m._id) === moduleId
+          (m) => (typeof m === "string" ? m : m._id) === moduleId,
         );
 
         if (module && typeof module !== "string") {
@@ -645,7 +683,7 @@ const GiftCourseModal = ({
 
             // Remove the toggled content and keep the rest
             const newContentIds = allContentIds.filter(
-              (id) => id !== contentId
+              (id) => id !== contentId,
             );
             const courseContents = { ...(selectedContents[courseId] || {}) };
 
@@ -721,7 +759,7 @@ const GiftCourseModal = ({
     // For "partial" access type, check selections
     // Check if any modules are selected in any course
     const hasSelectedModules = Object.values(selectedModules).some(
-      (modules) => modules && modules.size > 0
+      (modules) => modules && modules.size > 0,
     );
     if (hasSelectedModules) {
       return true;
@@ -732,9 +770,9 @@ const GiftCourseModal = ({
       (courseLessons) => {
         if (!courseLessons) return false;
         return Object.values(courseLessons).some(
-          (lessons) => lessons && lessons.size > 0
+          (lessons) => lessons && lessons.size > 0,
         );
-      }
+      },
     );
     if (hasSelectedLessons) {
       return true;
@@ -745,9 +783,9 @@ const GiftCourseModal = ({
       (courseContents) => {
         if (!courseContents) return false;
         return Object.values(courseContents).some(
-          (contents) => contents && contents.size > 0
+          (contents) => contents && contents.size > 0,
         );
-      }
+      },
     );
 
     return hasSelectedContents;
@@ -755,7 +793,7 @@ const GiftCourseModal = ({
 
   // Build access control object from selections for a specific course
   const buildAccessControl = (
-    courseId: string
+    courseId: string,
   ): PartialAccessControl | undefined => {
     if (accessType === "full") {
       return undefined; // Full access means no accessControl
@@ -778,7 +816,11 @@ const GiftCourseModal = ({
       // First, build a map of lessons to their parent modules
       (courseDetails.modules as CourseModule[]).forEach((module) => {
         const moduleId = typeof module === "string" ? module : module._id || "";
-        if (moduleId && typeof module !== "string" && Array.isArray(module.lessons)) {
+        if (
+          moduleId &&
+          typeof module !== "string" &&
+          Array.isArray(module.lessons)
+        ) {
           module.lessons.forEach((lesson) => {
             const lessonId =
               typeof lesson === "string" ? lesson : lesson._id || "";
@@ -806,8 +848,9 @@ const GiftCourseModal = ({
             if (!lessonId || typeof lesson === "string") return;
 
             // Get all contents for this lesson
-            const lessonContents =
-              Array.isArray(lesson.contents) ? lesson.contents : [];
+            const lessonContents = Array.isArray(lesson.contents)
+              ? lesson.contents
+              : [];
 
             // Sort contents by order (ascending) and take top N
             const sortedContents = lessonContents
@@ -934,7 +977,7 @@ const GiftCourseModal = ({
         if (moduleId) {
           // Check if this lesson is already in access control
           let moduleAccess = accessibleModules.find(
-            (m) => m.moduleId === moduleId
+            (m) => m.moduleId === moduleId,
           );
 
           if (!moduleAccess) {
@@ -951,7 +994,7 @@ const GiftCourseModal = ({
 
           // Check if this lesson is already in the module's lessons
           let lessonAccess = moduleAccess.accessibleLessons.find(
-            (l) => l.lessonId === lessonId
+            (l) => l.lessonId === lessonId,
           );
 
           if (!lessonAccess) {
@@ -989,13 +1032,13 @@ const GiftCourseModal = ({
 
     // Check if all selected courses have plans selected
     const coursesWithoutPlans = selectedCourses.filter(
-      (course) => !selectedPlans[course._id || ""]
+      (course) => !selectedPlans[course._id || ""],
     );
     if (coursesWithoutPlans.length > 0) {
       toast.error(
         `Please select a plan for: ${coursesWithoutPlans
           .map((c) => c.title)
-          .join(", ")}`
+          .join(", ")}`,
       );
       return;
     }
@@ -1005,7 +1048,7 @@ const GiftCourseModal = ({
       const planType = selectedPlans[course._id || ""];
       if (!course.plans || !course.plans[planType]) {
         toast.error(
-          `Selected plan (${planType}) is not available for course: ${course.title}`
+          `Selected plan (${planType}) is not available for course: ${course.title}`,
         );
         return;
       }
@@ -1029,6 +1072,13 @@ const GiftCourseModal = ({
 
         for (const userId of selectedUsers) {
           try {
+            const enrolledForUser =
+              users.find((u) => u._id === userId)?.enrolledCourseIds ?? [];
+            if (course._id && enrolledForUser.includes(course._id)) {
+              // Skip courses the user already owns; allow other courses to proceed
+              continue;
+            }
+
             const giftData = {
               userId,
               courseId: course._id!,
@@ -1055,7 +1105,7 @@ const GiftCourseModal = ({
             errors.push(
               `${course.title} → ${userName}: ${
                 error.message || "Failed to gift course"
-              }`
+              }`,
             );
           }
         }
@@ -1069,7 +1119,7 @@ const GiftCourseModal = ({
           accessInfo = "partial access";
         }
         toast.success(
-          `Successfully gifted ${selectedCourses.length} course(s) (${accessInfo}) to ${selectedUsers.length} user(s). Total: ${totalSuccessCount} gift(s) completed.`
+          `Successfully gifted ${selectedCourses.length} course(s) (${accessInfo}) to ${selectedUsers.length} user(s). Total: ${totalSuccessCount} gift(s) completed.`,
         );
       }
 
@@ -1079,7 +1129,7 @@ const GiftCourseModal = ({
             .slice(0, 5)
             .join("; ")}${
             errors.length > 5 ? ` and ${errors.length - 5} more...` : ""
-          }`
+          }`,
         );
       }
 
@@ -1123,7 +1173,7 @@ const GiftCourseModal = ({
             </div>
             <button
               onClick={handleClose}
-              className="text-white/80 hover:text-white hover:bg-white/20 rounded-lg p-1.5 transition-colors"
+              className="text-white/80 hover:text-white hover:bg-white/20 rounded-lg p-1.5 transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -1238,16 +1288,40 @@ const GiftCourseModal = ({
                       (Multiple selection allowed)
                     </span>
                   </label>
-                  {/* Course Search */}
-                  <div className="mb-3">
-                    <Input
-                      type="text"
-                      placeholder="Search courses by title..."
-                      value={courseSearch}
-                      onChange={(e) => setCourseSearch(e.target.value)}
-                      icon={<Search className="w-5 h-5 text-gray-400" />}
-                      className="w-full"
-                    />
+                  {/* Course Search + Filters */}
+                  <div className="mb-3 grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="md:col-span-2">
+                      <Input
+                        type="text"
+                        placeholder="Search courses by title..."
+                        value={courseSearch}
+                        onChange={(e) => setCourseSearch(e.target.value)}
+                        icon={<Search className="w-5 h-5 text-gray-400" />}
+                        className="w-full"
+                      />
+                    </div>
+                    <div>
+                      <Select
+                        options={[
+                          { value: "all", label: "All audiences" },
+                          {
+                            value: "college-students",
+                            label: "College students",
+                          },
+                          { value: "professionals", label: "Professionals" },
+                        ]}
+                        value={audienceFilter}
+                        onChange={(value) =>
+                          setAudienceFilter(
+                            value as
+                              | "all"
+                              | "college-students"
+                              | "professionals",
+                          )
+                        }
+                        placeholder="Audience"
+                      />
+                    </div>
                   </div>
                   {/* Select All */}
                   {courses.length > 0 && (
@@ -1263,12 +1337,16 @@ const GiftCourseModal = ({
                       />
                       <span className="text-sm font-medium text-gray-700">
                         Select all{" "}
-                        {courses.filter(
-                          (c) => c.plans && (c.plans.elite || c.plans.essential)
-                        ).length}{" "}
+                        {
+                          courses.filter(
+                            (c) =>
+                              c.plans && (c.plans.elite || c.plans.essential),
+                          ).length
+                        }{" "}
                         course
                         {courses.filter(
-                          (c) => c.plans && (c.plans.elite || c.plans.essential)
+                          (c) =>
+                            c.plans && (c.plans.elite || c.plans.essential),
                         ).length !== 1
                           ? "s"
                           : ""}{" "}
@@ -1295,7 +1373,7 @@ const GiftCourseModal = ({
                       <div className="divide-y divide-gray-100">
                         {courses.map((course) => {
                           const isSelected = selectedCourses.some(
-                            (c) => c._id === course._id
+                            (c) => c._id === course._id,
                           );
                           const elitePlan = course.plans?.elite;
                           const essentialPlan = course.plans?.essential;
@@ -1324,7 +1402,7 @@ const GiftCourseModal = ({
                                 onChange={(e) => {
                                   handleCourseToggle(
                                     course._id || "",
-                                    e.target.checked
+                                    e.target.checked,
                                   );
                                 }}
                                 className="w-5 h-5 text-orange-600 border-gray-300 rounded focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
@@ -1475,7 +1553,7 @@ const GiftCourseModal = ({
                           onChange={(value) =>
                             handlePlanSelect(
                               courseId,
-                              value as "elite" | "essential"
+                              value as "elite" | "essential",
                             )
                           }
                           placeholder="Choose a plan type"
@@ -1586,48 +1664,78 @@ const GiftCourseModal = ({
                           </div>
                         ) : (
                           <div className="divide-y divide-gray-100">
-                            {getAvailableUsers().map((user) => (
-                              <label
-                                key={user._id}
-                                className="flex items-center p-4 hover:bg-orange-50 transition-colors cursor-pointer group"
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={selectedUsers.includes(
-                                    user._id || ""
-                                  )}
-                                  onChange={(e) => {
-                                    if (e.target.checked) {
-                                      setSelectedUsers([
-                                        ...selectedUsers,
-                                        user._id || "",
-                                      ]);
-                                    } else {
-                                      setSelectedUsers(
-                                        selectedUsers.filter(
-                                          (id) => id !== user._id
-                                        )
-                                      );
-                                    }
-                                  }}
-                                  className="w-5 h-5 text-orange-600 border-gray-300 rounded focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
-                                />
-                                <div className="ml-4 flex-1">
-                                  <div className="text-sm font-semibold text-gray-900 group-hover:text-orange-700">
-                                    {user.firstName || "Unknown"}{" "}
-                                    {user.lastName || "User"}
-                                  </div>
-                                  <div className="text-sm text-gray-500">
-                                    {user.email}
-                                  </div>
-                                </div>
-                                {selectedUsers.includes(user._id || "") && (
-                                  <div className="text-orange-600">
-                                    <Check className="w-5 h-5" />
-                                  </div>
-                                )}
-                              </label>
-                            ))}
+                            {getAvailableUsers().map((user) =>
+                              (() => {
+                                const enrolledCount =
+                                  user.enrolledCourseIds?.length ?? 0;
+                                const selectedCount = selectedCourses.length;
+                                const isEnrolledInAll =
+                                  selectedCount > 0 &&
+                                  enrolledCount >= selectedCount;
+                                const isSelected = selectedUsers.includes(
+                                  user._id || "",
+                                );
+
+                                return (
+                                  <label
+                                    key={user._id}
+                                    className={`flex items-center p-4 transition-colors group ${
+                                      isEnrolledInAll
+                                        ? "opacity-50 cursor-not-allowed"
+                                        : "hover:bg-orange-50 cursor-pointer"
+                                    }`}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={isSelected}
+                                      disabled={isEnrolledInAll}
+                                      onChange={(e) => {
+                                        if (e.target.checked) {
+                                          setSelectedUsers([
+                                            ...selectedUsers,
+                                            user._id || "",
+                                          ]);
+                                        } else {
+                                          setSelectedUsers(
+                                            selectedUsers.filter(
+                                              (id) => id !== user._id,
+                                            ),
+                                          );
+                                        }
+                                      }}
+                                      className="w-5 h-5 text-orange-600 border-gray-300 rounded focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 disabled:opacity-50"
+                                    />
+                                    <div className="ml-4 flex-1">
+                                      <div className="text-sm font-semibold text-gray-900 group-hover:text-orange-700">
+                                        {user.firstName || "Unknown"}{" "}
+                                        {user.lastName || "User"}
+                                      </div>
+                                      <div className="text-sm text-gray-500">
+                                        {user.email}
+                                      </div>
+                                      {selectedCount > 0 &&
+                                        enrolledCount > 0 && (
+                                          <div className="text-xs text-orange-600 mt-1">
+                                            Enrolled in {enrolledCount}/
+                                            {selectedCount} selected
+                                          </div>
+                                        )}
+                                      {isEnrolledInAll && (
+                                        <div className="text-xs text-gray-500 mt-1">
+                                          Already enrolled in all selected
+                                          courses
+                                        </div>
+                                      )}
+                                    </div>
+                                    {isSelected && (
+                                      <div className="text-orange-600">
+                                        <Check className="w-5 h-5" />
+                                      </div>
+                                    )}
+                                  </label>
+                                );
+                              })(),
+                            )}
                             {/* Infinite scroll trigger (only when not searching) */}
                             {!debouncedUserSearch && userHasMore && (
                               <div
@@ -1802,7 +1910,10 @@ const GiftCourseModal = ({
                           className="max-w-xs"
                         />
                         <p className="text-xs text-gray-500 mt-2">
-                          Users will get access to the top {topNCount} content(s) from each lesson (sorted by order). If a lesson has fewer than {topNCount} contents, all available contents will be granted.
+                          Users will get access to the top {topNCount}{" "}
+                          content(s) from each lesson (sorted by order). If a
+                          lesson has fewer than {topNCount} contents, all
+                          available contents will be granted.
                         </p>
                       </div>
                     )}
@@ -1875,15 +1986,15 @@ const GiftCourseModal = ({
                                           typeof module === "string"
                                             ? []
                                             : Array.isArray(module.lessons)
-                                            ? module.lessons
-                                            : [];
+                                              ? module.lessons
+                                              : [];
                                         const isModuleSelected =
                                           selectedModules[courseId]?.has(
-                                            moduleId
+                                            moduleId,
                                           ) || false;
                                         const isModuleExpanded =
                                           expandedModules[courseId]?.has(
-                                            moduleId
+                                            moduleId,
                                           ) || false;
 
                                         return (
@@ -1896,7 +2007,7 @@ const GiftCourseModal = ({
                                                 onClick={() =>
                                                   toggleModuleExpansion(
                                                     courseId,
-                                                    moduleId
+                                                    moduleId,
                                                   )
                                                 }
                                                 className="mr-2 text-gray-400 hover:text-gray-600"
@@ -1913,7 +2024,7 @@ const GiftCourseModal = ({
                                                 onChange={() =>
                                                   toggleModule(
                                                     courseId,
-                                                    moduleId
+                                                    moduleId,
                                                   )
                                                 }
                                                 className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
@@ -1943,15 +2054,15 @@ const GiftCourseModal = ({
                                                         "string"
                                                           ? []
                                                           : Array.isArray(
-                                                              lesson.contents
-                                                            )
-                                                          ? lesson.contents
-                                                          : [];
+                                                                lesson.contents,
+                                                              )
+                                                            ? lesson.contents
+                                                            : [];
                                                       const isLessonSelected =
                                                         selectedLessons[
                                                           courseId
                                                         ]?.[moduleId]?.has(
-                                                          lessonId
+                                                          lessonId,
                                                         ) || false;
                                                       const isLessonExpanded =
                                                         expandedLessons[
@@ -1969,7 +2080,7 @@ const GiftCourseModal = ({
                                                               onClick={() =>
                                                                 toggleLessonExpansion(
                                                                   courseId,
-                                                                  lessonId
+                                                                  lessonId,
                                                                 )
                                                               }
                                                               className="mr-2 text-gray-400 hover:text-gray-600"
@@ -1990,7 +2101,7 @@ const GiftCourseModal = ({
                                                                 toggleLesson(
                                                                   courseId,
                                                                   moduleId,
-                                                                  lessonId
+                                                                  lessonId,
                                                                 )
                                                               }
                                                               className="w-3 h-3 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
@@ -2030,7 +2141,7 @@ const GiftCourseModal = ({
                                                                       ]?.[
                                                                         moduleId
                                                                       ]?.has(
-                                                                        lessonId
+                                                                        lessonId,
                                                                       ) ||
                                                                       false;
                                                                     // Check if this specific content is selected (when lesson is not selected)
@@ -2041,7 +2152,7 @@ const GiftCourseModal = ({
                                                                       ]?.[
                                                                         lessonId
                                                                       ]?.has(
-                                                                        contentId
+                                                                        contentId,
                                                                       ) ||
                                                                         false);
 
@@ -2064,7 +2175,7 @@ const GiftCourseModal = ({
                                                                               courseId,
                                                                               moduleId,
                                                                               lessonId,
-                                                                              contentId
+                                                                              contentId,
                                                                             )
                                                                           }
                                                                           className="w-3 h-3 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
@@ -2081,13 +2192,13 @@ const GiftCourseModal = ({
                                                                         </span>
                                                                       </label>
                                                                     );
-                                                                  }
+                                                                  },
                                                                 )}
                                                               </div>
                                                             )}
                                                         </div>
                                                       );
-                                                    }
+                                                    },
                                                   )}
                                                 </div>
                                               )}
@@ -2136,8 +2247,8 @@ const GiftCourseModal = ({
         <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-between items-center gap-3">
           <div>
             {giftStep > 1 && (
-              <Button
-                variant="outline"
+              <WhiteButton
+                glow={false}
                 onClick={() => {
                   if (giftStep === 4) {
                     setGiftStep(3);
@@ -2153,19 +2264,20 @@ const GiftCourseModal = ({
                 className="cursor-pointer"
               >
                 ← Back
-              </Button>
+              </WhiteButton>
             )}
           </div>
           <div className="flex gap-3">
-            <Button
-              variant="outline"
+            <WhiteButton
+              glow={false}
               onClick={handleClose}
               className="cursor-pointer"
             >
               Cancel
-            </Button>
+            </WhiteButton>
             {giftStep === 4 ? (
               <OrangeButton
+                glow={false}
                 onClick={handleGiftCourse}
                 disabled={
                   isGifting ||
@@ -2197,12 +2309,13 @@ const GiftCourseModal = ({
               </OrangeButton>
             ) : (
               <OrangeButton
+                glow={false}
                 onClick={() => {
                   if (
                     giftStep === 1 &&
                     selectedCourses.length > 0 &&
                     selectedCourses.every(
-                      (c) => c.plans && (c.plans.elite || c.plans.essential)
+                      (c) => c.plans && (c.plans.elite || c.plans.essential),
                     )
                   ) {
                     setGiftStep(2);
@@ -2221,13 +2334,13 @@ const GiftCourseModal = ({
                   (giftStep === 1 &&
                     (selectedCourses.length === 0 ||
                       !selectedCourses.every(
-                        (c) => c.plans && (c.plans.elite || c.plans.essential)
+                        (c) => c.plans && (c.plans.elite || c.plans.essential),
                       ))) ||
                   (giftStep === 2 &&
                     (Object.keys(selectedPlans).length !==
                       selectedCourses.length ||
                       !selectedCourses.every(
-                        (c) => selectedPlans[c._id || ""]
+                        (c) => selectedPlans[c._id || ""],
                       ))) ||
                   (giftStep === 3 && selectedUsers.length === 0)
                 }
@@ -2235,13 +2348,13 @@ const GiftCourseModal = ({
                   (giftStep === 1 &&
                     (selectedCourses.length === 0 ||
                       !selectedCourses.every(
-                        (c) => c.plans && (c.plans.elite || c.plans.essential)
+                        (c) => c.plans && (c.plans.elite || c.plans.essential),
                       ))) ||
                   (giftStep === 2 &&
                     (Object.keys(selectedPlans).length !==
                       selectedCourses.length ||
                       !selectedCourses.every(
-                        (c) => selectedPlans[c._id || ""]
+                        (c) => selectedPlans[c._id || ""],
                       ))) ||
                   (giftStep === 3 && selectedUsers.length === 0)
                     ? "cursor-not-allowed opacity-50"

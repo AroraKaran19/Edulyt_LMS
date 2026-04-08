@@ -10,6 +10,8 @@ import InstructorCompanyImagesEditor from "./InstructorCompanyImagesEditor";
 import { User, Instructor, Student } from "@/types/user";
 import { useUpload } from "@/hooks/useUpload";
 import { toast } from "react-toastify";
+import OrangeButton from "@/components/ui/buttons/OrangeButton";
+import WhiteButton from "@/components/ui/buttons/WhiteButton";
 
 interface EditUserModalProps {
   isOpen: boolean;
@@ -420,7 +422,8 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
                           </p>
                         </div>
                       </div>
-                      <button
+                      <OrangeButton
+                        glow={false}
                         type="button"
                         onClick={() => {
                           onFormDataChange((prev) => {
@@ -443,11 +446,10 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
                             };
                           });
                         }}
-                        className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-linear-to-r from-orange-500 to-orange-600 rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all duration-200 shadow-md hover:shadow-lg cursor-pointer"
                       >
                         <Plus className="w-4 h-4" />
                         Add Experience
-                      </button>
+                      </OrangeButton>
                     </div>
 
                     {((formData as any).previousExperience?.length ?? 0) ===
@@ -539,7 +541,8 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
                                         <Check className="w-3.5 h-3.5" />
                                         Experience saved
                                       </div>
-                                      <button
+                                      <OrangeButton
+                                        glow={false}
                                         type="button"
                                         onClick={() =>
                                           setSavedExperiences((prev) =>
@@ -550,7 +553,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
                                       >
                                         <Edit3 className="w-3.5 h-3.5" />
                                         Edit
-                                      </button>
+                                      </OrangeButton>
                                     </div>
                                   </div>
                                 ) : (
@@ -715,7 +718,8 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
                                       <div className="text-xs text-gray-500">
                                         Fill all fields and save
                                       </div>
-                                      <button
+                                      <OrangeButton
+                                        glow={false}
                                         type="button"
                                         onClick={() => {
                                           if (
@@ -749,7 +753,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
                                       >
                                         <Save className="w-4 h-4" />
                                         Save Experience
-                                      </button>
+                                      </OrangeButton>
                                     </div>
                                   </>
                                 )}
@@ -923,21 +927,20 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
         </div>
 
         <div className="flex justify-end gap-3 mt-6 pt-6 border-t border-gray-200">
-          <Button
-            variant="outline"
+          <WhiteButton
+            glow={false}
             onClick={onClose}
-            className="cursor-pointer"
             disabled={isUpdating}
           >
             Cancel
-          </Button>
-          <Button
+          </WhiteButton>
+          <OrangeButton
+            glow={false}
             onClick={() => onUpdate(formData)}
             disabled={isUpdating}
-            className="cursor-pointer bg-orange-500 hover:bg-orange-600 text-white"
           >
             {isUpdating ? "Updating..." : "Update User"}
-          </Button>
+          </OrangeButton>
         </div>
       </div>
     </div>

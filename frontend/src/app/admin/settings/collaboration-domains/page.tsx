@@ -10,6 +10,7 @@ import CollaborationDomainModal from "@/components/ui/modals/CollaborationDomain
 import { toast } from "react-toastify";
 import CollaborationDomainsToolbar from "./components/CollaborationDomainsToolbar";
 import CollaborationDomainsTable from "./components/CollaborationDomainsTable";
+import OrangeButton from "@/components/ui/buttons/OrangeButton";
 
 const LIMIT = 20;
 
@@ -169,9 +170,9 @@ const CollaborationDomainsPage = () => {
           </p>
           <div className="flex items-center gap-2">
             <WhiteButton
+              glow={false}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page <= 1}
-              className="gap-1"
             >
               <ChevronLeft className="size-4" />
               Previous
@@ -179,14 +180,14 @@ const CollaborationDomainsPage = () => {
             <span className="text-sm text-gray-600 px-2">
               Page {page} of {totalPages}
             </span>
-            <WhiteButton
+            <OrangeButton
+              glow={false}
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page >= totalPages}
-              className="gap-1"
             >
               Next
               <ChevronRight className="size-4" />
-            </WhiteButton>
+            </OrangeButton>
           </div>
         </div>
       )}

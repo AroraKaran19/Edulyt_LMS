@@ -650,7 +650,12 @@ const CartForm = ({
                           required
                           placeholder="Search and select your college"
                           value={watch("collegeName")}
-                          onChange={(value) => setValue("collegeName", value)}
+                          onChange={(value) =>
+                            setValue("collegeName", value, {
+                              shouldValidate: true,
+                              shouldDirty: true,
+                            })
+                          }
                           error={errors.collegeName?.message}
                         />
                         <div className="flex flex-col gap-2">

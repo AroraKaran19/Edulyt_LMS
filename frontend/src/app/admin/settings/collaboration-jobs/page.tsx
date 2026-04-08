@@ -6,10 +6,15 @@ import Container from "@/app/admin/components/ui/Container";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import apiClient from "@/configs/apiConfig";
 import { toast } from "react-toastify";
-import type { CollaborationJobRow, JobStatus, JobsResponse } from "./components/types";
+import type {
+  CollaborationJobRow,
+  JobStatus,
+  JobsResponse,
+} from "./components/types";
 import { CollaborationJobsFilters } from "./components/CollaborationJobsFilters";
 import { CollaborationJobsTable } from "./components/CollaborationJobsTable";
 import { CollaborationJobDetailModal } from "./components/CollaborationJobDetailModal";
+import OrangeButton from "@/components/ui/buttons/OrangeButton";
 
 const CollaborationJobsPage = () => {
   const [jobs, setJobs] = useState<CollaborationJobRow[]>([]);
@@ -41,7 +46,7 @@ const CollaborationJobsPage = () => {
       if (searchQuery) params.set("search", searchQuery);
 
       const response = await apiClient.get<{ data: JobsResponse }>(
-        `/admin/collaboration-jobs?${params.toString()}`
+        `/admin/collaboration-jobs?${params.toString()}`,
       );
       const data = response.data?.data;
       if (data) {
@@ -195,9 +200,9 @@ const CollaborationJobsPage = () => {
           </p>
           <div className="flex items-center gap-2">
             <WhiteButton
+              glow={false}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page <= 1}
-              className="gap-1"
             >
               <ChevronLeft className="size-4" />
               Previous
@@ -205,14 +210,14 @@ const CollaborationJobsPage = () => {
             <span className="text-sm text-gray-600 px-2">
               Page {page} of {totalPages}
             </span>
-            <WhiteButton
+            <OrangeButton
+              glow={false}
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page >= totalPages}
-              className="gap-1"
             >
               Next
               <ChevronRight className="size-4" />
-            </WhiteButton>
+            </OrangeButton>
           </div>
         </div>
       )}

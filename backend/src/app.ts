@@ -27,6 +27,7 @@ import {
   couponRoutes,
   collaborationDomainRoutes,
   instructorDashboardRoutes,
+  collegeRoutes,
 } from "./routes";
 
 dotenv.config();
@@ -73,6 +74,7 @@ app.use("/api/certificates", certificateRoutes);
 app.use("/api/coupons", couponRoutes);
 app.use("/api/collaboration-domains", collaborationDomainRoutes);
 app.use("/api/instructor", instructorDashboardRoutes);
+app.use("/api/colleges", collegeRoutes);
 
 app.use(notFoundHandler); // Handle 404 errors
 app.use(errorHandler); // Handle all other errors

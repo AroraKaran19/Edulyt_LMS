@@ -5,6 +5,11 @@ export interface CollaborationDomainSnapshot {
   domain: string;
 }
 
+export interface CollaborationUserSnapshot {
+  name: string;
+  email: string;
+}
+
 export interface CollaborationJobRow {
   _id?: string;
   jobId: string;
@@ -19,6 +24,7 @@ export interface CollaborationJobRow {
   updatedAt?: string;
   userName?: string;
   userEmail?: string;
+  userSnapshot?: CollaborationUserSnapshot | null;
   domainTitle?: string;
   domainEmail?: string;
   collaborationDomainSnapshot?: CollaborationDomainSnapshot | null;

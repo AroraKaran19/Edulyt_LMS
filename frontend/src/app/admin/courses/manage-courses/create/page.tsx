@@ -21,6 +21,7 @@ import Screen11 from "../components/shared/Screen11";
 import Screen12 from "../components/shared/Screen12";
 import Screen13 from "../components/shared/Screen13";
 import StorageIndicator from "@/components/admin/courseForm/StorageIndicator";
+import OrangeButton from "@/components/ui/buttons/OrangeButton";
 
 const CreateCoursePageContent = () => {
   const router = useRouter();
@@ -127,6 +128,7 @@ const CreateCoursePageContent = () => {
       </div>
       <div className="flex justify-between items-center h-fit p-4">
         <WhiteButton
+          glow={false}
           className="flex gap-2 items-center"
           onClick={handlePrevious}
           disabled={isCreating}
@@ -134,7 +136,8 @@ const CreateCoursePageContent = () => {
           <ArrowLeftIcon className="size-4" />{" "}
           {currentScreen === 1 ? "Back to Courses" : "Previous"}
         </WhiteButton>
-        <WhiteButton
+        <OrangeButton
+          glow={false}
           className="flex gap-2 items-center"
           onClick={handleNext}
           disabled={!canGoNext || isCreating || isUpdating}
@@ -167,7 +170,7 @@ const CreateCoursePageContent = () => {
               <ArrowRightIcon className="size-4" />
             </>
           )}
-        </WhiteButton>
+        </OrangeButton>
       </div>
       <StorageIndicator mode="create" />
     </div>

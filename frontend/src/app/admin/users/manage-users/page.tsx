@@ -31,6 +31,7 @@ import {
   validatePassword,
   getPasswordRequirementsText,
 } from "@/lib/passwordValidation";
+import WhiteButton from "@/components/ui/buttons/WhiteButton";
 
 const ManageUsersPage = () => {
   const { data: session } = useSession();
@@ -288,7 +289,9 @@ const ManageUsersPage = () => {
 
   const handleToggleAccountActive = async (user: User) => {
     if (!user._id) return;
-    const sessionUser = session?.user as { _id?: string; id?: string } | undefined;
+    const sessionUser = session?.user as
+      | { _id?: string; id?: string }
+      | undefined;
     const currentAdminId = sessionUser?._id ?? sessionUser?.id;
     if (currentAdminId && user._id === currentAdminId) {
       toast.error("You cannot disable your own account");
@@ -567,8 +570,9 @@ const ManageUsersPage = () => {
           <div className="flex items-center gap-3 lg:ml-6 lg:pl-6 lg:border-l lg:border-gray-200 lg:shrink-0">
             {/* Gift Course Button */}
             <OrangeButton
+              glow={false}
+              className="flex items-center gap-2"
               onClick={handleOpenGiftModal}
-              className="flex items-center justify-center gap-2 cursor-pointer px-4 py-2.5 h-11 transition-all duration-200 hover:shadow-md hover:scale-[1.02] active:scale-[0.98] shadow-sm"
             >
               <Gift className="w-4 h-4" />
               <span className="font-medium hidden sm:inline">Gift Course</span>
@@ -576,8 +580,9 @@ const ManageUsersPage = () => {
             </OrangeButton>
             {/* Trial Course Button */}
             <OrangeButton
+              glow={false}
+              className="flex items-center gap-2"
               onClick={handleOpenTrialModal}
-              className="flex items-center justify-center gap-2 cursor-pointer bg-blue-600 hover:bg-blue-700 px-4 py-2.5 h-11 transition-all duration-200 hover:shadow-md hover:scale-[1.02] active:scale-[0.98] shadow-sm"
             >
               <Clock className="w-4 h-4" />
               <span className="font-medium hidden sm:inline">Give Trial</span>
@@ -682,7 +687,16 @@ const ManageUsersPage = () => {
                       </div>
                     </td>
                     <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
-                      ₹{(user as User & { totalSpend?: number }).totalSpend?.toLocaleString("en-IN") ?? 0}
+                      {user.userType === "student" ? (
+                        <>
+                          ₹
+                          {(
+                            user as User & { totalSpend?: number }
+                          ).totalSpend?.toLocaleString("en-IN") ?? 0}
+                        </>
+                      ) : (
+                        <span className="text-gray-400 font-normal">N/A</span>
+                      )}
                     </td>
                     <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
                       <span
@@ -823,35 +837,24 @@ const ManageUsersPage = () => {
                 </p>
               </div>
               <div>
-                <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px items-center gap-4">
-                  <Button
-                    variant="outline"
+                <nav className="relative z-0 inline-flex -space-x-px items-center gap-4">
+                  <WhiteButton
                     onClick={() =>
                       setCurrentPage((prev) => Math.max(prev - 1, 1))
                     }
                     disabled={currentPage === 1}
-                    className={`rounded-l-md ${
-                      currentPage === 1
-                        ? "cursor-not-allowed"
-                        : "cursor-pointer"
-                    }`}
                   >
                     Previous
-                  </Button>
-                  <Button
-                    variant="outline"
+                  </WhiteButton>
+                  <OrangeButton
+                    glow={false}
                     onClick={() =>
                       setCurrentPage((prev) => Math.min(prev + 1, totalPages))
                     }
                     disabled={currentPage === totalPages}
-                    className={`rounded-r-md ${
-                      currentPage === totalPages
-                        ? "cursor-not-allowed"
-                        : "cursor-pointer"
-                    }`}
                   >
                     Next
-                  </Button>
+                  </OrangeButton>
                 </nav>
               </div>
             </div>

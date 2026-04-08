@@ -41,6 +41,34 @@ export interface GetUsersResult {
   totalPages: number;
 }
 
+export interface GetAdminUserOptionsParams {
+  page: number;
+  limit: number;
+  search?: string;
+  /** Comma-separated email list (exact match), used for Excel import */
+  emails?: string[];
+  userType?: string;
+  status?: string;
+  /** Exclude users enrolled in any of these course IDs (gift modal) */
+  excludeEnrolledInCourseIds?: string[];
+  /** Add alreadyEnrolledInSelected to each user (trial modal) */
+  enrollmentStatusForCourseIds?: string[];
+}
+
+export interface GetAdminUserOptionsResult {
+  users: Array<{
+    _id: string;
+    firstName?: string;
+    lastName?: string;
+    email: string;
+    /** Only includes courseIds from enrollmentStatusForCourseIds */
+    enrolledCourseIds?: string[];
+  }>;
+  total: number;
+  page: number;
+  totalPages: number;
+}
+
 export const getUsersService = async (
   params: GetUsersParams,
 ): Promise<GetUsersResult> => {
@@ -147,6 +175,125 @@ export const getUsersService = async (
 
   return {
     users: resultUsers,
+    total,
+    page,
+    totalPages,
+  };
+};
+
+/**
+ * Lightweight user picker for admin modals (trial/gift).
+ * Returns only id + name + email (+ alreadyEnrolledInSelected when requested).
+ * Avoids heavy selects/aggregations (orders, etc).
+ */
+export const getAdminUserOptionsService = async (
+  params: GetAdminUserOptionsParams,
+): Promise<GetAdminUserOptionsResult> => {
+  const {
+    page,
+    limit,
+    search,
+    emails,
+    userType,
+    status,
+    excludeEnrolledInCourseIds,
+    enrollmentStatusForCourseIds,
+  } = params;
+
+  const skip = (page - 1) * limit;
+  let filters: any = {};
+
+  if (emails?.length) {
+    const cleaned = emails
+      .map((e) => String(e).trim().toLowerCase())
+      .filter(Boolean);
+    if (cleaned.length > 0) {
+      filters.email = { $in: cleaned };
+    }
+  }
+
+  if (search) {
+    filters.$or = [
+      { firstName: { $regex: search, $options: "i" } },
+      { lastName: { $regex: search, $options: "i" } },
+      { email: { $regex: search, $options: "i" } },
+    ];
+  }
+
+  if (userType && userType !== "all") {
+    filters.userType = userType;
+  }
+
+  if (status && status !== "all") {
+    filters.status = status;
+  }
+
+  // Exclude users already enrolled in any of the given courses (gift modal)
+  if (
+    excludeEnrolledInCourseIds?.length &&
+    excludeEnrolledInCourseIds.every((id) => mongoose.Types.ObjectId.isValid(id))
+  ) {
+    const enrolledUserIds = await EnrollmentModel.distinct("userId", {
+      courseId: { $in: excludeEnrolledInCourseIds },
+      status: { $in: ["active", "completed", "paused"] },
+    });
+    filters._id = { $nin: enrolledUserIds };
+  }
+
+  const raw = await UserModel.find(filters)
+    .select({ _id: 1, firstName: 1, lastName: 1, email: 1 })
+    .skip(skip)
+    .limit(limit)
+    .sort({ createdAt: -1 })
+    .lean();
+
+  const total = await UserModel.countDocuments(filters);
+  const totalPages = Math.ceil(total / limit);
+
+  let users = (raw ?? []).map((u) => ({
+    _id: String((u as any)._id),
+    firstName: (u as any).firstName,
+    lastName: (u as any).lastName,
+    email: String((u as any).email ?? ""),
+  })) as GetAdminUserOptionsResult["users"];
+
+  // Add enrollment status for trial modal
+  if (
+    enrollmentStatusForCourseIds?.length &&
+    enrollmentStatusForCourseIds.every((id) => mongoose.Types.ObjectId.isValid(id)) &&
+    users.length > 0
+  ) {
+    const userIds = users
+      .map((u) => u._id)
+      .filter((id) => mongoose.Types.ObjectId.isValid(id))
+      .map((id) => new mongoose.Types.ObjectId(id));
+
+    const enrolledPairs = await EnrollmentModel.find({
+      userId: { $in: userIds },
+      courseId: { $in: enrollmentStatusForCourseIds },
+      status: { $in: ["active", "completed", "paused"] },
+    })
+      .select({ userId: 1, courseId: 1, _id: 0 })
+      .lean();
+
+    const byUser = new Map<string, Set<string>>();
+    for (const row of enrolledPairs ?? []) {
+      const uid = String((row as any).userId);
+      const cid = String((row as any).courseId);
+      if (!uid || !cid) continue;
+      const set = byUser.get(uid) ?? new Set<string>();
+      set.add(cid);
+      byUser.set(uid, set);
+    }
+
+    users = users.map((u) => ({
+      ...u,
+      enrolledCourseIds: Array.from(byUser.get(String(u._id)) ?? []),
+    }));
+  }
+
+  return {
+    users,
     total,
     page,
     totalPages,

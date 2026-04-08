@@ -14,6 +14,8 @@ import {
 import Error from "@/components/ui/Error";
 import Loader from "@/components/ui/Loader";
 import Link from "next/link";
+import WhiteButton from "@/components/ui/buttons/WhiteButton";
+import OrangeButton from "@/components/ui/buttons/OrangeButton";
 
 // Function to detect and highlight links in text
 const renderTextWithLinks = (text: string) => {
@@ -70,11 +72,11 @@ const LiveClassesPage = () => {
   // The admin stores time as HH:mm in IST, so we display it directly
   const convertToUserTimezone = (
     date: Date | string,
-    time: string
+    time: string,
   ): { dateTime: Date; formatted: string } => {
     const dateObj = typeof date === "string" ? new Date(date) : date;
     const [hours, minutes] = time.split(":").map(Number);
-    
+
     // Create date object and set hours/minutes directly (treating as IST/local time)
     const localDateTime = new Date(dateObj);
     localDateTime.setHours(hours, minutes, 0, 0);
@@ -194,7 +196,8 @@ const LiveClassesPage = () => {
           </Link>
           <h1 className="text-3xl font-bold text-gray-900">Live Classes</h1>
           <p className="text-gray-600 mt-2">
-            View all scheduled and ongoing live classes for your enrolled courses
+            View all scheduled and ongoing live classes for your enrolled
+            courses
           </p>
         </div>
 
@@ -206,7 +209,8 @@ const LiveClassesPage = () => {
               No Live Classes Available
             </h3>
             <p className="text-gray-600">
-              You don't have any scheduled or ongoing live classes at the moment.
+              You don't have any scheduled or ongoing live classes at the
+              moment.
             </p>
           </div>
         ) : (
@@ -216,11 +220,11 @@ const LiveClassesPage = () => {
                 const status = getLiveClassStatus(liveClass);
                 const startInfo = convertToUserTimezone(
                   liveClass.startDate,
-                  liveClass.startTime
+                  liveClass.startTime,
                 );
                 const endInfo = convertToUserTimezone(
                   liveClass.endDate,
-                  liveClass.endTime
+                  liveClass.endTime,
                 );
                 const courseData = course(liveClass);
                 const instructorData = instructor(liveClass);
@@ -285,7 +289,7 @@ const LiveClassesPage = () => {
                       </div>
 
                       {liveClass.imageUrl && (
-                        <div className="w-32 h-32 rounded-lg overflow-hidden flex-shrink-0">
+                        <div className="w-32 h-32 rounded-lg overflow-hidden shrink-0">
                           <img
                             src={liveClass.imageUrl}
                             alt={liveClass.title}
@@ -302,25 +306,27 @@ const LiveClassesPage = () => {
             {/* Pagination */}
             {totalPages > 1 && (
               <div className="flex items-center justify-center gap-2 mt-6">
-                <button
-                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                <WhiteButton
+                  glow={false}
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.max(1, prev - 1))
+                  }
                   disabled={currentPage === 1}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Previous
-                </button>
+                </WhiteButton>
                 <span className="px-4 py-2 text-sm text-gray-700">
                   Page {currentPage} of {totalPages}
                 </span>
-                <button
+                <OrangeButton
+                  glow={false}
                   onClick={() =>
                     setCurrentPage((prev) => Math.min(totalPages, prev + 1))
                   }
                   disabled={currentPage === totalPages}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Next
-                </button>
+                </OrangeButton>
               </div>
             )}
           </>
@@ -331,4 +337,3 @@ const LiveClassesPage = () => {
 };
 
 export default LiveClassesPage;
-

@@ -1,12 +1,17 @@
 import { useState, useCallback } from "react";
 import apiClient from "@/configs/apiConfig";
 import { Course } from "@/types/course";
+import type {
+  AdminCourseOptionsResponse,
+  CourseFilters,
+} from "@/hooks/useCourse";
 
 export interface GetCoursesParams {
   page?: number;
   limit?: number;
   search?: string;
   category?: string;
+  audience?: "college-students" | "professionals";
   isActive?: boolean;
   isFeatured?: boolean;
 }
@@ -25,7 +30,7 @@ const useCourseManagement = () => {
   const handleRequest = useCallback(
     async <T>(
       requestFn: () => Promise<T>,
-      errorMessage: string
+      errorMessage: string,
     ): Promise<T | null> => {
       setIsLoading(true);
       setError(null);
@@ -41,43 +46,68 @@ const useCourseManagement = () => {
         setIsLoading(false);
       }
     },
-    []
+    [],
   );
 
   const getCourses = useCallback(
     async (params: GetCoursesParams = {}): Promise<GetCoursesResult | null> => {
-      return handleRequest(
-        async () => {
-          const queryParams = new URLSearchParams();
-          if (params.page) queryParams.append("page", params.page.toString());
-          if (params.limit) queryParams.append("limit", params.limit.toString());
-          if (params.search) queryParams.append("search", params.search);
-          if (params.category) queryParams.append("category", params.category);
-          if (params.isActive !== undefined) queryParams.append("isActive", params.isActive.toString());
-          if (params.isFeatured !== undefined) queryParams.append("isFeatured", params.isFeatured.toString());
+      return handleRequest(async () => {
+        const queryParams = new URLSearchParams();
+        if (params.page) queryParams.append("page", params.page.toString());
+        if (params.limit) queryParams.append("limit", params.limit.toString());
+        if (params.search) queryParams.append("search", params.search);
+        if (params.category) queryParams.append("category", params.category);
+        if (params.audience) queryParams.append("audience", params.audience);
+        if (params.isActive !== undefined)
+          queryParams.append("isActive", params.isActive.toString());
+        if (params.isFeatured !== undefined)
+          queryParams.append("isFeatured", params.isFeatured.toString());
 
-          const response = await apiClient.get(
-            `/courses/admin?${queryParams.toString()}`
-          );
-          return response.data.data;
-        },
-        "Failed to fetch courses"
-      );
+        const response = await apiClient.get(
+          `/courses/admin?${queryParams.toString()}`,
+        );
+        return response.data.data;
+      }, "Failed to fetch courses");
     },
-    [handleRequest]
+    [handleRequest],
   );
 
   const getCourseById = useCallback(
     async (courseId: string): Promise<Course | null> => {
-      return handleRequest(
-        async () => {
-          const response = await apiClient.get(`/courses/admin/id/${courseId}`);
-          return response.data.data;
-        },
-        "Failed to fetch course"
-      );
+      return handleRequest(async () => {
+        const response = await apiClient.get(`/courses/admin/id/${courseId}`);
+        return response.data.data;
+      }, "Failed to fetch course");
     },
-    [handleRequest]
+    [handleRequest],
+  );
+
+  const getAdminCourseOptions = useCallback(
+    async (
+      filters: CourseFilters = {},
+    ): Promise<AdminCourseOptionsResponse | null> => {
+      return handleRequest(async () => {
+        const params = new URLSearchParams();
+        if (filters.page) params.append("page", filters.page.toString());
+        if (filters.limit) params.append("limit", filters.limit.toString());
+        if (filters.search) params.append("search", filters.search);
+        if (filters.searchTitleOnly) params.append("searchTitleOnly", "true");
+        if (filters.categories) params.append("categories", filters.categories);
+        if (filters.instructors)
+          params.append("instructors", filters.instructors);
+        if (filters.audience) params.append("audience", filters.audience);
+        if (filters.isActive !== undefined)
+          params.append("isActive", filters.isActive.toString());
+        if (filters.sortBy) params.append("sortBy", filters.sortBy);
+        if (filters.sortOrder) params.append("sortOrder", filters.sortOrder);
+
+        const response = await apiClient.get(
+          `/courses/admin/options?${params.toString()}`,
+        );
+        return response.data.data;
+      }, "Failed to fetch admin course options");
+    },
+    [handleRequest],
   );
 
   return {
@@ -88,6 +118,7 @@ const useCourseManagement = () => {
     // Actions
     getCourses,
     getCourseById,
+    getAdminCourseOptions,
   };
 };
 

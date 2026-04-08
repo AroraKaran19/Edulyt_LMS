@@ -209,7 +209,8 @@ const EditCoursePageContent = ({ courseId }: { courseId: string }) => {
           <ArrowLeftIcon className="size-4" />{" "}
           {currentScreen === 1 ? "Back to Courses" : "Previous"}
         </WhiteButton>
-        <WhiteButton
+        <OrangeButton
+          glow={false}
           className="flex gap-2 items-center"
           onClick={handleNext}
           disabled={isCourseDataLoading || !canGoNext || isUpdating}
@@ -235,7 +236,7 @@ const EditCoursePageContent = ({ courseId }: { courseId: string }) => {
               <ArrowRightIcon className="size-4" />
             </>
           )}
-        </WhiteButton>
+        </OrangeButton>
       </div>
       <StorageIndicator mode="edit" courseId={courseId} />
     </div>

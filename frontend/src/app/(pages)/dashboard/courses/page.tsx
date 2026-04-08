@@ -7,6 +7,8 @@ import { cn } from "@/lib/utils";
 import useUserEnrollments from "@/hooks/useUserEnrollments";
 import { Enrollment } from "@/types/enrollment";
 import CourseCard from "./components/CourseCard";
+import WhiteButton from "@/components/ui/buttons/WhiteButton";
+import OrangeButton from "@/components/ui/buttons/OrangeButton";
 
 const tabs = [
   { label: "All" },
@@ -64,10 +66,10 @@ const CoursesPage = () => {
       activeTab === "All"
         ? undefined
         : activeTab === "In Progress"
-        ? "active"
-        : activeTab === "Completed"
-        ? "completed"
-        : undefined;
+          ? "active"
+          : activeTab === "Completed"
+            ? "completed"
+            : undefined;
 
     // For "Newly bought" tab, fetch all enrollments to filter client-side
     // For other tabs, use normal pagination
@@ -94,7 +96,7 @@ const CoursesPage = () => {
       let filteredEnrollments = result.enrollments;
       if (activeTab === "Newly bought") {
         filteredEnrollments = result.enrollments.filter(
-          (enrollment) => enrollment.enrollmentSource === "direct"
+          (enrollment) => enrollment.enrollmentSource === "direct",
         );
 
         // Client-side pagination for filtered results
@@ -107,7 +109,7 @@ const CoursesPage = () => {
       // Recalculate pagination for filtered results
       if (activeTab === "Newly bought") {
         const allDirectEnrollments = result.enrollments.filter(
-          (enrollment) => enrollment.enrollmentSource === "direct"
+          (enrollment) => enrollment.enrollmentSource === "direct",
         );
         const filteredTotal = allDirectEnrollments.length;
         const filteredTotalPages = Math.ceil(filteredTotal / 12);
@@ -164,7 +166,7 @@ const CoursesPage = () => {
         }
       });
     },
-    []
+    [],
   );
 
   // Handle sort selection
@@ -173,7 +175,7 @@ const CoursesPage = () => {
       setSelectedSort(sort);
       setIsSortOpen(false);
     },
-    []
+    [],
   );
 
   // Handle sort dropdown toggle
@@ -308,7 +310,7 @@ const CoursesPage = () => {
                         <ChevronDown
                           className={cn(
                             "size-5 transition-transform duration-200",
-                            isSortOpen ? "rotate-180" : ""
+                            isSortOpen ? "rotate-180" : "",
                           )}
                         />
                       </button>
@@ -328,7 +330,7 @@ const CoursesPage = () => {
                                     "flex items-center justify-center w-6 h-6 rounded-full border-2 transition-colors duration-200",
                                     selectedSort.value === sort.value
                                       ? "bg-orange-100 border-orange-600"
-                                      : "bg-gray-100 border-gray-300 group-hover:border-orange-300"
+                                      : "bg-gray-100 border-gray-300 group-hover:border-orange-300",
                                   )}
                                 >
                                   {selectedSort.value === sort.value && (
@@ -382,8 +384,14 @@ const CoursesPage = () => {
                 title={emptyStateConfig.title}
                 description={emptyStateConfig.description}
                 buttonText={emptyStateConfig.buttonText}
-                href={"href" in emptyStateConfig ? emptyStateConfig.href : undefined}
-                onClick={"onClick" in emptyStateConfig ? emptyStateConfig.onClick : undefined}
+                href={
+                  "href" in emptyStateConfig ? emptyStateConfig.href : undefined
+                }
+                onClick={
+                  "onClick" in emptyStateConfig
+                    ? emptyStateConfig.onClick
+                    : undefined
+                }
               />
             </div>
           ) : (
@@ -414,20 +422,15 @@ const CoursesPage = () => {
             !isSearching &&
             !(isSearchActive && !hasEnrollments) && (
               <div className="flex items-center justify-center gap-2 mt-8">
-                <button
+                <WhiteButton
+                  glow={false}
                   onClick={() =>
                     setCurrentPage((prev) => Math.max(prev - 1, 1))
                   }
                   disabled={currentPage === 1}
-                  className={cn(
-                    "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
-                    currentPage === 1
-                      ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                      : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 cursor-pointer"
-                  )}
                 >
                   Previous
-                </button>
+                </WhiteButton>
                 <div className="flex items-center gap-1">
                   {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
                     let pageNum;
@@ -441,35 +444,25 @@ const CoursesPage = () => {
                       pageNum = currentPage - 2 + i;
                     }
                     return (
-                      <button
+                      <WhiteButton
+                        glow={false}
                         key={pageNum}
                         onClick={() => setCurrentPage(pageNum)}
-                        className={cn(
-                          "px-3 py-2 rounded-lg text-sm font-medium transition-colors min-w-[40px]",
-                          currentPage === pageNum
-                            ? "bg-orange-500 text-white"
-                            : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 cursor-pointer"
-                        )}
                       >
                         {pageNum}
-                      </button>
+                      </WhiteButton>
                     );
                   })}
                 </div>
-                <button
+                <OrangeButton
+                  glow={false}
                   onClick={() =>
                     setCurrentPage((prev) => Math.min(prev + 1, totalPages))
                   }
                   disabled={currentPage === totalPages}
-                  className={cn(
-                    "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
-                    currentPage === totalPages
-                      ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                      : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 cursor-pointer"
-                  )}
                 >
                   Next
-                </button>
+                </OrangeButton>
               </div>
             )}
         </>

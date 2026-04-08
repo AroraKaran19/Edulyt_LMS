@@ -91,6 +91,7 @@ const SidebarMenuItem = ({
           handleSubmenuToggle(menuItem);
           onNavigate?.();
         }}
+        draggable={false}
         title={isCollapsed ? menuItem.label : undefined}
       >
         <div className="flex admin-sidebar-menu-item w-full gap-2 items-center">

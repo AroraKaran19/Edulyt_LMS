@@ -6,7 +6,8 @@ import EmptyState from "../components/applications/EmptyState";
 import { Download, Search, FileX, Loader2 } from "lucide-react";
 import ImageComponent from "@/components/ui/ImageComponent";
 import useCertificates from "@/hooks/useCertificates";
-import { cn } from "@/lib/utils";
+import WhiteButton from "@/components/ui/buttons/WhiteButton";
+import OrangeButton from "@/components/ui/buttons/OrangeButton";
 
 const CertificatesPage = () => {
   const [activeTab, setActiveTab] = useState("All");
@@ -162,68 +163,68 @@ const CertificatesPage = () => {
                 {/* Results Grid */}
                 <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4 md:gap-5 lg:gap-6">
                   {certificates.map((certificate, index: number) => (
-                  // certificate card
-                  <div
-                    key={`${index}`}
-                    className="bg-white border border-[#0000001F] rounded-xl flex flex-col justify-between p-3 sm:p-4 w-full shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-                    onClick={() =>
-                      handleCertificateClick(certificate?._id || "")
-                    }
-                  >
-                    <div>
-                      <div className="relative w-full h-24 xs:h-28 sm:h-32 md:h-36 rounded-xl overflow-hidden mb-2 sm:mb-3 pt-2 sm:pt-4 px-2 sm:px-3 border border-[#00000017]">
-                        <ImageComponent
-                          src={
-                            (typeof certificate.courseId === "object" &&
-                              certificate.courseId?.thumbnail) ||
-                            "/certificates-user-icon.svg"
-                          }
-                          alt={
-                            (typeof certificate.courseId === "object" &&
-                              certificate.courseId?.title) ||
-                            certificate.courseName ||
-                            "certificate"
-                          }
-                          width={259}
-                          height={188}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <div className="font-extrabold text-xs sm:text-sm mb-2 text-black line-clamp-2 leading-tight">
-                        {(typeof certificate.courseId === "object" &&
-                          certificate.courseId?.title) ||
-                          certificate.courseName}
-                      </div>
-                      <div className="text-xs text-gray-600 mb-2">
-                        Issued:{" "}
-                        {new Date(certificate.issuedAt).toLocaleDateString()}
-                      </div>
-                    </div>
-
-                    <button
-                      type="button"
-                      className="flex justify-center items-center gap-1 sm:gap-2 mt-2 sm:mt-3 bg-white border border-[#00000021] text-[#656565] rounded-lg px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-xs font-bold hover:bg-gray-100 transition cursor-pointer shadow-[0px_-3px_3.7px_0px_#0146E721_inset] disabled:opacity-50 disabled:cursor-not-allowed"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (certificate.fileUrl) {
-                          downloadCertificate(certificate);
-                        }
-                      }}
-                      disabled={!certificate.fileUrl}
-                      title={
-                        certificate.fileUrl
-                          ? "Download certificate"
-                          : "Certificate file not available"
+                    // certificate card
+                    <div
+                      key={`${index}`}
+                      className="bg-white border border-[#0000001F] rounded-xl flex flex-col justify-between p-3 sm:p-4 w-full shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                      onClick={() =>
+                        handleCertificateClick(certificate?._id || "")
                       }
                     >
-                      <Download size={14} className="sm:w-4 sm:h-4" />
-                      <span className="hidden sm:inline">
-                        Download certificate
-                      </span>
-                      <span className="sm:hidden">Download</span>
-                    </button>
-                  </div>
-                ))}
+                      <div>
+                        <div className="relative w-full h-24 xs:h-28 sm:h-32 md:h-36 rounded-xl overflow-hidden mb-2 sm:mb-3 pt-2 sm:pt-4 px-2 sm:px-3 border border-[#00000017]">
+                          <ImageComponent
+                            src={
+                              (typeof certificate.courseId === "object" &&
+                                certificate.courseId?.thumbnail) ||
+                              "/certificates-user-icon.svg"
+                            }
+                            alt={
+                              (typeof certificate.courseId === "object" &&
+                                certificate.courseId?.title) ||
+                              certificate.courseName ||
+                              "certificate"
+                            }
+                            width={259}
+                            height={188}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <div className="font-extrabold text-xs sm:text-sm mb-2 text-black line-clamp-2 leading-tight">
+                          {(typeof certificate.courseId === "object" &&
+                            certificate.courseId?.title) ||
+                            certificate.courseName}
+                        </div>
+                        <div className="text-xs text-gray-600 mb-2">
+                          Issued:{" "}
+                          {new Date(certificate.issuedAt).toLocaleDateString()}
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        className="flex justify-center items-center gap-1 sm:gap-2 mt-2 sm:mt-3 bg-white border border-[#00000021] text-[#656565] rounded-lg px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-xs font-bold hover:bg-gray-100 transition cursor-pointer shadow-[0px_-3px_3.7px_0px_#0146E721_inset] disabled:opacity-50 disabled:cursor-not-allowed"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (certificate.fileUrl) {
+                            downloadCertificate(certificate);
+                          }
+                        }}
+                        disabled={!certificate.fileUrl}
+                        title={
+                          certificate.fileUrl
+                            ? "Download certificate"
+                            : "Certificate file not available"
+                        }
+                      >
+                        <Download size={14} className="sm:w-4 sm:h-4" />
+                        <span className="hidden sm:inline">
+                          Download certificate
+                        </span>
+                        <span className="sm:hidden">Download</span>
+                      </button>
+                    </div>
+                  ))}
                 </div>
 
                 {/* Pagination */}
@@ -231,21 +232,15 @@ const CertificatesPage = () => {
                   !isSearching &&
                   !(isSearchActive && !hasSearchResults) && (
                     <div className="flex items-center justify-center gap-2 mt-8">
-                      <button
-                        type="button"
+                      <WhiteButton
+                        glow={false}
                         onClick={() =>
                           setCurrentPage((prev) => Math.max(prev - 1, 1))
                         }
                         disabled={currentPage === 1}
-                        className={cn(
-                          "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
-                          currentPage === 1
-                            ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                            : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 cursor-pointer"
-                        )}
                       >
                         Previous
-                      </button>
+                      </WhiteButton>
                       <div className="flex items-center gap-1">
                         {Array.from(
                           { length: Math.min(totalPages, 5) },
@@ -261,40 +256,28 @@ const CertificatesPage = () => {
                               pageNum = currentPage - 2 + i;
                             }
                             return (
-                              <button
-                                key={pageNum}
-                                type="button"
+                              <WhiteButton
+                                glow={false}
                                 onClick={() => setCurrentPage(pageNum)}
-                                className={cn(
-                                  "px-3 py-2 rounded-lg text-sm font-medium transition-colors min-w-[40px]",
-                                  currentPage === pageNum
-                                    ? "bg-orange-500 text-white"
-                                    : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 cursor-pointer"
-                                )}
+                                key={pageNum}
                               >
                                 {pageNum}
-                              </button>
+                              </WhiteButton>
                             );
-                          }
+                          },
                         )}
                       </div>
-                      <button
-                        type="button"
+                      <OrangeButton
+                        glow={false}
                         onClick={() =>
                           setCurrentPage((prev) =>
-                            Math.min(prev + 1, totalPages)
+                            Math.min(prev + 1, totalPages),
                           )
                         }
                         disabled={currentPage === totalPages}
-                        className={cn(
-                          "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
-                          currentPage === totalPages
-                            ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                            : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 cursor-pointer"
-                        )}
                       >
                         Next
-                      </button>
+                      </OrangeButton>
                     </div>
                   )}
               </>

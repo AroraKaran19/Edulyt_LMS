@@ -274,15 +274,9 @@ enrollmentSchema.index({ "completedContents.contentId": 1 }); // Index for query
 enrollmentSchema.index({ isTrial: 1, trialExpiresAt: 1 }); // Index for trial enrollments
 enrollmentSchema.index({ isTrial: 1, validUntil: 1 }); // Index for non-trial enrollment validity
 
-// TTL index - automatically delete trial enrollments when trialExpiresAt time is reached
-// MongoDB will delete the document when the trialExpiresAt date/time passes
-enrollmentSchema.index(
-  { trialExpiresAt: 1 },
-  {
-    expireAfterSeconds: 0,
-    partialFilterExpression: { isTrial: true }, // Only apply TTL to trial enrollments
-  }
-);
+// NOTE: We intentionally do NOT use a TTL index for trial enrollments.
+// Trial enrollments should remain in the database after `trialExpiresAt` so we can
+// keep audit/history; access checks should use `trialExpiresAt` to treat them as expired.
 
 // Pre-save hook to set expiration dates for enrollments
 enrollmentSchema.pre("save", function (next) {

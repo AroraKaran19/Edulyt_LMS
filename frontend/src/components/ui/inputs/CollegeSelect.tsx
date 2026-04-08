@@ -1,105 +1,40 @@
-import React, {
-  useState,
-  useRef,
-  useEffect,
-  useMemo,
-  useCallback,
-} from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
+import axios from "axios";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { cn } from "@/lib/utils";
 import { ChevronDown, ChevronUp, Search } from "lucide-react";
+import apiClient from "@/configs/apiConfig";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700", "800"],
 });
 
-interface College {
-  "Name of the college": string;
-  State: string;
+const PAGE_SIZE = 50;
+
+export interface CollegeOption {
+  _id: string;
+  name: string;
+  location: string;
 }
 
-// Virtualized list component for better performance
-const VirtualizedCollegeList = React.memo(
-  ({
-    colleges,
-    onSelect,
-    selectedValue,
-  }: {
-    colleges: College[];
-    onSelect: (college: College) => void;
-    selectedValue?: string;
-  }) => {
-    const [visibleRange, setVisibleRange] = useState({ start: 0, end: 20 });
-    const containerRef = useRef<HTMLDivElement>(null);
-    const itemHeight = 60; // Approximate height of each item
+interface ListCollegesResponse {
+  colleges: CollegeOption[];
+  total: number;
+  page: number;
+  totalPages: number;
+}
 
-    const handleScroll = useCallback(
-      (e: React.UIEvent<HTMLDivElement>) => {
-        const scrollTop = e.currentTarget.scrollTop;
-        const start = Math.floor(scrollTop / itemHeight);
-        const end = Math.min(start + 20, colleges.length); // Show 20 items at a time
+interface ApiSuccessBody<T> {
+  success: boolean;
+  data: T;
+  message?: string;
+}
 
-        setVisibleRange({ start, end });
-      },
-      [colleges.length, itemHeight]
-    );
+const formatCollegeValue = (c: CollegeOption) => `${c.name}, ${c.location}`;
 
-    const visibleColleges = colleges.slice(
-      visibleRange.start,
-      visibleRange.end
-    );
-    const totalHeight = colleges.length * itemHeight;
-
-    return (
-      <div
-        ref={containerRef}
-        className="relative"
-        style={{ height: Math.min(totalHeight, 240) }}
-        onScroll={handleScroll}
-      >
-        <div className="relative">
-          <div
-            style={{
-              transform: `translateY(${visibleRange.start * itemHeight}px)`,
-              position: "absolute",
-              top: 0,
-              left: 0,
-              right: 0,
-            }}
-          >
-            {visibleColleges.map((college, index) => (
-              <button
-                key={`${college["Name of the college"]}-${
-                  visibleRange.start + index
-                }`}
-                type="button"
-                onClick={() => onSelect(college)}
-                className={cn(
-                  "w-full px-4 py-3 text-left text-sm hover:bg-orange-50",
-                  "transition-colors duration-150 ease-in-out",
-                  "focus:bg-orange-50 focus:outline-none",
-                  "border-b border-gray-100 last:border-b-0",
-                  selectedValue ===
-                    `${college["Name of the college"]}, ${college["State"]}` &&
-                    "bg-orange-100 text-orange-700 font-medium"
-                )}
-                style={{ height: itemHeight }}
-              >
-                <div className="font-medium text-gray-900 truncate">
-                  {college["Name of the college"]}
-                </div>
-                <div className="text-xs text-gray-500 mt-1 truncate">
-                  {college["State"]}
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
-);
+const isCanceled = (err: unknown) =>
+  axios.isAxiosError(err) && err.code === "ERR_CANCELED";
 
 interface CollegeSelectProps {
   label?: string;
@@ -126,90 +61,135 @@ const CollegeSelect = ({
 }: CollegeSelectProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [colleges, setColleges] = useState<College[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [searchDebounce, setSearchDebounce] = useState("");
+  const [items, setItems] = useState<CollegeOption[]>([]);
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [loadingInitial, setLoadingInitial] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [listError, setListError] = useState<string | null>(null);
+
   const dropdownRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
+  const scrollRootRef = useRef<HTMLDivElement>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const searchDebounceRef = useRef(searchDebounce);
+  searchDebounceRef.current = searchDebounce;
 
-  // Debounce search term to avoid excessive filtering
   useEffect(() => {
     const timer = setTimeout(() => {
       setSearchDebounce(searchTerm);
     }, 300);
-
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // Load colleges data with caching
-  useEffect(() => {
-    const loadColleges = async () => {
-      try {
-        // Check if data is already cached
-        const cachedData = sessionStorage.getItem("colleges-data");
-        if (cachedData) {
-          const data = JSON.parse(cachedData);
-          setColleges(data);
-          setIsLoading(false);
-          return;
-        }
-
-        const response = await fetch("/colleges.json");
-        const data = await response.json();
-
-        // Cache the data for future use
-        sessionStorage.setItem("colleges-data", JSON.stringify(data));
-
-        setColleges(data);
-        setIsLoading(false);
-      } catch (error) {
-        console.error("Failed to load colleges:", error);
-        setIsLoading(false);
-      }
-    };
-
-    loadColleges();
-  }, []);
-
-  // Memoized filtered colleges with performance optimizations
-  const filteredColleges = useMemo(() => {
-    if (!searchDebounce.trim()) {
-      // Return first 50 colleges when no search term
-      return colleges.slice(0, 50);
-    }
-
-    const searchLower = searchDebounce.toLowerCase();
-    const filtered = colleges.filter((college) => {
-      const collegeName = college["Name of the college"].toLowerCase();
-      const state = college["State"].toLowerCase();
-
-      // More efficient search - check if search term is at the beginning first
-      return (
-        collegeName.startsWith(searchLower) ||
-        collegeName.includes(searchLower) ||
-        state.includes(searchLower)
+  const fetchPage = useCallback(
+    async (
+      pageNum: number,
+      search: string,
+      signal: AbortSignal,
+    ): Promise<ListCollegesResponse> => {
+      const params = new URLSearchParams();
+      params.set("page", String(pageNum));
+      params.set("limit", String(PAGE_SIZE));
+      if (search.trim()) params.set("search", search.trim());
+      const res = await apiClient.get<ApiSuccessBody<ListCollegesResponse>>(
+        `/colleges?${params.toString()}`,
+        { signal, timeout: 30000 },
       );
-    });
+      return res.data.data;
+    },
+    [],
+  );
 
-    // Sort by relevance (exact matches first, then partial matches)
-    return filtered
-      .sort((a, b) => {
-        const aName = a["Name of the college"].toLowerCase();
-        const bName = b["Name of the college"].toLowerCase();
+  /** Load first page when dropdown opens or search changes */
+  useEffect(() => {
+    if (!isOpen) return;
 
-        // Prioritize exact matches
-        if (aName.startsWith(searchLower) && !bName.startsWith(searchLower))
-          return -1;
-        if (!aName.startsWith(searchLower) && bName.startsWith(searchLower))
-          return 1;
+    abortRef.current?.abort();
+    const ac = new AbortController();
+    abortRef.current = ac;
 
-        // Then alphabetical order
-        return aName.localeCompare(bName);
-      })
-      .slice(0, 100); // Limit to 100 results for performance
-  }, [colleges, searchDebounce]);
+    setLoadingInitial(true);
+    setListError(null);
+    setItems([]);
+    setPage(0);
+    setTotalPages(0);
 
-  // Close dropdown when clicking outside
+    void (async () => {
+      try {
+        const data = await fetchPage(1, searchDebounce, ac.signal);
+        setItems(data.colleges);
+        setPage(data.page);
+        setTotalPages(data.totalPages);
+      } catch (e) {
+        if (isCanceled(e)) return;
+        console.error("Failed to load colleges:", e);
+        setListError("Could not load colleges. Try again.");
+      } finally {
+        setLoadingInitial(false);
+      }
+    })();
+
+    return () => {
+      ac.abort();
+    };
+  }, [isOpen, searchDebounce, fetchPage]);
+
+  const loadMore = useCallback(async () => {
+    if (loadingInitial || loadingMore || page <= 0) return;
+    if (page >= totalPages) return;
+
+    const nextPage = page + 1;
+    const ac = new AbortController();
+    setLoadingMore(true);
+    setListError(null);
+    try {
+      const data = await fetchPage(
+        nextPage,
+        searchDebounceRef.current,
+        ac.signal,
+      );
+      setItems((prev) => {
+        const seen = new Set(prev.map((c) => c._id));
+        const next = [...prev];
+        for (const c of data.colleges) {
+          if (!seen.has(c._id)) {
+            seen.add(c._id);
+            next.push(c);
+          }
+        }
+        return next;
+      });
+      setPage(data.page);
+    } catch (e) {
+      if (isCanceled(e)) return;
+      console.error("Failed to load more colleges:", e);
+      setListError("Could not load more.");
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingInitial, loadingMore, page, totalPages, fetchPage]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const root = scrollRootRef.current;
+    const target = sentinelRef.current;
+    if (!root || !target) return;
+
+    const obs = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          void loadMore();
+        }
+      },
+      { root, rootMargin: "120px", threshold: 0 },
+    );
+    obs.observe(target);
+    return () => obs.disconnect();
+  }, [isOpen, items.length, loadMore, page, totalPages, loadingInitial]);
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -227,45 +207,49 @@ const CollegeSelect = ({
     };
   }, []);
 
-  // Focus search input when dropdown opens
   useEffect(() => {
     if (isOpen && searchRef.current) {
       searchRef.current.focus();
     }
   }, [isOpen]);
 
-  const selectedCollege = colleges.find(
-    (college) =>
-      `${college["Name of the college"]}, ${college["State"]}` === value
-  );
+  const selectedCollege = items.find((c) => formatCollegeValue(c) === value);
 
   const displayValue = selectedCollege
-    ? `${selectedCollege["Name of the college"]}, ${selectedCollege["State"]}`
+    ? formatCollegeValue(selectedCollege)
     : value && value.trim().length > 0
       ? value
       : placeholder;
 
   const handleCollegeSelect = useCallback(
-    (college: College) => {
-      const collegeValue = `${college["Name of the college"]}, ${college["State"]}`;
+    (college: CollegeOption) => {
+      const collegeValue = formatCollegeValue(college);
       setIsOpen(false);
       setSearchTerm("");
-      if (onChange) {
-        onChange(collegeValue);
-      }
+      onChange?.(collegeValue);
     },
-    [onChange]
+    [onChange],
   );
 
-  const handleCustomCollegeSelect = useCallback(() => {
-    const customValue = searchDebounce.trim();
+  const applyCustomCollege = useCallback(() => {
+    const customValue = searchTerm.trim();
     if (!customValue) return;
     setIsOpen(false);
     setSearchTerm("");
-    if (onChange) {
-      onChange(customValue);
-    }
-  }, [onChange, searchDebounce]);
+    onChange?.(customValue);
+  }, [onChange, searchTerm]);
+
+  const showEmptyHint =
+    !loadingInitial &&
+    items.length === 0 &&
+    !listError &&
+    !searchDebounce.trim();
+
+  const showNoResults =
+    !loadingInitial &&
+    items.length === 0 &&
+    !listError &&
+    searchDebounce.trim().length > 0;
 
   return (
     <div
@@ -273,21 +257,17 @@ const CollegeSelect = ({
         plusJakartaSans.className,
         "text-sm relative",
         "w-full",
-        className
+        className,
       )}
     >
       {label && (
         <label
-          className={cn(
-            "font-medium text-black mb-2 block",
-            labelClassName
-          )}
+          className={cn("font-medium text-black mb-2 block", labelClassName)}
         >
           {label} {required && <span className="text-red-500">*</span>}
         </label>
       )}
 
-      {/* Custom Dropdown Container */}
       <div className="relative" ref={dropdownRef}>
         <button
           type="button"
@@ -301,14 +281,16 @@ const CollegeSelect = ({
             "disabled:opacity-50 disabled:cursor-not-allowed",
             "shadow-sm hover:shadow-md",
             isOpen && "border-orange-500 ring-2 ring-orange-500/20",
-            error && "border-red-500"
+            error && "border-red-500",
           )}
           disabled={disabled}
         >
           <span
             className={cn(
               "text-sm truncate",
-              !selectedCollege ? "text-gray-500" : "text-black"
+              !selectedCollege && !value?.trim()
+                ? "text-gray-500"
+                : "text-black",
             )}
           >
             {displayValue}
@@ -322,15 +304,13 @@ const CollegeSelect = ({
           </div>
         </button>
 
-        {/* Dropdown Options */}
         {isOpen && (
           <div
-            className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-80 overflow-hidden"
+            className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-[min(85vh,28rem)] overflow-hidden"
             style={{
               animation: "fadeIn 0.2s ease-out",
             }}
           >
-            {/* Search Input */}
             <div className="p-3 border-b border-gray-200">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -345,41 +325,101 @@ const CollegeSelect = ({
               </div>
             </div>
 
-            {/* College List with Virtualization */}
-            <div className="max-h-60 overflow-y-auto">
-              {isLoading ? (
+            <div ref={scrollRootRef} className="max-h-52 overflow-y-auto">
+              {loadingInitial && (
                 <div className="p-4 text-center text-gray-500">
                   Loading colleges...
                 </div>
-              ) : filteredColleges.length === 0 ? (
-                <div className="p-4 flex flex-col items-center justify-center gap-3 text-center text-gray-500">
-                  {searchDebounce.trim() ? (
-                    <>
-                      <p className="text-sm">
-                        No colleges found for{" "}
-                        <span className="font-semibold">
-                          &quot;{searchDebounce}&quot;
-                        </span>
-                      </p>
-                      <button
-                        type="button"
-                        onClick={handleCustomCollegeSelect}
-                        className="mt-1 inline-flex items-center justify-center rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors duration-150 hover:bg-orange-600"
-                      >
-                        Use this as my college
-                      </button>
-                    </>
-                  ) : (
-                    <p className="text-sm">Start typing to search colleges</p>
-                  )}
-                </div>
-              ) : (
-                <VirtualizedCollegeList
-                  colleges={filteredColleges}
-                  onSelect={handleCollegeSelect}
-                  selectedValue={value}
-                />
               )}
+
+              {listError && (
+                <div className="p-4 text-center text-sm text-red-600">
+                  {listError}
+                </div>
+              )}
+
+              {showEmptyHint && (
+                <div className="p-4 text-center text-gray-500 text-sm">
+                  No colleges loaded yet. Try a search, or enter your college
+                  name in the box above and use &quot;Use this name as my
+                  college&quot; at the bottom.
+                </div>
+              )}
+
+              {showNoResults && (
+                <div className="p-4 text-center text-gray-500 text-sm">
+                  No directory match for{" "}
+                  <span className="font-semibold">
+                    &quot;{searchDebounce}&quot;
+                  </span>
+                  . You can still save it using the button below.
+                </div>
+              )}
+
+              {!loadingInitial &&
+                items.map((college) => {
+                  const v = formatCollegeValue(college);
+                  return (
+                    <button
+                      key={college._id}
+                      type="button"
+                      onClick={() => handleCollegeSelect(college)}
+                      className={cn(
+                        "w-full px-4 py-3 text-left text-sm hover:bg-orange-50",
+                        "transition-colors duration-150 ease-in-out",
+                        "focus:bg-orange-50 focus:outline-none",
+                        "border-b border-gray-100 last:border-b-0",
+                        value === v &&
+                          "bg-orange-100 text-orange-700 font-medium",
+                      )}
+                    >
+                      <div className="font-medium text-gray-900 truncate">
+                        {college.name}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1 truncate">
+                        {college.location}
+                      </div>
+                    </button>
+                  );
+                })}
+
+              {items.length > 0 && page < totalPages && (
+                <>
+                  <div
+                    ref={sentinelRef}
+                    className="h-px w-full shrink-0"
+                    aria-hidden
+                  />
+                  {loadingMore && (
+                    <div className="py-3 text-center text-xs text-gray-500">
+                      Loading more…
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            <div className="border-t border-gray-200 bg-gray-50 px-3 py-2.5 space-y-2">
+              <p className="text-xs text-gray-600 leading-snug">
+                College not in the list? Type your full college name in the
+                search field, then confirm here — it will be saved as you
+                entered it.
+              </p>
+              <button
+                type="button"
+                onClick={applyCustomCollege}
+                disabled={!searchTerm.trim()}
+                className={cn(
+                  "w-full rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors",
+                  searchTerm.trim()
+                    ? "bg-orange-500 text-white shadow-sm hover:bg-orange-600"
+                    : "cursor-not-allowed bg-gray-200 text-gray-500",
+                )}
+              >
+                {searchTerm.trim()
+                  ? `Use "${searchTerm.trim().length > 48 ? `${searchTerm.trim().slice(0, 45)}…` : searchTerm.trim()}" as my college`
+                  : "Type a name above to use a custom college"}
+              </button>
             </div>
           </div>
         )}

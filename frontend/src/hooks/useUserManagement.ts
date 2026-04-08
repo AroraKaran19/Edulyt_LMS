@@ -8,6 +8,7 @@ export interface GetUsersParams {
   page?: number;
   limit?: number;
   search?: string;
+  emails?: string[];
   userType?: "student" | "instructor" | "admin" | "super-admin";
   status?: "active" | "inactive" | "blocked";
   /** Exclude users enrolled in any of these course IDs */
@@ -18,6 +19,22 @@ export interface GetUsersParams {
 
 export interface GetUsersResult {
   users: (User & { alreadyEnrolledInSelected?: boolean })[];
+  total: number;
+  page: number;
+  totalPages: number;
+}
+
+export interface AdminUserOption {
+  _id: string;
+  firstName?: string;
+  lastName?: string;
+  email: string;
+  /** Only includes courseIds from enrollmentStatusForCourseIds */
+  enrolledCourseIds?: string[];
+}
+
+export interface GetUserOptionsResult {
+  users: AdminUserOption[];
   total: number;
   page: number;
   totalPages: number;
@@ -93,6 +110,43 @@ const useUserManagement = () => {
           return response.data.data;
         },
         "Failed to fetch users"
+      );
+    },
+    [handleRequest]
+  );
+
+  const getUserOptions = useCallback(
+    async (params: GetUsersParams = {}): Promise<GetUserOptionsResult | null> => {
+      return handleRequest(
+        async () => {
+          const queryParams = new URLSearchParams();
+          if (params.page) queryParams.append("page", params.page.toString());
+          if (params.limit) queryParams.append("limit", params.limit.toString());
+          if (params.search) queryParams.append("search", params.search);
+          if (params.emails?.length) {
+            queryParams.append("emails", params.emails.join(","));
+          }
+          if (params.userType) queryParams.append("userType", params.userType);
+          if (params.status) queryParams.append("status", params.status);
+          if (params.excludeEnrolledInCourseIds?.length) {
+            queryParams.append(
+              "excludeEnrolledInCourseIds",
+              params.excludeEnrolledInCourseIds.join(",")
+            );
+          }
+          if (params.enrollmentStatusForCourseIds?.length) {
+            queryParams.append(
+              "enrollmentStatusForCourseIds",
+              params.enrollmentStatusForCourseIds.join(",")
+            );
+          }
+
+          const response = await apiClient.get(
+            `/users/admin/options?${queryParams.toString()}`
+          );
+          return response.data.data;
+        },
+        "Failed to fetch user options"
       );
     },
     [handleRequest]
@@ -361,6 +415,7 @@ const useUserManagement = () => {
 
     // Actions
     getUsers,
+    getUserOptions,
     getUserById,
     updateUserStatus,
     updateUser,

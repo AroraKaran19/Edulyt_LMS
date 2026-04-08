@@ -17,6 +17,7 @@ import Select from "@/components/ui/inputs/Select";
 import { toast } from "react-toastify";
 import EnrollmentDetailsModal from "./EnrollmentDetailsModal";
 import RevokeConfirmationModal from "./RevokeConfirmationModal";
+import OrangeButton from "@/components/ui/buttons/OrangeButton";
 
 interface EnrollmentUser {
   firstName?: string;
@@ -78,7 +79,7 @@ const EnrollmentsPage = () => {
   };
 
   const handleRevokeConfirm = async (
-    enrollment?: Pick<EnrollmentItem, "_id">
+    enrollment?: Pick<EnrollmentItem, "_id">,
   ) => {
     const target = enrollment ?? enrollmentToRevoke;
     if (!target?._id) {
@@ -210,9 +211,7 @@ const EnrollmentsPage = () => {
   };
 
   const hasActiveFilters =
-    debouncedSearch ||
-    enrollmentType !== "all" ||
-    enrollmentStatus !== "all";
+    debouncedSearch || enrollmentType !== "all" || enrollmentStatus !== "all";
 
   const showExpiryColumn =
     enrollmentType === "trial" || enrollmentType === "all";
@@ -374,7 +373,7 @@ const EnrollmentsPage = () => {
                     <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
                       <span
                         className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full border capitalize ${getStatusColor(
-                          item.status
+                          item.status,
                         )}`}
                       >
                         {item.status}
@@ -423,17 +422,17 @@ const EnrollmentsPage = () => {
               <WhiteButton
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page <= 1}
-                className="py-2 px-4 text-sm"
+                glow={false}
               >
                 Previous
               </WhiteButton>
-              <WhiteButton
+              <OrangeButton
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page >= totalPages}
-                className="py-2 px-4 text-sm"
+                glow={false}
               >
                 Next
-              </WhiteButton>
+              </OrangeButton>
             </div>
           </div>
         )}

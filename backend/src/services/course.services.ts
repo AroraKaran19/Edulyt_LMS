@@ -337,7 +337,11 @@ export const getAdminCourseOptionsService = async (options: {
   sortOrder?: "asc" | "desc";
   searchTitleOnly?: boolean;
 }): Promise<{
-  courses: Array<{ _id: string; title: string }>;
+  courses: Array<{
+    _id: string;
+    title: string;
+    plans?: Course["plans"];
+  }>;
   total: number;
   page: number;
   totalPages: number;
@@ -369,16 +373,26 @@ export const getAdminCourseOptionsService = async (options: {
   const dir = sortOrder === "asc" ? 1 : -1;
 
   const raw = await CourseModel.find(filters)
-    .select({ _id: 1, title: 1 })
+    .select({ _id: 1, title: 1, plans: 1 })
     .sort({ [sortBy]: dir })
     .skip(skip)
     .limit(limit)
     .lean();
 
-  const courses = (raw ?? []).map((c) => ({
-    _id: String((c as { _id: unknown })._id),
-    title: String((c as { title: unknown }).title ?? ""),
-  }));
+  const courses = (raw ?? []).map((c) => {
+    const doc = c as {
+      _id: unknown;
+      title: unknown;
+      plans?: Course["plans"];
+    };
+    return {
+      _id: String(doc._id),
+      title: String(doc.title ?? ""),
+      ...(doc.plans !== undefined && doc.plans !== null
+        ? { plans: doc.plans }
+        : {}),
+    };
+  });
 
   return {
     courses,

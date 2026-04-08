@@ -32,7 +32,7 @@ const CouponsPage = () => {
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [filterActive, setFilterActive] = useState<boolean | undefined>(
-    undefined
+    undefined,
   );
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -142,7 +142,7 @@ const CouponsPage = () => {
 
   // Calculate stats
   const activeCoupons = coupons.filter(
-    (c) => c.isActive && !isExpired(c.validUntil)
+    (c) => c.isActive && !isExpired(c.validUntil),
   ).length;
   const expiredCoupons = coupons.filter((c) => isExpired(c.validUntil)).length;
 
@@ -270,8 +270,8 @@ const CouponsPage = () => {
                     filterActive === undefined
                       ? "all"
                       : filterActive
-                      ? "active"
-                      : "inactive"
+                        ? "active"
+                        : "inactive"
                   }
                   onChange={(e) => {
                     const value = e.target.value;
@@ -279,8 +279,8 @@ const CouponsPage = () => {
                       value === "all"
                         ? undefined
                         : value === "active"
-                        ? true
-                        : false
+                          ? true
+                          : false,
                     );
                     setPage(1);
                   }}
@@ -435,15 +435,15 @@ const CouponsPage = () => {
                         isExpired(coupon.validUntil)
                           ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                           : coupon.isActive
-                          ? "bg-yellow-50 text-yellow-700 hover:bg-yellow-100 border border-yellow-200"
-                          : "bg-green-50 text-green-700 hover:bg-green-100 border border-green-200"
+                            ? "bg-yellow-50 text-yellow-700 hover:bg-yellow-100 border border-yellow-200"
+                            : "bg-green-50 text-green-700 hover:bg-green-100 border border-green-200"
                       }`}
                       title={
                         isExpired(coupon.validUntil)
                           ? "Cannot modify expired coupon"
                           : coupon.isActive
-                          ? "Pause Coupon"
-                          : "Activate Coupon"
+                            ? "Pause Coupon"
+                            : "Activate Coupon"
                       }
                     >
                       {coupon.isActive ? (
@@ -496,7 +496,7 @@ const CouponsPage = () => {
                 <WhiteButton
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page === 1}
-                  className="disabled:opacity-50 disabled:cursor-not-allowed"
+                  glow={false}
                 >
                   Previous
                 </WhiteButton>
@@ -516,28 +516,24 @@ const CouponsPage = () => {
                     }
 
                     return (
-                      <button
+                      <WhiteButton
                         key={pageNum}
                         onClick={() => setPage(pageNum)}
-                        className={`w-10 h-10 rounded-lg font-medium text-sm transition-all ${
-                          page === pageNum
-                            ? "bg-orange-500 text-white shadow-md"
-                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                        }`}
+                        glow={false}
                       >
                         {pageNum}
-                      </button>
+                      </WhiteButton>
                     );
                   })}
                 </div>
 
-                <WhiteButton
+                <OrangeButton
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   disabled={page === totalPages}
-                  className="disabled:opacity-50 disabled:cursor-not-allowed"
+                  glow={false}
                 >
                   Next
-                </WhiteButton>
+                </OrangeButton>
               </div>
             </div>
           </div>

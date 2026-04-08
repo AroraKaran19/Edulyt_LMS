@@ -37,6 +37,8 @@ export interface CourseResponse {
 export interface AdminCourseOption {
   _id: string;
   title: string;
+  /** Included for admin pickers (trials, gifts, collaborations) without loading full course documents */
+  plans?: Course["plans"];
 }
 
 export interface AdminCourseOptionsResponse {

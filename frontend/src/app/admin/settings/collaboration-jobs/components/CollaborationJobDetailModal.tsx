@@ -106,13 +106,13 @@ export function CollaborationJobDetailModal({
               )}
               <CopyIdRow
                 label="User name"
-                value={job.userName?.trim() || null}
+                value={job.userName?.trim() || job.userSnapshot?.name?.trim() || null}
                 copyLabel="User name"
                 onCopy={onCopyLabel}
               />
               <CopyIdRow
                 label="User email"
-                value={job.userEmail?.trim() || null}
+                value={job.userEmail?.trim() || job.userSnapshot?.email?.trim() || null}
                 copyLabel="User email"
                 onCopy={onCopyLabel}
               />

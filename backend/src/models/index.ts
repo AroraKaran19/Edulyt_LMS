@@ -28,6 +28,7 @@ import AuthenticationMediaModel from "./authentication-media.schema";
 import { CouponModel } from "./coupon.schema";
 import { CollaborationDomainModel } from "./collaborationDomain.schema";
 import { CollaborationJobModel } from "./collaborationJob.schema";
+import { CollegeModel } from "./college.schema";
 
 export {
   UserModel,
@@ -58,4 +59,5 @@ export {
   CouponModel,
   CollaborationDomainModel,
   CollaborationJobModel,
+  CollegeModel,
 };

@@ -5,6 +5,7 @@ import { Plus } from "lucide-react";
 import { toast } from "react-toastify";
 import UploadMediaContainer from "@/components/ui/container/UploadMediaContainer";
 import { useUpload } from "@/hooks/useUpload";
+import OrangeButton from "@/components/ui/buttons/OrangeButton";
 
 const MAX_IMAGES = 12;
 
@@ -183,24 +184,25 @@ const InstructorCompanyImagesEditor = ({
             Company images
           </h4>
           <p className="text-xs text-gray-500">
-            Logos or photos of companies the instructor is associated with (optional,
-            max {MAX_IMAGES}).
+            Logos or photos of companies the instructor is associated with
+            (optional, max {MAX_IMAGES}).
           </p>
         </div>
-        <button
+        <OrangeButton
+          glow={false}
           type="button"
           onClick={addSlot}
           disabled={disabled || slots.length >= MAX_IMAGES}
-          className="inline-flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-white bg-orange-500 rounded-lg hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Plus className="w-4 h-4" />
-          Add image
-        </button>
+          Add Image
+        </OrangeButton>
       </div>
 
       {slots.length === 0 ? (
         <p className="text-sm text-gray-500 border border-dashed border-gray-200 rounded-lg p-6 text-center">
-          No company images yet. Click &quot;Add image&quot; to upload or paste a URL.
+          No company images yet. Click &quot;Add image&quot; to upload or paste
+          a URL.
         </p>
       ) : (
         <div className="space-y-6">

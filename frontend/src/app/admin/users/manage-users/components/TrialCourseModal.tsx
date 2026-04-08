@@ -1,20 +1,17 @@
 "use client";
 import { useState, useEffect, useRef, useCallback } from "react";
-import {
-  Clock,
-  X,
-  Check,
-  User as UserIcon,
-  Search,
-} from "lucide-react";
+import { Clock, X, Check, User as UserIcon, Search } from "lucide-react";
 import { Button } from "@/components/ui/buttons/button";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import Input from "@/components/ui/inputs/Input";
+import Select from "@/components/ui/inputs/Select";
 import { Course } from "@/types/course";
-import { User } from "@/types/user";
+import type { AdminUserOption } from "@/hooks/useUserManagement";
 import { toast } from "react-toastify";
 import useUserManagement, { TrialCourseData } from "@/hooks/useUserManagement";
 import useCourseManagement from "@/hooks/useCourseManagement";
+import * as XLSX from "xlsx";
+import WhiteButton from "@/components/ui/buttons/WhiteButton";
 
 interface TrialCourseModalProps {
   isOpen: boolean;
@@ -39,28 +36,135 @@ const TrialCourseModal = ({
   const [isLoadingCourses, setIsLoadingCourses] = useState(false);
   const [courseSearch, setCourseSearch] = useState("");
   const [debouncedCourseSearch, setDebouncedCourseSearch] = useState("");
+  const [audienceFilter, setAudienceFilter] = useState<
+    "all" | "college-students" | "professionals"
+  >("all");
   const coursesScrollRef = useRef<HTMLDivElement>(null);
   const coursesObserverTarget = useRef<HTMLDivElement>(null);
   const selectAllCheckboxRef = useRef<HTMLInputElement>(null);
   const lastCourseSearchRef = useRef<string>("");
+  const lastAudienceFilterRef = useRef<string>("");
   const isLoadingCoursesRef = useRef(false);
 
   // User search and infinite scroll state
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<AdminUserOption[]>([]);
   const [userSearch, setUserSearch] = useState("");
   const [debouncedUserSearch, setDebouncedUserSearch] = useState("");
   const [userCurrentPage, setUserCurrentPage] = useState(1);
   const [userHasMore, setUserHasMore] = useState(true);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+  const [importSummary, setImportSummary] = useState<{
+    selected: number;
+    notFound: string[];
+    skippedEnrolledAll: string[];
+  } | null>(null);
   const usersScrollRef = useRef<HTMLDivElement>(null);
   const usersObserverTarget = useRef<HTMLDivElement>(null);
   const isLoadingUsersRef = useRef(false);
   const lastSearchRef = useRef<string>("");
+  const lastSelectedCourseIdsRef = useRef<string>("");
+  const userImportInputRef = useRef<HTMLInputElement>(null);
 
-  const { createTrialEnrollment, isLoading, getUsers } = useUserManagement();
-  const { getCourses } = useCourseManagement();
+  const { createTrialEnrollment, isLoading, getUserOptions } =
+    useUserManagement();
+  const { getAdminCourseOptions } = useCourseManagement();
 
-  // Fetch courses with pagination and search
+  const parseEmailsFromFile = async (file: File): Promise<string[]> => {
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type: "array" });
+    const ws = wb.Sheets[wb.SheetNames[0] || ""];
+    if (!ws) return [];
+
+    // Expect a column named "email" (case-insensitive). Also allow files with only one column of emails.
+    const rows = XLSX.utils.sheet_to_json<Record<string, any>>(ws, {
+      defval: "",
+      raw: false,
+    });
+
+    const emails: string[] = [];
+    for (const row of rows) {
+      const keys = Object.keys(row || {});
+      const emailKey = keys.find((k) => k.trim().toLowerCase() === "email");
+      const value =
+        emailKey !== undefined
+          ? row[emailKey]
+          : keys.length === 1
+            ? row[keys[0]]
+            : "";
+      const email = String(value || "")
+        .trim()
+        .toLowerCase();
+      if (email && email.includes("@")) emails.push(email);
+    }
+
+    return Array.from(new Set(emails));
+  };
+
+  const handleImportUsers = async (file: File) => {
+    try {
+      setImportSummary(null);
+      const emails = await parseEmailsFromFile(file);
+      if (emails.length === 0) {
+        toast.error('No emails found. Use a column named "email".');
+        return;
+      }
+
+      const selectedCourseIds = selectedCourses
+        .map((c) => c._id)
+        .filter((id): id is string => !!id);
+
+      const res = await getUserOptions({
+        page: 1,
+        limit: Math.min(500, emails.length),
+        emails,
+        userType: "student",
+        enrollmentStatusForCourseIds: selectedCourseIds,
+      });
+
+      const found = res?.users ?? [];
+      const foundEmailSet = new Set(found.map((u) => u.email?.toLowerCase()));
+      const notFound = emails.filter((e) => !foundEmailSet.has(e));
+
+      // Merge imported users into visible list so admin can see them
+      setUsers((prev) => {
+        const byId = new Map<string, AdminUserOption>();
+        prev.forEach((u) => u._id && byId.set(u._id, u));
+        found.forEach((u) => u._id && byId.set(u._id, u));
+        return Array.from(byId.values());
+      });
+
+      const skippedEnrolledAll: string[] = [];
+      const toSelect: string[] = [];
+      for (const u of found) {
+        const enrolledCount = u.enrolledCourseIds?.length ?? 0;
+        const selectedCount = selectedCourseIds.length;
+        const enrolledAll = selectedCount > 0 && enrolledCount >= selectedCount;
+        if (enrolledAll) {
+          skippedEnrolledAll.push(u.email);
+        } else if (u._id) {
+          toSelect.push(u._id);
+        }
+      }
+
+      setSelectedUsers((prev) => Array.from(new Set([...prev, ...toSelect])));
+      setImportSummary({
+        selected: toSelect.length,
+        notFound,
+        skippedEnrolledAll,
+      });
+
+      toast.success(
+        `Imported ${emails.length} email(s): selected ${toSelect.length}, not found ${notFound.length}.`,
+      );
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to import file. Please upload a valid .xlsx/.csv.");
+    } finally {
+      if (userImportInputRef.current) userImportInputRef.current.value = "";
+    }
+  };
+
+  // Fetch courses via lightweight admin options API (includes plans for eligibility)
   const fetchCourses = useCallback(
     async (page: number, append: boolean = false, search?: string) => {
       // Prevent duplicate calls
@@ -69,19 +173,31 @@ const TrialCourseModal = ({
       isLoadingCoursesRef.current = true;
       setIsLoadingCourses(true);
       try {
-        const limit = search ? 100 : 20; // 100 limit when searching, 20 for pagination
-        const result = await getCourses({
+        const limit = search ? 100 : 200; // 100 when searching, 200 for pagination
+        const result = await getAdminCourseOptions({
           page,
           limit,
           search: search || undefined,
+          audience: audienceFilter === "all" ? undefined : audienceFilter,
           isActive: true,
         });
 
         if (result) {
+          const rows = result.courses as unknown as Course[];
           if (append) {
-            setCourses((prev) => [...prev, ...result.courses]);
+            setCourses((prev) => {
+              const seen = new Set(prev.map((c) => c._id).filter(Boolean));
+              const next = [...prev];
+              for (const c of rows) {
+                const id = c?._id;
+                if (!id || seen.has(id)) continue;
+                seen.add(id);
+                next.push(c);
+              }
+              return next;
+            });
           } else {
-            setCourses(result.courses);
+            setCourses(rows);
           }
 
           setHasMore(page < result.totalPages);
@@ -95,7 +211,7 @@ const TrialCourseModal = ({
         isLoadingCoursesRef.current = false;
       }
     },
-    [getCourses]
+    [getAdminCourseOptions, audienceFilter],
   );
 
   // Debounce course search
@@ -113,15 +229,21 @@ const TrialCourseModal = ({
     if (trialStep !== 1 || !isOpen) return;
 
     // Check if search has actually changed to prevent duplicate calls
-    if (lastCourseSearchRef.current === debouncedCourseSearch && courses.length > 0) {
+    if (
+      lastCourseSearchRef.current === debouncedCourseSearch &&
+      lastAudienceFilterRef.current === audienceFilter &&
+      courses.length > 0
+    ) {
       return;
     }
 
     lastCourseSearchRef.current = debouncedCourseSearch;
+    lastAudienceFilterRef.current = audienceFilter;
 
     // Reset pagination
     setCurrentPage(1);
     setHasMore(true);
+    setCourses([]);
 
     if (debouncedCourseSearch) {
       // Fetch with search (limit 100, no pagination)
@@ -130,7 +252,7 @@ const TrialCourseModal = ({
       // Initial load without search (pagination enabled)
       fetchCourses(1, false);
     }
-  }, [trialStep, isOpen, debouncedCourseSearch, fetchCourses]);
+  }, [trialStep, isOpen, debouncedCourseSearch, fetchCourses, audienceFilter]);
 
   // Reset state when modal closes
   useEffect(() => {
@@ -147,7 +269,9 @@ const TrialCourseModal = ({
       isLoadingUsersRef.current = false;
       setCourseSearch("");
       setDebouncedCourseSearch("");
+      setAudienceFilter("all");
       lastCourseSearchRef.current = "";
+      lastAudienceFilterRef.current = "";
       isLoadingCoursesRef.current = false;
     }
   }, [isOpen]);
@@ -167,7 +291,7 @@ const TrialCourseModal = ({
       page: number,
       append: boolean = false,
       search?: string,
-      enrollmentStatusCourseIds?: string[]
+      enrollmentStatusCourseIds?: string[],
     ) => {
       if (isLoadingUsersRef.current) return;
 
@@ -175,18 +299,29 @@ const TrialCourseModal = ({
       setIsLoadingUsers(true);
       try {
         const limit = search ? 100 : 20;
-        const result = await getUsers({
+        const result = await getUserOptions({
           page,
           limit,
           search: search || undefined,
           userType: "student",
-          enrollmentStatusForCourseIds:
-            enrollmentStatusCourseIds?.length ? enrollmentStatusCourseIds : undefined,
+          enrollmentStatusForCourseIds: enrollmentStatusCourseIds?.length
+            ? enrollmentStatusCourseIds
+            : undefined,
         });
 
         if (result) {
           if (append) {
-            setUsers((prev) => [...prev, ...result.users]);
+            setUsers((prev) => {
+              const seen = new Set(prev.map((u) => u._id).filter(Boolean));
+              const next = [...prev];
+              for (const u of result.users) {
+                const id = u?._id;
+                if (!id || seen.has(id)) continue;
+                seen.add(id);
+                next.push(u);
+              }
+              return next;
+            });
           } else {
             setUsers(result.users);
           }
@@ -201,7 +336,7 @@ const TrialCourseModal = ({
         isLoadingUsersRef.current = false;
       }
     },
-    [getUsers]
+    [getUserOptions],
   );
 
   // Load users when step 2 is reached or search changes
@@ -209,16 +344,27 @@ const TrialCourseModal = ({
     // Only run when we're on step 2 and modal is open
     if (trialStep !== 2 || !isOpen) return;
 
-    // Check if search has actually changed to prevent duplicate calls
-    if (lastSearchRef.current === debouncedUserSearch && users.length > 0) {
+    const selectedCourseIdsKey = selectedCourses
+      .map((c) => c._id)
+      .filter(Boolean)
+      .join(",");
+
+    // Check if search + selected courses have actually changed to prevent duplicate calls
+    if (
+      lastSearchRef.current === debouncedUserSearch &&
+      lastSelectedCourseIdsRef.current === selectedCourseIdsKey &&
+      users.length > 0
+    ) {
       return;
     }
 
     lastSearchRef.current = debouncedUserSearch;
+    lastSelectedCourseIdsRef.current = selectedCourseIdsKey;
 
     // Reset pagination
     setUserCurrentPage(1);
     setUserHasMore(true);
+    setUsers([]);
 
     const enrollmentStatusCourseIds = selectedCourses
       .map((c) => c._id)
@@ -231,80 +377,107 @@ const TrialCourseModal = ({
     }
   }, [trialStep, isOpen, debouncedUserSearch, fetchUsers, selectedCourses]);
 
-  // Intersection Observer for courses infinite scroll
+  // Intersection Observer for courses infinite scroll (root = list scrollport)
   useEffect(() => {
-    // Don't enable infinite scroll when searching (we load all results at once)
-    if (debouncedCourseSearch) return;
+    if (!isOpen || trialStep !== 1 || debouncedCourseSearch) return;
+
+    const scrollRoot = coursesScrollRef.current;
+    const currentTarget = coursesObserverTarget.current;
+    if (!scrollRoot || !currentTarget) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasMore && !isLoadingCourses) {
+        if (
+          entries[0]?.isIntersecting &&
+          hasMore &&
+          !isLoadingCourses &&
+          !isLoadingCoursesRef.current
+        ) {
           fetchCourses(currentPage + 1, true);
         }
       },
-      { threshold: 0.1 }
+      { root: scrollRoot, rootMargin: "0px 0px 80px 0px", threshold: 0.01 },
     );
 
-    const currentTarget = coursesObserverTarget.current;
-    if (currentTarget) {
-      observer.observe(currentTarget);
-    }
+    observer.observe(currentTarget);
 
     return () => {
-      if (currentTarget) {
-        observer.unobserve(currentTarget);
-      }
+      observer.disconnect();
     };
-  }, [hasMore, isLoadingCourses, currentPage, fetchCourses, debouncedCourseSearch]);
+  }, [
+    isOpen,
+    trialStep,
+    hasMore,
+    isLoadingCourses,
+    currentPage,
+    fetchCourses,
+    debouncedCourseSearch,
+  ]);
 
-  // Intersection Observer for users infinite scroll
+  // Intersection Observer for users infinite scroll (root = list scrollport)
   useEffect(() => {
-    // Don't enable infinite scroll when searching (we load all results at once)
-    if (debouncedUserSearch) return;
+    if (!isOpen || debouncedUserSearch || trialStep !== 2) return;
+
+    const scrollRoot = usersScrollRef.current;
+    const currentTarget = usersObserverTarget.current;
+    if (!scrollRoot || !currentTarget) return;
+
+    const enrollmentStatusCourseIds = selectedCourses
+      .map((c) => c._id)
+      .filter((id): id is string => !!id);
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && userHasMore && !isLoadingUsers) {
+        if (
+          entries[0]?.isIntersecting &&
+          userHasMore &&
+          !isLoadingUsers &&
+          !isLoadingUsersRef.current
+        ) {
           fetchUsers(
             userCurrentPage + 1,
             true,
             undefined,
-            selectedCourses.map((c) => c._id).filter((id): id is string => !!id)
+            enrollmentStatusCourseIds,
           );
         }
       },
-      { threshold: 0.1 }
+      { root: scrollRoot, rootMargin: "0px 0px 80px 0px", threshold: 0.01 },
     );
 
-    const currentTarget = usersObserverTarget.current;
-    if (currentTarget) {
-      observer.observe(currentTarget);
-    }
+    observer.observe(currentTarget);
 
     return () => {
-      if (currentTarget) {
-        observer.unobserve(currentTarget);
-      }
+      observer.disconnect();
     };
-  }, [userHasMore, isLoadingUsers, userCurrentPage, fetchUsers, debouncedUserSearch]);
+  }, [
+    isOpen,
+    userHasMore,
+    isLoadingUsers,
+    userCurrentPage,
+    fetchUsers,
+    debouncedUserSearch,
+    trialStep,
+    selectedCourses
+      .map((c) => c._id)
+      .filter(Boolean)
+      .join(","),
+  ]);
 
-  const coursesWithPlans = courses.filter(
-    (c) => c.plans && (c.plans.elite || c.plans.essential)
-  );
+  // Trials are created with planType "essential" — only list/select courses that have it
+  const coursesWithPlans = courses.filter((c) => Boolean(c.plans?.essential));
   const allLoadedSelected =
     coursesWithPlans.length > 0 &&
-    coursesWithPlans.every((c) =>
-      selectedCourses.some((s) => s._id === c._id)
-    );
+    coursesWithPlans.every((c) => selectedCourses.some((s) => s._id === c._id));
   const someLoadedSelected = courses.some((c) =>
-    selectedCourses.some((s) => s._id === c._id)
+    selectedCourses.some((s) => s._id === c._id),
   );
 
   // Select/deselect all currently loaded courses
   const handleSelectAllCourses = (selectAll: boolean) => {
     if (selectAll) {
       const toAdd = coursesWithPlans.filter(
-        (c) => !selectedCourses.some((s) => s._id === c._id)
+        (c) => !selectedCourses.some((s) => s._id === c._id),
       );
       if (toAdd.length > 0) {
         setSelectedCourses((prev) => [...prev, ...toAdd]);
@@ -326,7 +499,7 @@ const TrialCourseModal = ({
   const handleCourseToggle = (courseId: string, checked: boolean) => {
     if (checked) {
       const course = courses.find((c) => c._id === courseId);
-      if (course) {
+      if (course && course.plans?.essential) {
         setSelectedCourses((prev) => [...prev, course]);
       }
     } else {
@@ -367,6 +540,13 @@ const TrialCourseModal = ({
 
         for (const userId of selectedUsers) {
           try {
+            const enrolledForUser =
+              users.find((u) => u._id === userId)?.enrolledCourseIds ?? [];
+            if (course._id && enrolledForUser.includes(course._id)) {
+              // Skip courses the user already owns; allow other courses to proceed
+              continue;
+            }
+
             const trialData: TrialCourseData = {
               userId,
               courseId: course._id!,
@@ -393,21 +573,21 @@ const TrialCourseModal = ({
             errors.push(
               `${course.title} → ${userName}: ${
                 error.message || "Failed to create trial enrollment"
-              }`
+              }`,
             );
           }
         }
 
         if (courseSuccessCount > 0) {
           console.log(
-            `Successfully created trial for ${course.title} (${trialDurationDays} days) for ${courseSuccessCount} user(s)`
+            `Successfully created trial for ${course.title} (${trialDurationDays} days) for ${courseSuccessCount} user(s)`,
           );
         }
       }
 
       if (totalSuccessCount > 0) {
         toast.success(
-          `Successfully created ${totalSuccessCount} trial enrollment(s) for ${selectedCourses.length} course(s) to ${selectedUsers.length} user(s). Trials expire in ${trialDurationDays} day(s).`
+          `Successfully created ${totalSuccessCount} trial enrollment(s) for ${selectedCourses.length} course(s) to ${selectedUsers.length} user(s). Trials expire in ${trialDurationDays} day(s).`,
         );
       }
 
@@ -417,7 +597,7 @@ const TrialCourseModal = ({
             .slice(0, 5)
             .join("; ")}${
             errors.length > 5 ? ` and ${errors.length - 5} more...` : ""
-          }`
+          }`,
         );
       }
 
@@ -432,7 +612,8 @@ const TrialCourseModal = ({
       }
     } catch (error: any) {
       toast.error(
-        error.message || "Failed to create trial enrollments. Please try again."
+        error.message ||
+          "Failed to create trial enrollments. Please try again.",
       );
       console.error("Trial enrollment error:", error);
     }
@@ -463,7 +644,7 @@ const TrialCourseModal = ({
             </div>
             <button
               onClick={handleClose}
-              className="text-white/80 hover:text-white hover:bg-white/20 rounded-lg p-1.5 transition-colors"
+              className="text-white/80 hover:text-white hover:bg-white/20 rounded-lg p-1.5 transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -555,16 +736,40 @@ const TrialCourseModal = ({
                       (Multiple selection allowed)
                     </span>
                   </label>
-                  {/* Course Search */}
-                  <div className="mb-3">
-                    <Input
-                      type="text"
-                      placeholder="Search courses by title..."
-                      value={courseSearch}
-                      onChange={(e) => setCourseSearch(e.target.value)}
-                      icon={<Search className="w-5 h-5 text-gray-400" />}
-                      className="w-full"
-                    />
+                  {/* Course Search + Filters */}
+                  <div className="mb-3 grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="md:col-span-2">
+                      <Input
+                        type="text"
+                        placeholder="Search courses by title..."
+                        value={courseSearch}
+                        onChange={(e) => setCourseSearch(e.target.value)}
+                        icon={<Search className="w-5 h-5 text-gray-400" />}
+                        className="w-full"
+                      />
+                    </div>
+                    <div>
+                      <Select
+                        options={[
+                          { value: "all", label: "All audiences" },
+                          {
+                            value: "college-students",
+                            label: "College students",
+                          },
+                          { value: "professionals", label: "Professionals" },
+                        ]}
+                        value={audienceFilter}
+                        onChange={(value) =>
+                          setAudienceFilter(
+                            value as
+                              | "all"
+                              | "college-students"
+                              | "professionals",
+                          )
+                        }
+                        placeholder="Audience"
+                      />
+                    </div>
                   </div>
                   {/* Select All */}
                   {courses.length > 0 && (
@@ -584,7 +789,8 @@ const TrialCourseModal = ({
                       </span>
                       {coursesWithPlans.length < courses.length && (
                         <span className="text-xs text-amber-600">
-                          Only courses with plans will be selected
+                          Only courses with an essential plan can receive a
+                          trial
                         </span>
                       )}
                     </label>
@@ -603,29 +809,40 @@ const TrialCourseModal = ({
                       <div className="divide-y divide-gray-100">
                         {courses.map((course) => {
                           const isSelected = selectedCourses.some(
-                            (c) => c._id === course._id
+                            (c) => c._id === course._id,
                           );
+                          const hasEssential = Boolean(course.plans?.essential);
 
                           return (
                             <label
                               key={course._id}
-                              className="flex items-center p-4 hover:bg-orange-50 transition-colors cursor-pointer group"
+                              className={`flex items-center p-4 transition-colors group ${
+                                hasEssential
+                                  ? "hover:bg-orange-50 cursor-pointer"
+                                  : "cursor-not-allowed opacity-60"
+                              }`}
                             >
                               <input
                                 type="checkbox"
                                 checked={isSelected}
+                                disabled={!hasEssential}
                                 onChange={(e) => {
                                   handleCourseToggle(
                                     course._id || "",
-                                    e.target.checked
+                                    e.target.checked,
                                   );
                                 }}
-                                className="w-5 h-5 text-orange-600 border-gray-300 rounded focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
+                                className="w-5 h-5 text-orange-600 border-gray-300 rounded focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 disabled:opacity-50"
                               />
                               <div className="ml-4 flex-1">
                                 <div className="text-sm font-semibold text-gray-900 group-hover:text-orange-700">
                                   {course.title}
                                 </div>
+                                {!hasEssential && (
+                                  <div className="text-xs text-amber-600 mt-1">
+                                    No essential plan — trial requires essential
+                                  </div>
+                                )}
                               </div>
                               {isSelected && (
                                 <div className="text-orange-600">
@@ -674,16 +891,62 @@ const TrialCourseModal = ({
                     </span>
                   </label>
                   {/* User Search */}
-                  <div className="mb-3">
-                    <Input
-                      type="text"
-                      placeholder="Search users by name or email..."
-                      value={userSearch}
-                      onChange={(e) => setUserSearch(e.target.value)}
-                      icon={<Search className="w-5 h-5 text-gray-400" />}
-                      className="w-full"
+                  <div className="mb-3 flex gap-2 items-end">
+                    <div className="flex-1">
+                      <Input
+                        type="text"
+                        placeholder="Search users by name or email..."
+                        value={userSearch}
+                        onChange={(e) => setUserSearch(e.target.value)}
+                        icon={<Search className="w-5 h-5 text-gray-400" />}
+                        className="w-full"
+                      />
+                    </div>
+                    <input
+                      ref={userImportInputRef}
+                      type="file"
+                      accept=".xlsx,.xls,.csv"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) void handleImportUsers(file);
+                      }}
                     />
+                    <WhiteButton
+                      glow={false}
+                      onClick={() => userImportInputRef.current?.click()}
+                      title='Upload Excel/CSV with "email" column'
+                    >
+                      Import Excel
+                    </WhiteButton>
                   </div>
+
+                  {importSummary && (
+                    <div className="mb-3 p-3 rounded-lg border border-gray-200 bg-gray-50 text-xs text-gray-700 space-y-1">
+                      <div>
+                        <span className="font-semibold">Imported:</span>{" "}
+                        selected {importSummary.selected}
+                        {importSummary.skippedEnrolledAll.length > 0 && (
+                          <>
+                            , skipped (already enrolled in all selected){" "}
+                            {importSummary.skippedEnrolledAll.length}
+                          </>
+                        )}
+                        {importSummary.notFound.length > 0 && (
+                          <>, not found {importSummary.notFound.length}</>
+                        )}
+                      </div>
+                      {importSummary.notFound.length > 0 && (
+                        <div className="text-gray-500">
+                          Not found:{" "}
+                          {importSummary.notFound.slice(0, 5).join(", ")}
+                          {importSummary.notFound.length > 5
+                            ? ` and ${importSummary.notFound.length - 5} more`
+                            : ""}
+                        </div>
+                      )}
+                    </div>
+                  )}
                   <div
                     ref={usersScrollRef}
                     className="border-2 border-gray-200 rounded-xl overflow-hidden max-h-[calc(90vh-380px)] min-h-[400px] overflow-y-auto"
@@ -698,17 +961,19 @@ const TrialCourseModal = ({
                       <div className="divide-y divide-gray-100">
                         {users.map((user) => {
                           const isSelected = selectedUsers.includes(
-                            user._id || ""
+                            user._id || "",
                           );
-                          const isEnrolled =
-                            (user as { alreadyEnrolledInSelected?: boolean })
-                              .alreadyEnrolledInSelected ?? false;
+                          const enrolledCount =
+                            user.enrolledCourseIds?.length ?? 0;
+                          const selectedCount = selectedCourses.length;
+                          const isEnrolledInAll =
+                            selectedCount > 0 && enrolledCount >= selectedCount;
 
                           return (
                             <label
                               key={user._id}
                               className={`flex items-center p-4 hover:bg-orange-50 transition-colors cursor-pointer group ${
-                                isEnrolled ? "opacity-50" : ""
+                                isEnrolledInAll ? "opacity-50" : ""
                               }`}
                             >
                               <input
@@ -717,10 +982,10 @@ const TrialCourseModal = ({
                                 onChange={(e) => {
                                   handleUserToggle(
                                     user._id || "",
-                                    e.target.checked
+                                    e.target.checked,
                                   );
                                 }}
-                                disabled={isEnrolled}
+                                disabled={isEnrolledInAll}
                                 className="w-5 h-5 text-orange-600 border-gray-300 rounded focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 disabled:opacity-50"
                               />
                               <div className="ml-4 flex-1">
@@ -730,9 +995,10 @@ const TrialCourseModal = ({
                                 <div className="text-xs text-gray-500">
                                   {user.email}
                                 </div>
-                                {isEnrolled && (
+                                {enrolledCount > 0 && (
                                   <div className="text-xs text-orange-600 mt-1">
-                                    Already enrolled
+                                    Enrolled in {enrolledCount}/{selectedCount}{" "}
+                                    selected
                                   </div>
                                 )}
                               </div>
@@ -793,7 +1059,8 @@ const TrialCourseModal = ({
                         className="w-full"
                       />
                       <p className="text-xs text-gray-500 mt-2">
-                        Trial will automatically expire after the specified number of days. Default is 7 days.
+                        Trial will automatically expire after the specified
+                        number of days. Default is 7 days.
                       </p>
                     </div>
 
@@ -824,16 +1091,20 @@ const TrialCourseModal = ({
 
         {/* Footer */}
         <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
-          <Button
-            variant="ghost"
-            onClick={trialStep > 1 ? () => setTrialStep((prev) => (prev - 1) as 1 | 2 | 3) : handleClose}
-            className="text-gray-600 hover:text-gray-900"
+          <WhiteButton
+            glow={false}
+            onClick={
+              trialStep > 1
+                ? () => setTrialStep((prev) => (prev - 1) as 1 | 2 | 3)
+                : handleClose
+            }
           >
             {trialStep > 1 ? "Back" : "Cancel"}
-          </Button>
+          </WhiteButton>
           <div className="flex items-center gap-3">
             {trialStep < 3 ? (
               <OrangeButton
+                glow={false}
                 onClick={() => {
                   if (trialStep === 1 && selectedCourses.length === 0) {
                     toast.error("Please select at least one course");
@@ -845,16 +1116,25 @@ const TrialCourseModal = ({
                   }
                   setTrialStep((prev) => (prev + 1) as 1 | 2 | 3);
                 }}
-                disabled={isLoading}
-                className="flex items-center gap-2"
+                disabled={
+                  isLoading ||
+                  (trialStep === 1 && selectedCourses.length === 0) ||
+                  (trialStep === 2 && selectedUsers.length === 0) ||
+                  (trialStep === 3 && trialDurationDays === 0)
+                }
               >
                 Next
               </OrangeButton>
             ) : (
               <OrangeButton
+                glow={false}
                 onClick={handleCreateTrial}
-                disabled={isLoading || selectedCourses.length === 0 || selectedUsers.length === 0}
-                className="flex items-center gap-2"
+                disabled={
+                  isLoading ||
+                  (trialStep === 1 && selectedCourses.length === 0) ||
+                  (trialStep === 2 && selectedUsers.length === 0) ||
+                  (trialStep === 3 && trialDurationDays === 0)
+                }
               >
                 {isLoading ? "Creating..." : "Create Trial"}
               </OrangeButton>
@@ -867,4 +1147,3 @@ const TrialCourseModal = ({
 };
 
 export default TrialCourseModal;
-

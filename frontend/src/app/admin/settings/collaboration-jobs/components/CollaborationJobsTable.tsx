@@ -112,8 +112,8 @@ export function CollaborationJobsTable({
                       </button>
                     </div>
                   </td>
-                  <td className="py-3 px-4 font-medium text-gray-800 max-w-[140px] truncate">
-                    {job.userName || (
+                  <td className="py-3 px-4 font-medium text-gray-800 max-w-[180px] truncate">
+                    {job.userName || job.userSnapshot?.name || (
                       <span className="text-gray-400 italic">—</span>
                     )}
                   </td>
