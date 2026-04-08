@@ -7,38 +7,59 @@ import {
   getInstructorCourseQnas,
   getInstructorReviews,
 } from "../controllers/instructorDashboard.controller";
+import {
+  getPublicInstructorBySlug,
+  getPublicInstructorCoursesBySlug,
+} from "../controllers/instructor.controller";
 
 const router = Router();
 
-router.use(verifyUser);
-router.use(verifyInstructor);
+const requireInstructor = [verifyUser, verifyInstructor];
 
 /**
  * @route   GET /api/instructor/dashboard
  * @desc    Summary stats and courses for the logged-in instructor
  * @access  Instructor
  */
-router.get("/dashboard", getInstructorDashboard);
+router.get("/dashboard", ...requireInstructor, getInstructorDashboard);
 
 /**
  * @route   GET /api/instructor/qnas
  * @desc    Paginated Q&A across all courses the instructor teaches
  * @access  Instructor
  */
-router.get("/qnas", getInstructorAllQnas);
+router.get("/qnas", ...requireInstructor, getInstructorAllQnas);
 
 /**
  * @route   GET /api/instructor/courses/:courseId/qnas
  * @desc    Learner questions for a course (instructor must be assigned to the course)
  * @access  Instructor
  */
-router.get("/courses/:courseId/qnas", getInstructorCourseQnas);
+router.get(
+  "/courses/:courseId/qnas",
+  ...requireInstructor,
+  getInstructorCourseQnas,
+);
 
 /**
  * @route   GET /api/instructor/reviews
  * @desc    Approved course reviews for courses this instructor teaches
  * @access  Instructor
  */
-router.get("/reviews", getInstructorReviews);
+router.get("/reviews", ...requireInstructor, getInstructorReviews);
+
+/**
+ * @route   GET /api/instructor/:slug/courses
+ * @desc    Paginated courses for a public instructor profile
+ * @access  Public
+ */
+router.get("/:slug/courses", getPublicInstructorCoursesBySlug);
+
+/**
+ * @route   GET /api/instructor/:slug
+ * @desc    Public instructor profile by slug
+ * @access  Public
+ */
+router.get("/:slug", getPublicInstructorBySlug);
 
 export default router;

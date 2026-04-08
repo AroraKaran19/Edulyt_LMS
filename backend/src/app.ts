@@ -18,7 +18,6 @@ import {
   adminRoutes,
   uploadRoutes,
   instructorRoutes,
-  publicInstructorRoutes,
   reviewRoutes,
   webhookRoutes,
   paymentRoutes,
@@ -39,7 +38,7 @@ app.use(
   cors({
     origin: true,
     credentials: true,
-  })
+  }),
 );
 app.use(express.json({ limit: "100mb" }));
 app.use(express.urlencoded({ extended: true, limit: "100mb" }));
@@ -65,7 +64,6 @@ app.use("/api/users", userRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/instructors", instructorRoutes);
-app.use("/api/public/instructors", publicInstructorRoutes);
 app.use("/api", reviewRoutes);
 app.use("/api/webhook", webhookRoutes);
 app.use("/api/payment", paymentRoutes);

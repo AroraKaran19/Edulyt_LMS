@@ -7,6 +7,9 @@ export interface Collaborator extends User {
 
 export interface Instructor extends User {
   slug?: string;
+  industry?: string;
+  /** Company / workplace image URLs (logos, etc.) */
+  companyImages?: string[];
   rating: number;
   totalStudents: number;
   bio?: string;

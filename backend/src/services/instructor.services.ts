@@ -32,6 +32,7 @@ export const getAllInstructorsService = async (
       { firstName: { $regex: search, $options: "i" } },
       { lastName: { $regex: search, $options: "i" } },
       { email: { $regex: search, $options: "i" } },
+      { industry: { $regex: search, $options: "i" } },
       { currentPosition: { $regex: search, $options: "i" } },
       { currentCompany: { $regex: search, $options: "i" } },
     ];

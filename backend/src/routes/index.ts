@@ -10,7 +10,6 @@ import userRoutes from "./user.routes";
 import adminRoutes from "./admin.routes";
 import uploadRoutes from "./upload.routes";
 import instructorRoutes from "./instructor.routes";
-import publicInstructorRoutes from "./public-instructor.routes";
 import reviewRoutes from "./review.routes";
 import webhookRoutes from "./webhook.routes";
 import paymentRoutes from "./payment.routes";
@@ -34,7 +33,6 @@ export {
   adminRoutes,
   uploadRoutes,
   instructorRoutes,
-  publicInstructorRoutes,
   reviewRoutes,
   webhookRoutes,
   paymentRoutes,

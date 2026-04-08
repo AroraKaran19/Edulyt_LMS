@@ -1,7 +1,7 @@
 "use client";
 
+import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import Modal from "@/components/ui/Modal";
-import { PrimaryButton } from "@/app/components/ui/PrimaryButton";
 import { Award } from "lucide-react";
 import Link from "next/link";
 
@@ -41,13 +41,13 @@ export default function CertificatePendingModal({
           </Link>
           .
         </p>
-        <PrimaryButton
+        <OrangeButton
           type="button"
           className="w-full mt-1"
           onClick={onClose}
         >
           Got it
-        </PrimaryButton>
+        </OrangeButton>
       </div>
     </Modal>
   );

@@ -9,7 +9,7 @@
 
 html {
   scroll-behavior: smooth;
-  scrollbar-color: #f77124 #ffe9db;
+  scrollbar-color: #F77124 #ffe9db;
   scrollbar-width: thin;
 }
 
@@ -47,7 +47,10 @@ html {
 }
 
 @theme {
+  --color-primary: #f77124;
+  --color-secondary: #ffffff;
   --color-text-primary: #2b1508;
+  --color-text-secondary: #5c4a42;
   --font-coolvetica: "Coolvetica Regular", sans-serif;
 
   /* Animations */

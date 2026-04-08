@@ -73,6 +73,8 @@ const ManageUsersPage = () => {
   const [editFormData, setEditFormData] = useState<
     Partial<User & Instructor & Student>
   >({});
+  /** Bumps when opening edit so company image slots reset from loaded user */
+  const [companyImagesResetKey, setCompanyImagesResetKey] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
@@ -158,6 +160,8 @@ const ManageUsersPage = () => {
       },
       ...(dataToUse.userType === "instructor" && {
         bio: instructorData.bio || "",
+        industry: instructorData.industry || "",
+        field: instructorData.field || "",
         currentPosition: instructorData.currentPosition || "",
         currentCompany: instructorData.currentCompany || "",
         linkedinUrl: instructorData.linkedinUrl || "",
@@ -173,6 +177,9 @@ const ManageUsersPage = () => {
             },
             description: exp.description || "",
           })) || [],
+        companyImages: instructorData.companyImages?.length
+          ? [...instructorData.companyImages]
+          : [],
       }),
       ...(dataToUse.userType === "student" && {
         collegeName: (dataToUse as Student).collegeName || "",
@@ -183,6 +190,7 @@ const ManageUsersPage = () => {
         portfolio: (dataToUse as Student).portfolio || "",
       }),
     });
+    setCompanyImagesResetKey(`${dataToUse._id}-${Date.now()}`);
     setShowEditModal(true);
   };
 
@@ -889,6 +897,7 @@ const ManageUsersPage = () => {
         isOpen={showEditModal}
         user={selectedUser}
         formData={editFormData}
+        companyImagesResetKey={companyImagesResetKey}
         onClose={() => {
           setShowEditModal(false);
           setEditFormData({});

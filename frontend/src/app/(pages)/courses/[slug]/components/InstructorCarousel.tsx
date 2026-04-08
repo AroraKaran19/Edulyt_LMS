@@ -1,3 +1,4 @@
+"use client";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Instructor } from "@/types";
 import InstructorCard from "./InstructorCard";

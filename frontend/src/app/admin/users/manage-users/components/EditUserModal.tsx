@@ -6,6 +6,7 @@ import Input from "@/components/ui/inputs/Input";
 import Select from "@/components/ui/inputs/Select";
 import DateSelector from "@/components/ui/inputs/DateSelector";
 import UploadMediaContainer from "@/components/ui/container/UploadMediaContainer";
+import InstructorCompanyImagesEditor from "./InstructorCompanyImagesEditor";
 import { User, Instructor, Student } from "@/types/user";
 import { useUpload } from "@/hooks/useUpload";
 import { toast } from "react-toastify";
@@ -14,6 +15,8 @@ interface EditUserModalProps {
   isOpen: boolean;
   user: User | null;
   formData: Partial<User & Instructor & Student>;
+  /** Resets company image editor when opening edit for a user */
+  companyImagesResetKey?: string;
   onClose: () => void;
   onUpdate: (data: Partial<User & Instructor & Student>) => Promise<void>;
   isUpdating: boolean;
@@ -28,6 +31,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
   isOpen,
   user,
   formData,
+  companyImagesResetKey = "",
   onClose,
   onUpdate,
   isUpdating,
@@ -349,6 +353,28 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
                     })
                   }
                 />
+                <Input
+                  label="Industry"
+                  placeholder="e.g., EdTech, Finance"
+                  value={(formData as any).industry || ""}
+                  onChange={(e) =>
+                    onFormDataChange({
+                      ...formData,
+                      industry: e.target.value,
+                    })
+                  }
+                />
+                <Input
+                  label="Field"
+                  placeholder="e.g., Data Science"
+                  value={(formData as any).field || ""}
+                  onChange={(e) =>
+                    onFormDataChange({
+                      ...formData,
+                      field: e.target.value,
+                    })
+                  }
+                />
                 <div className="md:col-span-2">
                   <Input
                     label="LinkedIn URL"
@@ -359,6 +385,21 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
                         linkedinUrl: e.target.value,
                       })
                     }
+                  />
+                </div>
+
+                <div className="md:col-span-2 pt-2 border-t border-gray-100 mt-2">
+                  <InstructorCompanyImagesEditor
+                    resetKey={companyImagesResetKey}
+                    defaultUrls={(formData as Instructor).companyImages || []}
+                    onUrlsChange={(urls) =>
+                      onFormDataChange({
+                        ...formData,
+                        companyImages: urls,
+                      })
+                    }
+                    uploadContext={user._id}
+                    disabled={isUpdating}
                   />
                 </div>
 

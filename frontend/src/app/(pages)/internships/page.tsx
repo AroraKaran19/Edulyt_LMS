@@ -19,7 +19,7 @@ const InternshipPage = () => {
     <div className="min-h-screen bg-gray-50">
       {/* Main Content Section */}
       {/* Hero Section with Internship Details */}
-      <HeroSection />
+      {/* <HeroSection />
 
       <ProfessionalGuidanceForm />
 
@@ -47,7 +47,7 @@ const InternshipPage = () => {
       
       <InternshipJourneySection />
       
-      <FAQSection />
+      <FAQSection /> */}
     </div>
   );
 };

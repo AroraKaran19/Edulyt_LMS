@@ -1,10 +1,17 @@
+"use client";
 import CourseTitle from "@/components/ui/course/CourseTitle";
 import SectionContainer from "@/components/ui/course/SectionContainer";
-import { Course, FAQ } from "@/types";
+import { FAQ } from "@/types";
 import { Minus, Plus } from "lucide-react";
 import { useState } from "react";
 
-const FAQSection = ({ course }: { course: Course }) => {
+const FAQSection = ({
+  faqs,
+  description,
+}: {
+  faqs: FAQ[];
+  description?: string;
+}) => {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   const toggleFAQ = (index: number) => {
@@ -16,11 +23,11 @@ const FAQSection = ({ course }: { course: Course }) => {
       <div className="section-header flex flex-col gap-2 text-center">
         <CourseTitle title="FAQ" className="text-text-primary text-[40px]" />
         <p className="text-base text-center text-text-primary font-normal">
-          Find answers to common questions about the course.
+          {description || "Find answers to common questions about the course."}
         </p>
       </div>
       <div className="w-full flex flex-col gap-2 sm:gap-3 md:gap-4 min-h-[200px] sm:min-h-[250px] md:min-h-[300px]">
-        {(course?.faqs as FAQ[]).map((faq, index) => (
+        {faqs.map((faq, index) => (
           <div
             key={index}
             className="border border-gray-200 rounded-lg shrink-0 p-2"

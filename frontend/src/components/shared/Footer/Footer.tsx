@@ -1,11 +1,18 @@
 import Link from "next/link";
-import Image from "next/image";
+import ImageComponent from "@/components/ui/ImageComponent";
 import { cn } from "@/lib/utils";
+import {
+  createElement,
+  cloneElement,
+  isValidElement,
+  type ElementType,
+  type ReactElement,
+} from "react";
+import { Manrope } from "next/font/google";
 import {
   Mail,
   Phone,
   MapPin,
-  Linkedin,
   Instagram,
   Facebook,
   ExternalLink,
@@ -13,7 +20,11 @@ import {
   Youtube,
 } from "lucide-react";
 
-// Custom WhatsApp SVG Icon
+const manrope = Manrope({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+});
+
 const WhatsAppIcon = ({ className }: { className?: string }) => (
   <svg
     className={cn("w-5 h-5", className)}
@@ -25,7 +36,6 @@ const WhatsAppIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
-// Custom Telegram SVG Icon
 const TelegramIcon = ({ className }: { className?: string }) => (
   <svg
     className={cn("w-5 h-5", className)}
@@ -45,7 +55,7 @@ const Footer = () => {
       { label: "Courses", href: "/courses" },
       {
         label: "Internships",
-        href: "https://airkrit.com/internships.php",
+        href: "https://edulyt.com/internships.php",
         external: true,
       },
       { label: "Contact Us", href: "/contact" },
@@ -68,37 +78,41 @@ const Footer = () => {
       label: "WhatsApp",
       href: "https://www.whatsapp.com/channel/0029VaIBXP347XeJjHqbNi1X",
       icon: WhatsAppIcon,
-      color: "hover:text-green-500",
     },
     {
       label: "Telegram",
       href: "https://t.me/+_XxzFosKYOg2M2I9",
       icon: TelegramIcon,
-      color: "hover:text-blue-500",
     },
     {
       label: "Instagram",
       href: "https://www.instagram.com/edulyt_india/",
       icon: Instagram,
-      color: "hover:text-pink-500",
     },
     {
       label: "LinkedIn",
       href: "https://www.linkedin.com/company/edulytindia/",
-      icon: Linkedin,
-      color: "hover:text-blue-600",
+      icon: (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="16"
+          height="16"
+          fill="currentColor"
+          viewBox="0 0 16 16"
+        >
+          <path d="M0 1.146C0 .513.526 0 1.175 0h13.65C15.474 0 16 .513 16 1.146v13.708c0 .633-.526 1.146-1.175 1.146H1.175C.526 16 0 15.487 0 14.854zm4.943 12.248V6.169H2.542v7.225zm-1.2-8.212c.837 0 1.358-.554 1.358-1.248-.015-.709-.52-1.248-1.342-1.248S2.4 3.226 2.4 3.934c0 .694.521 1.248 1.327 1.248zm4.908 8.212V9.359c0-.216.016-.432.08-.586.173-.431.568-.878 1.232-.878.869 0 1.216.662 1.216 1.634v3.865h2.401V9.25c0-2.22-1.184-3.252-2.764-3.252-1.274 0-1.845.7-2.165 1.193v.025h-.016l.016-.025V6.169h-2.4c.03.678 0 7.225 0 7.225z" />
+        </svg>
+      ),
     },
     {
       label: "Facebook",
       href: "https://www.facebook.com/people/Edulyt-India/100066801796718/",
       icon: Facebook,
-      color: "hover:text-blue-700",
     },
     {
       label: "YouTube",
       href: "https://www.youtube.com/@EdulytIndia",
       icon: Youtube,
-      color: "hover:text-red-500",
     },
   ];
 
@@ -123,41 +137,47 @@ const Footer = () => {
     },
   ];
 
+  const linkClass =
+    "text-sm text-text-secondary hover:text-primary transition-colors duration-200";
+
   return (
-    <footer className="bg-white border-t border-gray-200">
-      {/* Main Footer Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-          {/* Brand Section */}
+    <footer
+      className={cn(
+        "border-t border-primary/15 bg-linear-to-b from-secondary/15 via-primary/5 to-secondary",
+        manrope.className,
+      )}
+    >
+      <div className="max-w-7xl 2xl:max-w-[1600px] mx-auto px-6 pl-8 lg:px-12 py-14 lg:py-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-12">
           <div className="lg:col-span-1">
-            <div className="flex items-center mb-4">
+            <div className="flex items-center mb-5">
               <Link href="/" className="flex items-center">
-                <Image
+                <ImageComponent
                   src="/logo.svg"
-                  alt="Airkrit"
+                  alt="Logo"
                   width={120}
                   height={40}
-                  className="h-8 w-auto"
+                  className="h-10 sm:h-11 w-auto"
+                  loading="eager"
                 />
               </Link>
             </div>
 
-            <p className="text-gray-600 text-sm leading-relaxed mb-6 max-w-xs">
+            <p className="text-sm leading-relaxed text-text-secondary mb-7 max-w-xs">
               Empowering students and professionals with industry-relevant
               skills through comprehensive online courses and internship
               opportunities.
             </p>
 
-            {/* Contact Information */}
-            <div className="space-y-3">
+            <div className="space-y-3.5">
               {contactInfo.map((contact, index) => (
-                <div key={index} className="flex items-center gap-3">
-                  <contact.icon className="w-4 h-4 text-gray-400 shrink-0" />
+                <div key={index} className="flex items-start gap-3">
+                  <contact.icon className="w-4 h-4 text-primary shrink-0 mt-0.5" />
                   <Link
                     href={contact.href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-sm text-gray-600 hover:text-orange-500 transition-colors"
+                    className={cn(linkClass, "wrap-break-word")}
                   >
                     {contact.value}
                   </Link>
@@ -166,9 +186,8 @@ const Footer = () => {
             </div>
           </div>
 
-          {/* Platform Links */}
           <div>
-            <h3 className="text-sm font-semibold text-gray-900 mb-4">
+            <h3 className="text-sm font-bold text-text-primary mb-4 tracking-wide uppercase">
               Platform
             </h3>
             <ul className="space-y-3">
@@ -179,16 +198,16 @@ const Footer = () => {
                       href={link.href}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-sm text-gray-600 hover:text-orange-500 transition-colors flex items-center gap-1"
+                      className={cn(
+                        linkClass,
+                        "inline-flex items-center gap-1.5",
+                      )}
                     >
                       {link.label}
-                      <ExternalLink className="w-3 h-3" />
+                      <ExternalLink className="w-3.5 h-3.5 shrink-0 opacity-70" />
                     </Link>
                   ) : (
-                    <Link
-                      href={link.href}
-                      className="text-sm text-gray-600 hover:text-orange-500 transition-colors"
-                    >
+                    <Link href={link.href} className={linkClass}>
                       {link.label}
                     </Link>
                   )}
@@ -197,18 +216,14 @@ const Footer = () => {
             </ul>
           </div>
 
-          {/* Support Links */}
           <div>
-            <h3 className="text-sm font-semibold text-gray-900 mb-4">
+            <h3 className="text-sm font-bold text-text-primary mb-4 tracking-wide uppercase">
               Support
             </h3>
             <ul className="space-y-3">
               {footerLinks.support.map((link, index) => (
                 <li key={index}>
-                  <Link
-                    href={link.href}
-                    className="text-sm text-gray-600 hover:text-orange-500 transition-colors"
-                  >
+                  <Link href={link.href} className={linkClass}>
                     {link.label}
                   </Link>
                 </li>
@@ -216,18 +231,14 @@ const Footer = () => {
             </ul>
           </div>
 
-          {/* Company Links */}
           <div>
-            <h3 className="text-sm font-semibold text-gray-900 mb-4">
+            <h3 className="text-sm font-bold text-text-primary mb-4 tracking-wide uppercase">
               Company
             </h3>
             <ul className="space-y-3">
               {footerLinks.company.map((link, index) => (
                 <li key={index}>
-                  <Link
-                    href={link.href}
-                    className="text-sm text-gray-600 hover:text-orange-500 transition-colors"
-                  >
+                  <Link href={link.href} className={linkClass}>
                     {link.label}
                   </Link>
                 </li>
@@ -236,44 +247,55 @@ const Footer = () => {
           </div>
         </div>
 
-        {/* Social Links Section */}
-        <div className="mt-12 pt-8 border-t border-gray-200">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-            {/* Social Links */}
-            <div className="flex items-center gap-4">
-              <span className="text-sm font-medium text-gray-900">
-                Follow us:
-              </span>
-              <div className="flex items-center gap-3">
-                {socialLinks.map((social, index) => (
-                  <Link
-                    key={index}
-                    href={social.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={cn(
-                      "text-gray-400 hover:text-gray-600 transition-colors",
-                      social.color
-                    )}
-                    aria-label={social.label}
-                  >
-                    <social.icon className="w-5 h-5" />
-                  </Link>
-                ))}
-              </div>
+        <div className="mt-12 pt-8 border-t border-primary/10">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+            <span className="text-sm font-semibold text-text-primary">
+              Follow us
+            </span>
+            <div className="flex flex-wrap items-center gap-2.5">
+              {socialLinks.map((social, index) => (
+                <Link
+                  key={index}
+                  href={social.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary/80 transition-colors duration-200 hover:bg-primary/20 hover:text-primary"
+                  aria-label={social.label}
+                >
+                  {isValidElement(social.icon)
+                    ? cloneElement(
+                        social.icon as ReactElement<{ className?: string }>,
+                        {
+                          className: cn(
+                            "w-[18px] h-[18px] text-current",
+                            (
+                              social.icon as ReactElement<{
+                                className?: string;
+                              }>
+                            ).props.className,
+                          ),
+                        },
+                      )
+                    : createElement(
+                        social.icon as ElementType<{ className?: string }>,
+                        { className: "w-[18px] h-[18px]" },
+                      )}
+                </Link>
+              ))}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Bottom Footer */}
-      <div className="bg-gray-50 border-t border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      <div className="border-t border-primary/10 bg-primary/4">
+        <div className="max-w-7xl 2xl:max-w-[1600px] mx-auto px-6 pl-8 lg:px-12 py-4">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            {/* Copyright */}
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <span>© {currentYear} Airkrit. All rights reserved.</span>
-              <Heart className="w-4 h-4 text-red-500" />
+            <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-sm text-text-secondary text-center md:text-left">
+              <span>© {currentYear} Edulyt. All rights reserved.</span>
+              <Heart
+                className="inline w-4 h-4 text-primary shrink-0"
+                aria-hidden
+              />
               <span>Made with love in India</span>
             </div>
 

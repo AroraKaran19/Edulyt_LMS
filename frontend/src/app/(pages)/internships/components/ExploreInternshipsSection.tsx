@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import NewCourseCard from "@/components/ui/NewCourseCard";
 import {
   courseCategories,
   courses,
@@ -11,10 +10,13 @@ import {
   type CourseCategory,
 } from "@/constants/internshipData";
 import { internshipListingToCourse } from "@/lib/utils/internshipListingToCourse";
+import CourseCard from "../../courses/components/CourseCard";
 
 const ExploreInternshipsSection = () => {
   const [activeCategory, setActiveCategory] = useState<string>(
-    courseCategories.find((c) => c.isActive)?.name ?? courseCategories[0]?.name ?? ""
+    courseCategories.find((c) => c.isActive)?.name ??
+      courseCategories[0]?.name ??
+      "",
   );
 
   return (
@@ -39,7 +41,7 @@ const ExploreInternshipsSection = () => {
                 "shrink-0 inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold transition",
                 activeCategory === cat.name
                   ? "bg-[#F77124] text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200",
               )}
             >
               <span>{cat.name}</span>
@@ -48,7 +50,7 @@ const ExploreInternshipsSection = () => {
                   "rounded-full px-2 py-0.5 text-xs font-bold",
                   activeCategory === cat.name
                     ? "bg-gray-800/30 text-white"
-                    : "bg-gray-200 text-gray-700"
+                    : "bg-gray-200 text-gray-700",
                 )}
               >
                 {cat.count}
@@ -68,15 +70,16 @@ const ExploreInternshipsSection = () => {
       {/* Internship cards grid */}
       <div className="max-w-7xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 auto-rows-fr">
-          {courses.slice(0, 4).map((internship: InternshipListingItem, index: number) => (
-            <NewCourseCard
-              key={internship.id}
-              course={internshipListingToCourse(internship)}
-              enrollHref="/internships"
-              className="opacity-0 animate-course-card-fade-in"
-              style={{ animationDelay: `${index * 100}ms` }}
-            />
-          ))}
+          {courses
+            .slice(0, 4)
+            .map((internship: InternshipListingItem, index: number) => (
+              <CourseCard
+                key={index}
+                course={internshipListingToCourse(internship)}
+                className="opacity-0 animate-course-card-fade-in"
+                style={{ animationDelay: `${index * 100}ms` }}
+              />
+            ))}
         </div>
       </div>
     </section>

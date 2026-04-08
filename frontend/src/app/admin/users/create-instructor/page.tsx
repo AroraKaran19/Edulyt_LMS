@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
 import apiClient from "@/configs/apiConfig";
@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { User, Instructor } from "@/types/user";
 import { useUpload } from "@/hooks/useUpload";
+import InstructorCompanyImagesEditor from "../manage-users/components/InstructorCompanyImagesEditor";
 
 // Combine User and Instructor types with form-specific fields
 type InstructorFormData = Omit<
@@ -41,6 +42,7 @@ type InstructorFormData = Omit<
 
 const CreateInstructorPage = () => {
   const router = useRouter();
+  const companyUploadContextRef = useRef(`create-${Date.now()}`);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -72,10 +74,12 @@ const CreateInstructorPage = () => {
       pincode: "",
     },
     bio: "",
+    industry: "",
     field: "",
     currentPosition: "",
     currentCompany: "",
     linkedinUrl: "",
+    companyImages: [],
     previousExperience: [],
   });
 
@@ -644,6 +648,7 @@ const CreateInstructorPage = () => {
                 'linkedinUrl': 'linkedinUrl',
                 'bio': 'bio',
                 'field': 'field',
+                'industry': 'industry',
                 'currentPosition': 'currentPosition',
                 'currentCompany': 'currentCompany',
                 'dob': 'dob',
@@ -1035,6 +1040,16 @@ const CreateInstructorPage = () => {
               />
 
               <Input
+                label="Industry"
+                placeholder="e.g., EdTech, Finance, Healthcare"
+                value={formData.industry || ""}
+                onChange={(e) =>
+                  handleInputChange("industry", e.target.value)
+                }
+                error={errors.industry}
+              />
+
+              <Input
                 label="Field"
                 placeholder="e.g., AI Python"
                 value={formData.field || ""}
@@ -1083,6 +1098,18 @@ const CreateInstructorPage = () => {
                     : "0/1000 characters"}
                 </p>
               </div>
+            </div>
+
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <InstructorCompanyImagesEditor
+                resetKey="create-instructor"
+                defaultUrls={formData.companyImages || []}
+                onUrlsChange={(urls) =>
+                  setFormData((prev) => ({ ...prev, companyImages: urls }))
+                }
+                uploadContext={companyUploadContextRef.current}
+                disabled={isSubmitting}
+              />
             </div>
           </div>
 

@@ -1,7 +1,14 @@
 "use client";
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Course, Testimonial, CourseModule, CourseLesson, Content } from "@/types";
+import {
+  Course,
+  Testimonial,
+  CourseModule,
+  CourseLesson,
+  Content,
+  FAQ,
+} from "@/types";
 import { cn } from "@/lib/utils";
 import CourseHeader from "./components/CourseHeader";
 import ScholarshipBanner from "./components/ScholarshipBanner";
@@ -33,16 +40,19 @@ const CoursePage = ({ course }: { course: Course }) => {
     const deactivatedContents = course.deactivatedContents || [];
 
     // Filter modules
-    const activeModules = (course.modules as CourseModule[] || [])
+    const activeModules = ((course.modules as CourseModule[]) || [])
       .filter((module) => !deactivatedModules.includes(module._id || ""))
       .map((module) => {
         // Filter lessons within this module
-        const activeLessons = (module.lessons as CourseLesson[] || [])
+        const activeLessons = ((module.lessons as CourseLesson[]) || [])
           .filter((lesson) => !deactivatedLessons.includes(lesson._id || ""))
           .map((lesson) => {
             // Filter contents within this lesson
-            const activeContents = (lesson.contents as Content[] || [])
-              .filter((content) => !deactivatedContents.includes(content._id || ""));
+            const activeContents = (
+              (lesson.contents as Content[]) || []
+            ).filter(
+              (content) => !deactivatedContents.includes(content._id || ""),
+            );
 
             return {
               ...lesson,
@@ -62,7 +72,6 @@ const CoursePage = ({ course }: { course: Course }) => {
     };
   }, [course]);
 
-  // Check enrollment status when user is authenticated
   useEffect(() => {
     const checkUserEnrollment = async () => {
       if (status === "loading") return;
@@ -95,17 +104,13 @@ const CoursePage = ({ course }: { course: Course }) => {
     checkUserEnrollment();
   }, [session, status, course._id, checkEnrollment]);
 
-  // Generate presigned URL for preview video if it's an S3 key
-  // const previewVideoUrl = course?.previewVideoUrl;
-  // const isS3Key = previewVideoUrl && !previewVideoUrl.startsWith("http");
-
   if (!course) return null;
 
   return (
     <div
       className={cn(
         `${course?.slug}-course-page w-full min-h-[calc(100dvh-78px)]`,
-        "flex flex-col items-center gap-6"
+        "flex flex-col items-center gap-6",
       )}
     >
       <div className="course-header w-full h-auto bg-white rounded-2xl py-4 px-4 md:px-20 xl:px-[5%] md:py-8 flex flex-col items-center">
@@ -148,8 +153,12 @@ const CoursePage = ({ course }: { course: Course }) => {
           isCheckingEnrollment={isCheckingEnrollment}
         />
       </div>
-      {filteredCourse?.scholarship && <ScholarshipBanner course={filteredCourse} />}
-      <TestimonialSection testimonials={filteredCourse.testimonials as Testimonial[]} />
+      {filteredCourse?.scholarship && (
+        <ScholarshipBanner course={filteredCourse} />
+      )}
+      <TestimonialSection
+        testimonials={filteredCourse.testimonials as Testimonial[]}
+      />
       <CourseOverviewSection
         course={filteredCourse}
         isEnrolled={isEnrolled}
@@ -164,7 +173,7 @@ const CoursePage = ({ course }: { course: Course }) => {
       />
       <VerticalCarouselSection />
       <CurriculumSection course={filteredCourse} />
-      <FAQSection course={filteredCourse} />
+      <FAQSection faqs={filteredCourse.faqs as FAQ[]} />
     </div>
   );
 };

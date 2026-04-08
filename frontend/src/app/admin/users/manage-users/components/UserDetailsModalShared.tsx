@@ -136,7 +136,34 @@ function InstructorProfileSection({ user }: { user: Instructor }) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <InfoRow label="Position" value={user.currentPosition || "N/A"} />
         <InfoRow label="Company" value={user.currentCompany || "N/A"} />
+        <InfoRow label="Industry" value={user.industry || "N/A"} />
+        <InfoRow label="Field" value={user.field || "N/A"} />
         <InfoRow label="LinkedIn" value={user.linkedinUrl || "N/A"} />
+        {user.companyImages && user.companyImages.length > 0 ? (
+          <div className="md:col-span-2">
+            <p className="text-xs font-medium text-gray-500 uppercase mb-2">
+              Company images
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {user.companyImages.map((url, i) => (
+                <a
+                  key={`${url}-${i}`}
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block w-16 h-16 rounded-lg border border-gray-200 overflow-hidden bg-gray-50 shrink-0"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={url}
+                    alt=""
+                    className="w-full h-full object-contain"
+                  />
+                </a>
+              ))}
+            </div>
+          </div>
+        ) : null}
         <InfoRow label="Rating" value={user.rating ?? "N/A"} />
       </div>
       {user.bio && (

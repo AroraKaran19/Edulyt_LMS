@@ -200,6 +200,12 @@ const instructorSchema = new mongoose.Schema<Instructor>({
     min: 0,
   },
   bio: { type: String, required: false },
+  industry: { type: String, required: false, trim: true },
+  companyImages: {
+    type: [String],
+    required: false,
+    default: [],
+  },
   field: { type: String, required: false },
   currentPosition: { type: String, required: false },
   currentCompany: { type: String, required: false },

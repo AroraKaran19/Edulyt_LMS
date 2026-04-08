@@ -141,13 +141,13 @@ const AuthLayout = ({ children }: { children: React.ReactNode }) => {
         </div>
 
         <div className="absolute bottom-6 left-6 w-2/3 flex flex-col gap-2 z-10">
-          <p className={`text-xl text-white ${playwrite.className}`}>
+          <p className={`text-xl text-secondary ${playwrite.className}`}>
             Over 500+ amazing teachers!
           </p>
-          <p className="text-white text-6xl font-normal font-coolvetica text-balance">
+          <p className="text-secondary text-6xl font-normal font-coolvetica text-balance">
             Your Learning Journey Starts Here!
           </p>
-          <p className="text-white/70 text-xl font-semibold text-balance">
+          <p className="text-secondary/70 text-xl font-semibold text-balance">
             Airkrit is an amazing course and intership provider helps you grow a
             lot.{" "}
           </p>

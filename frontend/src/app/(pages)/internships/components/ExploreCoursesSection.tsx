@@ -6,7 +6,6 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import CourseSearchBar from "../../courses/components/CourseSearchBar";
 import { cn } from "@/lib/utils";
 import FilterContainer from "../../courses/components/FilterContainer";
-import NewCourseCard from "../../../../components/ui/NewCourseCard";
 import { getErrorUIConfig } from "@/configs/errorUIConfig";
 import Error from "@/components/ui/Error";
 import useSWR from "swr";
@@ -16,6 +15,7 @@ import { ENDPOINTS } from "@/constants/endpoints";
 import { fetcher } from "@/lib/utils";
 import { useCategory } from "@/hooks/useCategory";
 import { Category } from "@/types/category";
+import CourseCard from "../../courses/components/CourseCard";
 
 const ExploreCoursesSection = () => {
   // Local state management instead of context
@@ -258,8 +258,8 @@ const ExploreCoursesSection = () => {
       <div className="w-full h-full">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 auto-rows-fr">
           {allCourses.map((course: Course, index: number) => (
-            <NewCourseCard
-              key={`${course._id || course.slug}-${index}`}
+            <CourseCard
+              key={index}
               course={course}
               className="opacity-0 animate-course-card-fade-in"
               style={{ animationDelay: `${index * 100}ms` }}
@@ -290,7 +290,7 @@ const ExploreCoursesSection = () => {
         <h2
           className={cn(
             "text-2xl sm:text-3xl lg:text-4xl font-bold mb-3 sm:mb-4 font-coolvetica",
-            isMobile ? "text-center" : "text-left"
+            isMobile ? "text-center" : "text-left",
           )}
         >
           <span className="text-gray-900 font-extrabold">Explore more</span>{" "}
@@ -317,13 +317,13 @@ const ExploreCoursesSection = () => {
               {selectedFilter?.some((f) => f.value === "all")
                 ? ""
                 : selectedFilter?.length
-                ? `(${selectedFilter.length})`
-                : ""}
+                  ? `(${selectedFilter.length})`
+                  : ""}
             </span>
             <ChevronDown
               className={cn(
                 "size-3 sm:size-4 text-text-primary transition-transform duration-300 ease-in-out",
-                filterShown ? "rotate-180" : ""
+                filterShown ? "rotate-180" : "",
               )}
             />
           </div>
@@ -340,9 +340,7 @@ const ExploreCoursesSection = () => {
       </div>
 
       {/* Course Cards Grid */}
-      <div className="max-w-7xl mx-auto">
-        {renderContent()}
-      </div>
+      <div className="max-w-7xl mx-auto">{renderContent()}</div>
     </section>
   );
 };

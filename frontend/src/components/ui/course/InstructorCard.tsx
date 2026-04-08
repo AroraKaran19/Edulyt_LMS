@@ -1,3 +1,4 @@
+"use client";
 import { cn } from "@/lib/utils";
 import { slugify } from "@/lib/utils/slugify";
 import { Instructor } from "@/types";
@@ -8,7 +9,7 @@ import React from "react";
 const InstructorCard = ({
   instructor,
   ...props
-}: { instructor: Instructor } & {
+}: { instructor: Partial<Instructor> } & {
   className?: string;
   style?: React.CSSProperties;
 }) => {
@@ -45,9 +46,9 @@ const InstructorCard = ({
 
   return (
     <Link
-      href={`/instructor/${getSlug()}`}
+      href={`/mentor/${getSlug()}`}
       className={cn(
-        "instructor flex gap-1 items-center bg-[#EEEEEE] rounded-full p-1 text-xs font-bold text-text-primary select-none cursor-pointer max-w-[150px]",
+        "instructor w-max flex gap-1 items-center bg-[#EEEEEE] rounded-full p-1 text-xs font-bold text-text-primary select-none cursor-pointer max-w-[150px]",
         props.className
       )}
       onClick={(e) => {
