@@ -18,6 +18,7 @@ import authenticationMediaRoutes from "./authentication-media.routes";
 import certificateRoutes from "./certificate.routes";
 import couponRoutes from "./coupon.routes";
 import collaborationDomainRoutes from "./collaborationDomain.routes";
+import partnershipImportRoutes from "./partnershipImport.routes";
 import instructorDashboardRoutes from "./instructor-dashboard.routes";
 import collegeRoutes from "./college.routes";
 
@@ -42,6 +43,7 @@ export {
   certificateRoutes,
   couponRoutes,
   collaborationDomainRoutes,
+  partnershipImportRoutes,
   instructorDashboardRoutes,
   collegeRoutes,
 };

@@ -1,6 +1,7 @@
 import { calculateFinalDiscountedPrice } from "../utils/lib/calculateDiscount";
 import { applyCollaborationBenefitToPrice } from "../utils/lib/collaborationPricing";
 import { resolveCollaborationForCheckoutService } from "./collaborationDomain.services";
+import { resolvePartnershipImportDiscountForCheckoutService } from "./partnershipImportConfig.services";
 import { AppError } from "../middlewares/error.middleware";
 import mongoose from "mongoose";
 import {
@@ -305,6 +306,7 @@ async function computeCheckoutAfterCollaboration(params: {
   priceAfterCollaboration: number;
   collaborationDiscount: number;
   collaborationDomainId?: string;
+  partnershipImportConfigId?: string;
 }> {
   const priceAfterPlanCourse = calculateFinalDiscountedPrice(
     params.planPrice,
@@ -314,6 +316,7 @@ async function computeCheckoutAfterCollaboration(params: {
   let priceAfterCollaboration = priceAfterPlanCourse;
   let collaborationDiscount = 0;
   let collaborationDomainId: string | undefined;
+  let partnershipImportConfigId: string | undefined;
 
   const email = params.userEmail?.trim();
   if (!email) {
@@ -324,7 +327,7 @@ async function computeCheckoutAfterCollaboration(params: {
     };
   }
 
-  const collab = await resolveCollaborationForCheckoutService(email, [
+  let collab = await resolveCollaborationForCheckoutService(email, [
     params.courseId,
   ]);
   if (collab.applies && collab.benefit) {
@@ -336,6 +339,21 @@ async function computeCheckoutAfterCollaboration(params: {
     collaborationDiscount =
       Math.round((before - priceAfterCollaboration) * 100) / 100;
     collaborationDomainId = collab.collaborationDomainId;
+  } else {
+    const importDisc = await resolvePartnershipImportDiscountForCheckoutService(
+      email,
+      [params.courseId]
+    );
+    if (importDisc.applies && importDisc.benefit) {
+      const before = priceAfterCollaboration;
+      priceAfterCollaboration = applyCollaborationBenefitToPrice(
+        before,
+        importDisc.benefit
+      );
+      collaborationDiscount =
+        Math.round((before - priceAfterCollaboration) * 100) / 100;
+      partnershipImportConfigId = importDisc.partnershipImportConfigId;
+    }
   }
 
   return {
@@ -343,6 +361,7 @@ async function computeCheckoutAfterCollaboration(params: {
     priceAfterCollaboration,
     collaborationDiscount,
     collaborationDomainId,
+    partnershipImportConfigId,
   };
 }
 
@@ -365,6 +384,7 @@ async function resolveOrderAmount(params: {
   couponDiscount: number;
   collaborationDiscount: number;
   collaborationDomainId?: string;
+  partnershipImportConfigId?: string;
 }> {
   const {
     planPrice,
@@ -417,6 +437,7 @@ async function resolveOrderAmount(params: {
     couponDiscount,
     collaborationDiscount: checkout.collaborationDiscount,
     collaborationDomainId: checkout.collaborationDomainId,
+    partnershipImportConfigId: checkout.partnershipImportConfigId,
   };
 }
 
@@ -467,6 +488,7 @@ export const createOrderService = async (
     couponDiscount,
     collaborationDiscount,
     collaborationDomainId,
+    partnershipImportConfigId,
   } = await resolveOrderAmount({
     planPrice,
     courseId,
@@ -501,6 +523,9 @@ export const createOrderService = async (
     collaborationDiscount: collaborationDiscount ?? 0,
     collaborationDomainId: collaborationDomainId
       ? new mongoose.Types.ObjectId(collaborationDomainId)
+      : undefined,
+    partnershipImportConfigId: partnershipImportConfigId
+      ? new mongoose.Types.ObjectId(partnershipImportConfigId)
       : undefined,
   });
   await order.save();

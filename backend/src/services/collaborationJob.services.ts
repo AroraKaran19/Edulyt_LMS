@@ -3,11 +3,13 @@ import { v4 as uuidv4 } from "uuid";
 import { AppError } from "../middlewares/error.middleware";
 import { CollaborationJobModel } from "../models/collaborationJob.schema";
 import { CollaborationDomainModel } from "../models/collaborationDomain.schema";
+import { PartnershipImportConfigModel } from "../models/partnershipImportConfig.schema";
 import { UserModel } from "../models/user.schema";
 import {
   CollaborationDomainJobSnapshot,
   CollaborationJob,
   CollaborationJobStatus,
+  PartnershipImportConfigJobSnapshot,
 } from "../types/collaborationJob";
 
 function buildUserSnapshot(user: { firstName?: string; lastName?: string; email?: string } | null): {
@@ -94,6 +96,81 @@ export const createCollaborationAllotmentJobService = async (data: {
     }
     console.error("Error creating collaboration allotment job:", error);
     throw new AppError("Failed to create collaboration allotment job", 500);
+  }
+};
+
+export const createPartnershipImportAllotmentJobService = async (data: {
+  userId: string;
+  partnershipImportConfigId: string;
+}): Promise<CollaborationJob> => {
+  const jobId = uuidv4();
+
+  const cfgDoc = await PartnershipImportConfigModel.findById(
+    data.partnershipImportConfigId
+  )
+    .select("title kind")
+    .lean();
+
+  if (!cfgDoc) {
+    throw new AppError("Partnership import config not found", 404);
+  }
+
+  if (cfgDoc.kind !== "course_allot") {
+    throw new AppError("Partnership import config is not course allot", 400);
+  }
+
+  const partnershipImportConfigSnapshot: PartnershipImportConfigJobSnapshot = {
+    title: cfgDoc.title,
+  };
+
+  const userDoc = await UserModel.findById(data.userId)
+    .select("firstName lastName email")
+    .lean();
+  const userSnapshot = buildUserSnapshot(userDoc as any);
+
+  try {
+    const job = await CollaborationJobModel.findOneAndUpdate(
+      {
+        userId: new mongoose.Types.ObjectId(data.userId),
+        partnershipImportConfigId: new mongoose.Types.ObjectId(
+          data.partnershipImportConfigId
+        ),
+        status: { $in: ["pending", "processing"] },
+      },
+      {
+        $setOnInsert: {
+          jobId,
+          userId: new mongoose.Types.ObjectId(data.userId),
+          partnershipImportConfigId: new mongoose.Types.ObjectId(
+            data.partnershipImportConfigId
+          ),
+          collaborationDomainId: null,
+          status: "pending" as CollaborationJobStatus,
+          retryCount: 0,
+          partnershipImportConfigSnapshot,
+          userSnapshot: userSnapshot ?? undefined,
+        },
+      },
+      { upsert: true, new: true }
+    ).lean();
+
+    return job as unknown as CollaborationJob;
+  } catch (error: unknown) {
+    const err = error as { code?: number };
+    if (err.code === 11000) {
+      const existing = await CollaborationJobModel.findOne({
+        userId: new mongoose.Types.ObjectId(data.userId),
+        partnershipImportConfigId: new mongoose.Types.ObjectId(
+          data.partnershipImportConfigId
+        ),
+        status: { $in: ["pending", "processing"] },
+      }).lean();
+      if (existing) {
+        return existing as unknown as CollaborationJob;
+      }
+    }
+    console.error("Error creating partnership import allotment job:", error);
+    throw new AppError("Failed to create partnership import allotment job", 500);
   }
 };
 

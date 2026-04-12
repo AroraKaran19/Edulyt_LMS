@@ -21,6 +21,8 @@ export interface PaymentOrder {
   /** Partnership checkout discount (after plan/course discounts), when applicable */
   collaborationDiscount?: number;
   collaborationDomainId?: string;
+  /** CSV / manual partnership import discount (not email-domain collaboration). */
+  partnershipImportConfigId?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }

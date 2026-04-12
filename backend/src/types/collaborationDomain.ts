@@ -52,6 +52,8 @@ export interface CollaborationDomain {
 export interface CollaborationCheckoutResolve {
   applies: boolean;
   collaborationDomainId?: string;
+  /** When discount comes from partnership import (CSV), not email domain. */
+  partnershipImportConfigId?: string;
   title?: string;
   benefit?: CollaborationBenefit;
   enrollmentAccess?: CollaborationEnrollmentAccess;

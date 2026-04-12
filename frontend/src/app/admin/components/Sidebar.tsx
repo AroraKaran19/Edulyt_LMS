@@ -137,6 +137,10 @@ const AdminSidebar = ({
           label: "Collaboration Domains",
           href: "/admin/settings/collaboration-domains",
         },
+        {
+          label: "Partnership import",
+          href: "/admin/settings/partnership-import",
+        },
       ],
     },
   ];

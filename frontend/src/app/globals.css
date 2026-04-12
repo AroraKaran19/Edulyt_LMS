@@ -149,3 +149,17 @@ html {
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
+/* Partnership import CSV: indeterminate progress bar */
+@keyframes csv-import-shuttle {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(350%);
+  }
+}
+
+.csv-import-shuttle {
+  animation: csv-import-shuttle 1.35s ease-in-out infinite;
+}

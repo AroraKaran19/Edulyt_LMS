@@ -29,6 +29,11 @@ const orderSchema = new Schema<PaymentOrder>(
       ref: "CollaborationDomain",
       required: false,
     },
+    partnershipImportConfigId: {
+      type: Schema.Types.ObjectId,
+      ref: "PartnershipImportConfig",
+      required: false,
+    },
   },
   { timestamps: true }
 );

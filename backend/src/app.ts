@@ -26,6 +26,7 @@ import {
   certificateRoutes,
   couponRoutes,
   collaborationDomainRoutes,
+  partnershipImportRoutes,
   instructorDashboardRoutes,
   collegeRoutes,
 } from "./routes";
@@ -73,6 +74,7 @@ app.use("/api/authentication-media", authenticationMediaRoutes);
 app.use("/api/certificates", certificateRoutes);
 app.use("/api/coupons", couponRoutes);
 app.use("/api/collaboration-domains", collaborationDomainRoutes);
+app.use("/api/partnership-import-configs", partnershipImportRoutes);
 app.use("/api/instructor", instructorDashboardRoutes);
 app.use("/api/colleges", collegeRoutes);
 

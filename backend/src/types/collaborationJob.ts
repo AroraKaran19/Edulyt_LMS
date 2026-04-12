@@ -17,14 +17,22 @@ export interface CollaborationUserJobSnapshot {
   email: string;
 }
 
+export interface PartnershipImportConfigJobSnapshot {
+  title: string;
+}
+
 export interface CollaborationJob {
   _id?: string;
   jobId: string;
   userId: string;
-  collaborationDomainId: string;
+  /** Set when job is for email-domain collaboration. */
+  collaborationDomainId?: string | null;
+  /** Set when job is for standalone partnership import config (CSV). */
+  partnershipImportConfigId?: string | null;
   status: CollaborationJobStatus;
   /** Point-in-time copy of the collaboration domain (title + email domain). */
   collaborationDomainSnapshot?: CollaborationDomainJobSnapshot | null;
+  partnershipImportConfigSnapshot?: PartnershipImportConfigJobSnapshot | null;
   /** Point-in-time copy of the user (name + email). */
   userSnapshot?: CollaborationUserJobSnapshot | null;
   error?: string | null;
