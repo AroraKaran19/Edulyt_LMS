@@ -119,14 +119,23 @@ export const usePartnershipImportConfig = () => {
 
   const getWhitelistStats = useCallback(
     async (
-      configId: string
+      configId: string,
+      options?: { silent?: boolean }
     ): Promise<Record<string, number> | null> => {
-      return handleRequest(async () => {
+      const fetchStats = async () => {
         const response = await apiClient.get(
           `/partnership-import-configs/${configId}/whitelist/stats`
         );
         return response.data.data as Record<string, number>;
-      }, "Failed to load whitelist stats");
+      };
+      if (options?.silent) {
+        try {
+          return await fetchStats();
+        } catch {
+          return null;
+        }
+      }
+      return handleRequest(fetchStats, "Failed to load whitelist stats");
     },
     [handleRequest]
   );

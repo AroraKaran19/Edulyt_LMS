@@ -20,6 +20,7 @@ export default function PartnershipImportPage() {
     getConfigById,
     updateConfig,
     deleteConfig,
+    getWhitelistStats,
     isLoading,
   } = usePartnershipImportConfig();
 
@@ -30,7 +31,7 @@ export default function PartnershipImportPage() {
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [filterActive, setFilterActive] = useState<boolean | undefined>(
-    undefined
+    undefined,
   );
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -81,7 +82,7 @@ export default function PartnershipImportPage() {
     const next = !c.isActive;
     if (
       !confirm(
-        `Are you sure you want to ${next ? "activate" : "deactivate"} this configuration?`
+        `Are you sure you want to ${next ? "activate" : "deactivate"} this configuration?`,
       )
     ) {
       return;
@@ -102,7 +103,22 @@ export default function PartnershipImportPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Delete this configuration? Whitelist rows must be removed first.")) {
+    const stats = await getWhitelistStats(id, { silent: true });
+    const count = stats?.total ?? 0;
+    let message: string;
+    if (count > 0) {
+      message = `This configuration has ${count} whitelist ${
+        count === 1 ? "entry" : "entries"
+      }. Deleting will permanently remove ${
+        count === 1 ? "it" : "them"
+      }. Continue?`;
+    } else if (stats === null) {
+      message =
+        "Delete this configuration? Any whitelist entries will be removed as well.";
+    } else {
+      message = "Delete this configuration?";
+    }
+    if (!confirm(message)) {
       return;
     }
     const ok = await deleteConfig(id);

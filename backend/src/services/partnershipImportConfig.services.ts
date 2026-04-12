@@ -173,15 +173,10 @@ export async function deletePartnershipImportConfigService(
     throw new AppError("Invalid config ID", 400);
   }
 
-  const inUse = await CollaborationWhitelistModel.exists({
-    partnershipImportConfigId: new mongoose.Types.ObjectId(id),
+  const oid = new mongoose.Types.ObjectId(id);
+  await CollaborationWhitelistModel.deleteMany({
+    partnershipImportConfigId: oid,
   });
-  if (inUse) {
-    throw new AppError(
-      "Cannot delete: whitelist entries exist for this configuration. Remove or expire them first.",
-      400
-    );
-  }
 
   const res = await PartnershipImportConfigModel.findByIdAndDelete(id);
   return !!res;
