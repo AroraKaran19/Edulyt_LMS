@@ -31,6 +31,8 @@ export interface InfiniteScrollSelectProps<T = unknown> {
   disabled?: boolean;
   searchPlaceholder?: string;
   emptyMessage?: string;
+  /** Set false for short static lists (e.g. Active/Inactive) where search is pointless. */
+  showSearch?: boolean;
 }
 
 const DEFAULT_PAGE_SIZE = 15;
@@ -69,6 +71,7 @@ export function InfiniteScrollSelect<T = unknown>({
   disabled,
   searchPlaceholder = "Search...",
   emptyMessage = "No options found",
+  showSearch = true,
 }: InfiniteScrollSelectProps<T>) {
   const [isOpen, setIsOpen] = useState(false);
   const [options, setOptions] = useState<InfiniteScrollSelectOption<T>[]>([]);
@@ -82,10 +85,17 @@ export function InfiniteScrollSelect<T = unknown>({
 
   // Debounce search input so list refetches without an "Apply search" button
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || !showSearch) return;
     const t = setTimeout(() => setSearch(searchInput), 300);
     return () => clearTimeout(t);
-  }, [searchInput, isOpen]);
+  }, [searchInput, isOpen, showSearch]);
+
+  useEffect(() => {
+    if (isOpen && !showSearch) {
+      setSearchInput("");
+      setSearch("");
+    }
+  }, [isOpen, showSearch]);
 
   const selectedValues = Array.isArray(value) ? value : value ? [value] : [];
   const displayLabel =
@@ -121,8 +131,8 @@ export function InfiniteScrollSelect<T = unknown>({
   useEffect(() => {
     if (!isOpen) return;
     setPage(1);
-    loadPage(1, search, false);
-  }, [isOpen, search]);
+    loadPage(1, showSearch ? search : "", false);
+  }, [isOpen, search, showSearch]);
 
   // Load initial options on mount for displaying selected values
   useEffect(() => {
@@ -231,19 +241,21 @@ export function InfiniteScrollSelect<T = unknown>({
             dropdownClassName,
           )}
         >
-          <div className="p-2 border-b border-gray-100">
-            <input
-              type="text"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              onKeyDown={(e) =>
-                e.key === "Enter" &&
-                (e.preventDefault(), setSearch(searchInput))
-              }
-              placeholder={searchPlaceholder}
-              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none"
-            />
-          </div>
+          {showSearch && (
+            <div className="p-2 border-b border-gray-100">
+              <input
+                type="text"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                onKeyDown={(e) =>
+                  e.key === "Enter" &&
+                  (e.preventDefault(), setSearch(searchInput))
+                }
+                placeholder={searchPlaceholder}
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none"
+              />
+            </div>
+          )}
           <div
             ref={listRef}
             className="max-h-60 overflow-y-auto"

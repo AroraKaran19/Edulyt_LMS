@@ -154,11 +154,16 @@ partnershipImportConfigSchema.pre("validate", function (next) {
 
   if (kind === "discount") {
     this.set("enrollmentAccess", undefined);
-    this.set("courses", []);
     if (!benefit) {
       this.invalidate(
         "benefit",
         "Discount import configs require a benefit (percentage or fixed amount)"
+      );
+    }
+    if (courseCount === 0) {
+      this.invalidate(
+        "courses",
+        "Discount import requires at least one course the discount applies to"
       );
     }
   } else {

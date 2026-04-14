@@ -1,0 +1,73 @@
+export interface IconOption {
+  name: string;
+  label: string;
+}
+
+export const PERK_ICONS: IconOption[] = [
+  { name: "mdi:certificate-outline", label: "Certificate" },
+  { name: "mdi:currency-inr", label: "Stipend" },
+  { name: "mdi:account-tie", label: "Mentorship" },
+  { name: "mdi:trophy-outline", label: "Achievement" },
+  { name: "mdi:star-outline", label: "Star" },
+  { name: "mdi:briefcase-outline", label: "Work Experience" },
+  { name: "mdi:book-open-page-variant", label: "Learning" },
+  { name: "mdi:lightbulb-outline", label: "Innovation" },
+  { name: "mdi:rocket-launch-outline", label: "Growth" },
+  { name: "mdi:handshake-outline", label: "Network" },
+  { name: "mdi:chart-line", label: "Progress" },
+  { name: "mdi:shield-check-outline", label: "Security" },
+  { name: "mdi:clock-outline", label: "Flexibility" },
+  { name: "mdi:laptop", label: "Remote Work" },
+  { name: "mdi:gift-outline", label: "Gift" },
+  { name: "mdi:medal-outline", label: "Recognition" },
+  { name: "mdi:school-outline", label: "Education" },
+  { name: "mdi:account-group-outline", label: "Team" },
+  { name: "mdi:target", label: "Goal" },
+  { name: "mdi:diamond-stone", label: "Premium" },
+];
+
+export const FEATURE_ICONS: IconOption[] = [
+  { name: "mdi:laptop", label: "Online Learning" },
+  { name: "mdi:clock-outline", label: "Flexible Schedule" },
+  { name: "mdi:account-tie", label: "Industry Mentors" },
+  { name: "mdi:certificate-outline", label: "Certification" },
+  { name: "mdi:book-open-page-variant", label: "Learning Materials" },
+  { name: "mdi:video-outline", label: "Video Content" },
+  { name: "mdi:forum-outline", label: "Community Support" },
+  { name: "mdi:briefcase-outline", label: "Real Projects" },
+  { name: "mdi:chart-timeline-variant", label: "Progress Tracking" },
+  { name: "mdi:shield-check-outline", label: "Quality Assurance" },
+  { name: "mdi:hand-heart-outline", label: "Hands-on Experience" },
+  { name: "mdi:account-group-outline", label: "Peer Learning" },
+  { name: "mdi:lightbulb-on-outline", label: "Interactive Sessions" },
+  { name: "mdi:file-document-outline", label: "Documentation" },
+  { name: "mdi:star-outline", label: "Premium Content" },
+  { name: "mdi:trophy-outline", label: "Achievements" },
+  { name: "mdi:rocket-launch-outline", label: "Career Launch" },
+  { name: "mdi:headset", label: "Live Support" },
+  { name: "mdi:calendar-check-outline", label: "Structured Program" },
+  { name: "mdi:tools", label: "Tools & Resources" },
+];
+
+export const WHY_JOIN_ICONS: IconOption[] = [
+  { name: "mdi:account-star-outline", label: "Expert Guidance" },
+  { name: "mdi:rocket-launch-outline", label: "Career Growth" },
+  { name: "mdi:briefcase-check-outline", label: "Job Ready" },
+  { name: "mdi:school-outline", label: "Learn & Earn" },
+  { name: "mdi:certificate-outline", label: "Recognized Certificate" },
+  { name: "mdi:handshake-outline", label: "Industry Network" },
+  { name: "mdi:lightbulb-on-outline", label: "Real-world Skills" },
+  { name: "mdi:chart-line", label: "Career Advancement" },
+  { name: "mdi:trophy-outline", label: "Build Portfolio" },
+  { name: "mdi:account-group-outline", label: "Peer Community" },
+  { name: "mdi:target-arrow", label: "Clear Goals" },
+  { name: "mdi:star-circle-outline", label: "Stand Out" },
+  { name: "mdi:brain", label: "Practical Knowledge" },
+  { name: "mdi:progress-check", label: "Proven Process" },
+  { name: "mdi:wallet-outline", label: "Financial Benefits" },
+  { name: "mdi:medal-outline", label: "Recognition" },
+  { name: "mdi:update", label: "Continuous Learning" },
+  { name: "mdi:compass-outline", label: "Career Direction" },
+  { name: "mdi:human-capacity-increase", label: "Personal Growth" },
+  { name: "mdi:lightning-bolt-outline", label: "Fast Track" },
+];

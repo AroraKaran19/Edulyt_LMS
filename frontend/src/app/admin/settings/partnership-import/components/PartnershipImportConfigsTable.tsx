@@ -62,19 +62,24 @@ export default function PartnershipImportConfigsTable({
   }
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="bg-gray-50 border-b border-gray-200 text-left">
-              <th className="px-4 py-3 font-semibold text-gray-900">Name</th>
-              <th className="px-4 py-3 font-semibold text-gray-900">Type</th>
-              <th className="px-4 py-3 font-semibold text-gray-900">Status</th>
-              <th className="px-4 py-3 font-semibold text-gray-900 text-right">
-                Actions
-              </th>
-            </tr>
-          </thead>
+    <div className="min-w-0 overflow-x-auto rounded-xl border border-gray-200 bg-white">
+      <table className="w-max min-w-full border-separate border-spacing-0 text-sm">
+        <thead>
+          <tr className="border-b border-gray-200 text-left">
+            <th className="sticky top-0 z-10 bg-gray-50 px-4 py-3 font-semibold text-gray-900 shadow-[0_1px_0_0_rgb(229,231,235)]">
+              Name
+            </th>
+            <th className="sticky top-0 z-10 bg-gray-50 px-4 py-3 font-semibold text-gray-900 shadow-[0_1px_0_0_rgb(229,231,235)]">
+              Type
+            </th>
+            <th className="sticky top-0 z-10 bg-gray-50 px-4 py-3 font-semibold text-gray-900 shadow-[0_1px_0_0_rgb(229,231,235)]">
+              Status
+            </th>
+            <th className="sticky top-0 z-10 bg-gray-50 px-4 py-3 text-right font-semibold text-gray-900 shadow-[0_1px_0_0_rgb(229,231,235)]">
+              Actions
+            </th>
+          </tr>
+        </thead>
           <tbody className="divide-y divide-gray-100">
             {configs.map((c) => (
               <tr key={c._id} className="hover:bg-orange-50/40">
@@ -138,7 +143,6 @@ export default function PartnershipImportConfigsTable({
             ))}
           </tbody>
         </table>
-      </div>
     </div>
   );
 }

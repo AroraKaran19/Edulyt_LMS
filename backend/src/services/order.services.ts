@@ -339,6 +339,7 @@ async function computeCheckoutAfterCollaboration(params: {
     collaborationDiscount =
       Math.round((before - priceAfterCollaboration) * 100) / 100;
     collaborationDomainId = collab.collaborationDomainId;
+    partnershipImportConfigId = collab.partnershipImportConfigId;
   } else {
     const importDisc = await resolvePartnershipImportDiscountForCheckoutService(
       email,

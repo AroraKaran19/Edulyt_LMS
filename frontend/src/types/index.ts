@@ -11,6 +11,9 @@ export * from "./qna";
 export * from "./order";
 export * from "./live-classes";
 export * from "./certificate";
+export * from "./assessment";
+export * from "./internship";
+export * from "./partner-college";
 
 // ===================
 // Type Exports

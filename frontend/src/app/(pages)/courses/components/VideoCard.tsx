@@ -3,10 +3,8 @@ import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import { formatDuration } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { Content, CourseLesson, VideoContent } from "@/types";
-import React, { useState } from "react";
+import React from "react";
 import {
-  ChevronDown,
-  ChevronUp,
   Play,
   Clock,
   HelpCircle,

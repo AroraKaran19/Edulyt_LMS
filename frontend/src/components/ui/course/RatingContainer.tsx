@@ -7,15 +7,31 @@ const RatingContainer = ({
   totalRating,
   className,
   courseSlug,
+  internshipSlug,
   reviewCountText,
 }: {
   reviewCount: number;
   totalRating: number;
   className?: string;
-  courseSlug: string;
+  /** When set, links to `/courses/{slug}#ratings` */
+  courseSlug?: string;
+  /** When set (and `courseSlug` is not), links to `/internships/{slug}#ratings` */
+  internshipSlug?: string;
   reviewCountText?: string;
 }) => {
   const router = useRouter();
+
+  const ratingsHref =
+    courseSlug != null && courseSlug !== ""
+      ? `/courses/${courseSlug}#ratings`
+      : internshipSlug != null && internshipSlug !== ""
+        ? `/internships/${internshipSlug}#ratings`
+        : null;
+
+  const handleRatingClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (ratingsHref) router.push(ratingsHref);
+  };
 
   return (
     <div
@@ -26,11 +42,12 @@ const RatingContainer = ({
     >
       <span className="font-bold text-[#F7AD24] flex gap-2 flex-wrap items-center">
         <span
-          className="whitespace-nowrap underline cursor-pointer flex gap-2 items-center"
-          onClick={(e) => {
-            e.stopPropagation();
-            router.push(`/courses/${courseSlug}#ratings`);
-          }}
+          className={cn(
+            "whitespace-nowrap flex gap-2 items-center",
+            ratingsHref && "underline cursor-pointer"
+          )}
+          onClick={ratingsHref ? handleRatingClick : undefined}
+          role={ratingsHref ? "link" : undefined}
         >
           <Star className="w-4 h-4 text-[#F7AD24]" fill="#F7AD24" />
           {totalRating} Rating
@@ -41,8 +58,8 @@ const RatingContainer = ({
           {reviewCount > 100
             ? `(more than ${reviewCount} reviews)`
             : reviewCount === 1
-            ? `(${reviewCount} review)`
-            : `(${reviewCount} reviews)`}
+              ? `(${reviewCount} review)`
+              : `(${reviewCount} reviews)`}
         </span>
       </span>
     </div>

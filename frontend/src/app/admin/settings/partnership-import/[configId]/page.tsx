@@ -33,7 +33,7 @@ const PAGE_BUTTON_WINDOW = 5;
 function visiblePageNumbers(
   current: number,
   total: number,
-  windowSize: number
+  windowSize: number,
 ): number[] {
   if (total < 1) return [1];
   if (total <= windowSize) {
@@ -73,9 +73,7 @@ function parseEmailsFromFile(file: File): Promise<{ email: string }[]> {
         const seen = new Set<string>();
         for (const row of rows) {
           const keys = Object.keys(row || {});
-          const emailKey = keys.find(
-            (k) => k.trim().toLowerCase() === "email"
-          );
+          const emailKey = keys.find((k) => k.trim().toLowerCase() === "email");
           const value =
             emailKey !== undefined
               ? row[emailKey]
@@ -126,9 +124,9 @@ export default function PartnershipImportDetailPage() {
     CollaborationWhitelistStatus | ""
   >("");
   const [importMode, setImportMode] = useState<"append" | "replace">("append");
-  const [importPhase, setImportPhase] = useState<null | "reading" | "uploading">(
-    null
-  );
+  const [importPhase, setImportPhase] = useState<
+    null | "reading" | "uploading"
+  >(null);
 
   const loadConfig = useCallback(async () => {
     const c = await getConfigById(configId);
@@ -204,13 +202,15 @@ export default function PartnershipImportDetailPage() {
             ? `, ${result.expired} removed from previous list`
             : "";
         toast.success(
-          `Import: ${result.inserted} inserted, ${result.updated} updated${extra}`
+          `Import: ${result.inserted} inserted, ${result.updated} updated${extra}`,
         );
         void loadStats();
         void loadEntries();
       }
     } catch {
-      toast.error("Could not parse file. Use CSV or Excel with an email column.");
+      toast.error(
+        "Could not parse file. Use CSV or Excel with an email column.",
+      );
     } finally {
       setImportPhase(null);
     }
@@ -230,12 +230,12 @@ export default function PartnershipImportDetailPage() {
     <Container
       title={config?.title ?? "Partnership import"}
       description="Upload student emails (CSV/Excel). Registration or the background worker will apply course access or discount eligibility."
-      className="h-full"
-      classNameBody="flex flex-col gap-6"
+      className="min-h-0"
+      classNameBody="flex min-h-0 flex-col gap-6 overflow-x-hidden overflow-y-visible"
     >
       {importPhase && (
         <div
-          className="fixed inset-0 z-[200] flex items-center justify-center bg-gray-950/75 backdrop-blur-[2px] p-6"
+          className="fixed inset-0 z-200 flex items-center justify-center bg-gray-950/75 backdrop-blur-[2px] p-6"
           role="alertdialog"
           aria-modal="true"
           aria-busy="true"
@@ -260,7 +260,7 @@ export default function PartnershipImportDetailPage() {
               </p>
             </div>
             <div className="h-2.5 w-full overflow-hidden rounded-full bg-gray-200">
-              <div className="h-full w-[34%] rounded-full bg-gradient-to-r from-orange-400 to-orange-600 csv-import-shuttle" />
+              <div className="h-full w-[34%] rounded-full bg-linear-to-r from-orange-400 to-orange-600 csv-import-shuttle" />
             </div>
           </div>
         </div>
@@ -273,7 +273,11 @@ export default function PartnershipImportDetailPage() {
             All configurations
           </WhiteButton>
         </Link>
-        <WhiteButton glow={false} onClick={() => void loadEntries()} title="Refresh list">
+        <WhiteButton
+          glow={false}
+          onClick={() => void loadEntries()}
+          title="Refresh list"
+        >
           <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
         </WhiteButton>
       </div>
@@ -283,12 +287,16 @@ export default function PartnershipImportDetailPage() {
           <span>
             Type:{" "}
             <strong>
-              {config.kind === "discount" ? "Checkout discount" : "Course enrollment"}
+              {config.kind === "discount"
+                ? "Checkout discount"
+                : "Course enrollment"}
             </strong>
           </span>
           <span>
             Status:{" "}
-            <strong className={config.isActive ? "text-green-700" : "text-gray-500"}>
+            <strong
+              className={config.isActive ? "text-green-700" : "text-gray-500"}
+            >
               {config.isActive ? "Active" : "Inactive"}
             </strong>
           </span>
@@ -347,17 +355,16 @@ export default function PartnershipImportDetailPage() {
             glow={false}
             type="button"
             disabled={!!importPhase}
-            onClick={() =>
-              document.getElementById("pi-csv-upload")?.click()
-            }
+            onClick={() => document.getElementById("pi-csv-upload")?.click()}
             className="gap-2 flex items-center"
           >
             <Upload className="w-4 h-4" />
             Choose CSV / Excel
           </WhiteButton>
           <p className="text-xs text-gray-500 sm:flex-1 sm:min-w-[200px]">
-            First column header should be <code className="bg-white px-1 rounded">email</code>.
-            Duplicate emails in the file are deduplicated.
+            First column header should be{" "}
+            <code className="bg-white px-1 rounded">email</code>. Duplicate
+            emails in the file are deduplicated.
           </p>
         </div>
       </div>
@@ -394,20 +401,28 @@ export default function PartnershipImportDetailPage() {
         </div>
       </div>
 
-      <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-200 text-left">
-                <th className="px-3 py-2 font-semibold">Email</th>
-                <th className="px-3 py-2 font-semibold">Status</th>
-                <th className="px-3 py-2 font-semibold text-right">Actions</th>
-              </tr>
-            </thead>
+      <div className="min-w-0 overflow-x-auto rounded-xl border border-gray-200 bg-white">
+        <table className="w-max min-w-full border-separate border-spacing-0 text-sm">
+          <thead>
+            <tr className="border-b border-gray-200 text-left">
+              <th className="sticky top-0 z-10 bg-gray-50 px-3 py-2 font-semibold shadow-[0_1px_0_0_rgb(229,231,235)]">
+                Email
+              </th>
+              <th className="sticky top-0 z-10 bg-gray-50 px-3 py-2 font-semibold shadow-[0_1px_0_0_rgb(229,231,235)]">
+                Status
+              </th>
+              <th className="sticky top-0 z-10 bg-gray-50 px-3 py-2 text-right font-semibold shadow-[0_1px_0_0_rgb(229,231,235)]">
+                Actions
+              </th>
+            </tr>
+          </thead>
             <tbody className="divide-y divide-gray-100">
               {isLoading && entries.length === 0 ? (
                 <tr>
-                  <td colSpan={3} className="px-3 py-8 text-center text-gray-500">
+                  <td
+                    colSpan={3}
+                    className="px-3 py-8 text-center text-gray-500"
+                  >
                     <Loader2 className="w-6 h-6 animate-spin inline text-orange-500" />
                   </td>
                 </tr>
@@ -449,7 +464,7 @@ export default function PartnershipImportDetailPage() {
                               if (!row._id) return;
                               const r = await retryWhitelistEntry(
                                 configId,
-                                row._id
+                                row._id,
                               );
                               if (r) {
                                 toast.success("Retry scheduled");
@@ -466,10 +481,14 @@ export default function PartnershipImportDetailPage() {
                           className="!px-2 !py-1 text-red-600"
                           title="Delete row"
                           onClick={async () => {
-                            if (!row._id || !confirm("Remove this email from the list?")) return;
+                            if (
+                              !row._id ||
+                              !confirm("Remove this email from the list?")
+                            )
+                              return;
                             const ok = await deleteWhitelistEntry(
                               configId,
-                              row._id
+                              row._id,
                             );
                             if (ok) {
                               toast.success("Removed");
@@ -487,7 +506,6 @@ export default function PartnershipImportDetailPage() {
               )}
             </tbody>
           </table>
-        </div>
       </div>
 
       {totalPages > 1 && (
@@ -500,7 +518,7 @@ export default function PartnershipImportDetailPage() {
               <WhiteButton
                 glow={false}
                 type="button"
-                className="!px-3 !py-1.5 text-orange-600 border-orange-200 hover:bg-orange-50"
+                className="px-3! py-1.5! text-orange-600 border-orange-200 hover:bg-orange-50"
                 disabled={page <= 1}
                 title="First page"
                 onClick={() => setPage(1)}
@@ -510,7 +528,7 @@ export default function PartnershipImportDetailPage() {
               <OrangeButton
                 glow={false}
                 type="button"
-                className="!px-3 !py-1.5"
+                className="px-3! py-1.5!"
                 disabled={page <= 1}
                 title="Previous page"
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
@@ -523,7 +541,7 @@ export default function PartnershipImportDetailPage() {
                     key={n}
                     type="button"
                     onClick={() => setPage(n)}
-                    className={`min-w-[2.25rem] px-2.5 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                    className={`min-w-9 px-2.5 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
                       n === page
                         ? "bg-orange-500 text-white border-orange-500 shadow-sm"
                         : "bg-white text-gray-800 border-gray-300 hover:bg-orange-50/80 hover:border-orange-200"
@@ -531,7 +549,7 @@ export default function PartnershipImportDetailPage() {
                   >
                     {n}
                   </button>
-                )
+                ),
               )}
               <span className="text-sm text-gray-600 px-1 sm:px-2 whitespace-nowrap tabular-nums">
                 Page {page} of {totalPages}
@@ -539,18 +557,16 @@ export default function PartnershipImportDetailPage() {
               <OrangeButton
                 glow={false}
                 type="button"
-                className="!px-3 !py-1.5"
+                className="px-3! py-1.5!"
                 disabled={page >= totalPages}
-                onClick={() =>
-                  setPage((p) => Math.min(totalPages, p + 1))
-                }
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               >
                 Next
               </OrangeButton>
               <WhiteButton
                 glow={false}
                 type="button"
-                className="!px-3 !py-1.5 text-orange-600 border-orange-200 hover:bg-orange-50"
+                className="px-3! py-1.5! text-orange-600 border-orange-200 hover:bg-orange-50"
                 disabled={page >= totalPages}
                 title="Last page"
                 onClick={() => setPage(totalPages)}

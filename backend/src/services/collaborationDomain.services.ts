@@ -10,10 +10,10 @@ import {
 } from "../types/collaborationDomain";
 import mongoose from "mongoose";
 import { hostMatchesCollaborationDomain } from "../utils/collaborationDomainMatching";
+import { resolvePartnershipImportDiscountForCheckoutService } from "./partnershipImportConfig.services";
 
 /**
- * API shape: one branch only — discount rows never expose linked courses;
- * course allot never exposes benefit.
+ * API shape: discount rows expose linked courses + benefit; course allot never exposes benefit.
  */
 export function sanitizeCollaborationDomainForApi(
   doc: CollaborationDomain | null
@@ -28,9 +28,9 @@ export function sanitizeCollaborationDomainForApi(
   if (doc.collaborationKind === "discount") {
     return {
       ...doc,
-      courses: [],
       enrollmentAccess: undefined,
       benefit: doc.benefit,
+      courses: doc.courses ?? [],
     };
   }
   return {
@@ -227,7 +227,7 @@ const parseCourseObjectIds = (
   }
   if (requireNonEmpty && ids.length === 0) {
     throw new AppError(
-      "At least one course is required for course allot partnerships",
+      "At least one course is required for this collaboration domain",
       400
     );
   }
@@ -265,10 +265,7 @@ export const createCollaborationDomainService = async (
   }
 
   const rawCourses = collaborationData.courses ?? [];
-  const courses =
-    kind === "discount"
-      ? []
-      : parseCourseObjectIds(rawCourses, true);
+  const courses = parseCourseObjectIds(rawCourses, true);
 
   if (kind === "discount") {
     if (!collaborationData.benefit) {
@@ -377,7 +374,27 @@ export const updateCollaborationDomainService = async (
 
   let nextCourses: mongoose.Types.ObjectId[];
   if (nextKind === "discount") {
-    nextCourses = [];
+    if (collaborationData.courses !== undefined) {
+      nextCourses = parseCourseObjectIds(collaborationData.courses, true);
+    } else {
+      const raw = existing.courses ?? [];
+      if (!Array.isArray(raw) || raw.length === 0) {
+        throw new AppError(
+          "At least one course is required for discount partnerships",
+          400
+        );
+      }
+      nextCourses = raw.map((id) => {
+        const idStr =
+          id && typeof id === "object" && "_id" in (id as object)
+            ? String((id as { _id: unknown })._id)
+            : String(id);
+        if (!mongoose.Types.ObjectId.isValid(idStr)) {
+          throw new AppError("Invalid course ID on collaboration domain", 400);
+        }
+        return new mongoose.Types.ObjectId(idStr);
+      });
+    }
   } else if (collaborationData.courses !== undefined) {
     nextCourses = parseCourseObjectIds(collaborationData.courses, true);
   } else {
@@ -421,9 +438,14 @@ export const updateCollaborationDomainService = async (
     );
   }
 
-  if (nextKind === "course_allot" && nextCourses.length === 0) {
+  if (
+    (nextKind === "course_allot" || nextKind === "discount") &&
+    nextCourses.length === 0
+  ) {
     throw new AppError(
-      "At least one course is required for course allot partnerships",
+      nextKind === "discount"
+        ? "At least one course is required for discount partnerships"
+        : "At least one course is required for course allot partnerships",
       400
     );
   }
@@ -443,7 +465,7 @@ export const updateCollaborationDomainService = async (
   update.collaborationKind = nextKind;
 
   if (nextKind === "discount") {
-    update.courses = [];
+    update.courses = nextCourses;
     update.benefit = nextBenefit;
   } else {
     update.courses = nextCourses;
@@ -502,29 +524,40 @@ export const resolveCollaborationForCheckoutService = async (
   email: string | undefined,
   courseIds: string[]
 ): Promise<CollaborationCheckoutResolve> => {
-  const domainKey = email ? emailToCollaborationDomain(email) : null;
-  if (!domainKey || courseIds.length === 0) {
-    return { applies: false };
-  }
-
   const validIds = courseIds.filter((id) => mongoose.Types.ObjectId.isValid(id));
   if (validIds.length !== courseIds.length || validIds.length === 0) {
     return { applies: false };
   }
 
+  const tryPartnershipImportDiscount = () =>
+    resolvePartnershipImportDiscountForCheckoutService(email, validIds);
+
+  const domainKey = email ? emailToCollaborationDomain(email) : null;
+  if (!domainKey) {
+    return tryPartnershipImportDiscount();
+  }
+
   const doc = await findCollaborationDomainForCheckoutEmail(email!);
 
   if (!doc) {
-    return { applies: false };
+    return tryPartnershipImportDiscount();
   }
 
   if (doc.collaborationKind !== "discount" && doc.collaborationKind !== "course_allot") {
-    return { applies: false };
+    return tryPartnershipImportDiscount();
   }
 
   if (doc.collaborationKind === "discount") {
     if (!doc.benefit) {
-      return { applies: false };
+      return tryPartnershipImportDiscount();
+    }
+    const discountCourses = doc.courses ?? [];
+    if (Array.isArray(discountCourses) && discountCourses.length > 0) {
+      const allowed = new Set(discountCourses.map((c) => String(c)));
+      const hitsCart = validIds.some((id) => allowed.has(id));
+      if (!hitsCart) {
+        return tryPartnershipImportDiscount();
+      }
     }
     return {
       applies: true,
@@ -538,13 +571,18 @@ export const resolveCollaborationForCheckoutService = async (
   const courseList = doc.courses ?? [];
   const hasLinkedCourses = Array.isArray(courseList) && courseList.length > 0;
   if (!hasLinkedCourses) {
-    return { applies: false };
+    return tryPartnershipImportDiscount();
   }
 
   const allowed = new Set(courseList.map((c) => String(c)));
   const allCovered = validIds.every((id) => allowed.has(id));
   if (!allCovered) {
-    return { applies: false };
+    return tryPartnershipImportDiscount();
+  }
+
+  const pip = await tryPartnershipImportDiscount();
+  if (pip.applies && pip.benefit) {
+    return pip;
   }
 
   return {

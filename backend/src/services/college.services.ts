@@ -26,6 +26,9 @@ const toCollege = (doc: Record<string, unknown>): College => {
     _id: doc._id != null ? String(doc._id) : undefined,
     name: String(doc.name ?? ""),
     location: loc ?? "",
+    website:
+      typeof doc.website === "string" ? doc.website.trim() : undefined,
+    image: typeof doc.image === "string" ? doc.image.trim() : undefined,
     isActive: Boolean(doc.isActive),
     createdAt: doc.createdAt as Date | undefined,
     updatedAt: doc.updatedAt as Date | undefined,
@@ -48,7 +51,14 @@ const buildSearchFilter = (search?: string): mongoose.FilterQuery<College> => {
     .filter((w) => w.length > 0);
   if (words.length === 0) return {};
 
-  const fields = ["name", "location", "city", "state", "country"] as const;
+  const fields = [
+    "name",
+    "location",
+    "website",
+    "city",
+    "state",
+    "country",
+  ] as const;
 
   const perWord = words.map((word) => {
     const rx = escapeRegex(word);
@@ -135,11 +145,15 @@ export const getCollegeByIdService = async (
 export const createCollegeService = async (data: {
   name: string;
   location: string;
+  website?: string;
+  image?: string;
   isActive?: boolean;
 }): Promise<College> => {
   const doc = await CollegeModel.create({
     name: data.name.trim(),
     location: data.location.trim(),
+    website: data.website?.trim() ?? "",
+    image: data.image?.trim() ?? "",
     isActive: data.isActive !== false,
   });
   return toCollege(doc.toObject() as unknown as Record<string, unknown>);
@@ -150,6 +164,8 @@ export const updateCollegeService = async (
   data: Partial<{
     name: string;
     location: string;
+    website: string;
+    image: string;
     isActive: boolean;
   }>,
 ): Promise<College | null> => {
@@ -158,6 +174,8 @@ export const updateCollegeService = async (
   if (data.name !== undefined) update.name = String(data.name).trim();
   if (data.location !== undefined)
     update.location = String(data.location).trim();
+  if (data.website !== undefined) update.website = String(data.website).trim();
+  if (data.image !== undefined) update.image = String(data.image).trim();
   if (data.isActive !== undefined) update.isActive = Boolean(data.isActive);
 
   const doc = await CollegeModel.findByIdAndUpdate(id, update, {

@@ -137,8 +137,8 @@ export default function PartnershipImportPage() {
     <Container
       title="Partnership import"
       description="Named partnerships: choose course enrollment or discount, then manage email lists separately from email-domain collaboration."
-      className="h-full"
-      classNameBody="flex flex-col gap-6 overflow-visible"
+      className="min-h-0"
+      classNameBody="flex min-h-0 flex-col gap-6 overflow-x-hidden overflow-y-visible"
     >
       <PartnershipImportConfigsToolbar
         searchInput={searchInput}

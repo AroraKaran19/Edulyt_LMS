@@ -29,6 +29,8 @@ import {
   partnershipImportRoutes,
   instructorDashboardRoutes,
   collegeRoutes,
+  internshipRoutes,
+  partnerCollegeRoutes,
 } from "./routes";
 
 dotenv.config();
@@ -77,6 +79,8 @@ app.use("/api/collaboration-domains", collaborationDomainRoutes);
 app.use("/api/partnership-import-configs", partnershipImportRoutes);
 app.use("/api/instructor", instructorDashboardRoutes);
 app.use("/api/colleges", collegeRoutes);
+app.use("/api/internships", internshipRoutes);
+app.use("/api/partner-colleges", partnerCollegeRoutes);
 
 app.use(notFoundHandler); // Handle 404 errors
 app.use(errorHandler); // Handle all other errors

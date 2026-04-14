@@ -14,6 +14,16 @@ const collegeSchema = new mongoose.Schema<College>(
       trim: true,
       minlength: [1, "Location cannot be empty"],
     },
+    website: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    image: {
+      type: String,
+      trim: true,
+      default: "",
+    },
     isActive: {
       type: Boolean,
       default: true,

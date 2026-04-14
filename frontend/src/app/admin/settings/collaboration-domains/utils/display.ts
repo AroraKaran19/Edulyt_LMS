@@ -1,13 +1,11 @@
 import { CollaborationDomain } from "@/types/collaborationDomain";
 
 export function getCourseCount(domain: CollaborationDomain): number {
-  if (domain.collaborationKind === "discount") return 0;
   return Array.isArray(domain.courses) ? domain.courses.length : 0;
 }
 
-/** Course allot: count. Discount: any course at checkout. */
+/** Linked courses: course allot enrollments, or discount scope at checkout. */
 export function getCoursesColumnDisplay(domain: CollaborationDomain): string {
-  if (domain.collaborationKind === "discount") return "Any";
   const n = getCourseCount(domain);
   return n > 0 ? String(n) : "0";
 }

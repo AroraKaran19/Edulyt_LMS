@@ -83,12 +83,12 @@ const AdminSidebar = ({
           href: "/admin/internships/analytics",
         },
         {
-          label: "All Internships",
-          href: "/admin/internships/all-internships",
-        },
-        {
           label: "Manage Internships",
           href: "/admin/internships/manage-internships",
+        },
+        {
+          label: "Assessments",
+          href: "/admin/internships/assessments",
         },
       ],
     },

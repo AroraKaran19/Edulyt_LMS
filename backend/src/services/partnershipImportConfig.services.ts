@@ -11,6 +11,18 @@ import type {
 } from "../types/collaborationDomain";
 import { CollaborationWhitelistModel } from "../models/collaborationWhitelist.schema";
 
+function toCourseObjectIds(ids: unknown): mongoose.Types.ObjectId[] {
+  if (!Array.isArray(ids)) return [];
+  const out: mongoose.Types.ObjectId[] = [];
+  for (const id of ids) {
+    const s = String(id);
+    if (mongoose.Types.ObjectId.isValid(s)) {
+      out.push(new mongoose.Types.ObjectId(s));
+    }
+  }
+  return out;
+}
+
 function sanitizeConfigForApi(
   doc: PartnershipImportConfig | null
 ): PartnershipImportConfig | null {
@@ -18,9 +30,9 @@ function sanitizeConfigForApi(
   if (doc.kind === "discount") {
     return {
       ...doc,
-      courses: [],
       enrollmentAccess: undefined,
       benefit: doc.benefit,
+      courses: doc.courses ?? [],
     };
   }
   return {
@@ -104,7 +116,7 @@ export async function createPartnershipImportConfigService(
     title: data.title.trim(),
     kind: data.kind as PartnershipImportKind,
     isActive: data.isActive !== false,
-    courses: data.kind === "course_allot" ? data.courses ?? [] : [],
+    courses: toCourseObjectIds(data.courses),
     enrollmentAccess:
       data.kind === "course_allot" ? data.enrollmentAccess : undefined,
     benefit: data.kind === "discount" ? data.benefit : undefined,
@@ -142,10 +154,12 @@ export async function updatePartnershipImportConfigService(
   if (data.kind !== undefined) updatePayload.kind = data.kind;
 
   if (nextKind === "discount") {
-    updatePayload.courses = [];
     updatePayload.enrollmentAccess = undefined;
     if (data.benefit !== undefined) {
       updatePayload.benefit = data.benefit;
+    }
+    if (data.courses !== undefined) {
+      updatePayload.courses = toCourseObjectIds(data.courses);
     }
   } else {
     updatePayload.benefit = undefined;
@@ -187,10 +201,15 @@ export async function deletePartnershipImportConfigService(
  */
 export async function resolvePartnershipImportDiscountForCheckoutService(
   email: string | undefined,
-  _courseIds: string[] = []
+  courseIds: string[] = []
 ): Promise<CollaborationCheckoutResolve> {
   const trimmed = email?.trim().toLowerCase();
   if (!trimmed) {
+    return { applies: false };
+  }
+
+  const wanted = new Set(courseIds.map(String).filter(Boolean));
+  if (wanted.size === 0) {
     return { applies: false };
   }
 
@@ -212,10 +231,16 @@ export async function resolvePartnershipImportDiscountForCheckoutService(
       isActive: true,
       kind: "discount",
     })
-      .select("title benefit")
+      .select("title benefit courses")
       .lean();
 
     if (!cfg?.benefit) continue;
+
+    const allowed = new Set(
+      (cfg.courses ?? []).map((c: unknown) => String(c))
+    );
+    const appliesToCourse = [...wanted].some((id) => allowed.has(id));
+    if (!appliesToCourse) continue;
 
     const benefit = cfg.benefit as CollaborationBenefit;
     return {

@@ -2,7 +2,7 @@ export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 export const ENDPOINTS = {
   API_BASE_URL: API_BASE_URL,
-  
+
   // Authentication Routes
   auth: {
     register: "/auth/register",
@@ -28,7 +28,7 @@ export const ENDPOINTS = {
 
     // User Routes
     enrolled: "/courses/enrolled",
-    
+
     // Admin Routes
     admin: {
       all: "/courses/admin",
@@ -36,25 +36,25 @@ export const ENDPOINTS = {
       bySlug: "/courses/admin/slug",
       duplicate: "/courses/admin/duplicate",
     },
-    
+
     // Course Management
     metadata: "/courses/metadata",
     status: "/courses",
-    
+
     // Module Management
     modules: {
       create: "/courses",
       update: "/courses",
       delete: "/courses",
     },
-    
+
     // Lesson Management
     lessons: {
       create: "/courses",
       update: "/courses",
       delete: "/courses",
     },
-    
+
     // Content Management
     contents: {
       create: "/courses",
@@ -63,12 +63,31 @@ export const ENDPOINTS = {
     },
   },
 
+  // Internship Routes
+  internships: {
+    all: "/internships",
+    /** GET — active + featured internships only (same query params as `all`). */
+    featured: "/internships/featured",
+    bySlug: "/internships/slug",
+
+    // Authenticated
+    checkSlug: "/internships/check-slug",
+    // Admin Routes
+    admin: {
+      all: "/internships/admin",
+      byId: "/internships/admin/id",
+    },
+
+    metadata: "/internships/metadata",
+    base: "/internships",
+  },
+
   // Category Routes
   categories: {
     // Public Routes
     all: "/categories",
     byId: "/categories",
-    
+
     // Admin Routes
     admin: {
       all: "/categories/admin",
@@ -76,7 +95,7 @@ export const ENDPOINTS = {
       update: "/categories/admin",
       delete: "/categories/admin",
     },
-    
+
     // CRUD Operations
     create: "/categories",
     update: "/categories",
@@ -90,7 +109,7 @@ export const ENDPOINTS = {
     create: "/orders",
     verify: "/orders/verify",
     webhook: "/orders/webhook",
-    
+
     // Admin Routes
     byId: "/orders",
     delete: "/orders",
@@ -101,7 +120,7 @@ export const ENDPOINTS = {
     // Public Routes
     all: "/faqs",
     byId: "/faqs",
-    
+
     // Admin Routes
     admin: {
       all: "/faqs/admin",
@@ -109,7 +128,7 @@ export const ENDPOINTS = {
       update: "/faqs/admin",
       delete: "/faqs/admin",
     },
-    
+
     // CRUD Operations
     create: "/faqs",
     update: "/faqs",
@@ -121,7 +140,7 @@ export const ENDPOINTS = {
     // Public Routes
     all: "/testimonials",
     byId: "/testimonials",
-    
+
     // Admin Routes
     admin: {
       all: "/testimonials/admin",
@@ -129,7 +148,7 @@ export const ENDPOINTS = {
       update: "/testimonials/admin",
       delete: "/testimonials/admin",
     },
-    
+
     // CRUD Operations
     create: "/testimonials",
     update: "/testimonials",
@@ -141,7 +160,7 @@ export const ENDPOINTS = {
     // Public Routes
     all: "/qnas",
     byId: "/qnas",
-    
+
     // Admin Routes
     admin: {
       all: "/qnas/admin",
@@ -149,12 +168,12 @@ export const ENDPOINTS = {
       update: "/qnas/admin",
       delete: "/qnas/admin",
     },
-    
+
     // CRUD Operations
     create: "/qnas",
     update: "/qnas",
     delete: "/qnas",
-    
+
     // Reply Management
     reply: {
       add: "/qnas",

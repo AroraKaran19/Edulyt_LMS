@@ -1,0 +1,162 @@
+import React from "react";
+import { Instructor, Discount } from "@/types";
+import type { Internship, InternshipPublicListing } from "@/types/internship";
+import { cn } from "@/lib/utils";
+import {
+  calculateDiscountDisplay,
+  calculateInternshipDiscountDisplay,
+} from "@/lib/utils/discount";
+import { Plus } from "lucide-react";
+import BestsellerBadge from "@/components/ui/course/BestsellerBadge";
+import RatingContainer from "@/components/ui/course/RatingContainer";
+import DiscountBadge from "@/components/ui/course/DiscountBadge";
+import InstructorCard from "@/components/ui/course/InstructorCard";
+import OrangeButton from "@/components/ui/buttons/OrangeButton";
+import { useRouter } from "next/navigation";
+import { Icon } from "@iconify/react";
+
+const TopInternshipCard = ({
+  internship,
+  ...props
+}: { internship: InternshipPublicListing } & {
+  className?: string;
+  style?: React.CSSProperties;
+}) => {
+  const router = useRouter();
+
+  /** Pre–batch-schema docs may still expose root `plan`. */
+  const legacyRoot = internship as InternshipPublicListing & {
+    plan?: { price?: number; discount?: Discount } | null;
+  };
+
+  const batchPrices = (internship.batches ?? [])
+    .filter((b) => b.isActive !== false)
+    .map((b) => b.plan?.price ?? 0)
+    .filter((p) => p > 0);
+
+  const hasBatchPricing = batchPrices.length > 0;
+
+  const originalPrice = hasBatchPricing
+    ? Math.min(...batchPrices)
+    : (legacyRoot.plan?.price ?? 0);
+
+  /**
+   * With batch pricing: “from” price is the lowest batch plan; only the internship-wide
+   * time-window discount applies. Legacy root-only docs still use internship-style
+   * plan discount + document discount stacking.
+   */
+  const discountInfo = hasBatchPricing
+    ? calculateInternshipDiscountDisplay(
+        originalPrice,
+        internship.discount ?? undefined,
+      )
+    : calculateDiscountDisplay(
+        originalPrice,
+        legacyRoot.plan?.discount,
+        internship.discount ?? undefined,
+      );
+
+  const hasAnyDiscount = !!discountInfo.discountLabel;
+
+  return (
+    <div
+      className={cn(
+        "top-internship-card select-none w-full bg-white rounded-2xl shadow-[0_0_2px_5px_rgba(247,113,36,0.3)] p-3 cursor-default flex flex-col",
+        props.className,
+      )}
+    >
+      <div className="internship-card-image rounded-2xl h-1/2 w-full relative">
+        <img
+          src={internship.thumbnail || "/CourseCardDemo.jpg"}
+          alt={internship.title}
+          className="rounded-2xl max-h-[200px] select-none w-full h-full object-fill"
+          draggable={false}
+          loading="lazy"
+        />
+        {hasAnyDiscount && (
+          <DiscountBadge
+            label={discountInfo.discountLabel}
+            className="absolute top-2 right-2"
+          />
+        )}
+      </div>
+      <BestsellerBadge
+        enrollStudents={internship.analytics?.totalEnrollments || 0}
+        className="mt-3"
+      />
+      <p
+        className={cn(
+          "text-2xl font-bold mt-2 font-coolvetica select-none text-balance",
+        )}
+      >
+        {internship.title}
+      </p>
+      <RatingContainer
+        reviewCount={internship.analytics?.totalReviews || 0}
+        totalRating={internship.analytics?.totalRatings || 0}
+        className="mt-2"
+        internshipSlug={internship.slug}
+      />
+      <div className="flex items-center gap-2 mt-2 select-none">
+        <span className="inline-flex items-center gap-2 rounded-full bg-orange-50 text-primary text-xs font-semibold px-3 py-1 shadow-sm border border-orange-200">
+          <Icon icon="boxicons:community-filled" width="16" height="16" />
+          <span>
+            {internship.batches.length}{" "}
+            {internship.batches.length === 1 ? "batch" : "batches"} available
+          </span>
+        </span>
+      </div>
+
+      <div
+        className={cn("instructors mt-2 flex gap-2 items-center select-none")}
+      >
+        {internship.mentors &&
+          (internship.mentors as Instructor[]).map(
+            (instructor, index: number) => {
+              if (index < 2) {
+                return <InstructorCard key={index} instructor={instructor} />;
+              }
+            },
+          )}
+        {internship.mentors && internship.mentors.length > 2 && (
+          <div className="instructor flex items-center bg-[#EEEEEE] rounded-full p-1">
+            <Plus className="w-3 h-3 text-text-primary" fill="#2B1508" />
+            <p className="text-xs font-bold text-text-primary">
+              {internship.mentors.length - 2}
+            </p>
+          </div>
+        )}
+      </div>
+      <div className="price mt-auto flex flex-row flex-wrap items-center justify-between gap-3 w-full select-none">
+        <div className="pricing flex flex-row items-center flex-wrap gap-x-2 gap-y-0">
+          {hasAnyDiscount ? (
+            <>
+              <span className="text-xl font-bold text-black">
+                ₹{discountInfo.discountPrice}
+              </span>
+              <p className="text-sm font-normal text-black line-through opacity-50">
+                ₹{originalPrice}
+              </p>
+            </>
+          ) : (
+            <span className="text-xl font-bold text-black">
+              ₹{originalPrice}
+            </span>
+          )}
+          <p className="text-sm font-normal text-black">onwards/-</p>
+        </div>
+        <OrangeButton
+          className="sm:ml-auto font-bold text-sm px-8 py-4"
+          onClick={(e) => {
+            e.stopPropagation();
+            router.push(`/internships/${internship.slug}`);
+          }}
+        >
+          View Details
+        </OrangeButton>
+      </div>
+    </div>
+  );
+};
+
+export default TopInternshipCard;

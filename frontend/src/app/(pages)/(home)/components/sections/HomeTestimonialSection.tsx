@@ -1,4 +1,3 @@
-import TestimonialCard from "@/app/(pages)/courses/[slug]/components/TestimonialCard";
 import TestimonialCarousel from "@/app/(pages)/courses/[slug]/components/TestimonialCarousel";
 import { Testimonial } from "@/types";
 import { Icon } from "@iconify/react";

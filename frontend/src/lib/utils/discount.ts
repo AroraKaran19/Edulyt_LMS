@@ -16,6 +16,19 @@ export function applyCollaborationBenefitToPrice(
   return Math.round(Math.max(0, next) * 100) / 100;
 }
 
+/**
+ * Listing / carousel price for internships: base comes from the lowest active batch
+ * plan price; only the document-level time-window discount (`internship.discount`)
+ * is applied. Unlike courses, we do not stack a separate “plan tier” discount from
+ * batch `plan.discount` on the card (batch UI does not configure it; promos are
+ * internship-wide in Screen 3).
+ */
+export const calculateInternshipDiscountDisplay = (
+  lowestBatchPlanPrice: number,
+  internshipDiscount?: CourseDiscount,
+) =>
+  calculateDiscountDisplay(lowestBatchPlanPrice, undefined, internshipDiscount);
+
 export const calculateDiscountDisplay = (
   planPrice: number,
   planDiscount?: Discount,

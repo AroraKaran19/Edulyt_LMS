@@ -1,109 +1,153 @@
-"use client";
-
-import { Star } from "lucide-react";
-import { useRouter } from "next/navigation";
+import BestsellerBadge from "@/components/ui/course/BestsellerBadge";
+import DiscountBadge from "@/components/ui/course/DiscountBadge";
+import InstructorCard from "@/components/ui/course/InstructorCard";
+import RatingContainer from "@/components/ui/course/RatingContainer";
+import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import { cn } from "@/lib/utils";
-import type { Course as InternshipListingItem } from "@/constants/internshipData";
+import {
+  calculateDiscountDisplay,
+  calculateInternshipDiscountDisplay,
+} from "@/lib/utils/discount";
+import { Instructor, Discount } from "@/types";
+import type { Internship, InternshipPublicListing } from "@/types/internship";
+import { Plus } from "lucide-react";
+import { useRouter } from "next/navigation";
+import React from "react";
 import Image from "next/image";
-
-function formatEnrolled(n: number): string {
-  if (n >= 1000) return `${(n / 1000).toFixed(0)}k`;
-  return String(n);
-}
 
 const InternshipCard = ({
   internship,
-  className,
-  style,
-}: {
-  internship: InternshipListingItem;
+  ...props
+}: { internship: Internship | InternshipPublicListing } & {
   className?: string;
   style?: React.CSSProperties;
 }) => {
   const router = useRouter();
-  const hasDiscount = internship.discount > 0;
-  const discountLabel = hasDiscount ? `${internship.discount}% off` : "";
+
+  const legacyRoot = internship as InternshipPublicListing & {
+    plan?: { price?: number; discount?: Discount } | null;
+  };
+
+  const batchPrices = (internship.batches ?? [])
+    .filter((b) => b.isActive !== false)
+    .map((b) => b.plan?.price ?? 0)
+    .filter((p) => p > 0);
+
+  const hasBatchPricing = batchPrices.length > 0;
+
+  const originalPrice = hasBatchPricing
+    ? Math.min(...batchPrices)
+    : legacyRoot.plan?.price ?? 0;
+
+  const discountInfo = hasBatchPricing
+    ? calculateInternshipDiscountDisplay(
+        originalPrice,
+        internship.discount ?? undefined,
+      )
+    : calculateDiscountDisplay(
+        originalPrice,
+        legacyRoot.plan?.discount,
+        internship.discount ?? undefined,
+      );
+
+  const hasAnyDiscount = !!discountInfo.discountLabel;
+
+  const showFeaturedBadge = Boolean(
+    (internship as Internship & { featured?: boolean }).featured,
+  );
 
   return (
     <div
       className={cn(
-        "flex h-full w-full flex-col overflow-hidden rounded-2xl flex-wrap border-2 bg-white border-[#F77124] shadow-[0_0_0_4px_rgba(247,113,36,0.24)] lg:flex-row",
-        className
+        "internship-card w-full h-full bg-white rounded-2xl p-3 flex flex-col border-2 border-[rgb(233,117,0)] shadow-[0_0_2px_4px_rgba(233,117,0,0.3)] gap-4 cursor-default",
+        "md:flex-row md:items-stretch",
+        props.className
       )}
-      style={style}
+      style={props.style}
     >
-      {/* Left: image + badges */}
-      <div>
-        <div className="relative h-44 w-full lg:h-full xl:w-52 aspect-square p-4">
-          <Image
-            // src={internship.thumbnail}
-            src={'/CourseCardDemo.jpg'}
-            alt={internship.title}
-            className="h-full w-full object-cover rounded-xl"
-            draggable={false}
-            loading="lazy"
-            width={1000}
-            height={1000}
+      <div className="internship-image w-full md:w-2/5 rounded-2xl overflow-hidden relative shrink-0">
+        <Image
+          src={internship.thumbnail || "/InternshipCardDemo.jpg"}
+          alt={internship.title}
+          width={500}
+          height={500}
+          className="rounded-2xl w-full h-full object-fill max-h-[150px] md:max-h-[457px] opacity-90"
+          draggable={false}
+          loading="eager"
+          unoptimized
+          priority
+        />
+        {hasAnyDiscount && (
+          <DiscountBadge
+            label={discountInfo.discountLabel}
+            className="absolute top-2 right-2"
           />
-          {hasDiscount && (
-            <div className="absolute right-6 top-6 rounded-lg bg-[#f7af2a] px-2.5 py-1 text-xs font-bold text-white">
-              {discountLabel}
-            </div>
-          )}
-          {internship.isBestSeller && (
-            <div className="absolute h-[30%] m-4 bottom-0 left-0 right-0 rounded-b-xl p-2 bg-[#f7af2a]/30 bg-gradient-to-r from-[#f7af2a]/80 to-transparent shadow-sm">
-              <p className="text-sm font-black text-black">Best seller</p>
-              <p className="text-[12px] font-semibold text-black">
-                (enrolled by {formatEnrolled(internship.enrolledStudents)}{" "}
-                students)
+        )}
+      </div>
+      <div className="internship-content w-full md:w-3/5 flex flex-col justify-between flex-1">
+        {showFeaturedBadge ? (
+          <BestsellerBadge
+            enrollStudents={internship?.analytics?.totalEnrollments || 0}
+          />
+        ) : (
+          <div className="w-full h-4" />
+        )}
+        <p className="text-2xl font-bold mt-2 font-coolvetica select-none text-balance wrap-break-words line-clamp-2">
+          {internship.title}
+        </p>
+        <RatingContainer
+          reviewCount={internship?.analytics?.totalReviews || 0}
+          totalRating={internship.analytics?.totalRatings || 0}
+          className="mt-2 text-xs"
+          internshipSlug={internship.slug}
+        />
+        <div className="instructors mt-2 flex gap-2 select-none mb-2 flex-col sm:flex-row items-start sm:items-center">
+          {internship.mentors?.map((instructor, index) => {
+            if (index < 2) {
+              return (
+                <InstructorCard
+                  key={index}
+                  instructor={instructor as Instructor}
+                />
+              );
+            }
+          })}
+          {(internship.mentors?.length ?? 0) > 2 && (
+            <div className="instructor-count flex gap-0.25 items-center bg-[#EEEEEE] rounded-full p-1">
+              <Plus className="w-3 h-3 text-text-primary" fill="#2B1508" />
+              <p className="text-xs font-bold text-text-primary">
+                {(internship.mentors?.length ?? 0) - 2}
               </p>
             </div>
           )}
         </div>
-      </div>
-
-      {/* Right: title, rating, price, CTA */}
-      <div className="flex flex-1 flex-col justify-between gap-3 p-4 sm:p-5">
-        <h3 className="line-clamp-2 text-base font-bold leading-snug text-gray-900 sm:text-lg">
-          {internship.title}
-        </h3>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500 px-2 py-0.5 text-xs font-semibold text-white">
-            <Star className="h-3.5 w-3.5 fill-white text-white" />
-            {internship.rating > 0 ? internship.rating.toFixed(1) : "—"} Rating
-          </span>
-          <span className="text-xs text-gray-500">
-            {internship.reviewCount >= 1000
-              ? `${(internship.reviewCount / 1000).toFixed(0)}k Ratings`
-              : `${internship.reviewCount} Ratings`}
-          </span>
-        </div>
-
-        <div className="mt-auto flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            {hasDiscount ? (
+        <div className="mt-auto flex flex-col sm:flex-row gap-2 sm:items-center select-none">
+          <div className="pricing flex flex-row lg:flex-col xl:flex-row gap-2 sm:items-center flex-wrap">
+            {hasAnyDiscount ? (
               <>
-                <span className="text-sm text-gray-400 line-through">
-                  ₹{internship.originalPrice}
+                <span className="text-xl font-bold text-black">
+                  ₹{discountInfo.discountPrice}
                 </span>
-                <span className="text-lg font-bold text-gray-900">
-                  ₹{internship.currentPrice}
-                </span>
+                <p className="text-sm font-normal text-black line-through opacity-50">
+                  ₹{originalPrice}
+                </p>
               </>
             ) : (
-              <span className="text-lg font-bold text-gray-900">
-                ₹{internship.originalPrice}
+              <span className="text-xl font-bold text-black">
+                ₹{originalPrice}
               </span>
             )}
+            <p className="text-sm font-normal text-black">onwards/-</p>
           </div>
-          <button
-            type="button"
-            onClick={() => router.push("/internships")}
-            className="shrink-0 rounded-2xl bg-[#F77124] px-5 py-2.5 text-sm font-bold text-white shadow-[0_0_0_2px_rgba(247,113,36,0.4)] transition hover:opacity-95"
+          <OrangeButton
+            className="mt-auto sm:mt-0 sm:ml-auto font-bold text-sm px-8 py-4"
+            onClick={(e) => {
+              e.stopPropagation();
+              router.push(`/internships/${internship.slug}`);
+            }}
           >
-            Enroll Now
-          </button>
+            View Details
+          </OrangeButton>
         </div>
       </div>
     </div>

@@ -21,6 +21,8 @@ import collaborationDomainRoutes from "./collaborationDomain.routes";
 import partnershipImportRoutes from "./partnershipImport.routes";
 import instructorDashboardRoutes from "./instructor-dashboard.routes";
 import collegeRoutes from "./college.routes";
+import internshipRoutes from "./internship.routes";
+import partnerCollegeRoutes from "./partnerCollege.routes";
 
 export {
   authRoutes,
@@ -46,4 +48,6 @@ export {
   partnershipImportRoutes,
   instructorDashboardRoutes,
   collegeRoutes,
+  internshipRoutes,
+  partnerCollegeRoutes,
 };

@@ -9,8 +9,9 @@ export interface Review {
   userId: User | string;
   rating: number;
   comment: string;
-  reviewableType: "Course" | "Instructor";
-  reviewableId: Course | Instructor | string; // will be the id of the course or instructor
+  reviewableType: "Course" | "Instructor" | "Internship";
+  reviewableId: Course | Instructor | string;
+  internshipBatchId?: string;
   isActive: boolean;
   approved: boolean; // Instructor/Admin approval required to show review
   createdAt?: Date;

@@ -12,6 +12,18 @@ import {
 import { cn } from "@/lib/utils";
 import { useUpload } from "@/hooks/useUpload";
 
+/** Pick image vs video vs document preview from URL path; falls back to declared `type` (e.g. YouTube). */
+function inferMediaPreviewKind(
+  url: string,
+  fallback: "image" | "video" | "document",
+): "image" | "video" | "document" {
+  const path = url.split("?")[0]?.split("#")[0]?.toLowerCase() ?? "";
+  if (/\.(jpe?g|png|gif|webp)$/i.test(path)) return "image";
+  if (/\.(mp4|webm|mov|avi|mkv)$/i.test(path)) return "video";
+  if (/\.(pdf|docx?|txt)$/i.test(path)) return "document";
+  return fallback;
+}
+
 interface UploadMediaContainerProps {
   title?: string;
   description?: string;
@@ -417,9 +429,16 @@ const UploadMediaContainer: React.FC<UploadMediaContainerProps> = ({
     }
   };
 
-  // Get icon based on type
+  const displayError = error || localError;
+
+  const previewKind =
+    mediaUrl?.trim()
+      ? inferMediaPreviewKind(mediaUrl, type)
+      : type;
+
+  // Get icon based on type (or inferred kind when a file URL is present)
   const getIcon = () => {
-    switch (type) {
+    switch (previewKind) {
       case "image":
         return <Image className="w-8 h-8 text-gray-400" />;
       case "video":
@@ -430,8 +449,6 @@ const UploadMediaContainer: React.FC<UploadMediaContainerProps> = ({
         return <Upload className="w-8 h-8 text-gray-400" />;
     }
   };
-
-  const displayError = error || localError;
 
   return (
     <div
@@ -504,7 +521,7 @@ const UploadMediaContainer: React.FC<UploadMediaContainerProps> = ({
             /* Show URL preview when URL is added via this tab */
             <div className="flex flex-col items-center gap-3 p-6 border-2 border-dashed border-green-300 bg-green-50 rounded-lg">
               {/* Preview for images */}
-              {type === "image" && (
+              {previewKind === "image" && (
                 <img
                   src={mediaUrl}
                   alt="Preview"
@@ -513,7 +530,7 @@ const UploadMediaContainer: React.FC<UploadMediaContainerProps> = ({
               )}
 
               {/* Preview for videos */}
-              {type === "video" && (
+              {previewKind === "video" && (
                 <video
                   src={mediaUrl}
                   className="max-w-full max-h-32 object-contain rounded"
@@ -522,7 +539,7 @@ const UploadMediaContainer: React.FC<UploadMediaContainerProps> = ({
               )}
 
               {/* Preview for documents */}
-              {type === "document" && (
+              {previewKind === "document" && (
                 <div className="flex flex-col items-center gap-3 p-4 bg-white border border-gray-200 rounded-lg">
                   <FileText className="w-12 h-12 text-blue-600" />
                   <div className="text-center">
@@ -668,7 +685,7 @@ const UploadMediaContainer: React.FC<UploadMediaContainerProps> = ({
           ) : mediaUrl ? (
             <div className="flex flex-col items-center gap-3">
               {/* Preview for images */}
-              {type === "image" && (
+              {previewKind === "image" && (
                 <img
                   src={mediaUrl}
                   alt="Preview"
@@ -677,7 +694,7 @@ const UploadMediaContainer: React.FC<UploadMediaContainerProps> = ({
               )}
 
               {/* Preview for videos */}
-              {type === "video" && (
+              {previewKind === "video" && (
                 <video
                   src={mediaUrl}
                   className="max-w-full max-h-32 object-contain rounded"
@@ -686,7 +703,7 @@ const UploadMediaContainer: React.FC<UploadMediaContainerProps> = ({
               )}
 
               {/* Preview for documents */}
-              {type === "document" && (
+              {previewKind === "document" && (
                 <div className="flex flex-col items-center gap-3 p-4 bg-white border border-gray-200 rounded-lg">
                   <FileText className="w-12 h-12 text-blue-600" />
                   <div className="text-center">

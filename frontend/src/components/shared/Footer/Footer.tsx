@@ -25,7 +25,7 @@ const manrope = Manrope({
   weight: ["400", "500", "600", "700"],
 });
 
-const WhatsAppIcon = ({ className }: { className?: string }) => (
+export const WhatsAppIcon = ({ className }: { className?: string }) => (
   <svg
     className={cn("w-5 h-5", className)}
     viewBox="0 0 24 24"
@@ -36,7 +36,7 @@ const WhatsAppIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
-const TelegramIcon = ({ className }: { className?: string }) => (
+export const TelegramIcon = ({ className }: { className?: string }) => (
   <svg
     className={cn("w-5 h-5", className)}
     viewBox="0 0 24 24"

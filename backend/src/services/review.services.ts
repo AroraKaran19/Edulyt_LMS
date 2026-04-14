@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { ReviewModel, CourseModel } from "../models";
+import { InternshipModel } from "../models/internship.schema";
 import { Review } from "../types/review";
 
 function escapeRegex(s: string): string {
@@ -129,21 +130,52 @@ export const createReviewService = async (reviewData: {
   userId: string;
   rating: number;
   comment: string;
-  reviewableType: "Course" | "Instructor";
+  reviewableType: "Course" | "Instructor" | "Internship";
   reviewableId: string;
+  internshipBatchId?: string;
 }): Promise<Review | null> => {
-  // Check if user already reviewed this item
-  const existingReview = await ReviewModel.findOne({
+  const duplicateFilter: mongoose.FilterQuery<Review> = {
     userId: reviewData.userId,
     reviewableId: reviewData.reviewableId,
     reviewableType: reviewData.reviewableType,
-  });
+  };
+  if (
+    reviewData.reviewableType === "Internship" &&
+    reviewData.internshipBatchId
+  ) {
+    duplicateFilter.internshipBatchId = new mongoose.Types.ObjectId(
+      reviewData.internshipBatchId
+    );
+  } else if (reviewData.reviewableType === "Internship") {
+    duplicateFilter.$or = [
+      { internshipBatchId: { $exists: false } },
+      { internshipBatchId: null },
+    ];
+  }
+
+  const existingReview = await ReviewModel.findOne(duplicateFilter);
 
   if (existingReview) {
     throw new Error("You have already reviewed this item");
   }
 
-  const review = new ReviewModel(reviewData);
+  const payload: Record<string, unknown> = {
+    userId: reviewData.userId,
+    rating: reviewData.rating,
+    comment: reviewData.comment,
+    reviewableType: reviewData.reviewableType,
+    reviewableId: reviewData.reviewableId,
+  };
+  if (
+    reviewData.reviewableType === "Internship" &&
+    reviewData.internshipBatchId
+  ) {
+    payload.internshipBatchId = new mongoose.Types.ObjectId(
+      reviewData.internshipBatchId
+    );
+  }
+
+  const review = new ReviewModel(payload);
   const savedReview = await review.save();
 
   if (!savedReview) {
@@ -163,6 +195,22 @@ export const createReviewService = async (reviewData: {
 
     // Recalculate and update all analytics using aggregation
     await updateCourseAnalytics(reviewData.reviewableId);
+  }
+
+  if (
+    reviewData.reviewableType === "Internship" &&
+    reviewData.internshipBatchId
+  ) {
+    await InternshipModel.findOneAndUpdate(
+      {
+        _id: reviewData.reviewableId,
+        "batches._id": new mongoose.Types.ObjectId(
+          reviewData.internshipBatchId
+        ),
+      },
+      { $addToSet: { "batches.$.reviews": savedReview._id } },
+      { new: true }
+    );
   }
 
   // Populate user data
@@ -324,11 +372,12 @@ export const getInstructorCourseReviewsService = async (
 };
 
 export const getReviewsByReviewableService = async (
-  reviewableType: "Course" | "Instructor",
+  reviewableType: "Course" | "Instructor" | "Internship",
   reviewableId: string,
   page: number = 1,
   limit: number = 10,
-  rating?: number
+  rating?: number,
+  internshipBatchId?: string
 ): Promise<{
   reviews: Review[];
   total: number;
@@ -347,6 +396,12 @@ export const getReviewsByReviewableService = async (
     filters.rating = rating;
   }
 
+  if (reviewableType === "Internship" && internshipBatchId) {
+    filters.internshipBatchId = new mongoose.Types.ObjectId(
+      internshipBatchId
+    );
+  }
+
   const reviews = await ReviewModel.find(filters)
     .populate("userId", "firstName lastName email profilePicture")
     .skip(skip)
@@ -356,8 +411,19 @@ export const getReviewsByReviewableService = async (
   const total = await ReviewModel.countDocuments(filters);
 
   // Calculate average rating
+  const matchStage: Record<string, unknown> = {
+    reviewableType,
+    reviewableId,
+    isActive: true,
+  };
+  if (reviewableType === "Internship" && internshipBatchId) {
+    matchStage.internshipBatchId = new mongoose.Types.ObjectId(
+      internshipBatchId
+    );
+  }
+
   const ratingStats = await ReviewModel.aggregate([
-    { $match: { reviewableType, reviewableId, isActive: true } },
+    { $match: matchStage },
     {
       $group: {
         _id: null,

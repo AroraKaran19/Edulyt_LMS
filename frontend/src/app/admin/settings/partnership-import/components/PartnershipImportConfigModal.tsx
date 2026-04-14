@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { flushSync } from "react-dom";
 import { X, Search, Check, Loader2, Info, BookOpen } from "lucide-react";
 import { usePartnershipImportConfig } from "@/hooks/usePartnershipImportConfig";
 import { useCourse } from "@/hooks/useCourse";
@@ -9,7 +10,6 @@ import type {
   PartnershipImportConfig,
   PartnershipImportEnrollmentAccess,
 } from "@/types/partnershipImportConfig";
-import type { Course as CourseType } from "@/types/course";
 import { Course, CourseModule } from "@/types";
 import CollaborationDomainPartialAccessPicker from "@/app/admin/settings/collaboration-domains/components/CollaborationDomainPartialAccessPicker";
 import {
@@ -20,14 +20,15 @@ import {
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import { toast } from "react-toastify";
+import { mergeCourseSelections } from "@/lib/mergeCourseSelections";
+import {
+  COURSE_AUDIENCE_FILTER_LABEL,
+  enrollmentAudienceForApi,
+  type CourseAudienceFilter,
+} from "@/lib/courseAudienceFilter";
 
 type AccessType = "full" | "partial" | "topN";
 type OfferKind = "course_allot" | "discount";
-
-const AUDIENCE_LABEL: Record<CourseType["audience"], string> = {
-  "college-students": "College students",
-  professionals: "Professionals",
-};
 
 interface PartnershipImportConfigModalProps {
   isOpen: boolean;
@@ -44,7 +45,8 @@ export default function PartnershipImportConfigModal({
   editing,
   mode,
 }: PartnershipImportConfigModalProps) {
-  const { createConfig, updateConfig, isLoading } = usePartnershipImportConfig();
+  const { createConfig, updateConfig, isLoading } =
+    usePartnershipImportConfig();
   const { getAdminCourses, getAdminCourseOptions, getAdminCourseById } =
     useCourse();
 
@@ -52,12 +54,12 @@ export default function PartnershipImportConfigModal({
   const [isActive, setIsActive] = useState(true);
   const [kind, setKind] = useState<OfferKind>("course_allot");
   const [benefitType, setBenefitType] = useState<"percentage" | "fixed">(
-    "percentage"
+    "percentage",
   );
   const [benefitValue, setBenefitValue] = useState(10);
   const [plan, setPlan] = useState<"elite" | "essential">("essential");
-  const [audience, setAudience] =
-    useState<CourseType["audience"]>("college-students");
+  const [audienceFilter, setAudienceFilter] =
+    useState<CourseAudienceFilter>("college-students");
   const [durationDays, setDurationDays] = useState(365);
   const [accessType, setAccessType] = useState<AccessType>("full");
   const [topN, setTopN] = useState(5);
@@ -75,7 +77,7 @@ export default function PartnershipImportConfigModal({
     useState<Course | null>(null);
   const [loadingCourseDetail, setLoadingCourseDetail] = useState(false);
   const [partialModules, setPartialModules] = useState<Set<string>>(
-    () => new Set()
+    () => new Set(),
   );
   const [partialLessons, setPartialLessons] = useState<
     Record<string, Set<string>>
@@ -86,7 +88,7 @@ export default function PartnershipImportConfigModal({
   const hydratedPartialEditKeyRef = useRef<string | null>(null);
 
   const courseSearchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null
+    null,
   );
   const dropdownRef = useRef<HTMLDivElement>(null);
   const coursesScrollRef = useRef<HTMLDivElement>(null);
@@ -96,10 +98,11 @@ export default function PartnershipImportConfigModal({
       page: number,
       search: string,
       append: boolean,
-      opts?: { applyAudienceFilter?: boolean }
+      opts?: { applyAudienceFilter?: boolean },
     ) => {
       const applyAudience =
-        opts?.applyAudienceFilter ?? kind === "course_allot";
+        opts?.applyAudienceFilter ??
+        (kind === "course_allot" || kind === "discount");
       setLoadingCourses(true);
       try {
         const res = await getAdminCourses({
@@ -107,7 +110,9 @@ export default function PartnershipImportConfigModal({
           limit: 20,
           search: search.trim() || undefined,
           isActive: true,
-          ...(applyAudience ? { audience } : {}),
+          ...(applyAudience && audienceFilter !== "all"
+            ? { audience: audienceFilter }
+            : {}),
         });
         if (res?.courses) {
           const list = res.courses;
@@ -124,19 +129,26 @@ export default function PartnershipImportConfigModal({
         setLoadingCourses(false);
       }
     },
-    [getAdminCourses, kind, audience]
+    [getAdminCourses, kind, audienceFilter],
   );
 
-  const handleAudienceChange = useCallback(
-    (next: CourseType["audience"]) => {
-      setAudience(next);
+  const handleAudienceFilterChange = useCallback(
+    (next: CourseAudienceFilter) => {
+      setAudienceFilter(next);
+      if (next === "all") {
+        setCourseResults([]);
+        setCoursePage(1);
+        setHasMoreCourses(true);
+        void loadCourses(1, courseSearch, false, { applyAudienceFilter: true });
+        return;
+      }
       setSelectedCourses((prev) => prev.filter((c) => c.audience === next));
       setCourseResults([]);
       setCoursePage(1);
       setHasMoreCourses(true);
       void loadCourses(1, courseSearch, false, { applyAudienceFilter: true });
     },
-    [loadCourses, courseSearch]
+    [loadCourses, courseSearch],
   );
 
   const handleCoursesScroll = useCallback(() => {
@@ -231,7 +243,7 @@ export default function PartnershipImportConfigModal({
         setPartialLessons(nextLessons);
         const nextContents = { ...partialContents };
         const module = (courseDetailForPartial.modules as CourseModule[]).find(
-          (m) => (typeof m === "string" ? m : m._id) === moduleId
+          (m) => (typeof m === "string" ? m : m._id) === moduleId,
         );
         if (
           module &&
@@ -250,7 +262,7 @@ export default function PartnershipImportConfigModal({
       }
       setPartialModules(newSelected);
     },
-    [courseDetailForPartial, partialModules, partialLessons, partialContents]
+    [courseDetailForPartial, partialModules, partialLessons, partialContents],
   );
 
   const togglePartialLesson = useCallback(
@@ -268,7 +280,7 @@ export default function PartnershipImportConfigModal({
         const cd = courseDetailForPartial;
         if (cd?.modules && Array.isArray(cd.modules)) {
           const module = (cd.modules as CourseModule[]).find(
-            (m) => (typeof m === "string" ? m : m._id) === moduleId
+            (m) => (typeof m === "string" ? m : m._id) === moduleId,
           );
           if (module && typeof module !== "string") {
             const lesson = (
@@ -296,7 +308,7 @@ export default function PartnershipImportConfigModal({
         [moduleId]: newModuleLessons,
       });
     },
-    [courseDetailForPartial, partialLessons, partialContents]
+    [courseDetailForPartial, partialLessons, partialContents],
   );
 
   const togglePartialContent = useCallback(
@@ -315,7 +327,7 @@ export default function PartnershipImportConfigModal({
         const cd = courseDetailForPartial;
         if (cd?.modules && Array.isArray(cd.modules)) {
           const module = (cd.modules as CourseModule[]).find(
-            (m) => (typeof m === "string" ? m : m._id) === moduleId
+            (m) => (typeof m === "string" ? m : m._id) === moduleId,
           );
           if (module && typeof module !== "string") {
             const lesson = (
@@ -330,7 +342,7 @@ export default function PartnershipImportConfigModal({
                 .map((c) => (typeof c === "string" ? c : c._id))
                 .filter((id): id is string => !!id);
               const newContentIds = allContentIds.filter(
-                (id) => id !== contentId
+                (id) => id !== contentId,
               );
               const nextContents = { ...partialContents };
               if (newContentIds.length > 0) {
@@ -359,7 +371,7 @@ export default function PartnershipImportConfigModal({
         setPartialContents(nextContents);
       }
     },
-    [courseDetailForPartial, partialLessons, partialContents]
+    [courseDetailForPartial, partialLessons, partialContents],
   );
 
   useEffect(() => {
@@ -379,7 +391,7 @@ export default function PartnershipImportConfigModal({
     const ea = editing.enrollmentAccess;
     if (editing.kind === "course_allot" && ea) {
       setPlan(ea.plan);
-      setAudience(ea.audience);
+      setAudienceFilter(ea.audience);
       setDurationDays(ea.durationDays);
       if (ea.mode === "full") {
         setAccessType("full");
@@ -410,13 +422,11 @@ export default function PartnershipImportConfigModal({
               typeof c.title === "string" && c.title.trim()
                 ? c.title
                 : String(c._id ?? ""),
-          }))
+          })),
         );
       } else {
         setSelectedCourses(
-          (courses as string[]).map(
-            (id) => ({ _id: id, title: id }) as Course
-          )
+          (courses as string[]).map((id) => ({ _id: id, title: id }) as Course),
         );
       }
     } else {
@@ -433,7 +443,7 @@ export default function PartnershipImportConfigModal({
     setBenefitType("percentage");
     setBenefitValue(10);
     setPlan("essential");
-    setAudience("college-students");
+    setAudienceFilter("college-students");
     setDurationDays(365);
     setAccessType("full");
     setTopN(5);
@@ -450,17 +460,19 @@ export default function PartnershipImportConfigModal({
   }, [isOpen, mode]);
 
   useEffect(() => {
-    if (isOpen && kind === "course_allot") {
+    if (isOpen && (kind === "course_allot" || kind === "discount")) {
       setCourseResults([]);
       setCoursePage(1);
       setCourseSearch("");
       setHasMoreCourses(true);
-      void loadCourses(1, "", false);
+      void loadCourses(1, "", false, {
+        applyAudienceFilter: kind === "course_allot" || kind === "discount",
+      });
     }
   }, [isOpen, kind, loadCourses]);
 
   useEffect(() => {
-    if (!isOpen || kind !== "course_allot") return;
+    if (!isOpen || (kind !== "course_allot" && kind !== "discount")) return;
     if (courseSearchDebounceRef.current) {
       clearTimeout(courseSearchDebounceRef.current);
     }
@@ -468,7 +480,9 @@ export default function PartnershipImportConfigModal({
       setCourseResults([]);
       setCoursePage(1);
       setHasMoreCourses(true);
-      void loadCourses(1, courseSearch, false);
+      void loadCourses(1, courseSearch, false, {
+        applyAudienceFilter: kind === "course_allot" || kind === "discount",
+      });
     }, 500);
     return () => {
       if (courseSearchDebounceRef.current) {
@@ -491,7 +505,8 @@ export default function PartnershipImportConfigModal({
   }, []);
 
   const handleSelectAllActiveCourses = useCallback(async () => {
-    if (kind !== "course_allot" || accessType === "partial") return;
+    if (kind === "course_allot" && accessType === "partial") return;
+    if (kind !== "course_allot" && kind !== "discount") return;
     setSelectingAllCourses(true);
     try {
       const fetched: Course[] = [];
@@ -501,7 +516,11 @@ export default function PartnershipImportConfigModal({
         const res = await getAdminCourseOptions({
           page,
           search: courseSearch.trim() || undefined,
-          audience,
+          ...(kind === "course_allot" || kind === "discount"
+            ? audienceFilter !== "all"
+              ? { audience: audienceFilter }
+              : {}
+            : {}),
           isActive: true,
         });
         if (res?.courses?.length) {
@@ -511,23 +530,18 @@ export default function PartnershipImportConfigModal({
         page += 1;
       } while (page <= totalPages);
 
-      let newList: Course[] = [];
-      setSelectedCourses((prev) => {
-        const merged = new Map<string, Course>();
-        prev.forEach((c) => {
-          if (c._id) merged.set(String(c._id), c);
+      let mergedList: Course[] = [];
+      flushSync(() => {
+        setSelectedCourses((prev) => {
+          mergedList = mergeCourseSelections(prev, fetched);
+          return mergedList;
         });
-        fetched.forEach((c) => {
-          if (c._id) merged.set(String(c._id), c);
-        });
-        newList = Array.from(merged.values());
-        return newList;
       });
 
       if (fetched.length === 0) {
         toast.info("No active courses match the current search and audience.");
       } else {
-        toast.success(`${newList.length} course(s) in your selection.`);
+        toast.success(`${mergedList.length} course(s) in your selection.`);
       }
       setShowCourseDropdown(false);
     } catch {
@@ -535,19 +549,24 @@ export default function PartnershipImportConfigModal({
     } finally {
       setSelectingAllCourses(false);
     }
-  }, [kind, accessType, audience, courseSearch, getAdminCourseOptions]);
+  }, [kind, accessType, audienceFilter, courseSearch, getAdminCourseOptions]);
 
   const selectKind = useCallback(
     (next: OfferKind) => {
       setKind(next);
       if (next === "discount") {
-        setSelectedCourses([]);
         setShowCourseDropdown(false);
         setAccessType("full");
         setPartialModules(new Set());
         setPartialLessons({});
         setPartialContents({});
         setCourseDetailForPartial(null);
+        setCourseResults([]);
+        setCoursePage(1);
+        setHasMoreCourses(true);
+        void loadCourses(1, courseSearch, false, {
+          applyAudienceFilter: true,
+        });
       } else {
         setCourseResults([]);
         setCoursePage(1);
@@ -555,7 +574,7 @@ export default function PartnershipImportConfigModal({
         void loadCourses(1, courseSearch, false, { applyAudienceFilter: true });
       }
     },
-    [loadCourses, courseSearch]
+    [loadCourses, courseSearch],
   );
 
   const toggleCourse = (course: Course) => {
@@ -585,11 +604,15 @@ export default function PartnershipImportConfigModal({
         toast.error("Percentage cannot exceed 100");
         return null;
       }
+      if (selectedCourses.length === 0) {
+        toast.error("Select at least one course for this discount");
+        return null;
+      }
       return {
         title: title.trim(),
         isActive,
         kind: "discount",
-        courses: [],
+        courses: selectedCourses.map((c) => c._id!).filter(Boolean),
         benefit: { type: benefitType, value: benefitValue },
         enrollmentAccess: undefined,
       };
@@ -609,7 +632,7 @@ export default function PartnershipImportConfigModal({
     if (accessType === "partial") {
       if (selectedCourses.length !== 1) {
         toast.error(
-          "Partial access (modules and lessons) requires exactly one course. Use full access or top N for multiple courses."
+          "Partial access (modules and lessons) requires exactly one course. Use full access or top N for multiple courses.",
         );
         return null;
       }
@@ -621,18 +644,20 @@ export default function PartnershipImportConfigModal({
         !hasAnyPartialSelection(partialModules, partialLessons, partialContents)
       ) {
         toast.error(
-          "Select at least one module, lesson, or content for partial access."
+          "Select at least one module, lesson, or content for partial access.",
         );
         return null;
       }
     }
+
+    const enrollmentAudience = enrollmentAudienceForApi(audienceFilter);
 
     let enrollmentAccess: PartnershipImportEnrollmentAccess;
     if (accessType === "full") {
       enrollmentAccess = {
         mode: "full",
         plan,
-        audience,
+        audience: enrollmentAudience,
         durationDays,
       };
     } else if (accessType === "topN") {
@@ -640,7 +665,7 @@ export default function PartnershipImportConfigModal({
         mode: "partial",
         topNSettings: { contentsPerLesson: topN },
         plan,
-        audience,
+        audience: enrollmentAudience,
         durationDays,
       };
     } else {
@@ -648,11 +673,11 @@ export default function PartnershipImportConfigModal({
         courseDetailForPartial!,
         partialModules,
         partialLessons,
-        partialContents
+        partialContents,
       );
       if (!pa?.accessibleModules?.length) {
         toast.error(
-          "Select at least one module, lesson, or content for partial access."
+          "Select at least one module, lesson, or content for partial access.",
         );
         return null;
       }
@@ -660,7 +685,7 @@ export default function PartnershipImportConfigModal({
         mode: "partial",
         partialAccess: pa,
         plan,
-        audience,
+        audience: enrollmentAudience,
         durationDays,
       };
     }
@@ -709,7 +734,7 @@ export default function PartnershipImportConfigModal({
           <button
             type="button"
             onClick={onClose}
-            className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
+            className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -726,8 +751,8 @@ export default function PartnershipImportConfigModal({
                 Not tied to email domains
               </p>
               <p className="text-amber-900/90">
-                Name this partnership, choose course access or
-                checkout discount, then add student emails on the next screen.
+                Name this partnership, choose course access or checkout
+                discount, then add student emails on the next screen.
               </p>
             </div>
           </div>
@@ -785,7 +810,7 @@ export default function PartnershipImportConfigModal({
             </div>
           </div>
 
-          {kind === "discount" ? (
+          {kind === "discount" && (
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">
@@ -818,9 +843,15 @@ export default function PartnershipImportConfigModal({
                 />
               </div>
             </div>
-          ) : (
+          )}
+
+          {(kind === "course_allot" || kind === "discount") && (
             <>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div
+                className={`grid grid-cols-1 gap-3 ${
+                  kind === "course_allot" ? "sm:grid-cols-3" : "sm:grid-cols-2"
+                }`}
+              >
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1">
                     Plan <span className="text-red-500">*</span>
@@ -841,51 +872,89 @@ export default function PartnershipImportConfigModal({
                     Audience <span className="text-red-500">*</span>
                   </label>
                   <select
-                    value={audience}
+                    value={audienceFilter}
                     onChange={(e) =>
-                      handleAudienceChange(
-                        e.target.value as CourseType["audience"]
+                      handleAudienceFilterChange(
+                        e.target.value as CourseAudienceFilter,
                       )
                     }
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
                   >
-                    <option value="college-students">College Students</option>
-                    <option value="professionals">Professionals</option>
+                    <option value="all">
+                      {COURSE_AUDIENCE_FILTER_LABEL.all}
+                    </option>
+                    <option value="college-students">
+                      {COURSE_AUDIENCE_FILTER_LABEL["college-students"]}
+                    </option>
+                    <option value="professionals">
+                      {COURSE_AUDIENCE_FILTER_LABEL.professionals}
+                    </option>
                   </select>
+                  {audienceFilter === "all" && kind === "course_allot" && (
+                    <p className="text-xs text-amber-800/90 mt-1.5 leading-snug">
+                      All active courses are listed. Saved enrollments are
+                      tagged as{" "}
+                      <span className="font-medium">College students</span>{" "}
+                      unless you pick a specific audience (required for
+                      records).
+                    </p>
+                  )}
                 </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">
-                    Access duration (days) <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    min={1}
-                    value={durationDays}
-                    onChange={(e) =>
-                      setDurationDays(parseInt(e.target.value, 10) || 1)
-                    }
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
-                  />
-                  <p className="text-xs text-gray-500 mt-1.5 leading-snug">
-                    Sets enrollment expiry: this many days after the user is
-                    enrolled, their access ends.
-                  </p>
-                </div>
+                {kind === "course_allot" && (
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">
+                      Access duration (days){" "}
+                      <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      value={durationDays}
+                      onChange={(e) =>
+                        setDurationDays(parseInt(e.target.value, 10) || 1)
+                      }
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                    />
+                    <p className="text-xs text-gray-500 mt-1.5 leading-snug">
+                      Sets enrollment expiry: this many days after the user is
+                      enrolled, their access ends.
+                    </p>
+                  </div>
+                )}
               </div>
 
-              {/* Courses — same order and behavior as CollaborationDomainModal */}
+              {/* Courses — shared with checkout discount: same audience-scoped search as enrollment */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                  Courses <span className="text-red-500">*</span>
+                  {kind === "discount"
+                    ? "Courses this discount applies to"
+                    : "Courses"}{" "}
+                  <span className="text-red-500">*</span>
                 </label>
                 <p className="text-xs text-gray-500 mb-2 leading-snug">
-                  Search is filtered to{" "}
-                  <span className="font-medium text-gray-700">active</span>{" "}
-                  courses tagged for{" "}
-                  <span className="font-medium text-gray-700">
-                    {AUDIENCE_LABEL[audience]}
-                  </span>
-                  , matching the audience above (enrollments use that audience).
+                  {audienceFilter === "all" ? (
+                    <>
+                      Search includes every{" "}
+                      <span className="font-medium text-gray-700">active</span>{" "}
+                      course (any audience).
+                      {kind === "course_allot"
+                        ? " Add the courses to allot; enrollment tagging follows the Audience field (see note above when All is selected)."
+                        : " Add the courses the discount should apply to."}
+                    </>
+                  ) : (
+                    <>
+                      Search is filtered to{" "}
+                      <span className="font-medium text-gray-700">active</span>{" "}
+                      courses tagged for{" "}
+                      <span className="font-medium text-gray-700">
+                        {COURSE_AUDIENCE_FILTER_LABEL[audienceFilter]}
+                      </span>
+                      , matching the audience above.
+                      {kind === "course_allot"
+                        ? " Enrollments use that audience."
+                        : " The checkout discount applies only when the cart includes one of these courses."}
+                    </>
+                  )}
                 </p>
                 <div className="flex flex-wrap items-center gap-2 mb-2">
                   <button
@@ -893,8 +962,7 @@ export default function PartnershipImportConfigModal({
                     onClick={() => void handleSelectAllActiveCourses()}
                     disabled={
                       selectingAllCourses ||
-                      kind !== "course_allot" ||
-                      accessType === "partial"
+                      (kind === "course_allot" && accessType === "partial")
                     }
                     className="text-xs font-medium text-orange-600 hover:text-orange-700 hover:underline disabled:opacity-50 disabled:cursor-not-allowed disabled:no-underline"
                   >
@@ -970,7 +1038,7 @@ export default function PartnershipImportConfigModal({
                         <>
                           {courseResults.map((course) => {
                             const selected = selectedCourses.some(
-                              (c) => c._id === course._id
+                              (c) => c._id === course._id,
                             );
                             return (
                               <button
@@ -1018,7 +1086,11 @@ export default function PartnershipImportConfigModal({
                   )}
                 </div>
               </div>
+            </>
+          )}
 
+          {kind === "course_allot" && (
+            <>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-3">
                   Access type
@@ -1119,8 +1191,8 @@ export default function PartnershipImportConfigModal({
                   <div className="mt-3 space-y-2">
                     {selectedCourses.length !== 1 ? (
                       <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                        Add exactly one course to set partial access. For several
-                        courses, use full access or top N.
+                        Add exactly one course to set partial access. For
+                        several courses, use full access or top N.
                       </p>
                     ) : (
                       <>
@@ -1143,7 +1215,7 @@ export default function PartnershipImportConfigModal({
                           !hasAnyPartialSelection(
                             partialModules,
                             partialLessons,
-                            partialContents
+                            partialContents,
                           ) && (
                             <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
                               Select at least one module, lesson, or content.
@@ -1162,7 +1234,11 @@ export default function PartnershipImportConfigModal({
           <WhiteButton glow={false} onClick={onClose}>
             Cancel
           </WhiteButton>
-          <OrangeButton glow={false} onClick={handleSubmit} disabled={isLoading}>
+          <OrangeButton
+            glow={false}
+            onClick={handleSubmit}
+            disabled={isLoading}
+          >
             {isLoading ? "Saving…" : mode === "create" ? "Create" : "Save"}
           </OrangeButton>
         </div>
