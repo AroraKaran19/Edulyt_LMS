@@ -23,7 +23,9 @@ const manrope = Manrope({
 const Navbar = () => {
   const router = useRouter();
   const { isAuthenticated } = useAuth();
-  const [coursesCount, setCoursesCount] = useState<number | undefined>(undefined);
+  const [coursesCount, setCoursesCount] = useState<number | undefined>(
+    undefined,
+  );
 
   useEffect(() => {
     if (!API_BASE_URL) return;
@@ -162,13 +164,10 @@ const Navbar = () => {
           "px-4 sm:px-6 lg:px-8",
           !isHoverContainerVisible && "shadow-[0_0_10px_2px_rgba(0,0,0,0.2)]",
           isHoverContainerVisible && "border-b border-gray-200",
-          manrope.className
+          manrope.className,
         )}
       >
-        <Link
-          href="/"
-          className="h-full flex items-center shrink-0"
-        >
+        <Link href="/" className="h-full flex items-center shrink-0">
           <ImageComponent
             src="/logo.svg"
             alt="Logo"
@@ -186,11 +185,7 @@ const Navbar = () => {
         >
           {navItems.map((item) => (
             <NavLink
-              href={
-                item.href === "/internships"
-                  ? "https://edulyt.com/internships.php"
-                  : item.href
-              }
+              href={item.href}
               key={item.href}
               label={item.label}
               count={item.count}
@@ -229,7 +224,6 @@ const Navbar = () => {
         navItems={navItems}
         onClose={() => setIsMobileMenuOpen(false)}
       />
-      
 
       {/* Hover Container - Hidden on mobile */}
       {hoveredNavLink &&
