@@ -6,20 +6,15 @@ import {
   Instructor,
   CourseDiscount,
   Review,
-  PlanFeatures,
   Discount,
 } from ".";
 
 /** Enrollment pricing for a single batch (embedded on `InternshipBatches`). */
 export interface InternshipBatchPlan {
-  title: string;
   price: number;
-  features: PlanFeatures[];
   discount?: Discount;
   isPopular?: boolean;
   isActive?: boolean;
-  createdAt?: Date;
-  updatedAt?: Date;
 }
 
 export interface InternshipBatchAnalytics {
@@ -52,7 +47,6 @@ export interface InternshipBatches {
   _id?: string;
   name: string;
   applicationLastDate: Date;
-  examDate: Date;
   internshipStartDate: Date;
   status: "active" | "inactive" | "completed";
   createdBy?: User["_id"];
@@ -60,6 +54,16 @@ export interface InternshipBatches {
   reviews?: Review["_id"][];
   analytics?: InternshipBatchAnalytics;
   plan?: InternshipBatchPlan | null;
+  /**
+   * Reusable exam template ids (`InternshipExam` collection) for this cohort.
+   * Same template documents can be shared across internships; submissions store
+   * `internshipId`, `batchId`, and `examId` for backtracking.
+   */
+  examTemplateIds?: string[];
+  /**
+   * Reusable task template ids (`InternshipTask` collection) for this cohort.
+   */
+  taskTemplateIds?: string[];
 }
 
 export interface Internship {

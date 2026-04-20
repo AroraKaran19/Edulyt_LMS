@@ -22,6 +22,18 @@ import {
   getInternshipScreenTriggerFields,
 } from "@/lib/internshipScreenValidation";
 
+/** Internship create/edit wizard: 14 steps total; Screen 14 is the summary. */
+const INTERNSHIP_WIZARD_MAX_SCREEN = 14;
+
+function getNextInternshipWizardScreen(prev: number): number {
+  if (prev >= INTERNSHIP_WIZARD_MAX_SCREEN) return INTERNSHIP_WIZARD_MAX_SCREEN;
+  return prev + 1;
+}
+
+function getPrevInternshipWizardScreen(prev: number): number {
+  return Math.max(1, prev - 1);
+}
+
 // ===================
 // Helper Functions
 // ===================
@@ -50,11 +62,12 @@ const getInitialFormData = (
           {
             name: "",
             applicationLastDate: "",
-            examDate: "",
             internshipStartDate: "",
             status: "active",
             isActive: true,
             plan: createDefaultInternshipBatchPlan(),
+            examTemplateIds: [],
+            taskTemplateIds: [],
           },
         ],
     perks: [],
@@ -157,22 +170,10 @@ function normalizeInternshipBatchPlanFromApi(
   const p = raw as Record<string, unknown>;
   return {
     ...d,
-    title: String(p.title ?? ""),
     price:
       typeof p.price === "number" && !Number.isNaN(p.price as number)
         ? (p.price as number)
         : 0,
-    features:
-      Array.isArray(p.features) && p.features.length > 0
-        ? p.features.map((f) => {
-            const x = f as Record<string, unknown>;
-            return {
-              title: String(x?.title ?? ""),
-              provided: Boolean(x?.provided),
-              showHover: String(x?.showHover ?? ""),
-            };
-          })
-        : d.features,
     isPopular: Boolean(p.isPopular),
     isActive: p.isActive !== false,
     discount: p.discount as InternshipBatchPlan["discount"],
@@ -185,6 +186,8 @@ function ensureBatchPlans(
   return (batches ?? []).map((row) => ({
     ...row,
     plan: row.plan ?? createDefaultInternshipBatchPlan(),
+    examTemplateIds: row.examTemplateIds ?? [],
+    taskTemplateIds: row.taskTemplateIds ?? [],
   }));
 }
 
@@ -222,7 +225,6 @@ const transformFormDataToInternship = (
     batches: formData.batches.map((b) => ({
       name: b.name.trim(),
       applicationLastDate: new Date(b.applicationLastDate),
-      examDate: new Date(b.examDate),
       internshipStartDate: new Date(b.internshipStartDate),
       status: b.status,
       isActive: b.isActive,
@@ -232,6 +234,12 @@ const transformFormDataToInternship = (
         ? { reviews: b.reviews }
         : {}),
       ...(b.analytics ? { analytics: b.analytics } : {}),
+      examTemplateIds: Array.isArray(b.examTemplateIds)
+        ? b.examTemplateIds
+        : [],
+      taskTemplateIds: Array.isArray(b.taskTemplateIds)
+        ? b.taskTemplateIds
+        : [],
     })),
     perks: formData.perks,
     features: formData.features,
@@ -286,9 +294,6 @@ const transformInternshipToFormData = (
         applicationLastDate: b.applicationLastDate
           ? new Date(b.applicationLastDate).toISOString().split("T")[0]
           : "",
-        examDate: b.examDate
-          ? new Date(b.examDate).toISOString().split("T")[0]
-          : "",
         internshipStartDate: b.internshipStartDate
           ? new Date(b.internshipStartDate).toISOString().split("T")[0]
           : "",
@@ -302,6 +307,12 @@ const transformInternshipToFormData = (
           b.plan ?? undefined,
           index === 0 ? legacyRootPlan : undefined,
         ),
+        examTemplateIds: Array.isArray(b.examTemplateIds)
+          ? b.examTemplateIds.map((id) => String(id))
+          : [],
+        taskTemplateIds: Array.isArray(b.taskTemplateIds)
+          ? b.taskTemplateIds.map((id) => String(id))
+          : [],
       })),
     ),
     perks: internship.perks || [],
@@ -596,7 +607,7 @@ export const useInternshipForm = (
       toast.error("Please fix the errors before continuing.");
       return;
     }
-    setCurrentScreen((prev) => Math.min(prev + 1, 13));
+    setCurrentScreen((prev) => getNextInternshipWizardScreen(prev));
   }, [validateCurrentScreen]);
 
   useEffect(() => {
@@ -627,10 +638,16 @@ export const useInternshipForm = (
         const localData = draftData || storedData;
 
         if (localData) {
+          const rawScreen =
+            localData.currentScreen ?? apiFormData.currentScreen ?? 1;
+          /** Older two-step tail used 15 for summary, 14 for optional tasks. */
+          let normalizedScreen = rawScreen;
+          if (normalizedScreen === 15) normalizedScreen = 14;
+          else if (normalizedScreen > 14) normalizedScreen = 14;
           const mergedData = {
             ...localData,
             ...apiFormData,
-            currentScreen: localData.currentScreen || apiFormData.currentScreen,
+            currentScreen: normalizedScreen,
             completedScreens:
               localData.completedScreens || apiFormData.completedScreens,
             isEditMode: true,
@@ -689,7 +706,7 @@ export const useInternshipForm = (
   // ===================
 
   const prevScreen = useCallback(() => {
-    setCurrentScreen((prev) => Math.max(prev - 1, 1));
+    setCurrentScreen((prev) => getPrevInternshipWizardScreen(prev));
   }, []);
 
   const goToScreen = useCallback(
@@ -745,6 +762,7 @@ export const useInternshipForm = (
       }
 
       if (newInternshipId) {
+        setValue("internshipId", newInternshipId, { shouldDirty: true });
         localStorage.setItem("createdInternshipId", newInternshipId);
         localStorage.setItem(
           "internshipCreationTimestamp",
@@ -881,7 +899,7 @@ export const useInternshipForm = (
   // Computed Values
   // ===================
 
-  const canGoNext = currentScreen <= 13;
+  const canGoNext = currentScreen <= INTERNSHIP_WIZARD_MAX_SCREEN;
 
   // ===================
   // Internship Creation Status

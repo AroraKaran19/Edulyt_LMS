@@ -201,22 +201,6 @@ const InternshipHeader = ({ internship }: { internship: Internship }) => {
                   </tr>
                   <tr className="border-b border-gray-200">
                     <td className="text-xs lg:text-sm font-medium">
-                      Exam Date
-                    </td>
-                    <td className="text-right">
-                      <p className="inline-block p-1.5 px-2 lg:px-3 rounded-full bg-black/10 text-xs lg:text-sm font-normal">
-                        {new Date(
-                          internship.batches[0].examDate,
-                        ).toLocaleDateString("en-US", {
-                          month: "long",
-                          day: "numeric",
-                          year: "numeric",
-                        })}
-                      </p>
-                    </td>
-                  </tr>
-                  <tr className="border-b border-gray-200">
-                    <td className="text-xs lg:text-sm font-medium">
                       Internship Start Date
                     </td>
                     <td className="text-right">

@@ -87,8 +87,16 @@ const AdminSidebar = ({
           href: "/admin/internships/manage-internships",
         },
         {
-          label: "Assessments",
-          href: "/admin/internships/assessments",
+          label: "Question bank",
+          href: "/admin/internships/questions",
+        },
+        {
+          label: "Exam templates",
+          href: "/admin/internships/exams",
+        },
+        {
+          label: "Task templates",
+          href: "/admin/internships/tasks",
         },
       ],
     },

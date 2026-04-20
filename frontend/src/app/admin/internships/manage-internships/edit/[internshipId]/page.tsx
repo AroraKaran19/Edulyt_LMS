@@ -22,6 +22,7 @@ import Screen10 from "../../components/shared/Screen10";
 import Screen11 from "../../components/shared/Screen11";
 import Screen12 from "../../components/shared/Screen12";
 import Screen13 from "../../components/shared/Screen13";
+import Screen14 from "../../components/shared/Screen14";
 
 const clearInternshipEditStorage = (internshipId: string) => {
   localStorage.removeItem(`internship_form_data_${internshipId}`);
@@ -45,7 +46,7 @@ const EditInternshipPageContent = ({
   } = useInternshipFormContext();
 
   const handleNext = async () => {
-    if (currentScreen === 13) {
+    if (currentScreen === 14) {
       try {
         await updateInternship();
         clearInternshipEditStorage(internshipId);
@@ -97,6 +98,7 @@ const EditInternshipPageContent = ({
             {currentScreen === 11 && <Screen11 />}
             {currentScreen === 12 && <Screen12 />}
             {currentScreen === 13 && <Screen13 />}
+            {currentScreen === 14 && <Screen14 />}
           </>
         )}
       </div>
@@ -119,11 +121,11 @@ const EditInternshipPageContent = ({
           {isUpdating ? (
             <>
               <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin" />
-              {currentScreen === 13 ? "Saving..." : "Updating..."}
+              {currentScreen === 14 ? "Saving..." : "Updating..."}
             </>
           ) : (
             <>
-              {currentScreen === 13 ? "Save & Exit" : "Next"}
+              {currentScreen === 14 ? "Save & Exit" : "Next"}
               <ArrowRightIcon className="size-4" />
             </>
           )}

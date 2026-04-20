@@ -30,6 +30,10 @@ import {
   instructorDashboardRoutes,
   collegeRoutes,
   internshipRoutes,
+  internshipExamRoutes,
+  internshipQuestionRoutes,
+  internshipTaskRoutes,
+  internshipSubmissionRoutes,
   partnerCollegeRoutes,
 } from "./routes";
 
@@ -80,6 +84,10 @@ app.use("/api/partnership-import-configs", partnershipImportRoutes);
 app.use("/api/instructor", instructorDashboardRoutes);
 app.use("/api/colleges", collegeRoutes);
 app.use("/api/internships", internshipRoutes);
+app.use("/api/internship-exams", internshipExamRoutes);
+app.use("/api/internship-questions", internshipQuestionRoutes);
+app.use("/api/internship-tasks", internshipTaskRoutes);
+app.use("/api/internship-submissions", internshipSubmissionRoutes);
 app.use("/api/partner-colleges", partnerCollegeRoutes);
 
 app.use(notFoundHandler); // Handle 404 errors

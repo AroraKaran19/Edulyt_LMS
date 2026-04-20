@@ -13,6 +13,11 @@ export * from "./live-classes";
 export * from "./certificate";
 export * from "./assessment";
 export * from "./internship";
+export * from "./internship-question";
+export * from "./internship-exam";
+export * from "./internship-task";
+export * from "./internship-submission";
+export * from "./internship-enrollment";
 export * from "./partner-college";
 
 // ===================

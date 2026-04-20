@@ -40,10 +40,6 @@ const batchSchema = new mongoose.Schema<InternshipBatches>(
       type: Date,
       required: [true, "Application last date is required"],
     },
-    examDate: {
-      type: Date,
-      required: [true, "Exam date is required"],
-    },
     internshipStartDate: {
       type: Date,
       required: [true, "Internship start date is required"],
@@ -83,6 +79,16 @@ const batchSchema = new mongoose.Schema<InternshipBatches>(
       type: internshipBatchPlanSchema,
       required: false,
       default: undefined,
+    },
+    /** Reusable exam template ids for this cohort (see `InternshipExam` types). */
+    examTemplateIds: {
+      type: [mongoose.Schema.Types.ObjectId],
+      default: [],
+    },
+    /** Reusable task template ids for this cohort (see `InternshipTask` types). */
+    taskTemplateIds: {
+      type: [mongoose.Schema.Types.ObjectId],
+      default: [],
     },
   },
   { _id: true, timestamps: true },

@@ -22,6 +22,10 @@ import partnershipImportRoutes from "./partnershipImport.routes";
 import instructorDashboardRoutes from "./instructor-dashboard.routes";
 import collegeRoutes from "./college.routes";
 import internshipRoutes from "./internship.routes";
+import internshipExamRoutes from "./internshipExam.routes";
+import internshipQuestionRoutes from "./internshipQuestion.routes";
+import internshipTaskRoutes from "./internshipTask.routes";
+import internshipSubmissionRoutes from "./internshipSubmission.routes";
 import partnerCollegeRoutes from "./partnerCollege.routes";
 
 export {
@@ -49,5 +53,9 @@ export {
   instructorDashboardRoutes,
   collegeRoutes,
   internshipRoutes,
+  internshipExamRoutes,
+  internshipQuestionRoutes,
+  internshipTaskRoutes,
+  internshipSubmissionRoutes,
   partnerCollegeRoutes,
 };

@@ -94,26 +94,8 @@ function normalizeInternshipBatchPlan(
 ): InternshipBatchPlan | undefined {
   if (raw == null || typeof raw !== "object") return undefined;
   const p = raw as Record<string, unknown>;
-  const features = Array.isArray(p.features)
-    ? p.features.map((f) => {
-        const x = f as Record<string, unknown>;
-        return {
-          title: String(x?.title ?? ""),
-          provided: Boolean(x?.provided),
-          showHover:
-            typeof x?.showHover === "string"
-              ? x.showHover
-              : String(x?.showHover ?? ""),
-        };
-      })
-    : [];
   return {
-    title: String(p.title ?? ""),
     price: typeof p.price === "number" && !Number.isNaN(p.price) ? p.price : 0,
-    features:
-      features.length > 0
-        ? features
-        : [{ title: "", provided: true, showHover: "" }],
     discount: p.discount as InternshipBatchPlan["discount"],
     isPopular: Boolean(p.isPopular),
     isActive: p.isActive !== false,
@@ -128,7 +110,6 @@ function normalizeBatchDoc(
   const row: InternshipBatches = {
     name: String(b.name ?? ""),
     applicationLastDate: b.applicationLastDate as Date,
-    examDate: b.examDate as Date,
     internshipStartDate: b.internshipStartDate as Date,
     status:
       b.status === "inactive" ||
@@ -155,6 +136,12 @@ function normalizeBatchDoc(
   if (planSource != null) {
     const normalized = normalizeInternshipBatchPlan(planSource);
     if (normalized) row.plan = normalized;
+  }
+  if (Array.isArray(b.examTemplateIds)) {
+    row.examTemplateIds = b.examTemplateIds.map((id) => String(id));
+  }
+  if (Array.isArray(b.taskTemplateIds)) {
+    row.taskTemplateIds = b.taskTemplateIds.map((id) => String(id));
   }
   return row;
 }

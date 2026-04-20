@@ -183,10 +183,10 @@ const Navbar = () => {
           className="hidden lg:flex h-full absolute left-1/2 -translate-x-1/2 items-center gap-4 lg:gap-5 xl:gap-9"
           onMouseEnter={() => setIsTransitioning(false)}
         >
-          {navItems.map((item) => (
+          {navItems.map((item, index) => (
             <NavLink
               href={item.href}
-              key={item.href}
+              key={index}
               label={item.label}
               count={item.count}
               onMouseEnter={() => showHoverContainer(item)}

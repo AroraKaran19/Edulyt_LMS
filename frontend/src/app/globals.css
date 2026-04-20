@@ -38,6 +38,14 @@ html {
   scrollbar-color: #cbd5e1 #f1f5f9;
 }
 
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
 @utility scrollbar-hide {
   scrollbar-width: none;
   -ms-overflow-style: none;

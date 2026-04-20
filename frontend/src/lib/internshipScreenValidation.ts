@@ -54,12 +54,8 @@ export function getInternshipScreenTriggerFields(
     case 2: {
       const batches = context?.batches ?? [];
       const names: string[] = ["batches"];
-      batches.forEach((b, bi) => {
-        names.push(`batches.${bi}.plan.title`, `batches.${bi}.plan.price`);
-        const n = b?.plan?.features?.length ?? 0;
-        for (let fi = 0; fi < n; fi++) {
-          names.push(`batches.${bi}.plan.features.${fi}.title`);
-        }
+      batches.forEach((_, bi) => {
+        names.push(`batches.${bi}.plan.price`, `batches.${bi}.applicationLastDate`);
       });
 
       // Add discount validation if discount is active
@@ -96,6 +92,7 @@ export function getInternshipScreenTriggerFields(
     case 12:
       return ["mentors"];
     case 13:
+    case 14:
       return [];
     default:
       return [];

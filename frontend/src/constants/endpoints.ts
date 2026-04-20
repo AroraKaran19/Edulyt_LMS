@@ -82,6 +82,33 @@ export const ENDPOINTS = {
     base: "/internships",
   },
 
+  /** Reusable internship exam templates (admin picker + exam bank). */
+  internshipExams: {
+    adminList: "/internship-exams/admin",
+    adminById: (examId: string) =>
+      `/internship-exams/admin/${encodeURIComponent(examId)}`,
+    create: "/internship-exams",
+  },
+
+  internshipQuestions: {
+    adminList: "/internship-questions/admin",
+    adminById: (questionId: string) =>
+      `/internship-questions/admin/${encodeURIComponent(questionId)}`,
+    create: "/internship-questions",
+  },
+
+  internshipTasks: {
+    adminList: "/internship-tasks/admin",
+    adminById: (taskId: string) =>
+      `/internship-tasks/admin/${encodeURIComponent(taskId)}`,
+    create: "/internship-tasks",
+  },
+
+  internshipSubmissions: {
+    adminList: "/internship-submissions/admin",
+    byId: (id: string) => `/internship-submissions/${id}`,
+  },
+
   // Category Routes
   categories: {
     // Public Routes

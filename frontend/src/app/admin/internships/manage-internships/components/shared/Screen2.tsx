@@ -5,8 +5,13 @@ import CheckBoxContainer from "@/components/ui/inputs/CheckBoxContainer";
 import Input from "@/components/ui/inputs/Input";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import { useFormContext, useFieldArray, Controller } from "react-hook-form";
-import { InternshipFormData, createDefaultInternshipBatchPlan, createDefaultInternshipDiscount } from "@/types/internshipForm";
+import {
+  InternshipFormData,
+  createDefaultInternshipBatchPlan,
+  createDefaultInternshipDiscount,
+} from "@/types/internshipForm";
 import InternshipBatchPlanFields from "../InternshipBatchPlanFields";
+import BatchExamTemplatesSelect from "../BatchExamTemplatesSelect";
 import { useEffect, useState, ChangeEvent } from "react";
 import {
   PlusIcon,
@@ -22,11 +27,12 @@ import {
 const defaultBatch = () => ({
   name: "",
   applicationLastDate: "",
-  examDate: "",
   internshipStartDate: "",
   status: "active" as const,
   isActive: true,
   plan: createDefaultInternshipBatchPlan(),
+  examTemplateIds: [] as string[],
+  taskTemplateIds: [] as string[],
 });
 
 const discountTypeOptions = ["Percentage", "Fixed Amount"];
@@ -131,7 +137,7 @@ const Screen2 = () => {
       title="Batches & Pricing (Screen 2)"
       description="Add batches with dates and pricing, plus optional internship-wide discount"
       className="h-full w-full"
-      classNameBody="flex flex-col gap-6"
+      classNameBody="flex flex-col gap-6 min-h-0 pb-2"
     >
       <div className="w-full shadow-none border-none pb-0">
         <Controller
@@ -144,33 +150,15 @@ const Screen2 = () => {
                 if (!b.name?.trim()) {
                   return "Each batch needs a name";
                 }
-                if (
-                  !b.applicationLastDate ||
-                  !b.examDate ||
-                  !b.internshipStartDate
-                ) {
-                  return "Each batch needs application last date, exam date, and internship start date";
+                if (!b.applicationLastDate || !b.internshipStartDate) {
+                  return "Each batch needs application last date and internship start date";
                 }
-                if (b.applicationLastDate > b.examDate) {
-                  return "Application deadline must be on or before the exam date in each batch";
-                }
-                if (b.examDate > b.internshipStartDate) {
-                  return "Exam date must be on or before the internship start date in each batch";
+                if (b.applicationLastDate > b.internshipStartDate) {
+                  return "Application deadline must be on or before the internship start date in each batch";
                 }
                 const pl = b.plan;
-                if (!pl?.title?.trim()) {
-                  return "Each batch needs a plan title";
-                }
-                if (typeof pl.price !== "number" || pl.price <= 0) {
+                if (typeof pl?.price !== "number" || pl.price <= 0) {
                   return "Each batch needs a price greater than zero";
-                }
-                if (!pl.features?.length) {
-                  return "Each batch plan needs at least one feature";
-                }
-                for (let fi = 0; fi < pl.features.length; fi++) {
-                  if (!pl.features[fi]?.title?.trim()) {
-                    return "Each plan feature needs a title";
-                  }
                 }
               }
               return true;
@@ -184,8 +172,10 @@ const Screen2 = () => {
             Batches <span className="text-red-500">*</span>
           </p>
           <p className="text-xs text-gray-600">
-            Batches are saved on this internship. Give each batch a name and its
-            application deadline, exam date, and internship start date.
+            Batches are saved on this internship. Give each batch a name,
+            application deadline, and internship start date. Set exam window,
+            results publication time, and optional per-attempt duration on each
+            linked exam template.
           </p>
           {batchesRootError && (
             <p className="text-red-500 text-sm">{batchesRootError}</p>
@@ -200,19 +190,17 @@ const Screen2 = () => {
                 (batchData &&
                   (!batchData.name?.trim() ||
                     !batchData.applicationLastDate ||
-                    !batchData.examDate ||
                     !batchData.internshipStartDate));
 
               const isComplete =
                 batchData?.name?.trim() &&
                 batchData?.applicationLastDate &&
-                batchData?.examDate &&
                 batchData?.internshipStartDate;
 
               return (
                 <div
                   key={field.id}
-                  className={`rounded-xl border overflow-hidden transition-all ${
+                  className={`rounded-xl border transition-all overflow-hidden min-w-0 ${
                     hasError
                       ? "border-red-200 bg-red-50/30"
                       : isComplete
@@ -237,7 +225,7 @@ const Screen2 = () => {
                             )}
                           </div>
 
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div className="flex flex-col gap-1">
                               <span className="text-xs font-medium text-gray-500 uppercase">
                                 Application Deadline
@@ -248,18 +236,6 @@ const Screen2 = () => {
                                   {formatDate(
                                     batchData?.applicationLastDate || "",
                                   )}
-                                </span>
-                              </div>
-                            </div>
-
-                            <div className="flex flex-col gap-1">
-                              <span className="text-xs font-medium text-gray-500 uppercase">
-                                Exam Date
-                              </span>
-                              <div className="flex items-center gap-1.5">
-                                <CalendarIcon className="size-3.5 text-blue-500 shrink-0" />
-                                <span className="text-sm font-semibold text-gray-900">
-                                  {formatDate(batchData?.examDate || "")}
                                 </span>
                               </div>
                             </div>
@@ -386,15 +362,9 @@ const Screen2 = () => {
                               required: "Application last date is required",
                               validate: (value) => {
                                 if (!value) return true;
-                                const exam = getValues(
-                                  `batches.${index}.examDate`,
-                                );
                                 const start = getValues(
                                   `batches.${index}.internshipStartDate`,
                                 );
-                                if (exam && value > exam) {
-                                  return "Application deadline must be on or before the exam date";
-                                }
                                 if (start && value > start) {
                                   return "Application deadline must be on or before the internship start date";
                                 }
@@ -420,23 +390,17 @@ const Screen2 = () => {
                         </div>
                         <div className="flex-1 min-w-0">
                           <Controller
-                            name={`batches.${index}.examDate`}
+                            name={`batches.${index}.internshipStartDate`}
                             control={control}
                             rules={{
-                              required: "Exam date is required",
+                              required: "Internship start date is required",
                               validate: (value) => {
                                 if (!value) return true;
                                 const app = getValues(
                                   `batches.${index}.applicationLastDate`,
                                 );
-                                const start = getValues(
-                                  `batches.${index}.internshipStartDate`,
-                                );
                                 if (app && value < app) {
-                                  return "Exam date must be on or after the application deadline";
-                                }
-                                if (start && value > start) {
-                                  return "Exam date must be on or before the internship start date";
+                                  return "Start date must be on or after the application deadline";
                                 }
                                 return true;
                               },
@@ -444,14 +408,13 @@ const Screen2 = () => {
                             render={({ field: f }) => (
                               <Input
                                 {...f}
-                                label="Exam date"
+                                label="Internship start date"
                                 type="date"
                                 value={f.value || ""}
                                 onChange={(e) => f.onChange(e.target.value)}
                                 error={
-                                  errors.batches?.[index]?.examDate?.message as
-                                    | string
-                                    | undefined
+                                  errors.batches?.[index]?.internshipStartDate
+                                    ?.message as string | undefined
                                 }
                                 required
                                 className="w-full"
@@ -459,47 +422,6 @@ const Screen2 = () => {
                             )}
                           />
                         </div>
-                      </div>
-
-                      <div>
-                        <Controller
-                          name={`batches.${index}.internshipStartDate`}
-                          control={control}
-                          rules={{
-                            required: "Internship start date is required",
-                            validate: (value) => {
-                              if (!value) return true;
-                              const app = getValues(
-                                `batches.${index}.applicationLastDate`,
-                              );
-                              const exam = getValues(
-                                `batches.${index}.examDate`,
-                              );
-                              if (app && value < app) {
-                                return "Start date must be on or after the application deadline";
-                              }
-                              if (exam && value < exam) {
-                                return "Start date must be on or after the exam date";
-                              }
-                              return true;
-                            },
-                          }}
-                          render={({ field: f }) => (
-                            <Input
-                              {...f}
-                              label="Internship start date"
-                              type="date"
-                              value={f.value || ""}
-                              onChange={(e) => f.onChange(e.target.value)}
-                              error={
-                                errors.batches?.[index]?.internshipStartDate
-                                  ?.message as string | undefined
-                              }
-                              required
-                              className="w-full"
-                            />
-                          )}
-                        />
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
@@ -541,6 +463,14 @@ const Screen2 = () => {
                       </div>
 
                       <InternshipBatchPlanFields batchIndex={index} />
+
+                      <div className="rounded-xl border border-gray-200 bg-white p-4">
+                        <BatchExamTemplatesSelect batchIndex={index} />
+                        <p className="text-xs text-gray-500 mt-2">
+                          Linked templates for this batch are listed first after
+                          save.
+                        </p>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -568,7 +498,8 @@ const Screen2 = () => {
       <div className="w-full shadow-none border-none pb-0">
         <p className="text-sm text-gray-600 mb-4">
           Per-batch prices are set above. Use this section only if you want an
-          additional percentage or fixed discount during specific hours each day.
+          additional percentage or fixed discount during specific hours each
+          day.
         </p>
 
         <div className="bg-linear-to-r from-green-50 to-emerald-50 rounded-2xl p-6 border border-green-100">
@@ -617,7 +548,9 @@ const Screen2 = () => {
                       <DropDown
                         label="Discount Type"
                         value={
-                          field.value === "fixed" ? "Fixed Amount" : "Percentage"
+                          field.value === "fixed"
+                            ? "Fixed Amount"
+                            : "Percentage"
                         }
                         onChange={(e) => {
                           const v = e.target.value;
@@ -684,7 +617,9 @@ const Screen2 = () => {
                         {...field}
                         label="Start Time"
                         type="time"
-                        value={field.value || discountState?.startTime || "00:00"}
+                        value={
+                          field.value || discountState?.startTime || "00:00"
+                        }
                         onChange={(e) => {
                           field.onChange(e.target.value);
                         }}
@@ -708,7 +643,10 @@ const Screen2 = () => {
                       validate: (value) => {
                         const t = validateTime(value);
                         if (t !== true) return t;
-                        return validateTimeRange(discountState?.startTime, value);
+                        return validateTimeRange(
+                          discountState?.startTime,
+                          value,
+                        );
                       },
                     }}
                     render={({ field }) => (

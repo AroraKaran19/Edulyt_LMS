@@ -20,6 +20,7 @@ import Screen10 from "../components/shared/Screen10";
 import Screen11 from "../components/shared/Screen11";
 import Screen12 from "../components/shared/Screen12";
 import Screen13 from "../components/shared/Screen13";
+import Screen14 from "../components/shared/Screen14";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 
 const CreateInternshipPageContent = () => {
@@ -39,8 +40,8 @@ const CreateInternshipPageContent = () => {
   } = useInternshipFormContext();
 
   const handleNext = async () => {
-    if (currentScreen === 13) {
-      // On Screen 13 (Summary), create or update internship
+    if (currentScreen === 14) {
+      // On Screen 14 (Summary), create or update internship
       try {
         if (isInternshipCreated()) {
           // Internship already exists, update it using the stored internship ID
@@ -113,6 +114,7 @@ const CreateInternshipPageContent = () => {
         {currentScreen === 11 && <Screen11 />}
         {currentScreen === 12 && <Screen12 />}
         {currentScreen === 13 && <Screen13 />}
+        {currentScreen === 14 && <Screen14 />}
       </div>
       <div className="flex justify-between items-center h-fit p-4">
         <WhiteButton
@@ -142,7 +144,7 @@ const CreateInternshipPageContent = () => {
             </>
           ) : (
             <>
-              {currentScreen === 13
+              {currentScreen === 14
                 ? isInternshipCreated()
                   ? "Update Internship"
                   : "Create Internship"

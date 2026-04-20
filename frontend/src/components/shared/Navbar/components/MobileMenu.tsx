@@ -23,7 +23,7 @@ const MobileMenu = ({ isOpen, navItems, onClose }: MobileMenuProps) => {
       )}
     >
       <nav className="flex flex-col p-6 space-y-2">
-        {navItems.map((item) => {
+        {navItems.map((item, index) => {
           const isActive = pathname === item.href;
           const displayCount =
             typeof item.count === "number"
@@ -36,7 +36,7 @@ const MobileMenu = ({ isOpen, navItems, onClose }: MobileMenuProps) => {
 
           return (
             <Link
-              key={item.href}
+              key={index}
               href={
                 item.href === "/internships"
                   ? "https://edulyt.com/internships.php"

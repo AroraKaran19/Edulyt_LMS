@@ -13,9 +13,7 @@ export type PartnerCollegesField = string[];
 /** Default per-batch plan (Screen 2 — each batch has its own). */
 export function createDefaultInternshipBatchPlan(): InternshipBatchPlan {
   return {
-    title: "",
     price: 0,
-    features: [{ title: "", provided: true, showHover: "" }],
     isPopular: false,
     isActive: true,
   };
@@ -47,7 +45,6 @@ export interface InternshipBatchFormValue {
   _id?: string;
   name: string;
   applicationLastDate: string;
-  examDate: string;
   internshipStartDate: string;
   status: "active" | "inactive" | "completed";
   isActive: boolean;
@@ -55,6 +52,10 @@ export interface InternshipBatchFormValue {
   reviews?: string[];
   analytics?: InternshipBatchAnalytics;
   plan: InternshipBatchPlan;
+  /** Reusable exam template ids for this cohort (see `Internship` / `InternshipExam`). */
+  examTemplateIds?: string[];
+  /** Reusable task template ids for this cohort (see `Internship` / `InternshipTask`). */
+  taskTemplateIds?: string[];
 }
 
 // Form data structure aligned with Internship schema

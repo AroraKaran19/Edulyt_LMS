@@ -31,7 +31,6 @@ type AssessmentBase = {
   batch?: {
     name: string;
     applicationLastDate: Date;
-    examDate: Date;
     internshipStartDate: Date;
     status: "active" | "inactive" | "completed";
   };
@@ -63,7 +62,6 @@ type AssessmentResponseBase = {
   batch?: {
     name: string;
     applicationLastDate: Date;
-    examDate: Date;
     internshipStartDate: Date;
     status: "active" | "inactive" | "completed";
   };
@@ -96,7 +94,6 @@ export interface AssessmentSubmission {
   batch?: {
     name: string;
     applicationLastDate: Date;
-    examDate: Date;
     internshipStartDate: Date;
     status: "active" | "inactive" | "completed";
   };
@@ -120,7 +117,6 @@ export interface AssessmentSubmissionResponse {
   batch?: {
     name: string;
     applicationLastDate: Date;
-    examDate: Date;
     internshipStartDate: Date;
     status: "active" | "inactive" | "completed";
   };
