@@ -22,10 +22,12 @@ import {
   ReactElement,
 } from "react";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
+import { useRouter } from "next/navigation";
 
 const InternshipHeader = ({ internship }: { internship: Internship }) => {
   const heroLines =
     internship.headerList?.map((s) => s?.trim()).filter(Boolean) ?? [];
+  const router = useRouter();
 
   const handleDownloadBrochure = async () => {
     try {
@@ -303,7 +305,13 @@ const InternshipHeader = ({ internship }: { internship: Internship }) => {
                     Call us: +91 9876543210
                   </span>
                 </WhiteButton>
-                <OrangeButton glow={false} className="w-full">
+                <OrangeButton
+                  glow={false}
+                  className="w-full"
+                  onClick={() =>
+                    router.push(`/internships/${internship.slug}/enroll`)
+                  }
+                >
                   Apply Now
                 </OrangeButton>
               </div>
