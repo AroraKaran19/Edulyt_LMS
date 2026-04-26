@@ -9,6 +9,22 @@ const internshipEnrollmentSchema = new mongoose.Schema(
       required: true,
     },
     /**
+     * Snapshot of the internship captured at enrollment time.
+     * Keeps the enrollment self-contained — title and slug never change
+     * from the learner's perspective even if the live document is updated.
+     */
+    internshipSnapshot: {
+      type: new mongoose.Schema(
+        {
+          title: { type: String, required: true, trim: true },
+          slug: { type: String, required: true, trim: true },
+          thumbnail: { type: String, trim: true },
+        },
+        { _id: false },
+      ),
+      default: undefined,
+    },
+    /**
      * Snapshot of the batch captured at enrollment time.
      * Keeps the enrollment self-contained — no need to re-fetch the
      * parent Internship document just to display cohort details.
@@ -41,9 +57,9 @@ const internshipEnrollmentSchema = new mongoose.Schema(
     status: {
       type: String,
       enum: [
+        "exam_registered",
         "exam_attempted",
         "in_merit_pool",
-        "admin_approved",
         "admin_rejected",
         "payment_pending",
         "enrolled",

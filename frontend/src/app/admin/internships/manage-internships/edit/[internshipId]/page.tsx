@@ -1,7 +1,15 @@
 "use client";
 
 import Container from "@/app/admin/components/ui/Container";
-import { ArrowLeftIcon, ArrowRightIcon, BriefcaseIcon } from "lucide-react";
+import {
+  ArrowLeftIcon,
+  ArrowRightIcon,
+  BriefcaseIcon,
+  BookOpenIcon,
+  UsersIcon,
+  ClipboardListIcon,
+  SaveIcon,
+} from "lucide-react";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import { useParams, useRouter } from "next/navigation";
@@ -39,11 +47,18 @@ const EditInternshipPageContent = ({
     currentScreen,
     nextScreen,
     prevScreen,
+    goToScreen,
     canGoNext,
     updateInternship,
     isUpdating,
     isInternshipDataLoading,
   } = useInternshipFormContext();
+
+  const QUICK_NAV_TABS = [
+    { label: "Basic Information", screen: 1, icon: BookOpenIcon },
+    { label: "Instructors", screen: 12, icon: UsersIcon },
+    { label: "Tasks", screen: 13, icon: ClipboardListIcon },
+  ] as const;
 
   const handleNext = async () => {
     if (currentScreen === 14) {
@@ -68,14 +83,66 @@ const EditInternshipPageContent = ({
     }
   };
 
+  const handleSave = async () => {
+    try {
+      await updateInternship();
+    } catch (error) {
+      console.error("Failed to save internship:", error);
+    }
+  };
+
   return (
     <div className="flex w-full h-full flex-col px-8 relative">
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-4">
         <Container
           title="Edit Internship"
           icon={BriefcaseIcon}
           className="rounded-t-none shrink-0 h-fit"
         />
+      </div>
+
+      {/* Quick-nav tab bar + Save button */}
+      <div className="flex items-center justify-between gap-2 mb-6 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
+          {QUICK_NAV_TABS.map(({ label, screen, icon: Icon }) => {
+            const isActive = currentScreen === screen;
+            return (
+              <button
+                key={screen}
+                onClick={() => goToScreen(screen)}
+                disabled={isInternshipDataLoading || isUpdating}
+                className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all
+                  ${
+                    isActive
+                      ? "bg-orange-500 text-white shadow-sm"
+                      : "bg-orange-100 text-orange-600 hover:bg-orange-200"
+                  }
+                  disabled:opacity-50 disabled:cursor-not-allowed`}
+              >
+                <Icon className="w-4 h-4" />
+                {isActive ? `${label} (Current)` : label}
+              </button>
+            );
+          })}
+        </div>
+        <OrangeButton
+          glow={false}
+          className="flex gap-2 items-center"
+          onClick={handleSave}
+          disabled={isInternshipDataLoading || isUpdating}
+        >
+          {isUpdating ? (
+            <>
+              <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+              Saving…
+            </>
+          ) : (
+            <>
+              <SaveIcon className="size-4" />
+              Save
+            </>
+          )}
+        </OrangeButton>
       </div>
       <div className="flex-1 min-h-0 max-h-full">
         {isInternshipDataLoading ? (

@@ -12,10 +12,17 @@ import {
   EnrollmentModel,
   CouponModel,
 } from "../models";
+import { InternshipModel } from "../models/internship.schema";
+import { InternshipEnrollmentModel } from "../models/internshipEnrollment.schema";
 import jwt from "jsonwebtoken";
 import { generatePaytmChecksum } from "../utils/lib/generatePaytmChecksum";
 import axios from "axios";
 import { validateCouponService } from "./coupon.services";
+import {
+  qualifiesForInternshipVoucher,
+  issueInternshipVoucher,
+} from "./internshipVoucher.services";
+import type { CourseDiscount, Discount } from "../types";
 
 const updatePendingPayments = async (userId: string, updateOperation: any) => {
   const user = await UserModel.findById(userId);
@@ -26,9 +33,89 @@ const updatePendingPayments = async (userId: string, updateOperation: any) => {
   }
 };
 
+/**
+ * After Paytm success: confirm paid internship seat and mark cohort enrolled.
+ */
+export const createInternshipSeatEnrollmentAfterPayment = async (
+  order: any,
+) => {
+  const enrollmentId = order.internshipEnrollmentId;
+  if (!enrollmentId) {
+    throw new AppError("Order is missing internship enrollment reference", 400);
+  }
+
+  const enrollment = await InternshipEnrollmentModel.findById(enrollmentId);
+  if (!enrollment) {
+    throw new AppError("Internship enrollment not found", 404);
+  }
+
+  if (enrollment.status === "enrolled") {
+    return enrollment;
+  }
+
+  // Accept all statuses that a "paid" enrollment can be in at payment time:
+  //  • "payment_pending"  — fresh direct-seat (no exam registered)
+  //  • "exam_registered"  — upgraded from merit path before exam
+  //  • "exam_attempted"   — upgraded from merit path after exam; payment completes regardless of result
+  const acceptablePayableStatuses = [
+    "payment_pending",
+    "exam_registered",
+    "exam_attempted",
+  ] as string[];
+  if (
+    enrollment.enrollmentType !== "paid" ||
+    !acceptablePayableStatuses.includes(String(enrollment.status))
+  ) {
+    throw new AppError(
+      "Enrollment is not awaiting payment for a direct seat",
+      400,
+    );
+  }
+
+  const userId = order.userId?.toString?.() ?? String(order.userId);
+  if (String(enrollment.user) !== userId) {
+    throw new AppError("Order does not match this enrollment", 403);
+  }
+
+  enrollment.status = "enrolled";
+  enrollment.enrolledAt = new Date();
+  enrollment.paymentAmount = order.amount;
+  enrollment.paymentOrderId = String(order._id);
+  enrollment.paymentConfirmedAt = new Date();
+  await enrollment.save();
+
+  const internshipOid = enrollment.internship as mongoose.Types.ObjectId;
+  const batchIdStr = enrollment.batchSnapshot?.batchId;
+  if (batchIdStr && mongoose.Types.ObjectId.isValid(batchIdStr)) {
+    await InternshipModel.updateOne(
+      {
+        _id: internshipOid,
+        "batches._id": new mongoose.Types.ObjectId(batchIdStr),
+      },
+      {
+        $inc: {
+          "batches.$.analytics.totalEnrollments": 1,
+        },
+      },
+    );
+  }
+  await InternshipModel.updateOne(
+    { _id: internshipOid },
+    {
+      $inc: { "analytics.totalEnrollments": 1 },
+    },
+  );
+
+  return enrollment;
+};
+
 // Create enrollment after successful payment
 export const createEnrollmentAfterPayment = async (order: any) => {
   try {
+    if (order.orderKind === "internship_seat") {
+      return await createInternshipSeatEnrollmentAfterPayment(order);
+    }
+
     // Check if enrollment already exists
     const existingEnrollment = await EnrollmentModel.findOne({
       userId: order.userId,
@@ -133,6 +220,27 @@ export const createEnrollmentAfterPayment = async (order: any) => {
           { $inc: { totalStudents: 1 } },
           { new: true }
         );
+      }
+    }
+
+    // Issue a free-internship voucher if the learner paid ≥ 50 % of the
+    // original plan price (amount paid ≥ total discounts applied).
+    if (
+      qualifiesForInternshipVoucher({
+        amount: order.amount,
+        couponDiscount: order.couponDiscount,
+        collaborationDiscount: order.collaborationDiscount,
+      })
+    ) {
+      try {
+        await issueInternshipVoucher({
+          userId: String(order.userId),
+          enrollmentId: String(savedEnrollment._id),
+          orderId: String(order._id),
+        });
+      } catch (voucherErr) {
+        // Non-critical: log and move on; enrollment itself succeeded.
+        console.error("Failed to issue internship voucher:", voucherErr);
       }
     }
 
@@ -510,6 +618,7 @@ export const createOrderService = async (
     txnId: Math.random().toString(36).substring(2, 15),
     token: "", // Will be set by Paytm's txnToken
     userId,
+    orderKind: "course",
     courseId,
     courseName,
     userName,
@@ -644,9 +753,228 @@ export const createOrderService = async (
   };
 };
 
+/**
+ * Create Paytm order for “direct seat” internship enrollment (after form, `payment_pending`).
+ * Amount is derived from the batch plan + discounts (single source of truth, same as enroll-preview).
+ */
+export const createInternshipSeatOrderService = async (
+  userId: string,
+  internshipEnrollmentId: string,
+) => {
+  if (!process.env.PAYTM_MID || !process.env.PAYTM_WEBSITE) {
+    throw new AppError("PAYTM_MID or PAYTM_WEBSITE is not set", 500);
+  }
+
+  if (!mongoose.Types.ObjectId.isValid(internshipEnrollmentId)) {
+    throw new AppError("Invalid enrollment id", 400);
+  }
+
+  const enrollment = await InternshipEnrollmentModel.findById(
+    internshipEnrollmentId,
+  );
+  if (!enrollment) throw new AppError("Internship enrollment not found", 404);
+  if (String(enrollment.user) !== String(userId)) {
+    throw new AppError("This enrollment does not belong to you", 403);
+  }
+
+  // Paid statuses that are still awaiting payment:
+  //  • "payment_pending"     — fresh direct-seat registration
+  //  • "exam_registered"     — upgraded from merit path (seat payment + exam access)
+  //  • "exam_attempted"      — same upgrade, exam already taken but seat not yet paid
+  const payableStatuses = ["payment_pending", "exam_registered", "exam_attempted"] as string[];
+  if (
+    enrollment.enrollmentType !== "paid" ||
+    !payableStatuses.includes(String(enrollment.status))
+  ) {
+    throw new AppError("This enrollment is not waiting for a seat payment", 400);
+  }
+
+  const internship = await InternshipModel.findById(enrollment.internship).lean();
+  if (!internship) throw new AppError("Internship not found", 404);
+
+  const batchIdStr = enrollment.batchSnapshot?.batchId;
+  if (!batchIdStr) throw new AppError("Enrollment is missing batch", 400);
+
+  const batch = (internship.batches as Record<string, unknown>[])?.find(
+    (b) => String(b._id) === String(batchIdStr),
+  ) as
+    | {
+        _id: unknown;
+        plan?: { price: number; isActive?: boolean; discount?: unknown } | null;
+      }
+    | undefined;
+  if (!batch) throw new AppError("Batch not found on internship", 404);
+
+  const plan = batch.plan;
+  if (!plan || plan.isActive === false) {
+    throw new AppError("This cohort has no purchasable plan", 400);
+  }
+
+  const listPrice = Number(plan.price) || 0;
+  const internshipDisc = (internship as { discount?: CourseDiscount | null })
+    .discount;
+  const planDiscount =
+    (plan as { discount?: Discount | null }).discount ?? undefined;
+  const rawAmount = calculateFinalDiscountedPrice(
+    listPrice,
+    internshipDisc ?? undefined,
+    planDiscount,
+  );
+  const amount = Math.round(rawAmount * 100) / 100;
+
+  const user = await UserModel.findById(userId)
+    .select("firstName lastName email")
+    .lean();
+  const userName =
+    user && ((user as { firstName?: string }).firstName || (user as { lastName?: string }).lastName)
+      ? `${((user as { firstName?: string }).firstName ?? "").trim()} ${(
+          (user as { lastName?: string }).lastName ?? ""
+        ).trim()}`.trim()
+      : "";
+
+  await OrderModel.deleteMany({
+    userId: new mongoose.Types.ObjectId(userId),
+    orderKind: "internship_seat",
+    internshipEnrollmentId: new mongoose.Types.ObjectId(internshipEnrollmentId),
+    paymentStatus: "pending",
+  });
+
+  const order = new OrderModel({
+    txnId: Math.random().toString(36).substring(2, 15),
+    token: "",
+    userId,
+    orderKind: "internship_seat",
+    amount,
+    currency: "INR",
+    paymentMethod: "paytm",
+    paymentMode: "online",
+    paymentStatus: "pending",
+    userName,
+    internshipId: new mongoose.Types.ObjectId(String(enrollment.internship)),
+    batchId: batchIdStr,
+    internshipEnrollmentId: new mongoose.Types.ObjectId(internshipEnrollmentId),
+    internshipTitle: String((internship as { title?: string }).title ?? "Internship"),
+  });
+  await order.save();
+
+  await StudentModel.findByIdAndUpdate(userId, {
+    $push: { orders: order._id.toString() },
+  });
+
+  if (amount < 1) {
+    order.amount = 0;
+    order.paymentStatus = "success";
+    await order.save();
+    await createEnrollmentAfterPayment(order);
+    const paymentGatewayToken = generatePaymentGatewayToken(
+      order._id.toString(),
+    );
+    return {
+      _id: order._id.toString(),
+      freeOrder: true,
+      token: paymentGatewayToken,
+    };
+  }
+
+  const paymentGatewayToken = generatePaymentGatewayToken(order._id.toString());
+  const redirectUrl = `${
+    process.env.FRONTEND_URL
+  }/payment/status/${order._id.toString()}?token=${paymentGatewayToken}`;
+
+  const amountForPaytm = Number.isInteger(amount)
+    ? amount.toString()
+    : Number(amount.toFixed(2)).toString();
+
+  const paytmRequestBody = {
+    requestType: "Payment" as const,
+    mid: process.env.PAYTM_MID,
+    websiteName: process.env.PAYTM_WEBSITE,
+    orderId: order._id.toString(),
+    callbackUrl: redirectUrl,
+    txnAmount: { value: amountForPaytm, currency: "INR" as const },
+    userInfo: { custId: userId },
+  };
+
+  const checksum = await generatePaytmChecksum(paytmRequestBody);
+
+  if (!checksum) {
+    throw new AppError("Failed to generate Paytm checksum", 500);
+  }
+
+  let response;
+  try {
+    response = await axios.post(
+      `https://secure.paytmpayments.com/theia/api/v1/initiateTransaction?mid=${
+        process.env.PAYTM_MID
+      }&orderId=${order._id.toString()}`,
+      {
+        head: {
+          signature: checksum,
+          channelId: "WEB",
+          version: "v1",
+          requestTimestamp: `${Math.floor(Date.now() / 1000)}`,
+        },
+        body: paytmRequestBody,
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+      },
+    );
+  } catch (err: unknown) {
+    const e = err as { response?: { data?: { body?: { resultInfo?: { resultMsg?: string } } } } };
+    const paytmBody = e.response?.data?.body;
+    const resultInfo = paytmBody?.resultInfo;
+    const message =
+      resultInfo?.resultMsg ||
+      (e as { message?: string }).message ||
+      "Failed to initiate Paytm transaction";
+    throw new AppError(
+      message,
+      (e as { response?: { status?: number } }).response?.status || 500,
+    );
+  }
+
+  if (response.status !== 200) {
+    throw new AppError("Error initiating transaction", 500);
+  }
+
+  const paytmBody = response.data?.body;
+  const resultInfo = paytmBody?.resultInfo;
+
+  if (resultInfo && resultInfo.resultStatus !== "S") {
+    const message =
+      resultInfo.resultMsg ||
+      `Paytm error (code: ${resultInfo.resultCode || "unknown"})`;
+    throw new AppError(message, 400);
+  }
+
+  if (!paytmBody?.txnToken) {
+    const paytmMessage = resultInfo?.resultMsg
+      ? resultInfo.resultMsg
+      : "Invalid response from Paytm - no transaction token";
+    throw new AppError(paytmMessage, 500);
+  }
+
+  order.token = paytmBody.txnToken;
+  await order.save();
+
+  await updatePendingPayments(userId, {
+    $push: { pendingPayments: order._id.toString() },
+  });
+
+  return {
+    _id: order._id.toString(),
+    token: paytmBody.txnToken,
+  };
+};
+
 export const getOrderInfoService = async (orderId: string) => {
   const order = await OrderModel.findById(orderId)
     .populate("courseId", "title thumbnail shortDescription")
+    .populate("internshipId", "title slug")
     .populate("userId", "name email")
     .lean();
   if (!order) throw new AppError("Order not found", 404);

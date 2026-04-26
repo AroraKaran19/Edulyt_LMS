@@ -467,6 +467,25 @@ export const validateScreen2 = (
     missingFields.push("whoShouldJoin");
   }
 
+  // Success points (Screen 2) — whole number, 0 = none
+  const sp = data.successPoints;
+  if (sp === undefined || sp === null) {
+    errors.push("Success points is required");
+    missingFields.push("successPoints");
+  } else {
+    const n = Number(sp);
+    if (!Number.isFinite(n) || !Number.isInteger(n)) {
+      errors.push("Success points must be a whole number");
+      missingFields.push("successPoints");
+    } else if (n < 0) {
+      errors.push("Success points cannot be negative");
+      missingFields.push("successPoints");
+    } else if (n > 1_000_000) {
+      errors.push("Success points cannot exceed 1,000,000");
+      missingFields.push("successPoints");
+    }
+  }
+
   // Prerequisites validation (optional)
   // No validation needed as prerequisites are optional
 

@@ -4,10 +4,10 @@ import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import { Eye, Lock, Mail, EyeOff, RefreshCw } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { toast } from "react-toastify";
 import apiClient from "@/configs/apiConfig";
-import { signIn, useSession } from "next-auth/react";
+import { signIn } from "next-auth/react";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
   validatePassword,
@@ -16,6 +16,8 @@ import {
   PasswordValidationErrors,
 } from "@/lib/passwordValidation";
 import { Check, X } from "lucide-react";
+import { awaitClientSessionAfterSignIn } from "@/lib/awaitClientSession";
+import { signInWithOAuthProvider } from "@/lib/oauthSignInClient";
 import { getPostLoginRedirectPath } from "@/lib/postLoginRedirect";
 import type { User } from "@/types/user";
 
@@ -29,27 +31,14 @@ const RegisterPage = () => {
   const [isOAuthLoading, setIsOAuthLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [loginSuccess, setLoginSuccess] = useState(false);
   const [passwordErrors, setPasswordErrors] = useState<
     PasswordValidationErrors & { confirmPassword?: string }
   >({});
   const [showPasswordValidation, setShowPasswordValidation] = useState(false);
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { data: session } = useSession();
 
   const callbackUrl = searchParams.get("callbackUrl") || undefined;
-
-  useEffect(() => {
-    if (loginSuccess && session?.user) {
-      const dest = getPostLoginRedirectPath(
-        session.user as User,
-        callbackUrl
-      );
-      router.push(dest);
-      setLoginSuccess(false);
-    }
-  }, [session, loginSuccess, router, callbackUrl]);
 
   // Toggle password visibility
   const togglePasswordVisibility = () => {
@@ -134,17 +123,21 @@ const RegisterPage = () => {
   const handleOAuthSignIn = async (provider: string) => {
     setIsOAuthLoading(true);
     try {
-      const result = await signIn(provider, {
-        callbackUrl: callbackUrl || "/dashboard",
-        redirect: false, // Don't redirect automatically
-      });
-      if (result?.error) {
-        toast.error(result?.error as string);
-      } else if (result?.ok) {
-        toast.success("Welcome to Airkrit!");
-        // Set flag to trigger role-based redirect in useEffect
-        setLoginSuccess(true);
+      const out = await signInWithOAuthProvider(provider, callbackUrl);
+      if (out.kind === "error") {
+        toast.error(out.message);
+        return;
       }
+      if (out.kind === "redirect_to_provider") {
+        window.location.assign(out.url);
+        return;
+      }
+      if (out.kind === "oauth_redirecting") {
+        // NextAuth already navigated to the identity provider; no result payload
+        return;
+      }
+      toast.success("Welcome to Airkrit!");
+      router.push(out.dest);
     } catch (error) {
       toast.error(
         (error as any)?.response?.data?.error?.message ||
@@ -218,8 +211,16 @@ const RegisterPage = () => {
             );
           } else if (result?.ok) {
             toast.success("Welcome to Airkrit!");
-            // Set flag to trigger role-based redirect in useEffect
-            setLoginSuccess(true);
+            const session = await awaitClientSessionAfterSignIn();
+            if (session?.user) {
+              const dest = getPostLoginRedirectPath(
+                session.user as User,
+                callbackUrl
+              );
+              router.push(dest);
+            } else {
+              router.push("/dashboard");
+            }
           }
         } else {
           toast.error(

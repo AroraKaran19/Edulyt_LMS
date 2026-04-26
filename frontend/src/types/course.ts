@@ -191,6 +191,8 @@ export interface Course {
 
   isFeatured?: boolean;
   isCertified?: boolean;
+  /** Points for completing the course; set in admin course wizard (Screen 2). */
+  successPoints?: number;
 
   // Course Content
   whatYouWillLearn: string;

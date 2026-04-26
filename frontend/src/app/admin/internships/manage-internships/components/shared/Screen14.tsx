@@ -345,9 +345,14 @@ const Screen14 = () => {
                   )}
                   <div className="mt-3 flex flex-wrap gap-4 text-xs text-gray-600">
                     <span>
-                      Exam templates:{" "}
+                      Entrance exam:{" "}
                       <strong className="text-gray-800">
-                        {batch.examTemplateIds?.length ?? 0}
+                        {batch.entranceExamTemplateId ? "1" : "None"}
+                      </strong>
+                      {" · "}
+                      Certification exam:{" "}
+                      <strong className="text-gray-800">
+                        {batch.certificationExamTemplateId ? "1" : "None"}
                       </strong>
                       <span className="text-gray-500">
                         {" "}

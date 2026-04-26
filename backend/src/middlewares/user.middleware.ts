@@ -29,7 +29,7 @@ export const verifyUser = async (
     };
 
     const user = await UserModel.findById(decoded.userId).select(
-      "-password"
+      "-password -successPointsHistory"
     );
 
     if (!user) {

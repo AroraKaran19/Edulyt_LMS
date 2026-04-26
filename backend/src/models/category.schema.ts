@@ -30,6 +30,11 @@ const categorySchema = new mongoose.Schema<Category>(
       default: false,
       required: true,
     },
+    showOnCourseList: {
+      type: Boolean,
+      default: true,
+      required: true,
+    },
     categoryImage: {
       type: String,
       required: false,

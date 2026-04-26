@@ -8,6 +8,7 @@ import { ENDPOINTS } from "@/constants/endpoints";
 import Select from "@/components/ui/inputs/Select";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
+import QuestionCategoryInputWithManagement from "@/components/ui/inputs/QuestionCategoryInputWithManagement";
 import InternshipAdminListShell from "../components/InternshipAdminListShell";
 import QuestionUpsertModal from "./components/QuestionUpsertModal";
 import QuestionDetailModal from "./components/QuestionDetailModal";
@@ -48,6 +49,7 @@ export default function InternshipQuestionsAdminPage() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -80,6 +82,7 @@ export default function InternshipQuestionsAdminPage() {
       if (typeFilter === "mcq" || typeFilter === "file_upload") {
         params.type = typeFilter;
       }
+      if (categoryFilter) params.categoryId = categoryFilter;
 
       const res = await apiClient.get(ENDPOINTS.internshipQuestions.adminList, {
         params,
@@ -98,14 +101,14 @@ export default function InternshipQuestionsAdminPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [page, debouncedSearch, typeFilter]);
+  }, [page, debouncedSearch, typeFilter, categoryFilter]);
 
   useEffect(() => {
     void fetchQuestions();
   }, [fetchQuestions]);
 
   const hasActiveFilters =
-    Boolean(debouncedSearch) || typeFilter !== "all";
+    Boolean(debouncedSearch) || typeFilter !== "all" || Boolean(categoryFilter);
 
   const upsertOpen = createOpen || !!editId;
   const upsertMode = editId ? "edit" : "create";
@@ -140,20 +143,34 @@ export default function InternshipQuestionsAdminPage() {
           </OrangeButton>
         }
         filterExtras={
-          <div className="sm:w-48">
-            <Select
-              options={[
-                { value: "all", label: "All types" },
-                { value: "mcq", label: "MCQ only" },
-                { value: "file_upload", label: "File upload only" },
-              ]}
-              value={typeFilter}
-              onChange={(val) => {
-                setTypeFilter(val);
-                setPage(1);
-              }}
-              placeholder="Question type"
-            />
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="sm:w-48">
+              <Select
+                options={[
+                  { value: "all", label: "All types" },
+                  { value: "mcq", label: "MCQ only" },
+                  { value: "file_upload", label: "File upload only" },
+                ]}
+                value={typeFilter}
+                onChange={(val) => {
+                  setTypeFilter(val);
+                  setPage(1);
+                }}
+                placeholder="Question type"
+              />
+            </div>
+            <div className="sm:min-w-[200px]">
+              <QuestionCategoryInputWithManagement
+                label=""
+                value={categoryFilter}
+                onChange={(id) => {
+                  setCategoryFilter(id);
+                  setPage(1);
+                }}
+                placeholder="All categories"
+                compact
+              />
+            </div>
           </div>
         }
       >

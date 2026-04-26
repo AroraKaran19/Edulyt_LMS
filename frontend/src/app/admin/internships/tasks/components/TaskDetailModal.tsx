@@ -8,7 +8,12 @@ import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import apiClient from "@/configs/apiConfig";
 import { ENDPOINTS } from "@/constants/endpoints";
-import type { InternshipTaskTemplateDetail } from "@/types/internship-task";
+import type { InternshipTaskTemplateDetail, TaskType } from "@/types/internship-task";
+
+const TASK_TYPE_LABEL: Record<TaskType, string> = {
+  task: "Task",
+  attendance: "Attendance",
+};
 
 type Props = {
   isOpen: boolean;
@@ -169,6 +174,21 @@ export default function TaskDetailModal({
             <p className="text-gray-900 font-medium">{detail.title}</p>
           </div>
 
+          <div>
+            <p className="text-xs font-semibold text-gray-500 uppercase mb-1">
+              Type
+            </p>
+            <span
+              className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full border ${
+                detail.taskType === "attendance"
+                  ? "bg-sky-50 text-sky-800 border-sky-200"
+                  : "bg-amber-50 text-amber-900 border-amber-200"
+              }`}
+            >
+              {TASK_TYPE_LABEL[detail.taskType === "attendance" ? "attendance" : "task"]}
+            </span>
+          </div>
+
           {detail.description?.trim() ? (
             <div>
               <p className="text-xs font-semibold text-gray-500 uppercase mb-1">
@@ -210,16 +230,16 @@ export default function TaskDetailModal({
               </span>
             </div>
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase mb-1">
-                Unlock (days)
+              <p className="text-xs font-semibold text-gray-500 mb-1 leading-tight">
+                Unlock after (days)
               </p>
               <p className="text-gray-800 tabular-nums">
                 {detail.unlockAfterDays}
               </p>
             </div>
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase mb-1">
-                Due (days)
+              <p className="text-xs font-semibold text-gray-500 mb-1 leading-tight">
+                Due after (days)
               </p>
               <p className="text-gray-800 tabular-nums">{detail.dueDays}</p>
             </div>

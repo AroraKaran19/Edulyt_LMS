@@ -52,8 +52,10 @@ export interface InternshipBatchFormValue {
   reviews?: string[];
   analytics?: InternshipBatchAnalytics;
   plan: InternshipBatchPlan;
-  /** Reusable exam template ids for this cohort (see `Internship` / `InternshipExam`). */
-  examTemplateIds?: string[];
+  /** Single entrance exam template for this cohort (examType = "entrance"). */
+  entranceExamTemplateId?: string | null;
+  /** Single certification exam template for this cohort (examType = "certification"). */
+  certificationExamTemplateId?: string | null;
   /** Reusable task template ids for this cohort (see `Internship` / `InternshipTask`). */
   taskTemplateIds?: string[];
 }

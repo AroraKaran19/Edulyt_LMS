@@ -4,11 +4,13 @@ import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import { Eye, EyeOff, Lock, Mail } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "react-toastify";
-import { signIn, useSession } from "next-auth/react";
+import { signIn } from "next-auth/react";
 import { showLoginErrorToast } from "@/lib/showLoginErrorToast";
+import { awaitClientSessionAfterSignIn } from "@/lib/awaitClientSession";
+import { signInWithOAuthProvider } from "@/lib/oauthSignInClient";
 import { getPostLoginRedirectPath } from "@/lib/postLoginRedirect";
 import type { User } from "@/types/user";
 
@@ -18,41 +20,30 @@ const LoginPage = () => {
   const [loading, setLoading] = useState(false);
   const [isOAuthLoading, setIsOAuthLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [loginSuccess, setLoginSuccess] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { data: session } = useSession();
 
   // Get callbackUrl from URL parameters (may be absent → role-based default)
   const callbackUrl = searchParams.get("callbackUrl") || undefined;
 
-  // After login: admins → /admin, instructors → /instructor, students → /dashboard,
-  // unless callbackUrl is a specific deep link (e.g. /cart, /courses/...).
-  useEffect(() => {
-    if (loginSuccess && session?.user) {
-      const dest = getPostLoginRedirectPath(
-        session.user as User,
-        callbackUrl
-      );
-      router.push(dest);
-      setLoginSuccess(false);
-    }
-  }, [session, loginSuccess, router, callbackUrl]);
-
   const handleOAuthSignIn = async (provider: string) => {
     setIsOAuthLoading(true);
     try {
-      const result = await signIn(provider, {
-        callbackUrl: callbackUrl || "/dashboard",
-        redirect: false, // Don't redirect automatically, handle it in useEffect
-      });
-      if (result?.error) {
-        showLoginErrorToast(result.error);
-      } else if (result?.ok) {
-        toast.success("Login successful!");
-        // Set flag to trigger role-based redirect in useEffect
-        setLoginSuccess(true);
+      const out = await signInWithOAuthProvider(provider, callbackUrl);
+      if (out.kind === "error") {
+        showLoginErrorToast(out.message);
+        return;
       }
+      if (out.kind === "redirect_to_provider") {
+        window.location.assign(out.url);
+        return;
+      }
+      if (out.kind === "oauth_redirecting") {
+        // NextAuth already navigated to the identity provider; no result payload
+        return;
+      }
+      toast.success("Login successful!");
+      router.push(out.dest);
     } catch (error) {
       toast.error(
         (error as any)?.response?.data?.error?.message ||
@@ -80,8 +71,16 @@ const LoginPage = () => {
         showLoginErrorToast(result.error);
       } else if (result?.ok) {
         toast.success("Login successful!");
-        // Set flag to trigger role-based redirect in useEffect
-        setLoginSuccess(true);
+        const session = await awaitClientSessionAfterSignIn();
+        if (session?.user) {
+          const dest = getPostLoginRedirectPath(
+            session.user as User,
+            callbackUrl
+          );
+          router.push(dest);
+        } else {
+          router.push("/dashboard");
+        }
       }
     } catch (error) {
       toast.error("Something went wrong. Please try again.");

@@ -1,5 +1,5 @@
 "use client";
-import { ChevronLeft, ChevronRight, Settings, Tag } from "lucide-react";
+import { ChevronLeft, ChevronRight, Settings, ShoppingCart, Tag } from "lucide-react";
 import ImageComponent from "@/components/ui/ImageComponent";
 import React from "react";
 import SidebarMenuItem from "./SidebarMenuItem";
@@ -52,10 +52,6 @@ const AdminSidebar = ({
           href: "/admin/courses/enrollments",
         },
         {
-          label: "Orders",
-          href: "/admin/courses/orders",
-        },
-        {
           label: "Live Classes",
           href: "/admin/courses/live-classes",
         },
@@ -74,6 +70,11 @@ const AdminSidebar = ({
       ],
     },
     {
+      icon: <ShoppingCart className="size-6" />,
+      label: "Orders",
+      href: "/admin/orders",
+    },
+    {
       iconSrc: "/admin/internship.svg",
       label: "Internships",
       href: "/admin/internships",
@@ -85,6 +86,14 @@ const AdminSidebar = ({
         {
           label: "Manage Internships",
           href: "/admin/internships/manage-internships",
+        },
+        {
+          label: "Enrollments",
+          href: "/admin/internships/enrollments",
+        },
+        {
+          label: "Entrance exams",
+          href: "/admin/internships/entrance-exams",
         },
         {
           label: "Question bank",
@@ -146,7 +155,7 @@ const AdminSidebar = ({
           href: "/admin/settings/collaboration-domains",
         },
         {
-          label: "Partnership import",
+          label: "Partnerships",
           href: "/admin/settings/partnership-import",
         },
       ],

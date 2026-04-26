@@ -66,7 +66,8 @@ const getInitialFormData = (
             status: "active",
             isActive: true,
             plan: createDefaultInternshipBatchPlan(),
-            examTemplateIds: [],
+            entranceExamTemplateId: null,
+            certificationExamTemplateId: null,
             taskTemplateIds: [],
           },
         ],
@@ -186,7 +187,8 @@ function ensureBatchPlans(
   return (batches ?? []).map((row) => ({
     ...row,
     plan: row.plan ?? createDefaultInternshipBatchPlan(),
-    examTemplateIds: row.examTemplateIds ?? [],
+    entranceExamTemplateId: row.entranceExamTemplateId ?? null,
+    certificationExamTemplateId: row.certificationExamTemplateId ?? null,
     taskTemplateIds: row.taskTemplateIds ?? [],
   }));
 }
@@ -234,9 +236,8 @@ const transformFormDataToInternship = (
         ? { reviews: b.reviews }
         : {}),
       ...(b.analytics ? { analytics: b.analytics } : {}),
-      examTemplateIds: Array.isArray(b.examTemplateIds)
-        ? b.examTemplateIds
-        : [],
+      entranceExamTemplateId: b.entranceExamTemplateId ?? null,
+      certificationExamTemplateId: b.certificationExamTemplateId ?? null,
       taskTemplateIds: Array.isArray(b.taskTemplateIds)
         ? b.taskTemplateIds
         : [],
@@ -307,9 +308,12 @@ const transformInternshipToFormData = (
           b.plan ?? undefined,
           index === 0 ? legacyRootPlan : undefined,
         ),
-        examTemplateIds: Array.isArray(b.examTemplateIds)
-          ? b.examTemplateIds.map((id) => String(id))
-          : [],
+        entranceExamTemplateId: b.entranceExamTemplateId
+          ? String(b.entranceExamTemplateId)
+          : null,
+        certificationExamTemplateId: b.certificationExamTemplateId
+          ? String(b.certificationExamTemplateId)
+          : null,
         taskTemplateIds: Array.isArray(b.taskTemplateIds)
           ? b.taskTemplateIds.map((id) => String(id))
           : [],
@@ -711,12 +715,12 @@ export const useInternshipForm = (
 
   const goToScreen = useCallback(
     (screen: number) => {
-      if (screen >= 1 && screen <= 11) {
+      if (screen >= 1 && screen <= INTERNSHIP_WIZARD_MAX_SCREEN) {
         setCurrentScreen(screen);
         setValue("currentScreen", screen);
       } else {
         console.warn(
-          `Invalid screen number: ${screen}. Must be between 1 and 11.`
+          `Invalid screen number: ${screen}. Must be between 1 and ${INTERNSHIP_WIZARD_MAX_SCREEN}.`
         );
       }
     },

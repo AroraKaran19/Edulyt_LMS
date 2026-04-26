@@ -12,16 +12,23 @@ import InternshipAdminListShell from "../components/InternshipAdminListShell";
 import ExamUpsertModal from "./components/ExamUpsertModal";
 import ExamDetailModal from "./components/ExamDetailModal";
 import DeleteExamConfirmModal from "./components/DeleteExamConfirmModal";
+import type { ExamType } from "@/types/internship-exam";
 
 type ExamRow = {
   _id: string;
   title: string;
+  examType: ExamType;
   questionCount: number;
   totalScore: number;
   thresholdScore?: number;
   examResultAt?: string;
   isActive: boolean;
   updatedAt?: string;
+};
+
+const EXAM_TYPE_LABEL: Record<ExamType, string> = {
+  entrance: "Entrance",
+  certification: "Certification",
 };
 
 function formatDate(iso?: string) {
@@ -39,7 +46,7 @@ function formatDate(iso?: string) {
   }
 }
 
-const COL_SPAN = 8;
+const COL_SPAN = 9;
 
 export default function InternshipExamTemplatesAdminPage() {
   const [exams, setExams] = useState<ExamRow[]>([]);
@@ -92,6 +99,7 @@ export default function InternshipExamTemplatesAdminPage() {
       setExams(
         rows.map((r) => ({
           ...r,
+          examType: r.examType === "certification" ? "certification" : "entrance",
           questionCount:
             typeof r.questionCount === "number" ? r.questionCount : 0,
         })),
@@ -166,31 +174,34 @@ export default function InternshipExamTemplatesAdminPage() {
         }
       >
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[960px]">
+          <table className="w-full min-w-[1080px]">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase min-w-[180px]">
+                <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 min-w-[160px]">
                   Title
                 </th>
-                <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase whitespace-nowrap">
+                <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 whitespace-nowrap">
+                  Type
+                </th>
+                <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 whitespace-nowrap">
                   Questions
                 </th>
-                <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase whitespace-nowrap">
+                <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 tabular-nums">
                   Score
                 </th>
-                <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase whitespace-nowrap">
-                  Merit ≥
+                <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 max-w-28 leading-tight">
+                  Merit threshold
                 </th>
-                <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase whitespace-nowrap">
-                  Results at
+                <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 max-w-28 leading-tight">
+                  Results published
                 </th>
-                <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase whitespace-nowrap">
-                  Active
+                <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 whitespace-nowrap">
+                  Status
                 </th>
-                <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase whitespace-nowrap">
+                <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 whitespace-nowrap">
                   Updated
                 </th>
-                <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase whitespace-nowrap">
+                <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 whitespace-nowrap">
                   Actions
                 </th>
               </tr>
@@ -239,6 +250,17 @@ export default function InternshipExamTemplatesAdminPage() {
                     <td className="px-4 sm:px-6 py-4 text-sm text-gray-900 max-w-xs">
                       <span className="line-clamp-2 font-medium">
                         {e.title || "—"}
+                      </span>
+                    </td>
+                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                      <span
+                        className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full border ${
+                          e.examType === "certification"
+                            ? "bg-violet-50 text-violet-800 border-violet-200"
+                            : "bg-sky-50 text-sky-800 border-sky-200"
+                        }`}
+                      >
+                        {EXAM_TYPE_LABEL[e.examType]}
                       </span>
                     </td>
                     <td className="px-4 sm:px-6 py-4 text-sm text-gray-600 tabular-nums whitespace-nowrap">

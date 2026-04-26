@@ -210,6 +210,10 @@ const enrollmentSchema = new mongoose.Schema<Enrollment>(
       type: Date,
       default: null,
     },
+    successPointsCompletionAwarded: {
+      type: Boolean,
+      default: false,
+    },
 
     // Analytics
     totalTimeSpent: {

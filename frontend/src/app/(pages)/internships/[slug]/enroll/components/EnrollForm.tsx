@@ -1,13 +1,24 @@
 "use client";
 
-import React from "react";
-import Container from "@/components/ui/Container";
+import React, { useEffect, useMemo, useState } from "react";
+import type { InternshipEnrollPreview } from "@/types";
+import apiClient from "@/configs/apiConfig";
+import { isApplicationWindowOpenIst } from "@/lib/applicationWindow";
+import { useSearchParams, useRouter } from "next/navigation";
+import { ENDPOINTS } from "@/constants/endpoints";
 import Input from "@/components/ui/inputs/Input";
 import Select, { SelectOption } from "@/components/ui/inputs/Select";
 import DateSelector from "@/components/ui/inputs/DateSelector";
 import CollegeSelect from "@/components/ui/inputs/CollegeSelect";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
-import { UserCheck, ExternalLink, Linkedin, Instagram, Facebook, Youtube } from "lucide-react";
+import {
+  ExternalLink,
+  Linkedin,
+  Instagram,
+  Facebook,
+  Youtube,
+  Clock,
+} from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import z from "zod";
@@ -56,18 +67,22 @@ const enrollFormSchema = z.object({
     .refine((val) => /^[6-9]\d{9}$/.test(val), {
       message: "Phone number must start with 6, 7, 8, or 9",
     }),
-  dob: z.date()
+  dob: z
+    .date()
     .refine(
       (date) => {
         const today = new Date();
         const age = today.getFullYear() - date.getFullYear();
         const monthDiff = today.getMonth() - date.getMonth();
-        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < date.getDate())) {
+        if (
+          monthDiff < 0 ||
+          (monthDiff === 0 && today.getDate() < date.getDate())
+        ) {
           return age - 1 >= 13;
         }
         return age >= 13;
       },
-      { message: "You must be at least 13 years old" }
+      { message: "You must be at least 13 years old" },
     )
     .refine((date) => date <= new Date(), {
       message: "Date of birth cannot be in the future",
@@ -80,10 +95,13 @@ const enrollFormSchema = z.object({
   yearOfPassing: z
     .string()
     .min(1, "Please choose your passing year")
-    .refine((val) => {
-      const year = parseInt(val);
-      return year >= 2015 && year <= 2030;
-    }, { message: "Please select a valid passing year (2015-2030)" }),
+    .refine(
+      (val) => {
+        const year = parseInt(val);
+        return year >= 2015 && year <= 2030;
+      },
+      { message: "Please select a valid passing year (2015-2030)" },
+    ),
   linkedinUrl: z
     .string()
     .optional()
@@ -97,7 +115,10 @@ const enrollFormSchema = z.object({
           return false;
         }
       },
-      { message: "Please enter a valid LinkedIn URL (e.g., https://linkedin.com/in/username)" }
+      {
+        message:
+          "Please enter a valid LinkedIn URL (e.g., https://linkedin.com/in/username)",
+      },
     ),
   instagramUrl: z
     .string()
@@ -112,7 +133,10 @@ const enrollFormSchema = z.object({
           return false;
         }
       },
-      { message: "Please enter a valid Instagram URL (e.g., https://instagram.com/username)" }
+      {
+        message:
+          "Please enter a valid Instagram URL (e.g., https://instagram.com/username)",
+      },
     ),
   collegeEmail: z
     .string()
@@ -125,7 +149,10 @@ const enrollFormSchema = z.object({
     .refine((val) => /^[6-9]\d{9}$/.test(val), {
       message: "Guardian contact must start with 6, 7, 8, or 9",
     }),
-  joinReason: z.string().min(1, "Please choose your reason"),
+  joinReason: z
+    .string()
+    .min(10, "Please describe your reason (at least 10 characters)")
+    .max(500, "Please keep it under 500 characters"),
   crName: z
     .string()
     .min(2, "CR name must be at least 2 characters")
@@ -139,51 +166,58 @@ const enrollFormSchema = z.object({
     }),
   paidTraining: z.string().min(1, "Please choose an option"),
   whatsappJoined: z.string().min(1, "Please choose an option"),
-  internshipName: z
-    .string()
-    .min(2, "Internship/Training name must be at least 2 characters")
-    .max(100, "Internship/Training name must not exceed 100 characters"),
   internshipDuration: z.string().min(1, "Please choose duration"),
-  internshipType: z.string().min(1, "Please choose internship type"),
   referralSource: z.string().min(1, "Please choose an option"),
-  referralCode: z
-    .string()
-    .optional()
-    .refine((val) => !val || val.length <= 50, {
-      message: "Referral code must not exceed 50 characters",
-    }),
   socialMediaFollowed: z.string().min(1, "Please choose an option"),
   marks10thType: z.string().min(1, "Please choose marks type"),
   marks10thValue: z
     .string()
     .min(1, "Please enter your 10th marks")
     .regex(/^\d+(\.\d{1,2})?$/, "Please enter a valid number")
-    .refine((val) => {
-      const numValue = parseFloat(val);
-      return !isNaN(numValue) && numValue >= 0 && numValue <= 100;
-    }, { message: "Marks must be between 0 and 100" }),
+    .refine(
+      (val) => {
+        const numValue = parseFloat(val);
+        return !isNaN(numValue) && numValue >= 0 && numValue <= 100;
+      },
+      { message: "Marks must be between 0 and 100" },
+    ),
   marks12thType: z.string().min(1, "Please choose marks type"),
   marks12thValue: z
     .string()
     .min(1, "Please enter your 12th marks")
     .regex(/^\d+(\.\d{1,2})?$/, "Please enter a valid number")
-    .refine((val) => {
-      const numValue = parseFloat(val);
-      return !isNaN(numValue) && numValue >= 0 && numValue <= 100;
-    }, { message: "Marks must be between 0 and 100" }),
+    .refine(
+      (val) => {
+        const numValue = parseFloat(val);
+        return !isNaN(numValue) && numValue >= 0 && numValue <= 100;
+      },
+      { message: "Marks must be between 0 and 100" },
+    ),
   marksPursuingType: z.string().min(1, "Please choose marks type"),
   marksPursuingValue: z
     .string()
     .min(1, "Please enter your pursuing course marks")
     .regex(/^\d+(\.\d{1,2})?$/, "Please enter a valid number")
-    .refine((val) => {
-      const numValue = parseFloat(val);
-      return !isNaN(numValue) && numValue >= 0 && numValue <= 100;
-    }, { message: "Marks must be between 0 and 100" }),
+    .refine(
+      (val) => {
+        const numValue = parseFloat(val);
+        return !isNaN(numValue) && numValue >= 0 && numValue <= 100;
+      },
+      { message: "Marks must be between 0 and 100" },
+    ),
   marketingActivities: z.string().min(1, "Please choose an option"),
+  batchId: z.string().min(1, "Please select a batch"),
 });
 
 type EnrollFormData = z.infer<typeof enrollFormSchema>;
+
+function enrollSchemaWithOpenBatches(openIds: Set<string>) {
+  return enrollFormSchema.refine((data) => openIds.has(data.batchId), {
+    message:
+      "This cohort is no longer accepting applications (deadline has passed).",
+    path: ["batchId"],
+  });
+}
 
 // Options
 const genderOptions: SelectOption[] = [
@@ -234,17 +268,6 @@ const graduationYears: SelectOption[] = Array.from({ length: 16 }, (_, i) => {
   return { value: year.toString(), label: year.toString() };
 });
 
-const joinReasonOptions: SelectOption[] = [
-  { value: "learn-from-scratch", label: "I want to learn from scratch as I am a beginner." },
-  { value: "hands-on-experience", label: "I want hands on experience." },
-  { value: "enhance-resume", label: "I need to enhance my resume by adding certificates and projects." },
-  { value: "submit-certificate", label: "I need to submit Internship certificate in my college." },
-  { value: "major-minor-projects", label: "I want major/minor projects to submit in college." },
-  { value: "placement-assistance", label: "I am looking for Placement Assistance." },
-  { value: "certified-by-mnc", label: "I want to get certified by MNC" },
-  { value: "other", label: "Other" },
-];
-
 const yesNoOptions: SelectOption[] = [
   { value: "yes", label: "Yes" },
   { value: "no", label: "No" },
@@ -264,12 +287,6 @@ const internshipDurationOptions: SelectOption[] = [
   { value: "6", label: "6" },
 ];
 
-const internshipTypeOptions: SelectOption[] = [
-  { value: "internship-virtual", label: "Internship - Virtual (No classes)" },
-  { value: "internship-live", label: "Internship - Live (Online or Offline - Both with regular classes)" },
-  { value: "summer-training", label: "Summer Training (Online)" },
-];
-
 const referralSourceOptions: SelectOption[] = [
   { value: "college", label: "College" },
   { value: "friend", label: "Friend" },
@@ -284,8 +301,57 @@ const marksTypeOptions: SelectOption[] = [
   { value: "percentage", label: "%" },
 ];
 
+function formatBatchLabel(
+  b: InternshipEnrollPreview["batches"][number],
+): string {
+  const start = b.internshipStartDate
+    ? new Date(b.internshipStartDate).toLocaleDateString(undefined, {
+        month: "short",
+        year: "numeric",
+        day: "numeric",
+      })
+    : "";
+  const applyBy = b.applicationLastDate
+    ? new Date(b.applicationLastDate).toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      })
+    : "";
+  const base = `${b.name}${start ? ` — starts ${start}` : ""}`;
+  return applyBy ? `${base} · apply by ${applyBy}` : base;
+}
 
-const EnrollForm = () => {
+const EnrollForm = ({ preview }: { preview: InternshipEnrollPreview }) => {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const isSeatFlow = searchParams.get("flow") === "seat";
+
+  const openBatches = useMemo(
+    () =>
+      preview.batches.filter((b) =>
+        isApplicationWindowOpenIst(b.applicationLastDate),
+      ),
+    [preview.batches],
+  );
+
+  const openBatchIds = useMemo(
+    () => new Set(openBatches.map((b) => b._id)),
+    [openBatches],
+  );
+
+  const resolvedSchema = useMemo(
+    () => enrollSchemaWithOpenBatches(openBatchIds),
+    [openBatchIds],
+  );
+
+  const batchOptions: SelectOption[] = openBatches.map((b) => ({
+    value: b._id,
+    label: formatBatchLabel(b),
+  }));
+
+  const [profileLoading, setProfileLoading] = useState(true);
+
   const {
     register,
     handleSubmit,
@@ -293,27 +359,149 @@ const EnrollForm = () => {
     watch,
     setValue,
   } = useForm<EnrollFormData>({
-    resolver: zodResolver(enrollFormSchema),
+    resolver: zodResolver(resolvedSchema),
     defaultValues: {
-      internshipName: "",
       linkedinUrl: "",
       instagramUrl: "",
-      referralCode: "",
+      batchId: openBatches[0]?._id ?? "",
     },
   });
 
+  const batchId = watch("batchId");
+  const selectedBatch = openBatches.find((b) => b._id === batchId);
+
+  // Seed the batch dropdown to the first cohort that is still open for applications.
+  useEffect(() => {
+    if (openBatches[0]) {
+      setValue("batchId", openBatches[0]._id, { shouldValidate: true });
+    }
+  }, [openBatches, setValue]);
+
+  // Autofill from /users/me
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await apiClient.get("/users/me");
+        if (cancelled) return;
+        const u = res.data?.data as Record<string, unknown> | undefined;
+        if (!u) return;
+
+        const firstName = String(u.firstName ?? "").trim();
+        const lastName = String(u.lastName ?? "").trim();
+        const fullName = [firstName, lastName].filter(Boolean).join(" ");
+        if (fullName) setValue("fullName", fullName);
+
+        if (u.email) setValue("email", String(u.email));
+
+        const phone = String(u.phone ?? "")
+          .replace(/\D/g, "")
+          .slice(-10);
+        if (phone.length === 10) setValue("phone", phone);
+
+        if (u.dob) {
+          const d = new Date(u.dob as string);
+          if (!Number.isNaN(d.getTime())) setValue("dob", d);
+        }
+
+        const gender = u.gender as string | undefined;
+        if (gender) setValue("gender", gender);
+
+        const linkedin = (u.accounts as Record<string, unknown> | undefined)
+          ?.linkedin;
+        const linkedinUrl =
+          typeof linkedin === "object" && linkedin !== null
+            ? ((linkedin as Record<string, unknown>).url as string | undefined)
+            : undefined;
+        if (linkedinUrl) setValue("linkedinUrl", linkedinUrl);
+
+        const instagram = (u.accounts as Record<string, unknown> | undefined)
+          ?.instagram;
+        if (typeof instagram === "string" && instagram)
+          setValue("instagramUrl", instagram);
+      } catch {
+        // Non-critical; user fills manually.
+      } finally {
+        if (!cancelled) setProfileLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [setValue]);
+
   const onSubmit = async (data: EnrollFormData) => {
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      console.log("Enrollment data:", data);
-      toast.success("Enrollment form submitted successfully!");
-      // You can redirect or show success message here
-    } catch (error) {
-      console.error("Submission failed:", error);
-      toast.error("Failed to submit enrollment form. Please try again.");
+      // Split full name back into first/last
+      const [firstName, ...rest] = data.fullName.trim().split(" ");
+      const lastName = rest.join(" ") || undefined;
+
+      // 1. Update the user's profile with form data
+      await apiClient.put("/users/me", {
+        firstName,
+        lastName,
+        email: data.email,
+        phone: data.phone,
+        dob: data.dob.toISOString(),
+        gender: data.gender,
+      });
+
+      if (isSeatFlow) {
+        // ── Paid-seat path ────────────────────────────────────────────────────
+        // 2a. Create a payment_pending enrollment
+        const enrollRes = await apiClient.post(
+          ENDPOINTS.internshipEnrollments.create,
+          {
+            internshipId: preview.internship._id,
+            batchId: data.batchId,
+            path: "paid",
+          },
+        );
+        const enrollmentId = enrollRes.data?.data?.enrollmentId as
+          | string
+          | undefined;
+        if (!enrollmentId) throw new Error("Enrollment creation failed");
+
+        // 2b. Create Paytm order for the seat
+        const orderRes = await apiClient.post(
+          ENDPOINTS.orders.createInternshipSeat,
+          { internshipEnrollmentId: enrollmentId },
+        );
+        const order = orderRes.data?.data as
+          | { _id: string; freeOrder?: boolean; token?: string }
+          | undefined;
+        if (!order) throw new Error("Order creation failed");
+
+        if (order.freeOrder && order.token) {
+          // Batch is free — skip Paytm, go straight to payment status page
+          window.location.href = `/payment/status/${order._id}?token=${order.token}`;
+          return;
+        }
+
+        // Redirect to Paytm checkout
+        window.location.href = `/paytm-redirect?orderId=${order._id}`;
+      } else {
+        // ── Entrance / merit path ─────────────────────────────────────────────
+        // 2b. Register the user for the entrance exam
+        await apiClient.post(ENDPOINTS.internshipEnrollments.create, {
+          internshipId: preview.internship._id,
+          batchId: data.batchId,
+        });
+
+        toast.success(
+          "You are registered for the entrance exam! We will notify you before the exam date.",
+        );
+        router.replace("/dashboard");
+      }
+    } catch (error: unknown) {
+      const msg =
+        (error as { response?: { data?: { message?: string } } })?.response
+          ?.data?.message ?? "Failed to submit. Please try again.";
+      toast.error(msg);
     }
   };
+
+  void profileLoading;
 
   const whatsappLink = "https://chat.whatsapp.com/IszV9Kk5k2A5SnwyrhIMMV";
 
@@ -337,7 +525,8 @@ const EnrollForm = () => {
       href: "https://www.instagram.com/edulyt_india/",
       icon: Instagram,
       color: "text-pink-500 hover:text-pink-600",
-      bgColor: "bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 hover:opacity-90",
+      bgColor:
+        "bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 hover:opacity-90",
     },
     {
       label: "LinkedIn",
@@ -362,453 +551,708 @@ const EnrollForm = () => {
     },
   ];
 
+  if (openBatches.length === 0) {
+    return (
+      <div className="rounded-sm border border-stone-200 bg-[#fffdf9] px-6 py-10 text-center shadow-[2px_3px_0_0_rgba(0,0,0,0.06)]">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
+          {preview.internship.title}
+        </p>
+        <p className="mt-4 text-sm text-stone-600 leading-relaxed">
+          No cohort is open for applications at the moment. Check back when a
+          new intake is announced.
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <Container
-      icon={UserCheck}
-      title="Enrollment Form"
-      description="Please fill in your details to start your journey with us"
-      className="bg-white shadow-xl rounded-3xl overflow-visible border border-gray-100"
-      classNameBody="p-4 sm:p-6 md:p-10 overflow-visible"
-    >
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 md:space-y-8">
-        {/* Basic Information Section */}
-        <div className="space-y-4 md:space-y-6">
-          <h2 className="text-lg md:text-xl font-bold text-gray-900 border-b pb-2">Basic Information</h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 w-full">
-            <Input
-              label="Full Name"
-              placeholder="Enter your full name"
-              required
-              {...register("fullName")}
-              error={errors.fullName?.message}
-            />
+    <div className="w-full">
+      <header className="mb-8 md:mb-10 border-b border-stone-200/80 pb-8">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-primary">
+          Application
+        </p>
+        <h1 className="mt-2 text-2xl sm:text-[1.75rem] font-bold text-[#111827] tracking-tight leading-snug">
+          {preview.internship.title}
+        </h1>
+        <p className="mt-3 text-[15px] leading-relaxed text-stone-600">
+          {isSeatFlow ? (
+            <>
+              You chose the{" "}
+              <strong className="font-semibold text-stone-800">
+                paid seat
+              </strong>{" "}
+              path: after this form you&apos;ll pay the cohort fee and your
+              place is confirmed. If this batch runs an entrance exam, you can
+              still attempt it — it won&apos;t override a completed payment.
+            </>
+          ) : (
+            <>
+              You&apos;re applying through the{" "}
+              <strong className="font-semibold text-stone-800">
+                entrance exam &amp; merit
+              </strong>{" "}
+              route. Pick your cohort and duration, then share your details —
+              we&apos;ll register you for the exam for this intake.
+            </>
+          )}
+        </p>
+      </header>
 
-            <Input
-              label="Email ID"
-              type="email"
-              placeholder="Enter your email address"
-              required
-              {...register("email")}
-              error={errors.email?.message}
-            />
-
-            <Input
-              label="Phone"
-              type="tel"
-              placeholder="Enter your phone number"
-              required
-              {...register("phone")}
-              error={errors.phone?.message}
-            />
-
-            <DateSelector
-              label="Date of Birth"
-              value={watch("dob")}
-              onChange={(date) => setValue("dob", date as Date, { shouldValidate: true })}
-              placeholder="mm/dd/yyyy"
-              required
-              error={errors.dob?.message}
-            />
-
-            <Select
-              label="Gender"
-              options={genderOptions}
-              value={watch("gender")}
-              onChange={(value) => setValue("gender", value, { shouldValidate: true })}
-              placeholder="Choose Your Gender"
-              required
-              error={errors.gender?.message}
-            />
-
-            <Select
-              label="Experience"
-              options={experienceOptions}
-              value={watch("experience")}
-              onChange={(value) => setValue("experience", value, { shouldValidate: true })}
-              placeholder="Choose Your Experience"
-              required
-              error={errors.experience?.message}
-            />
-          </div>
-        </div>
-
-        {/* Education Information Section */}
-        <div className="space-y-4 md:space-y-6">
-          <h2 className="text-lg md:text-xl font-bold text-gray-900 border-b pb-2">Education Information</h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 w-full">
-            <CollegeSelect
-              label="University Name"
-              value={watch("university")}
-              onChange={(value) => setValue("university", value, { shouldValidate: true })}
-              placeholder="Choose Your University"
-              required
-              error={errors.university?.message}
-            />
-
-            <Select
-              label="Country"
-              options={countryOptions}
-              value={watch("country")}
-              onChange={(value) => setValue("country", value, { shouldValidate: true })}
-              placeholder="Choose Your Country"
-              required
-              error={errors.country?.message}
-            />
-
-            <Select
-              label="Course Name"
-              options={courseOptions}
-              value={watch("courseName")}
-              onChange={(value) => setValue("courseName", value, { shouldValidate: true })}
-              placeholder="Choose Your Course"
-              required
-              error={errors.courseName?.message}
-            />
-
-            <Select
-              label="Year of Passing (Course)"
-              options={graduationYears}
-              value={watch("yearOfPassing")}
-              onChange={(value) => setValue("yearOfPassing", value, { shouldValidate: true })}
-              placeholder="Choose Your Passing Year"
-              required
-              error={errors.yearOfPassing?.message}
-            />
-          </div>
-        </div>
-
-        {/* Contact & Social Media Section */}
-        <div className="space-y-4 md:space-y-6">
-          <h2 className="text-lg md:text-xl font-bold text-gray-900 border-b pb-2">Contact & Social Media</h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 w-full">
-            <Input
-              label="LinkedIn Profile URL (Paste the Profile Link)"
-              type="url"
-              placeholder="https://linkedin.com/in/yourprofile"
-              {...register("linkedinUrl")}
-              error={errors.linkedinUrl?.message}
-            />
-
-            <Input
-              label="Instagram Profile URL (Paste the Profile Link)"
-              type="url"
-              placeholder="https://instagram.com/yourprofile"
-              {...register("instagramUrl")}
-              error={errors.instagramUrl?.message}
-            />
-
-            <Input
-              label="Email ID of College Training and Placement Cell"
-              type="email"
-              placeholder="tpc@college.edu"
-              required
-              {...register("collegeEmail")}
-              error={errors.collegeEmail?.message}
-            />
-
-            <Input
-              label="Guardians Contact Number (WhatsApp Enabled)"
-              type="tel"
-              placeholder="Enter guardian's phone number"
-              required
-              {...register("guardianContact")}
-              error={errors.guardianContact?.message}
-            />
-          </div>
-        </div>
-
-        {/* Internship Details Section */}
-        <div className="space-y-4 md:space-y-6">
-          <h2 className="text-lg md:text-xl font-bold text-gray-900 border-b pb-2">Internship Details</h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 w-full">
-            <Select
-              label="Why do you want to join this Internship Program?"
-              options={joinReasonOptions}
-              value={watch("joinReason")}
-              onChange={(value) => setValue("joinReason", value, { shouldValidate: true })}
-              placeholder="Choose Your Reason"
-              required
-              error={errors.joinReason?.message}
-            />
-
-            <Input
-              label="Internship / Training Name"
-              placeholder="Data Science"
-              required
-              {...register("internshipName")}
-              error={errors.internshipName?.message}
-            />
-
-            <Select
-              label="Internship / Training Duration"
-              options={internshipDurationOptions}
-              value={watch("internshipDuration")}
-              onChange={(value) => setValue("internshipDuration", value, { shouldValidate: true })}
-              placeholder="Choose Duration"
-              required
-              error={errors.internshipDuration?.message}
-            />
-
-            <Select
-              label="Internship/Training type"
-              options={internshipTypeOptions}
-              value={watch("internshipType")}
-              onChange={(value) => setValue("internshipType", value, { shouldValidate: true })}
-              placeholder="Choose Internship Type"
-              required
-              error={errors.internshipType?.message}
-            />
-          </div>
-        </div>
-
-        {/* Class Representative Section */}
-        <div className="space-y-4 md:space-y-6">
-          <h2 className="text-lg md:text-xl font-bold text-gray-900 border-b pb-2">Class Representative Information</h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 w-full">
-            <Input
-              label="CR Name"
-              placeholder="Class Representative Name"
-              required
-              {...register("crName")}
-              error={errors.crName?.message}
-            />
-
-            <Input
-              label="CR Contact No."
-              type="tel"
-              placeholder="Class Representative Phone Number"
-              required
-              {...register("crContact")}
-              error={errors.crContact?.message}
-            />
-          </div>
-        </div>
-
-        {/* Training Preference Section */}
-        <div className="space-y-4 md:space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 w-full">
-            <Select
-              label="Do you want a formal paid training to increase your chances for job?"
-              options={yesNoOptions}
-              value={watch("paidTraining")}
-              onChange={(value) => setValue("paidTraining", value, { shouldValidate: true })}
-              placeholder="Choose Your Option"
-              required
-              error={errors.paidTraining?.message}
-            />
-          </div>
-        </div>
-
-        {/* WhatsApp Group Section */}
-        <div className="space-y-4 md:space-y-6">
-          <div className="p-3 md:p-4 bg-orange-50 border border-orange-200 rounded-xl">
-            <p className="text-sm text-gray-700 mb-3">
-              <strong>Join the WhatsApp group from below link as it is MANDATORY to join the WhatsApp group for successful submission.</strong> HR/Admin will contact you in the group.
-            </p>
-            <a
-              href={whatsappLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-orange-600 hover:text-orange-700 font-medium"
-            >
-              Link to WhatsApp group
-              <ExternalLink className="w-4 h-4" />
-            </a>
-          </div>
-
-          <Select
-            label="Have you joined?"
-            options={whatsappJoinedOptions}
-            value={watch("whatsappJoined")}
-            onChange={(value) => setValue("whatsappJoined", value, { shouldValidate: true })}
-            placeholder="Choose Option"
-            required
-            error={errors.whatsappJoined?.message}
-          />
-        </div>
-
-        {/* Referral Information Section */}
-        <div className="space-y-4 md:space-y-6">
-          <h2 className="text-lg md:text-xl font-bold text-gray-900 border-b pb-2">Referral Information</h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 w-full">
-            <Select
-              label="From where you got to know about us"
-              options={referralSourceOptions}
-              value={watch("referralSource")}
-              onChange={(value) => setValue("referralSource", value, { shouldValidate: true })}
-              placeholder="Choose Option"
-              required
-              error={errors.referralSource?.message}
-            />
-
-            <Input
-              label="Referral Code (If any)"
-              placeholder="Enter referral code"
-              {...register("referralCode")}
-              error={errors.referralCode?.message}
-            />
-          </div>
-
-          <div className="p-3 md:p-4 bg-blue-50 border border-blue-200 rounded-xl">
-            <p className="text-sm text-gray-700 mb-3">
-              Follow us on social media to know more about the Internship and Job opportunities.
-            </p>
-            
-            {/* Social Media Icons */}
-            <div className="flex flex-wrap items-center gap-3 mb-3">
-              {socialMediaLinks.map((social) => {
-                const IconComponent = social.icon;
-                return (
-                  <a
-                    key={social.label}
-                    href={social.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={cn(
-                      "w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200",
-                      "text-white shadow-md hover:shadow-lg hover:scale-110",
-                      social.bgColor
-                    )}
-                    aria-label={social.label}
-                    title={social.label}
-                  >
-                    <IconComponent className="w-5 h-5" />
-                  </a>
-                );
-              })}
+      <div className="rounded-sm border border-stone-200 bg-white shadow-[3px_4px_0_0_rgba(15,23,42,0.06)]">
+        <form
+          onSubmit={handleSubmit(onSubmit)}
+          className="space-y-8 md:space-y-10 p-5 sm:p-8 md:p-10"
+        >
+          {/* Cohort, entrance exam preference, program duration */}
+          <div className="space-y-5">
+            <h2 className="text-sm font-bold uppercase tracking-[0.18em] text-stone-500">
+              01 · Cohort
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 w-full">
+              <Select
+                label="Batch (cohort)"
+                options={batchOptions}
+                value={watch("batchId")}
+                onChange={(value) =>
+                  setValue("batchId", value, { shouldValidate: true })
+                }
+                placeholder="Select your batch"
+                required
+                error={errors.batchId?.message}
+              />
+              <Select
+                label="Internship duration (months)"
+                options={internshipDurationOptions}
+                value={watch("internshipDuration")}
+                onChange={(value) =>
+                  setValue("internshipDuration", value, {
+                    shouldValidate: true,
+                  })
+                }
+                placeholder="Choose duration"
+                required
+                error={errors.internshipDuration?.message}
+              />
             </div>
 
-            <p className="text-xs text-gray-600">
-              It will increase your chances of selection.
-            </p>
+            {selectedBatch && (
+              <div className="border border-stone-200 bg-stone-50/50 text-[15px] text-stone-800">
+                <div className="border-b border-stone-200 bg-white/90 px-4 py-3 sm:px-5">
+                  <p className="text-xs font-medium text-stone-500">
+                    Last day to apply (India time, end of day counts)
+                  </p>
+                  <p className="mt-1 font-medium text-stone-900">
+                    {selectedBatch.applicationLastDate
+                      ? new Date(
+                          selectedBatch.applicationLastDate,
+                        ).toLocaleString("en-IN", {
+                          timeZone: "Asia/Kolkata",
+                          dateStyle: "long",
+                        })
+                      : "—"}
+                  </p>
+                </div>
+
+                <div className="space-y-0">
+                  {isSeatFlow && selectedBatch.plan && (
+                    <div className="border-b border-stone-200 border-l-4 border-l-primary bg-white px-4 py-4 sm:px-5">
+                      <p className="text-xs text-stone-500">
+                        Fee for this intake
+                      </p>
+                      <p className="mt-1 flex flex-wrap items-baseline gap-2 sm:gap-3">
+                        <span className="text-2xl sm:text-3xl font-bold tabular-nums text-stone-900">
+                          ₹{selectedBatch.plan.amount.toLocaleString("en-IN")}
+                        </span>
+                        {selectedBatch.plan.amount !==
+                          selectedBatch.plan.listPrice && (
+                          <span className="text-sm text-stone-400 line-through tabular-nums">
+                            ₹
+                            {selectedBatch.plan.listPrice.toLocaleString(
+                              "en-IN",
+                            )}
+                          </span>
+                        )}
+                      </p>
+                      <p className="mt-2 text-sm text-stone-600 leading-relaxed">
+                        Charged once you continue — Paytm on the next screen.
+                      </p>
+                    </div>
+                  )}
+
+                  {selectedBatch.entranceExam && (
+                    <div>
+                      <div className="flex items-center gap-2 border-b border-stone-200 bg-amber-50/60 px-4 py-2.5 sm:px-5">
+                        <Clock
+                          className="size-4 text-amber-800/70 shrink-0"
+                          aria-hidden
+                        />
+                        <p className="text-sm text-amber-950">
+                          <span className="font-semibold">Entrance: </span>
+                          {selectedBatch.entranceExam.title}
+                          {isSeatFlow && (
+                            <span className="text-amber-900/80">
+                              {" "}
+                              — you can still sit it; your seat follows payment.
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                      <ul className="divide-y divide-stone-200 bg-white text-sm sm:text-[15px]">
+                        {(
+                          [
+                            {
+                              label: "Paper opens",
+                              d: selectedBatch.entranceExam.examStartAt,
+                            },
+                            {
+                              label: "Closes",
+                              d: selectedBatch.entranceExam.examEndAt,
+                            },
+                            {
+                              label: "Results",
+                              d: selectedBatch.entranceExam.examResultAt,
+                            },
+                          ] as const
+                        ).map((row) => (
+                          <li
+                            key={row.label}
+                            className="flex items-baseline justify-between gap-3 px-4 py-2.5 sm:px-5"
+                          >
+                            <span className="shrink-0 text-stone-500">
+                              {row.label}
+                            </span>
+                            <span className="min-w-0 text-right font-medium text-stone-900">
+                              {row.d
+                                ? new Date(row.d).toLocaleString("en-IN", {
+                                    dateStyle: "medium",
+                                    timeStyle: "short",
+                                  })
+                                : "To be announced"}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                      {!isSeatFlow && (
+                        <p className="border-t border-stone-200 bg-stone-50/80 px-4 py-2.5 text-xs text-stone-600 sm:px-5">
+                          Selection for this cohort uses these dates and your
+                          exam performance.
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {!isSeatFlow && !selectedBatch.entranceExam && (
+                    <p className="px-4 py-3 text-sm text-stone-600 sm:px-5">
+                      This intake has no separate entrance test — you&apos;ll
+                      hear next steps after we receive this form.
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
-          <Select
-            label="Have you followed now?"
-            options={yesNoOptions}
-            value={watch("socialMediaFollowed")}
-            onChange={(value) => setValue("socialMediaFollowed", value, { shouldValidate: true })}
-            placeholder="Choose Option"
-            required
-            error={errors.socialMediaFollowed?.message}
-          />
-        </div>
-
-        {/* Academic Marks Section */}
-        <div className="space-y-4 md:space-y-6">
-          <h2 className="text-lg md:text-xl font-bold text-gray-900 border-b pb-2">Academic Marks</h2>
-          
+          {/* Basic Information Section */}
           <div className="space-y-4 md:space-y-6">
-            {/* 10th Marks */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 w-full">
-              <div className="w-full">
-                <Select
-                  label="Marks in 10th – CGPA/%"
-                  options={marksTypeOptions}
-                  value={watch("marks10thType")}
-                  onChange={(value) => setValue("marks10thType", value, { shouldValidate: true })}
-                  placeholder="Choose Marks Type"
-                  required
-                  error={errors.marks10thType?.message}
-                />
-              </div>
-              <div className="md:col-span-2 w-full">
-                <Input
-                  label="10th Marks Value"
-                  type="text"
-                  placeholder="Enter your 10th marks"
-                  required
-                  {...register("marks10thValue")}
-                  error={errors.marks10thValue?.message}
-                />
-              </div>
-            </div>
+            <h2 className="text-sm font-bold uppercase tracking-[0.16em] text-stone-500">
+              02 · Basic information
+            </h2>
 
-            {/* 12th Marks */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 w-full">
-              <div className="w-full">
-                <Select
-                  label="Marks in 12th - CGPA/%"
-                  options={marksTypeOptions}
-                  value={watch("marks12thType")}
-                  onChange={(value) => setValue("marks12thType", value, { shouldValidate: true })}
-                  placeholder="Choose Marks Type"
-                  required
-                  error={errors.marks12thType?.message}
-                />
-              </div>
-              <div className="md:col-span-2 w-full">
-                <Input
-                  label="12th Marks Value"
-                  type="text"
-                  placeholder="Enter your 12th marks"
-                  required
-                  {...register("marks12thValue")}
-                  error={errors.marks12thValue?.message}
-                />
-              </div>
-            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 w-full">
+              <Input
+                label="Full Name"
+                placeholder="Enter your full name"
+                required
+                {...register("fullName")}
+                error={errors.fullName?.message}
+              />
 
-            {/* Pursuing Course Marks */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 w-full">
-              <div className="w-full">
-                <Select
-                  label="Marks in Pursuing Course (till date) - CGPA/%"
-                  options={marksTypeOptions}
-                  value={watch("marksPursuingType")}
-                  onChange={(value) => setValue("marksPursuingType", value, { shouldValidate: true })}
-                  placeholder="Choose Marks Type"
-                  required
-                  error={errors.marksPursuingType?.message}
-                />
-              </div>
-              <div className="md:col-span-2 w-full">
-                <Input
-                  label="Pursuing Course Marks Value"
-                  type="text"
-                  placeholder="Enter your pursuing course marks"
-                  required
-                  {...register("marksPursuingValue")}
-                  error={errors.marksPursuingValue?.message}
-                />
-              </div>
+              <Input
+                label="Email ID"
+                type="email"
+                placeholder="Enter your email address"
+                required
+                {...register("email")}
+                error={errors.email?.message}
+              />
+
+              <Input
+                label="Phone"
+                type="tel"
+                placeholder="Enter your phone number"
+                required
+                {...register("phone")}
+                error={errors.phone?.message}
+              />
+
+              <DateSelector
+                label="Date of Birth"
+                value={watch("dob")}
+                onChange={(date) =>
+                  setValue("dob", date as Date, { shouldValidate: true })
+                }
+                placeholder="mm/dd/yyyy"
+                required
+                error={errors.dob?.message}
+              />
+
+              <Select
+                label="Gender"
+                options={genderOptions}
+                value={watch("gender")}
+                onChange={(value) =>
+                  setValue("gender", value, { shouldValidate: true })
+                }
+                placeholder="Choose Your Gender"
+                required
+                error={errors.gender?.message}
+              />
+
+              <Select
+                label="Experience"
+                options={experienceOptions}
+                value={watch("experience")}
+                onChange={(value) =>
+                  setValue("experience", value, { shouldValidate: true })
+                }
+                placeholder="Choose Your Experience"
+                required
+                error={errors.experience?.message}
+              />
             </div>
           </div>
-        </div>
 
-        {/* Marketing Activities Section */}
-        <div className="space-y-4 md:space-y-6">
-          <div className="w-full">
+          {/* Education Information Section */}
+          <div className="space-y-4 md:space-y-6">
+            <h2 className="text-sm font-bold uppercase tracking-[0.16em] text-stone-500">
+              03 · Education
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 w-full">
+              <CollegeSelect
+                label="University Name"
+                value={watch("university")}
+                onChange={(value) =>
+                  setValue("university", value, { shouldValidate: true })
+                }
+                placeholder="Choose Your University"
+                required
+                error={errors.university?.message}
+              />
+
+              <Select
+                label="Country"
+                options={countryOptions}
+                value={watch("country")}
+                onChange={(value) =>
+                  setValue("country", value, { shouldValidate: true })
+                }
+                placeholder="Choose Your Country"
+                required
+                error={errors.country?.message}
+              />
+
+              <Select
+                label="Course Name"
+                options={courseOptions}
+                value={watch("courseName")}
+                onChange={(value) =>
+                  setValue("courseName", value, { shouldValidate: true })
+                }
+                placeholder="Choose Your Course"
+                required
+                error={errors.courseName?.message}
+              />
+
+              <Select
+                label="Year of Passing (Course)"
+                options={graduationYears}
+                value={watch("yearOfPassing")}
+                onChange={(value) =>
+                  setValue("yearOfPassing", value, { shouldValidate: true })
+                }
+                placeholder="Choose Your Passing Year"
+                required
+                error={errors.yearOfPassing?.message}
+              />
+            </div>
+          </div>
+
+          {/* Contact & Social Media Section */}
+          <div className="space-y-4 md:space-y-6">
+            <h2 className="text-sm font-bold uppercase tracking-[0.16em] text-stone-500">
+              04 · Contact
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 w-full">
+              <Input
+                label="LinkedIn Profile URL (Paste the Profile Link)"
+                type="url"
+                placeholder="https://linkedin.com/in/yourprofile"
+                {...register("linkedinUrl")}
+                error={errors.linkedinUrl?.message}
+              />
+
+              <Input
+                label="Instagram Profile URL (Paste the Profile Link)"
+                type="url"
+                placeholder="https://instagram.com/yourprofile"
+                {...register("instagramUrl")}
+                error={errors.instagramUrl?.message}
+              />
+
+              <Input
+                label="Email ID of College Training and Placement Cell"
+                type="email"
+                placeholder="tpc@college.edu"
+                required
+                {...register("collegeEmail")}
+                error={errors.collegeEmail?.message}
+              />
+
+              <Input
+                label="Guardians Contact Number (WhatsApp Enabled)"
+                type="tel"
+                placeholder="Enter guardian's phone number"
+                required
+                {...register("guardianContact")}
+                error={errors.guardianContact?.message}
+              />
+            </div>
+          </div>
+
+          {/* Internship Details Section */}
+          <div className="space-y-4 md:space-y-6">
+            <h2 className="text-sm font-bold uppercase tracking-[0.16em] text-stone-500">
+              05 · Your motivation
+            </h2>
+
+            <div className="w-full flex flex-col gap-1">
+              <label className="font-medium text-black text-sm block mb-2">
+                Why do you want to join this Internship Program?{" "}
+                <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                rows={4}
+                placeholder="Tell us in your own words why you want to join this program…"
+                className={cn(
+                  "w-full px-4 py-3.5 border rounded-xl bg-white text-black text-sm",
+                  "focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500",
+                  "hover:shadow-sm transition-all duration-200 ease-in-out outline-none resize-none",
+                  "shadow-sm hover:shadow-md",
+                  errors.joinReason
+                    ? "border-red-500 hover:border-red-500 focus:border-red-500"
+                    : "border-gray-300 hover:border-orange-400",
+                )}
+                {...register("joinReason")}
+              />
+              {errors.joinReason && (
+                <p className="mt-1 text-sm text-red-500">
+                  {errors.joinReason.message}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Class Representative Section */}
+          <div className="space-y-4 md:space-y-6">
+            <h2 className="text-sm font-bold uppercase tracking-[0.16em] text-stone-500">
+              06 · Class representative
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 w-full">
+              <Input
+                label="CR Name"
+                placeholder="Class Representative Name"
+                required
+                {...register("crName")}
+                error={errors.crName?.message}
+              />
+
+              <Input
+                label="CR Contact No."
+                type="tel"
+                placeholder="Class Representative Phone Number"
+                required
+                {...register("crContact")}
+                error={errors.crContact?.message}
+              />
+            </div>
+          </div>
+
+          {/* Training Preference Section */}
+          <div className="space-y-4 md:space-y-6">
+            <h2 className="text-sm font-bold uppercase tracking-[0.16em] text-stone-500">
+              07 · Training preference
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 w-full">
+              <Select
+                label="Do you want a formal paid training to increase your chances for job?"
+                options={yesNoOptions}
+                value={watch("paidTraining")}
+                onChange={(value) =>
+                  setValue("paidTraining", value, { shouldValidate: true })
+                }
+                placeholder="Choose Your Option"
+                required
+                error={errors.paidTraining?.message}
+              />
+            </div>
+          </div>
+
+          {/* WhatsApp Group Section */}
+          <div className="space-y-4 md:space-y-6">
+            <h2 className="text-sm font-bold uppercase tracking-[0.16em] text-stone-500">
+              08 · WhatsApp group
+            </h2>
+            <div className="p-3 md:p-4 border border-stone-200 bg-amber-50/40">
+              <p className="text-sm text-gray-700 mb-3">
+                <strong>
+                  Join the WhatsApp group from below link as it is MANDATORY to
+                  join the WhatsApp group for successful submission.
+                </strong>{" "}
+                HR/Admin will contact you in the group.
+              </p>
+              <a
+                href={whatsappLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-orange-600 hover:text-orange-700 font-medium"
+              >
+                Link to WhatsApp group
+                <ExternalLink className="w-4 h-4" />
+              </a>
+            </div>
+
             <Select
-              label="Do you want to take part in Marketing activities for the brand with some perks?"
-              options={yesNoOptions}
-              value={watch("marketingActivities")}
-              onChange={(value) => setValue("marketingActivities", value, { shouldValidate: true })}
+              label="Have you joined?"
+              options={whatsappJoinedOptions}
+              value={watch("whatsappJoined")}
+              onChange={(value) =>
+                setValue("whatsappJoined", value, { shouldValidate: true })
+              }
               placeholder="Choose Option"
               required
-              error={errors.marketingActivities?.message}
+              error={errors.whatsappJoined?.message}
             />
           </div>
-        </div>
 
-        {/* Submit Button */}
-        <div className="pt-4 md:pt-6 flex justify-center">
-          <OrangeButton
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full md:w-auto md:px-16 py-4 text-base md:text-lg font-bold"
-          >
-            {isSubmitting ? "Processing..." : "Enroll Me!"}
-          </OrangeButton>
-        </div>
-      </form>
-    </Container>
+          {/* Referral Information Section */}
+          <div className="space-y-4 md:space-y-6">
+            <h2 className="text-lg md:text-xl font-bold text-gray-900 border-b pb-2">
+              Referral Information
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 w-full">
+              <Select
+                label="From where you got to know about us"
+                options={referralSourceOptions}
+                value={watch("referralSource")}
+                onChange={(value) =>
+                  setValue("referralSource", value, { shouldValidate: true })
+                }
+                placeholder="Choose Option"
+                required
+                error={errors.referralSource?.message}
+              />
+            </div>
+
+            <div className="p-3 md:p-4 border border-stone-200 bg-sky-50/50">
+              <p className="text-sm text-gray-700 mb-3">
+                Follow us on social media to know more about the Internship and
+                Job opportunities.
+              </p>
+
+              {/* Social Media Icons */}
+              <div className="flex flex-wrap items-center gap-3 mb-3">
+                {socialMediaLinks.map((social) => {
+                  const IconComponent = social.icon;
+                  return (
+                    <a
+                      key={social.label}
+                      href={social.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={cn(
+                        "w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200",
+                        "text-white shadow-md hover:shadow-lg hover:scale-110",
+                        social.bgColor,
+                      )}
+                      aria-label={social.label}
+                      title={social.label}
+                    >
+                      <IconComponent className="w-5 h-5" />
+                    </a>
+                  );
+                })}
+              </div>
+
+              <p className="text-xs text-gray-600">
+                It will increase your chances of selection.
+              </p>
+            </div>
+
+            <Select
+              label="Have you followed now?"
+              options={yesNoOptions}
+              value={watch("socialMediaFollowed")}
+              onChange={(value) =>
+                setValue("socialMediaFollowed", value, { shouldValidate: true })
+              }
+              placeholder="Choose Option"
+              required
+              error={errors.socialMediaFollowed?.message}
+            />
+          </div>
+
+          {/* Academic Marks Section */}
+          <div className="space-y-4 md:space-y-6">
+            <h2 className="text-sm font-bold uppercase tracking-[0.16em] text-stone-500">
+              10 · Academic marks
+            </h2>
+
+            <div className="space-y-4 md:space-y-6">
+              {/* 10th Marks */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 w-full">
+                <div className="w-full">
+                  <Select
+                    label="Marks in 10th – CGPA/%"
+                    options={marksTypeOptions}
+                    value={watch("marks10thType")}
+                    onChange={(value) =>
+                      setValue("marks10thType", value, { shouldValidate: true })
+                    }
+                    placeholder="Choose Marks Type"
+                    required
+                    error={errors.marks10thType?.message}
+                  />
+                </div>
+                <div className="md:col-span-2 w-full">
+                  <Input
+                    label="10th Marks Value"
+                    type="text"
+                    placeholder="Enter your 10th marks"
+                    required
+                    {...register("marks10thValue")}
+                    error={errors.marks10thValue?.message}
+                  />
+                </div>
+              </div>
+
+              {/* 12th Marks */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 w-full">
+                <div className="w-full">
+                  <Select
+                    label="Marks in 12th - CGPA/%"
+                    options={marksTypeOptions}
+                    value={watch("marks12thType")}
+                    onChange={(value) =>
+                      setValue("marks12thType", value, { shouldValidate: true })
+                    }
+                    placeholder="Choose Marks Type"
+                    required
+                    error={errors.marks12thType?.message}
+                  />
+                </div>
+                <div className="md:col-span-2 w-full">
+                  <Input
+                    label="12th Marks Value"
+                    type="text"
+                    placeholder="Enter your 12th marks"
+                    required
+                    {...register("marks12thValue")}
+                    error={errors.marks12thValue?.message}
+                  />
+                </div>
+              </div>
+
+              {/* Pursuing Course Marks */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 w-full">
+                <div className="w-full">
+                  <Select
+                    label="Marks in Pursuing Course (till date) - CGPA/%"
+                    options={marksTypeOptions}
+                    value={watch("marksPursuingType")}
+                    onChange={(value) =>
+                      setValue("marksPursuingType", value, {
+                        shouldValidate: true,
+                      })
+                    }
+                    placeholder="Choose Marks Type"
+                    required
+                    error={errors.marksPursuingType?.message}
+                  />
+                </div>
+                <div className="md:col-span-2 w-full">
+                  <Input
+                    label="Pursuing Course Marks Value"
+                    type="text"
+                    placeholder="Enter your pursuing course marks"
+                    required
+                    {...register("marksPursuingValue")}
+                    error={errors.marksPursuingValue?.message}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Marketing Activities Section */}
+          <div className="space-y-4 md:space-y-6">
+            <h2 className="text-sm font-bold uppercase tracking-[0.16em] text-stone-500">
+              11 · Marketing (optional)
+            </h2>
+            <div className="w-full">
+              <Select
+                label="Do you want to take part in Marketing activities for the brand with some perks?"
+                options={yesNoOptions}
+                value={watch("marketingActivities")}
+                onChange={(value) =>
+                  setValue("marketingActivities", value, {
+                    shouldValidate: true,
+                  })
+                }
+                placeholder="Choose Option"
+                required
+                error={errors.marketingActivities?.message}
+              />
+            </div>
+          </div>
+
+          {/* Submit */}
+          <div className="pt-8 mt-2 border-t border-stone-200">
+            <p className="text-center text-xs text-stone-500 mb-4">
+              By sending this, you confirm the details above are accurate for{" "}
+              <span className="font-medium text-stone-700">
+                {preview.internship.title}
+              </span>
+              .
+            </p>
+            <div className="flex flex-col items-stretch sm:items-center gap-2">
+              <OrangeButton
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full sm:w-auto sm:min-w-56 py-3.5 text-base font-bold"
+              >
+                {isSubmitting
+                  ? "Working on it…"
+                  : isSeatFlow
+                    ? "Continue to payment"
+                    : "Send application"}
+              </OrangeButton>
+              {isSeatFlow && selectedBatch?.plan && (
+                <p className="text-center text-xs text-stone-500">
+                  Next: Paytm checkout for{" "}
+                  <span className="font-semibold text-stone-800 tabular-nums">
+                    ₹{selectedBatch.plan.amount.toLocaleString("en-IN")}
+                  </span>
+                </p>
+              )}
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 };
 

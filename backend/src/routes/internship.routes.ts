@@ -6,6 +6,7 @@ import {
   listFeaturedInternshipsPublic,
   listInternshipsAdmin,
   getInternshipAdmin,
+  getInternshipEnrollPreview,
   getInternshipBySlug,
   checkSlugAvailability,
   createInternship,
@@ -28,6 +29,13 @@ router.get("/", listInternshipsPublic);
  * @access  Public
  */
 router.get("/featured", listFeaturedInternshipsPublic);
+
+/**
+ * @route   GET /api/internships/slug/:slug/enroll-preview
+ * @desc    Batches + entrance exam windows for public enroll form
+ * @access  Public
+ */
+router.get("/slug/:slug/enroll-preview", getInternshipEnrollPreview);
 
 /**
  * @route   GET /api/internships/slug/:slug

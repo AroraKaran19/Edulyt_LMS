@@ -11,6 +11,13 @@ export default withAuth(
       token &&
       (pathname.startsWith("/login") || pathname.startsWith("/register"))
     ) {
+      const ut = (token as { userType?: string })?.userType;
+      if (ut === "admin" || ut === "super-admin") {
+        return NextResponse.redirect(new URL("/admin", req.url));
+      }
+      if (ut === "instructor") {
+        return NextResponse.redirect(new URL("/instructor", req.url));
+      }
       const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
       return NextResponse.redirect(new URL(callbackUrl, req.url));
     }

@@ -54,12 +54,10 @@ export interface InternshipBatches {
   reviews?: Review["_id"][];
   analytics?: InternshipBatchAnalytics;
   plan?: InternshipBatchPlan | null;
-  /**
-   * Reusable exam template ids (`InternshipExam` collection) for this cohort.
-   * Same template documents can be shared across internships; submissions store
-   * `internshipId`, `batchId`, and `examId` for backtracking.
-   */
-  examTemplateIds?: string[];
+  /** Single entrance exam template for this cohort (examType = "entrance"). */
+  entranceExamTemplateId?: string | null;
+  /** Single certification exam template for this cohort (examType = "certification"). */
+  certificationExamTemplateId?: string | null;
   /**
    * Reusable task template ids (`InternshipTask` collection) for this cohort.
    */
@@ -223,4 +221,29 @@ export interface InternshipResponse {
   createdAt?: Date;
   updatedAt?: Date;
   createdBy?: User;
+}
+
+/** GET /internships/slug/:slug/enroll-preview — public enroll form payload. */
+export interface InternshipEnrollPreviewEntranceExam {
+  title: string;
+  examStartAt: string | null;
+  examEndAt: string | null;
+  examResultAt: string | null;
+}
+
+export interface InternshipEnrollPreviewBatch {
+  _id: string;
+  name: string;
+  applicationLastDate: string;
+  internshipStartDate: string;
+  status: string;
+  isActive: boolean;
+  entranceExam: InternshipEnrollPreviewEntranceExam | null;
+  /** Present when the batch has an active purchasable plan (paid-seat path). */
+  plan?: { listPrice: number; amount: number };
+}
+
+export interface InternshipEnrollPreview {
+  internship: { _id: string; title: string; slug: string };
+  batches: InternshipEnrollPreviewBatch[];
 }

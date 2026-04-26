@@ -55,8 +55,8 @@ export default function DeleteExamConfirmModal({
       className="max-w-md w-full mx-4"
     >
       <p className="text-gray-700 text-sm mb-3">
-        This cannot be undone. Templates linked to an internship batch cannot be
-        deleted until removed from those batches.
+        This cannot be undone. Existing submissions referencing this template
+        will be unaffected — their data was already captured as a snapshot.
       </p>
       {preview ? (
         <p className="text-sm text-gray-600 line-clamp-3 border border-gray-100 rounded-lg p-3 bg-gray-50 mb-4">

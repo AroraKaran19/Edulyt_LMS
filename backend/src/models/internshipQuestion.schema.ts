@@ -25,6 +25,12 @@ const internshipQuestionSchema = new mongoose.Schema(
     isActive: { type: Boolean, default: true },
     options: { type: [mcqOptionSchema], default: undefined },
     referenceFile: { type: String, trim: true, default: "" },
+    categoryId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "QuestionCategory",
+      required: false,
+      default: null,
+    },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",

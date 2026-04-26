@@ -128,6 +128,19 @@ export const reviewFileResponseController = asyncHandler(
 );
 
 /**
+ * @route   GET /api/internship-submissions/admin/:submissionId
+ * @desc    Full submission detail for admin (answers not redacted)
+ * @access  Admin
+ */
+export const getSubmissionAdminController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { submissionId } = req.params;
+    const result = await getSubmissionById(String(submissionId), false);
+    sendSuccessResponse(res, result, "Submission fetched", 200);
+  },
+);
+
+/**
  * @route   GET /api/internship-submissions/admin
  * @desc    Paginated list of all submissions (admin)
  * @access  Admin
@@ -144,6 +157,7 @@ export const listSubmissionsAdminController = asyncHandler(
       userId,
       taskId,
       examId,
+      enrollmentId,
     } = req.query;
     const p = Number(page);
     const l = Number(limit);
@@ -161,6 +175,7 @@ export const listSubmissionsAdminController = asyncHandler(
       userId: typeof userId === "string" ? userId : undefined,
       taskId: typeof taskId === "string" ? taskId : undefined,
       examId: typeof examId === "string" ? examId : undefined,
+      enrollmentId: typeof enrollmentId === "string" ? enrollmentId : undefined,
     });
     sendSuccessResponse(res, result, "Submissions fetched", 200);
   },

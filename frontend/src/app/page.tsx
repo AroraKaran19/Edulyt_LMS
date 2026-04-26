@@ -1,8 +1,7 @@
-import ComingSoon from "@/components/ui/ComingSoon";
-// import Homepage from "./(pages)/(home)/Homepage";
+import Homepage from "./(pages)/(home)/Homepage";
 
 const HomePage = () => {
-  return <ComingSoon title="Work in Progress" />;
+  return <Homepage />;
 };
 
 export default HomePage;

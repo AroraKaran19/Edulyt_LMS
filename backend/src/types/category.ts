@@ -4,6 +4,7 @@ export interface Category {
   audience?: "college-students" | "professionals";
   description?: string;
   isActive: boolean;
+  showOnCourseList?: boolean;
   showOnHomePage?: boolean;
   categoryImage?: string;
   sortOrder?: number;

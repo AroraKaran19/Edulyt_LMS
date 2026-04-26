@@ -5,13 +5,34 @@ import { toast } from "react-toastify";
 import Modal from "@/components/ui/Modal";
 import Input from "@/components/ui/inputs/Input";
 import TextArea from "@/components/ui/inputs/TextArea";
+import Select from "@/components/ui/inputs/Select";
 import CheckBoxContainer from "@/components/ui/inputs/CheckBoxContainer";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import { InfiniteScrollSelect } from "@/components/ui/dropdown/InfiniteScrollSelect";
+import { Lock } from "lucide-react";
 import apiClient from "@/configs/apiConfig";
 import { ENDPOINTS } from "@/constants/endpoints";
-import type { InternshipTaskTemplateDetail } from "@/types/internship-task";
+import type { InternshipTaskTemplateDetail, TaskType } from "@/types/internship-task";
+
+const TASK_TYPE_LABELS: Record<TaskType, string> = {
+  task: "Task",
+  attendance: "Attendance",
+};
+
+/** Read-only display field used in edit mode for locked values. */
+function LockedField({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="text-sm font-medium text-gray-600 flex items-center gap-1">
+        {label} <Lock className="w-3 h-3 text-gray-400" />
+      </label>
+      <div className="rounded-lg border border-gray-200 bg-gray-100 px-3 py-2 text-sm text-gray-700">
+        {value}
+      </div>
+    </div>
+  );
+}
 
 type TaskBankQuestionRow = {
   _id: string;
@@ -39,6 +60,8 @@ export default function TaskUpsertModal({
 }: Props) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [taskType, setTaskType] = useState<TaskType>("task");
+  const [lockedTaskType, setLockedTaskType] = useState<TaskType>("task");
   const [questionIds, setQuestionIds] = useState<string[]>([]);
   const [unlockAfterDays, setUnlockAfterDays] = useState("0");
   const [dueDays, setDueDays] = useState("7");
@@ -50,6 +73,8 @@ export default function TaskUpsertModal({
   const resetCreate = () => {
     setTitle("");
     setDescription("");
+    setTaskType("task");
+    setLockedTaskType("task");
     setQuestionIds([]);
     setUnlockAfterDays("0");
     setDueDays("7");
@@ -106,6 +131,9 @@ export default function TaskUpsertModal({
         if (cancelled || !d) return;
         setTitle(d.title ?? "");
         setDescription(d.description ?? "");
+        const tt: TaskType = d.taskType === "attendance" ? "attendance" : "task";
+        setLockedTaskType(tt);
+        setTaskType(tt);
         setQuestionIds(
           Array.isArray(d.questions)
             ? d.questions.map((q) => String(q._id))
@@ -164,6 +192,7 @@ export default function TaskUpsertModal({
     const payload = {
       title: trimmedTitle,
       description: description.trim(),
+      taskType,
       questions: questionIds,
       unlockAfterDays: unlock,
       dueDays: due,
@@ -216,21 +245,53 @@ export default function TaskUpsertModal({
         </div>
       ) : (
         <div className="flex flex-col gap-4">
-          <Input
-            label="Title"
-            required
-            placeholder="e.g. Week 1 — API integration"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
+          {/* ── CREATE: editable fields ───────────────────────────────── */}
+          {mode === "create" && (
+            <>
+              <Input
+                label="Title"
+                required
+                placeholder="e.g. Week 1 — API integration"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+              />
 
-          <TextArea
-            label="Description"
-            placeholder="Instructions or context for admins (optional)"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={3}
-          />
+              <TextArea
+                label="Description"
+                placeholder="Instructions or context for admins (optional)"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={3}
+              />
+
+              <Select
+                label="Task type"
+                required
+                options={[
+                  { value: "task", label: "Task" },
+                  { value: "attendance", label: "Attendance" },
+                ]}
+                value={taskType}
+                onChange={(v) => setTaskType(v as TaskType)}
+                placeholder="Select type"
+              />
+            </>
+          )}
+
+          {/* ── EDIT: locked info panel ───────────────────────────────── */}
+          {mode === "edit" && (
+            <div className="rounded-xl border border-gray-200 bg-gray-50/60 p-4 flex flex-col gap-3">
+              <div className="flex items-center gap-2 mb-1">
+                <Lock className="w-4 h-4 text-gray-400" />
+                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                  Read-only fields
+                </span>
+              </div>
+              <LockedField label="Title" value={title} />
+              {description && <LockedField label="Description" value={description} />}
+              <LockedField label="Type" value={TASK_TYPE_LABELS[lockedTaskType]} />
+            </div>
+          )}
 
           <InfiniteScrollSelect<TaskBankQuestionRow>
             label="Questions"
@@ -294,6 +355,15 @@ export default function TaskUpsertModal({
               onChange={(e) => setDueDays(e.target.value)}
             />
           </div>
+          <p className="text-xs text-gray-500 -mt-2">
+            The template stores the same day counts for everyone; each
+            learner&apos;s actual dates depend on when they enrolled.
+            Someone who enrolls Monday and someone who enrolls Friday get
+            different calendar unlock and due times, but the same offset
+            from their own enrollment. Unlock: days after enroll before the
+            task appears. Due: days after enroll for the deadline (e.g. 7 =
+            due 7 days after they enrolled). Due must be on or after unlock.
+          </p>
 
           <CheckBoxContainer
             label="Task template is active"

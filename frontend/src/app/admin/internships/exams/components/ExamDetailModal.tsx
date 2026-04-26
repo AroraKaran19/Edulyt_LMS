@@ -8,7 +8,12 @@ import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import apiClient from "@/configs/apiConfig";
 import { ENDPOINTS } from "@/constants/endpoints";
-import type { InternshipExamTemplateDetail } from "@/types/internship-exam";
+import type { ExamType, InternshipExamTemplateDetail } from "@/types/internship-exam";
+
+const EXAM_TYPE_LABEL: Record<ExamType, string> = {
+  entrance: "Entrance",
+  certification: "Certification",
+};
 
 type Props = {
   isOpen: boolean;
@@ -168,6 +173,23 @@ export default function ExamDetailModal({
             <p className="text-gray-900 font-medium">{detail.title}</p>
           </div>
 
+          <div>
+            <p className="text-xs font-semibold text-gray-500 uppercase mb-1">
+              Type
+            </p>
+            <span
+              className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full border ${
+                detail.examType === "certification"
+                  ? "bg-violet-50 text-violet-800 border-violet-200"
+                  : "bg-sky-50 text-sky-800 border-sky-200"
+              }`}
+            >
+              {EXAM_TYPE_LABEL[
+                detail.examType === "certification" ? "certification" : "entrance"
+              ]}
+            </span>
+          </div>
+
           {detail.description?.trim() ? (
             <div>
               <p className="text-xs font-semibold text-gray-500 uppercase mb-1">
@@ -222,7 +244,7 @@ export default function ExamDetailModal({
             </div>
             <div>
               <p className="text-xs font-semibold text-gray-500 uppercase mb-1">
-                Active
+                Status
               </p>
               <span
                 className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full border ${
@@ -231,7 +253,7 @@ export default function ExamDetailModal({
                     : "bg-gray-100 text-gray-700 border-gray-200"
                 }`}
               >
-                {detail.isActive ? "Yes" : "No"}
+                {detail.isActive ? "Active" : "Inactive"}
               </span>
             </div>
           </div>

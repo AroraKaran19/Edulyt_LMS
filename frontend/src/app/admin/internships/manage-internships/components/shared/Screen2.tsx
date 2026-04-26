@@ -31,7 +31,8 @@ const defaultBatch = () => ({
   status: "active" as const,
   isActive: true,
   plan: createDefaultInternshipBatchPlan(),
-  examTemplateIds: [] as string[],
+  entranceExamTemplateId: null as string | null,
+  certificationExamTemplateId: null as string | null,
   taskTemplateIds: [] as string[],
 });
 
@@ -464,11 +465,12 @@ const Screen2 = () => {
 
                       <InternshipBatchPlanFields batchIndex={index} />
 
-                      <div className="rounded-xl border border-gray-200 bg-white p-4">
-                        <BatchExamTemplatesSelect batchIndex={index} />
-                        <p className="text-xs text-gray-500 mt-2">
-                          Linked templates for this batch are listed first after
-                          save.
+                      <div className="rounded-xl border border-gray-200 bg-white p-4 flex flex-col gap-4">
+                        <BatchExamTemplatesSelect batchIndex={index} examType="entrance" />
+                        <BatchExamTemplatesSelect batchIndex={index} examType="certification" />
+                        <p className="text-xs text-gray-500">
+                          One entrance and one certification exam template per batch.
+                          Already-linked templates appear first after save.
                         </p>
                       </div>
                     </div>

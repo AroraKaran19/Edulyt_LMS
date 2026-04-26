@@ -80,10 +80,17 @@ const batchSchema = new mongoose.Schema<InternshipBatches>(
       required: false,
       default: undefined,
     },
-    /** Reusable exam template ids for this cohort (see `InternshipExam` types). */
-    examTemplateIds: {
-      type: [mongoose.Schema.Types.ObjectId],
-      default: [],
+    /** Single entrance exam template for this cohort (examType = "entrance"). */
+    entranceExamTemplateId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "InternshipExam",
+      default: null,
+    },
+    /** Single certification exam template for this cohort (examType = "certification"). */
+    certificationExamTemplateId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "InternshipExam",
+      default: null,
     },
     /** Reusable task template ids for this cohort (see `InternshipTask` types). */
     taskTemplateIds: {

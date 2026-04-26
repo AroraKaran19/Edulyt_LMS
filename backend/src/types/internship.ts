@@ -61,12 +61,10 @@ export interface InternshipBatches {
   analytics?: InternshipBatchAnalytics;
   /** Pricing and features for this batch (learners see this when enrolling in the batch). */
   plan?: InternshipBatchPlan | null;
-  /**
-   * Reusable exam template ids (`InternshipExam` collection) for this cohort.
-   * Same template documents can be shared across internships; submissions store
-   * `internshipId`, `batchId`, and `examId` for backtracking.
-   */
-  examTemplateIds?: string[];
+  /** Single entrance exam template for this cohort (examType = "entrance"). */
+  entranceExamTemplateId?: string | null;
+  /** Single certification exam template for this cohort (examType = "certification"). */
+  certificationExamTemplateId?: string | null;
   /**
    * Reusable task template ids (`InternshipTask` collection) for this cohort.
    */

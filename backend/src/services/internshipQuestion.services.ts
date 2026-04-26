@@ -16,6 +16,7 @@ export type CreateInternshipQuestionBody = {
   isActive?: boolean;
   options?: { text: string; isCorrect: boolean }[];
   referenceFile?: string;
+  categoryId?: string | null;
 };
 
 export type InternshipQuestionDetail = {
@@ -26,6 +27,7 @@ export type InternshipQuestionDetail = {
   score: number;
   isActive: boolean;
   referenceFile?: string;
+  categoryId?: string | null;
   options?: { _id?: string; text: string; isCorrect: boolean }[];
   createdAt?: Date | string;
   updatedAt?: Date | string;
@@ -42,6 +44,7 @@ function serializeQuestionDoc(doc: Record<string, unknown>): InternshipQuestionD
     isActive: doc.isActive !== false,
     referenceFile:
       typeof doc.referenceFile === "string" ? doc.referenceFile : "",
+    categoryId: doc.categoryId != null ? String(doc.categoryId) : null,
     createdAt: doc.createdAt as Date | string | undefined,
     updatedAt: doc.updatedAt as Date | string | undefined,
   };
@@ -112,6 +115,15 @@ function buildQuestionUpdateFields(
         ? body.referenceFile.trim()
         : "";
   }
+
+  // categoryId: null means "remove category", undefined means "leave unchanged"
+  if (body.categoryId !== undefined) {
+    doc.categoryId =
+      body.categoryId && mongoose.Types.ObjectId.isValid(String(body.categoryId))
+        ? new mongoose.Types.ObjectId(String(body.categoryId))
+        : null;
+  }
+
   return doc;
 }
 
@@ -178,6 +190,7 @@ export async function createInternshipQuestionAdmin(
   usageType: string;
   score: number;
   isActive: boolean;
+  categoryId: string | null;
 }> {
   const fields = buildQuestionUpdateFields(body);
   const doc = { ...fields, createdBy };
@@ -189,6 +202,7 @@ export async function createInternshipQuestionAdmin(
     usageType: String(created.usageType ?? ""),
     score: typeof created.score === "number" ? created.score : 0,
     isActive: created.isActive !== false,
+    categoryId: created.categoryId != null ? String(created.categoryId) : null,
   };
 }
 
@@ -199,6 +213,7 @@ export async function listInternshipQuestionsAdmin(
   questionType?: "mcq" | "file_upload",
   /** When set, only questions usable for that context (includes `both`). */
   usageFor?: "task" | "exam",
+  categoryId?: string,
 ): Promise<{
   questions: {
     _id: string;
@@ -228,6 +243,9 @@ export async function listInternshipQuestionsAdmin(
     filter.usageType = { $in: ["task", "both"] };
   } else if (usageFor === "exam") {
     filter.usageType = { $in: ["exam", "both"] };
+  }
+  if (categoryId && mongoose.Types.ObjectId.isValid(categoryId)) {
+    filter.categoryId = new mongoose.Types.ObjectId(categoryId);
   }
 
   const total = await InternshipQuestionModel.countDocuments(filter);

@@ -3,6 +3,8 @@ import Container from "@/app/admin/components/ui/Container";
 import { EditorHandle } from "@/components/shared/Editor/Editor";
 import DropDown from "@/components/ui/dropdown/DropDown";
 import TagInput from "@/components/ui/inputs/TagInput";
+import Input from "@/components/ui/inputs/Input";
+import Modal from "@/components/ui/Modal";
 import { useFormContext } from "react-hook-form";
 import { Controller } from "react-hook-form";
 import { CourseFormData } from "@/types/courseForm";
@@ -17,6 +19,8 @@ const RichTextEditor = dynamic(
 
 const Screen2 = () => {
   const [isMounted, setIsMounted] = useState(false);
+  const [showSuccessPointsRulesModal, setShowSuccessPointsRulesModal] =
+    useState(false);
   const whatYouWillLearnEditorRef = useRef<EditorHandle | null>(null);
   const whoShouldJoinEditorRef = useRef<EditorHandle | null>(null);
 
@@ -199,6 +203,90 @@ const Screen2 = () => {
               />
             )}
           />
+        </div>
+        <div className="w-full max-w-md">
+          <Controller
+            name="successPoints"
+            control={control}
+            rules={{
+              required: "Success points is required",
+              min: { value: 0, message: "Minimum is 0" },
+              max: { value: 1_000_000, message: "Maximum is 1,000,000" },
+              validate: (v) => {
+                const n = Number(v);
+                if (!Number.isFinite(n) || !Number.isInteger(n)) {
+                  return "Enter a whole number";
+                }
+                return true;
+              },
+            }}
+            render={({ field }) => (
+              <Input
+                type="number"
+                label="Success points (on course completion)"
+                required
+                min={0}
+                max={1_000_000}
+                step={1}
+                value={
+                  field.value === undefined || field.value === null
+                    ? 100
+                    : field.value
+                }
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  if (raw === "") {
+                    field.onChange(undefined);
+                    return;
+                  }
+                  const n = Number(raw);
+                  if (Number.isFinite(n)) {
+                    field.onChange(Math.trunc(n));
+                  }
+                }}
+                error={errors.successPoints?.message as string}
+              />
+            )}
+          />
+          <p className="text-xs text-gray-500 mt-1.5 pl-0.5">
+            Awarded when a student finishes the course (
+            <button
+              type="button"
+              onClick={() => setShowSuccessPointsRulesModal(true)}
+              className="text-orange-600 font-medium hover:underline underline-offset-2 focus:outline-none focus:ring-2 focus:ring-orange-400/50 rounded"
+            >
+              eligibility rules apply
+            </button>
+            ). Set to 0 to disable.
+          </p>
+          <Modal
+            isOpen={showSuccessPointsRulesModal}
+            onClose={() => setShowSuccessPointsRulesModal(false)}
+            title="Success points eligibility"
+            className="max-w-lg"
+          >
+            <ul className="list-disc pl-4 space-y-3 text-sm text-gray-700">
+              <li>
+                <span className="font-medium text-gray-900">Purchased course.</span>{" "}
+                Students earn the success points you set here when they complete a
+                course they bought through a successful payment.
+              </li>
+              <li>
+                <span className="font-medium text-gray-900">With a coupon.</span>{" "}
+                Points are awarded only if the amount paid is{" "}
+                <span className="whitespace-nowrap">more than 50%</span> of the
+                effective plan price:{" "}
+                <span className="font-mono text-xs bg-gray-100 px-1.5 py-0.5 rounded">
+                  plan price − plan discount − course discount
+                </span>{" "}
+                (as applied at checkout for that plan).
+              </li>
+            </ul>
+            <p className="text-xs text-gray-500 mt-4">
+              This field only sets how many points to award for this course when a
+              student completes it and the rules above are met.
+            </p>
+          </Modal>
         </div>
         <div>
           <RichTextEditor

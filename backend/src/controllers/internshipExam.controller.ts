@@ -12,6 +12,7 @@ import {
   updateInternshipExamAdmin,
   deleteInternshipExamAdmin,
   type UpsertInternshipExamBody,
+  type UpdateInternshipExamBody,
 } from "../services/internshipExam.services";
 
 /**
@@ -30,6 +31,7 @@ export const listInternshipExamTemplatesAdminController = asyncHandler(
       batchId,
       includeInactive,
       status,
+      examType,
     } = req.query;
     const p = Number(page);
     const l = Number(limit);
@@ -40,6 +42,10 @@ export const listInternshipExamTemplatesAdminController = asyncHandler(
       status === "all" || status === "active" || status === "inactive"
         ? (status as "all" | "active" | "inactive")
         : undefined;
+    const et =
+      examType === "entrance" || examType === "certification"
+        ? (examType as "entrance" | "certification")
+        : undefined;
     const result = await listInternshipExamTemplatesAdmin(
       p,
       l,
@@ -48,6 +54,7 @@ export const listInternshipExamTemplatesAdminController = asyncHandler(
       typeof batchId === "string" ? batchId : undefined,
       String(includeInactive) === "true",
       st,
+      et,
     );
     sendSuccessResponse(
       res,
@@ -96,7 +103,7 @@ export const getInternshipExamByIdAdminController = asyncHandler(
 export const updateInternshipExamAdminController = asyncHandler(
   async (req: Request, res: Response) => {
     const { examId } = req.params;
-    const body = req.body as UpsertInternshipExamBody;
+    const body = req.body as UpdateInternshipExamBody;
     const result = await updateInternshipExamAdmin(String(examId), body);
     sendSuccessResponse(res, result, "Exam template updated successfully", 200);
   },

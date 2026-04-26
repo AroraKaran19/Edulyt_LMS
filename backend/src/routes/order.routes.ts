@@ -3,6 +3,7 @@ import { verifyUser } from "../middlewares/user.middleware";
 import { Router } from "express";
 import {
   createOrder,
+  createInternshipSeatOrder,
   deleteOrder,
   getOrderInfo,
   getSelfOrders,
@@ -25,6 +26,13 @@ router.get("/", verifyUser, getSelfOrders);
  * @access  User
  */
 router.post("/", createOrder);
+
+/**
+ * @route   POST /api/orders/internship-seat
+ * @desc    Pay for internship “direct seat” (batch plan); enrollment must be `payment_pending`
+ * @access  User (session)
+ */
+router.post("/internship-seat", verifyUser, createInternshipSeatOrder);
 
 /**
  * @route   GET /api/orders/verify/:token

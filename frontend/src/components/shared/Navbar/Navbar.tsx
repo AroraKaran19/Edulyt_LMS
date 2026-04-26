@@ -94,6 +94,9 @@ const Navbar = () => {
   const [isDropdownClicked, setIsDropdownClicked] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+  const navLinkHasHoverDropdown = (item: NavItem) =>
+    item.label === "courses" || item.label === "internship";
+
   useEffect(() => {
     if (isHoverContainerVisible) {
       setIsAnimating(true);
@@ -189,7 +192,33 @@ const Navbar = () => {
               key={index}
               label={item.label}
               count={item.count}
-              onMouseEnter={() => showHoverContainer(item)}
+              onMouseEnter={() => {
+                if (hoverTimeout) {
+                  clearTimeout(hoverTimeout);
+                  setHoverTimeout(null);
+                }
+                if (navLinkHasHoverDropdown(item)) {
+                  showHoverContainer(item);
+                } else {
+                  setIsTransitioning(false);
+                  setIsDropdownClicked(false);
+                  // If the mega menu is open, let it play the exit transition before unmounting
+                  if (
+                    isHoverContainerVisible &&
+                    hoveredNavLink &&
+                    navLinkHasHoverDropdown(hoveredNavLink)
+                  ) {
+                    setIsHoverContainerVisible(false);
+                    const t = setTimeout(() => {
+                      setHoveredNavLink(null);
+                    }, 300);
+                    setHoverTimeout(t);
+                  } else {
+                    setIsHoverContainerVisible(false);
+                    setHoveredNavLink(null);
+                  }
+                }
+              }}
               onMouseLeave={handleNavLinkMouseLeave}
               active={hoveredNavLink?.label === item.label}
             />

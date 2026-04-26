@@ -8,6 +8,8 @@ export type InternshipQuestionDetail = {
   usageType: string;
   score: number;
   isActive: boolean;
+  /** Question category (optional). */
+  categoryId?: string | null;
   referenceFile?: string;
   options?: { _id?: string; text: string; isCorrect: boolean }[];
   createdAt?: string;

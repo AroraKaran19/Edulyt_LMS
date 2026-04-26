@@ -105,8 +105,47 @@ export const ENDPOINTS = {
   },
 
   internshipSubmissions: {
+    /** POST — create a new exam/task submission. */
+    create: "/internship-submissions",
     adminList: "/internship-submissions/admin",
+    adminById: (id: string) => `/internship-submissions/admin/${encodeURIComponent(id)}`,
     byId: (id: string) => `/internship-submissions/${id}`,
+    saveMcq: (id: string) => `/internship-submissions/${id}/answers/mcq`,
+    submit: (id: string) => `/internship-submissions/${id}/submit`,
+  },
+
+  /** Internship program enrollments. */
+  internshipEnrollments: {
+    /** GET — authenticated learner’s enrollments (dashboard). Query: page, limit, search */
+    me: "/internship-enrollments/me",
+    /** GET — entrance exam for a specific enrollment (window must be open). Query: enrollmentId */
+    meEntranceExam: "/internship-enrollments/me/entrance-exam",
+    /** GET — enrolled-program detail + unlocked tasks by internship slug. */
+    meProgramBySlug: (slug: string) =>
+      `/internship-enrollments/me/program/${encodeURIComponent(slug)}`,
+    /** POST — learner registers (entrance exam or paid seat). Body: { internshipId, batchId, path? } */
+    create: "/internship-enrollments",
+    register: "/internship-enrollments",
+    adminList: "/internship-enrollments/admin",
+    /** POST body `{ enrollmentIds: string[] }` — merit path → enrolled (server). */
+    adminApproveToEnrolled: "/internship-enrollments/admin/approve-to-enrolled",
+    adminEntranceExamCohorts:
+      "/internship-enrollments/admin/entrance-exam-cohorts",
+    adminById: (enrollmentId: string) =>
+      `/internship-enrollments/admin/${encodeURIComponent(enrollmentId)}`,
+    adminUpdateStatus: (enrollmentId: string) =>
+      `/internship-enrollments/admin/${encodeURIComponent(enrollmentId)}/status`,
+    adminDelete: (enrollmentId: string) =>
+      `/internship-enrollments/admin/${encodeURIComponent(enrollmentId)}`,
+  },
+
+  // Question Category Routes
+  questionCategories: {
+    list: "/question-categories",
+    byId: (id: string) => `/question-categories/${encodeURIComponent(id)}`,
+    create: "/question-categories",
+    update: (id: string) => `/question-categories/${encodeURIComponent(id)}`,
+    delete: (id: string) => `/question-categories/${encodeURIComponent(id)}`,
   },
 
   // Category Routes
@@ -134,6 +173,7 @@ export const ENDPOINTS = {
     // User Routes
     self: "/orders",
     create: "/orders",
+    createInternshipSeat: "/orders/internship-seat",
     verify: "/orders/verify",
     webhook: "/orders/webhook",
 
@@ -180,6 +220,17 @@ export const ENDPOINTS = {
     create: "/testimonials",
     update: "/testimonials",
     delete: "/testimonials",
+  },
+
+  /**
+   * Internship vouchers — single-use tokens earned by qualifying course
+   * purchases (≥ 50 % of plan price paid).
+   */
+  internshipVouchers: {
+    /** GET — current user's available count + voucher list. */
+    me: "/internship-vouchers/me",
+    /** POST — redeem a voucher by id or code. */
+    redeem: "/internship-vouchers/redeem",
   },
 
   // QnA Routes

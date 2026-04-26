@@ -109,6 +109,8 @@ export interface Enrollment {
   completedAt?: Date;
   certificateIssued?: boolean;
   certificateIssuedAt?: Date;
+  /** Set when success points were credited for this enrollment (at most once). */
+  successPointsCompletionAwarded?: boolean;
   
   // Analytics
   totalTimeSpent?: number; // In seconds

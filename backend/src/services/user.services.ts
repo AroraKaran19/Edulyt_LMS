@@ -116,7 +116,7 @@ export const getUsersService = async (
   }
 
   const users = await UserModel.find(filters)
-    .select("-password -refreshTokens -__v")
+    .select("-password -refreshTokens -__v -successPointsHistory")
     .skip(skip)
     .limit(limit)
     .sort({ createdAt: -1 })
@@ -231,7 +231,9 @@ export const getAdminUserOptionsService = async (
   // Exclude users already enrolled in any of the given courses (gift modal)
   if (
     excludeEnrolledInCourseIds?.length &&
-    excludeEnrolledInCourseIds.every((id) => mongoose.Types.ObjectId.isValid(id))
+    excludeEnrolledInCourseIds.every((id) =>
+      mongoose.Types.ObjectId.isValid(id),
+    )
   ) {
     const enrolledUserIds = await EnrollmentModel.distinct("userId", {
       courseId: { $in: excludeEnrolledInCourseIds },
@@ -260,7 +262,9 @@ export const getAdminUserOptionsService = async (
   // Add enrollment status for trial modal
   if (
     enrollmentStatusForCourseIds?.length &&
-    enrollmentStatusForCourseIds.every((id) => mongoose.Types.ObjectId.isValid(id)) &&
+    enrollmentStatusForCourseIds.every((id) =>
+      mongoose.Types.ObjectId.isValid(id),
+    ) &&
     users.length > 0
   ) {
     const userIds = users
@@ -315,16 +319,16 @@ export const getUserByIdService = async (
   // Fetch from the appropriate model based on user type
   if (baseUser.userType === "student") {
     user = await StudentModel.findById(userId)
-      .select("-password -refreshTokens -__v")
+      .select("-password -refreshTokens -__v -successPointsHistory")
       .lean();
   } else if (baseUser.userType === "instructor") {
     user = await InstructorModel.findById(userId)
-      .select("-password -refreshTokens -__v")
+      .select("-password -refreshTokens -__v -successPointsHistory")
       .lean();
   } else {
     // For other user types (collaborator, admin, etc.), use base UserModel
     user = await UserModel.findById(userId)
-      .select("-password -refreshTokens -__v")
+      .select("-password -refreshTokens -__v -successPointsHistory")
       .lean();
   }
 
@@ -339,7 +343,7 @@ export const updateUserStatusService = async (
     userId,
     { status, updatedAt: new Date() },
     { new: true, runValidators: true },
-  ).select("-password -refreshTokens -__v");
+  ).select("-password -refreshTokens -__v -successPointsHistory");
 
   return user as User | null;
 };
@@ -372,7 +376,7 @@ export const deleteUserService = async (
   userId: string,
 ): Promise<User | null> => {
   const user = await UserModel.findById(userId)
-    .select("-password -refreshTokens -__v")
+    .select("-password -refreshTokens -__v -successPointsHistory")
     .lean();
   if (!user) {
     return null;
@@ -463,7 +467,7 @@ export const getCurrentUserProfileService = async (
   userId: string,
 ): Promise<User | null> => {
   const excludedFields =
-    "-__v -permissions -refreshTokens -pendingPayments -orders -status -affiliation -updatedAt";
+    "-_id -__v -permissions -refreshTokens -pendingPayments -orders -status -affiliation -updatedAt -successPointsHistory";
   let user = await UserModel.findById(userId).select(excludedFields).lean();
   if (!user) {
     return null;
@@ -499,20 +503,20 @@ export const updateUserProfileService = async (
       userId,
       { ...allowedFields, updatedAt: new Date() },
       { new: true, runValidators: true },
-    ).select("-password -refreshTokens -__v");
+    ).select("-password -refreshTokens -__v -successPointsHistory");
   } else if (existingUser.userType === "instructor") {
     updatedUser = await InstructorModel.findByIdAndUpdate(
       userId,
       { ...allowedFields, updatedAt: new Date() },
       { new: true, runValidators: true },
-    ).select("-password -refreshTokens -__v");
+    ).select("-password -refreshTokens -__v -successPointsHistory");
   } else {
     // For other user types (collaborator, admin, etc.), use base UserModel
     updatedUser = await UserModel.findByIdAndUpdate(
       userId,
       { ...allowedFields, updatedAt: new Date() },
       { new: true, runValidators: true },
-    ).select("-password -refreshTokens -__v");
+    ).select("-password -refreshTokens -__v -successPointsHistory");
   }
 
   return updatedUser as User | null;
@@ -648,7 +652,7 @@ export const changeUserEmailService = async (
       updatedAt: new Date(),
     },
     { new: true, runValidators: true },
-  ).select("-password -refreshTokens -__v");
+  ).select("-password -refreshTokens -__v -successPointsHistory");
 
   if (!updatedUser) {
     throw new AppError("Failed to update email", 500);
@@ -697,7 +701,7 @@ export const unlinkGoogleAccountService = async (
   const updatedUser = await UserModel.findByIdAndUpdate(userId, updateData, {
     new: true,
     runValidators: true,
-  }).select("-password -refreshTokens -__v");
+  }).select("-password -refreshTokens -__v -successPointsHistory");
 
   if (!updatedUser) {
     throw new AppError("Failed to unlink Google account", 500);
@@ -746,7 +750,7 @@ export const unlinkLinkedInAccountService = async (
   const updatedUser = await UserModel.findByIdAndUpdate(userId, updateData, {
     new: true,
     runValidators: true,
-  }).select("-password -refreshTokens -__v");
+  }).select("-password -refreshTokens -__v -successPointsHistory");
 
   if (!updatedUser) {
     throw new AppError("Failed to unlink LinkedIn account", 500);

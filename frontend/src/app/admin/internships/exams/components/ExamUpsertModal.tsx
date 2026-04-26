@@ -1,17 +1,22 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { Lock } from "lucide-react";
 import { toast } from "react-toastify";
 import Modal from "@/components/ui/Modal";
 import Input from "@/components/ui/inputs/Input";
 import TextArea from "@/components/ui/inputs/TextArea";
+import Select from "@/components/ui/inputs/Select";
 import CheckBoxContainer from "@/components/ui/inputs/CheckBoxContainer";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import { InfiniteScrollSelect } from "@/components/ui/dropdown/InfiniteScrollSelect";
 import apiClient from "@/configs/apiConfig";
 import { ENDPOINTS } from "@/constants/endpoints";
-import type { InternshipExamTemplateDetail } from "@/types/internship-exam";
+import type {
+  InternshipExamTemplateDetail,
+  ExamType,
+} from "@/types/internship-exam";
 
 type ExamBankQuestionRow = {
   _id: string;
@@ -38,6 +43,32 @@ function toDatetimeLocalValue(iso: string | undefined): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+const EXAM_TYPE_LABELS: Record<ExamType, string> = {
+  entrance: "Entrance",
+  certification: "Certification",
+};
+
+/** Read-only info row for fields that cannot be changed after creation. */
+function LockedField({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | number | undefined;
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex items-center gap-1.5">
+        <span className="text-sm font-medium text-gray-700">{label}</span>
+        <Lock className="w-3.5 h-3.5 text-gray-400" />
+      </div>
+      <div className="px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-600 select-none">
+        {value ?? <span className="italic text-gray-400">—</span>}
+      </div>
+    </div>
+  );
+}
+
 export default function ExamUpsertModal({
   isOpen,
   onClose,
@@ -45,22 +76,37 @@ export default function ExamUpsertModal({
   mode,
   examId,
 }: Props) {
+  // ── Create-only fields ──────────────────────────────────────────────────────
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [questionIds, setQuestionIds] = useState<string[]>([]);
+  const [examType, setExamType] = useState<ExamType>("entrance");
   const [thresholdScore, setThresholdScore] = useState("");
+
+  // ── Always-editable fields ──────────────────────────────────────────────────
+  const [questionIds, setQuestionIds] = useState<string[]>([]);
   const [examStartLocal, setExamStartLocal] = useState("");
   const [examEndLocal, setExamEndLocal] = useState("");
   const [examResultLocal, setExamResultLocal] = useState("");
   const [isActive, setIsActive] = useState(true);
+
   const [submitting, setSubmitting] = useState(false);
   const [loadingDetail, setLoadingDetail] = useState(false);
+
+  // Snapshot of locked values for display in edit mode
+  const [lockedTitle, setLockedTitle] = useState("");
+  const [lockedDescription, setLockedDescription] = useState("");
+  const [lockedExamType, setLockedExamType] = useState<ExamType>("entrance");
+  const [lockedThreshold, setLockedThreshold] = useState<number | undefined>(
+    undefined,
+  );
+  const [lockedTotalScore, setLockedTotalScore] = useState<number>(0);
 
   const resetCreate = () => {
     setTitle("");
     setDescription("");
-    setQuestionIds([]);
+    setExamType("entrance");
     setThresholdScore("");
+    setQuestionIds([]);
     setExamStartLocal("");
     setExamEndLocal("");
     setExamResultLocal("");
@@ -80,10 +126,7 @@ export default function ExamUpsertModal({
         },
       });
       const payload = res.data?.data as
-        | {
-            questions?: ExamBankQuestionRow[];
-            totalPages?: number;
-          }
+        | { questions?: ExamBankQuestionRow[]; totalPages?: number }
         | undefined;
       const questions = payload?.questions ?? [];
       const totalPages =
@@ -114,17 +157,26 @@ export default function ExamUpsertModal({
         );
         const d = res.data?.data as InternshipExamTemplateDetail | undefined;
         if (cancelled || !d) return;
-        setTitle(d.title ?? "");
-        setDescription(d.description ?? "");
+
+        // Locked fields (display-only in edit)
+        setLockedTitle(d.title ?? "");
+        setLockedDescription(d.description ?? "");
+        setLockedExamType(d.examType ?? "entrance");
+        setLockedThreshold(
+          typeof d.thresholdScore === "number" ? d.thresholdScore : undefined,
+        );
+        setLockedTotalScore(
+          typeof d.totalScore === "number" ? d.totalScore : 0,
+        );
+
+        // Editable fields
+        setThresholdScore(
+          typeof d.thresholdScore === "number" ? String(d.thresholdScore) : "",
+        );
         setQuestionIds(
           Array.isArray(d.questions)
             ? d.questions.map((q) => String(q._id))
             : [],
-        );
-        setThresholdScore(
-          typeof d.thresholdScore === "number"
-            ? String(d.thresholdScore)
-            : "",
         );
         setExamStartLocal(toDatetimeLocalValue(d.examStartAt));
         setExamEndLocal(toDatetimeLocalValue(d.examEndAt));
@@ -146,35 +198,62 @@ export default function ExamUpsertModal({
   }, [isOpen, mode, examId, onClose]);
 
   const handleSubmit = async () => {
-    const trimmedTitle = title.trim();
-    if (!trimmedTitle) {
-      toast.error("Title is required");
-      return;
-    }
-    if (!questionIds.length) {
-      toast.error("Select at least one question (exam or both usage)");
-      return;
-    }
+    if (mode === "create") {
+      // ── Create: validate all fields ─────────────────────────────────────────
+      const trimmedTitle = title.trim();
+      if (!trimmedTitle) {
+        toast.error("Title is required");
+        return;
+      }
+      const payload: Record<string, unknown> = {
+        title: trimmedTitle,
+        description: description.trim(),
+        examType,
+        questions: questionIds,
+        isActive,
+      };
 
-    const payload: Record<string, unknown> = {
-      title: trimmedTitle,
-      description: description.trim(),
-      questions: questionIds,
-      isActive,
-    };
-
-    const ts = thresholdScore.trim();
-    if (ts !== "") {
+      const ts = thresholdScore.trim();
+      if (ts === "") {
+        toast.error("Merit threshold is required");
+        return;
+      }
       const n = parseFloat(ts);
       if (Number.isNaN(n) || !Number.isFinite(n) || n < 0) {
         toast.error("Merit threshold must be a non-negative number");
         return;
       }
       payload.thresholdScore = n;
-    } else {
-      payload.thresholdScore = null;
-    }
 
+      await buildAndSubmitDates(payload);
+    } else {
+      // ── Edit: only mutable fields ────────────────────────────────────────────
+      if (!examId) {
+        toast.error("Missing exam id");
+        return;
+      }
+
+      const ts = thresholdScore.trim();
+      if (ts === "") {
+        toast.error("Merit threshold is required");
+        return;
+      }
+      const n = parseFloat(ts);
+      if (Number.isNaN(n) || !Number.isFinite(n) || n < 0) {
+        toast.error("Merit threshold must be a non-negative number");
+        return;
+      }
+
+      const payload: Record<string, unknown> = {
+        questions: questionIds,
+        thresholdScore: n,
+        isActive,
+      };
+      await buildAndSubmitDates(payload);
+    }
+  };
+
+  const buildAndSubmitDates = async (payload: Record<string, unknown>) => {
     const startStr = examStartLocal.trim();
     const endStr = examEndLocal.trim();
     if (startStr && endStr) {
@@ -220,12 +299,8 @@ export default function ExamUpsertModal({
         await apiClient.post(ENDPOINTS.internshipExams.create, payload);
         toast.success("Exam template created");
       } else {
-        if (!examId) {
-          toast.error("Missing exam id");
-          return;
-        }
         await apiClient.patch(
-          ENDPOINTS.internshipExams.adminById(examId),
+          ENDPOINTS.internshipExams.adminById(examId!),
           payload,
         );
         toast.success("Exam template updated");
@@ -259,22 +334,63 @@ export default function ExamUpsertModal({
         </div>
       ) : (
         <div className="flex flex-col gap-4">
-          <Input
-            label="Title"
-            required
-            placeholder="e.g. Entrance exam — July cohort"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
+          {/* ── CREATE: editable fields ──────────────────────────────────────── */}
+          {mode === "create" && (
+            <>
+              <Input
+                label="Title"
+                required
+                placeholder="e.g. Entrance exam — July cohort"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+              />
 
-          <TextArea
-            label="Description"
-            placeholder="Instructions or context for admins (optional)"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={3}
-          />
+              <TextArea
+                label="Description"
+                placeholder="Instructions or context for admins (optional)"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={3}
+              />
 
+              <Select
+                label="Exam type"
+                required
+                options={[
+                  { value: "entrance", label: "Entrance" },
+                  { value: "certification", label: "Certification" },
+                ]}
+                value={examType}
+                onChange={(v) => setExamType(v as ExamType)}
+                placeholder="Select type"
+              />
+            </>
+          )}
+
+          {/* ── EDIT: locked info panel ──────────────────────────────────────── */}
+          {mode === "edit" && (
+            <div className="rounded-xl border border-gray-200 bg-gray-50/60 p-4 flex flex-col gap-3">
+              <div className="flex items-center gap-2 mb-1">
+                <Lock className="w-4 h-4 text-gray-400" />
+                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                  Read-only fields
+                </span>
+              </div>
+              <LockedField label="Title" value={lockedTitle} />
+              {lockedDescription && (
+                <LockedField label="Description" value={lockedDescription} />
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <LockedField
+                  label="Type"
+                  value={EXAM_TYPE_LABELS[lockedExamType]}
+                />
+                <LockedField label="Total score" value={lockedTotalScore} />
+              </div>
+            </div>
+          )}
+
+          {/* ── ALWAYS EDITABLE ─────────────────────────────────────────────── */}
           <InfiniteScrollSelect<ExamBankQuestionRow>
             label="Questions"
             placeholder="Search exam-eligible questions…"
@@ -297,43 +413,47 @@ export default function ExamUpsertModal({
             emptyMessage="No questions with exam/both usage. Add them in the question bank."
             dropdownPortal
           />
-
           <p className="text-xs text-gray-500 -mt-2">
             Total score is computed from the selected questions when you save.
           </p>
 
           <Input
-            label="Merit threshold (optional)"
+            label="Merit threshold"
             type="number"
             min={0}
             step="any"
-            placeholder="Leave empty if not an entrance exam"
+            required
+            placeholder="Minimum score to qualify"
             value={thresholdScore}
             onChange={(e) => setThresholdScore(e.target.value)}
           />
           <p className="text-xs text-gray-500 -mt-2">
-            Minimum total score for the merit pool (entrance exams). Must not
-            exceed the template&apos;s total score.
+            Minimum total score for the merit pool. Must not exceed the
+            template&apos;s total score.
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input
-              label="Exam starts (optional)"
-              type="datetime-local"
-              value={examStartLocal}
-              onChange={(e) => setExamStartLocal(e.target.value)}
-            />
-            <Input
-              label="Exam ends (optional)"
-              type="datetime-local"
-              value={examEndLocal}
-              onChange={(e) => setExamEndLocal(e.target.value)}
-            />
+            <div>
+              <Input
+                label="Exam starts"
+                type="datetime-local"
+                required
+                value={examStartLocal}
+                onChange={(e) => setExamStartLocal(e.target.value)}
+              />
+            </div>
+            <div>
+              <Input
+                label="Exam ends"
+                type="datetime-local"
+                required
+                value={examEndLocal}
+                onChange={(e) => setExamEndLocal(e.target.value)}
+              />
+            </div>
           </div>
           <p className="text-xs text-gray-500 -mt-2">
-            Wall-clock window for this template (includes time). Leave both
-            empty if you only use unlock/due days relative to enrollment.
-            Frozen on each learner submission when it is created.
+            Wall-clock window for this template. Set both or clear both.
           </p>
 
           <Input
@@ -344,8 +464,8 @@ export default function ExamUpsertModal({
             onChange={(e) => setExamResultLocal(e.target.value)}
           />
           <p className="text-xs text-gray-500 -mt-2">
-            When learners can see official results. Must be on or after exam
-            end if an exam window is set.
+            When learners can see official results. Must be on or after exam end
+            if a window is set.
           </p>
 
           <CheckBoxContainer
@@ -369,7 +489,11 @@ export default function ExamUpsertModal({
               disabled={submitting}
               onClick={() => void handleSubmit()}
             >
-              {submitting ? "Saving…" : mode === "create" ? "Create" : "Save"}
+              {submitting
+                ? "Saving…"
+                : mode === "create"
+                  ? "Create"
+                  : "Save changes"}
             </OrangeButton>
           </div>
         </div>

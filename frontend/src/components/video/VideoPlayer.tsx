@@ -410,9 +410,17 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const togglePlay = useCallback(() => {
     const video = videoRef.current;
     if (!video) return;
-    
+
     if (video.paused) {
-      video.play().catch(() => {});
+      video.play().catch((err: unknown) => {
+        // AbortError during a pending load is expected — ignore.
+        // Anything else (NotAllowedError, NotSupportedError, decode errors)
+        // means the user pressed play and nothing happened; surface it.
+        const name = (err as { name?: string })?.name;
+        if (name === "AbortError") return;
+        console.error("Video play() rejected:", err);
+        setError("Unable to play this video. Try refreshing or selecting a different quality.");
+      });
     } else {
       video.pause();
     }
@@ -552,13 +560,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
       {/* Play/Pause Overlay */}
       {showControls && !isLoading && !isBuffering && !error && !isMobile && (
-        <div className="absolute inset-0 flex items-center justify-center">
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <button
             onClick={(e) => {
               e.stopPropagation();
               togglePlay();
             }}
-            className="bg-black/50 hover:bg-[#F77124]/90 text-white p-4 rounded-full transition-all duration-300 hover:scale-110"
+            className="bg-black/50 hover:bg-[#F77124]/90 text-white p-4 rounded-full transition-all duration-300 hover:scale-110 pointer-events-auto"
           >
             {isPlaying ? <Pause size={32} /> : <Play size={32} />}
           </button>

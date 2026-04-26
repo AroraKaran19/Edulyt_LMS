@@ -8,10 +8,28 @@ const orderSchema = new Schema<PaymentOrder>(
     amount: { type: Number, required: true },
     currency: { type: String, required: true, default: "INR" },
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
-    courseId: { type: Schema.Types.ObjectId, ref: "Course", required: true },
+    orderKind: {
+      type: String,
+      required: true,
+      enum: ["course", "internship_seat"],
+      default: "course",
+    },
+    courseId: { type: Schema.Types.ObjectId, ref: "Course", required: false },
     courseName: { type: String, required: false },
     userName: { type: String, required: false },
-    planType: { type: String, required: true, enum: ["elite", "essential"] },
+    planType: {
+      type: String,
+      required: false,
+      enum: ["elite", "essential"],
+    },
+    internshipId: { type: Schema.Types.ObjectId, ref: "Internship", required: false },
+    batchId: { type: String, required: false, trim: true },
+    internshipEnrollmentId: {
+      type: Schema.Types.ObjectId,
+      ref: "InternshipEnrollment",
+      required: false,
+    },
+    internshipTitle: { type: String, required: false, trim: true },
     paymentMode: { type: String, required: true, default: "online" },
     paymentMethod: { type: String, required: true, default: "paytm" },
     paymentStatus: {
@@ -41,10 +59,12 @@ const orderSchema = new Schema<PaymentOrder>(
 // indexes
 orderSchema.index({ userId: 1, createdAt: -1 });
 orderSchema.index({ courseId: 1, createdAt: -1 });
+orderSchema.index({ orderKind: 1, createdAt: -1 });
 orderSchema.index({ planType: 1, createdAt: -1 });
 orderSchema.index({ paymentMode: 1, createdAt: -1 });
 orderSchema.index({ paymentMethod: 1, createdAt: -1 });
 orderSchema.index({ paymentStatus: 1, createdAt: -1 });
+orderSchema.index({ internshipEnrollmentId: 1 }, { sparse: true });
 
 orderSchema.pre("save", async function (next) {
   if (!this.isNew) return next();

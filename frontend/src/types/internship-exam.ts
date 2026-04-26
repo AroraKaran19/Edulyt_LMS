@@ -8,10 +8,13 @@ import type { InternshipQuestionResponse } from "./internship-question";
  * Scheduling uses explicit wall-clock dates (`examStartAt`, `examEndAt`), NOT
  * relative unlock/due days (those are only for tasks). `examResultAt` is required.
  */
+export type ExamType = "entrance" | "certification";
+
 export interface InternshipExam {
   _id?: string;
   title: string;
   description?: string;
+  examType: ExamType;
 
   /** IDs of questions from the question bank (usageType: "exam" | "both"). */
   questions: string[];
@@ -63,6 +66,7 @@ export type InternshipExamTemplateDetail = {
   _id: string;
   title: string;
   description: string;
+  examType: ExamType;
   questions: InternshipExamQuestionSummary[];
   totalScore: number;
   thresholdScore?: number;

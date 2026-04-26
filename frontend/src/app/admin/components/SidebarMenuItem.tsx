@@ -138,6 +138,7 @@ const SidebarMenuItem = ({
                 href={submenu.href}
                 className="w-full flex items-center transition-all duration-300"
                 onClick={onNavigate}
+                draggable={false}
               >
                 {isSubmenuActive && (
                   <span className="text-orange-500 mx-2 animate-fade-from-left duration-300">

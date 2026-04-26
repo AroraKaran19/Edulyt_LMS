@@ -94,6 +94,12 @@ const courseSchema = new mongoose.Schema<Course>(
     previewVideoUrl: { type: String, required: false, default: "" },
     isFeatured: { type: Boolean, default: false, required: true },
     isCertified: { type: Boolean, default: false, required: true },
+    successPoints: {
+      type: Number,
+      default: 100,
+      min: 0,
+      max: 1_000_000,
+    },
     whatYouWillLearn: { type: String, required: true },
     skills: { type: [String], required: true },
     highlights: {

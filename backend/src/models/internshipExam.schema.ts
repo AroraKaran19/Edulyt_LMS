@@ -4,6 +4,12 @@ const internshipExamSchema = new mongoose.Schema(
   {
     title: { type: String, required: true, trim: true },
     description: { type: String, trim: true, default: "" },
+    examType: {
+      type: String,
+      enum: ["entrance", "certification"],
+      required: true,
+      default: "entrance",
+    },
     questions: [
       { type: mongoose.Schema.Types.ObjectId, ref: "InternshipQuestion" },
     ],

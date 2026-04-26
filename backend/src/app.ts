@@ -34,7 +34,10 @@ import {
   internshipQuestionRoutes,
   internshipTaskRoutes,
   internshipSubmissionRoutes,
+  internshipEnrollmentRoutes,
   partnerCollegeRoutes,
+  questionCategoryRoutes,
+  internshipVoucherRoutes,
 } from "./routes";
 
 dotenv.config();
@@ -88,7 +91,10 @@ app.use("/api/internship-exams", internshipExamRoutes);
 app.use("/api/internship-questions", internshipQuestionRoutes);
 app.use("/api/internship-tasks", internshipTaskRoutes);
 app.use("/api/internship-submissions", internshipSubmissionRoutes);
+app.use("/api/internship-enrollments", internshipEnrollmentRoutes);
 app.use("/api/partner-colleges", partnerCollegeRoutes);
+app.use("/api/question-categories", questionCategoryRoutes);
+app.use("/api/internship-vouchers", internshipVoucherRoutes);
 
 app.use(notFoundHandler); // Handle 404 errors
 app.use(errorHandler); // Handle all other errors

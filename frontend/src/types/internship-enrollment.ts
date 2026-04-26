@@ -16,15 +16,15 @@ export type InternshipEnrollmentType = "merit" | "paid";
  *
  * ── Merit path ────────────────────────────────────────────────────────────────
  *
+ *   exam_registered
+ *     └─ User completed the enrollment form; waiting for the exam date.
  *   exam_attempted
  *     └─ User submitted the entrance exam; automated scoring pending.
  *   in_merit_pool
  *     └─ Score ≥ thresholdScore; added to the candidate pool.
  *        Being here does NOT guarantee a seat — admin picks from the pool.
- *   admin_approved  (transitional — immediately moves to "enrolled")
- *     └─ Admin selected this candidate; becoming enrolled.
  *   admin_rejected  (terminal)
- *     └─ Admin did not pick this candidate.
+ *     └─ Admin did not select this candidate.
  *   enrolled
  *     └─ Seat confirmed; tasks and exams start unlocking.
  *
@@ -43,16 +43,24 @@ export type InternshipEnrollmentType = "merit" | "paid";
  *   paused     — enrollment temporarily frozen (e.g. medical leave).
  */
 export type InternshipEnrollmentStatus =
+  | "exam_registered"  // merit: form submitted, waiting for exam date
   | "exam_attempted"   // merit: exam submitted, result pending
   | "in_merit_pool"    // merit: passed threshold, awaiting admin seat selection
-  | "admin_approved"   // merit: admin picked this candidate (transitional)
-  | "admin_rejected"   // merit: admin rejected (terminal)
+  | "admin_rejected"   // merit: admin did not select this candidate (terminal)
   | "payment_pending"  // paid: payment initiated, awaiting gateway confirmation
   | "enrolled"         // both paths: fully active enrollment
   | "completed"        // post-enrollment: program finished
   | "dropped"          // post-enrollment: voluntary withdrawal
   | "revoked"          // post-enrollment: admin-forced removal
   | "paused";          // post-enrollment: temporarily frozen
+
+// ─── Internship snapshot ──────────────────────────────────────────────────────
+
+export interface EnrollmentInternshipSnapshot {
+  title: string;
+  slug: string;
+  thumbnail?: string;
+}
 
 // ─── Batch snapshot ───────────────────────────────────────────────────────────
 
@@ -84,6 +92,9 @@ export interface InternshipEnrollment {
 
   /** `Internship._id` — the internship program this enrollment belongs to. */
   internship: string;
+
+  /** Snapshot of the internship captured once at enrollment time. */
+  internshipSnapshot?: EnrollmentInternshipSnapshot;
 
   /**
    * Snapshot of the batch the learner enrolled into.
@@ -177,4 +188,128 @@ export interface ListInternshipEnrollmentsResult {
   total: number;
   page: number;
   totalPages: number;
+}
+/** Row for admin list of internship batches that run an entrance exam. */
+export interface EntranceExamCohortRow {
+  internshipId: string;
+  internshipTitle: string;
+  internshipSlug: string;
+  batchId: string;
+  batchName: string;
+  applicationLastDate: string;
+  internshipStartDate: string;
+  examId: string;
+  examTitle: string;
+}
+
+export interface InternshipEnrollmentListRow {
+  _id: string;
+  user: {
+    _id: string;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    name?: string;
+  } | null;
+  internship: {
+    _id: string;
+    title: string;
+    slug?: string;
+  } | null;
+  internshipSnapshot?: EnrollmentInternshipSnapshot;
+  /** Snapshot fields; `internshipStartDate` is an ISO string over the wire. */
+  batchSnapshot?: {
+    batchId: string;
+    name: string;
+    internshipStartDate: string;
+  };
+  enrollmentType?: InternshipEnrollmentType;
+  /** Known values match {@link InternshipEnrollmentStatus}; `string` allows API drift. */
+  status: string;
+  examScore?: number;
+  internshipSuccessPoints: number;
+  enrolledAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  /** ISO — when the entrance exam window opens (populated for merit-path `exam_registered`/`exam_attempted`). */
+  examStartAt?: string;
+  /** ISO — when the entrance exam window closes. */
+  examEndAt?: string;
+  /** ISO — when the exam result will be announced. */
+  examResultAt?: string;
+}
+
+// ─── Learner entrance exam ────────────────────────────────────────────────────
+
+export interface LearnerEntranceExamQuestion {
+  questionId: string;
+  questionText: string;
+  type: "mcq" | "file_upload";
+  score: number;
+  options?: { optionId: string; text: string }[];
+}
+
+export interface LearnerEntranceExam {
+  examId: string;
+  enrollmentId: string;
+  internshipId: string;
+  batchId: string;
+  title: string;
+  description: string;
+  totalScore: number;
+  thresholdScore?: number;
+  examStartAt?: string;
+  examEndAt?: string;
+  examResultAt?: string;
+  questions: LearnerEntranceExamQuestion[];
+  /** Existing draft submission id, if the learner already started. */
+  existingSubmissionId?: string;
+}
+
+// ─── Learner program detail (slug-based) ──────────────────────────────────────
+
+export interface LearnerTaskRow {
+  _id: string;
+  title: string;
+  description: string;
+  taskType: "attendance" | "task";
+  totalScore: number;
+  scoreThreshold: number;
+  unlockAfterDays: number;
+  dueDays: number;
+  questionCount: number;
+  isUnlocked: boolean;
+  isDue: boolean;
+  visibleFrom: string;
+  dueAt: string;
+  submission?: {
+    _id: string;
+    status: string;
+    totalAwardedScore: number;
+  };
+}
+
+export interface LearnerProgramEnrollment {
+  _id: string;
+  status: string;
+  enrollmentType?: string;
+  enrolledAt?: string;
+  internshipSuccessPoints: number;
+  internshipId: string;
+  batchId: string;
+  internshipSnapshot?: {
+    title: string;
+    slug: string;
+    thumbnail?: string;
+  };
+  batchSnapshot?: {
+    batchId: string;
+    name: string;
+    internshipStartDate: string;
+  };
+}
+
+export interface LearnerProgramDetail {
+  enrollment: LearnerProgramEnrollment;
+  tasks: LearnerTaskRow[];
 }

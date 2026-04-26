@@ -4,6 +4,8 @@ import { InternshipModel } from "../models/internship.schema";
 import { InternshipQuestionModel } from "../models/internshipQuestion.schema";
 import { AppError } from "../middlewares/error.middleware";
 
+export type ExamType = "entrance" | "certification";
+
 function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -11,6 +13,7 @@ function escapeRegex(s: string): string {
 async function resolvePinnedExamTemplateIds(
   internshipId?: string,
   batchId?: string,
+  examType?: ExamType,
 ): Promise<mongoose.Types.ObjectId[]> {
   if (
     !internshipId ||
@@ -21,18 +24,32 @@ async function resolvePinnedExamTemplateIds(
     return [];
   }
   const doc = await InternshipModel.findById(internshipId)
-    .select("batches.examTemplateIds batches._id")
+    .select("batches.entranceExamTemplateId batches.certificationExamTemplateId batches._id")
     .lean();
   if (!doc || !Array.isArray((doc as { batches?: unknown[] }).batches)) {
     return [];
   }
   const batches = (
-    doc as { batches: { _id?: unknown; examTemplateIds?: unknown[] }[] }
+    doc as {
+      batches: {
+        _id?: unknown;
+        entranceExamTemplateId?: unknown;
+        certificationExamTemplateId?: unknown;
+      }[];
+    }
   ).batches;
   const batch = batches.find((b) => String(b._id) === batchId);
-  const raw = batch?.examTemplateIds;
-  if (!Array.isArray(raw)) return [];
-  return raw
+  if (!batch) return [];
+
+  const candidates: unknown[] = [];
+  if (examType === "entrance" || !examType) {
+    if (batch.entranceExamTemplateId != null) candidates.push(batch.entranceExamTemplateId);
+  }
+  if (examType === "certification" || !examType) {
+    if (batch.certificationExamTemplateId != null) candidates.push(batch.certificationExamTemplateId);
+  }
+
+  return candidates
     .map((id) => {
       try {
         return new mongoose.Types.ObjectId(String(id));
@@ -46,6 +63,7 @@ async function resolvePinnedExamTemplateIds(
 export type ExamListRow = {
   _id: string;
   title: string;
+  examType: ExamType;
   questionCount: number;
   totalScore: number;
   thresholdScore?: number;
@@ -69,6 +87,7 @@ export async function listInternshipExamTemplatesAdmin(
   batchId?: string,
   includeInactive = false,
   statusFilter?: "all" | "active" | "inactive",
+  examType?: ExamType,
 ): Promise<{
   exams: ExamListRow[];
   total: number;
@@ -90,17 +109,22 @@ export async function listInternshipExamTemplatesAdmin(
     filter.isActive = true;
   }
 
+  if (examType) {
+    filter.examType = examType;
+  }
+
   if (search?.trim()) {
     filter.title = new RegExp(escapeRegex(search.trim()), "i");
   }
 
-  const pinnedIds = await resolvePinnedExamTemplateIds(internshipId, batchId);
+  const pinnedIds = await resolvePinnedExamTemplateIds(internshipId, batchId, examType);
 
   const total = await InternshipExamModel.countDocuments(filter);
 
   const mapRow = (r: {
     _id: unknown;
     title?: string;
+    examType?: string;
     totalScore?: number;
     thresholdScore?: number | null;
     examResultAt?: Date;
@@ -111,6 +135,7 @@ export async function listInternshipExamTemplatesAdmin(
   }): ExamListRow => ({
     _id: String(r._id),
     title: String(r.title ?? ""),
+    examType: r.examType === "certification" ? "certification" : "entrance",
     questionCount:
       typeof r.questionCount === "number"
         ? r.questionCount
@@ -133,7 +158,7 @@ export async function listInternshipExamTemplatesAdmin(
       .skip(skip)
       .limit(l)
       .select(
-        "title totalScore thresholdScore examResultAt isActive updatedAt questions",
+        "title examType totalScore thresholdScore examResultAt isActive updatedAt questions",
       )
       .lean();
     return {
@@ -163,6 +188,7 @@ export async function listInternshipExamTemplatesAdmin(
       $project: {
         _id: 1,
         title: 1,
+        examType: 1,
         totalScore: 1,
         thresholdScore: 1,
         examResultAt: 1,
@@ -176,6 +202,7 @@ export async function listInternshipExamTemplatesAdmin(
   const rows = await InternshipExamModel.aggregate<{
     _id: mongoose.Types.ObjectId;
     title: string;
+    examType?: string;
     totalScore: number;
     thresholdScore?: number;
     examResultAt?: Date;
@@ -197,9 +224,10 @@ export async function listInternshipExamTemplatesAdmin(
 export type UpsertInternshipExamBody = {
   title: string;
   description?: string;
-  questions: string[];
-  /** Merit-pool minimum; optional; must be ≤ totalScore when set. `null` clears. */
-  thresholdScore?: number | null;
+  examType: ExamType;
+  questions?: string[];
+  /** Merit-pool minimum; required; must be ≤ totalScore. */
+  thresholdScore: number;
   /**
    * Wall-clock exam window. Set both ISO strings/dates together, or both `null`
    * to clear. Omit both only when not changing an existing window (PATCH).
@@ -207,6 +235,16 @@ export type UpsertInternshipExamBody = {
   examStartAt?: string | Date | null;
   examEndAt?: string | Date | null;
   /** Required. ISO string or Date. */
+  examResultAt: string | Date;
+  isActive?: boolean;
+};
+
+/** Body accepted when updating an existing exam — only mutable fields. */
+export type UpdateInternshipExamBody = {
+  questions?: string[];
+  thresholdScore?: number;
+  examStartAt?: string | Date | null;
+  examEndAt?: string | Date | null;
   examResultAt: string | Date;
   isActive?: boolean;
 };
@@ -224,6 +262,7 @@ export type InternshipExamDetailAdmin = {
   _id: string;
   title: string;
   description: string;
+  examType: ExamType;
   questions: InternshipExamQuestionSummary[];
   totalScore: number;
   thresholdScore?: number;
@@ -243,9 +282,7 @@ export type InternshipExamDetailAdmin = {
 };
 
 function normalizeQuestionIdOrder(raw: unknown): mongoose.Types.ObjectId[] {
-  if (!Array.isArray(raw) || raw.length === 0) {
-    throw new AppError("At least one question is required", 400);
-  }
+  if (!Array.isArray(raw)) return [];
   const seen = new Set<string>();
   const out: mongoose.Types.ObjectId[] = [];
   for (const id of raw) {
@@ -257,9 +294,6 @@ function normalizeQuestionIdOrder(raw: unknown): mongoose.Types.ObjectId[] {
     if (seen.has(s)) continue;
     seen.add(s);
     out.push(new mongoose.Types.ObjectId(s));
-  }
-  if (out.length === 0) {
-    throw new AppError("At least one question is required", 400);
   }
   return out;
 }
@@ -328,7 +362,8 @@ function parseOptionalThresholdScore(
   if (Number.isNaN(raw) || !Number.isFinite(raw) || raw < 0) {
     throw new AppError("thresholdScore must be a non-negative number", 400);
   }
-  if (raw > totalScore) {
+  // Only enforce the ceiling when questions have actually been added
+  if (totalScore > 0 && raw > totalScore) {
     throw new AppError(
       "thresholdScore cannot be greater than the template total score",
       400,
@@ -372,6 +407,7 @@ function parseInstant(value: unknown, field: string): Date {
 async function computeExamFields(body: UpsertInternshipExamBody): Promise<{
   title: string;
   description: string;
+  examType: ExamType;
   questions: mongoose.Types.ObjectId[];
   totalScore: number;
   thresholdScore?: number;
@@ -387,12 +423,23 @@ async function computeExamFields(body: UpsertInternshipExamBody): Promise<{
   }
   const description =
     typeof body.description === "string" ? body.description.trim() : "";
+  if (!body.examType || !["entrance", "certification"].includes(body.examType)) {
+    throw new AppError("examType must be entrance or certification", 400);
+  }
+  const examType = body.examType as ExamType;
   const questionOids = normalizeQuestionIdOrder(body.questions);
   const totalScore = await resolveQuestionsForExam(questionOids);
+
+  if (body.thresholdScore == null) {
+    throw new AppError("thresholdScore is required", 400);
+  }
   const thresholdScore = parseOptionalThresholdScore(
     body.thresholdScore,
     totalScore,
   );
+  if (thresholdScore === undefined) {
+    throw new AppError("thresholdScore must be a valid non-negative number", 400);
+  }
 
   let examStartAt: Date | undefined;
   let examEndAt: Date | undefined;
@@ -435,6 +482,7 @@ async function computeExamFields(body: UpsertInternshipExamBody): Promise<{
   return {
     title,
     description,
+    examType,
     questions: questionOids,
     totalScore,
     thresholdScore,
@@ -506,11 +554,15 @@ export async function getInternshipExamByIdAdmin(
   const examStartAt = (doc as { examStartAt?: Date }).examStartAt;
   const examEndAt = (doc as { examEndAt?: Date }).examEndAt;
   const examResultAt = (doc as { examResultAt?: Date }).examResultAt;
+  const rawExamType = (doc as { examType?: string }).examType;
+  const examType: ExamType =
+    rawExamType === "certification" ? "certification" : "entrance";
 
   return {
     _id: String(doc._id),
     title: String(doc.title ?? ""),
     description: String(doc.description ?? ""),
+    examType,
     questions,
     totalScore: typeof doc.totalScore === "number" ? doc.totalScore : 0,
     thresholdScore:
@@ -550,32 +602,75 @@ export async function createInternshipExamAdmin(
 
 export async function updateInternshipExamAdmin(
   id: string,
-  body: UpsertInternshipExamBody,
+  body: UpdateInternshipExamBody,
 ): Promise<InternshipExamDetailAdmin> {
   if (!mongoose.Types.ObjectId.isValid(id)) {
     throw new AppError("Invalid exam id", 400);
   }
-  const fields = await computeExamFields(body);
-  const { clearExamWindow, ...fieldsForSet } = fields;
-  const $set = Object.fromEntries(
-    Object.entries(fieldsForSet).filter(([, v]) => v !== undefined),
-  ) as Record<string, unknown>;
-  const $unset: Record<string, ""> = {};
-  if (fields.thresholdScore === undefined) {
-    $unset.thresholdScore = "";
+
+  // Resolve and validate the mutable fields only
+  const questionOids = normalizeQuestionIdOrder(body.questions);
+  const totalScore = await resolveQuestionsForExam(questionOids);
+
+  let examStartAt: Date | undefined;
+  let examEndAt: Date | undefined;
+  let clearExamWindow = false;
+  const s = body.examStartAt;
+  const e = body.examEndAt;
+  if (s === null && e === null) {
+    clearExamWindow = true;
+  } else if ((s === undefined || s === "") && (e === undefined || e === "")) {
+    // no window in payload — leave existing
+  } else {
+    if (s == null || s === "" || e == null || e === "") {
+      throw new AppError(
+        "examStartAt and examEndAt must both be set together, or both null to clear",
+        400,
+      );
+    }
+    examStartAt = parseInstant(s, "examStartAt");
+    examEndAt = parseInstant(e, "examEndAt");
+    if (examEndAt.getTime() <= examStartAt.getTime()) {
+      throw new AppError("examEndAt must be after examStartAt", 400);
+    }
   }
+
+  const resRaw = body.examResultAt;
+  if (resRaw == null || resRaw === "") {
+    throw new AppError("examResultAt is required", 400);
+  }
+  const examResultAt = parseInstant(resRaw, "examResultAt");
+  if (examEndAt && examResultAt.getTime() < examEndAt.getTime()) {
+    throw new AppError(
+      "examResultAt must be on or after examEndAt when an exam window is set",
+      400,
+    );
+  }
+
+  const thresholdScore = parseOptionalThresholdScore(
+    body.thresholdScore,
+    totalScore,
+  );
+
+  const $set: Record<string, unknown> = {
+    questions: questionOids,
+    totalScore,
+    ...(thresholdScore !== undefined ? { thresholdScore } : {}),
+    examResultAt,
+    isActive: body.isActive !== false,
+    ...(examStartAt && examEndAt ? { examStartAt, examEndAt } : {}),
+  };
+  const $unset: Record<string, ""> = {};
   $unset.maxAttempts = "";
   $unset.duration = "";
   if (clearExamWindow) {
     $unset.examStartAt = "";
     $unset.examEndAt = "";
   }
+
   const updated = await InternshipExamModel.findByIdAndUpdate(
     id,
-    {
-      $set,
-      ...(Object.keys($unset).length ? { $unset } : {}),
-    },
+    { $set, ...(Object.keys($unset).length ? { $unset } : {}) },
     { new: true, runValidators: true },
   ).lean();
   if (!updated) {
@@ -588,18 +683,21 @@ export async function deleteInternshipExamAdmin(id: string): Promise<void> {
   if (!mongoose.Types.ObjectId.isValid(id)) {
     throw new AppError("Invalid exam id", 400);
   }
-  const oid = new mongoose.Types.ObjectId(id);
-  const linked = await InternshipModel.exists({
-    "batches.examTemplateIds": oid,
-  });
-  if (linked) {
-    throw new AppError(
-      "This exam template is linked to one or more internship batches. Remove it from those batches before deleting.",
-      400,
-    );
-  }
   const res = await InternshipExamModel.findByIdAndDelete(id);
   if (!res) {
     throw new AppError("Exam template not found", 404);
   }
+  // Clear the single entrance or certification slot that referenced this template
+  const isEntrance = (res as { examType?: string }).examType !== "certification";
+  const matchField = isEntrance
+    ? "batches.entranceExamTemplateId"
+    : "batches.certificationExamTemplateId";
+  const unsetField = isEntrance
+    ? "batches.$[elem].entranceExamTemplateId"
+    : "batches.$[elem].certificationExamTemplateId";
+  await InternshipModel.updateMany(
+    { [matchField]: res._id },
+    { $unset: { [unsetField]: "" } },
+    { arrayFilters: [{ [`elem.${isEntrance ? "entranceExamTemplateId" : "certificationExamTemplateId"}`]: res._id }] },
+  );
 }

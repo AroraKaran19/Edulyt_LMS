@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { Search, Filter, ChevronDown, FileX, Loader2 } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { Search, ChevronDown, FileX, Loader2 } from "lucide-react";
 import { Course } from "@/types";
 import EmptyState from "../components/applications/EmptyState";
 import { cn } from "@/lib/utils";
@@ -29,9 +30,12 @@ const sortOptions = [
 ];
 
 const CoursesPage = () => {
+  const searchParams = useSearchParams();
+  const initialSearch = searchParams.get("search") ?? "";
+
   const [activeTab, setActiveTab] = useState("All");
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [search, setSearch] = useState(initialSearch);
+  const [debouncedSearch, setDebouncedSearch] = useState(initialSearch);
   const [selectedFilters, setSelectedFilters] = useState([
     { label: "All Categories", value: "all" },
   ]);

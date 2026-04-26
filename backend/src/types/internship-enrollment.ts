@@ -16,15 +16,15 @@ export type InternshipEnrollmentType = "merit" | "paid";
  *
  * ── Merit path ────────────────────────────────────────────────────────────────
  *
+ *   exam_registered
+ *     └─ User completed the enrollment form; waiting for the exam date.
  *   exam_attempted
  *     └─ User submitted the entrance exam; automated scoring pending.
  *   in_merit_pool
  *     └─ Score ≥ thresholdScore; added to the candidate pool.
  *        Being here does NOT guarantee a seat — admin picks from the pool.
- *   admin_approved  (transitional — immediately moves to "enrolled")
- *     └─ Admin selected this candidate; becoming enrolled.
  *   admin_rejected  (terminal)
- *     └─ Admin did not pick this candidate.
+ *     └─ Admin did not select this candidate.
  *   enrolled
  *     └─ Seat confirmed; tasks and exams start unlocking.
  *
@@ -43,16 +43,27 @@ export type InternshipEnrollmentType = "merit" | "paid";
  *   paused     — enrollment temporarily frozen (e.g. medical leave).
  */
 export type InternshipEnrollmentStatus =
+  | "exam_registered"  // merit: form submitted, waiting for exam date
   | "exam_attempted"   // merit: exam submitted, result pending
   | "in_merit_pool"    // merit: passed threshold, awaiting admin seat selection
-  | "admin_approved"   // merit: admin picked this candidate (transitional)
-  | "admin_rejected"   // merit: admin rejected (terminal)
+  | "admin_rejected"   // merit: admin did not select this candidate (terminal)
   | "payment_pending"  // paid: payment initiated, awaiting gateway confirmation
   | "enrolled"         // both paths: fully active enrollment
   | "completed"        // post-enrollment: program finished
   | "dropped"          // post-enrollment: voluntary withdrawal
   | "revoked"          // post-enrollment: admin-forced removal
   | "paused";          // post-enrollment: temporarily frozen
+
+// ─── Internship snapshot ──────────────────────────────────────────────────────
+
+/**
+ * Immutable snapshot of the internship captured at enrollment time.
+ */
+export interface EnrollmentInternshipSnapshot {
+  title: string;
+  slug: string;
+  thumbnail?: string;
+}
 
 // ─── Batch snapshot ───────────────────────────────────────────────────────────
 
@@ -84,6 +95,9 @@ export interface InternshipEnrollment {
 
   /** `Internship._id` — the internship program this enrollment belongs to. */
   internship: string;
+
+  /** Snapshot of the internship captured once at enrollment time. */
+  internshipSnapshot?: EnrollmentInternshipSnapshot;
 
   /**
    * Snapshot of the batch the learner enrolled into.

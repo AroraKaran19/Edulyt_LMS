@@ -22,12 +22,13 @@ import {
   ReactElement,
 } from "react";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
+import ApplyPathModal from "./ApplyPathModal";
 
 const InternshipHeader = ({ internship }: { internship: Internship }) => {
   const heroLines =
     internship.headerList?.map((s) => s?.trim()).filter(Boolean) ?? [];
-  const router = useRouter();
+  const [applyModalOpen, setApplyModalOpen] = useState(false);
 
   const handleDownloadBrochure = async () => {
     try {
@@ -308,9 +309,7 @@ const InternshipHeader = ({ internship }: { internship: Internship }) => {
                 <OrangeButton
                   glow={false}
                   className="w-full"
-                  onClick={() =>
-                    router.push(`/internships/${internship.slug}/enroll`)
-                  }
+                  onClick={() => setApplyModalOpen(true)}
                 >
                   Apply Now
                 </OrangeButton>
@@ -319,6 +318,11 @@ const InternshipHeader = ({ internship }: { internship: Internship }) => {
           </div>
         </div>
       </div>
+      <ApplyPathModal
+        isOpen={applyModalOpen}
+        onClose={() => setApplyModalOpen(false)}
+        internshipSlug={internship.slug}
+      />
     </div>
   );
 };

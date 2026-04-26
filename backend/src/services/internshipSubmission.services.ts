@@ -454,13 +454,41 @@ export async function submitSubmission(
 
   await sub.save();
 
+  // ── Entrance exam: automatically advance enrollment status based on score ──
+  const submissionFor = String(
+    (sub as { submissionFor?: unknown }).submissionFor ?? "",
+  );
+
+  if (submissionFor === "exam") {
+    const snap = sub.toObject().templateSnapshot as ExamTemplateSnapshot & {
+      thresholdScore?: number;
+    };
+    const threshold =
+      typeof snap.thresholdScore === "number" ? snap.thresholdScore : 0;
+    const passed = sub.totalAwardedScore >= threshold;
+
+    // Transition the enrollment: qualified → in_merit_pool, otherwise → exam_attempted
+    const newStatus = passed ? "in_merit_pool" : "exam_attempted";
+    await InternshipEnrollmentModel.findOneAndUpdate(
+      {
+        _id: (sub as { enrollmentId?: unknown }).enrollmentId,
+        status: "exam_registered", // guard: only advance from the expected status
+      },
+      {
+        $set: {
+          status: newStatus,
+          examScore: sub.totalAwardedScore,
+          examAttemptedAt: new Date(),
+        },
+      },
+    );
+  }
+
   // For task submissions with no file questions the review is instantaneous —
   // accrue success points now if the learner passed.
-  if (!hasFileQuestions) {
+  if (!hasFileQuestions && submissionFor !== "exam") {
     await accrueSuccessPointsIfPassed({
-      submissionFor: String(
-        (sub as { submissionFor?: unknown }).submissionFor ?? "",
-      ),
+      submissionFor,
       enrollmentId: (sub as { enrollmentId?: unknown }).enrollmentId,
       totalAwardedScore: sub.totalAwardedScore,
       templateSnapshot: sub.toObject().templateSnapshot,
@@ -613,6 +641,7 @@ export async function listSubmissionsAdmin(
     userId?: string;
     taskId?: string;
     examId?: string;
+    enrollmentId?: string;
   } = {},
 ): Promise<{
   submissions: Record<string, unknown>[];
@@ -636,6 +665,12 @@ export async function listSubmissionsAdmin(
   }
   if (filters.userId && mongoose.Types.ObjectId.isValid(filters.userId)) {
     filter.userId = new mongoose.Types.ObjectId(filters.userId);
+  }
+  if (
+    filters.enrollmentId &&
+    mongoose.Types.ObjectId.isValid(filters.enrollmentId)
+  ) {
+    filter.enrollmentId = new mongoose.Types.ObjectId(filters.enrollmentId);
   }
   const tid = filters.taskId?.trim();
   if (tid) filter.taskId = tid;

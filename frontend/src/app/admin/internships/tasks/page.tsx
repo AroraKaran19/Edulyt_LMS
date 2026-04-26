@@ -13,10 +13,12 @@ import TaskUpsertModal from "./components/TaskUpsertModal";
 import TaskDetailModal from "./components/TaskDetailModal";
 import DeleteTaskConfirmModal from "./components/DeleteTaskConfirmModal";
 import TaskSubmissionsModal from "./components/TaskSubmissionsModal";
+import type { TaskType } from "@/types/internship-task";
 
 type TaskRow = {
   _id: string;
   title: string;
+  taskType: TaskType;
   questionCount: number;
   totalScore: number;
   scoreThreshold: number;
@@ -24,6 +26,11 @@ type TaskRow = {
   dueDays: number;
   isActive: boolean;
   updatedAt?: string;
+};
+
+const TASK_TYPE_LABEL: Record<TaskType, string> = {
+  task: "Task",
+  attendance: "Attendance",
 };
 
 function formatDate(iso?: string) {
@@ -41,7 +48,7 @@ function formatDate(iso?: string) {
   }
 }
 
-const COL_SPAN = 9;
+const COL_SPAN = 10;
 
 export default function InternshipTaskTemplatesAdminPage() {
   const [tasks, setTasks] = useState<TaskRow[]>([]);
@@ -100,6 +107,7 @@ export default function InternshipTaskTemplatesAdminPage() {
       setTasks(
         rows.map((r) => ({
           ...r,
+          taskType: r.taskType === "attendance" ? "attendance" : "task",
           questionCount:
             typeof r.questionCount === "number" ? r.questionCount : 0,
           scoreThreshold:
@@ -181,34 +189,37 @@ export default function InternshipTaskTemplatesAdminPage() {
         }
       >
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[960px]">
+          <table className="w-full min-w-[1080px]">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase min-w-[180px]">
+                <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 min-w-[160px]">
                   Title
                 </th>
-                <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase whitespace-nowrap">
+                <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 whitespace-nowrap">
+                  Type
+                </th>
+                <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 whitespace-nowrap">
                   Questions
                 </th>
-                <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase whitespace-nowrap">
+                <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 tabular-nums">
                   Score
                 </th>
-                <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase whitespace-nowrap">
+                <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 tabular-nums">
                   Pass at
                 </th>
-                <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase whitespace-nowrap">
-                  Unlock (d)
+                <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 max-w-28 leading-tight">
+                  Unlock after (days)
                 </th>
-                <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase whitespace-nowrap">
-                  Due (d)
+                <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 max-w-28 leading-tight">
+                  Due after (days)
                 </th>
-                <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase whitespace-nowrap">
-                  Active
+                <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 whitespace-nowrap">
+                  Status
                 </th>
-                <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase whitespace-nowrap">
+                <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 whitespace-nowrap">
                   Updated
                 </th>
-                <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase whitespace-nowrap">
+                <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 whitespace-nowrap">
                   Actions
                 </th>
               </tr>
@@ -257,6 +268,17 @@ export default function InternshipTaskTemplatesAdminPage() {
                     <td className="px-4 sm:px-6 py-4 text-sm text-gray-900 max-w-xs">
                       <span className="line-clamp-2 font-medium">
                         {t.title || "—"}
+                      </span>
+                    </td>
+                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                      <span
+                        className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full border ${
+                          t.taskType === "attendance"
+                            ? "bg-sky-50 text-sky-800 border-sky-200"
+                            : "bg-amber-50 text-amber-900 border-amber-200"
+                        }`}
+                      >
+                        {TASK_TYPE_LABEL[t.taskType]}
                       </span>
                     </td>
                     <td className="px-4 sm:px-6 py-4 text-sm text-gray-600 tabular-nums whitespace-nowrap">

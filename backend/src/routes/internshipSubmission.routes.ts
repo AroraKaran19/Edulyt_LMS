@@ -4,6 +4,7 @@ import { verifyAdmin } from "../middlewares/admin.middleware";
 import {
   createSubmissionController,
   getSubmissionController,
+  getSubmissionAdminController,
   saveMCQAnswerController,
   saveFileAnswerController,
   submitController,
@@ -20,6 +21,9 @@ router.post("/", createSubmissionController);
 
 /** GET /api/internship-submissions/admin — admin list */
 router.get("/admin", verifyAdmin, listSubmissionsAdminController);
+
+/** GET /api/internship-submissions/admin/:submissionId — full detail for admin */
+router.get("/admin/:submissionId", verifyAdmin, getSubmissionAdminController);
 
 /** GET /api/internship-submissions/:submissionId */
 router.get("/:submissionId", getSubmissionController);

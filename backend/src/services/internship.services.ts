@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { InternshipModel } from "../models/internship.schema";
+import { InternshipExamModel } from "../models/internshipExam.schema";
 import {
   Internship,
   InternshipAnalytics,
@@ -10,6 +11,8 @@ import {
   ListPublicInternshipsResult,
 } from "../types/internship";
 import type { CourseDiscount, Discount } from "../types";
+import { isApplicationWindowOpenIst } from "../utils/applicationWindow";
+import { calculateFinalDiscountedPrice } from "../utils/lib/calculateDiscount";
 
 const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -137,8 +140,15 @@ function normalizeBatchDoc(
     const normalized = normalizeInternshipBatchPlan(planSource);
     if (normalized) row.plan = normalized;
   }
-  if (Array.isArray(b.examTemplateIds)) {
-    row.examTemplateIds = b.examTemplateIds.map((id) => String(id));
+  const batchAny = b as {
+    entranceExamTemplateId?: unknown;
+    certificationExamTemplateId?: unknown;
+  };
+  if (batchAny.entranceExamTemplateId != null) {
+    row.entranceExamTemplateId = String(batchAny.entranceExamTemplateId);
+  }
+  if (batchAny.certificationExamTemplateId != null) {
+    row.certificationExamTemplateId = String(batchAny.certificationExamTemplateId);
   }
   if (Array.isArray(b.taskTemplateIds)) {
     row.taskTemplateIds = b.taskTemplateIds.map((id) => String(id));
@@ -463,6 +473,163 @@ export const getInternshipBySlugService = async (
     .lean();
   if (!doc) return null;
   return doc as unknown as InternshipResponse;
+};
+
+/** Public enroll page: cohorts + entrance exam window (no admin auth). */
+export type InternshipEnrollPreviewEntranceExam = {
+  title: string;
+  examStartAt: string | null;
+  examEndAt: string | null;
+  examResultAt: string | null;
+};
+
+export type InternshipEnrollPreviewBatch = {
+  _id: string;
+  name: string;
+  applicationLastDate: string;
+  internshipStartDate: string;
+  status: string;
+  isActive: boolean;
+  entranceExam: InternshipEnrollPreviewEntranceExam | null;
+  /** Set when the batch has an active `plan` (direct seat purchase). */
+  plan?: { listPrice: number; amount: number };
+};
+
+export type InternshipEnrollPreview = {
+  internship: { _id: string; title: string; slug: string };
+  batches: InternshipEnrollPreviewBatch[];
+};
+
+const toIso = (d: unknown): string => {
+  if (d == null) return "";
+  const t = new Date(d as string | Date).getTime();
+  if (Number.isNaN(t)) return "";
+  return new Date(t).toISOString();
+};
+
+/**
+ * Lean data for public enrollment: open batches with optional entrance exam windows.
+ */
+export const getInternshipEnrollPreviewService = async (
+  slug: string,
+): Promise<InternshipEnrollPreview | null> => {
+  const doc = await InternshipModel.findOne({ slug, isActive: true })
+    .select("title slug batches discount")
+    .lean();
+  if (!doc || doc._id == null) return null;
+
+  const batchesRaw = Array.isArray(doc.batches) ? doc.batches : [];
+  const examIdSet = new Set<string>();
+  for (const b of batchesRaw) {
+    const br = b as Record<string, unknown>;
+    if (br.entranceExamTemplateId != null) {
+      const id = String(br.entranceExamTemplateId);
+      if (mongoose.Types.ObjectId.isValid(id)) examIdSet.add(id);
+    }
+  }
+
+  const examMap = new Map<
+    string,
+    { title: string; examStartAt?: Date; examEndAt?: Date; examResultAt?: Date }
+  >();
+  if (examIdSet.size > 0) {
+    const exams = await InternshipExamModel.find({
+      _id: { $in: [...examIdSet].map((id) => new mongoose.Types.ObjectId(id)) },
+    })
+      .select("title examStartAt examEndAt examResultAt")
+      .lean();
+    for (const e of exams) {
+      const row = e as {
+        _id: unknown;
+        title?: string;
+        examStartAt?: Date;
+        examEndAt?: Date;
+        examResultAt?: Date;
+      };
+      examMap.set(String(row._id), {
+        title: String(row.title ?? "Entrance exam"),
+        examStartAt: row.examStartAt,
+        examEndAt: row.examEndAt,
+        examResultAt: row.examResultAt,
+      });
+    }
+  }
+
+  const batches: InternshipEnrollPreviewBatch[] = [];
+  for (const b of batchesRaw) {
+    const br = b as Record<string, unknown>;
+    const isActive = br.isActive !== false;
+    const status =
+      br.status === "inactive" ||
+      br.status === "completed" ||
+      br.status === "active"
+        ? (br.status as string)
+        : "active";
+    if (!isActive || status !== "active") continue;
+    if (br._id == null) continue;
+
+    const appLast = br.applicationLastDate;
+    if (
+      !isApplicationWindowOpenIst(
+        appLast as Date | string | null | undefined,
+      )
+    ) {
+      continue;
+    }
+
+    const batchId = String(br._id);
+    const eid =
+      br.entranceExamTemplateId != null
+        ? String(br.entranceExamTemplateId)
+        : null;
+
+    let entranceExam: InternshipEnrollPreviewEntranceExam | null = null;
+    if (eid && examMap.has(eid)) {
+      const ex = examMap.get(eid)!;
+      entranceExam = {
+        title: ex.title,
+        examStartAt: ex.examStartAt ? ex.examStartAt.toISOString() : null,
+        examEndAt: ex.examEndAt ? ex.examEndAt.toISOString() : null,
+        examResultAt: ex.examResultAt ? ex.examResultAt.toISOString() : null,
+      };
+    }
+
+    const planDoc = br.plan as InternshipBatchPlan | null | undefined;
+    let plan:
+      | { listPrice: number; amount: number }
+      | undefined;
+    if (planDoc && planDoc.isActive !== false) {
+      const listPrice = Number(planDoc.price) || 0;
+      const internshipDisc = (doc as { discount?: CourseDiscount | null })
+        .discount;
+      const amount = calculateFinalDiscountedPrice(
+        listPrice,
+        internshipDisc ?? null,
+        planDoc.discount,
+      );
+      plan = { listPrice, amount };
+    }
+
+    batches.push({
+      _id: batchId,
+      name: String(br.name ?? "Cohort"),
+      applicationLastDate: toIso(br.applicationLastDate),
+      internshipStartDate: toIso(br.internshipStartDate),
+      status,
+      isActive,
+      entranceExam,
+      ...(plan ? { plan } : {}),
+    });
+  }
+
+  return {
+    internship: {
+      _id: String(doc._id),
+      title: String(doc.title ?? ""),
+      slug: String((doc as { slug?: string }).slug ?? ""),
+    },
+    batches,
+  };
 };
 
 /**

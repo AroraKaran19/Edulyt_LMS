@@ -10,6 +10,7 @@ import {
   listInternshipsAdminService,
   getInternshipByIdAdminService,
   getInternshipBySlugService,
+  getInternshipEnrollPreviewService,
   checkSlugAvailabilityService,
   createInternshipService,
   updateInternshipService,
@@ -139,6 +140,28 @@ export const getInternshipAdmin = asyncHandler(
       res,
       internship,
       "Internship fetched successfully",
+      200
+    );
+  }
+);
+
+/**
+ * @route   GET /api/internships/slug/:slug/enroll-preview
+ * @desc    Public enroll UI: cohorts + entrance exam windows (no secrets)
+ * @access  Public
+ */
+export const getInternshipEnrollPreview = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { slug } = req.params;
+    if (!slug || !slug.trim()) {
+      throw new AppError("Slug is required", 400);
+    }
+    const preview = await getInternshipEnrollPreviewService(slug.trim());
+    if (!preview) throw new AppError("Internship not found", 404);
+    sendSuccessResponse(
+      res,
+      preview,
+      "Enrollment preview fetched successfully",
       200
     );
   }

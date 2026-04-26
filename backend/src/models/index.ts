@@ -31,6 +31,7 @@ import { CollaborationJobModel } from "./collaborationJob.schema";
 import { CollaborationWhitelistModel } from "./collaborationWhitelist.schema";
 import { PartnershipImportConfigModel } from "./partnershipImportConfig.schema";
 import { CollegeModel } from "./college.schema";
+import { QuestionCategoryModel } from "./questionCategory.schema";
 
 export {
   UserModel,
@@ -64,4 +65,5 @@ export {
   CollaborationWhitelistModel,
   PartnershipImportConfigModel,
   CollegeModel,
+  QuestionCategoryModel,
 };
