@@ -12,6 +12,10 @@ import {
   getTimeSpentPerDayController,
 } from "../controllers/admin.controller";
 import {
+  getPointsSettingsController,
+  patchPointsSettingsController,
+} from "../controllers/pointsSettings.controller";
+import {
   getAllCertificateJobs,
   retryCertificateJob,
   getCertificatesByUserId,
@@ -61,5 +65,9 @@ router.get("/users/:userId/total-spend", getTotalSpendByUserId);
 
 // User time spent per day (learning activity)
 router.get("/users/:userId/time-spent", getTimeSpentPerDayController);
+
+// Success points / internship success points — INR conversion (admin)
+router.get("/points-settings", getPointsSettingsController);
+router.patch("/points-settings", patchPointsSettingsController);
 
 export default router;

@@ -139,6 +139,10 @@ const AdminSidebar = ({
           href: "/admin/settings/authentication-media",
         },
         {
+          label: "Points (INR)",
+          href: "/admin/settings/points",
+        },
+        {
           label: "Colleges List",
           href: "/admin/settings/colleges",
         },

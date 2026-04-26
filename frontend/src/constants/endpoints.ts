@@ -258,4 +258,9 @@ export const ENDPOINTS = {
       remove: "/qnas",
     },
   },
+
+  /** `/api/admin/*` — dashboard & global admin config */
+  admin: {
+    pointsSettings: "/admin/points-settings",
+  },
 };
