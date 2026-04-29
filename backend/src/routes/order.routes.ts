@@ -4,6 +4,7 @@ import { Router } from "express";
 import {
   createOrder,
   createInternshipSeatOrder,
+  createInternshipSuccessPointsOrder,
   deleteOrder,
   getOrderInfo,
   getSelfOrders,
@@ -33,6 +34,17 @@ router.post("/", createOrder);
  * @access  User (session)
  */
 router.post("/internship-seat", verifyUser, createInternshipSeatOrder);
+
+/**
+ * @route   POST /api/orders/internship-success-points
+ * @desc    Pay for internship certification success points (enrollment must be active)
+ * @access  User (session)
+ */
+router.post(
+  "/internship-success-points",
+  verifyUser,
+  createInternshipSuccessPointsOrder,
+);
 
 /**
  * @route   GET /api/orders/verify/:token

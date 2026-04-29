@@ -202,6 +202,9 @@ export interface EntranceExamCohortRow {
   examTitle: string;
 }
 
+/** Cohort row for certification exam admin — same fields; `examId` is the certification template. */
+export type CertificationExamCohortRow = EntranceExamCohortRow;
+
 export interface InternshipEnrollmentListRow {
   _id: string;
   user: {
@@ -237,6 +240,10 @@ export interface InternshipEnrollmentListRow {
   examEndAt?: string;
   /** ISO — when the exam result will be announced. */
   examResultAt?: string;
+  /** Snapshot of public internship enroll form at submission. */
+  applicationAnswers?: Record<string, unknown>;
+  /** ISO — when application answers were saved. */
+  applicationSubmittedAt?: string;
 }
 
 // ─── Learner entrance exam ────────────────────────────────────────────────────
@@ -295,6 +302,8 @@ export interface LearnerProgramEnrollment {
   enrollmentType?: string;
   enrolledAt?: string;
   internshipSuccessPoints: number;
+  /** Minimum internship success points before certification exam (from internship doc). */
+  certificationThreshold: number;
   internshipId: string;
   batchId: string;
   internshipSnapshot?: {
@@ -312,4 +321,8 @@ export interface LearnerProgramEnrollment {
 export interface LearnerProgramDetail {
   enrollment: LearnerProgramEnrollment;
   tasks: LearnerTaskRow[];
+  /** Present when certification uses success points and admin set INR price > 0 */
+  internshipSuccessPointPurchase?: {
+    inrPerPoint: number;
+  };
 }

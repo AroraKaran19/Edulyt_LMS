@@ -145,10 +145,6 @@ function DashboardInternshipsContent() {
         <h1 className="text-xl sm:text-2xl font-bold text-text-primary">
           My Internships
         </h1>
-        <p className="text-sm text-gray-600 max-w-2xl">
-          Your internship intakes and cohorts — a different pass than courses:
-          follow status, cohort, and the program page for tasks and schedule.
-        </p>
         <div className="relative w-full max-w-md">
           <input
             type="search"

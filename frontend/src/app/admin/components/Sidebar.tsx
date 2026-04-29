@@ -96,6 +96,10 @@ const AdminSidebar = ({
           href: "/admin/internships/entrance-exams",
         },
         {
+          label: "Certification exams",
+          href: "/admin/internships/certification-exams",
+        },
+        {
           label: "Question bank",
           href: "/admin/internships/questions",
         },

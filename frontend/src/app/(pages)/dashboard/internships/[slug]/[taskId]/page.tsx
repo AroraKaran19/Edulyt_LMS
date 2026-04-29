@@ -41,7 +41,9 @@ function MCQOption({
   return (
     <label
       className={`flex items-start gap-3 rounded-xl border-2 p-3 sm:p-4 cursor-pointer transition-colors ${
-        disabled ? "cursor-not-allowed opacity-70" : "hover:border-amber-400 hover:bg-amber-50/50"
+        disabled
+          ? "cursor-not-allowed opacity-70"
+          : "hover:border-amber-400 hover:bg-amber-50/50"
       } ${selected ? "border-amber-500 bg-amber-50" : "border-stone-200 bg-white"}`}
     >
       <input
@@ -53,11 +55,21 @@ function MCQOption({
       />
       <span
         className={`mt-0.5 h-5 w-5 shrink-0 rounded-md border-2 flex items-center justify-center ${
-          selected ? "border-amber-500 bg-amber-500" : "border-stone-300 bg-white"
+          selected
+            ? "border-amber-500 bg-amber-500"
+            : "border-stone-300 bg-white"
         }`}
       >
         {selected && (
-          <svg className="h-3 w-3 text-white" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            className="h-3 w-3 text-white"
+            viewBox="0 0 12 12"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <path d="M10 3L5 8.5 2 5.5" />
           </svg>
         )}
@@ -155,7 +167,12 @@ export default function InternshipTaskPage() {
   const programHref = `/dashboard/internships/${encodeURIComponent(slug)}`;
 
   const [task, setTask] = useState<LearnerTaskRow | null>(null);
-  const [enrollment, setEnrollment] = useState<LearnerProgramDetail["enrollment"] | null>(null);
+  const [enrollment, setEnrollment] = useState<
+    LearnerProgramDetail["enrollment"] | null
+  >(null);
+  const [pointsPurchase, setPointsPurchase] = useState<
+    LearnerProgramDetail["internshipSuccessPointPurchase"] | undefined
+  >(undefined);
   const [submission, setSubmission] = useState<SubmissionShape | null>(null);
   const [questions, setQuestions] = useState<SnapshotQuestion[]>([]);
   const [loading, setLoading] = useState(true);
@@ -175,11 +192,12 @@ export default function InternshipTaskPage() {
       const detail = res.data.data;
       const found = detail.tasks.find((t) => t._id === taskId);
       if (!found) {
-        setError("This task is not available or not yet unlocked.");
+        setError("This task isn’t available for you yet.");
         return;
       }
       setTask(found);
       setEnrollment(detail.enrollment);
+      setPointsPurchase(detail.internshipSuccessPointPurchase);
 
       // Load existing submission if present
       if (found.submission) {
@@ -257,15 +275,23 @@ export default function InternshipTaskPage() {
 
   const handleSubmit = async () => {
     if (!submissionId) return;
-    if (!window.confirm("Submit your task? You cannot change answers after submitting.")) return;
+    if (
+      !window.confirm(
+        "Submit your task? You cannot change answers after submitting.",
+      )
+    )
+      return;
     setSubmitStatus("submitting");
     try {
-      await apiClient.post(ENDPOINTS.internshipSubmissions.submit(submissionId));
+      await apiClient.post(
+        ENDPOINTS.internshipSubmissions.submit(submissionId),
+      );
       setSubmitStatus("submitted");
     } catch (e: unknown) {
       const msg =
         (e as { response?: { data?: { error?: { message?: string } } } })
-          ?.response?.data?.error?.message ?? "Submit failed. Please try again.";
+          ?.response?.data?.error?.message ??
+        "Submit failed. Please try again.";
       toast.error(msg);
       setSubmitStatus("idle");
     }
@@ -289,7 +315,9 @@ export default function InternshipTaskPage() {
     return (
       <div className="py-12 max-w-xl mx-auto text-center space-y-4">
         <ClipboardList className="mx-auto h-10 w-10 text-stone-300" />
-        <p className="text-stone-700 font-medium">{error ?? "Task not found"}</p>
+        <p className="text-stone-700 font-medium">
+          {error ?? "Task not found"}
+        </p>
       </div>
     );
   }
@@ -333,23 +361,23 @@ export default function InternshipTaskPage() {
   }
 
   const taskTitle = submission?.templateSnapshot?.title ?? task.title;
-  const taskDesc = submission?.templateSnapshot?.description ?? task.description;
-  const totalScore = submission?.templateSnapshot?.totalScore ?? task.totalScore;
+  const taskDesc =
+    submission?.templateSnapshot?.description ?? task.description;
+  const totalScore =
+    submission?.templateSnapshot?.totalScore ?? task.totalScore;
   const disabled = submitStatus === "submitting";
 
   return (
     <div className="max-w-3xl mx-auto">
       {/* Task header */}
-      <div className="mb-6 rounded-2xl border border-amber-200/80 bg-amber-50/80 px-5 py-4 space-y-1">
-        <p className="text-xs font-semibold uppercase tracking-widest text-amber-800/70 capitalize">
+      <div className="mb-6 rounded-2xl border border-amber-200/80 bg-white px-5 py-4 space-y-1">
+        <p className="text-xs font-semibold tracking-widest text-amber-800/70 capitalize">
           {task.taskType} task
         </p>
         <h1 className="text-xl sm:text-2xl font-bold text-stone-900">
           {taskTitle}
         </h1>
-        {taskDesc && (
-          <p className="text-sm text-stone-600 mt-1">{taskDesc}</p>
-        )}
+        {taskDesc && <p className="text-sm text-stone-600 mt-1">{taskDesc}</p>}
         <div className="flex flex-wrap gap-4 pt-2 text-xs text-stone-600 font-mono">
           {totalScore > 0 && <span>Total score: {totalScore}</span>}
           {task.scoreThreshold > 0 && (
@@ -364,6 +392,16 @@ export default function InternshipTaskPage() {
             })}
           </span>
         </div>
+        {pointsPurchase && enrollment ? (
+          <div className="mt-3 pt-3 border-t border-amber-100">
+            <Link
+              href={`${programHref}#buy-success-points`}
+              className="text-xs font-semibold text-amber-900 hover:text-amber-950 underline underline-offset-2"
+            >
+              Buy internship success points
+            </Link>
+          </div>
+        ) : null}
       </div>
 
       {/* Progress */}

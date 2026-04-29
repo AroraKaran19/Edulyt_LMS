@@ -5,6 +5,7 @@ import { InternshipExamModel } from "../models/internshipExam.schema";
 import { InternshipSubmissionModel } from "../models/internshipSubmission.schema";
 import { AppError } from "../middlewares/error.middleware";
 import { isApplicationWindowOpenIst } from "../utils/applicationWindow";
+import { getPointsSettings } from "./pointsSettings.services";
 
 function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -18,6 +19,35 @@ function toIso(d: unknown): string | undefined {
   }
   return undefined;
 }
+
+const MAX_APPLICATION_ANSWERS_BYTES = 120_000;
+
+/** Validates and returns plain object for Mongoose Mixed, or undefined if omitted. */
+export function sanitizeApplicationAnswers(
+  raw: unknown,
+): Record<string, unknown> | undefined {
+  if (raw === undefined || raw === null) return undefined;
+  if (typeof raw !== "object" || Array.isArray(raw)) {
+    throw new AppError("applicationAnswers must be a JSON object", 400);
+  }
+  let serialized: string;
+  try {
+    serialized = JSON.stringify(raw);
+  } catch {
+    throw new AppError("applicationAnswers must be JSON-serializable", 400);
+  }
+  if (serialized.length > MAX_APPLICATION_ANSWERS_BYTES) {
+    throw new AppError("applicationAnswers payload is too large", 400);
+  }
+  return raw as Record<string, unknown>;
+}
+
+/**
+ * Exclude internship enroll-form snapshots from DB reads that power learner-facing
+ * or non-admin HTTP APIs (admin detail uses `getInternshipEnrollmentByIdAdmin`, which loads full doc).
+ */
+const ENROLLMENT_DOC_OMIT_APPLICATION_SNAPSHOT =
+  "-applicationAnswers -applicationSubmittedAt";
 
 export type InternshipEnrollmentListRow = {
   _id: string;
@@ -56,6 +86,10 @@ export type InternshipEnrollmentListRow = {
   examEndAt?: string;
   /** ISO string — when the exam result will be announced. */
   examResultAt?: string;
+  /** Snapshot of public enroll form fields at submission (admin + detail API). */
+  applicationAnswers?: Record<string, unknown>;
+  /** ISO — when {@link applicationAnswers} was stored. */
+  applicationSubmittedAt?: string;
 };
 
 /**
@@ -137,6 +171,12 @@ export async function listInternshipEnrollmentsAdmin(
   if (Object.keys(preMatch).length > 0) {
     pipeline.push({ $match: preMatch });
   }
+  pipeline.push({
+    $project: {
+      applicationAnswers: 0,
+      applicationSubmittedAt: 0,
+    },
+  });
   pipeline.push(
     {
       $lookup: {
@@ -388,7 +428,95 @@ export async function getInternshipEnrollmentByIdAdmin(
     updatedAt: doc.updatedAt
       ? new Date(doc.updatedAt).toISOString()
       : undefined,
+    applicationAnswers:
+      doc.applicationAnswers &&
+      typeof doc.applicationAnswers === "object" &&
+      !Array.isArray(doc.applicationAnswers)
+        ? (doc.applicationAnswers as Record<string, unknown>)
+        : undefined,
+    applicationSubmittedAt:
+      (doc as { applicationSubmittedAt?: Date }).applicationSubmittedAt instanceof
+      Date
+        ? (
+            doc as { applicationSubmittedAt: Date }
+          ).applicationSubmittedAt.toISOString()
+        : undefined,
   };
+}
+
+/** Mongo duplicate key (e.g. concurrent enrollment submits racing on unique index). */
+function isMongoDuplicateKeyError(e: unknown): boolean {
+  return (
+    typeof e === "object" &&
+    e !== null &&
+    "code" in e &&
+    (e as { code?: number }).code === 11000
+  );
+}
+
+async function completeMeritRegistrationForExistingRow(
+  existing: {
+    _id: mongoose.Types.ObjectId | string;
+    status?: string;
+  },
+  answersDoc: Record<string, unknown> | undefined,
+): Promise<{ enrollmentId: string }> {
+  const examStatuses = ["exam_registered", "exam_attempted"] as string[];
+  if (examStatuses.includes(String(existing.status))) {
+    if (answersDoc) {
+      await InternshipEnrollmentModel.updateOne(
+        { _id: existing._id },
+        {
+          $set: {
+            applicationAnswers: answersDoc,
+            applicationSubmittedAt: new Date(),
+          },
+        },
+      );
+    }
+    return { enrollmentId: String(existing._id) };
+  }
+  if (String(existing.status) === "enrolled") {
+    return { enrollmentId: String(existing._id) };
+  }
+  throw new AppError("You are already registered for this batch", 409);
+}
+
+async function completePaidSeatRegistrationForExistingDoc(
+  existing: mongoose.Document,
+  answersDoc: Record<string, unknown> | undefined,
+): Promise<{ enrollmentId: string }> {
+  const enrollmentType = String(
+    (existing as { enrollmentType?: string }).enrollmentType ?? "",
+  );
+  const status = String((existing as { status?: string }).status ?? "");
+
+  if (enrollmentType === "paid" && status === "payment_pending") {
+    if (answersDoc) {
+      existing.set("applicationAnswers", answersDoc);
+      existing.set("applicationSubmittedAt", new Date());
+      await existing.save();
+    }
+    return { enrollmentId: String(existing._id) };
+  }
+
+  const upgradeableStatuses = [
+    "exam_registered",
+    "exam_attempted",
+    "in_merit_pool",
+    "admin_rejected",
+  ] as string[];
+  if (upgradeableStatuses.includes(status)) {
+    (existing as { enrollmentType?: string }).enrollmentType = "paid";
+    if (answersDoc) {
+      existing.set("applicationAnswers", answersDoc);
+      existing.set("applicationSubmittedAt", new Date());
+    }
+    await existing.save();
+    return { enrollmentId: String(existing._id) };
+  }
+
+  throw new AppError("You are already registered for this batch", 409);
 }
 
 // ─── Learner: register for entrance exam ─────────────────────────────────────
@@ -402,7 +530,10 @@ export async function registerForExam(
   userId: mongoose.Types.ObjectId,
   internshipId: string,
   batchId: string,
+  options?: { applicationAnswers?: unknown },
 ): Promise<{ enrollmentId: string }> {
+  const answersDoc = sanitizeApplicationAnswers(options?.applicationAnswers);
+
   if (!mongoose.Types.ObjectId.isValid(internshipId)) {
     throw new AppError("Invalid internship id", 400);
   }
@@ -437,39 +568,47 @@ export async function registerForExam(
     "batchSnapshot.batchId": batchId,
   }).lean();
   if (existing) {
-    // Idempotent — already registered for exam (merit or paid-upgrade path).
-    const examStatuses = ["exam_registered", "exam_attempted"] as string[];
-    if (examStatuses.includes(String(existing.status))) {
-      return { enrollmentId: String(existing._id) };
-    }
-    // Already fully enrolled (paid seat confirmed or merit pool converted).
-    if (String(existing.status) === "enrolled") {
-      return { enrollmentId: String(existing._id) };
-    }
-    throw new AppError("You are already registered for this batch", 409);
+    return completeMeritRegistrationForExistingRow(existing, answersDoc);
   }
 
-  const enrollment = await InternshipEnrollmentModel.create({
-    internship: new mongoose.Types.ObjectId(internshipId),
-    user: userId,
-    enrollmentType: "merit",
-    status: "exam_registered",
-    internshipSnapshot: {
-      title: String((internship as { title?: unknown }).title ?? ""),
-      slug: String((internship as { slug?: unknown }).slug ?? ""),
-      thumbnail:
-        typeof (internship as { thumbnail?: unknown }).thumbnail === "string"
-          ? (internship as { thumbnail: string }).thumbnail
-          : undefined,
-    },
-    batchSnapshot: {
-      batchId: String(batch._id),
-      name: batch.name,
-      internshipStartDate: batch.internshipStartDate,
-    },
-  });
+  try {
+    const enrollment = await InternshipEnrollmentModel.create({
+      internship: new mongoose.Types.ObjectId(internshipId),
+      user: userId,
+      enrollmentType: "merit",
+      status: "exam_registered",
+      internshipSnapshot: {
+        title: String((internship as { title?: unknown }).title ?? ""),
+        slug: String((internship as { slug?: unknown }).slug ?? ""),
+        thumbnail:
+          typeof (internship as { thumbnail?: unknown }).thumbnail === "string"
+            ? (internship as { thumbnail: string }).thumbnail
+            : undefined,
+      },
+      batchSnapshot: {
+        batchId: String(batch._id),
+        name: batch.name,
+        internshipStartDate: batch.internshipStartDate,
+      },
+      ...(answersDoc
+        ? {
+            applicationAnswers: answersDoc,
+            applicationSubmittedAt: new Date(),
+          }
+        : {}),
+    });
 
-  return { enrollmentId: String(enrollment._id) };
+    return { enrollmentId: String(enrollment._id) };
+  } catch (err: unknown) {
+    if (!isMongoDuplicateKeyError(err)) throw err;
+    const raced = await InternshipEnrollmentModel.findOne({
+      user: userId,
+      internship: new mongoose.Types.ObjectId(internshipId),
+      "batchSnapshot.batchId": batchId,
+    }).lean();
+    if (!raced) throw err;
+    return completeMeritRegistrationForExistingRow(raced, answersDoc);
+  }
 }
 
 /**
@@ -480,7 +619,10 @@ export async function registerForPaidSeat(
   userId: mongoose.Types.ObjectId,
   internshipId: string,
   batchId: string,
+  options?: { applicationAnswers?: unknown },
 ): Promise<{ enrollmentId: string }> {
+  const answersDoc = sanitizeApplicationAnswers(options?.applicationAnswers);
+
   if (!mongoose.Types.ObjectId.isValid(internshipId)) {
     throw new AppError("Invalid internship id", 400);
   }
@@ -518,51 +660,47 @@ export async function registerForPaidSeat(
     "batchSnapshot.batchId": batchId,
   });
   if (existing) {
-    // Already fully paid/enrolled — nothing to do.
-    if (
-      existing.enrollmentType === "paid" &&
-      existing.status === "payment_pending"
-    ) {
-      return { enrollmentId: String(existing._id) };
-    }
-
-    // User registered for entrance but now also wants to pay for a guaranteed seat.
-    // Upgrade enrollmentType → "paid" without touching status so exam access is preserved.
-    // After payment completes they will be moved directly to "enrolled".
-    const upgradeableStatuses = [
-      "exam_registered",
-      "exam_attempted",
-    ] as string[];
-    if (upgradeableStatuses.includes(String(existing.status))) {
-      existing.enrollmentType = "paid";
-      await existing.save();
-      return { enrollmentId: String(existing._id) };
-    }
-
-    throw new AppError("You are already registered for this batch", 409);
+    return completePaidSeatRegistrationForExistingDoc(existing, answersDoc);
   }
 
-  const enrollment = await InternshipEnrollmentModel.create({
-    internship: new mongoose.Types.ObjectId(internshipId),
-    user: userId,
-    enrollmentType: "paid",
-    status: "payment_pending",
-    internshipSnapshot: {
-      title: String((internship as { title?: unknown }).title ?? ""),
-      slug: String((internship as { slug?: unknown }).slug ?? ""),
-      thumbnail:
-        typeof (internship as { thumbnail?: unknown }).thumbnail === "string"
-          ? (internship as { thumbnail: string }).thumbnail
-          : undefined,
-    },
-    batchSnapshot: {
-      batchId: String(batch._id),
-      name: batch.name,
-      internshipStartDate: batch.internshipStartDate,
-    },
-  });
+  try {
+    const enrollment = await InternshipEnrollmentModel.create({
+      internship: new mongoose.Types.ObjectId(internshipId),
+      user: userId,
+      enrollmentType: "paid",
+      status: "payment_pending",
+      internshipSnapshot: {
+        title: String((internship as { title?: unknown }).title ?? ""),
+        slug: String((internship as { slug?: unknown }).slug ?? ""),
+        thumbnail:
+          typeof (internship as { thumbnail?: unknown }).thumbnail === "string"
+            ? (internship as { thumbnail: string }).thumbnail
+            : undefined,
+      },
+      batchSnapshot: {
+        batchId: String(batch._id),
+        name: batch.name,
+        internshipStartDate: batch.internshipStartDate,
+      },
+      ...(answersDoc
+        ? {
+            applicationAnswers: answersDoc,
+            applicationSubmittedAt: new Date(),
+          }
+        : {}),
+    });
 
-  return { enrollmentId: String(enrollment._id) };
+    return { enrollmentId: String(enrollment._id) };
+  } catch (err: unknown) {
+    if (!isMongoDuplicateKeyError(err)) throw err;
+    const raced = await InternshipEnrollmentModel.findOne({
+      user: userId,
+      internship: new mongoose.Types.ObjectId(internshipId),
+      "batchSnapshot.batchId": batchId,
+    });
+    if (!raced) throw err;
+    return completePaidSeatRegistrationForExistingDoc(raced, answersDoc);
+  }
 }
 
 /**
@@ -599,6 +737,7 @@ export async function listMyInternshipEnrollments(
 
   const [raw, total] = await Promise.all([
     InternshipEnrollmentModel.find(baseMatch)
+      .select(ENROLLMENT_DOC_OMIT_APPLICATION_SNAPSHOT)
       .sort({ updatedAt: -1 })
       .skip(skip)
       .limit(l)
@@ -608,24 +747,24 @@ export async function listMyInternshipEnrollments(
 
   const totalPages = Math.max(1, Math.ceil(total / l));
 
-  // For merit-path rows that are exam_registered or exam_attempted, fetch exam window dates.
-  const meritExamStatuses = new Set(["exam_registered", "exam_attempted"]);
+  // For merit-path rows (exam_registered / exam_attempted / in_merit_pool), fetch exam window dates.
+  const needsExamWindow = new Set(["exam_registered", "exam_attempted", "in_merit_pool"]);
   const examWindowById = new Map<
     string,
-    { examStartAt?: string; examEndAt?: string }
+    { examStartAt?: string; examEndAt?: string; examResultAt?: string }
   >();
 
-  const meritRows = (raw as Record<string, unknown>[]).filter(
-    (d) => meritExamStatuses.has(String(d.status ?? "")) && d.internship,
+  const examRows = (raw as Record<string, unknown>[]).filter(
+    (d) => needsExamWindow.has(String(d.status ?? "")) && d.internship,
   );
 
-  if (meritRows.length > 0) {
+  if (examRows.length > 0) {
     // Group by internshipId so we fetch each internship once.
     const byInternship = new Map<
       string,
       { batchId: string; docIds: string[] }[]
     >();
-    for (const d of meritRows) {
+    for (const d of examRows) {
       const insId = String(
         (d.internship as { _id?: unknown })?._id ?? d.internship ?? "",
       );
@@ -669,7 +808,7 @@ export async function listMyInternshipEnrollments(
 
       // Collect unique exam template ids
       const examTemplateIds = new Set<string>();
-      for (const d of meritRows) {
+      for (const d of examRows) {
         const insId = String(
           (d.internship as { _id?: unknown })?._id ?? d.internship ?? "",
         );
@@ -718,7 +857,7 @@ export async function listMyInternshipEnrollments(
           });
         }
 
-        for (const d of meritRows) {
+        for (const d of examRows) {
           const insId = String(
             (d.internship as { _id?: unknown })?._id ?? d.internship ?? "",
           );
@@ -841,7 +980,9 @@ export async function getLearnerEntranceExam(
     throw new AppError("Invalid enrollment id", 400);
   }
   const enrollment =
-    await InternshipEnrollmentModel.findById(enrollmentId).lean();
+    await InternshipEnrollmentModel.findById(enrollmentId)
+      .select(ENROLLMENT_DOC_OMIT_APPLICATION_SNAPSHOT)
+      .lean();
   if (!enrollment) throw new AppError("Enrollment not found", 404);
   if (String((enrollment as { user?: unknown }).user) !== String(userId)) {
     throw new AppError("Forbidden", 403);
@@ -994,9 +1135,19 @@ const ALLOWED_ADMIN_TRANSITIONS: Record<string, string[]> = {
   exam_registered: ["exam_attempted", "in_merit_pool", "admin_rejected"],
   exam_attempted: ["in_merit_pool", "admin_rejected"],
   in_merit_pool: ["enrolled", "admin_rejected"],
+  /** Paid track before gateway clears — admin may still reject the candidate. */
+  payment_pending: ["admin_rejected"],
   enrolled: ["completed", "paused", "revoked"],
-  paused: ["enrolled", "revoked"],
+  /** Allow marking complete without unpausing first (operational shortcut). */
+  paused: ["enrolled", "revoked", "completed"],
 };
+
+/** Statuses where changing cohort is blocked (terminal / withdrawn). */
+const DISALLOW_ADMIN_BATCH_MOVE_STATUSES = new Set([
+  "admin_rejected",
+  "dropped",
+  "revoked",
+]);
 
 export async function adminUpdateEnrollmentStatus(
   enrollmentId: string,
@@ -1031,6 +1182,109 @@ export async function adminUpdateEnrollmentStatus(
   }
 
   await doc.save();
+  return getInternshipEnrollmentByIdAdmin(enrollmentId);
+}
+
+/**
+ * Admin: move an enrollment to another cohort (same internship).
+ * Updates `batchSnapshot` only; task timelines stay anchored to `enrolledAt`.
+ */
+export async function adminChangeEnrollmentBatch(
+  enrollmentId: string,
+  newBatchId: string,
+  adminUserId: mongoose.Types.ObjectId,
+): Promise<InternshipEnrollmentListRow> {
+  if (!mongoose.Types.ObjectId.isValid(enrollmentId)) {
+    throw new AppError("Invalid enrollment id", 400);
+  }
+  const trimmedBatch = String(newBatchId ?? "").trim();
+  if (!trimmedBatch) {
+    throw new AppError("batchId is required", 400);
+  }
+
+  const doc = await InternshipEnrollmentModel.findById(enrollmentId);
+  if (!doc) throw new AppError("Enrollment not found", 404);
+
+  const st = String(doc.status ?? "");
+  if (DISALLOW_ADMIN_BATCH_MOVE_STATUSES.has(st)) {
+    throw new AppError(
+      `Cannot change batch when enrollment status is "${st}"`,
+      400,
+    );
+  }
+
+  const internshipOid = doc.internship as mongoose.Types.ObjectId;
+  const internship = await InternshipModel.findById(internshipOid).lean();
+  if (!internship) throw new AppError("Internship not found", 404);
+
+  type BatchLean = {
+    _id: unknown;
+    name: string;
+    internshipStartDate: Date;
+    isActive?: boolean;
+  };
+  const batches = Array.isArray(
+    (internship as { batches?: BatchLean[] }).batches,
+  )
+    ? (internship as { batches: BatchLean[] }).batches
+    : [];
+  const batch = batches.find((b) => String(b._id) === trimmedBatch);
+  if (!batch) {
+    throw new AppError("Batch not found on this internship", 404);
+  }
+  if (batch.isActive === false) {
+    throw new AppError("Cannot move to an inactive batch", 400);
+  }
+
+  const currentBid =
+    doc.batchSnapshot &&
+    typeof doc.batchSnapshot === "object" &&
+    typeof (doc.batchSnapshot as { batchId?: string }).batchId === "string"
+      ? String((doc.batchSnapshot as { batchId: string }).batchId)
+      : "";
+  if (currentBid === trimmedBatch) {
+    return getInternshipEnrollmentByIdAdmin(enrollmentId);
+  }
+
+  const conflict = await InternshipEnrollmentModel.findOne({
+    user: doc.user,
+    internship: internshipOid,
+    "batchSnapshot.batchId": trimmedBatch,
+    _id: { $ne: doc._id },
+  })
+    .select("_id")
+    .lean();
+  if (conflict) {
+    throw new AppError(
+      "This learner already has an enrollment in the selected batch",
+      409,
+    );
+  }
+
+  doc.batchSnapshot = {
+    batchId: String(batch._id),
+    name: batch.name,
+    internshipStartDate: batch.internshipStartDate,
+  };
+  doc.adminActionBy = adminUserId;
+  doc.adminActionAt = new Date();
+
+  try {
+    await doc.save();
+  } catch (e: unknown) {
+    const code =
+      e && typeof e === "object" && "code" in e
+        ? (e as { code?: number }).code
+        : undefined;
+    if (code === 11000) {
+      throw new AppError(
+        "Another enrollment already exists for this learner in the selected batch",
+        409,
+      );
+    }
+    throw e;
+  }
+
   return getInternshipEnrollmentByIdAdmin(enrollmentId);
 }
 
@@ -1215,6 +1469,89 @@ export async function listEntranceExamCohortsAdmin(): Promise<
   });
 }
 
+/** Same row shape as entrance exams; `examId` is the certification template id. */
+export type CertificationExamCohortRow = EntranceExamCohortRow;
+
+/**
+ * Admin: cohorts that have a certification exam template (program-phase exam).
+ */
+export async function listCertificationExamCohortsAdmin(): Promise<
+  CertificationExamCohortRow[]
+> {
+  const internships = await InternshipModel.find({})
+    .select("title slug batches isActive")
+    .lean();
+
+  type BatchLean = {
+    _id: unknown;
+    name?: string;
+    isActive?: boolean;
+    certificationExamTemplateId?: unknown;
+    applicationLastDate?: Date;
+    internshipStartDate?: Date;
+  };
+
+  const rows: CertificationExamCohortRow[] = [];
+
+  for (const ins of internships) {
+    if ((ins as { isActive?: boolean }).isActive === false) continue;
+    const insId = String((ins as { _id: unknown })._id);
+    const title = String((ins as { title?: string }).title ?? "");
+    const slug = String((ins as { slug?: string }).slug ?? "");
+    const batches = Array.isArray((ins as { batches?: BatchLean[] }).batches)
+      ? (ins as { batches: BatchLean[] }).batches
+      : [];
+    for (const b of batches) {
+      if (b.isActive === false) continue;
+      const tid = b.certificationExamTemplateId;
+      if (!tid) continue;
+      const appD = b.applicationLastDate;
+      const startD = b.internshipStartDate;
+      rows.push({
+        internshipId: insId,
+        internshipTitle: title,
+        internshipSlug: slug,
+        batchId: String(b._id),
+        batchName: String(b.name ?? "Batch"),
+        applicationLastDate:
+          appD instanceof Date && !Number.isNaN(appD.getTime())
+            ? appD.toISOString()
+            : new Date(0).toISOString(),
+        internshipStartDate:
+          startD instanceof Date && !Number.isNaN(startD.getTime())
+            ? startD.toISOString()
+            : new Date(0).toISOString(),
+        examId: String(tid),
+        examTitle: "",
+      });
+    }
+  }
+
+  const uniqueExamIds = [...new Set(rows.map((r) => r.examId))].map(
+    (s) => new mongoose.Types.ObjectId(s),
+  );
+  const examDocs = await InternshipExamModel.find({
+    _id: { $in: uniqueExamIds },
+  })
+    .select("title")
+    .lean();
+  const titleById = new Map(
+    examDocs.map((e) => [
+      String(e._id),
+      String((e as { title?: string }).title ?? ""),
+    ]),
+  );
+  for (const r of rows) {
+    r.examTitle = titleById.get(r.examId) || "Certification exam";
+  }
+
+  return rows.sort((a, b) => {
+    const t = a.internshipTitle.localeCompare(b.internshipTitle);
+    if (t !== 0) return t;
+    return a.batchName.localeCompare(b.batchName);
+  });
+}
+
 // ─── Learner: program detail by slug ─────────────────────────────────────────
 
 export type LearnerTaskRow = {
@@ -1248,6 +1585,8 @@ export type LearnerProgramDetail = {
     enrollmentType?: string;
     enrolledAt?: string;
     internshipSuccessPoints: number;
+    /** From live internship doc — min points before certification exam (0 = none). */
+    certificationThreshold: number;
     internshipId: string;
     batchId: string;
     internshipSnapshot?: {
@@ -1262,6 +1601,10 @@ export type LearnerProgramDetail = {
     };
   };
   tasks: LearnerTaskRow[];
+  /** INR per purchased internship success point (certification), when configured */
+  internshipSuccessPointPurchase?: {
+    inrPerPoint: number;
+  };
 };
 
 /**
@@ -1277,26 +1620,75 @@ export async function getLearnerProgramBySlug(
   const { InternshipTaskModel } = await import("../models/internshipTask.schema");
   const { InternshipSubmissionModel } = await import("../models/internshipSubmission.schema");
 
-  // 1. Resolve internship from slug
-  const internship = await InternshipModel.findOne({ slug: slug.trim() })
-    .select("_id batches")
-    .lean();
-  if (!internship) throw new AppError("Program not found", 404);
+  const trimmed = slug.trim();
+  const normalizedSlug = trimmed.toLowerCase();
 
-  // 2. Find the user's most-recent enrollment for this internship
-  const enrollment = await InternshipEnrollmentModel.findOne({
-    user: userId,
-    internship: internship._id,
-  })
-    .sort({ createdAt: -1 })
+  // 1. Resolve internship: prefer current canonical slug (stored lowercase on Internship).
+  //    Fallback: match enrollment snapshot slug — frozen at signup time, so it still works
+  //    after an admin renames the internship (dashboard links often use snapshot slug).
+  let internship = await InternshipModel.findOne({ slug: normalizedSlug })
+    .select("_id batches certificationThreshold")
     .lean();
+
+  let enrollment: Record<string, unknown> | null = null;
+
+  if (internship) {
+    enrollment = await InternshipEnrollmentModel.findOne({
+      user: userId,
+      internship: internship._id,
+    })
+      .select(ENROLLMENT_DOC_OMIT_APPLICATION_SNAPSHOT)
+      .sort({ createdAt: -1 })
+      .lean();
+  } else {
+    enrollment = await InternshipEnrollmentModel.findOne({
+      user: userId,
+      "internshipSnapshot.slug": new RegExp(
+        `^${escapeRegex(trimmed)}$`,
+        "i",
+      ),
+    })
+      .select(ENROLLMENT_DOC_OMIT_APPLICATION_SNAPSHOT)
+      .sort({ createdAt: -1 })
+      .lean();
+
+    if (enrollment) {
+      internship = await InternshipModel.findById(enrollment.internship as mongoose.Types.ObjectId)
+        .select("_id batches certificationThreshold")
+        .lean();
+    }
+  }
+
+  if (!internship) {
+    throw new AppError("Program not found", 404);
+  }
 
   if (!enrollment) {
     throw new AppError("You are not enrolled in this program", 403);
   }
 
+  type LeanEnrollmentDoc = {
+    _id: mongoose.Types.ObjectId | string;
+    status: string;
+    enrollmentType?: string;
+    enrolledAt?: Date | string;
+    createdAt?: Date | string;
+    internshipSnapshot?: {
+      title?: string;
+      slug?: string;
+      thumbnail?: string;
+    };
+    batchSnapshot?: {
+      batchId?: string;
+      name?: string;
+      internshipStartDate?: Date | string;
+    };
+    internshipSuccessPoints?: number;
+  };
+  const doc = enrollment as LeanEnrollmentDoc;
+
   const ALLOWED_STATUSES = new Set(["enrolled", "completed", "paused"]);
-  if (!ALLOWED_STATUSES.has(enrollment.status)) {
+  if (!ALLOWED_STATUSES.has(doc.status)) {
     throw new AppError(
       "Your enrollment is not yet active for this program",
       403,
@@ -1304,7 +1696,7 @@ export async function getLearnerProgramBySlug(
   }
 
   // 3. Get the batch's task template IDs
-  const batchId = enrollment.batchSnapshot?.batchId ?? "";
+  const batchId = doc.batchSnapshot?.batchId ?? "";
   type BatchLike = { _id?: unknown; taskTemplateIds?: unknown[] };
   const batches =
     (internship as { batches?: BatchLike[] }).batches ?? [];
@@ -1324,7 +1716,7 @@ export async function getLearnerProgramBySlug(
     .filter((x): x is mongoose.Types.ObjectId => x !== null);
 
   // 4. Compute anchor date
-  const rawEnrolledAt = enrollment.enrolledAt ?? enrollment.createdAt;
+  const rawEnrolledAt = doc.enrolledAt ?? doc.createdAt;
   const enrolledAt =
     rawEnrolledAt instanceof Date ? rawEnrolledAt : new Date(rawEnrolledAt ?? Date.now());
 
@@ -1397,10 +1789,10 @@ export async function getLearnerProgramBySlug(
     });
   }
 
-  const snap = enrollment.internshipSnapshot as
+  const snap = doc.internshipSnapshot as
     | { title?: string; slug?: string; thumbnail?: string }
     | undefined;
-  const bsnap = enrollment.batchSnapshot as
+  const bsnap = doc.batchSnapshot as
     | {
         batchId?: string;
         name?: string;
@@ -1408,16 +1800,35 @@ export async function getLearnerProgramBySlug(
       }
     | undefined;
 
+  const certificationThresholdRaw = (internship as {
+    certificationThreshold?: unknown;
+  }).certificationThreshold;
+  const certificationThreshold =
+    typeof certificationThresholdRaw === "number" &&
+    !Number.isNaN(certificationThresholdRaw)
+      ? Math.max(0, Math.floor(certificationThresholdRaw))
+      : 0;
+
+  const settings = await getPointsSettings();
+  const priceInr = settings.internshipSuccessPointInr;
+  const internshipSuccessPointPurchase =
+    certificationThreshold > 0 &&
+    typeof priceInr === "number" &&
+    priceInr > 0
+      ? { inrPerPoint: priceInr }
+      : undefined;
+
   return {
     enrollment: {
-      _id: String(enrollment._id),
-      status: enrollment.status,
-      enrollmentType: enrollment.enrollmentType ?? undefined,
-      enrolledAt: toIso(enrollment.enrolledAt),
+      _id: String(doc._id),
+      status: doc.status,
+      enrollmentType: doc.enrollmentType ?? undefined,
+      enrolledAt: toIso(doc.enrolledAt),
       internshipSuccessPoints:
-        typeof enrollment.internshipSuccessPoints === "number"
-          ? enrollment.internshipSuccessPoints
+        typeof doc.internshipSuccessPoints === "number"
+          ? doc.internshipSuccessPoints
           : 0,
+      certificationThreshold,
       internshipId: String(internship._id),
       batchId,
       internshipSnapshot: snap
@@ -1437,5 +1848,8 @@ export async function getLearnerProgramBySlug(
         : undefined,
     },
     tasks: unlockedTasks,
+    ...(internshipSuccessPointPurchase
+      ? { internshipSuccessPointPurchase }
+      : {}),
   };
 }

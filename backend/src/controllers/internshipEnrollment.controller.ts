@@ -12,8 +12,10 @@ import {
   registerForPaidSeat,
   listMyInternshipEnrollments,
   adminUpdateEnrollmentStatus,
+  adminChangeEnrollmentBatch,
   deleteInternshipEnrollmentAdmin,
   listEntranceExamCohortsAdmin,
+  listCertificationExamCohortsAdmin,
   adminBulkApproveMeritToEnrolled,
   getLearnerEntranceExam,
   getLearnerProgramBySlug,
@@ -62,7 +64,7 @@ export const listMyInternshipEnrollmentsController = asyncHandler(
 /**
  * @route   POST /api/internship-enrollments
  * @desc    Learner registers for an entrance exam
- * @body    { internshipId, batchId }
+ * @body    { internshipId, batchId, path?, applicationAnswers? }
  * @access  Authenticated user
  */
 export const registerForExamController = asyncHandler(
@@ -70,14 +72,18 @@ export const registerForExamController = asyncHandler(
     const userId = req.user?._id;
     if (!userId) throw new AppError("Unauthorized", 401);
 
-    const { internshipId, batchId, path } = req.body as {
+    const { internshipId, batchId, path, applicationAnswers } = req.body as {
       internshipId?: string;
       batchId?: string;
       /** `"paid"` = book seat / pay without entrance; else merit / entrance exam. */
       path?: string;
+      /** Full public enroll form snapshot (JSON object). */
+      applicationAnswers?: unknown;
     };
     if (!internshipId) throw new AppError("internshipId is required", 400);
     if (!batchId) throw new AppError("batchId is required", 400);
+
+    const opts = { applicationAnswers };
 
     const result =
       path === "paid"
@@ -85,11 +91,13 @@ export const registerForExamController = asyncHandler(
             new mongoose.Types.ObjectId(String(userId)),
             internshipId,
             batchId,
+            opts,
           )
         : await registerForExam(
             new mongoose.Types.ObjectId(String(userId)),
             internshipId,
             batchId,
+            opts,
           );
     sendSuccessResponse(res, result, "Registered for exam successfully", 201);
   },
@@ -192,6 +200,32 @@ export const adminUpdateEnrollmentStatusController = asyncHandler(
 );
 
 /**
+ * @route   PATCH /api/internship-enrollments/admin/:enrollmentId/batch
+ * @desc    Move enrollment to another cohort (same internship)
+ * @body    { batchId: string }
+ * @access  Admin
+ */
+export const adminChangeEnrollmentBatchController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const adminUserId = req.user?._id;
+    if (!adminUserId) throw new AppError("Unauthorized", 401);
+
+    const { enrollmentId } = req.params;
+    const { batchId } = req.body as { batchId?: string };
+    if (!batchId || typeof batchId !== "string") {
+      throw new AppError("batchId is required", 400);
+    }
+
+    const row = await adminChangeEnrollmentBatch(
+      String(enrollmentId),
+      batchId.trim(),
+      new mongoose.Types.ObjectId(String(adminUserId)),
+    );
+    sendSuccessResponse(res, row, "Enrollment batch updated", 200);
+  },
+);
+
+/**
  * @route   POST /api/internship-enrollments/admin/approve-to-enrolled
  * @desc    Admin confirms merit-path learners to enrolled in one step (server-side).
  * @body    { enrollmentIds: string[] }
@@ -241,6 +275,18 @@ export const deleteInternshipEnrollmentAdminController = asyncHandler(
 export const listEntranceExamCohortsController = asyncHandler(
   async (_req: Request, res: Response) => {
     const rows = await listEntranceExamCohortsAdmin();
+    sendSuccessResponse(res, { cohorts: rows }, "Cohorts fetched", 200);
+  },
+);
+
+/**
+ * @route   GET /api/internship-enrollments/admin/certification-exam-cohorts
+ * @desc    Cohorts (batch + internship) that have a certification exam template
+ * @access  Admin
+ */
+export const listCertificationExamCohortsController = asyncHandler(
+  async (_req: Request, res: Response) => {
+    const rows = await listCertificationExamCohortsAdmin();
     sendSuccessResponse(res, { cohorts: rows }, "Cohorts fetched", 200);
   },
 );

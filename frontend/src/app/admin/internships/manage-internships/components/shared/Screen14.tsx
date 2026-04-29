@@ -258,6 +258,16 @@ const Screen14 = () => {
                   {formData.certification ? "Yes" : "No"}
                 </p>
               </div>
+              {formData.certification ? (
+                <div>
+                  <label className="text-sm text-gray-600">
+                    Cert. exam — min success points
+                  </label>
+                  <p className="text-sm text-gray-900 font-mono">
+                    {formData.certificationThreshold ?? 0}
+                  </p>
+                </div>
+              ) : null}
               <div>
                 <label className="text-sm text-gray-600">Featured</label>
                 <p className="text-sm text-gray-900">

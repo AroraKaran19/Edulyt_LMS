@@ -108,7 +108,8 @@ export const ENDPOINTS = {
     /** POST — create a new exam/task submission. */
     create: "/internship-submissions",
     adminList: "/internship-submissions/admin",
-    adminById: (id: string) => `/internship-submissions/admin/${encodeURIComponent(id)}`,
+    adminById: (id: string) =>
+      `/internship-submissions/admin/${encodeURIComponent(id)}`,
     byId: (id: string) => `/internship-submissions/${id}`,
     saveMcq: (id: string) => `/internship-submissions/${id}/answers/mcq`,
     submit: (id: string) => `/internship-submissions/${id}/submit`,
@@ -131,10 +132,14 @@ export const ENDPOINTS = {
     adminApproveToEnrolled: "/internship-enrollments/admin/approve-to-enrolled",
     adminEntranceExamCohorts:
       "/internship-enrollments/admin/entrance-exam-cohorts",
+    adminCertificationExamCohorts:
+      "/internship-enrollments/admin/certification-exam-cohorts",
     adminById: (enrollmentId: string) =>
       `/internship-enrollments/admin/${encodeURIComponent(enrollmentId)}`,
     adminUpdateStatus: (enrollmentId: string) =>
       `/internship-enrollments/admin/${encodeURIComponent(enrollmentId)}/status`,
+    adminChangeBatch: (enrollmentId: string) =>
+      `/internship-enrollments/admin/${encodeURIComponent(enrollmentId)}/batch`,
     adminDelete: (enrollmentId: string) =>
       `/internship-enrollments/admin/${encodeURIComponent(enrollmentId)}`,
   },
@@ -174,6 +179,7 @@ export const ENDPOINTS = {
     self: "/orders",
     create: "/orders",
     createInternshipSeat: "/orders/internship-seat",
+    createInternshipSuccessPoints: "/orders/internship-success-points",
     verify: "/orders/verify",
     webhook: "/orders/webhook",
 

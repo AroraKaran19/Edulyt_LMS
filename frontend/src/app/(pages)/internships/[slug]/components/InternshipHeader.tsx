@@ -1,5 +1,5 @@
 "use client";
-import { Internship } from "@/types";
+import { Internship, InternshipEnrollmentListRow } from "@/types";
 import Image from "next/image";
 import {
   Check,
@@ -22,13 +22,164 @@ import {
   ReactElement,
 } from "react";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import apiClient from "@/configs/apiConfig";
+import { ENDPOINTS } from "@/constants/endpoints";
 import ApplyPathModal from "./ApplyPathModal";
+
+/** Same internship as this page (by id or slug snapshot). */
+function enrollmentMatchesInternship(
+  row: InternshipEnrollmentListRow,
+  internship: Internship,
+): boolean {
+  const iid = internship._id?.trim();
+  if (iid && row.internship?._id && row.internship._id === iid) return true;
+  const slug = internship.slug?.trim();
+  if (!slug) return false;
+  if (row.internship?.slug === slug) return true;
+  if (row.internshipSnapshot?.slug === slug) return true;
+  return false;
+}
+
+function scoreEnrollmentStatus(status: string): number {
+  switch (status) {
+    case "enrolled":
+      return 100;
+    case "paused":
+      return 95;
+    case "payment_pending":
+      return 85;
+    case "exam_registered":
+    case "exam_attempted":
+    case "in_merit_pool":
+      return 70;
+    case "completed":
+      return 60;
+    default:
+      return 0;
+  }
+}
+
+/**
+ * If the learner may apply again (rejected / withdrawn), ignore those rows when a
+ * newer enrollment exists for the same program.
+ */
+function pickEnrollmentForInternship(
+  rows: InternshipEnrollmentListRow[],
+  internship: Internship,
+): InternshipEnrollmentListRow | null {
+  const matches = rows.filter((r) =>
+    enrollmentMatchesInternship(r, internship),
+  );
+  if (matches.length === 0) return null;
+  const reapplyOk = new Set(["admin_rejected", "dropped", "revoked"]);
+  const candidates = matches.filter((r) => !reapplyOk.has(r.status));
+  if (candidates.length === 0) return null;
+  return [...candidates].sort(
+    (a, b) => scoreEnrollmentStatus(b.status) - scoreEnrollmentStatus(a.status),
+  )[0];
+}
+
+type ApplyHint =
+  | { kind: "apply" }
+  | { kind: "replace"; label: string; href: string };
+
+function applyHintForEnrollment(
+  row: InternshipEnrollmentListRow | null,
+  slug: string,
+): ApplyHint {
+  if (!row) return { kind: "apply" };
+  const s = row.status;
+  const dashHome = "/dashboard/internships";
+
+  if (s === "enrolled") {
+    return { kind: "replace", label: "You're enrolled", href: dashHome };
+  }
+  if (s === "paused") {
+    return { kind: "replace", label: "Enrollment paused", href: dashHome };
+  }
+  if (s === "completed") {
+    return { kind: "replace", label: "Program completed", href: dashHome };
+  }
+  if (s === "payment_pending") {
+    return {
+      kind: "replace",
+      label: "Registration in progress",
+      href: dashHome,
+    };
+  }
+  if (
+    s === "exam_registered" ||
+    s === "exam_attempted" ||
+    s === "in_merit_pool"
+  ) {
+    return {
+      kind: "replace",
+      label: "Already registered",
+      href: s === "exam_registered" ? `${dashHome}/pending` : dashHome,
+    };
+  }
+  return { kind: "apply" };
+}
 
 const InternshipHeader = ({ internship }: { internship: Internship }) => {
   const heroLines =
     internship.headerList?.map((s) => s?.trim()).filter(Boolean) ?? [];
   const [applyModalOpen, setApplyModalOpen] = useState(false);
+  const { status: sessionStatus } = useSession();
+  const router = useRouter();
+  const [myEnrollment, setMyEnrollment] = useState<
+    InternshipEnrollmentListRow | null | undefined
+  >(undefined);
+
+  useEffect(() => {
+    if (sessionStatus !== "authenticated") {
+      setMyEnrollment(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await apiClient.get(ENDPOINTS.internshipEnrollments.me, {
+          params: { page: 1, limit: 80 },
+        });
+        const data = res.data?.data as
+          | { enrollments?: InternshipEnrollmentListRow[] }
+          | undefined;
+        const rows = data?.enrollments ?? [];
+        const picked = pickEnrollmentForInternship(rows, internship);
+        if (!cancelled) setMyEnrollment(picked);
+      } catch {
+        if (!cancelled) setMyEnrollment(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionStatus, internship.slug, internship._id]);
+
+  const applyHint = useMemo(
+    () =>
+      applyHintForEnrollment(
+        myEnrollment === undefined ? null : myEnrollment,
+        internship.slug,
+      ),
+    [myEnrollment, internship.slug],
+  );
+
+  const checkingEnrollment =
+    sessionStatus === "authenticated" && myEnrollment === undefined;
+
+  const handleApplyPrimaryClick = () => {
+    if (checkingEnrollment) return;
+    if (applyHint.kind === "replace") {
+      router.push(applyHint.href);
+      return;
+    }
+    setApplyModalOpen(true);
+  };
 
   const handleDownloadBrochure = async () => {
     try {
@@ -309,9 +460,21 @@ const InternshipHeader = ({ internship }: { internship: Internship }) => {
                 <OrangeButton
                   glow={false}
                   className="w-full"
-                  onClick={() => setApplyModalOpen(true)}
+                  disabled={checkingEnrollment}
+                  onClick={handleApplyPrimaryClick}
+                  aria-label={
+                    applyHint.kind === "replace"
+                      ? applyHint.label
+                      : checkingEnrollment
+                        ? "Checking enrollment status"
+                        : "Apply now"
+                  }
                 >
-                  Apply Now
+                  {checkingEnrollment
+                    ? "Checking…"
+                    : applyHint.kind === "replace"
+                      ? applyHint.label
+                      : "Apply Now"}
                 </OrangeButton>
               </div>
             </div>

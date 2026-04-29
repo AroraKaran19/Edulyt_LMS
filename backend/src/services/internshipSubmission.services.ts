@@ -192,7 +192,9 @@ export async function createInternshipSubmission(
 
     // Enforce the task window: enrolledAt + unlockAfterDays ≤ now < enrolledAt + dueDays
     const enrollment =
-      await InternshipEnrollmentModel.findById(enrollmentId).lean();
+      await InternshipEnrollmentModel.findById(enrollmentId)
+        .select("-applicationAnswers -applicationSubmittedAt")
+        .lean();
     if (!enrollment) {
       throw new AppError("Enrollment not found", 404);
     }

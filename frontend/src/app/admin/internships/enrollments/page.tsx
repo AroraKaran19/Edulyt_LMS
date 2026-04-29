@@ -353,6 +353,7 @@ export default function InternshipEnrollmentsAdminPage() {
         isOpen={!!detailId}
         enrollmentId={detailId}
         onClose={() => setDetailId(null)}
+        onUpdated={() => void fetchRows()}
       />
     </>
   );

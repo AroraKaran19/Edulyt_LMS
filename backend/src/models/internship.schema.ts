@@ -124,7 +124,18 @@ const internshipSchema = new mongoose.Schema<Internship>(
       default: true,
       required: true,
     },
+    /** Minimum `internshipSuccessPoints` on enrollment required before attempting the certification exam. */
+    certificationThreshold: {
+      type: Number,
+      default: 0,
+      min: [0, "certificationThreshold must be >= 0"],
+    },
     brochure: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    jobDescription: {
       type: String,
       trim: true,
       default: "",
@@ -324,7 +335,6 @@ const internshipSchema = new mongoose.Schema<Internship>(
 );
 
 // Indexes
-internshipSchema.index({ slug: 1 });
 internshipSchema.index({ title: 1 });
 internshipSchema.index({ isActive: 1 });
 internshipSchema.index({ audience: 1 });

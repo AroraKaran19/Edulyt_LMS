@@ -45,6 +45,7 @@ const DashboardNavbar = () => {
   const { stats, isLoading } = useDashboardStats();
   const [courseCount, setCourseCount] = useState(0);
   const [certificateCount, setCertificateCount] = useState(0);
+  const [certificateCountLoading, setCertificateCountLoading] = useState(true);
   const [internshipCount, setInternshipCount] = useState(0);
   const [internshipCountLoading, setInternshipCountLoading] = useState(true);
   const [navSearch, setNavSearch] = useState("");
@@ -58,9 +59,31 @@ const DashboardNavbar = () => {
   useEffect(() => {
     if (!isLoading && stats) {
       setCourseCount(stats.totalCourses);
-      setCertificateCount(stats.completedCourses);
     }
   }, [stats, isLoading]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setCertificateCountLoading(true);
+      try {
+        const res = await apiClient.get("/certificates?page=1&limit=1");
+        const data = res.data?.data;
+        const total =
+          data && typeof data === "object" && "total" in data
+            ? (data.total as number)
+            : 0;
+        if (!cancelled) setCertificateCount(total);
+      } catch {
+        if (!cancelled) setCertificateCount(0);
+      } finally {
+        if (!cancelled) setCertificateCountLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -182,9 +205,6 @@ const DashboardNavbar = () => {
   // ── Focus mode (exam / task taking) ──────────────────────────────────────
   if (isFocusRoute(pathname)) {
     const parts = pathname.split("/").filter(Boolean);
-    // Derive a sensible back-link:
-    // /dashboard/internships/exam/[id]      → back to /dashboard/internships
-    // /dashboard/internships/[slug]/[taskId] → back to /dashboard/internships/[slug]
     const isExamRoute = parts[2] === "exam";
     const backHref = isExamRoute
       ? "/dashboard/internships"
@@ -192,17 +212,16 @@ const DashboardNavbar = () => {
     const backLabel = isExamRoute ? "My Internships" : "Back to program";
 
     return (
-      <div className="focus-navbar w-full fixed top-0 left-0 z-9999 bg-stone-950 border-b border-stone-800">
+      <div className="focus-navbar w-full fixed top-0 left-0 z-9999 bg-primary/40 backdrop-blur-sm border-b border-primary/20">
         <div className="w-full h-14 px-4 lg:px-10 flex items-center justify-between gap-4">
-          {/* Logo */}
-          <Link href="/" className="shrink-0 flex items-center">
+          <Link href="/" className="flex shrink-0 items-center overflow-visible">
             <ImageComponent
               src="/logo.svg"
-              alt="logo"
-              width={80}
-              height={40}
+              alt="Logo"
+              width={100}
+              height={100}
               loading="eager"
-              className="h-8 w-auto object-contain brightness-0 invert"
+              className="h-8 w-auto max-w-none shrink-0 object-contain object-left"
               draggable={false}
             />
           </Link>
@@ -215,7 +234,7 @@ const DashboardNavbar = () => {
           {/* Exit */}
           <Link
             href={backHref}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-stone-700 bg-stone-900 px-3 py-1.5 text-xs font-semibold text-stone-300 hover:bg-stone-800 hover:text-white transition"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-primary/20 bg-primary px-3 py-1.5 text-xs font-semibold text-white"
           >
             <X className="h-3.5 w-3.5" />
             {backLabel}
@@ -342,9 +361,13 @@ const DashboardNavbar = () => {
                       ? internshipCountLoading
                         ? "..."
                         : item.count
-                      : isLoading
-                        ? "..."
-                        : item.count}
+                      : item.href === "/dashboard/certificates"
+                        ? certificateCountLoading
+                          ? "..."
+                          : item.count
+                        : isLoading
+                          ? "..."
+                          : item.count}
                   </span>
                 )}
               </Link>

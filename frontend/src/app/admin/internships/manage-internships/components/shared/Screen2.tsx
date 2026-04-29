@@ -472,6 +472,16 @@ const Screen2 = () => {
                           One entrance and one certification exam template per batch.
                           Already-linked templates appear first after save.
                         </p>
+                        <p className="text-xs text-amber-950/90 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5 leading-relaxed">
+                          <span className="font-semibold">
+                            Certification must happen before learners finish.
+                          </span>{" "}
+                          There is no fixed internship end date—completion is when you mark a
+                          learner or batch complete. Once an enrollment is{" "}
+                          <span className="font-medium">Completed</span>, they can no longer use
+                          certification flows. Set exam windows in the template so learners sit the
+                          certification exam while still enrolled and active.
+                        </p>
                       </div>
                     </div>
                   )}

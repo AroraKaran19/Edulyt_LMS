@@ -24,7 +24,6 @@ const questionCategorySchema = new mongoose.Schema<QuestionCategory>(
 );
 
 questionCategorySchema.index({ isActive: 1 });
-questionCategorySchema.index({ name: 1 });
 
 export const QuestionCategoryModel = mongoose.model<QuestionCategory>(
   "QuestionCategory",

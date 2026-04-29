@@ -11,7 +11,7 @@ const orderSchema = new Schema<PaymentOrder>(
     orderKind: {
       type: String,
       required: true,
-      enum: ["course", "internship_seat"],
+      enum: ["course", "internship_seat", "internship_success_points"],
       default: "course",
     },
     courseId: { type: Schema.Types.ObjectId, ref: "Course", required: false },
@@ -22,7 +22,11 @@ const orderSchema = new Schema<PaymentOrder>(
       required: false,
       enum: ["elite", "essential"],
     },
-    internshipId: { type: Schema.Types.ObjectId, ref: "Internship", required: false },
+    internshipId: {
+      type: Schema.Types.ObjectId,
+      ref: "Internship",
+      required: false,
+    },
     batchId: { type: String, required: false, trim: true },
     internshipEnrollmentId: {
       type: Schema.Types.ObjectId,
@@ -30,6 +34,16 @@ const orderSchema = new Schema<PaymentOrder>(
       required: false,
     },
     internshipTitle: { type: String, required: false, trim: true },
+    internshipSuccessPointsQuantity: {
+      type: Number,
+      required: false,
+      min: 1,
+    },
+    internshipSuccessPointsFulfillmentApplied: {
+      type: Boolean,
+      required: false,
+      default: false,
+    },
     paymentMode: { type: String, required: true, default: "online" },
     paymentMethod: { type: String, required: true, default: "paytm" },
     paymentStatus: {
@@ -53,7 +67,7 @@ const orderSchema = new Schema<PaymentOrder>(
       required: false,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // indexes

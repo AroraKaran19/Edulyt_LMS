@@ -44,6 +44,8 @@ export function getInternshipScreenTriggerFields(
         "description",
         "thumbnail",
         "brochure",
+        "jobDescription",
+        "certificationThreshold",
       ];
       const hl = context?.headerList ?? [];
       hl.forEach((_, i) => {

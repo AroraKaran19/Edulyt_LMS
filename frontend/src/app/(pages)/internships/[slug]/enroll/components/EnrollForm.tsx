@@ -211,6 +211,15 @@ const enrollFormSchema = z.object({
 
 type EnrollFormData = z.infer<typeof enrollFormSchema>;
 
+/** Persist full enroll form as JSON on `InternshipEnrollment.applicationAnswers`. */
+function buildApplicationAnswersPayload(data: EnrollFormData): Record<string, unknown> {
+  const { dob, ...rest } = data;
+  return {
+    ...rest,
+    dob: dob instanceof Date ? dob.toISOString() : String(dob),
+  };
+}
+
 function enrollSchemaWithOpenBatches(openIds: Set<string>) {
   return enrollFormSchema.refine((data) => openIds.has(data.batchId), {
     message:
@@ -446,6 +455,8 @@ const EnrollForm = ({ preview }: { preview: InternshipEnrollPreview }) => {
         gender: data.gender,
       });
 
+      const applicationAnswers = buildApplicationAnswersPayload(data);
+
       if (isSeatFlow) {
         // ── Paid-seat path ────────────────────────────────────────────────────
         // 2a. Create a payment_pending enrollment
@@ -455,6 +466,7 @@ const EnrollForm = ({ preview }: { preview: InternshipEnrollPreview }) => {
             internshipId: preview.internship._id,
             batchId: data.batchId,
             path: "paid",
+            applicationAnswers,
           },
         );
         const enrollmentId = enrollRes.data?.data?.enrollmentId as
@@ -486,6 +498,7 @@ const EnrollForm = ({ preview }: { preview: InternshipEnrollPreview }) => {
         await apiClient.post(ENDPOINTS.internshipEnrollments.create, {
           internshipId: preview.internship._id,
           batchId: data.batchId,
+          applicationAnswers,
         });
 
         toast.success(

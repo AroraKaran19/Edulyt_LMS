@@ -13,7 +13,6 @@ import {
 export interface InternshipBatchPlan {
   price: number;
   discount?: import(".").Discount;
-  isPopular?: boolean;
   isActive?: boolean;
 }
 
@@ -78,7 +77,10 @@ export interface Internship {
   thumbnail: string;
 
   certification: boolean;
+  /** Minimum internship success points before certification exam (0 = none). */
+  certificationThreshold: number;
   brochure: string;
+  jobDescription?: string;
   mode: "online" | "offline" | "hybrid";
 
   perks: {
@@ -160,7 +162,10 @@ export interface InternshipResponse {
   thumbnail: string;
 
   certification: boolean;
+  /** Minimum internship success points before certification exam (0 = none). */
+  certificationThreshold: number;
   brochure: string;
+  jobDescription?: string;
   mode: "online" | "offline" | "hybrid";
 
   perks: {

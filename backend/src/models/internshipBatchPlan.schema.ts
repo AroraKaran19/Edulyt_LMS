@@ -31,7 +31,6 @@ const internshipBatchPlanSchema = new mongoose.Schema(
       min: [0, "Price must be positive"],
     },
     discount: { type: planDiscountSchema, required: false },
-    isPopular: { type: Boolean, default: false },
     isActive: { type: Boolean, default: true },
   },
   { _id: false, timestamps: false },

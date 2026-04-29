@@ -100,7 +100,6 @@ function normalizeInternshipBatchPlan(
   return {
     price: typeof p.price === "number" && !Number.isNaN(p.price) ? p.price : 0,
     discount: p.discount as InternshipBatchPlan["discount"],
-    isPopular: Boolean(p.isPopular),
     isActive: p.isActive !== false,
   };
 }
@@ -193,7 +192,13 @@ const toInternship = (doc: Record<string, unknown>): Internship => {
     description: String(doc.description ?? ""),
     thumbnail: String(doc.thumbnail ?? ""),
     certification: Boolean(doc.certification),
+    certificationThreshold:
+      typeof doc.certificationThreshold === "number" &&
+      !Number.isNaN(doc.certificationThreshold)
+        ? Math.max(0, doc.certificationThreshold)
+        : 0,
     brochure: String(doc.brochure ?? ""),
+    jobDescription: doc.jobDescription != null ? String(doc.jobDescription) : "",
     mode: (doc.mode as "online" | "offline" | "hybrid") ?? "online",
     perks: Array.isArray(doc.perks) ? doc.perks : [],
     features: Array.isArray(doc.features) ? doc.features : [],

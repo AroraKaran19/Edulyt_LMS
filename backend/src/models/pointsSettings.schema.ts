@@ -18,8 +18,6 @@ const pointsSettingsSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-pointsSettingsSchema.index({ key: 1 }, { unique: true });
-
 export const PointsSettingsModel = mongoose.model(
   "PointsSettings",
   pointsSettingsSchema,

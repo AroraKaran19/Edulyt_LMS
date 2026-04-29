@@ -62,19 +62,6 @@ const InternshipBatchPlanFields = ({ batchIndex }: Props) => {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Controller
-          name={`${base}.isPopular`}
-          control={control}
-          render={({ field }) => (
-            <div className="rounded-lg border border-gray-200 bg-white px-3 py-2">
-              <CheckBoxContainer
-                label="Mark as popular"
-                checked={field.value || false}
-                onChange={field.onChange}
-              />
-            </div>
-          )}
-        />
-        <Controller
           name={`${base}.isActive`}
           control={control}
           render={({ field }) => (

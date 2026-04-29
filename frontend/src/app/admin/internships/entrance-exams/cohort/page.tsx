@@ -18,6 +18,7 @@ import {
   User,
   BookOpen,
   Check,
+  Ban,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import apiClient from "@/configs/apiConfig";
@@ -56,6 +57,8 @@ function statusClass(s: string) {
   if (s === "in_merit_pool" || s === "exam_attempted")
     return "bg-amber-100 text-amber-800 border-amber-200";
   if (s === "exam_registered") return "bg-sky-100 text-sky-800 border-sky-200";
+  if (s === "payment_pending")
+    return "bg-orange-50 text-orange-900 border-orange-200";
   if (s === "admin_rejected")
     return "bg-gray-200 text-gray-700 border-gray-300";
   return "bg-gray-100 text-gray-800 border-gray-200";
@@ -69,8 +72,20 @@ const APPROVABLE_TO_ENROLLED = new Set([
   "in_merit_pool",
 ]);
 
+/** Statuses admin may reject (terminal `admin_rejected`) from this screen. */
+const REJECTABLE_STATUSES = new Set([
+  "exam_registered",
+  "exam_attempted",
+  "in_merit_pool",
+  "payment_pending",
+]);
+
 function canApproveToEnrolled(status: string): boolean {
   return APPROVABLE_TO_ENROLLED.has(status);
+}
+
+function canRejectCandidate(status: string): boolean {
+  return REJECTABLE_STATUSES.has(status);
 }
 
 function CohortContent() {
@@ -87,7 +102,8 @@ function CohortContent() {
   const [debounced, setDebounced] = useState("");
   const [submissionId, setSubmissionId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [approveLoading, setApproveLoading] = useState(false);
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
   const headerSelectRef = useRef<HTMLInputElement>(null);
   const tRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -112,7 +128,8 @@ function CohortContent() {
           limit: 20,
           internshipId,
           batchId,
-          enrollmentType: "merit",
+          // Do not filter enrollmentType=merit: learners who took the exam then chose
+          // "confirmed seat" become enrollmentType=paid and would disappear from this list.
           lifecycle: "all",
           meritPoolFirst: true,
           search: debounced || undefined,
@@ -201,7 +218,7 @@ function CohortContent() {
     ) {
       return;
     }
-    setApproveLoading(true);
+    setBulkLoading(true);
     try {
       const res = await apiClient.post(
         ENDPOINTS.internshipEnrollments.adminApproveToEnrolled,
@@ -217,7 +234,76 @@ function CohortContent() {
     } catch {
       toast.error("Approve to enrolled failed");
     } finally {
-      setApproveLoading(false);
+      setBulkLoading(false);
+    }
+  };
+
+  const onBulkReject = async () => {
+    const toProcess = rows.filter(
+      (r) => selected.has(r._id) && canRejectCandidate(r.status),
+    );
+    if (toProcess.length === 0) {
+      toast.info(
+        "Select learners who can still be rejected (registered, attempted, merit pool, or payment pending).",
+      );
+      return;
+    }
+    if (
+      !window.confirm(
+        `Reject ${toProcess.length} candidate(s)? Their enrollment will be marked admin rejected and they cannot proceed on this admission.`,
+      )
+    ) {
+      return;
+    }
+    setBulkLoading(true);
+    try {
+      const results = await Promise.allSettled(
+        toProcess.map((r) =>
+          apiClient.patch(ENDPOINTS.internshipEnrollments.adminUpdateStatus(r._id), {
+            status: "admin_rejected",
+          }),
+        ),
+      );
+      const ok = results.filter((r) => r.status === "fulfilled").length;
+      const fail = results.length - ok;
+      setSelected(new Set());
+      void load();
+      if (ok) toast.success(`Rejected ${ok} candidate(s).`);
+      if (fail) toast.error(`${fail} could not be rejected.`);
+    } catch {
+      toast.error("Reject failed");
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
+  const onRejectOne = async (enrollmentId: string) => {
+    const row = rows.find((r) => r._id === enrollmentId);
+    if (!row || !canRejectCandidate(row.status)) return;
+    if (
+      !window.confirm(
+        "Reject this candidate? Their enrollment will be marked admin rejected.",
+      )
+    ) {
+      return;
+    }
+    setRejectingId(enrollmentId);
+    try {
+      await apiClient.patch(
+        ENDPOINTS.internshipEnrollments.adminUpdateStatus(enrollmentId),
+        { status: "admin_rejected" },
+      );
+      toast.success("Candidate rejected.");
+      setSelected((prev) => {
+        const next = new Set(prev);
+        next.delete(enrollmentId);
+        return next;
+      });
+      void load();
+    } catch {
+      toast.error("Reject failed");
+    } finally {
+      setRejectingId(null);
     }
   };
 
@@ -291,7 +377,8 @@ function CohortContent() {
             Exam registrations
           </h1>
           <p className="text-gray-600 mt-1">
-            {programLabel} · {cohortLabel} — merit path learners for this batch
+            {programLabel} · {cohortLabel} — admission pipeline for this cohort
+            (merit or paid seat)
           </p>
         </div>
 
@@ -313,47 +400,72 @@ function CohortContent() {
                     {selected.size}
                   </span>{" "}
                   selected
-                  {rows.filter(
-                    (r) =>
-                      selected.has(r._id) && canApproveToEnrolled(r.status),
-                  ).length > 0 && (
-                    <span className="text-gray-500">
-                      {" "}
-                      (
-                      {rows.filter(
-                        (r) =>
-                          selected.has(r._id) &&
-                          canApproveToEnrolled(r.status),
-                      ).length}{" "}
-                      can be enrolled)
-                    </span>
-                  )}
+                  {(() => {
+                    const nApprove = rows.filter(
+                      (r) =>
+                        selected.has(r._id) && canApproveToEnrolled(r.status),
+                    ).length;
+                    const nReject = rows.filter(
+                      (r) =>
+                        selected.has(r._id) && canRejectCandidate(r.status),
+                    ).length;
+                    const parts: string[] = [];
+                    if (nApprove > 0) parts.push(`${nApprove} can be enrolled`);
+                    if (nReject > 0) parts.push(`${nReject} can be rejected`);
+                    return parts.length > 0 ? (
+                      <span className="text-gray-500">
+                        {" "}
+                        ({parts.join(" · ")})
+                      </span>
+                    ) : null;
+                  })()}
                 </span>
               ) : (
                 <span className="text-gray-500">
-                  Select candidates, then approve to enroll them in the program
-                  in one step.
+                  Select candidates, then approve to enroll or reject.
                 </span>
               )}
             </p>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 justify-end">
               {selected.size > 0 && (
                 <WhiteButton
                   type="button"
                   glow={false}
                   onClick={() => setSelected(new Set())}
-                  disabled={approveLoading}
+                  disabled={bulkLoading}
                   className="text-sm"
                 >
                   Clear selection
                 </WhiteButton>
               )}
+              <WhiteButton
+                type="button"
+                glow={false}
+                onClick={() => void onBulkReject()}
+                disabled={
+                  bulkLoading ||
+                  rows.filter(
+                    (r) =>
+                      selected.has(r._id) && canRejectCandidate(r.status),
+                  ).length === 0
+                }
+                className="text-sm text-red-700 border-red-200 hover:border-red-300"
+              >
+                {bulkLoading ? (
+                  "Updating…"
+                ) : (
+                  <>
+                    <Ban className="w-4 h-4 mr-1.5 inline" />
+                    Reject selected
+                  </>
+                )}
+              </WhiteButton>
               <OrangeButton
                 type="button"
                 glow={false}
                 onClick={() => void onBulkApprove()}
                 disabled={
-                  approveLoading ||
+                  bulkLoading ||
                   rows.filter(
                     (r) =>
                       selected.has(r._id) && canApproveToEnrolled(r.status),
@@ -361,7 +473,7 @@ function CohortContent() {
                 }
                 className="text-sm"
               >
-                {approveLoading ? (
+                {bulkLoading ? (
                   "Updating…"
                 ) : (
                   <>
@@ -424,7 +536,7 @@ function CohortContent() {
                   <tr>
                     <td colSpan={COL_SPAN} className="px-6 py-12 text-center">
                       <p className="text-gray-500 font-medium">
-                        No merit enrollments for this cohort
+                        No enrollments for this cohort
                       </p>
                     </td>
                   </tr>
@@ -497,6 +609,18 @@ function CohortContent() {
                             <FileText className="w-4 h-4 mr-1.5 inline" />
                             View submission
                           </WhiteButton>
+                          {canRejectCandidate(row.status) && (
+                            <WhiteButton
+                              type="button"
+                              glow={false}
+                              onClick={() => void onRejectOne(row._id)}
+                              disabled={rejectingId === row._id}
+                              className="shrink-0 py-2 px-3 text-sm text-red-700 border-red-200 hover:border-red-300"
+                            >
+                              <Ban className="w-4 h-4 mr-1.5 inline" />
+                              {rejectingId === row._id ? "Rejecting…" : "Reject"}
+                            </WhiteButton>
+                          )}
                           <WhiteButton
                             type="button"
                             glow={false}

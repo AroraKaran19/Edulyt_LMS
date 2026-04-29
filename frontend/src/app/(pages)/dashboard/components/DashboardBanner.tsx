@@ -2,6 +2,7 @@
 import Card from "./dashboard/ui/Card";
 import Image from "next/image";
 import useDashboardStats from "@/hooks/useDashboardStats";
+import useCertificates from "@/hooks/useCertificates";
 import { useSession } from "next-auth/react";
 import Loader from "@/components/ui/Loader";
 import { usePathname } from "next/navigation";
@@ -12,6 +13,7 @@ const DashboardBanner = () => {
   const { data: session } = useSession();
   const { stats, isLoading } = useDashboardStats();
   const [internshipCount, setInternshipCount] = useState<number>(0);
+  const { total: certificateCount, fetchCertificates } = useCertificates();
 
   useEffect(() => {
     let cancelled = false;
@@ -20,6 +22,10 @@ const DashboardBanner = () => {
       .catch(() => { if (!cancelled) setInternshipCount(0); });
     return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => {
+    fetchCertificates({ page: 1, limit: 1 });
+  }, [fetchCertificates]);
 
   const hour = new Date().getHours();
   const timeMessage =
@@ -83,7 +89,7 @@ const DashboardBanner = () => {
         />
         <Card
           title="Certificates"
-          count={stats?.completedCourses || 0}
+          count={certificateCount}
           icon={
             <Image
               src="/dashboard/CertificateBannerIcon.svg"

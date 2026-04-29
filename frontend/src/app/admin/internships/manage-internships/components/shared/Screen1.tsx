@@ -48,6 +48,9 @@ const Screen1 = () => {
   const brochureValue = watch("brochure");
   const brochureS3Key = watch("brochureS3Key");
   const brochureSource = watch("brochureSource");
+  const jobDescriptionValue = watch("jobDescription");
+  const jobDescriptionS3Key = watch("jobDescriptionS3Key");
+  const jobDescriptionSource = watch("jobDescriptionSource");
   const titleValue = watch("title");
   const headerList = watch("headerList") ?? [];
 
@@ -75,12 +78,16 @@ const Screen1 = () => {
   const [brochureFolderName, setBrochureFolderName] = useState(
     "internships/new_internship/brochure",
   );
+  const [jobDescriptionFolderName, setJobDescriptionFolderName] = useState(
+    "internships/new_internship/job_description",
+  );
 
   useEffect(() => {
     if (titleValue) {
       const baseFolder = titleValue.replace(/[^a-zA-Z0-9]/g, "_").toLowerCase();
       setThumbnailFolderName(`internships/${baseFolder}/thumbnail`);
       setBrochureFolderName(`internships/${baseFolder}/brochure`);
+      setJobDescriptionFolderName(`internships/${baseFolder}/job_description`);
     }
   }, [titleValue]);
 
@@ -198,6 +205,57 @@ const Screen1 = () => {
     setValue("brochureSource", "url", { shouldDirty: true, shouldTouch: true });
   };
 
+  const handleJobDescriptionUpload = async (file: File, folderName: string) => {
+    try {
+      const result = await uploadFile(file, folderName);
+      if (result.success && result.data) {
+        setValue("jobDescription", result.data.url, {
+          shouldDirty: true,
+          shouldTouch: true,
+        });
+        setValue("jobDescriptionS3Key", result.data.s3Key, {
+          shouldDirty: true,
+          shouldTouch: true,
+        });
+        setValue("jobDescriptionSource", "upload", {
+          shouldDirty: true,
+          shouldTouch: true,
+        });
+        return result.data.url;
+      }
+      throw new Error(result.error || "Upload failed");
+    } catch (error) {
+      console.error("Failed to upload job description:", error);
+      setValue("jobDescription", "", { shouldDirty: true, shouldTouch: true });
+      setValue("jobDescriptionS3Key", "", { shouldDirty: true, shouldTouch: true });
+      setValue("jobDescriptionSource", "url", {
+        shouldDirty: true,
+        shouldTouch: true,
+      });
+      throw error;
+    }
+  };
+
+  const handleJobDescriptionUrlChange = async (url: string) => {
+    if (jobDescriptionS3Key && jobDescriptionSource === "upload") {
+      try {
+        await deleteFile(jobDescriptionS3Key);
+      } catch (error) {
+        console.error("Failed to delete old job description file from S3:", error);
+      }
+    }
+
+    setValue("jobDescription", url, { shouldDirty: true, shouldTouch: true });
+    setValue("jobDescriptionSource", "url", { shouldDirty: true, shouldTouch: true });
+    setValue("jobDescriptionS3Key", "", { shouldDirty: true, shouldTouch: true });
+  };
+
+  const handleJobDescriptionRemove = () => {
+    setValue("jobDescription", "", { shouldDirty: true, shouldTouch: true });
+    setValue("jobDescriptionS3Key", "", { shouldDirty: true, shouldTouch: true });
+    setValue("jobDescriptionSource", "url", { shouldDirty: true, shouldTouch: true });
+  };
+
   if (!isMounted) {
     return (
       <Container
@@ -273,6 +331,62 @@ const Screen1 = () => {
           })}
         />
       </Container>
+      {watch("certification") && (
+        <Container
+          description="Certification exam — success points gate"
+          className="w-full shadow-none border-none pb-0"
+          classNameBody="flex flex-col gap-2 max-w-lg"
+        >
+          <Controller
+            name="certificationThreshold"
+            control={control}
+            rules={{
+              validate: (v) => {
+                const n = typeof v === "number" ? v : Number(v);
+                if (Number.isNaN(n) || n < 0)
+                  return "Must be 0 or greater";
+                return true;
+              },
+            }}
+            render={({ field }) => (
+              <Input
+                {...field}
+                type="number"
+                min={0}
+                step={1}
+                label="Minimum internship success points"
+                placeholder="0"
+                value={
+                  field.value === undefined || field.value === null
+                    ? ""
+                    : String(field.value)
+                }
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  if (raw === "") {
+                    field.onChange(0);
+                    return;
+                  }
+                  const n = parseInt(raw, 10);
+                  field.onChange(Number.isNaN(n) ? 0 : n);
+                }}
+                error={errors.certificationThreshold?.message as string | undefined}
+              />
+            )}
+          />
+          <p className="text-xs text-gray-600">
+            Total internship success points required before a learner can attempt the
+            certification exam. Use 0 for no minimum. Below threshold, learners may top
+            up points using your admin success-points price (e.g. ₹1 per point).
+          </p>
+          <p className="text-xs text-amber-950/85 bg-amber-50/90 border border-amber-200/90 rounded-lg px-3 py-2 mt-2 leading-relaxed">
+            Plan certification before marking learners{" "}
+            <span className="font-medium">Completed</span>: there is no automatic program close
+            date—the cohort stays open until you finish it. After completion, nothing further is
+            available on that enrollment.
+          </p>
+        </Container>
+      )}
       <Container
         description="Define the core details of your internship"
         className="w-full shadow-none border-none pt-0"
@@ -512,6 +626,47 @@ const Screen1 = () => {
               maxSize={15}
               acceptedFormats={[".pdf", ".doc", ".docx"]}
               error={errors.brochure?.message || uploadError}
+              isUploading={isUploading}
+            />
+          )}
+        />
+        <Controller
+          name="jobDescription"
+          control={control}
+          defaultValue=""
+          rules={{
+            validate: (value) => {
+              if (
+                value &&
+                typeof value === "string" &&
+                value.startsWith("http")
+              ) {
+                try {
+                  new URL(value);
+                  return true;
+                } catch {
+                  return "Please enter a valid URL";
+                }
+              }
+              return true;
+            },
+          }}
+          render={() => (
+            <UploadMediaContainer
+              title="Job Description (Optional)"
+              description="Upload the job description document for your internship (optional)"
+              type="document"
+              folderName={jobDescriptionFolderName}
+              mediaUrl={jobDescriptionValue}
+              mediaSource={jobDescriptionSource}
+              s3Key={jobDescriptionS3Key}
+              onFileUpload={handleJobDescriptionUpload}
+              onFileRemove={handleJobDescriptionRemove}
+              onUrlSubmit={handleJobDescriptionUrlChange}
+              allowUrlInput
+              maxSize={15}
+              acceptedFormats={[".pdf", ".doc", ".docx"]}
+              error={errors.jobDescription?.message || uploadError}
               isUploading={isUploading}
             />
           )}

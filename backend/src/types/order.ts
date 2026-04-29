@@ -1,11 +1,15 @@
 import { Course, User } from "./";
 
 /** Distinguishes course checkout from internship batch (seat) Paytm orders. */
-export type PaymentOrderKind = "course" | "internship_seat";
+export type PaymentOrderKind =
+  | "course"
+  | "internship_seat"
+  | "internship_success_points";
 
 /**
  * One document per payment attempt (Paytm). Course purchases use `orderKind: "course"`;
  * “book seat / without entrance” uses `orderKind: "internship_seat"`.
+ * Purchased internship certification success points use `internship_success_points`.
  */
 export interface PaymentOrder {
   _id?: string;
@@ -35,6 +39,10 @@ export interface PaymentOrder {
   internshipEnrollmentId?: string;
   /** Display on receipts / admin (internship title at checkout). */
   internshipTitle?: string;
+  /** Success-points purchase — whole points purchased (when `orderKind === "internship_success_points"`). */
+  internshipSuccessPointsQuantity?: number;
+  /** Set after points are credited so webhooks cannot double-apply. */
+  internshipSuccessPointsFulfillmentApplied?: boolean;
   paymentMethod: "paytm";
   paymentMode: string;
   txnId: string;

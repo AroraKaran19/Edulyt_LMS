@@ -23,6 +23,9 @@ import {
   issueInternshipVoucher,
 } from "./internshipVoucher.services";
 import type { CourseDiscount, Discount } from "../types";
+import { getPointsSettings } from "./pointsSettings.services";
+
+const SUCCESS_POINTS_PURCHASE_MAX = 500;
 
 const updatePendingPayments = async (userId: string, updateOperation: any) => {
   const user = await UserModel.findById(userId);
@@ -61,6 +64,8 @@ export const createInternshipSeatEnrollmentAfterPayment = async (
     "payment_pending",
     "exam_registered",
     "exam_attempted",
+    "in_merit_pool",
+    "admin_rejected",
   ] as string[];
   if (
     enrollment.enrollmentType !== "paid" ||
@@ -109,11 +114,90 @@ export const createInternshipSeatEnrollmentAfterPayment = async (
   return enrollment;
 };
 
+/**
+ * After Paytm success: credit purchased internship success points (certification) once per order.
+ */
+export const createInternshipSuccessPointsAfterPayment = async (order: any) => {
+  const enrollmentId = order.internshipEnrollmentId;
+  if (!enrollmentId) {
+    throw new AppError("Order is missing internship enrollment reference", 400);
+  }
+
+  const qty = Math.floor(Number(order.internshipSuccessPointsQuantity));
+  if (!Number.isFinite(qty) || qty < 1) {
+    throw new AppError("Invalid purchased quantity on order", 400);
+  }
+
+  const enrollment = await InternshipEnrollmentModel.findById(enrollmentId);
+  if (!enrollment) {
+    throw new AppError("Internship enrollment not found", 404);
+  }
+
+  const userId = order.userId?.toString?.() ?? String(order.userId);
+  if (String(enrollment.user) !== userId) {
+    throw new AppError("Order does not match this enrollment", 403);
+  }
+
+  const ALLOWED_STATUSES = ["enrolled", "completed", "paused"] as string[];
+  if (!ALLOWED_STATUSES.includes(String(enrollment.status))) {
+    throw new AppError(
+      "Enrollment is not eligible for success point purchases",
+      400,
+    );
+  }
+
+  const internship = await InternshipModel.findById(enrollment.internship)
+    .select("certificationThreshold title")
+    .lean();
+  const thresholdRaw = (internship as { certificationThreshold?: unknown })
+    ?.certificationThreshold;
+  const threshold =
+    typeof thresholdRaw === "number" && !Number.isNaN(thresholdRaw)
+      ? Math.max(0, Math.floor(thresholdRaw))
+      : 0;
+  if (threshold <= 0) {
+    throw new AppError(
+      "This program does not use certification success points",
+      400,
+    );
+  }
+
+  const claim = await OrderModel.updateOne(
+    {
+      _id: order._id,
+      paymentStatus: "success",
+      internshipSuccessPointsFulfillmentApplied: { $ne: true },
+    },
+    { $set: { internshipSuccessPointsFulfillmentApplied: true } },
+  );
+
+  if (!claim.modifiedCount) {
+    return enrollment;
+  }
+
+  try {
+    await InternshipEnrollmentModel.findByIdAndUpdate(enrollmentId, {
+      $inc: { internshipSuccessPoints: qty },
+    });
+  } catch (err) {
+    await OrderModel.updateOne(
+      { _id: order._id },
+      { $set: { internshipSuccessPointsFulfillmentApplied: false } },
+    );
+    throw err;
+  }
+
+  return InternshipEnrollmentModel.findById(enrollmentId);
+};
+
 // Create enrollment after successful payment
 export const createEnrollmentAfterPayment = async (order: any) => {
   try {
     if (order.orderKind === "internship_seat") {
       return await createInternshipSeatEnrollmentAfterPayment(order);
+    }
+    if (order.orderKind === "internship_success_points") {
+      return await createInternshipSuccessPointsAfterPayment(order);
     }
 
     // Check if enrollment already exists
@@ -781,7 +865,7 @@ export const createInternshipSeatOrderService = async (
   //  • "payment_pending"     — fresh direct-seat registration
   //  • "exam_registered"     — upgraded from merit path (seat payment + exam access)
   //  • "exam_attempted"      — same upgrade, exam already taken but seat not yet paid
-  const payableStatuses = ["payment_pending", "exam_registered", "exam_attempted"] as string[];
+  const payableStatuses = ["payment_pending", "exam_registered", "exam_attempted", "in_merit_pool", "admin_rejected"] as string[];
   if (
     enrollment.enrollmentType !== "paid" ||
     !payableStatuses.includes(String(enrollment.status))
@@ -854,6 +938,227 @@ export const createInternshipSeatOrderService = async (
     batchId: batchIdStr,
     internshipEnrollmentId: new mongoose.Types.ObjectId(internshipEnrollmentId),
     internshipTitle: String((internship as { title?: string }).title ?? "Internship"),
+  });
+  await order.save();
+
+  await StudentModel.findByIdAndUpdate(userId, {
+    $push: { orders: order._id.toString() },
+  });
+
+  if (amount < 1) {
+    order.amount = 0;
+    order.paymentStatus = "success";
+    await order.save();
+    await createEnrollmentAfterPayment(order);
+    const paymentGatewayToken = generatePaymentGatewayToken(
+      order._id.toString(),
+    );
+    return {
+      _id: order._id.toString(),
+      freeOrder: true,
+      token: paymentGatewayToken,
+    };
+  }
+
+  const paymentGatewayToken = generatePaymentGatewayToken(order._id.toString());
+  const redirectUrl = `${
+    process.env.FRONTEND_URL
+  }/payment/status/${order._id.toString()}?token=${paymentGatewayToken}`;
+
+  const amountForPaytm = Number.isInteger(amount)
+    ? amount.toString()
+    : Number(amount.toFixed(2)).toString();
+
+  const paytmRequestBody = {
+    requestType: "Payment" as const,
+    mid: process.env.PAYTM_MID,
+    websiteName: process.env.PAYTM_WEBSITE,
+    orderId: order._id.toString(),
+    callbackUrl: redirectUrl,
+    txnAmount: { value: amountForPaytm, currency: "INR" as const },
+    userInfo: { custId: userId },
+  };
+
+  const checksum = await generatePaytmChecksum(paytmRequestBody);
+
+  if (!checksum) {
+    throw new AppError("Failed to generate Paytm checksum", 500);
+  }
+
+  let response;
+  try {
+    response = await axios.post(
+      `https://secure.paytmpayments.com/theia/api/v1/initiateTransaction?mid=${
+        process.env.PAYTM_MID
+      }&orderId=${order._id.toString()}`,
+      {
+        head: {
+          signature: checksum,
+          channelId: "WEB",
+          version: "v1",
+          requestTimestamp: `${Math.floor(Date.now() / 1000)}`,
+        },
+        body: paytmRequestBody,
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+      },
+    );
+  } catch (err: unknown) {
+    const e = err as { response?: { data?: { body?: { resultInfo?: { resultMsg?: string } } } } };
+    const paytmBody = e.response?.data?.body;
+    const resultInfo = paytmBody?.resultInfo;
+    const message =
+      resultInfo?.resultMsg ||
+      (e as { message?: string }).message ||
+      "Failed to initiate Paytm transaction";
+    throw new AppError(
+      message,
+      (e as { response?: { status?: number } }).response?.status || 500,
+    );
+  }
+
+  if (response.status !== 200) {
+    throw new AppError("Error initiating transaction", 500);
+  }
+
+  const paytmBody = response.data?.body;
+  const resultInfo = paytmBody?.resultInfo;
+
+  if (resultInfo && resultInfo.resultStatus !== "S") {
+    const message =
+      resultInfo.resultMsg ||
+      `Paytm error (code: ${resultInfo.resultCode || "unknown"})`;
+    throw new AppError(message, 400);
+  }
+
+  if (!paytmBody?.txnToken) {
+    const paytmMessage = resultInfo?.resultMsg
+      ? resultInfo.resultMsg
+      : "Invalid response from Paytm - no transaction token";
+    throw new AppError(paytmMessage, 500);
+  }
+
+  order.token = paytmBody.txnToken;
+  await order.save();
+
+  await updatePendingPayments(userId, {
+    $push: { pendingPayments: order._id.toString() },
+  });
+
+  return {
+    _id: order._id.toString(),
+    token: paytmBody.txnToken,
+  };
+};
+
+/**
+ * Create Paytm order for purchasing internship certification success points (admin-priced INR per point).
+ */
+export const createInternshipSuccessPointsOrderService = async (
+  userId: string,
+  internshipEnrollmentId: string,
+  quantity: number,
+) => {
+  if (!process.env.PAYTM_MID || !process.env.PAYTM_WEBSITE) {
+    throw new AppError("PAYTM_MID or PAYTM_WEBSITE is not set", 500);
+  }
+
+  if (!mongoose.Types.ObjectId.isValid(internshipEnrollmentId)) {
+    throw new AppError("Invalid enrollment id", 400);
+  }
+
+  const qty = Math.floor(Number(quantity));
+  if (
+    !Number.isFinite(qty) ||
+    qty < 1 ||
+    qty > SUCCESS_POINTS_PURCHASE_MAX
+  ) {
+    throw new AppError(
+      `quantity must be between 1 and ${SUCCESS_POINTS_PURCHASE_MAX}`,
+      400,
+    );
+  }
+
+  const enrollment = await InternshipEnrollmentModel.findById(
+    internshipEnrollmentId,
+  );
+  if (!enrollment) throw new AppError("Internship enrollment not found", 404);
+  if (String(enrollment.user) !== String(userId)) {
+    throw new AppError("This enrollment does not belong to you", 403);
+  }
+
+  const activeStatuses = ["enrolled", "completed", "paused"] as string[];
+  if (!activeStatuses.includes(String(enrollment.status))) {
+    throw new AppError(
+      "Your enrollment is not active for this purchase",
+      400,
+    );
+  }
+
+  const internship = await InternshipModel.findById(enrollment.internship).lean();
+  if (!internship) throw new AppError("Internship not found", 404);
+
+  const thresholdRaw = (internship as { certificationThreshold?: unknown })
+    .certificationThreshold;
+  const threshold =
+    typeof thresholdRaw === "number" && !Number.isNaN(thresholdRaw)
+      ? Math.max(0, Math.floor(thresholdRaw))
+      : 0;
+  if (threshold <= 0) {
+    throw new AppError(
+      "This program does not offer purchased success points",
+      400,
+    );
+  }
+
+  const settings = await getPointsSettings();
+  const pricePerPoint = settings.internshipSuccessPointInr;
+  if (typeof pricePerPoint !== "number" || pricePerPoint <= 0) {
+    throw new AppError("Purchasing success points is not available right now", 400);
+  }
+
+  const rawAmount = qty * pricePerPoint;
+  const amount = Math.round(rawAmount * 100) / 100;
+
+  const user = await UserModel.findById(userId)
+    .select("firstName lastName email")
+    .lean();
+  const userName =
+    user && ((user as { firstName?: string }).firstName || (user as { lastName?: string }).lastName)
+      ? `${((user as { firstName?: string }).firstName ?? "").trim()} ${(
+          (user as { lastName?: string }).lastName ?? ""
+        ).trim()}`.trim()
+      : "";
+
+  const batchIdStr = enrollment.batchSnapshot?.batchId;
+
+  await OrderModel.deleteMany({
+    userId: new mongoose.Types.ObjectId(userId),
+    orderKind: "internship_success_points",
+    internshipEnrollmentId: new mongoose.Types.ObjectId(internshipEnrollmentId),
+    paymentStatus: "pending",
+  });
+
+  const order = new OrderModel({
+    txnId: Math.random().toString(36).substring(2, 15),
+    token: "",
+    userId,
+    orderKind: "internship_success_points",
+    amount,
+    currency: "INR",
+    paymentMethod: "paytm",
+    paymentMode: "online",
+    paymentStatus: "pending",
+    userName,
+    internshipId: new mongoose.Types.ObjectId(String(enrollment.internship)),
+    ...(batchIdStr ? { batchId: batchIdStr } : {}),
+    internshipEnrollmentId: new mongoose.Types.ObjectId(internshipEnrollmentId),
+    internshipTitle: String((internship as { title?: string }).title ?? "Internship"),
+    internshipSuccessPointsQuantity: qty,
   });
   await order.save();
 

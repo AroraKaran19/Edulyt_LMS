@@ -105,6 +105,13 @@ const internshipEnrollmentSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+
+    /**
+     * Snapshot of the public internship enroll form at submission time (JSON).
+     * Used by admins via the enrollment detail → registration modal.
+     */
+    applicationAnswers: { type: mongoose.Schema.Types.Mixed, required: false },
+    applicationSubmittedAt: { type: Date, required: false },
   },
   { timestamps: true },
 );

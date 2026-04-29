@@ -14,7 +14,6 @@ export type PartnerCollegesField = string[];
 export function createDefaultInternshipBatchPlan(): InternshipBatchPlan {
   return {
     price: 0,
-    isPopular: false,
     isActive: true,
   };
 }
@@ -72,6 +71,8 @@ export interface InternshipFormData {
   audience: "college-students" | "professionals";
   mode: "online" | "offline" | "hybrid";
   certification: boolean;
+  /** Minimum internship success points before learner may take certification exam (admin-configured). */
+  certificationThreshold: number;
   /** Marketing: show in featured internships API / carousel. */
   featured: boolean;
 
@@ -139,6 +140,11 @@ export interface InternshipFormData {
   brochure: string;
   brochureSource?: "upload" | "url";
   brochureS3Key?: string;
+
+  // Job Description document
+  jobDescription: string;
+  jobDescriptionSource?: "upload" | "url";
+  jobDescriptionS3Key?: string;
 
   // Testimonials (Screen 12)
   testimonials: string[];

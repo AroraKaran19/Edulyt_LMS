@@ -9,8 +9,10 @@ import {
   listInternshipEnrollmentsAdminController,
   getInternshipEnrollmentByIdAdminController,
   adminUpdateEnrollmentStatusController,
+  adminChangeEnrollmentBatchController,
   deleteInternshipEnrollmentAdminController,
   listEntranceExamCohortsController,
+  listCertificationExamCohortsController,
   adminBulkApproveToEnrolledController,
 } from "../controllers/internshipEnrollment.controller";
 
@@ -35,6 +37,13 @@ router.get(
   "/admin/entrance-exam-cohorts",
   verifyAdmin,
   listEntranceExamCohortsController,
+);
+
+/** GET /api/internship-enrollments/admin/certification-exam-cohorts */
+router.get(
+  "/admin/certification-exam-cohorts",
+  verifyAdmin,
+  listCertificationExamCohortsController,
 );
 
 /** GET /api/internship-enrollments/admin */
@@ -66,6 +75,13 @@ router.patch(
   "/admin/:enrollmentId/status",
   verifyAdmin,
   adminUpdateEnrollmentStatusController,
+);
+
+/** PATCH /api/internship-enrollments/admin/:enrollmentId/batch */
+router.patch(
+  "/admin/:enrollmentId/batch",
+  verifyAdmin,
+  adminChangeEnrollmentBatchController,
 );
 
 export default router;

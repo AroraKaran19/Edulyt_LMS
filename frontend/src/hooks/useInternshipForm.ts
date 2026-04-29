@@ -52,6 +52,7 @@ const getInitialFormData = (
     audience: "college-students",
     mode: "online",
     certification: true,
+    certificationThreshold: 0,
     featured: false,
     headerList: [],
     discount: createDefaultInternshipDiscount(),
@@ -81,6 +82,9 @@ const getInitialFormData = (
     brochure: "",
     brochureSource: "upload",
     brochureS3Key: "",
+    jobDescription: "",
+    jobDescriptionSource: "upload",
+    jobDescriptionS3Key: "",
     testimonials: [],
     faqs: [],
     mentors: [],
@@ -175,7 +179,6 @@ function normalizeInternshipBatchPlanFromApi(
       typeof p.price === "number" && !Number.isNaN(p.price as number)
         ? (p.price as number)
         : 0,
-    isPopular: Boolean(p.isPopular),
     isActive: p.isActive !== false,
     discount: p.discount as InternshipBatchPlan["discount"],
   };
@@ -218,6 +221,9 @@ const transformFormDataToInternship = (
     audience: formData.audience,
     mode: formData.mode,
     certification: formData.certification,
+    certificationThreshold: Number.isFinite(Number(formData.certificationThreshold))
+      ? Math.max(0, Math.floor(Number(formData.certificationThreshold)))
+      : 0,
     featured: formData.featured,
     headerList: formData.headerList
       .map((s) => String(s).trim())
@@ -254,6 +260,7 @@ const transformFormDataToInternship = (
       title: m.title,
     })),
     brochure: formData.brochure,
+    jobDescription: formData.jobDescription,
     testimonials: formData.testimonials,
     faqs: formData.faqs,
     mentors: formData.mentors,
@@ -282,6 +289,10 @@ const transformInternshipToFormData = (
     audience: internship.audience || "college-students",
     mode: internship.mode || "online",
     certification: internship.certification ?? true,
+    certificationThreshold:
+      typeof internship.certificationThreshold === "number"
+        ? Math.max(0, Math.floor(internship.certificationThreshold))
+        : 0,
     featured: internship.featured ?? false,
     headerList: Array.isArray(internship.headerList)
       ? [...internship.headerList]
@@ -335,6 +346,9 @@ const transformInternshipToFormData = (
     brochure: internship.brochure || "",
     brochureSource: "url",
     brochureS3Key: "",
+    jobDescription: internship.jobDescription || "",
+    jobDescriptionSource: "url",
+    jobDescriptionS3Key: "",
     testimonials: toIdStringList(internship.testimonials),
     faqs: toIdStringList(internship.faqs),
     mentors: toIdStringList(internship.mentors),
