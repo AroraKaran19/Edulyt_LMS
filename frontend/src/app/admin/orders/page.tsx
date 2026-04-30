@@ -2,9 +2,13 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
-import { Search, CreditCard, User, BookOpen } from "lucide-react";
+import { Search, CreditCard, User, BookOpen, Briefcase, Coins } from "lucide-react";
 import apiClient from "@/configs/apiConfig";
 import OrderDetailsModal from "./OrderDetailsModal";
+import {
+  getAdminOrderProductLabel,
+  getAdminOrderTypeLabel,
+} from "./orderDisplay";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import Input from "@/components/ui/inputs/Input";
 import Select from "@/components/ui/inputs/Select";
@@ -29,6 +33,10 @@ interface OrderItem {
   courseId: OrderCourse | null;
   courseName?: string;
   userName?: string;
+  orderKind?: "course" | "internship_seat" | "internship_success_points";
+  internshipTitle?: string;
+  internshipSuccessPointsQuantity?: number;
+  batchId?: string;
   txnId: string;
   amount: number;
   currency: string;
@@ -152,17 +160,42 @@ const OrdersPage = () => {
     return item.userName || "—";
   };
 
-  const getCourseTitle = (item: OrderItem) =>
-    item.courseId?.title || item.courseName || "—";
-
   const hasActiveFilters = debouncedSearch || paymentStatus !== "all";
+
+  const productIconWrap =
+    "w-8 h-8 rounded bg-gray-100 flex items-center justify-center shrink-0";
+  const productIconClass = "w-4 h-4 text-gray-500";
+
+  const renderProductIcon = (kind?: OrderItem["orderKind"]) => {
+    const k = kind ?? "course";
+    if (k === "internship_seat") {
+      return (
+        <div className={productIconWrap}>
+          <Briefcase className={productIconClass} aria-hidden />
+        </div>
+      );
+    }
+    if (k === "internship_success_points") {
+      return (
+        <div className={productIconWrap}>
+          <Coins className={productIconClass} aria-hidden />
+        </div>
+      );
+    }
+    return (
+      <div className={productIconWrap}>
+        <BookOpen className={productIconClass} aria-hidden />
+      </div>
+    );
+  };
 
   return (
     <div className="p-4 sm:p-6">
       <div className="mb-6">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Orders</h1>
         <p className="text-gray-600 mt-1">
-          All payment transactions — success, pending, and failed
+          Course, internship seat, and success-point checkouts — success,
+          pending, and failed
         </p>
       </div>
 
@@ -171,7 +204,7 @@ const OrdersPage = () => {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <Input
-              placeholder="Search by user, course, txn ID, coupon..."
+              placeholder="Search by user, product, txn ID, coupon..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-10"
@@ -205,7 +238,7 @@ const OrdersPage = () => {
                   User
                 </th>
                 <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase whitespace-nowrap min-w-[180px]">
-                  Course
+                  Product
                 </th>
                 <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase whitespace-nowrap min-w-[100px]">
                   Amount
@@ -274,12 +307,15 @@ const OrdersPage = () => {
                     </td>
                     <td className="px-4 sm:px-6 py-4 min-w-[180px]">
                       <div className="flex items-center gap-2 min-w-0">
-                        <div className="w-8 h-8 rounded bg-gray-100 flex items-center justify-center shrink-0">
-                          <BookOpen className="w-4 h-4 text-gray-500" />
+                        {renderProductIcon(item.orderKind)}
+                        <div className="min-w-0">
+                          <span className="text-sm text-gray-900 truncate block">
+                            {getAdminOrderProductLabel(item)}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {getAdminOrderTypeLabel(item.orderKind)}
+                          </span>
                         </div>
-                        <span className="text-sm text-gray-900 truncate block min-w-0">
-                          {getCourseTitle(item)}
-                        </span>
                       </div>
                     </td>
                     <td className="px-4 sm:px-6 py-4 text-sm whitespace-nowrap min-w-[100px]">

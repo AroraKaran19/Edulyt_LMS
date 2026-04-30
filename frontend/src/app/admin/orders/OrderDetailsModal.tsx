@@ -8,7 +8,14 @@ import {
   Calendar,
   Hash,
   AlertCircle,
+  Briefcase,
+  Coins,
+  Tag,
 } from "lucide-react";
+import {
+  getAdminOrderProductLabel,
+  getAdminOrderTypeLabel,
+} from "./orderDisplay";
 
 interface OrderUser {
   firstName?: string;
@@ -28,6 +35,10 @@ interface OrderItem {
   courseId: OrderCourse | null;
   courseName?: string;
   userName?: string;
+  orderKind?: "course" | "internship_seat" | "internship_success_points";
+  internshipTitle?: string;
+  internshipSuccessPointsQuantity?: number;
+  batchId?: string;
   txnId: string;
   amount: number;
   currency: string;
@@ -75,6 +86,15 @@ const OrderDetailsModal = ({
       minute: "2-digit",
       second: "2-digit",
     });
+
+  const productIconForKind = () => {
+    const k = order.orderKind ?? "course";
+    if (k === "internship_seat") return Briefcase;
+    if (k === "internship_success_points") return Coins;
+    return BookOpen;
+  };
+
+  const ProductIcon = productIconForKind();
 
   const InfoRow = ({
     label,
@@ -138,9 +158,15 @@ const OrderDetailsModal = ({
         />
 
         <InfoRow
-          label="Course"
-          value={order.courseId?.title ?? order.courseName ?? "—"}
-          icon={BookOpen}
+          label="Order type"
+          value={getAdminOrderTypeLabel(order.orderKind)}
+          icon={Tag}
+        />
+
+        <InfoRow
+          label="Product"
+          value={getAdminOrderProductLabel(order)}
+          icon={ProductIcon}
         />
 
         <InfoRow
