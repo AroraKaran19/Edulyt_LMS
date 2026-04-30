@@ -25,7 +25,7 @@ import {
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import { useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import apiClient from "@/configs/apiConfig";
 import { ENDPOINTS } from "@/constants/endpoints";
@@ -132,6 +132,7 @@ const InternshipHeader = ({ internship }: { internship: Internship }) => {
   const [resumePayLoading, setResumePayLoading] = useState(false);
   const { status: sessionStatus } = useSession();
   const router = useRouter();
+  const pathname = usePathname();
   const [myEnrollment, setMyEnrollment] = useState<
     InternshipEnrollmentListRow | null | undefined
   >(undefined);
@@ -195,8 +196,17 @@ const InternshipHeader = ({ internship }: { internship: Internship }) => {
 
   const checkingEnrollment =
     sessionStatus === "authenticated" && myEnrollment === undefined;
+  const sessionLoading = sessionStatus === "loading";
 
   const handleApplyPrimaryClick = async () => {
+    if (sessionLoading) return;
+    if (sessionStatus !== "authenticated") {
+      const slugPath = `/internships/${encodeURIComponent(internship.slug)}`;
+      const returnTo =
+        pathname && pathname.startsWith("/") ? pathname : slugPath;
+      router.push(`/login?callbackUrl=${encodeURIComponent(returnTo)}`);
+      return;
+    }
     if (checkingEnrollment) return;
     if (applyHint.kind === "replace") {
       router.push(applyHint.href);
@@ -567,27 +577,33 @@ const InternshipHeader = ({ internship }: { internship: Internship }) => {
                 <OrangeButton
                   glow={false}
                   className="w-full"
-                  disabled={checkingEnrollment || resumePayLoading}
+                  disabled={
+                    sessionLoading || checkingEnrollment || resumePayLoading
+                  }
                   onClick={() => void handleApplyPrimaryClick()}
                   aria-label={
                     applyHint.kind === "replace"
                       ? applyHint.label
                       : applyHint.kind === "complete_payment"
                         ? "Complete payment"
-                        : checkingEnrollment
-                          ? "Checking enrollment status"
-                          : "Apply now"
+                        : sessionLoading
+                          ? "Loading sign-in state"
+                          : checkingEnrollment
+                            ? "Checking enrollment status"
+                            : "Apply now"
                   }
                 >
-                  {checkingEnrollment
-                    ? "Checking…"
-                    : resumePayLoading
-                      ? "Redirecting…"
-                      : applyHint.kind === "replace"
-                        ? applyHint.label
-                        : applyHint.kind === "complete_payment"
-                          ? "Complete payment"
-                          : "Apply Now"}
+                  {sessionLoading
+                    ? "Loading…"
+                    : checkingEnrollment
+                      ? "Checking…"
+                      : resumePayLoading
+                        ? "Redirecting…"
+                        : applyHint.kind === "replace"
+                          ? applyHint.label
+                          : applyHint.kind === "complete_payment"
+                            ? "Complete payment"
+                            : "Apply Now"}
                 </OrangeButton>
               </div>
             </div>

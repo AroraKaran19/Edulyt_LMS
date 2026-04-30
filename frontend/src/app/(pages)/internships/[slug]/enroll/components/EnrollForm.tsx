@@ -111,21 +111,9 @@ const enrollFormSchema = z.object({
     ),
   linkedinUrl: z
     .string()
+    .trim()
     .min(1, "LinkedIn profile URL is required")
-    .refine(
-      (val) => {
-        try {
-          const url = new URL(val);
-          return url.hostname.includes("linkedin.com");
-        } catch {
-          return false;
-        }
-      },
-      {
-        message:
-          "Please enter a valid LinkedIn URL (e.g., https://linkedin.com/in/username)",
-      },
-    ),
+    .max(500, "LinkedIn profile URL is too long"),
   instagramUrl: z
     .string()
     .optional()
@@ -1065,8 +1053,8 @@ const EnrollForm = ({ preview }: { preview: InternshipEnrollPreview }) => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 w-full">
               <Input
                 label="LinkedIn Profile URL (Paste the Profile Link)"
-                type="url"
-                placeholder="https://linkedin.com/in/yourprofile"
+                type="text"
+                placeholder="linkedin.com/in/yourprofile or full link"
                 required
                 {...register("linkedinUrl")}
                 error={errors.linkedinUrl?.message}

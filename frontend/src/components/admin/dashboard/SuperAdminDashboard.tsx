@@ -113,7 +113,7 @@ const SuperAdminDashboard = ({
 
   const totalEnrollmentsInPeriod = enrollmentsMonthlyBreakdown.reduce(
     (sum: number, m: { count: number }) => sum + (m.count ?? 0),
-    0
+    0,
   );
 
   return (
@@ -124,7 +124,9 @@ const SuperAdminDashboard = ({
           Platform Overview
         </h1>
         <span className="text-[#475467] font-medium font-coolvetica text-xs sm:text-sm">
-          {variant === "super-admin" ? "Super Admin Dashboard" : "Admin Dashboard"}
+          {variant === "super-admin"
+            ? "Super Admin Dashboard"
+            : "Admin Dashboard"}
         </span>
       </div>
 
@@ -303,14 +305,18 @@ const SuperAdminDashboard = ({
         </div>
 
         {/* Engagement & Business */}
-        <h2 className="text-[#1D2939] font-semibold text-lg">Engagement & Business</h2>
+        <h2 className="text-[#1D2939] font-semibold text-lg">
+          Engagement & Business
+        </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6">
           <div className="bg-white rounded-xl p-4 shadow-sm border border-[#EAECF0] flex items-center gap-3">
             <div className="p-2 rounded-lg bg-emerald-100">
               <Wallet className="size-5 text-emerald-600" />
             </div>
             <div>
-              <h3 className="text-[#475467] font-medium text-sm">Total Revenue</h3>
+              <h3 className="text-[#475467] font-medium text-sm">
+                Total Revenue
+              </h3>
               {isLoading ? (
                 <ButtonLoader />
               ) : (
@@ -321,7 +327,9 @@ const SuperAdminDashboard = ({
                   })}
                 </span>
               )}
-              <p className="text-xs text-[#6B7280] mt-0.5">All successful orders</p>
+              <p className="text-xs text-[#6B7280] mt-0.5">
+                All successful orders
+              </p>
             </div>
           </div>
           <div className="bg-white rounded-xl p-4 shadow-sm border border-[#EAECF0] flex items-center gap-3">
@@ -329,7 +337,9 @@ const SuperAdminDashboard = ({
               <Award className="size-5 text-amber-600" />
             </div>
             <div>
-              <h3 className="text-[#475467] font-medium text-sm">Certificates</h3>
+              <h3 className="text-[#475467] font-medium text-sm">
+                Certificates
+              </h3>
               {isLoading ? (
                 <ButtonLoader />
               ) : (
@@ -337,7 +347,9 @@ const SuperAdminDashboard = ({
                   {totalCertificates.toLocaleString()}
                 </span>
               )}
-              <p className="text-xs text-[#6B7280] mt-0.5">Course completions</p>
+              <p className="text-xs text-[#6B7280] mt-0.5">
+                Course completions
+              </p>
             </div>
           </div>
           <div className="bg-white rounded-xl p-4 shadow-sm border border-[#EAECF0] flex items-center gap-3">
@@ -353,7 +365,9 @@ const SuperAdminDashboard = ({
                   {completedEnrollments.toLocaleString()}
                 </span>
               )}
-              <p className="text-xs text-[#6B7280] mt-0.5">Enrollments completed</p>
+              <p className="text-xs text-[#6B7280] mt-0.5">
+                Enrollments completed
+              </p>
             </div>
           </div>
           <div className="bg-white rounded-xl p-4 shadow-sm border border-[#EAECF0] flex items-center gap-3">
@@ -361,7 +375,9 @@ const SuperAdminDashboard = ({
               <BookOpen className="size-5 text-sky-600" />
             </div>
             <div>
-              <h3 className="text-[#475467] font-medium text-sm">Total Enrollments</h3>
+              <h3 className="text-[#475467] font-medium text-sm">
+                Total Enrollments
+              </h3>
               {isLoading ? (
                 <ButtonLoader />
               ) : (
@@ -377,7 +393,9 @@ const SuperAdminDashboard = ({
               <ShoppingCart className="size-5 text-teal-600" />
             </div>
             <div>
-              <h3 className="text-[#475467] font-medium text-sm">Successful Orders</h3>
+              <h3 className="text-[#475467] font-medium text-sm">
+                Successful Orders
+              </h3>
               {isLoading ? (
                 <ButtonLoader />
               ) : (
@@ -403,10 +421,13 @@ const SuperAdminDashboard = ({
               {totalEnrollmentsInPeriod}
             </span>
             <span className="text-sm text-[#475467] ml-1">
-              in {filters.find((f) => f.value === duration)?.label?.toLowerCase()}
+              in{" "}
+              {filters.find((f) => f.value === duration)?.label?.toLowerCase()}
             </span>
             <div className="mt-2">
-              <EnrollmentsGraph monthlyBreakdown={enrollmentsMonthlyBreakdown} />
+              <EnrollmentsGraph
+                monthlyBreakdown={enrollmentsMonthlyBreakdown}
+              />
             </div>
           </div>
           <div className="lg:col-span-5 bg-white rounded-xl p-3 sm:p-4 shadow-sm border border-[#EAECF0]">
