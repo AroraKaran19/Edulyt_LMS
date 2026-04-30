@@ -8,7 +8,10 @@ import { usePathname, useRouter } from "next/navigation";
 import useDashboardStats from "@/hooks/useDashboardStats";
 import { useEffect, useRef, useState, useCallback } from "react";
 import apiClient from "@/configs/apiConfig";
-import { fetchMyInternshipEnrollmentTotal } from "@/hooks/useMyInternshipEnrollments";
+import {
+  DASHBOARD_MY_INTERNSHIPS_CHANGED,
+  fetchMyInternshipEnrollmentTotal,
+} from "@/hooks/useMyInternshipEnrollments";
 import { Course } from "@/types/course";
 import { Enrollment } from "@/types/enrollment";
 import { Loader2, X } from "lucide-react";
@@ -22,9 +25,7 @@ function isFocusRoute(pathname: string): boolean {
   const parts = pathname.split("/").filter(Boolean);
   // e.g. ["dashboard","internships","exam","abc123"]  → depth 4
   return (
-    parts.length >= 4 &&
-    parts[0] === "dashboard" &&
-    parts[1] === "internships"
+    parts.length >= 4 && parts[0] === "dashboard" && parts[1] === "internships"
   );
 }
 
@@ -85,6 +86,20 @@ const DashboardNavbar = () => {
     };
   }, []);
 
+  const refreshInternshipNavCount = useCallback(() => {
+    void (async () => {
+      setInternshipCountLoading(true);
+      try {
+        const t = await fetchMyInternshipEnrollmentTotal();
+        setInternshipCount(t);
+      } catch {
+        setInternshipCount(0);
+      } finally {
+        setInternshipCountLoading(false);
+      }
+    })();
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -102,6 +117,13 @@ const DashboardNavbar = () => {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    const onChange = () => refreshInternshipNavCount();
+    window.addEventListener(DASHBOARD_MY_INTERNSHIPS_CHANGED, onChange);
+    return () =>
+      window.removeEventListener(DASHBOARD_MY_INTERNSHIPS_CHANGED, onChange);
+  }, [refreshInternshipNavCount]);
 
   useEffect(() => {
     const onDocMouseDown = (e: MouseEvent) => {
@@ -127,7 +149,7 @@ const DashboardNavbar = () => {
         sortBy: "name-asc",
       });
       const res = await apiClient.get(
-        `/enrollments/user/me?${params.toString()}`
+        `/enrollments/user/me?${params.toString()}`,
       );
       if (id !== activeRequest.current) return;
       const data = res.data?.data;
@@ -187,7 +209,7 @@ const DashboardNavbar = () => {
     router.push(
       q
         ? `/dashboard/courses?search=${encodeURIComponent(q)}`
-        : "/dashboard/courses"
+        : "/dashboard/courses",
     );
   };
 
@@ -199,7 +221,11 @@ const DashboardNavbar = () => {
       href: "/dashboard/internships",
       count: internshipCount,
     },
-    { label: "Certificates", href: "/dashboard/certificates", count: certificateCount },
+    {
+      label: "Certificates",
+      href: "/dashboard/certificates",
+      count: certificateCount,
+    },
   ];
 
   // ── Focus mode (exam / task taking) ──────────────────────────────────────
@@ -214,7 +240,10 @@ const DashboardNavbar = () => {
     return (
       <div className="focus-navbar w-full fixed top-0 left-0 z-9999 bg-primary/40 backdrop-blur-sm border-b border-primary/20">
         <div className="w-full h-14 px-4 lg:px-10 flex items-center justify-between gap-4">
-          <Link href="/" className="flex shrink-0 items-center overflow-visible">
+          <Link
+            href="/"
+            className="flex shrink-0 items-center overflow-visible"
+          >
             <ImageComponent
               src="/logo.svg"
               alt="Logo"
@@ -263,73 +292,73 @@ const DashboardNavbar = () => {
             className="hidden lg:flex max-w-[350px] w-full min-w-0 flex-1 items-start mt-2"
             ref={searchContainerRef}
           >
-          <div className="relative w-full z-10000">
-            <Searchbar2
-              className="w-full"
-              placeholder="Search your courses…"
-              value={navSearch}
-              onChange={handleNavSearchChange}
-              onSearch={handleNavSearch}
-              onInputFocus={handleInputFocus}
-            />
-            {dropdownOpen && navSearch.trim().length > 0 && (
-              <div
-                className="absolute left-0 right-0 top-full mt-1 rounded-xl border border-gray-200 bg-white shadow-xl max-h-80 overflow-y-auto"
-                role="listbox"
-                aria-label="Search results"
-              >
-                {searchLoading ? (
-                  <div className="flex items-center justify-center py-6 text-gray-500 gap-2 text-sm">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Searching…
-                  </div>
-                ) : hits.length === 0 ? (
-                  <div className="px-4 py-3 text-sm text-gray-500">
-                    No courses match &quot;{navSearch.trim()}&quot; in your
-                    enrollments.
-                  </div>
-                ) : (
-                  <ul className="py-1">
-                    {hits.map((h) => (
-                      <li key={h.enrollmentId}>
-                        <Link
-                          href={`/courses/${h.slug}/watch`}
-                          className="flex items-center gap-3 px-3 py-2 hover:bg-gray-50 transition-colors"
-                          onClick={() => setDropdownOpen(false)}
-                        >
-                          <div className="h-10 w-14 shrink-0 overflow-hidden rounded-md bg-gray-100">
-                            {h.thumbnail ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img
-                                src={h.thumbnail}
-                                alt=""
-                                className="h-full w-full object-cover"
-                              />
-                            ) : null}
-                          </div>
-                          <span className="text-sm text-gray-900 line-clamp-2 min-w-0">
-                            {h.title}
-                          </span>
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {!searchLoading && (
-                  <div className="border-t border-gray-100 px-2 py-1.5">
-                    <button
-                      type="button"
-                      onClick={handleNavSearch}
-                      className="w-full text-left text-xs font-medium text-orange-600 hover:text-orange-700 py-1.5 px-2 rounded-lg hover:bg-orange-50/80"
-                    >
-                      See all results
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
+            <div className="relative w-full z-10000">
+              <Searchbar2
+                className="w-full"
+                placeholder="Search your courses…"
+                value={navSearch}
+                onChange={handleNavSearchChange}
+                onSearch={handleNavSearch}
+                onInputFocus={handleInputFocus}
+              />
+              {dropdownOpen && navSearch.trim().length > 0 && (
+                <div
+                  className="absolute left-0 right-0 top-full mt-1 rounded-xl border border-gray-200 bg-white shadow-xl max-h-80 overflow-y-auto"
+                  role="listbox"
+                  aria-label="Search results"
+                >
+                  {searchLoading ? (
+                    <div className="flex items-center justify-center py-6 text-gray-500 gap-2 text-sm">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Searching…
+                    </div>
+                  ) : hits.length === 0 ? (
+                    <div className="px-4 py-3 text-sm text-gray-500">
+                      No courses match &quot;{navSearch.trim()}&quot; in your
+                      enrollments.
+                    </div>
+                  ) : (
+                    <ul className="py-1">
+                      {hits.map((h) => (
+                        <li key={h.enrollmentId}>
+                          <Link
+                            href={`/courses/${h.slug}/watch`}
+                            className="flex items-center gap-3 px-3 py-2 hover:bg-gray-50 transition-colors"
+                            onClick={() => setDropdownOpen(false)}
+                          >
+                            <div className="h-10 w-14 shrink-0 overflow-hidden rounded-md bg-gray-100">
+                              {h.thumbnail ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={h.thumbnail}
+                                  alt=""
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : null}
+                            </div>
+                            <span className="text-sm text-gray-900 line-clamp-2 min-w-0">
+                              {h.title}
+                            </span>
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {!searchLoading && (
+                    <div className="border-t border-gray-100 px-2 py-1.5">
+                      <button
+                        type="button"
+                        onClick={handleNavSearch}
+                        className="w-full text-left text-xs font-medium text-orange-600 hover:text-orange-700 py-1.5 px-2 rounded-lg hover:bg-orange-50/80"
+                      >
+                        See all results
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
         )}
         <div className="ml-auto flex items-center gap-4">
           <UserMenu />
@@ -344,7 +373,7 @@ const DashboardNavbar = () => {
                 key={index}
                 className={cn(
                   "text-text-primary shrink-0 text-sm font-medium px-5 py-2.5 rounded-full transition-colors duration-200 ease-in-out flex items-center gap-2",
-                  pathname === item.href && "bg-[#FFE9DB] text-orange-600"
+                  pathname === item.href && "bg-[#FFE9DB] text-orange-600",
                 )}
               >
                 <span>{item.label}</span>
@@ -354,7 +383,7 @@ const DashboardNavbar = () => {
                       "text-xs px-2 py-0.5 rounded-full font-semibold",
                       pathname === item.href
                         ? "bg-orange-500 text-white"
-                        : "bg-gray-200 text-gray-700"
+                        : "bg-gray-200 text-gray-700",
                     )}
                   >
                     {item.href === "/dashboard/internships"

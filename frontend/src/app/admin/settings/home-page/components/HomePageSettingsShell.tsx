@@ -52,7 +52,7 @@ export default function HomePageSettingsShell({
   const navigateGuarded = async (href: string) => {
     if (isActiveDirty) {
       const ok = window.confirm(
-        "You have unsaved changes. Save before leaving?"
+        "You have unsaved changes. Save before leaving?",
       );
       if (ok) {
         const saved = await saveActiveSection();
@@ -63,10 +63,20 @@ export default function HomePageSettingsShell({
   };
 
   return (
-    <div className="w-full min-h-full bg-stone-50/90 flex">
-      {/* Side rail */}
-      <aside className="hidden lg:flex w-72 shrink-0 flex-col border-r border-stone-200 bg-white">
-        <div className="px-5 py-5 border-b border-stone-200">
+    <div
+      className={cn(
+        "w-full flex min-h-0 overflow-hidden bg-stone-50/90",
+        /* Caps height so the admin `overflow-auto` wrapper does not scroll; scroll stays in main pane. */
+        "h-[calc(100dvh-5rem)] max-h-[calc(100dvh-5rem)]",
+      )}
+    >
+      {/* Side rail — full shell height; nav scrolls only if the list exceeds the rail */}
+      <aside
+        className={cn(
+          "hidden lg:flex h-full min-h-0 w-72 shrink-0 flex-col border-r border-stone-200 bg-white",
+        )}
+      >
+        <div className="px-5 py-5 border-b border-stone-200 shrink-0">
           <Link
             href={ROOT}
             className="flex items-center gap-2 text-sm font-semibold text-stone-800 hover:text-orange-600"
@@ -82,7 +92,7 @@ export default function HomePageSettingsShell({
             Edit each homepage section.
           </p>
         </div>
-        <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-0.5">
+        <nav className="flex-1 min-h-0 overflow-y-auto px-2 py-3 space-y-0.5">
           {HOME_PAGE_SECTIONS.map((section, idx) => {
             const href = `${ROOT}/${section.slug}`;
             const isActive = section.slug === activeSlug;
@@ -95,7 +105,7 @@ export default function HomePageSettingsShell({
                   "w-full text-left flex items-start gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors",
                   isActive
                     ? "bg-orange-100 text-orange-800 font-semibold"
-                    : "text-stone-700 hover:bg-stone-100"
+                    : "text-stone-700 hover:bg-stone-100",
                 )}
               >
                 <span
@@ -103,7 +113,7 @@ export default function HomePageSettingsShell({
                     "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold",
                     isActive
                       ? "bg-orange-500 text-white"
-                      : "bg-stone-200 text-stone-600"
+                      : "bg-stone-200 text-stone-600",
                   )}
                 >
                   {idx + 1}
@@ -115,9 +125,9 @@ export default function HomePageSettingsShell({
         </nav>
       </aside>
 
-      {/* Main pane */}
-      <div className="flex-1 min-w-0 flex flex-col">
-        <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 lg:px-8 py-6 pb-28">
+      {/* Main pane — only this column’s inner area scrolls */}
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <div className="flex min-h-0 flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8">
           {isLoading ? (
             <div className="w-full min-h-[40vh] flex items-center justify-center gap-2 text-stone-500">
               <Loader2 className="size-5 animate-spin shrink-0" />
@@ -129,7 +139,7 @@ export default function HomePageSettingsShell({
         </div>
 
         {!isOnIndex && (
-          <div className="sticky bottom-0 left-0 right-0 border-t border-stone-200 bg-white/95 backdrop-blur px-4 sm:px-6 lg:px-8 py-3">
+          <div className="shrink-0 border-t border-stone-200 bg-white/95 backdrop-blur px-4 py-3 sm:px-6 lg:px-8">
             <div className="flex flex-wrap items-center gap-3 justify-between">
               <div className="flex items-center gap-2 text-xs text-stone-500">
                 {isActiveDirty ? (

@@ -1,5 +1,6 @@
 import { Icon } from "@iconify/react";
 import InstituteCard from "../InstituteCard";
+import { normalizeHomePageInstitute } from "@/lib/home-page/normalizeHomePageInstitute";
 import type {
   HomeInstitutionSectionSettings,
   HomePageInstitute,
@@ -62,10 +63,11 @@ const InstitutionSection = ({
 }: {
   settings?: HomeInstitutionSectionSettings;
 }) => {
-  const institutes =
+  const institutes: HomePageInstitute[] = (
     settings?.institutes && settings.institutes.length > 0
       ? settings.institutes
-      : DEFAULT_INSTITUTES;
+      : DEFAULT_INSTITUTES
+  ).map((i) => normalizeHomePageInstitute(i));
   const eyebrow =
     settings?.eyebrow || "Trusted by Students from Top Institutions";
   const headingHighlight = settings?.headingHighlight || "Colleges our";

@@ -3,6 +3,15 @@ import apiClient from "@/configs/apiConfig";
 import { ENDPOINTS } from "@/constants/endpoints";
 import type { InternshipEnrollmentListRow } from "@/types";
 
+/** Fired when the learner’s internship enrollment list may have changed (navbar / banner totals). */
+export const DASHBOARD_MY_INTERNSHIPS_CHANGED =
+  "edulyt:dashboard-my-internships-changed";
+
+export function notifyDashboardMyInternshipsChanged(): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event(DASHBOARD_MY_INTERNSHIPS_CHANGED));
+}
+
 export type MyInternshipEnrollmentsPage = {
   enrollments: InternshipEnrollmentListRow[];
   total: number;
@@ -28,6 +37,15 @@ export async function fetchMyInternshipEnrollmentsPage(params: {
     `${ENDPOINTS.internshipEnrollments.me}?${q.toString()}`,
   );
   return res.data.data as MyInternshipEnrollmentsPage;
+}
+
+export async function withdrawPaymentPendingEnrollment(
+  enrollmentId: string,
+): Promise<void> {
+  await apiClient.delete(
+    ENDPOINTS.internshipEnrollments.meWithdrawPaymentPending(enrollmentId),
+  );
+  notifyDashboardMyInternshipsChanged();
 }
 
 /** Total count of the learner’s internship enrollments (lightweight: limit 1). */

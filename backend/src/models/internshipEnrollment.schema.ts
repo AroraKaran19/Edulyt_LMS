@@ -38,6 +38,8 @@ const internshipEnrollmentSchema = new mongoose.Schema(
           name: { type: String, required: true, trim: true },
           /** Date the cohort officially begins. */
           internshipStartDate: { type: Date, required: true },
+          /** Copy of batch `applicationLastDate` at signup (IST calendar “apply by”). */
+          applicationLastDate: { type: Date, required: false },
         },
         { _id: false },
       ),

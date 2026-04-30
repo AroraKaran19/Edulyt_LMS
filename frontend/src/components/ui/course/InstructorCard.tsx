@@ -8,8 +8,9 @@ import React from "react";
 
 const InstructorCard = ({
   instructor,
+  disableLink = false,
   ...props
-}: { instructor: Partial<Instructor> } & {
+}: { instructor: Partial<Instructor>; disableLink?: boolean } & {
   className?: string;
   style?: React.CSSProperties;
 }) => {
@@ -44,17 +45,8 @@ const InstructorCard = ({
     return slugify(getDisplayName());
   };
 
-  return (
-    <Link
-      href={`/mentor/${getSlug()}`}
-      className={cn(
-        "instructor w-max flex gap-1 items-center bg-[#EEEEEE] rounded-full p-1 text-xs font-bold text-text-primary select-none cursor-pointer max-w-[150px]",
-        props.className
-      )}
-      onClick={(e) => {
-        e.stopPropagation();
-      }}
-    >
+  const inner = (
+    <>
       {instructor.profilePicture ? (
         <Image
           src={instructor.profilePicture}
@@ -75,6 +67,32 @@ const InstructorCard = ({
       <span className="flex-1 text-ellipsis overflow-hidden whitespace-nowrap min-w-0">
         {getDisplayName()}
       </span>
+    </>
+  );
+
+  const shellClass = cn(
+    "instructor w-max flex gap-1 items-center bg-[#EEEEEE] rounded-full p-1 text-xs font-bold text-text-primary select-none max-w-[150px]",
+    disableLink ? "cursor-default" : "cursor-pointer",
+    props.className
+  );
+
+  if (disableLink) {
+    return (
+      <div className={shellClass} style={props.style}>
+        {inner}
+      </div>
+    );
+  }
+
+  return (
+    <Link
+      href={`/mentor/${getSlug()}`}
+      className={shellClass}
+      onClick={(e) => {
+        e.stopPropagation();
+      }}
+    >
+      {inner}
     </Link>
   );
 };

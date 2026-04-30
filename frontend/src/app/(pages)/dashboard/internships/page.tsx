@@ -253,7 +253,11 @@ function DashboardInternshipsContent() {
             )}
           >
             {rows.map((row) => (
-              <DashboardInternshipCard key={row._id} row={row} />
+              <DashboardInternshipCard
+                key={row._id}
+                row={row}
+                onWithdrawn={() => void fetchRows()}
+              />
             ))}
           </div>
           {totalPages > 1 && !isSearching && (

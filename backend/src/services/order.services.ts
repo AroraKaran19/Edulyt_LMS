@@ -23,6 +23,7 @@ import {
   issueInternshipVoucher,
 } from "./internshipVoucher.services";
 import type { CourseDiscount, Discount } from "../types";
+import { isApplicationWindowOpenIst } from "../utils/applicationWindow";
 import { getPointsSettings } from "./pointsSettings.services";
 import { parseProgramDurationMonthsFromAnswers } from "../lib/certificationExamSchedule";
 
@@ -894,10 +895,31 @@ export const createInternshipSeatOrderService = async (
   ) as
     | {
         _id: unknown;
+        applicationLastDate?: Date;
         plan?: { price: number; isActive?: boolean; discount?: unknown } | null;
       }
     | undefined;
   if (!batch) throw new AppError("Batch not found on internship", 404);
+
+  if (String(enrollment.status) === "payment_pending") {
+    const snap = enrollment.batchSnapshot as
+      | { applicationLastDate?: Date }
+      | undefined;
+    const snapDate = snap?.applicationLastDate;
+    const effectiveDeadline =
+      snapDate instanceof Date && !Number.isNaN(snapDate.getTime())
+        ? snapDate
+        : batch.applicationLastDate;
+    if (
+      effectiveDeadline != null &&
+      !isApplicationWindowOpenIst(effectiveDeadline)
+    ) {
+      throw new AppError(
+        "The enrollment deadline for this cohort has passed. You can remove this pending registration from your dashboard, or contact support if you need help.",
+        400,
+      );
+    }
+  }
 
   const plan = batch.plan;
   if (!plan || plan.isActive === false) {

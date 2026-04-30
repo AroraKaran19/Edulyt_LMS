@@ -4,6 +4,7 @@ import { verifyAdmin } from "../middlewares/admin.middleware";
 import {
   registerForExamController,
   listMyInternshipEnrollmentsController,
+  withdrawPaymentPendingEnrollmentController,
   getLearnerEntranceExamController,
   getLearnerProgramBySlugController,
   listInternshipEnrollmentsAdminController,
@@ -25,6 +26,9 @@ router.post("/", registerForExamController);
 
 /** GET /api/internship-enrollments/me — learner's enrollments (dashboard) */
 router.get("/me", listMyInternshipEnrollmentsController);
+
+/** DELETE /api/internship-enrollments/me/:enrollmentId — drop unpaid paid-path registration */
+router.delete("/me/:enrollmentId", withdrawPaymentPendingEnrollmentController);
 
 /** GET /api/internship-enrollments/me/entrance-exam?enrollmentId= — learner fetches exam */
 router.get("/me/entrance-exam", getLearnerEntranceExamController);

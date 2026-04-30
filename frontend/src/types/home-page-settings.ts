@@ -66,14 +66,25 @@ export interface HomeTestimonialSectionSettings {
   testimonials: Testimonial[];
 }
 
+/** One spotlight person on an institute tile (internship / course rows). */
+export interface HomeInstituteSpotlight {
+  first_name: string;
+  last_name: string;
+  avatar?: string;
+}
+
 /** Institute tile (trusted colleges / partner stats). */
 export interface HomePageInstitute {
   image: string;
   name: string;
   line1: string;
   internship_student_count: number;
+  /** People shown under the internship stat (site shows first 2, then +n). */
+  internship_spotlights?: HomeInstituteSpotlight[];
   line2: string;
   course_student_count: number;
+  /** People shown under the course stat (site shows first 2, then +n). */
+  course_spotlights?: HomeInstituteSpotlight[];
 }
 
 export interface HomeInstitutionSectionSettings {

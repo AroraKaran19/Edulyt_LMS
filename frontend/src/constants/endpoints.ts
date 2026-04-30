@@ -125,6 +125,9 @@ export const ENDPOINTS = {
     me: "/internship-enrollments/me",
     /** GET — entrance exam for a specific enrollment (window must be open). Query: enrollmentId */
     meEntranceExam: "/internship-enrollments/me/entrance-exam",
+    /** DELETE — remove unpaid direct-seat registration (`payment_pending`) */
+    meWithdrawPaymentPending: (enrollmentId: string) =>
+      `/internship-enrollments/me/${encodeURIComponent(enrollmentId)}`,
     /** GET — enrolled-program detail + unlocked tasks by internship slug. */
     meProgramBySlug: (slug: string) =>
       `/internship-enrollments/me/program/${encodeURIComponent(slug)}`,

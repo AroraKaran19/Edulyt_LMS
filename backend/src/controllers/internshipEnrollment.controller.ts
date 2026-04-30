@@ -19,6 +19,7 @@ import {
   adminBulkApproveMeritToEnrolled,
   getLearnerEntranceExam,
   getLearnerProgramBySlug,
+  withdrawPaymentPendingEnrollmentForLearner,
 } from "../services/internshipEnrollment.services";
 
 /**
@@ -58,6 +59,27 @@ export const listMyInternshipEnrollmentsController = asyncHandler(
       "Internship enrollments fetched successfully",
       200,
     );
+  },
+);
+
+/**
+ * @route   DELETE /api/internship-enrollments/me/:enrollmentId
+ * @desc    Learner removes an unpaid direct-seat row (`payment_pending`) and pending orders
+ * @access  Authenticated user
+ */
+export const withdrawPaymentPendingEnrollmentController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const userId = req.user?._id;
+    if (!userId) throw new AppError("Unauthorized", 401);
+
+    const enrollmentId = String(req.params.enrollmentId ?? "").trim();
+    if (!enrollmentId) throw new AppError("enrollmentId is required", 400);
+
+    await withdrawPaymentPendingEnrollmentForLearner(
+      new mongoose.Types.ObjectId(String(userId)),
+      enrollmentId,
+    );
+    sendSuccessResponse(res, null, "Registration removed", 200);
   },
 );
 

@@ -5,9 +5,11 @@ import useDashboardStats from "@/hooks/useDashboardStats";
 import useCertificates from "@/hooks/useCertificates";
 import { useSession } from "next-auth/react";
 import Loader from "@/components/ui/Loader";
-import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { fetchMyInternshipEnrollmentTotal } from "@/hooks/useMyInternshipEnrollments";
+import {
+  DASHBOARD_MY_INTERNSHIPS_CHANGED,
+  fetchMyInternshipEnrollmentTotal,
+} from "@/hooks/useMyInternshipEnrollments";
 
 const DashboardBanner = () => {
   const { data: session } = useSession();
@@ -17,10 +19,22 @@ const DashboardBanner = () => {
 
   useEffect(() => {
     let cancelled = false;
-    fetchMyInternshipEnrollmentTotal()
-      .then((t) => { if (!cancelled) setInternshipCount(t); })
-      .catch(() => { if (!cancelled) setInternshipCount(0); });
-    return () => { cancelled = true; };
+    const load = () => {
+      fetchMyInternshipEnrollmentTotal()
+        .then((t) => {
+          if (!cancelled) setInternshipCount(t);
+        })
+        .catch(() => {
+          if (!cancelled) setInternshipCount(0);
+        });
+    };
+    load();
+    const onChange = () => load();
+    window.addEventListener(DASHBOARD_MY_INTERNSHIPS_CHANGED, onChange);
+    return () => {
+      cancelled = true;
+      window.removeEventListener(DASHBOARD_MY_INTERNSHIPS_CHANGED, onChange);
+    };
   }, []);
 
   useEffect(() => {
@@ -32,8 +46,8 @@ const DashboardBanner = () => {
     hour >= 18
       ? "Good Evening"
       : hour >= 12
-      ? "Good Afternoon"
-      : "Good Morning";
+        ? "Good Afternoon"
+        : "Good Morning";
 
   // Get user name from session
   const userName = session?.user?.firstName

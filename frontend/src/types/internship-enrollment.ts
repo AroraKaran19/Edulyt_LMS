@@ -43,16 +43,16 @@ export type InternshipEnrollmentType = "merit" | "paid";
  *   paused     — enrollment temporarily frozen (e.g. medical leave).
  */
 export type InternshipEnrollmentStatus =
-  | "exam_registered"  // merit: form submitted, waiting for exam date
-  | "exam_attempted"   // merit: exam submitted, result pending
-  | "in_merit_pool"    // merit: passed threshold, awaiting admin seat selection
-  | "admin_rejected"   // merit: admin did not select this candidate (terminal)
-  | "payment_pending"  // paid: payment initiated, awaiting gateway confirmation
-  | "enrolled"         // both paths: fully active enrollment
-  | "completed"        // post-enrollment: program finished
-  | "dropped"          // post-enrollment: voluntary withdrawal
-  | "revoked"          // post-enrollment: admin-forced removal
-  | "paused";          // post-enrollment: temporarily frozen
+  | "exam_registered" // merit: form submitted, waiting for exam date
+  | "exam_attempted" // merit: exam submitted, result pending
+  | "in_merit_pool" // merit: passed threshold, awaiting admin seat selection
+  | "admin_rejected" // merit: admin did not select this candidate (terminal)
+  | "payment_pending" // paid: payment initiated, awaiting gateway confirmation
+  | "enrolled" // both paths: fully active enrollment
+  | "completed" // post-enrollment: program finished
+  | "dropped" // post-enrollment: voluntary withdrawal
+  | "revoked" // post-enrollment: admin-forced removal
+  | "paused"; // post-enrollment: temporarily frozen
 
 // ─── Internship snapshot ──────────────────────────────────────────────────────
 
@@ -77,12 +77,11 @@ export interface EnrollmentInternshipSnapshot {
  * serves as the stable back-reference for lookups if needed.
  */
 export interface EnrollmentBatchSnapshot {
-  /** `internship.batches[n]._id` — unique identifier for the batch. */
   batchId: string;
-  /** Human-readable cohort name (e.g. "Batch 2025 – July"). */
   name: string;
-  /** Date the cohort officially begins. */
   internshipStartDate: Date;
+  /** “Apply by” date captured at registration (optional on older rows). */
+  applicationLastDate?: Date;
 }
 
 // ─── Core enrollment document ─────────────────────────────────────────────────
@@ -90,7 +89,6 @@ export interface EnrollmentBatchSnapshot {
 export interface InternshipEnrollment {
   _id?: string;
 
-  /** `Internship._id` — the internship program this enrollment belongs to. */
   internship: string;
 
   /** Snapshot of the internship captured once at enrollment time. */
@@ -175,8 +173,10 @@ export interface InternshipEnrollment {
  * Shape returned by API endpoints that populate the `user` and `adminActionBy`
  * references instead of returning raw ObjectId strings.
  */
-export interface InternshipEnrollmentResponse
-  extends Omit<InternshipEnrollment, "user" | "adminActionBy"> {
+export interface InternshipEnrollmentResponse extends Omit<
+  InternshipEnrollment,
+  "user" | "adminActionBy"
+> {
   user: User;
   adminActionBy?: User;
 }
@@ -225,6 +225,13 @@ export interface InternshipEnrollmentListRow {
     batchId: string;
     name: string;
     internshipStartDate: string;
+    applicationLastDate?: string;
+  };
+  /** Populated for learner `payment_pending` — live program/cohort vs signup snapshot. */
+  paymentPendingContext?: {
+    internshipExists: boolean;
+    batchExistsOnProgram: boolean;
+    applicationWindowOpen: boolean;
   };
   enrollmentType?: InternshipEnrollmentType;
   /** Known values match {@link InternshipEnrollmentStatus}; `string` allows API drift. */

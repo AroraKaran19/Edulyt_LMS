@@ -227,8 +227,22 @@ function buildSettings(
         name: "Harvard University",
         line1: "Internship Participation",
         internship_student_count: 100,
+        internship_spotlights: [
+          {
+            first_name: "John",
+            last_name: "Doe",
+            avatar: "",
+          },
+        ],
         line2: "Courses Enrollment",
         course_student_count: 100,
+        course_spotlights: [
+          {
+            first_name: "John",
+            last_name: "Doe",
+            avatar: "",
+          },
+        ],
       })),
     },
 

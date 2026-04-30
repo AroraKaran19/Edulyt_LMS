@@ -26,6 +26,7 @@ import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import { useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { toast } from "react-toastify";
 import apiClient from "@/configs/apiConfig";
 import { ENDPOINTS } from "@/constants/endpoints";
 import ApplyPathModal from "./ApplyPathModal";
@@ -86,7 +87,9 @@ function pickEnrollmentForInternship(
 
 type ApplyHint =
   | { kind: "apply" }
-  | { kind: "replace"; label: string; href: string };
+  | { kind: "replace"; label: string; href: string }
+  /** Paid path: enrollment exists (`payment_pending`); resume Paytm checkout. */
+  | { kind: "complete_payment" };
 
 function applyHintForEnrollment(
   row: InternshipEnrollmentListRow | null,
@@ -106,11 +109,7 @@ function applyHintForEnrollment(
     return { kind: "replace", label: "Program completed", href: dashHome };
   }
   if (s === "payment_pending") {
-    return {
-      kind: "replace",
-      label: "Registration in progress",
-      href: dashHome,
-    };
+    return { kind: "complete_payment" };
   }
   if (
     s === "exam_registered" ||
@@ -130,6 +129,7 @@ const InternshipHeader = ({ internship }: { internship: Internship }) => {
   const heroLines =
     internship.headerList?.map((s) => s?.trim()).filter(Boolean) ?? [];
   const [applyModalOpen, setApplyModalOpen] = useState(false);
+  const [resumePayLoading, setResumePayLoading] = useState(false);
   const { status: sessionStatus } = useSession();
   const router = useRouter();
   const [myEnrollment, setMyEnrollment] = useState<
@@ -196,10 +196,41 @@ const InternshipHeader = ({ internship }: { internship: Internship }) => {
   const checkingEnrollment =
     sessionStatus === "authenticated" && myEnrollment === undefined;
 
-  const handleApplyPrimaryClick = () => {
+  const handleApplyPrimaryClick = async () => {
     if (checkingEnrollment) return;
     if (applyHint.kind === "replace") {
       router.push(applyHint.href);
+      return;
+    }
+    if (applyHint.kind === "complete_payment") {
+      const eid = myEnrollment?._id;
+      if (!eid) {
+        toast.error("Could not find your registration. Refresh and try again.");
+        return;
+      }
+      setResumePayLoading(true);
+      try {
+        const orderRes = await apiClient.post(
+          ENDPOINTS.orders.createInternshipSeat,
+          { internshipEnrollmentId: eid },
+        );
+        const order = orderRes.data?.data as
+          | { _id: string; freeOrder?: boolean; token?: string }
+          | undefined;
+        if (!order) throw new Error("Could not start payment");
+        if (order.freeOrder && order.token) {
+          window.location.href = `/payment/status/${order._id}?token=${order.token}`;
+          return;
+        }
+        window.location.href = `/paytm-redirect?orderId=${order._id}`;
+      } catch (e: unknown) {
+        const msg =
+          (e as { response?: { data?: { error?: { message?: string } } } })
+            ?.response?.data?.error?.message ??
+          (e instanceof Error ? e.message : "Could not start payment");
+        toast.error(msg);
+        setResumePayLoading(false);
+      }
       return;
     }
     setApplyModalOpen(true);
@@ -536,21 +567,27 @@ const InternshipHeader = ({ internship }: { internship: Internship }) => {
                 <OrangeButton
                   glow={false}
                   className="w-full"
-                  disabled={checkingEnrollment}
-                  onClick={handleApplyPrimaryClick}
+                  disabled={checkingEnrollment || resumePayLoading}
+                  onClick={() => void handleApplyPrimaryClick()}
                   aria-label={
                     applyHint.kind === "replace"
                       ? applyHint.label
-                      : checkingEnrollment
-                        ? "Checking enrollment status"
-                        : "Apply now"
+                      : applyHint.kind === "complete_payment"
+                        ? "Complete payment"
+                        : checkingEnrollment
+                          ? "Checking enrollment status"
+                          : "Apply now"
                   }
                 >
                   {checkingEnrollment
                     ? "Checking…"
-                    : applyHint.kind === "replace"
-                      ? applyHint.label
-                      : "Apply Now"}
+                    : resumePayLoading
+                      ? "Redirecting…"
+                      : applyHint.kind === "replace"
+                        ? applyHint.label
+                        : applyHint.kind === "complete_payment"
+                          ? "Complete payment"
+                          : "Apply Now"}
                 </OrangeButton>
               </div>
             </div>

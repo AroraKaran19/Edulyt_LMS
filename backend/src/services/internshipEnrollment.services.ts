@@ -3,6 +3,8 @@ import { InternshipEnrollmentModel } from "../models/internshipEnrollment.schema
 import { InternshipModel } from "../models/internship.schema";
 import { InternshipExamModel } from "../models/internshipExam.schema";
 import { InternshipSubmissionModel } from "../models/internshipSubmission.schema";
+import { OrderModel } from "../models/order.schema";
+import { UserModel } from "../models/user.schema";
 import { AppError } from "../middlewares/error.middleware";
 import { isApplicationWindowOpenIst } from "../utils/applicationWindow";
 import { getPointsSettings } from "./pointsSettings.services";
@@ -14,6 +16,20 @@ import {
 
 function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** Normalize `internship` ref from a lean enrollment doc (ObjectId or populated). */
+function internshipRefToId(raw: unknown): string | null {
+  if (raw == null) return null;
+  if (typeof raw === "object" && raw !== null && "_id" in raw) {
+    const id = (raw as { _id: unknown })._id;
+    if (id != null && mongoose.Types.ObjectId.isValid(String(id))) {
+      return String(id);
+    }
+    return null;
+  }
+  const s = String(raw);
+  return mongoose.Types.ObjectId.isValid(s) ? s : null;
 }
 
 function toIso(d: unknown): string | undefined {
@@ -77,6 +93,8 @@ export type InternshipEnrollmentListRow = {
     batchId: string;
     name: string;
     internshipStartDate: string;
+    /** ISO — “apply by” date captured at registration (optional on older rows). */
+    applicationLastDate?: string;
   };
   enrollmentType?: "merit" | "paid";
   status: string;
@@ -101,6 +119,12 @@ export type InternshipEnrollmentListRow = {
   applicationAnswers?: Record<string, unknown>;
   /** ISO — when {@link applicationAnswers} was stored. */
   applicationSubmittedAt?: string;
+  /** Populated for learner `payment_pending` rows — live program/cohort vs signup snapshot. */
+  paymentPendingContext?: {
+    internshipExists: boolean;
+    batchExistsOnProgram: boolean;
+    applicationWindowOpen: boolean;
+  };
 };
 
 /**
@@ -609,6 +633,9 @@ export async function registerForExam(
         batchId: String(batch._id),
         name: batch.name,
         internshipStartDate: batch.internshipStartDate,
+        ...(batch.applicationLastDate != null
+          ? { applicationLastDate: batch.applicationLastDate }
+          : {}),
       },
       ...(answersDoc
         ? {
@@ -707,6 +734,9 @@ export async function registerForPaidSeat(
         batchId: String(batch._id),
         name: batch.name,
         internshipStartDate: batch.internshipStartDate,
+        ...(batch.applicationLastDate != null
+          ? { applicationLastDate: batch.applicationLastDate }
+          : {}),
       },
       ...(answersDoc
         ? {
@@ -730,6 +760,54 @@ export async function registerForPaidSeat(
     if (!raced) throw err;
     return completePaidSeatRegistrationForExistingDoc(raced, answersDoc);
   }
+}
+
+/**
+ * Learner: remove an unpaid direct-seat registration (`payment_pending`).
+ * Deletes the enrollment, related draft submissions, and any pending seat payment orders.
+ */
+export async function withdrawPaymentPendingEnrollmentForLearner(
+  userId: mongoose.Types.ObjectId,
+  enrollmentId: string,
+): Promise<void> {
+  if (!mongoose.Types.ObjectId.isValid(enrollmentId)) {
+    throw new AppError("Invalid enrollment id", 400);
+  }
+  const oid = new mongoose.Types.ObjectId(enrollmentId);
+  const doc = await InternshipEnrollmentModel.findById(oid);
+  if (!doc) throw new AppError("Enrollment not found", 404);
+  if (String(doc.user) !== String(userId)) {
+    throw new AppError("This enrollment does not belong to you", 403);
+  }
+  if (doc.status !== "payment_pending" || doc.enrollmentType !== "paid") {
+    throw new AppError(
+      "Only unpaid direct-seat registrations can be removed this way. If you already paid, contact support.",
+      400,
+    );
+  }
+
+  const pendingOrders = await OrderModel.find({
+    internshipEnrollmentId: oid,
+    paymentStatus: "pending",
+    orderKind: "internship_seat",
+  })
+    .select("_id")
+    .lean();
+
+  if (pendingOrders.length > 0) {
+    const pullIds = pendingOrders.map(
+      (o) => new mongoose.Types.ObjectId(String((o as { _id: unknown })._id)),
+    );
+    await OrderModel.deleteMany({ _id: { $in: pullIds } });
+    await UserModel.updateOne(
+      { _id: userId },
+      { $pullAll: { pendingPayments: pullIds } },
+    );
+  }
+
+  await InternshipSubmissionModel.deleteMany({ enrollmentId: oid });
+  const deleted = await InternshipEnrollmentModel.findByIdAndDelete(oid);
+  if (!deleted) throw new AppError("Enrollment not found", 404);
 }
 
 /**
@@ -775,6 +853,50 @@ export async function listMyInternshipEnrollments(
   ]);
 
   const totalPages = Math.max(1, Math.ceil(total / l));
+
+  /** Live cohort data for `payment_pending` paid-path rows (program removed / deadline / batch). */
+  const paymentPendingLiveByInternshipId = new Map<
+    string,
+    {
+      batches: {
+        _id: unknown;
+        applicationLastDate?: Date;
+        isActive?: boolean;
+      }[];
+    }
+  >();
+
+  const pendingInsIds = new Set<string>();
+  for (const d of raw as Record<string, unknown>[]) {
+    if (String(d.status ?? "") !== "payment_pending") continue;
+    const iid = internshipRefToId(d.internship);
+    if (iid) pendingInsIds.add(iid);
+  }
+  if (pendingInsIds.size > 0) {
+    const liveDocs = await InternshipModel.find({
+      _id: {
+        $in: [...pendingInsIds].map(
+          (id) => new mongoose.Types.ObjectId(id),
+        ),
+      },
+    })
+      .select("batches._id batches.applicationLastDate batches.isActive")
+      .lean();
+    for (const live of liveDocs) {
+      const id = String((live as { _id: unknown })._id);
+      const batches =
+        (
+          live as {
+            batches?: {
+              _id: unknown;
+              applicationLastDate?: Date;
+              isActive?: boolean;
+            }[];
+          }
+        ).batches ?? [];
+      paymentPendingLiveByInternshipId.set(id, { batches });
+    }
+  }
 
   // For merit-path rows (exam_registered / exam_attempted / in_merit_pool), fetch
   // entrance window from the internship batch (UTC) and result time from the template.
@@ -1046,10 +1168,6 @@ export async function listMyInternshipEnrollments(
     raw as Record<string, unknown>[]
   ).map((doc) => {
     const id = String(doc._id);
-    const ins = doc.internship as
-      | { _id: unknown; title?: string; slug?: string }
-      | null
-      | undefined;
     const iSnap = doc.internshipSnapshot as
       | { title?: string; slug?: string; thumbnail?: string }
       | undefined;
@@ -1058,19 +1176,73 @@ export async function listMyInternshipEnrollments(
           batchId?: string;
           name?: string;
           internshipStartDate?: Date;
+          applicationLastDate?: Date;
         }
       | undefined;
+    const internshipIdFromRef = internshipRefToId(doc.internship);
+    const statusStr = String(doc.status ?? "");
+
+    const internship =
+      internshipIdFromRef != null
+        ? {
+            _id: internshipIdFromRef,
+            title: String(iSnap?.title ?? ""),
+            slug: typeof iSnap?.slug === "string" ? iSnap.slug : undefined,
+          }
+        : null;
+
+    const snapAppRaw = bs?.applicationLastDate;
+    const batchSnapshotOut =
+      bs && typeof bs === "object"
+        ? {
+            batchId: String(bs.batchId ?? ""),
+            name: String(bs.name ?? ""),
+            internshipStartDate:
+              bs.internshipStartDate instanceof Date
+                ? bs.internshipStartDate.toISOString()
+                : (toIso(bs.internshipStartDate) ??
+                  new Date(0).toISOString()),
+            ...(snapAppRaw instanceof Date &&
+            !Number.isNaN(snapAppRaw.getTime())
+              ? { applicationLastDate: snapAppRaw.toISOString() }
+              : toIso(snapAppRaw)
+                ? { applicationLastDate: toIso(snapAppRaw)! }
+                : {}),
+          }
+        : undefined;
+
+    let paymentPendingContext:
+      | InternshipEnrollmentListRow["paymentPendingContext"]
+      | undefined;
+    if (statusStr === "payment_pending" && internshipIdFromRef != null) {
+      const live = paymentPendingLiveByInternshipId.get(
+        internshipIdFromRef,
+      );
+      const bid = String(bs?.batchId ?? "");
+      const liveBatchDoc = live?.batches.find((b) => String(b._id) === bid);
+      const internshipExists = Boolean(live);
+      const batchExistsOnProgram = Boolean(liveBatchDoc);
+      const snapApp =
+        snapAppRaw instanceof Date ? snapAppRaw : undefined;
+      const liveApp = liveBatchDoc?.applicationLastDate;
+      const effectiveApp =
+        snapApp ?? (liveApp instanceof Date ? liveApp : undefined);
+      const applicationWindowOpen =
+        effectiveApp != null
+          ? isApplicationWindowOpenIst(effectiveApp)
+          : true;
+
+      paymentPendingContext = {
+        internshipExists,
+        batchExistsOnProgram,
+        applicationWindowOpen,
+      };
+    }
+
     return {
       _id: id,
       user: null,
-      internship:
-        ins && ins._id != null
-          ? {
-              _id: String(ins._id),
-              title: String(ins.title ?? ""),
-              slug: typeof ins.slug === "string" ? ins.slug : undefined,
-            }
-          : null,
+      internship,
       internshipSnapshot: iSnap?.title
         ? {
             title: String(iSnap.title),
@@ -1079,20 +1251,9 @@ export async function listMyInternshipEnrollments(
               typeof iSnap.thumbnail === "string" ? iSnap.thumbnail : undefined,
           }
         : undefined,
-      batchSnapshot:
-        bs && typeof bs === "object"
-          ? {
-              batchId: String(bs.batchId ?? ""),
-              name: String(bs.name ?? ""),
-              internshipStartDate:
-                bs.internshipStartDate instanceof Date
-                  ? bs.internshipStartDate.toISOString()
-                  : (toIso(bs.internshipStartDate) ??
-                    new Date(0).toISOString()),
-            }
-          : undefined,
+      batchSnapshot: batchSnapshotOut,
       enrollmentType: doc.enrollmentType as "merit" | "paid" | undefined,
-      status: String(doc.status ?? ""),
+      status: statusStr,
       examScore: typeof doc.examScore === "number" ? doc.examScore : undefined,
       internshipSuccessPoints:
         typeof doc.internshipSuccessPoints === "number"
@@ -1107,6 +1268,7 @@ export async function listMyInternshipEnrollments(
         : undefined,
       ...examWindowById.get(String(doc._id)),
       ...certWindowByEnrollmentId.get(String(doc._id)),
+      ...(paymentPendingContext ? { paymentPendingContext } : {}),
     };
   });
 

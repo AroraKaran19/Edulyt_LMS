@@ -10,7 +10,9 @@ import {
 } from "../components/fields";
 import ImageField from "../components/ImageField";
 import { findSectionIndex, HOME_PAGE_SECTIONS } from "../sections";
+import { normalizeHomePageInstitute } from "@/lib/home-page/normalizeHomePageInstitute";
 import type {
+  HomeInstituteSpotlight,
   HomeInstitutionSectionSettings,
   HomePageInstitute,
 } from "@/types/home-page-settings";
@@ -26,26 +28,35 @@ const empty: HomeInstitutionSectionSettings = {
   institutes: [],
 };
 
+const newSpotlight = (): HomeInstituteSpotlight => ({
+  first_name: "",
+  last_name: "",
+  avatar: "",
+});
+
 const newInstitute = (): HomePageInstitute => ({
   image: "",
   name: "",
   line1: "Internship students",
   internship_student_count: 0,
+  internship_spotlights: [],
   line2: "Course students",
   course_student_count: 0,
+  course_spotlights: [],
 });
 
 export default function InstitutionsSectionPage() {
   const { state, setState } = useSectionState("institutions", (s) => ({
     ...empty,
     ...(s?.institutions ?? {}),
+    institutes: (s?.institutions?.institutes ?? []).map(normalizeHomePageInstitute),
   }));
 
   const update = (patch: Partial<HomeInstitutionSectionSettings>) =>
     setState((prev) => ({ ...prev, ...patch }));
 
   return (
-    <div className="max-w-4xl mx-auto flex flex-col gap-5">
+    <div className="w-full mx-auto flex flex-col gap-5">
       <SectionHeader
         title={meta.title}
         description={meta.description}
@@ -85,7 +96,7 @@ export default function InstitutionsSectionPage() {
 
       <FieldGroup
         title="Partner institutes"
-        description="Each tile shows a logo, name and two student-count rows."
+        description="Each tile shows a logo, name, two stat rows, and optional student spotlights under each row. The public site lists the first two people, then +n for the rest."
       >
         <ItemListField<HomePageInstitute>
           items={state.institutes}
@@ -134,6 +145,52 @@ export default function InstitutionsSectionPage() {
                   }
                   placeholder="0"
                 />
+              </div>
+              <ItemListField<HomeInstituteSpotlight>
+                label="Internship row — student spotlights"
+                description="Add as many as you like; only the first two appear as full chips on the site, then +n."
+                items={item.internship_spotlights ?? []}
+                onChange={(internship_spotlights) =>
+                  set({ ...item, internship_spotlights })
+                }
+                newItem={newSpotlight}
+                addLabel="Add person"
+                itemTitle={(p, i) => {
+                  const n =
+                    [p.first_name, p.last_name].filter(Boolean).join(" ").trim() ||
+                    `Person ${i + 1}`;
+                  return n;
+                }}
+                renderItem={(spot, setSpot) => (
+                  <>
+                    <div className="grid sm:grid-cols-2 gap-3">
+                      <TextField
+                        label="First name"
+                        value={spot.first_name}
+                        onChange={(first_name) => setSpot({ ...spot, first_name })}
+                        placeholder="John"
+                      />
+                      <TextField
+                        label="Last name"
+                        value={spot.last_name}
+                        onChange={(last_name) => setSpot({ ...spot, last_name })}
+                        placeholder="Doe"
+                      />
+                    </div>
+                    <ImageField
+                      title="Photo"
+                      imageSrc={spot.avatar ?? ""}
+                      imageAlt={`${spot.first_name} ${spot.last_name}`}
+                      onChange={({ imageSrc }) =>
+                        setSpot({ ...spot, avatar: imageSrc ?? "" })
+                      }
+                      folderName="home-page/institute-spotlights"
+                      showAltText={false}
+                    />
+                  </>
+                )}
+              />
+              <div className="grid sm:grid-cols-2 gap-3">
                 <TextField
                   label="Line 2 label"
                   value={item.line2}
@@ -154,6 +211,50 @@ export default function InstitutionsSectionPage() {
                   placeholder="0"
                 />
               </div>
+              <ItemListField<HomeInstituteSpotlight>
+                label="Course row — student spotlights"
+                description="Same display rule: first two chips, then +n."
+                items={item.course_spotlights ?? []}
+                onChange={(course_spotlights) =>
+                  set({ ...item, course_spotlights })
+                }
+                newItem={newSpotlight}
+                addLabel="Add person"
+                itemTitle={(p, i) => {
+                  const n =
+                    [p.first_name, p.last_name].filter(Boolean).join(" ").trim() ||
+                    `Person ${i + 1}`;
+                  return n;
+                }}
+                renderItem={(spot, setSpot) => (
+                  <>
+                    <div className="grid sm:grid-cols-2 gap-3">
+                      <TextField
+                        label="First name"
+                        value={spot.first_name}
+                        onChange={(first_name) => setSpot({ ...spot, first_name })}
+                        placeholder="John"
+                      />
+                      <TextField
+                        label="Last name"
+                        value={spot.last_name}
+                        onChange={(last_name) => setSpot({ ...spot, last_name })}
+                        placeholder="Doe"
+                      />
+                    </div>
+                    <ImageField
+                      title="Photo"
+                      imageSrc={spot.avatar ?? ""}
+                      imageAlt={`${spot.first_name} ${spot.last_name}`}
+                      onChange={({ imageSrc }) =>
+                        setSpot({ ...spot, avatar: imageSrc ?? "" })
+                      }
+                      folderName="home-page/institute-spotlights"
+                      showAltText={false}
+                    />
+                  </>
+                )}
+              />
             </>
           )}
         />

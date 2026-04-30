@@ -100,14 +100,31 @@ const testimonialSchema = new Schema(
   { _id: false },
 );
 
+const instituteSpotlightSchema = new Schema(
+  {
+    first_name: { type: String, default: "" },
+    last_name: { type: String, default: "" },
+    avatar: { type: String, default: "" },
+  },
+  { _id: false },
+);
+
 const instituteSchema = new Schema(
   {
     image: { type: String, default: "" },
     name: { type: String, default: "" },
     line1: { type: String, default: "" },
     internship_student_count: { type: Number, default: 0, min: 0 },
+    internship_spotlights: {
+      type: [instituteSpotlightSchema],
+      default: [],
+    },
     line2: { type: String, default: "" },
     course_student_count: { type: Number, default: 0, min: 0 },
+    course_spotlights: {
+      type: [instituteSpotlightSchema],
+      default: [],
+    },
   },
   { _id: false },
 );

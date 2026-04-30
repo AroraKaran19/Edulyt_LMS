@@ -27,7 +27,7 @@ export default function FutureManagersSectionPage() {
     setState((prev) => ({ ...prev, ...patch }));
 
   return (
-    <div className="max-w-4xl mx-auto flex flex-col gap-5">
+    <div className="w-full mx-auto flex flex-col gap-5">
       <SectionHeader
         title={meta.title}
         description={meta.description}

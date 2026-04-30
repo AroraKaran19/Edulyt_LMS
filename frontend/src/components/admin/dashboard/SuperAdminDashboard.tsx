@@ -10,10 +10,10 @@ import {
   BookOpen,
   Shield,
   ShieldCheck,
-  IndianRupee,
   Award,
   CheckCircle2,
   ShoppingCart,
+  Wallet,
 } from "lucide-react";
 import CalenderBtn from "./CalenderBtn";
 import { ButtonLoader } from "@/components/ui/Loader";
@@ -307,7 +307,7 @@ const SuperAdminDashboard = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6">
           <div className="bg-white rounded-xl p-4 shadow-sm border border-[#EAECF0] flex items-center gap-3">
             <div className="p-2 rounded-lg bg-emerald-100">
-              <IndianRupee className="size-5 text-emerald-600" />
+              <Wallet className="size-5 text-emerald-600" />
             </div>
             <div>
               <h3 className="text-[#475467] font-medium text-sm">Total Revenue</h3>
@@ -315,7 +315,10 @@ const SuperAdminDashboard = ({
                 <ButtonLoader />
               ) : (
                 <span className="text-xl font-extrabold text-[#1D2939]">
-                  ₹{(totalRevenue / 100000).toFixed(1)}L
+                  {totalRevenue.toLocaleString(undefined, {
+                    maximumFractionDigits: 2,
+                    minimumFractionDigits: 0,
+                  })}
                 </span>
               )}
               <p className="text-xs text-[#6B7280] mt-0.5">All successful orders</p>
