@@ -53,7 +53,14 @@ export default function EntranceExamSubmissionModal({
     | { title?: string; questions?: { questionId: string; questionText: string; type: string; score: number }[] }
     | undefined;
   const mcq = (doc?.mcqResponses as { question: string; selectedOptions?: string[]; awardedScore?: number; isCorrect?: boolean }[]) ?? [];
-  const files = (doc?.fileResponses as { question: string; currentFile: string; status?: string; awardedScore?: number }[]) ?? [];
+  const files =
+    (doc?.fileResponses as {
+      question: string;
+      currentFile: string;
+      learnerComment?: string;
+      status?: string;
+      awardedScore?: number;
+    }[]) ?? [];
 
   return (
     <Modal
@@ -126,6 +133,11 @@ export default function EntranceExamSubmissionModal({
                 ) : (
                   <p className="text-gray-500">No file</p>
                 )}
+                {f?.learnerComment?.trim() ? (
+                  <p className="text-gray-700 text-xs whitespace-pre-wrap border border-gray-100 rounded px-2 py-1 bg-gray-50">
+                    <span className="font-medium">Note:</span> {f.learnerComment.trim()}
+                  </p>
+                ) : null}
                 <p className="text-xs text-gray-500">
                   Status: {f?.status ?? "—"}
                   {f?.awardedScore != null

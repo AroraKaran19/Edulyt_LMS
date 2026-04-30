@@ -8,6 +8,7 @@ import { toast } from "react-toastify";
 import apiClient from "@/configs/apiConfig";
 import { ENDPOINTS } from "@/constants/endpoints";
 import type { LearnerEntranceExam, LearnerEntranceExamQuestion } from "@/types";
+import LearnerInternshipSubmissionFileField from "../../components/LearnerInternshipSubmissionFileField";
 
 type SubmitStatus = "idle" | "submitting" | "submitted";
 
@@ -74,12 +75,22 @@ function QuestionCard({
   answers,
   onChange,
   disabled,
+  submissionId,
+  fileUrls,
+  fileComments,
+  onFileUploaded,
+  onLearnerCommentSaved,
 }: {
   q: LearnerEntranceExamQuestion;
   index: number;
   answers: Record<string, string[]>;
   onChange: (qId: string, opts: string[]) => void;
   disabled: boolean;
+  submissionId: string | null;
+  fileUrls: Record<string, string>;
+  fileComments: Record<string, string>;
+  onFileUploaded: (qId: string, url: string) => void;
+  onLearnerCommentSaved: (qId: string, comment: string) => void;
 }) {
   const selected = answers[q.questionId] ?? [];
   const toggle = (optId: string) => {
@@ -112,9 +123,34 @@ function QuestionCard({
           ))}
         </div>
       ) : (
-        <p className="ml-6 text-sm text-stone-500 italic">
-          File upload questions are reviewed separately.
-        </p>
+        <div className="ml-6 space-y-2">
+          <p className="text-sm text-stone-600">
+            Upload a file and/or write your answer in the note below.{" "}
+            {q.referenceFile ? (
+              <a
+                href={q.referenceFile}
+                target="_blank"
+                rel="noreferrer"
+                className="text-amber-700 underline underline-offset-2 font-medium"
+              >
+                Reference file
+              </a>
+            ) : null}
+          </p>
+          {submissionId && (
+            <LearnerInternshipSubmissionFileField
+              submissionId={submissionId}
+              questionId={q.questionId}
+              disabled={disabled}
+              currentFileUrl={fileUrls[q.questionId]}
+              learnerComment={fileComments[q.questionId] ?? ""}
+              onUploaded={(url) => onFileUploaded(q.questionId, url)}
+              onLearnerCommentSaved={(comment) =>
+                onLearnerCommentSaved(q.questionId, comment)
+              }
+            />
+          )}
+        </div>
       )}
     </div>
   );
@@ -129,6 +165,8 @@ export default function ExamPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [submissionId, setSubmissionId] = useState<string | null>(null);
   const [answers, setAnswers] = useState<Record<string, string[]>>({});
+  const [fileUrls, setFileUrls] = useState<Record<string, string>>({});
+  const [fileComments, setFileComments] = useState<Record<string, string>>({});
   const [submitStatus, setSubmitStatus] = useState<SubmitStatus>("idle");
 
   const loadExam = useCallback(async () => {
@@ -149,12 +187,25 @@ export default function ExamPage() {
           );
           const sub = subRes.data.data as {
             mcqResponses?: { question: string; selectedOptions: string[] }[];
+            fileResponses?: {
+              question: string;
+              currentFile: string;
+              learnerComment?: string;
+            }[];
           };
           const initial: Record<string, string[]> = {};
           for (const r of sub.mcqResponses ?? []) {
             initial[r.question] = r.selectedOptions;
           }
           setAnswers(initial);
+          const fu: Record<string, string> = {};
+          const fc: Record<string, string> = {};
+          for (const fr of sub.fileResponses ?? []) {
+            if (fr.currentFile) fu[fr.question] = fr.currentFile;
+            if (fr.learnerComment) fc[fr.question] = fr.learnerComment;
+          }
+          setFileUrls(fu);
+          setFileComments(fc);
         } catch {
           // Non-fatal — start fresh
         }
@@ -198,6 +249,8 @@ export default function ExamPage() {
       });
       const created = res.data.data as { _id: string };
       setSubmissionId(created._id);
+      setFileUrls({});
+      setFileComments({});
       toast.success("Exam started — your answers save automatically.");
     } catch (e: unknown) {
       const msg =
@@ -381,6 +434,15 @@ export default function ExamPage() {
             answers={answers}
             onChange={(qId, opts) => void handleAnswerChange(qId, opts)}
             disabled={disabled || !submissionId}
+            submissionId={submissionId}
+            fileUrls={fileUrls}
+            fileComments={fileComments}
+            onFileUploaded={(qId, url) =>
+              setFileUrls((prev) => ({ ...prev, [qId]: url }))
+            }
+            onLearnerCommentSaved={(qId, comment) =>
+              setFileComments((prev) => ({ ...prev, [qId]: comment }))
+            }
           />
         ))}
       </div>

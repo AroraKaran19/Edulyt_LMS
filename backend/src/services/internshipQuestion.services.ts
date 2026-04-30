@@ -226,6 +226,64 @@ export async function createInternshipQuestionAdmin(
   };
 }
 
+const BULK_CREATE_MAX = 500;
+
+export async function bulkCreateInternshipQuestionsAdmin(
+  bodies: CreateInternshipQuestionBody[],
+  createdBy: mongoose.Types.ObjectId,
+): Promise<{
+  created: number;
+  failed: { index: number; message: string }[];
+  ids: string[];
+}> {
+  if (!Array.isArray(bodies)) {
+    throw new AppError("questions must be an array", 400);
+  }
+  if (bodies.length === 0) {
+    throw new AppError("At least one question is required", 400);
+  }
+  if (bodies.length > BULK_CREATE_MAX) {
+    throw new AppError(
+      `Maximum ${BULK_CREATE_MAX} questions per import`,
+      400,
+    );
+  }
+
+  const docs: Record<string, unknown>[] = [];
+  const failed: { index: number; message: string }[] = [];
+
+  for (let i = 0; i < bodies.length; i++) {
+    try {
+      const fields = buildQuestionUpdateFields(bodies[i]);
+      docs.push({ ...fields, createdBy } as Record<string, unknown>);
+    } catch (e) {
+      const msg =
+        e instanceof AppError
+          ? e.message
+          : e instanceof Error
+            ? e.message
+            : "Validation failed";
+      failed.push({ index: i, message: msg });
+    }
+  }
+
+  if (docs.length === 0) {
+    return { created: 0, failed, ids: [] };
+  }
+
+  try {
+    const inserted = await InternshipQuestionModel.insertMany(docs, {
+      ordered: false,
+    });
+    const ids = inserted.map((d) => String(d._id));
+    return { created: ids.length, failed, ids };
+  } catch (err: unknown) {
+    const msg =
+      err instanceof Error ? err.message : "Bulk insert failed";
+    throw new AppError(msg, 500);
+  }
+}
+
 export async function listInternshipQuestionsAdmin(
   page: number,
   limit: number,

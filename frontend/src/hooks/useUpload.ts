@@ -91,6 +91,7 @@ export const useUpload = () => {
             fileName: file.name,
             fileType: file.type,
             folderName,
+            fileSize: file.size,
           }
         );
 

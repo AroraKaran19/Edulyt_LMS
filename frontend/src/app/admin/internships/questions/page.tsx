@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { HelpCircle, Pencil, Plus, Trash2 } from "lucide-react";
+import { HelpCircle, Pencil, Plus, Trash2, FileSpreadsheet } from "lucide-react";
 import { toast } from "react-toastify";
 import apiClient from "@/configs/apiConfig";
 import { ENDPOINTS } from "@/constants/endpoints";
@@ -13,6 +13,7 @@ import InternshipAdminListShell from "../components/InternshipAdminListShell";
 import QuestionUpsertModal from "./components/QuestionUpsertModal";
 import QuestionDetailModal from "./components/QuestionDetailModal";
 import DeleteQuestionConfirmModal from "./components/DeleteQuestionConfirmModal";
+import QuestionExcelImportModal from "./components/QuestionExcelImportModal";
 
 type QuestionRow = {
   _id: string;
@@ -53,6 +54,7 @@ export default function InternshipQuestionsAdminPage() {
   const [categoryFilter, setCategoryFilter] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
+  const [importExcelOpen, setImportExcelOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{
@@ -135,15 +137,26 @@ export default function InternshipQuestionsAdminPage() {
         searchValue={search}
         onSearchChange={setSearch}
         headerActions={
-          <OrangeButton
-            type="button"
-            glow={false}
-            className="inline-flex items-center gap-2"
-            onClick={() => setCreateOpen(true)}
-          >
-            <Plus className="size-4" />
-            Create question
-          </OrangeButton>
+          <div className="flex flex-wrap items-center gap-2">
+            <WhiteButton
+              type="button"
+              glow={false}
+              className="inline-flex items-center gap-2"
+              onClick={() => setImportExcelOpen(true)}
+            >
+              <FileSpreadsheet className="size-4" />
+              Import Excel
+            </WhiteButton>
+            <OrangeButton
+              type="button"
+              glow={false}
+              className="inline-flex items-center gap-2"
+              onClick={() => setCreateOpen(true)}
+            >
+              <Plus className="size-4" />
+              Create question
+            </OrangeButton>
+          </div>
         }
         filterExtras={
           <div className="flex flex-wrap items-center gap-2">
@@ -340,6 +353,12 @@ export default function InternshipQuestionsAdminPage() {
           </div>
         )}
       </InternshipAdminListShell>
+
+      <QuestionExcelImportModal
+        isOpen={importExcelOpen}
+        onClose={() => setImportExcelOpen(false)}
+        onSuccess={() => void fetchQuestions()}
+      />
 
       <QuestionUpsertModal
         isOpen={upsertOpen}

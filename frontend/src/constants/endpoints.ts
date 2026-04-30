@@ -92,6 +92,7 @@ export const ENDPOINTS = {
 
   internshipQuestions: {
     adminList: "/internship-questions/admin",
+    adminBulkCreate: "/internship-questions/admin/bulk",
     adminById: (questionId: string) =>
       `/internship-questions/admin/${encodeURIComponent(questionId)}`,
     create: "/internship-questions",
@@ -114,6 +115,7 @@ export const ENDPOINTS = {
       `/internship-submissions/admin/${encodeURIComponent(id)}/finalize-certification`,
     byId: (id: string) => `/internship-submissions/${id}`,
     saveMcq: (id: string) => `/internship-submissions/${id}/answers/mcq`,
+    saveFile: (id: string) => `/internship-submissions/${id}/answers/file`,
     submit: (id: string) => `/internship-submissions/${id}/submit`,
   },
 

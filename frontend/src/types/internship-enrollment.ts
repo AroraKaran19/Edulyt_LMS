@@ -260,6 +260,7 @@ export interface LearnerEntranceExamQuestion {
   type: "mcq" | "file_upload";
   score: number;
   options?: { optionId: string; text: string }[];
+  referenceFile?: string;
 }
 
 export interface LearnerEntranceExam {

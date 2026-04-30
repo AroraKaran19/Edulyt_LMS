@@ -1,14 +1,17 @@
 import { getS3Client, getBucketName, getPublicUrlBase } from "../config/s3";
-import { PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
+import { PutObjectCommand, DeleteObjectCommand, HeadObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { v4 as uuidv4 } from "uuid";
 import { AppError } from "../middlewares/error.middleware";
 import axios from "axios";
+import { INTERNSHIP_SUBMISSION_MAX_FILE_BYTES } from "../constants/internshipSubmissionUpload";
 
 export interface PresignedUrlRequest {
   fileName: string;
   fileType: string;
   folderName: string;
+  /** Declared size in bytes — required for internship learner uploads; optional elsewhere. */
+  fileSize?: number;
 }
 
 export interface PresignedUrlResponse {
@@ -35,6 +38,42 @@ export interface UploadResponse {
 export const generatePresignedUrl = async (
   request: PresignedUrlRequest,
 ): Promise<PresignedUrlResponse> => {
+  const rules = getFileValidationRules(request.folderName);
+  const fsRaw = request.fileSize;
+  const fs =
+    typeof fsRaw === "number"
+      ? fsRaw
+      : typeof fsRaw === "string"
+        ? parseInt(fsRaw, 10)
+        : NaN;
+  const isInternshipDocs =
+    request.folderName === "internship-submission-documents" ||
+    request.folderName.startsWith("internship-submission-documents/");
+  if (isInternshipDocs) {
+    if (!Number.isFinite(fs) || fs <= 0) {
+      throw new AppError(
+        "fileSize is required for internship submission uploads",
+        400,
+      );
+    }
+  }
+  if (Number.isFinite(fs) && fs > 0) {
+    const v = validateFile(
+      request.fileType,
+      fs,
+      rules.allowedTypes,
+      rules.maxSize,
+    );
+    if (!v.valid) {
+      throw new AppError(v.error ?? "Invalid file", 400);
+    }
+  } else if (!rules.allowedTypes.includes(request.fileType)) {
+    throw new AppError(
+      `File type ${request.fileType} is not allowed for folder ${request.folderName}`,
+      400,
+    );
+  }
+
   try {
     const s3Client = await getS3Client();
     const bucketName = getBucketName();
@@ -184,6 +223,30 @@ export const validateFile = (
   return { valid: true };
 };
 
+/** Verify an object in our bucket is at most `maxBytes` (defense after presigned upload). */
+export async function assertS3ObjectContentLengthAtMost(
+  s3Key: string,
+  maxBytes: number,
+): Promise<void> {
+  try {
+    const s3Client = await getS3Client();
+    const bucketName = getBucketName();
+    const out = await s3Client.send(
+      new HeadObjectCommand({ Bucket: bucketName, Key: s3Key }),
+    );
+    const len = out.ContentLength;
+    if (typeof len === "number" && len > maxBytes) {
+      throw new AppError(
+        `File exceeds the maximum size of ${Math.round(maxBytes / (1024 * 1024))} MB`,
+        400,
+      );
+    }
+  } catch (e) {
+    if (e instanceof AppError) throw e;
+    throw new AppError("Could not verify uploaded file", 400);
+  }
+}
+
 /**
  * Get file validation rules based on folder name
  * @param folderName - Name of the folder
@@ -195,6 +258,30 @@ export const getFileValidationRules = (
   allowedTypes: string[];
   maxSize: number;
 } => {
+  if (
+    folderName === "internship-submission-documents" ||
+    folderName.startsWith("internship-submission-documents/")
+  ) {
+    return {
+      allowedTypes: [
+        "application/pdf",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/vnd.ms-excel",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "application/vnd.ms-powerpoint",
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        "text/plain",
+        "text/csv",
+        "image/jpeg",
+        "image/jpg",
+        "image/png",
+        "image/webp",
+      ],
+      maxSize: INTERNSHIP_SUBMISSION_MAX_FILE_BYTES,
+    };
+  }
+
   const rules: { [key: string]: { allowedTypes: string[]; maxSize: number } } =
     {
       "course-thumbnails": {

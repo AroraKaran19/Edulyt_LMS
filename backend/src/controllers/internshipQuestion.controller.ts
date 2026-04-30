@@ -8,6 +8,7 @@ import {
 import {
   listInternshipQuestionsAdmin,
   createInternshipQuestionAdmin,
+  bulkCreateInternshipQuestionsAdmin,
   getInternshipQuestionByIdAdmin,
   updateInternshipQuestionAdmin,
   deleteInternshipQuestionAdmin,
@@ -70,6 +71,36 @@ export const createInternshipQuestionAdminController = asyncHandler(
       new mongoose.Types.ObjectId(String(userId)),
     );
     sendSuccessResponse(res, result, "Question created successfully", 201);
+  },
+);
+
+/**
+ * @route   POST /api/internship-questions/admin/bulk
+ * @desc    Create many questions (admin) — body: { questions: CreateInternshipQuestionBody[] }
+ * @access  Admin
+ */
+export const bulkCreateInternshipQuestionAdminController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const userId = req.user?._id;
+    if (!userId) {
+      throw new AppError("Unauthorized", 401);
+    }
+    const questions = (req.body as { questions?: CreateInternshipQuestionBody[] })
+      ?.questions;
+    const result = await bulkCreateInternshipQuestionsAdmin(
+      questions ?? [],
+      new mongoose.Types.ObjectId(String(userId)),
+    );
+    if (result.created === 0 && (questions?.length ?? 0) > 0) {
+      const first = result.failed[0]?.message ?? "Validation failed";
+      throw new AppError(first, 400);
+    }
+    sendSuccessResponse(
+      res,
+      result,
+      `Imported ${result.created} question(s)`,
+      201,
+    );
   },
 );
 

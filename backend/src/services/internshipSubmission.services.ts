@@ -17,6 +17,15 @@ import {
   isInstantWithinWindowUtc,
   parseProgramDurationMonthsFromAnswers,
 } from "../lib/certificationExamSchedule";
+import {
+  assertS3ObjectContentLengthAtMost,
+  extractS3KeyFromUrl,
+} from "./upload.services";
+import {
+  INTERNSHIP_SUBMISSION_MAX_FILE_BYTES,
+  INTERNSHIP_SUBMISSION_MAX_COMMENT_CHARS,
+  INTERNSHIP_SUBMISSION_S3_PREFIX,
+} from "../constants/internshipSubmissionUpload";
 
 async function resolveExamTypeFromSnapshot(
   snap: ExamTemplateSnapshot,
@@ -454,7 +463,8 @@ export type SaveMCQAnswerBody = {
 
 export type SaveFileAnswerBody = {
   question: string;
-  fileUrl: string;
+  fileUrl?: string;
+  learnerComment?: string;
 };
 
 export async function saveMCQAnswer(
@@ -516,12 +526,16 @@ export async function saveMCQAnswer(
 export async function saveFileAnswer(
   submissionId: string,
   body: SaveFileAnswerBody,
+  userId: mongoose.Types.ObjectId,
 ): Promise<Record<string, unknown>> {
   if (!mongoose.Types.ObjectId.isValid(submissionId)) {
     throw new AppError("Invalid submissionId", 400);
   }
   const sub = await InternshipSubmissionModel.findById(submissionId);
   if (!sub) throw new AppError("Submission not found", 404);
+  if (String(sub.userId) !== String(userId)) {
+    throw new AppError("Forbidden", 403);
+  }
   if (sub.status !== "draft") {
     throw new AppError("Cannot update answers on a submitted submission", 400);
   }
@@ -551,30 +565,97 @@ export async function saveFileAnswer(
     throw new AppError("This question is not a file-upload question", 400);
   }
 
-  const fileEntry = { file: body.fileUrl, uploadedAt: new Date() };
-  const existing = (
-    sub.fileResponses as {
-      question: string;
-      currentFile: string;
-      uploadHistory: unknown[];
-      status: string;
-    }[]
-  ).findIndex((r) => r.question === body.question);
+  type FileResp = {
+    question: string;
+    currentFile: string;
+    learnerComment?: string;
+    uploadHistory: unknown[];
+    status: string;
+  };
+
+  const existing = (sub.fileResponses as FileResp[]).findIndex(
+    (r) => r.question === body.question,
+  );
+  const prior: FileResp | null =
+    existing >= 0 ? (sub.fileResponses[existing] as FileResp) : null;
+
+  const trimmedIncomingFile =
+    typeof body.fileUrl === "string" ? body.fileUrl.trim() : null;
+
+  const finalComment =
+    typeof body.learnerComment === "string"
+      ? body.learnerComment.trim()
+      : (prior?.learnerComment ?? "").trim();
+
+  const finalFile =
+    trimmedIncomingFile !== null
+      ? trimmedIncomingFile
+      : (prior?.currentFile ?? "").trim();
+
+  if (finalComment.length > INTERNSHIP_SUBMISSION_MAX_COMMENT_CHARS) {
+    throw new AppError(
+      `Written answer must be at most ${INTERNSHIP_SUBMISSION_MAX_COMMENT_CHARS} characters`,
+      400,
+    );
+  }
+
+  if (!finalFile && !finalComment) {
+    throw new AppError(
+      "Provide an uploaded file and/or a written answer for this question.",
+      400,
+    );
+  }
+
+  if (trimmedIncomingFile !== null && trimmedIncomingFile !== "") {
+    const key = extractS3KeyFromUrl(trimmedIncomingFile);
+    if (
+      !key ||
+      !key.startsWith(`${INTERNSHIP_SUBMISSION_S3_PREFIX}/`)
+    ) {
+      throw new AppError(
+        "Upload internship answers only through the in-app file picker (invalid storage path).",
+        400,
+      );
+    }
+    await assertS3ObjectContentLengthAtMost(
+      key,
+      INTERNSHIP_SUBMISSION_MAX_FILE_BYTES,
+    );
+  }
 
   if (existing >= 0) {
-    const r = sub.fileResponses[existing] as {
-      currentFile: string;
-      uploadHistory: unknown[];
-      status: string;
-    };
-    (r.uploadHistory as unknown[]).push(fileEntry);
-    r.currentFile = body.fileUrl;
+    const r = sub.fileResponses[existing] as FileResp;
+    r.learnerComment = finalComment;
+    if (trimmedIncomingFile !== null) {
+      if (trimmedIncomingFile) {
+        (r.uploadHistory as unknown[]).push({
+          file: trimmedIncomingFile,
+          uploadedAt: new Date(),
+        });
+        r.currentFile = trimmedIncomingFile;
+      } else {
+        r.currentFile = "";
+      }
+    }
     r.status = "submitted";
   } else {
+    const cf =
+      trimmedIncomingFile !== null && trimmedIncomingFile
+        ? trimmedIncomingFile
+        : "";
     (sub.fileResponses as unknown[]).push({
       question: body.question,
-      currentFile: body.fileUrl,
-      uploadHistory: [fileEntry],
+      currentFile: cf,
+      learnerComment: finalComment,
+      uploadHistory:
+        trimmedIncomingFile !== null && trimmedIncomingFile
+          ? [
+              {
+                file: trimmedIncomingFile,
+                uploadedAt: new Date(),
+              },
+            ]
+          : [],
       status: "submitted",
     });
   }
@@ -609,6 +690,32 @@ export async function submitSubmission(
   const snapshot = sub.toObject().templateSnapshot as
     | TaskTemplateSnapshot
     | ExamTemplateSnapshot;
+
+  const fileQuestionIds = snapshot.questions
+    .filter((q) => q.type === "file_upload")
+    .map((q) => q.questionId);
+  const fileRespsByQ = new Map(
+    (
+      sub.fileResponses as {
+        question: string;
+        currentFile?: string;
+        learnerComment?: string;
+      }[]
+    ).map((r) => [r.question, r]),
+  );
+  for (const qid of fileQuestionIds) {
+    const fr = fileRespsByQ.get(qid);
+    const hasFile = !!(fr?.currentFile && String(fr.currentFile).trim());
+    const hasComment = !!(
+      fr?.learnerComment && String(fr.learnerComment).trim()
+    );
+    if (!fr || (!hasFile && !hasComment)) {
+      throw new AppError(
+        "Complete every file-upload question with an upload and/or a written answer.",
+        400,
+      );
+    }
+  }
 
   // Build a quick lookup: questionId → snapshot question
   const qMap = new Map<string, SnapshotQuestion>(
@@ -647,9 +754,9 @@ export async function submitSubmission(
   );
 
   // Determine status after auto-grade
-  const hasFileQuestions =
-    snapshot.questions.some((q) => q.type === "file_upload") &&
-    (sub.fileResponses as unknown[]).length > 0;
+  const hasFileQuestions = snapshot.questions.some(
+    (q) => q.type === "file_upload",
+  );
 
   const examSnap = snapshot as ExamTemplateSnapshot;
   const examType = await resolveExamTypeFromSnapshot(

@@ -4,6 +4,7 @@ import { verifyAdmin } from "../middlewares/admin.middleware";
 import {
   listInternshipQuestionsAdminController,
   createInternshipQuestionAdminController,
+  bulkCreateInternshipQuestionAdminController,
   getInternshipQuestionByIdAdminController,
   updateInternshipQuestionAdminController,
   deleteInternshipQuestionAdminController,
@@ -19,6 +20,9 @@ router.post("/", createInternshipQuestionAdminController);
 
 /** GET /api/internship-questions/admin — list */
 router.get("/admin", listInternshipQuestionsAdminController);
+
+/** POST /api/internship-questions/admin/bulk — must be before :questionId */
+router.post("/admin/bulk", bulkCreateInternshipQuestionAdminController);
 
 /** GET/PATCH/DELETE /api/internship-questions/admin/:questionId — single (admin) */
 router.get("/admin/:questionId", getInternshipQuestionByIdAdminController);

@@ -83,7 +83,8 @@ const fileUploadEntrySchema = new mongoose.Schema(
 const fileResponseSchema = new mongoose.Schema(
   {
     question: { type: String, required: true },
-    currentFile: { type: String, required: true },
+    currentFile: { type: String, default: "" },
+    learnerComment: { type: String, trim: true, default: "" },
     uploadHistory: { type: [fileUploadEntrySchema], default: [] },
     status: {
       type: String,

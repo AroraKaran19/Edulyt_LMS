@@ -1121,6 +1121,7 @@ export type LearnerEntranceExamQuestion = {
   type: "mcq" | "file_upload";
   score: number;
   options?: { optionId: string; text: string }[];
+  referenceFile?: string;
 };
 
 export type LearnerEntranceExam = {
@@ -1245,6 +1246,7 @@ export async function getLearnerEntranceExam(
         type?: string;
         score?: number;
         options?: { _id?: unknown; text?: unknown; isCorrect?: unknown }[];
+        referenceFile?: string;
       };
       const out: LearnerEntranceExamQuestion = {
         questionId: String(qAny._id),
@@ -1254,6 +1256,10 @@ export async function getLearnerEntranceExam(
           | "file_upload",
         score: typeof qAny.score === "number" ? qAny.score : 0,
       };
+      const ref = qAny.referenceFile;
+      if (typeof ref === "string" && ref.trim()) {
+        out.referenceFile = ref.trim();
+      }
       if (qAny.type === "mcq" && Array.isArray(qAny.options)) {
         out.options = qAny.options.map((o) => ({
           optionId: String(o._id ?? ""),

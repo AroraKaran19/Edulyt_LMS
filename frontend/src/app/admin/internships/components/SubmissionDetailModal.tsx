@@ -70,6 +70,7 @@ type MCQResponse = {
 type FileResponse = {
   question: string;
   currentFile: string;
+  learnerComment?: string;
   status: string;
   awardedScore?: number;
   reviewedAt?: string;
@@ -279,17 +280,27 @@ function FileBlock({
 
       {response ? (
         <div className="space-y-1.5">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <StatusBadge status={response.status} styles={FILE_STATUS_STYLES} />
-            <a
-              href={response.currentFile}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
-            >
-              <ExternalLink className="size-3" /> View submission
-            </a>
+            {response.currentFile?.trim() ? (
+              <a
+                href={response.currentFile}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
+              >
+                <ExternalLink className="size-3" /> View submission
+              </a>
+            ) : (
+              <span className="text-xs text-gray-500">No file attached</span>
+            )}
           </div>
+          {response.learnerComment?.trim() ? (
+            <div className="text-xs text-gray-800 bg-gray-50 border border-gray-100 rounded px-2 py-1.5 whitespace-pre-wrap">
+              <span className="font-medium text-gray-700">Learner note:</span>{" "}
+              {response.learnerComment.trim()}
+            </div>
+          ) : null}
           {response.reviewNote && (
             <p className="text-xs text-gray-600 bg-gray-50 border border-gray-100 rounded px-2 py-1">
               <span className="font-medium">Reviewer note:</span>{" "}
@@ -326,7 +337,7 @@ function FileBlock({
             )}
         </div>
       ) : (
-        <p className="text-xs text-gray-400 italic">No file uploaded</p>
+        <p className="text-xs text-gray-400 italic">No answer recorded</p>
       )}
     </div>
   );

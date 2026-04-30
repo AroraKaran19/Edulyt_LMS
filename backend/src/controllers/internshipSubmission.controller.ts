@@ -81,11 +81,16 @@ export const saveMCQAnswerController = asyncHandler(
  */
 export const saveFileAnswerController = asyncHandler(
   async (req: Request, res: Response) => {
+    const userId = req.user?._id;
+    if (!userId) throw new AppError("Unauthorized", 401);
     const { submissionId } = req.params;
     const body = req.body as SaveFileAnswerBody;
     if (!body.question) throw new AppError("question is required", 400);
-    if (!body.fileUrl?.trim()) throw new AppError("fileUrl is required", 400);
-    const result = await saveFileAnswer(String(submissionId), body);
+    const result = await saveFileAnswer(
+      String(submissionId),
+      body,
+      new mongoose.Types.ObjectId(String(userId)),
+    );
     sendSuccessResponse(res, result, "File answer saved", 200);
   },
 );

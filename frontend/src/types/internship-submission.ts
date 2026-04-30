@@ -31,6 +31,8 @@ export type InternshipFileSubmissionStatus =
 export interface InternshipFileResponse {
   question: string;
   currentFile: string;
+  /** Written answer or context for the file (optional). */
+  learnerComment?: string;
   uploadHistory: InternshipFileUploadEntry[];
   status: InternshipFileSubmissionStatus;
   awardedScore?: number;

@@ -40,6 +40,8 @@ export interface InternshipFileResponse {
   question: string;
   /** URL of the most recently uploaded file. */
   currentFile: string;
+  /** Optional learner explanation (instead of or in addition to a file). */
+  learnerComment?: string;
   /** Full audit trail of every upload attempt (oldest → newest). */
   uploadHistory: InternshipFileUploadEntry[];
   status: InternshipFileSubmissionStatus;

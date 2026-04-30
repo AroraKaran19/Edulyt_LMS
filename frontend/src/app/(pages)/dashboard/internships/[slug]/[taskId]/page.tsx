@@ -15,6 +15,7 @@ import { toast } from "react-toastify";
 import apiClient from "@/configs/apiConfig";
 import { ENDPOINTS } from "@/constants/endpoints";
 import type { LearnerProgramDetail, LearnerTaskRow } from "@/types";
+import LearnerInternshipSubmissionFileField from "../../components/LearnerInternshipSubmissionFileField";
 
 // ─── Shared MCQ UI (identical to exam page) ───────────────────────────────────
 
@@ -85,12 +86,22 @@ function QuestionCard({
   answers,
   onChange,
   disabled,
+  submissionId,
+  fileUrls,
+  fileComments,
+  onFileUploaded,
+  onLearnerCommentSaved,
 }: {
   q: SnapshotQuestion;
   index: number;
   answers: Record<string, string[]>;
   onChange: (qId: string, opts: string[]) => void;
   disabled: boolean;
+  submissionId: string | null;
+  fileUrls: Record<string, string>;
+  fileComments: Record<string, string>;
+  onFileUploaded: (qId: string, url: string) => void;
+  onLearnerCommentSaved: (qId: string, comment: string) => void;
 }) {
   const selected = answers[q.questionId] ?? [];
   const toggle = (optId: string) => {
@@ -123,17 +134,32 @@ function QuestionCard({
           ))}
         </div>
       ) : (
-        <div className="ml-6 rounded-xl border border-stone-100 bg-stone-50 px-4 py-3 text-sm text-stone-500">
-          File-upload question — submit your file when prompted.
-          {q.referenceFile && (
-            <a
-              href={q.referenceFile}
-              target="_blank"
-              rel="noreferrer"
-              className="ml-2 text-amber-700 underline underline-offset-2 font-medium"
-            >
-              Reference file
-            </a>
+        <div className="ml-6 space-y-2">
+          <p className="text-sm text-stone-600">
+            Upload a file and/or write your answer in the note below.{" "}
+            {q.referenceFile ? (
+              <a
+                href={q.referenceFile}
+                target="_blank"
+                rel="noreferrer"
+                className="text-amber-700 underline underline-offset-2 font-medium"
+              >
+                Reference file
+              </a>
+            ) : null}
+          </p>
+          {submissionId && (
+            <LearnerInternshipSubmissionFileField
+              submissionId={submissionId}
+              questionId={q.questionId}
+              disabled={disabled}
+              currentFileUrl={fileUrls[q.questionId]}
+              learnerComment={fileComments[q.questionId] ?? ""}
+              onUploaded={(url) => onFileUploaded(q.questionId, url)}
+              onLearnerCommentSaved={(comment) =>
+                onLearnerCommentSaved(q.questionId, comment)
+              }
+            />
           )}
         </div>
       )}
@@ -149,6 +175,11 @@ type SubmissionShape = {
   _id: string;
   status: string;
   mcqResponses?: { question: string; selectedOptions: string[] }[];
+  fileResponses?: {
+    question: string;
+    currentFile: string;
+    learnerComment?: string;
+  }[];
   templateSnapshot?: {
     questions?: SnapshotQuestion[];
     title?: string;
@@ -178,6 +209,8 @@ export default function InternshipTaskPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [answers, setAnswers] = useState<Record<string, string[]>>({});
+  const [fileUrls, setFileUrls] = useState<Record<string, string>>({});
+  const [fileComments, setFileComments] = useState<Record<string, string>>({});
   const [submissionId, setSubmissionId] = useState<string | null>(null);
   const [submitStatus, setSubmitStatus] = useState<SubmitStatus>("idle");
 
@@ -215,6 +248,14 @@ export default function InternshipTaskPage() {
             init[r.question] = r.selectedOptions;
           }
           setAnswers(init);
+          const fu: Record<string, string> = {};
+          const fc: Record<string, string> = {};
+          for (const fr of sub.fileResponses ?? []) {
+            if (fr.currentFile) fu[fr.question] = fr.currentFile;
+            if (fr.learnerComment) fc[fr.question] = fr.learnerComment;
+          }
+          setFileUrls(fu);
+          setFileComments(fc);
         }
         if (sub.status !== "draft") {
           setSubmitStatus("submitted");
@@ -251,6 +292,8 @@ export default function InternshipTaskPage() {
       setSubmission(sub);
       setSubmissionId(sub._id);
       setQuestions(sub.templateSnapshot?.questions ?? []);
+      setFileUrls({});
+      setFileComments({});
       toast.success("Task started — your answers save automatically.");
     } catch (e: unknown) {
       const msg =
@@ -450,6 +493,15 @@ export default function InternshipTaskPage() {
               answers={answers}
               onChange={(qId, opts) => void handleAnswerChange(qId, opts)}
               disabled={disabled || !submissionId}
+              submissionId={submissionId}
+              fileUrls={fileUrls}
+              fileComments={fileComments}
+              onFileUploaded={(qId, url) =>
+                setFileUrls((prev) => ({ ...prev, [qId]: url }))
+              }
+              onLearnerCommentSaved={(qId, comment) =>
+                setFileComments((prev) => ({ ...prev, [qId]: comment }))
+              }
             />
           ))}
         </div>
