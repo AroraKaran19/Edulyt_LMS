@@ -207,7 +207,11 @@ const InternshipHeader = ({ internship }: { internship: Internship }) => {
 
   const handleDownloadBrochure = async () => {
     try {
+      if (!internship.brochure) return;
       const response = await fetch(internship.brochure);
+      if (!response.ok) {
+        throw new Error("Failed to fetch brochure");
+      }
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -220,16 +224,31 @@ const InternshipHeader = ({ internship }: { internship: Internship }) => {
     }
   };
 
+  const handleDownloadJobDescription = async () => {
+    try {
+      if (!internship.jobDescription) return;
+      const response = await fetch(internship.jobDescription);
+      if (!response.ok) {
+        throw new Error("Failed to fetch job description");
+      }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${internship.title.toLowerCase().replace(/ /g, "-")}-job-description.pdf`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Error downloading job description:", error);
+    }
+  };
+
   const socialLinks = [
-    ...(internship.whatsappGroupLink
-      ? [
-          {
-            label: "WhatsApp",
-            href: internship.whatsappGroupLink,
-            icon: WhatsAppIcon,
-          },
-        ]
-      : []),
+    {
+      label: "WhatsApp",
+      href: "https://www.whatsapp.com/channel/0029VaIBXP347XeJjHqbNi1X",
+      icon: WhatsAppIcon,
+    },
     {
       label: "Telegram",
       href: "https://t.me/+_XxzFosKYOg2M2I9",
@@ -357,6 +376,18 @@ const InternshipHeader = ({ internship }: { internship: Internship }) => {
                 </WhiteButton2>
               </div>
             )}
+            {internship.jobDescription && internship.jobDescription !== "" && (
+              <div className="mt-auto self-center lg:self-start">
+                <WhiteButton2
+                  glow={false}
+                  onClick={handleDownloadJobDescription}
+                  className="text-primary font-bold text-base lg:text-lg flex items-center gap-2"
+                >
+                  <DownloadIcon className="size-6 text-primary" />
+                  Download Job Description
+                </WhiteButton2>
+              </div>
+            )}
             <div className="flex items-center gap-2 justify-start">
               <p
                 className={cn(
@@ -402,21 +433,23 @@ const InternshipHeader = ({ internship }: { internship: Internship }) => {
                       </p>
                     </td>
                   </tr>
-                  <tr className="border-b border-gray-200">
-                    <td className="text-xs lg:text-sm font-medium">
-                      WhatsApp Link
-                    </td>
-                    <td className="text-right">
-                      <div className="inline-block p-1.5 px-3 lg:px-4 rounded-full bg-[#59CC62] text-white text-xs lg:text-sm font-bold hover:bg-[#59CC62]/80 transition-all duration-300">
-                        <Link
-                          href="https://www.whatsapp.com/channel/0029VaIBXP347XeJjHqbNi1X"
-                          target="_blank"
-                        >
-                          Join Now!
-                        </Link>
-                      </div>
-                    </td>
-                  </tr>
+                  {internship.whatsappGroupLink && (
+                    <tr className="border-b border-gray-200">
+                      <td className="text-xs lg:text-sm font-medium">
+                        WhatsApp Link
+                      </td>
+                      <td className="text-right">
+                        <div className="inline-block p-1.5 px-3 lg:px-4 rounded-full bg-[#59CC62] text-white text-xs lg:text-sm font-bold hover:bg-[#59CC62]/80 transition-all duration-300">
+                          <Link
+                            href={internship.whatsappGroupLink}
+                            target="_blank"
+                          >
+                            Join Now!
+                          </Link>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
                   <tr className="border-b border-gray-200">
                     <td className="text-xs lg:text-sm font-medium">
                       Certificate
@@ -441,9 +474,7 @@ const InternshipHeader = ({ internship }: { internship: Internship }) => {
                     </td>
                     <td className="text-right">
                       <div className="inline-block p-1.5 px-3 lg:px-4 capitalize rounded-full bg-black/10 text-xs lg:text-sm font-normal">
-                        {formatCohortDate(
-                          upcomingBatch?.internshipStartDate,
-                        )}
+                        {formatCohortDate(upcomingBatch?.internshipStartDate)}
                       </div>
                     </td>
                   </tr>
@@ -499,7 +530,7 @@ const InternshipHeader = ({ internship }: { internship: Internship }) => {
                 >
                   <span className="text-xs font-medium">For Enquiry:</span>
                   <span className="text-sm font-medium">
-                    Call us: +91 9876543210
+                    Call us: +91 89292 52575
                   </span>
                 </WhiteButton>
                 <OrangeButton

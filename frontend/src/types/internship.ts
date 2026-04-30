@@ -258,6 +258,11 @@ export interface InternshipEnrollPreviewBatch {
 }
 
 export interface InternshipEnrollPreview {
-  internship: { _id: string; title: string; slug: string };
+  internship: {
+    _id: string;
+    title: string;
+    slug: string;
+    whatsappGroupLink?: string;
+  };
   batches: InternshipEnrollPreviewBatch[];
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import type { InternshipEnrollPreview } from "@/types";
 import apiClient from "@/configs/apiConfig";
 import { isApplicationWindowOpenIst } from "@/lib/applicationWindow";
@@ -19,11 +19,18 @@ import {
   Youtube,
   Clock,
 } from "lucide-react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import z from "zod";
 import { toast } from "react-toastify";
 import { cn } from "@/lib/utils";
+import EnrollPathChoiceModal from "./EnrollPathChoiceModal";
+import {
+  ENROLL_DRAFT_STORAGE_V,
+  clearEnrollDraft,
+  readEnrollDraft,
+  writeEnrollDraftDoc,
+} from "./enrollDraftStorage";
 
 // Custom WhatsApp SVG Icon
 const WhatsAppIcon = ({ className }: { className?: string }) => (
@@ -104,10 +111,9 @@ const enrollFormSchema = z.object({
     ),
   linkedinUrl: z
     .string()
-    .optional()
+    .min(1, "LinkedIn profile URL is required")
     .refine(
       (val) => {
-        if (!val || val.trim() === "") return true;
         try {
           const url = new URL(val);
           return url.hostname.includes("linkedin.com");
@@ -212,7 +218,9 @@ const enrollFormSchema = z.object({
 type EnrollFormData = z.infer<typeof enrollFormSchema>;
 
 /** Persist full enroll form as JSON on `InternshipEnrollment.applicationAnswers`. */
-function buildApplicationAnswersPayload(data: EnrollFormData): Record<string, unknown> {
+function buildApplicationAnswersPayload(
+  data: EnrollFormData,
+): Record<string, unknown> {
   const { dob, ...rest } = data;
   return {
     ...rest,
@@ -226,6 +234,70 @@ function enrollSchemaWithOpenBatches(openIds: Set<string>) {
       "This cohort is no longer accepting applications (deadline has passed).",
     path: ["batchId"],
   });
+}
+
+function deserializeDraftValues(
+  stored: Record<string, unknown>,
+): Partial<EnrollFormData> {
+  const out: Partial<EnrollFormData> = {};
+  const stringKeys = [
+    "fullName",
+    "email",
+    "phone",
+    "gender",
+    "experience",
+    "university",
+    "country",
+    "courseName",
+    "yearOfPassing",
+    "linkedinUrl",
+    "instagramUrl",
+    "collegeEmail",
+    "guardianContact",
+    "joinReason",
+    "crName",
+    "crContact",
+    "paidTraining",
+    "whatsappJoined",
+    "internshipDuration",
+    "referralSource",
+    "socialMediaFollowed",
+    "marks10thType",
+    "marks10thValue",
+    "marks12thType",
+    "marks12thValue",
+    "marksPursuingType",
+    "marksPursuingValue",
+    "marketingActivities",
+    "batchId",
+  ] as const;
+
+  for (const k of stringKeys) {
+    const v = stored[k];
+    if (typeof v === "string") (out as Record<string, unknown>)[k] = v;
+  }
+
+  if (typeof stored.dob === "string") {
+    const d = new Date(stored.dob);
+    if (!Number.isNaN(d.getTime())) out.dob = d;
+  }
+
+  return out;
+}
+
+function draftSnapshotFromWatch(
+  data: Partial<Record<string, unknown>>,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [k, val] of Object.entries(data)) {
+    if (val === undefined || val === null) continue;
+    if (val instanceof Date) {
+      out[k] = val.toISOString();
+    } else {
+      out[k] = val;
+    }
+  }
+  return out;
 }
 
 // Options
@@ -335,6 +407,15 @@ const EnrollForm = ({ preview }: { preview: InternshipEnrollPreview }) => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const isSeatFlow = searchParams.get("flow") === "seat";
+  const slug = preview.internship.slug;
+
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [pathModalOpen, setPathModalOpen] = useState(false);
+  const [pendingFormData, setPendingFormData] = useState<EnrollFormData | null>(
+    null,
+  );
+
+  const sessionHydratedRef = useRef(false);
 
   const openBatches = useMemo(
     () =>
@@ -359,14 +440,15 @@ const EnrollForm = ({ preview }: { preview: InternshipEnrollPreview }) => {
     label: formatBatchLabel(b),
   }));
 
-  const [profileLoading, setProfileLoading] = useState(true);
-
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors, isSubmitting },
     watch,
     setValue,
+    reset,
+    getValues,
   } = useForm<EnrollFormData>({
     resolver: zodResolver(resolvedSchema),
     defaultValues: {
@@ -378,13 +460,11 @@ const EnrollForm = ({ preview }: { preview: InternshipEnrollPreview }) => {
 
   const batchId = watch("batchId");
   const selectedBatch = openBatches.find((b) => b._id === batchId);
+  const formValues = useWatch({ control });
 
-  // Seed the batch dropdown to the first cohort that is still open for applications.
   useEffect(() => {
-    if (openBatches[0]) {
-      setValue("batchId", openBatches[0]._id, { shouldValidate: true });
-    }
-  }, [openBatches, setValue]);
+    sessionHydratedRef.current = false;
+  }, [isSeatFlow]);
 
   // Autofill from /users/me
   useEffect(() => {
@@ -439,7 +519,56 @@ const EnrollForm = ({ preview }: { preview: InternshipEnrollPreview }) => {
     };
   }, [setValue]);
 
-  const onSubmit = async (data: EnrollFormData) => {
+  useEffect(() => {
+    if (profileLoading) return;
+    if (sessionHydratedRef.current) return;
+    const doc = readEnrollDraft(slug);
+    sessionHydratedRef.current = true;
+    if (!doc) return;
+
+    const partial = deserializeDraftValues(doc.values);
+    const fallbackBatch = openBatches[0]?._id ?? "";
+    const batchIdResolved =
+      partial.batchId && openBatchIds.has(partial.batchId)
+        ? partial.batchId
+        : fallbackBatch;
+    reset({
+      ...getValues(),
+      ...partial,
+      batchId: batchIdResolved,
+    });
+  }, [
+    profileLoading,
+    isSeatFlow,
+    slug,
+    openBatches,
+    openBatchIds,
+    reset,
+    getValues,
+  ]);
+
+  useEffect(() => {
+    if (profileLoading) return;
+    const t = window.setTimeout(() => {
+      const snap = draftSnapshotFromWatch(
+        formValues as Partial<Record<string, unknown>>,
+      );
+      if (Object.keys(snap).length === 0) return;
+      try {
+        writeEnrollDraftDoc({
+          v: ENROLL_DRAFT_STORAGE_V,
+          slug,
+          flow: isSeatFlow ? "paid" : "entrance",
+          values: snap,
+        });
+      } catch {
+        /* noop */
+      }
+    }, 450);
+    return () => window.clearTimeout(t);
+  }, [formValues, slug, isSeatFlow, profileLoading]);
+
+  const finalizeRegistration = async (data: EnrollFormData) => {
     try {
       // Split full name back into first/last
       const [firstName, ...rest] = data.fullName.trim().split(" ");
@@ -459,7 +588,6 @@ const EnrollForm = ({ preview }: { preview: InternshipEnrollPreview }) => {
 
       if (isSeatFlow) {
         // ── Paid-seat path ────────────────────────────────────────────────────
-        // 2a. Create a payment_pending enrollment
         const enrollRes = await apiClient.post(
           ENDPOINTS.internshipEnrollments.create,
           {
@@ -474,7 +602,6 @@ const EnrollForm = ({ preview }: { preview: InternshipEnrollPreview }) => {
           | undefined;
         if (!enrollmentId) throw new Error("Enrollment creation failed");
 
-        // 2b. Create Paytm order for the seat
         const orderRes = await apiClient.post(
           ENDPOINTS.orders.createInternshipSeat,
           { internshipEnrollmentId: enrollmentId },
@@ -484,22 +611,22 @@ const EnrollForm = ({ preview }: { preview: InternshipEnrollPreview }) => {
           | undefined;
         if (!order) throw new Error("Order creation failed");
 
+        clearEnrollDraft(slug);
+
         if (order.freeOrder && order.token) {
-          // Batch is free — skip Paytm, go straight to payment status page
           window.location.href = `/payment/status/${order._id}?token=${order.token}`;
           return;
         }
 
-        // Redirect to Paytm checkout
         window.location.href = `/paytm-redirect?orderId=${order._id}`;
       } else {
-        // ── Entrance / merit path ─────────────────────────────────────────────
-        // 2b. Register the user for the entrance exam
         await apiClient.post(ENDPOINTS.internshipEnrollments.create, {
           internshipId: preview.internship._id,
           batchId: data.batchId,
           applicationAnswers,
         });
+
+        clearEnrollDraft(slug);
 
         toast.success(
           "You are registered for the entrance exam! We will notify you before the exam date.",
@@ -514,9 +641,47 @@ const EnrollForm = ({ preview }: { preview: InternshipEnrollPreview }) => {
     }
   };
 
+  const onFormValid = (data: EnrollFormData) => {
+    writeEnrollDraftDoc({
+      v: ENROLL_DRAFT_STORAGE_V,
+      slug,
+      flow: isSeatFlow ? "paid" : "entrance",
+      values: buildApplicationAnswersPayload(data),
+    });
+    if (isSeatFlow) {
+      return finalizeRegistration(data);
+    }
+    setPendingFormData(data);
+    setPathModalOpen(true);
+  };
+
+  const handlePathModalConfirm = () => {
+    if (!pendingFormData) return;
+    setPathModalOpen(false);
+    void finalizeRegistration(pendingFormData);
+  };
+
+  const handleEntranceSwitchToPaid = () => {
+    if (!pendingFormData) return;
+    writeEnrollDraftDoc({
+      v: ENROLL_DRAFT_STORAGE_V,
+      slug,
+      flow: "entrance",
+      values: buildApplicationAnswersPayload(pendingFormData),
+    });
+    sessionHydratedRef.current = false;
+    setPathModalOpen(false);
+    setPendingFormData(null);
+    router.push(`/internships/${encodeURIComponent(slug)}/enroll?flow=seat`);
+  };
+
   void profileLoading;
 
-  const whatsappLink = "https://chat.whatsapp.com/IszV9Kk5k2A5SnwyrhIMMV";
+  const pendingBatch = pendingFormData
+    ? openBatches.find((b) => b._id === pendingFormData.batchId)
+    : undefined;
+
+  const whatsappLink = preview.internship.whatsappGroupLink?.trim() ?? "";
 
   const socialMediaLinks = [
     {
@@ -613,7 +778,7 @@ const EnrollForm = ({ preview }: { preview: InternshipEnrollPreview }) => {
 
       <div className="rounded-sm border border-stone-200 bg-white shadow-[3px_4px_0_0_rgba(15,23,42,0.06)]">
         <form
-          onSubmit={handleSubmit(onSubmit)}
+          onSubmit={handleSubmit(onFormValid)}
           className="space-y-8 md:space-y-10 p-5 sm:p-8 md:p-10"
         >
           {/* Cohort, entrance exam preference, program duration */}
@@ -902,6 +1067,7 @@ const EnrollForm = ({ preview }: { preview: InternshipEnrollPreview }) => {
                 label="LinkedIn Profile URL (Paste the Profile Link)"
                 type="url"
                 placeholder="https://linkedin.com/in/yourprofile"
+                required
                 {...register("linkedinUrl")}
                 error={errors.linkedinUrl?.message}
               />
@@ -915,7 +1081,7 @@ const EnrollForm = ({ preview }: { preview: InternshipEnrollPreview }) => {
               />
 
               <Input
-                label="Email ID of College Training and Placement Cell"
+                label="Email ID of College FACULTY Training and Placement Cell"
                 type="email"
                 placeholder="tpc@college.edu"
                 required
@@ -1026,15 +1192,22 @@ const EnrollForm = ({ preview }: { preview: InternshipEnrollPreview }) => {
                 </strong>{" "}
                 HR/Admin will contact you in the group.
               </p>
-              <a
-                href={whatsappLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 text-orange-600 hover:text-orange-700 font-medium"
-              >
-                Link to WhatsApp group
-                <ExternalLink className="w-4 h-4" />
-              </a>
+              {whatsappLink ? (
+                <a
+                  href={whatsappLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 text-orange-600 hover:text-orange-700 font-medium"
+                >
+                  Link to WhatsApp group
+                  <ExternalLink className="w-4 h-4" />
+                </a>
+              ) : (
+                <p className="text-sm text-amber-900/80">
+                  The WhatsApp group link for this program will be shared after
+                  you register, or contact support if you need it sooner.
+                </p>
+              )}
             </div>
 
             <Select
@@ -1235,7 +1408,7 @@ const EnrollForm = ({ preview }: { preview: InternshipEnrollPreview }) => {
           {/* Submit */}
           <div className="pt-8 mt-2 border-t border-stone-200">
             <p className="text-center text-xs text-stone-500 mb-4">
-              By sending this, you confirm the details above are accurate for{" "}
+              By registering, you confirm the details above are accurate for{" "}
               <span className="font-medium text-stone-700">
                 {preview.internship.title}
               </span>
@@ -1251,7 +1424,7 @@ const EnrollForm = ({ preview }: { preview: InternshipEnrollPreview }) => {
                   ? "Working on it…"
                   : isSeatFlow
                     ? "Continue to payment"
-                    : "Send application"}
+                    : "Register"}
               </OrangeButton>
               {isSeatFlow && selectedBatch?.plan && (
                 <p className="text-center text-xs text-stone-500">
@@ -1265,6 +1438,19 @@ const EnrollForm = ({ preview }: { preview: InternshipEnrollPreview }) => {
           </div>
         </form>
       </div>
+
+      <EnrollPathChoiceModal
+        isOpen={pathModalOpen}
+        onClose={() => {
+          setPathModalOpen(false);
+          setPendingFormData(null);
+        }}
+        programTitle={preview.internship.title}
+        seatAmountInr={pendingBatch?.plan?.amount}
+        listPriceInr={pendingBatch?.plan?.listPrice}
+        onConfirmEntrancePath={handlePathModalConfirm}
+        onSwitchToPaidPath={handleEntranceSwitchToPaid}
+      />
     </div>
   );
 };

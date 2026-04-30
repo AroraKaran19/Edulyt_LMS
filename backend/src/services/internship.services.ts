@@ -523,7 +523,12 @@ export type InternshipEnrollPreviewBatch = {
 };
 
 export type InternshipEnrollPreview = {
-  internship: { _id: string; title: string; slug: string };
+  internship: {
+    _id: string;
+    title: string;
+    slug: string;
+    whatsappGroupLink?: string;
+  };
   batches: InternshipEnrollPreviewBatch[];
 };
 
@@ -541,7 +546,7 @@ export const getInternshipEnrollPreviewService = async (
   slug: string,
 ): Promise<InternshipEnrollPreview | null> => {
   const doc = await InternshipModel.findOne({ slug, isActive: true })
-    .select("title slug batches discount")
+    .select("title slug batches discount whatsappGroupLink")
     .lean();
   if (!doc || doc._id == null) return null;
 
@@ -657,6 +662,10 @@ export const getInternshipEnrollPreviewService = async (
       _id: String(doc._id),
       title: String(doc.title ?? ""),
       slug: String((doc as { slug?: string }).slug ?? ""),
+      whatsappGroupLink:
+        (doc as { whatsappGroupLink?: string }).whatsappGroupLink != null
+          ? String((doc as { whatsappGroupLink?: string }).whatsappGroupLink).trim()
+          : "",
     },
     batches,
   };
