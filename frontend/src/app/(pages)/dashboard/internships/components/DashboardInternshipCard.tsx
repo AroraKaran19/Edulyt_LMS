@@ -1,10 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowUpRight, Calendar, Hourglass, LockOpen, Ticket } from "lucide-react";
+import {
+  ArrowUpRight,
+  Calendar,
+  GraduationCap,
+  Hourglass,
+  LockOpen,
+  Ticket,
+} from "lucide-react";
 import type { InternshipEnrollmentListRow } from "@/types";
 import { cn } from "@/lib/utils";
 import ExamCountdownButton from "./ExamCountdownButton";
+import {
+  formatCertExamUtcRange,
+  getCertificationExamListReminder,
+} from "@/lib/internshipCertificationReminder";
 import { useEffect, useState } from "react";
 import apiClient from "@/configs/apiConfig";
 import { ENDPOINTS } from "@/constants/endpoints";
@@ -193,6 +204,12 @@ export default function DashboardInternshipCard({ row }: Props) {
   const showExamAction = EXAM_ACTION_STATUSES.has(row.status);
   const showExamWaiting = EXAM_WAITING_STATUSES.has(row.status);
   const ENROLLED_STATUSES = new Set(["enrolled", "completed", "paused"]);
+  const certReminder = ENROLLED_STATUSES.has(row.status)
+    ? getCertificationExamListReminder(
+        row.certificationExamStartAt,
+        row.certificationExamEndAt,
+      )
+    : { show: false as const };
   const programHref = slug
     ? ENROLLED_STATUSES.has(row.status)
       ? `/dashboard/internships/${encodeURIComponent(slug)}`
@@ -284,6 +301,61 @@ export default function DashboardInternshipCard({ row }: Props) {
               <span className="font-mono">Starts {start}</span>
             </span>
           </div>
+          {certReminder.show && (
+            <div
+              className="mt-3 rounded-xl border border-violet-300/80 bg-linear-to-r from-violet-50 to-indigo-50/90 px-3 py-2.5"
+              role="status"
+            >
+              <div className="flex gap-2 min-w-0">
+                <div className="shrink-0 rounded-lg bg-violet-100 border border-violet-200/80 p-1.5">
+                  <GraduationCap className="h-4 w-4 text-violet-800" />
+                </div>
+                <div className="min-w-0 space-y-1">
+                  <p className="text-xs font-bold text-violet-950">
+                    {certReminder.phase === "upcoming"
+                      ? "Certification exam coming up"
+                      : "Certification exam open"}
+                  </p>
+                  <p className="text-[11px] leading-snug text-violet-950/85">
+                    {certReminder.phase === "upcoming" ? (
+                      <>
+                        Your certification window starts in two days or less
+                        (UTC). Schedule:{" "}
+                        <span className="font-mono text-violet-900">
+                          {formatCertExamUtcRange(
+                            certReminder.examStartAt,
+                            certReminder.examEndAt,
+                          )}
+                        </span>
+                        . Open your program page when the window opens.
+                      </>
+                    ) : (
+                      <>
+                        Complete your certification today before the window
+                        closes:{" "}
+                        <span className="font-mono text-violet-900">
+                          {formatCertExamUtcRange(
+                            certReminder.examStartAt,
+                            certReminder.examEndAt,
+                          )}
+                        </span>
+                        .
+                      </>
+                    )}
+                  </p>
+                  {programHref && !hideDashboardProgramLink && (
+                    <Link
+                      href={programHref}
+                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-violet-900 underline-offset-2 hover:underline"
+                    >
+                      Go to program
+                      <ArrowUpRight className="h-3 w-3" />
+                    </Link>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Bottom action */}

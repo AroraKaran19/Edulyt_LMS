@@ -38,6 +38,7 @@ import {
   partnerCollegeRoutes,
   questionCategoryRoutes,
   internshipVoucherRoutes,
+  homePageSettingsRoutes,
 } from "./routes";
 
 dotenv.config();
@@ -95,6 +96,7 @@ app.use("/api/internship-enrollments", internshipEnrollmentRoutes);
 app.use("/api/partner-colleges", partnerCollegeRoutes);
 app.use("/api/question-categories", questionCategoryRoutes);
 app.use("/api/internship-vouchers", internshipVoucherRoutes);
+app.use("/api/home-page-settings", homePageSettingsRoutes);
 
 app.use(notFoundHandler); // Handle 404 errors
 app.use(errorHandler); // Handle all other errors

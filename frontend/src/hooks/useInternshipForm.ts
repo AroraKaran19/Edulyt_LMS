@@ -68,6 +68,8 @@ const getInitialFormData = (
             isActive: true,
             plan: createDefaultInternshipBatchPlan(),
             entranceExamTemplateId: null,
+            entranceExamStartAt: "",
+            entranceExamEndAt: "",
             certificationExamTemplateId: null,
             taskTemplateIds: [],
           },
@@ -85,6 +87,7 @@ const getInitialFormData = (
     jobDescription: "",
     jobDescriptionSource: "upload",
     jobDescriptionS3Key: "",
+    whatsappGroupLink: "",
     testimonials: [],
     faqs: [],
     mentors: [],
@@ -191,6 +194,8 @@ function ensureBatchPlans(
     ...row,
     plan: row.plan ?? createDefaultInternshipBatchPlan(),
     entranceExamTemplateId: row.entranceExamTemplateId ?? null,
+    entranceExamStartAt: row.entranceExamStartAt ?? "",
+    entranceExamEndAt: row.entranceExamEndAt ?? "",
     certificationExamTemplateId: row.certificationExamTemplateId ?? null,
     taskTemplateIds: row.taskTemplateIds ?? [],
   }));
@@ -208,6 +213,15 @@ function mapApiPartnerCollegesToFormRows(partnerColleges: unknown): string[] {
     return o._id ? String(o._id) : "";
   }).filter(id => id.length > 0);
 }
+
+/** Batch payload for create/update; `null` clears entrance window fields on the API. */
+type InternshipBatchApiPayload = Omit<
+  InternshipBatches,
+  "entranceExamStartAt" | "entranceExamEndAt"
+> & {
+  entranceExamStartAt?: Date | string | null;
+  entranceExamEndAt?: Date | string | null;
+};
 
 const transformFormDataToInternship = (
   formData: InternshipFormData,
@@ -230,24 +244,52 @@ const transformFormDataToInternship = (
       .filter((s) => s.length > 0),
     discount: formData.discount,
     analytics: formData.analytics,
-    batches: formData.batches.map((b) => ({
-      name: b.name.trim(),
-      applicationLastDate: new Date(b.applicationLastDate),
-      internshipStartDate: new Date(b.internshipStartDate),
-      status: b.status,
-      isActive: b.isActive,
-      plan: b.plan,
-      ...(b._id ? { _id: b._id } : {}),
-      ...(Array.isArray(b.reviews) && b.reviews.length > 0
-        ? { reviews: b.reviews }
-        : {}),
-      ...(b.analytics ? { analytics: b.analytics } : {}),
-      entranceExamTemplateId: b.entranceExamTemplateId ?? null,
-      certificationExamTemplateId: b.certificationExamTemplateId ?? null,
-      taskTemplateIds: Array.isArray(b.taskTemplateIds)
-        ? b.taskTemplateIds
-        : [],
-    })),
+    batches: formData.batches.map((b): InternshipBatchApiPayload => {
+      const row: InternshipBatchApiPayload = {
+        name: b.name.trim(),
+        applicationLastDate: new Date(b.applicationLastDate),
+        internshipStartDate: new Date(b.internshipStartDate),
+        status: b.status,
+        isActive: b.isActive,
+        plan: b.plan,
+        ...(b._id ? { _id: b._id } : {}),
+        ...(Array.isArray(b.reviews) && b.reviews.length > 0
+          ? { reviews: b.reviews }
+          : {}),
+        ...(b.analytics ? { analytics: b.analytics } : {}),
+        entranceExamTemplateId: b.entranceExamTemplateId ?? null,
+        certificationExamTemplateId: b.certificationExamTemplateId ?? null,
+        taskTemplateIds: Array.isArray(b.taskTemplateIds)
+          ? b.taskTemplateIds
+          : [],
+      };
+      const startRaw = (b.entranceExamStartAt ?? "").trim();
+      const endRaw = (b.entranceExamEndAt ?? "").trim();
+      if (b.entranceExamTemplateId) {
+        if (startRaw) {
+          const d = new Date(startRaw);
+          if (Number.isNaN(d.getTime())) {
+            throw new Error("Invalid entrance exam start (use ISO UTC)");
+          }
+          row.entranceExamStartAt = d;
+        } else if (b._id) {
+          row.entranceExamStartAt = null;
+        }
+        if (endRaw) {
+          const d = new Date(endRaw);
+          if (Number.isNaN(d.getTime())) {
+            throw new Error("Invalid entrance exam end (use ISO UTC)");
+          }
+          row.entranceExamEndAt = d;
+        } else if (b._id) {
+          row.entranceExamEndAt = null;
+        }
+      } else if (b._id) {
+        row.entranceExamStartAt = null;
+        row.entranceExamEndAt = null;
+      }
+      return row;
+    }) as unknown as InternshipBatches[],
     perks: formData.perks,
     features: formData.features,
     whyJoin: formData.whyJoin,
@@ -261,6 +303,7 @@ const transformFormDataToInternship = (
     })),
     brochure: formData.brochure,
     jobDescription: formData.jobDescription,
+    whatsappGroupLink: String(formData.whatsappGroupLink ?? "").trim(),
     testimonials: formData.testimonials,
     faqs: formData.faqs,
     mentors: formData.mentors,
@@ -322,6 +365,21 @@ const transformInternshipToFormData = (
         entranceExamTemplateId: b.entranceExamTemplateId
           ? String(b.entranceExamTemplateId)
           : null,
+        entranceExamStartAt: (() => {
+          const raw =
+            (b as { entranceExamStartAt?: Date | string })
+              .entranceExamStartAt;
+          if (raw == null) return "";
+          const d = new Date(raw as string | Date);
+          return Number.isNaN(d.getTime()) ? "" : d.toISOString();
+        })(),
+        entranceExamEndAt: (() => {
+          const raw = (b as { entranceExamEndAt?: Date | string })
+            .entranceExamEndAt;
+          if (raw == null) return "";
+          const d = new Date(raw as string | Date);
+          return Number.isNaN(d.getTime()) ? "" : d.toISOString();
+        })(),
         certificationExamTemplateId: b.certificationExamTemplateId
           ? String(b.certificationExamTemplateId)
           : null,
@@ -349,6 +407,7 @@ const transformInternshipToFormData = (
     jobDescription: internship.jobDescription || "",
     jobDescriptionSource: "url",
     jobDescriptionS3Key: "",
+    whatsappGroupLink: internship.whatsappGroupLink || "",
     testimonials: toIdStringList(internship.testimonials),
     faqs: toIdStringList(internship.faqs),
     mentors: toIdStringList(internship.mentors),
@@ -517,6 +576,10 @@ export const useInternshipForm = (
         ...merged,
         batches: ensureBatchPlans(merged.batches ?? []),
         headerList: Array.isArray(merged.headerList) ? merged.headerList : [],
+        whatsappGroupLink:
+          typeof merged.whatsappGroupLink === "string"
+            ? merged.whatsappGroupLink
+            : "",
         discount: normalizeDiscountFromApi(merged.discount ?? undefined),
         analytics: normalizeInternshipAnalyticsFromApi(merged.analytics),
         partnerColleges: normalizePartnerCollegesFromStorage(
@@ -535,6 +598,10 @@ export const useInternshipForm = (
         headerList: Array.isArray(draftData.headerList)
           ? draftData.headerList
           : [],
+        whatsappGroupLink:
+          typeof draftData.whatsappGroupLink === "string"
+            ? draftData.whatsappGroupLink
+            : "",
         discount: normalizeDiscountFromApi(draftData.discount ?? undefined),
         analytics: normalizeInternshipAnalyticsFromApi(draftData.analytics),
         partnerColleges: normalizePartnerCollegesFromStorage(
@@ -553,6 +620,10 @@ export const useInternshipForm = (
         headerList: Array.isArray(storedData.headerList)
           ? storedData.headerList
           : [],
+        whatsappGroupLink:
+          typeof storedData.whatsappGroupLink === "string"
+            ? storedData.whatsappGroupLink
+            : "",
         discount: normalizeDiscountFromApi(storedData.discount ?? undefined),
         analytics: normalizeInternshipAnalyticsFromApi(storedData.analytics),
         partnerColleges: normalizePartnerCollegesFromStorage(

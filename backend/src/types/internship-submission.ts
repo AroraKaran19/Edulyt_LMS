@@ -95,6 +95,8 @@ export interface TaskTemplateSnapshot {
 /** Immutable snapshot of the exam template written at submission-creation time. */
 export interface ExamTemplateSnapshot {
   examId: string;
+  /** Frozen at snapshot time — drives review workflow (certification always needs admin sign-off). */
+  examType?: "entrance" | "certification";
   title: string;
   description: string;
   questions: SnapshotQuestion[];
@@ -113,9 +115,9 @@ export interface ExamTemplateSnapshot {
 
 export type InternshipSubmissionStatus =
   | "draft"              // saved but not yet submitted
-  | "submitted"          // submitted; MCQ auto-graded, file responses pending review
-  | "partially_reviewed" // at least one file response reviewed, others still pending
-  | "fully_reviewed";    // every file response reviewed (or there are none)
+  | "submitted"          // submitted; MCQ auto-graded; files or final certification review may be pending
+  | "partially_reviewed" // at least one file response reviewed, others still pending (cert: not yet admin-finalized)
+  | "fully_reviewed";    // entrance: all file parts done, or MCQ-only. certification: admin finalized review.
 
 /** Shared fields on every exam / task submission. */
 export interface InternshipSubmissionBase {

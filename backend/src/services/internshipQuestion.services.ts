@@ -3,6 +3,7 @@ import { InternshipQuestionModel } from "../models/internshipQuestion.schema";
 import { InternshipExamModel } from "../models/internshipExam.schema";
 import { InternshipTaskModel } from "../models/internshipTask.schema";
 import { AppError } from "../middlewares/error.middleware";
+import { isValidQuestionCategory } from "../constants/questionCategories";
 
 function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -16,7 +17,8 @@ export type CreateInternshipQuestionBody = {
   isActive?: boolean;
   options?: { text: string; isCorrect: boolean }[];
   referenceFile?: string;
-  categoryId?: string | null;
+  /** One of the fixed question categories, or null / "" to clear */
+  category?: string | null;
 };
 
 export type InternshipQuestionDetail = {
@@ -27,13 +29,15 @@ export type InternshipQuestionDetail = {
   score: number;
   isActive: boolean;
   referenceFile?: string;
-  categoryId?: string | null;
+  category?: string | null;
   options?: { _id?: string; text: string; isCorrect: boolean }[];
   createdAt?: Date | string;
   updatedAt?: Date | string;
 };
 
-function serializeQuestionDoc(doc: Record<string, unknown>): InternshipQuestionDetail {
+function serializeQuestionDoc(
+  doc: Record<string, unknown>,
+): InternshipQuestionDetail {
   const type = String(doc.type ?? "");
   const base: InternshipQuestionDetail = {
     _id: String(doc._id),
@@ -44,7 +48,10 @@ function serializeQuestionDoc(doc: Record<string, unknown>): InternshipQuestionD
     isActive: doc.isActive !== false,
     referenceFile:
       typeof doc.referenceFile === "string" ? doc.referenceFile : "",
-    categoryId: doc.categoryId != null ? String(doc.categoryId) : null,
+    category:
+      typeof doc.category === "string" && isValidQuestionCategory(doc.category)
+        ? doc.category
+        : null,
     createdAt: doc.createdAt as Date | string | undefined,
     updatedAt: doc.updatedAt as Date | string | undefined,
   };
@@ -111,17 +118,19 @@ function buildQuestionUpdateFields(
   } else {
     doc.options = [];
     doc.referenceFile =
-      typeof body.referenceFile === "string"
-        ? body.referenceFile.trim()
-        : "";
+      typeof body.referenceFile === "string" ? body.referenceFile.trim() : "";
   }
 
-  // categoryId: null means "remove category", undefined means "leave unchanged"
-  if (body.categoryId !== undefined) {
-    doc.categoryId =
-      body.categoryId && mongoose.Types.ObjectId.isValid(String(body.categoryId))
-        ? new mongoose.Types.ObjectId(String(body.categoryId))
-        : null;
+  // category: undefined = leave unchanged; null / "" = clear (handled in update with $unset)
+  if (body.category !== undefined) {
+    const raw = body.category;
+    if (raw === null || String(raw).trim() === "") {
+      /* no field in $set */
+    } else if (isValidQuestionCategory(raw)) {
+      doc.category = raw;
+    } else {
+      throw new AppError("Invalid question category", 400);
+    }
   }
 
   return doc;
@@ -148,11 +157,20 @@ export async function updateInternshipQuestionAdmin(
     throw new AppError("Invalid question id", 400);
   }
   const fields = buildQuestionUpdateFields(body);
-  const updated = await InternshipQuestionModel.findByIdAndUpdate(
-    id,
-    { $set: fields },
-    { new: true, runValidators: true },
-  ).lean();
+
+  const update: mongoose.UpdateQuery<Record<string, unknown>> = {
+    $set: fields,
+  };
+
+  if (body.category === null || body.category === "") {
+    update.$unset = { category: "", categoryId: "" };
+    delete fields.category;
+  }
+
+  const updated = await InternshipQuestionModel.findByIdAndUpdate(id, update, {
+    new: true,
+    runValidators: true,
+  }).lean();
   if (!updated) {
     throw new AppError("Question not found", 404);
   }
@@ -190,11 +208,12 @@ export async function createInternshipQuestionAdmin(
   usageType: string;
   score: number;
   isActive: boolean;
-  categoryId: string | null;
+  category: string | null;
 }> {
   const fields = buildQuestionUpdateFields(body);
   const doc = { ...fields, createdBy };
   const created = await InternshipQuestionModel.create(doc);
+  const cat = created.category;
   return {
     _id: String(created._id),
     questionText: String(created.questionText ?? ""),
@@ -202,7 +221,8 @@ export async function createInternshipQuestionAdmin(
     usageType: String(created.usageType ?? ""),
     score: typeof created.score === "number" ? created.score : 0,
     isActive: created.isActive !== false,
-    categoryId: created.categoryId != null ? String(created.categoryId) : null,
+    category:
+      typeof cat === "string" && isValidQuestionCategory(cat) ? cat : null,
   };
 }
 
@@ -213,7 +233,7 @@ export async function listInternshipQuestionsAdmin(
   questionType?: "mcq" | "file_upload",
   /** When set, only questions usable for that context (includes `both`). */
   usageFor?: "task" | "exam",
-  categoryId?: string,
+  category?: string,
 ): Promise<{
   questions: {
     _id: string;
@@ -222,6 +242,7 @@ export async function listInternshipQuestionsAdmin(
     usageType: string;
     score: number;
     isActive: boolean;
+    category?: string | null;
     updatedAt?: Date | string;
   }[];
   total: number;
@@ -244,8 +265,8 @@ export async function listInternshipQuestionsAdmin(
   } else if (usageFor === "exam") {
     filter.usageType = { $in: ["exam", "both"] };
   }
-  if (categoryId && mongoose.Types.ObjectId.isValid(categoryId)) {
-    filter.categoryId = new mongoose.Types.ObjectId(categoryId);
+  if (category && isValidQuestionCategory(category)) {
+    filter.category = category;
   }
 
   const total = await InternshipQuestionModel.countDocuments(filter);
@@ -253,19 +274,24 @@ export async function listInternshipQuestionsAdmin(
     .sort({ updatedAt: -1 })
     .skip(skip)
     .limit(l)
-    .select("questionText type usageType score isActive updatedAt")
+    .select("questionText type usageType score isActive updatedAt category")
     .lean();
 
   return {
-    questions: rows.map((r) => ({
-      _id: String(r._id),
-      questionText: String(r.questionText ?? ""),
-      type: String(r.type ?? ""),
-      usageType: String(r.usageType ?? ""),
-      score: typeof r.score === "number" ? r.score : 0,
-      isActive: r.isActive !== false,
-      updatedAt: r.updatedAt,
-    })),
+    questions: rows.map((r) => {
+      const c = (r as { category?: unknown }).category;
+      return {
+        _id: String(r._id),
+        questionText: String(r.questionText ?? ""),
+        type: String(r.type ?? ""),
+        usageType: String(r.usageType ?? ""),
+        score: typeof r.score === "number" ? r.score : 0,
+        isActive: r.isActive !== false,
+        category:
+          typeof c === "string" && isValidQuestionCategory(c) ? c : null,
+        updatedAt: r.updatedAt,
+      };
+    }),
     total,
     page: p,
     totalPages: Math.max(1, Math.ceil(total / l)),

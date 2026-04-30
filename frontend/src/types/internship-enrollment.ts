@@ -240,6 +240,12 @@ export interface InternshipEnrollmentListRow {
   examEndAt?: string;
   /** ISO — when the exam result will be announced. */
   examResultAt?: string;
+  /**
+   * Certification exam window for this learner (UTC), when the cohort assigns a template.
+   * From the same rules as the server attempt gate.
+   */
+  certificationExamStartAt?: string;
+  certificationExamEndAt?: string;
   /** Snapshot of public internship enroll form at submission. */
   applicationAnswers?: Record<string, unknown>;
   /** ISO — when application answers were saved. */
@@ -304,6 +310,10 @@ export interface LearnerProgramEnrollment {
   internshipSuccessPoints: number;
   /** Minimum internship success points before certification exam (from internship doc). */
   certificationThreshold: number;
+  /** When certificationThreshold > 0 — points still needed (0 = met). */
+  certificationPointsShortfall?: number;
+  /** When purchase enabled: shortfall × INR per point (rough Paytm total). */
+  approxInrToReachCertificationThreshold?: number;
   internshipId: string;
   batchId: string;
   internshipSnapshot?: {

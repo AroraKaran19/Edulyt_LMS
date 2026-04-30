@@ -4,12 +4,32 @@ import { InternshipEnrollmentModel } from "../models/internshipEnrollment.schema
 import { InternshipTaskModel } from "../models/internshipTask.schema";
 import { InternshipExamModel } from "../models/internshipExam.schema";
 import { InternshipQuestionModel } from "../models/internshipQuestion.schema";
+import { InternshipModel } from "../models/internship.schema";
 import { AppError } from "../middlewares/error.middleware";
+import { getPointsSettings } from "./pointsSettings.services";
 import type {
   SnapshotQuestion,
   TaskTemplateSnapshot,
   ExamTemplateSnapshot,
 } from "../types/internship-submission";
+import {
+  computeCertificationExamWindowUtc,
+  isInstantWithinWindowUtc,
+  parseProgramDurationMonthsFromAnswers,
+} from "../lib/certificationExamSchedule";
+
+async function resolveExamTypeFromSnapshot(
+  snap: ExamTemplateSnapshot,
+  fallbackExamId?: string,
+): Promise<"entrance" | "certification"> {
+  if (snap.examType === "certification") return "certification";
+  if (snap.examType === "entrance") return "entrance";
+  const id = (fallbackExamId ?? snap.examId ?? "").trim();
+  if (!id || !mongoose.Types.ObjectId.isValid(id)) return "entrance";
+  const ex = await InternshipExamModel.findById(id).select("examType").lean();
+  const t = (ex as { examType?: string } | null)?.examType;
+  return t === "certification" ? "certification" : "entrance";
+}
 
 // ─── Snapshot builders ────────────────────────────────────────────────────────
 
@@ -93,8 +113,22 @@ function coerceDate(raw: unknown): Date | undefined {
   return d;
 }
 
+function assertWithinExamSnapshotWindow(snap: ExamTemplateSnapshot): void {
+  const start = coerceDate(snap.examStartAt);
+  const end = coerceDate(snap.examEndAt);
+  const now = Date.now();
+  if (isInstantWithinWindowUtc(now, start, end)) return;
+  if (start && now < start.getTime()) {
+    throw new AppError("The exam window has not opened yet", 403);
+  }
+  if (end && now > end.getTime()) {
+    throw new AppError("The exam window has closed", 403);
+  }
+}
+
 async function buildExamSnapshot(
   examId: string,
+  window: { examStartAt?: Date; examEndAt?: Date },
 ): Promise<ExamTemplateSnapshot> {
   if (!mongoose.Types.ObjectId.isValid(examId)) {
     throw new AppError("Invalid exam template id", 400);
@@ -116,13 +150,10 @@ async function buildExamSnapshot(
 
   const e = exam as {
     thresholdScore?: number;
-    examStartAt?: unknown;
-    examEndAt?: unknown;
     examResultAt?: unknown;
+    examType?: string;
   };
 
-  const examStartAt = coerceDate(e.examStartAt);
-  const examEndAt = coerceDate(e.examEndAt);
   const examResultAt = coerceDate(e.examResultAt);
 
   if (!examResultAt) {
@@ -132,16 +163,20 @@ async function buildExamSnapshot(
     );
   }
 
+  const examType: "entrance" | "certification" =
+    e.examType === "certification" ? "certification" : "entrance";
+
   return {
     examId: String(exam._id),
+    examType,
     title: String(exam.title ?? ""),
     description: String(exam.description ?? ""),
     questions,
     totalScore: typeof exam.totalScore === "number" ? exam.totalScore : 0,
     thresholdScore:
       typeof e.thresholdScore === "number" ? e.thresholdScore : undefined,
-    examStartAt,
-    examEndAt,
+    examStartAt: window.examStartAt,
+    examEndAt: window.examEndAt,
     examResultAt,
     snapshotAt: new Date(),
   };
@@ -191,10 +226,9 @@ export async function createInternshipSubmission(
     }
 
     // Enforce the task window: enrolledAt + unlockAfterDays ≤ now < enrolledAt + dueDays
-    const enrollment =
-      await InternshipEnrollmentModel.findById(enrollmentId)
-        .select("-applicationAnswers -applicationSubmittedAt")
-        .lean();
+    const enrollment = await InternshipEnrollmentModel.findById(enrollmentId)
+      .select("-applicationAnswers -applicationSubmittedAt")
+      .lean();
     if (!enrollment) {
       throw new AppError("Enrollment not found", 404);
     }
@@ -248,7 +282,147 @@ export async function createInternshipSubmission(
       throw new AppError("A submission for this exam already exists", 409);
     }
 
-    snapshot = await buildExamSnapshot(body.examId);
+    const examDoc = await InternshipExamModel.findById(body.examId).lean();
+    if (!examDoc || !examDoc.isActive) {
+      throw new AppError("Exam template not found or inactive", 404);
+    }
+    const examType =
+      (examDoc as { examType?: string }).examType === "certification"
+        ? "certification"
+        : "entrance";
+
+    const internship = await InternshipModel.findById(internshipId)
+      .select("batches certificationThreshold")
+      .lean();
+    if (!internship) {
+      throw new AppError("Internship not found", 404);
+    }
+
+    type BatchLean = {
+      _id: unknown;
+      entranceExamTemplateId?: unknown;
+      certificationExamTemplateId?: unknown;
+      entranceExamStartAt?: Date;
+      entranceExamEndAt?: Date;
+    };
+    const batches = (internship as { batches?: BatchLean[] }).batches ?? [];
+    const batch = batches.find((b) => String(b._id) === batchId);
+    if (!batch) {
+      throw new AppError("Batch not found for this internship", 400);
+    }
+
+    const enrollment =
+      await InternshipEnrollmentModel.findById(enrollmentId).lean();
+    if (!enrollment) {
+      throw new AppError("Enrollment not found", 404);
+    }
+    if (String(enrollment.user) !== String(userId)) {
+      throw new AppError("Forbidden", 403);
+    }
+
+    let window: { examStartAt?: Date; examEndAt?: Date };
+
+    if (examType === "certification") {
+      const certId = batch.certificationExamTemplateId;
+      if (!certId || String(certId) !== String(body.examId)) {
+        throw new AppError(
+          "This certification exam is not assigned to your cohort",
+          403,
+        );
+      }
+      const allowed = new Set(["enrolled", "completed", "paused"]);
+      if (!allowed.has(String(enrollment.status))) {
+        throw new AppError(
+          "You must be an active program participant to take the certification exam",
+          403,
+        );
+      }
+      const thresholdRaw = (internship as { certificationThreshold?: unknown })
+        .certificationThreshold;
+      const threshold =
+        typeof thresholdRaw === "number" && !Number.isNaN(thresholdRaw)
+          ? Math.max(0, Math.floor(thresholdRaw))
+          : 0;
+      const points =
+        typeof enrollment.internshipSuccessPoints === "number"
+          ? enrollment.internshipSuccessPoints
+          : 0;
+      if (threshold > 0 && points < threshold) {
+        const shortfall = threshold - points;
+        const settings = await getPointsSettings();
+        const inr = settings.internshipSuccessPointInr;
+        const approxCost =
+          typeof inr === "number" && inr > 0 && Number.isFinite(inr)
+            ? Math.round(shortfall * inr * 100) / 100
+            : null;
+        const buyHint =
+          approxCost != null
+            ? ` Buying ${shortfall} point${shortfall === 1 ? "" : "s"} is about ₹${approxCost.toLocaleString("en-IN")} at the current rate (set under Admin → Settings → Points). Open your program page and use “Buy success points”, or earn more from graded tasks.`
+            : " Earn more from graded tasks, or buy points on your program page once your institute has enabled purchasing (Admin → Settings → Points).";
+        throw new AppError(
+          `The certification exam requires ${threshold} internship success points; you have ${points} (${shortfall} short).${buyHint}`,
+          403,
+        );
+      }
+      const monthsStored = enrollment.programDurationMonths;
+      const months =
+        typeof monthsStored === "number" && monthsStored >= 1
+          ? monthsStored
+          : parseProgramDurationMonthsFromAnswers(
+              enrollment.applicationAnswers &&
+                typeof enrollment.applicationAnswers === "object" &&
+                !Array.isArray(enrollment.applicationAnswers)
+                ? (enrollment.applicationAnswers as Record<string, unknown>)
+                : null,
+            );
+      if (!months) {
+        throw new AppError(
+          "Program duration is not set on your enrollment — contact support",
+          400,
+        );
+      }
+      const startRaw = enrollment.batchSnapshot?.internshipStartDate;
+      const progStart =
+        startRaw instanceof Date
+          ? startRaw
+          : startRaw
+            ? new Date(startRaw as string | number)
+            : null;
+      if (!progStart || Number.isNaN(progStart.getTime())) {
+        throw new AppError("Invalid cohort start date on enrollment", 500);
+      }
+      window = computeCertificationExamWindowUtc(progStart, months);
+    } else {
+      const entId = batch.entranceExamTemplateId;
+      if (!entId || String(entId) !== String(body.examId)) {
+        throw new AppError(
+          "This entrance exam is not assigned to your cohort",
+          403,
+        );
+      }
+      window = {
+        examStartAt: coerceDate(batch.entranceExamStartAt),
+        examEndAt: coerceDate(batch.entranceExamEndAt),
+      };
+    }
+
+    const now = new Date();
+    if (
+      !isInstantWithinWindowUtc(
+        now.getTime(),
+        window.examStartAt,
+        window.examEndAt,
+      )
+    ) {
+      if (window.examStartAt && now.getTime() < window.examStartAt.getTime()) {
+        throw new AppError("The exam window has not opened yet", 403);
+      }
+      if (window.examEndAt && now.getTime() > window.examEndAt.getTime()) {
+        throw new AppError("The exam window has closed", 403);
+      }
+    }
+
+    snapshot = await buildExamSnapshot(body.examId, window);
     templateRef = { examId: body.examId };
   } else {
     throw new AppError("submissionFor must be exam or task", 400);
@@ -296,6 +470,15 @@ export async function saveMCQAnswer(
     throw new AppError("Cannot update answers on a submitted submission", 400);
   }
 
+  const snapFor = String(
+    (sub as { submissionFor?: unknown }).submissionFor ?? "",
+  );
+  if (snapFor === "exam") {
+    assertWithinExamSnapshotWindow(
+      sub.toObject().templateSnapshot as ExamTemplateSnapshot,
+    );
+  }
+
   const snapshot = sub.toObject().templateSnapshot as
     | TaskTemplateSnapshot
     | ExamTemplateSnapshot;
@@ -341,6 +524,15 @@ export async function saveFileAnswer(
   if (!sub) throw new AppError("Submission not found", 404);
   if (sub.status !== "draft") {
     throw new AppError("Cannot update answers on a submitted submission", 400);
+  }
+
+  const snapFor = String(
+    (sub as { submissionFor?: unknown }).submissionFor ?? "",
+  );
+  if (snapFor === "exam") {
+    assertWithinExamSnapshotWindow(
+      sub.toObject().templateSnapshot as ExamTemplateSnapshot,
+    );
   }
 
   const snapshot = sub.toObject().templateSnapshot as
@@ -405,6 +597,15 @@ export async function submitSubmission(
     throw new AppError("Submission has already been finalized", 400);
   }
 
+  const submitFor = String(
+    (sub as { submissionFor?: unknown }).submissionFor ?? "",
+  );
+  if (submitFor === "exam") {
+    assertWithinExamSnapshotWindow(
+      sub.toObject().templateSnapshot as ExamTemplateSnapshot,
+    );
+  }
+
   const snapshot = sub.toObject().templateSnapshot as
     | TaskTemplateSnapshot
     | ExamTemplateSnapshot;
@@ -445,13 +646,25 @@ export async function submitSubmission(
     0,
   );
 
-  // Determine status
+  // Determine status after auto-grade
   const hasFileQuestions =
     snapshot.questions.some((q) => q.type === "file_upload") &&
     (sub.fileResponses as unknown[]).length > 0;
 
+  const examSnap = snapshot as ExamTemplateSnapshot;
+  const examType = await resolveExamTypeFromSnapshot(
+    examSnap,
+    String((sub as { examId?: unknown }).examId ?? examSnap.examId),
+  );
+
   sub.totalAwardedScore = mcqTotal + fileTotal;
-  sub.status = hasFileQuestions ? "submitted" : "fully_reviewed";
+  // Certification exams always require admin review (final sign-off via
+  // finalizeCertificationExamReview), even when MCQ-only.
+  if (submitFor === "exam" && examType === "certification") {
+    sub.status = "submitted";
+  } else {
+    sub.status = hasFileQuestions ? "submitted" : "fully_reviewed";
+  }
   (sub as { submittedAt?: Date }).submittedAt = new Date();
 
   await sub.save();
@@ -575,13 +788,34 @@ export async function reviewFileResponse(
     (r) => r.status === "reviewed" || r.status === "re_upload_requested",
   );
   const wasAlreadyFullyReviewed = sub.status === "fully_reviewed";
-  sub.status = allReviewed ? "fully_reviewed" : "partially_reviewed";
+
+  const subFor = String(
+    (sub as { submissionFor?: unknown }).submissionFor ?? "",
+  );
+  const examType =
+    subFor === "exam"
+      ? await resolveExamTypeFromSnapshot(
+          snapshot as ExamTemplateSnapshot,
+          String((sub as { examId?: unknown }).examId ?? ""),
+        )
+      : null;
+
+  if (subFor === "exam" && examType === "certification") {
+    // File scoring done; admin still must call finalizeCertificationExamReview.
+    sub.status = "partially_reviewed";
+  } else {
+    sub.status = allReviewed ? "fully_reviewed" : "partially_reviewed";
+  }
 
   await sub.save();
 
   // Accrue success points the first time this task submission reaches
   // fully_reviewed (guard against double-increment on re-reviews).
-  if (allReviewed && !wasAlreadyFullyReviewed) {
+  if (
+    allReviewed &&
+    !wasAlreadyFullyReviewed &&
+    sub.status === "fully_reviewed"
+  ) {
     await accrueSuccessPointsIfPassed({
       submissionFor: String(
         (sub as { submissionFor?: unknown }).submissionFor ?? "",
@@ -592,6 +826,62 @@ export async function reviewFileResponse(
     });
   }
 
+  return serializeSubmission(sub.toObject());
+}
+
+/**
+ * Admin / instructor: close certification exam review (after learner submit and
+ * any file uploads scored). MCQ-only exams use this directly after submit.
+ */
+export async function finalizeCertificationExamReview(
+  submissionId: string,
+  _reviewerId: mongoose.Types.ObjectId,
+): Promise<Record<string, unknown>> {
+  if (!mongoose.Types.ObjectId.isValid(submissionId)) {
+    throw new AppError("Invalid submissionId", 400);
+  }
+  const sub = await InternshipSubmissionModel.findById(submissionId);
+  if (!sub) throw new AppError("Submission not found", 404);
+
+  if (String((sub as { submissionFor?: unknown }).submissionFor) !== "exam") {
+    throw new AppError("Only exam submissions can be finalized here", 400);
+  }
+
+  const snap = sub.toObject().templateSnapshot as ExamTemplateSnapshot;
+  const examType = await resolveExamTypeFromSnapshot(
+    snap,
+    String((sub as { examId?: unknown }).examId ?? ""),
+  );
+  if (examType !== "certification") {
+    throw new AppError(
+      "Only certification exams use this final review step",
+      400,
+    );
+  }
+
+  const st = String(sub.status);
+  if (!["submitted", "partially_reviewed"].includes(st)) {
+    throw new AppError(
+      "Submission is not awaiting certification finalization",
+      400,
+    );
+  }
+
+  const fileQs = snap.questions.filter((q) => q.type === "file_upload");
+  const fileResps = sub.fileResponses as { question: string; status: string }[];
+
+  for (const q of fileQs) {
+    const fr = fileResps.find((r) => r.question === q.questionId);
+    if (!fr || fr.status !== "reviewed") {
+      throw new AppError(
+        "All file-upload answers must be reviewed before finalizing certification",
+        400,
+      );
+    }
+  }
+
+  sub.status = "fully_reviewed";
+  await sub.save();
   return serializeSubmission(sub.toObject());
 }
 

@@ -5,6 +5,7 @@ import { ExternalLink } from "lucide-react";
 import { toast } from "react-toastify";
 import Modal from "@/components/ui/Modal";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
+import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import apiClient from "@/configs/apiConfig";
 import { ENDPOINTS } from "@/constants/endpoints";
 
@@ -47,6 +48,7 @@ type TaskSnapshot = {
 
 type ExamSnapshot = {
   examId: string;
+  examType?: "entrance" | "certification";
   title: string;
   description?: string;
   questions: SnapshotQuestion[];
@@ -335,6 +337,7 @@ function FileBlock({
 export default function SubmissionDetailModal({ isOpen, submissionId, onClose }: Props) {
   const [sub, setSub] = useState<FullSubmission | null>(null);
   const [loading, setLoading] = useState(false);
+  const [finalizing, setFinalizing] = useState(false);
 
   useEffect(() => {
     if (!isOpen || !submissionId) {
@@ -345,7 +348,9 @@ export default function SubmissionDetailModal({ isOpen, submissionId, onClose }:
     (async () => {
       setLoading(true);
       try {
-        const res = await apiClient.get(ENDPOINTS.internshipSubmissions.byId(submissionId));
+        const res = await apiClient.get(
+          ENDPOINTS.internshipSubmissions.adminById(submissionId),
+        );
         if (!cancelled) {
           setSub((res.data?.data as FullSubmission) ?? null);
         }
@@ -364,6 +369,27 @@ export default function SubmissionDetailModal({ isOpen, submissionId, onClose }:
   const snap = sub?.templateSnapshot;
   const isExam = sub?.submissionFor === "exam";
   const examSnap = isExam ? (snap as ExamSnapshot | undefined) : undefined;
+
+  const showCertFinalize =
+    isExam &&
+    examSnap?.examType === "certification" &&
+    (sub?.status === "submitted" || sub?.status === "partially_reviewed");
+
+  async function handleFinalizeCertification() {
+    if (!submissionId) return;
+    setFinalizing(true);
+    try {
+      const res = await apiClient.post(
+        ENDPOINTS.internshipSubmissions.adminFinalizeCertification(submissionId),
+      );
+      setSub((res.data?.data as FullSubmission) ?? null);
+      toast.success("Certification review finalized");
+    } catch {
+      toast.error("Could not finalize certification review");
+    } finally {
+      setFinalizing(false);
+    }
+  }
 
   const mcqMap = new Map<string, MCQResponse>(
     (sub?.mcqResponses ?? []).map((r) => [r.question, r]),
@@ -450,6 +476,11 @@ export default function SubmissionDetailModal({ isOpen, submissionId, onClose }:
                 {typeof examSnap.thresholdScore === "number" && (
                   <span>Merit threshold: {examSnap.thresholdScore}</span>
                 )}
+                {examSnap.examType && (
+                  <span className="font-medium text-gray-800">
+                    Exam type: {examSnap.examType}
+                  </span>
+                )}
               </div>
             )}
           </div>
@@ -487,7 +518,27 @@ export default function SubmissionDetailModal({ isOpen, submissionId, onClose }:
             <span>Updated: {formatDate(sub.updatedAt)}</span>
           </div>
 
-          <div className="flex justify-end pt-1">
+          {showCertFinalize && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs text-amber-950">
+              <p className="font-semibold text-amber-900 mb-1">
+                Certification final sign-off
+              </p>
+              <p className="text-amber-900/90 mb-2">
+                MCQ scores are provisional until you finalize. Ensure every
+                file-upload question is scored, then close the review.
+              </p>
+              <OrangeButton
+                type="button"
+                glow={false}
+                disabled={finalizing}
+                onClick={() => void handleFinalizeCertification()}
+              >
+                {finalizing ? "Finalizing…" : "Finalize certification review"}
+              </OrangeButton>
+            </div>
+          )}
+
+          <div className="flex justify-end pt-1 gap-2">
             <WhiteButton type="button" glow={false} onClick={onClose}>
               Close
             </WhiteButton>

@@ -11,6 +11,7 @@ import {
   saveFileAnswer,
   submitSubmission,
   reviewFileResponse,
+  finalizeCertificationExamReview,
   getSubmissionById,
   listSubmissionsAdmin,
   type CreateSubmissionBody,
@@ -124,6 +125,25 @@ export const reviewFileResponseController = asyncHandler(
       new mongoose.Types.ObjectId(String(userId)),
     );
     sendSuccessResponse(res, result, "File response reviewed", 200);
+  },
+);
+
+/**
+ * @route   POST /api/internship-submissions/admin/:submissionId/finalize-certification
+ * @desc    Mark certification exam review complete (required for all certification attempts)
+ * @access  Admin
+ */
+export const finalizeCertificationReviewController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { submissionId } = req.params;
+    const userId = req.user?._id;
+    if (!userId) throw new AppError("Unauthorized", 401);
+
+    const result = await finalizeCertificationExamReview(
+      String(submissionId),
+      new mongoose.Types.ObjectId(String(userId)),
+    );
+    sendSuccessResponse(res, result, "Certification review finalized", 200);
   },
 );
 

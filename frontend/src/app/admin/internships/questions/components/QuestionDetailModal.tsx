@@ -190,6 +190,14 @@ export default function QuestionDetailModal({
                 {detail.isActive ? "Yes" : "No"}
               </span>
             </div>
+            <div className="sm:col-span-2">
+              <p className="text-xs font-semibold text-gray-500 uppercase mb-1">
+                Category
+              </p>
+              <p className="text-gray-800">
+                {detail.category?.trim() ? detail.category : "—"}
+              </p>
+            </div>
           </div>
 
           {detail.type === "mcq" && detail.options && detail.options.length > 0 ? (

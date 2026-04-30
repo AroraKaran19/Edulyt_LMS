@@ -368,6 +368,8 @@ export default function InternshipProgramPage() {
   const batchName = enrollment.batchSnapshot?.name || "Cohort";
   const startDate = formatDate(enrollment.batchSnapshot?.internshipStartDate);
   const pointsPurchase = data.internshipSuccessPointPurchase;
+  const certShortfall = enrollment.certificationPointsShortfall;
+  const approxInr = enrollment.approxInrToReachCertificationThreshold;
 
   return (
     <div className="max-w-4xl lg:max-w-7xl mx-auto py-6 space-y-6">
@@ -417,6 +419,42 @@ export default function InternshipProgramPage() {
           </div>
         ) : null}
       </div>
+
+      {typeof certShortfall === "number" &&
+      certShortfall > 0 &&
+      enrollment.certificationThreshold > 0 ? (
+        <div className="rounded-2xl border border-amber-300/80 bg-amber-100/40 px-4 py-3 text-sm text-amber-950">
+          <p className="font-semibold">Certification points</p>
+          <p className="mt-1 text-amber-950/90 text-xs sm:text-sm leading-relaxed">
+            You need{" "}
+            <span className="font-mono font-semibold">
+              {enrollment.certificationThreshold}
+            </span>{" "}
+            internship success points to attempt the certification exam. You have{" "}
+            <span className="font-mono font-semibold">
+              {enrollment.internshipSuccessPoints}
+            </span>{" "}
+            ({certShortfall} more needed
+            {typeof approxInr === "number" && pointsPurchase
+              ? ` — about ₹${approxInr.toLocaleString("en-IN")} to buy the gap at ₹${pointsPurchase.inrPerPoint.toLocaleString("en-IN")} per point`
+              : ""}
+            ).
+          </p>
+          {pointsPurchase ? (
+            <Link
+              href="#buy-success-points"
+              className="mt-2 inline-block text-xs font-bold text-amber-900 underline underline-offset-2"
+            >
+              Buy points →
+            </Link>
+          ) : (
+            <p className="mt-2 text-xs text-amber-900/80">
+              Complete tasks for points, or ask your admin to enable purchases (Settings →
+              Points and certification threshold on the internship).
+            </p>
+          )}
+        </div>
+      ) : null}
 
       {/* Tasks */}
       <div className="space-y-4">

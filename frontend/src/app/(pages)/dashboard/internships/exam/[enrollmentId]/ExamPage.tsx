@@ -320,15 +320,15 @@ export default function ExamPage() {
             )}
             {exam.examEndAt && (
               <span>
-                Window closes:{" "}
-                {new Date(exam.examEndAt).toLocaleString("en-IN", {
-                  timeZone: "Asia/Kolkata",
+                Window closes (UTC):{" "}
+                {new Date(exam.examEndAt).toLocaleString("en-GB", {
+                  timeZone: "UTC",
                   day: "numeric",
                   month: "short",
+                  year: "numeric",
                   hour: "2-digit",
                   minute: "2-digit",
-                })}{" "}
-                IST
+                })}
               </span>
             )}
           </div>

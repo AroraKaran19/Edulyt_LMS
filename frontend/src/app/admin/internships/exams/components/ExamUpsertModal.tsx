@@ -84,8 +84,6 @@ export default function ExamUpsertModal({
 
   // ── Always-editable fields ──────────────────────────────────────────────────
   const [questionIds, setQuestionIds] = useState<string[]>([]);
-  const [examStartLocal, setExamStartLocal] = useState("");
-  const [examEndLocal, setExamEndLocal] = useState("");
   const [examResultLocal, setExamResultLocal] = useState("");
   const [isActive, setIsActive] = useState(true);
 
@@ -107,8 +105,6 @@ export default function ExamUpsertModal({
     setExamType("entrance");
     setThresholdScore("");
     setQuestionIds([]);
-    setExamStartLocal("");
-    setExamEndLocal("");
     setExamResultLocal("");
     setIsActive(true);
     setSubmitting(false);
@@ -178,8 +174,6 @@ export default function ExamUpsertModal({
             ? d.questions.map((q) => String(q._id))
             : [],
         );
-        setExamStartLocal(toDatetimeLocalValue(d.examStartAt));
-        setExamEndLocal(toDatetimeLocalValue(d.examEndAt));
         setExamResultLocal(toDatetimeLocalValue(d.examResultAt));
         setIsActive(d.isActive !== false);
       } catch {
@@ -254,29 +248,6 @@ export default function ExamUpsertModal({
   };
 
   const buildAndSubmitDates = async (payload: Record<string, unknown>) => {
-    const startStr = examStartLocal.trim();
-    const endStr = examEndLocal.trim();
-    if (startStr && endStr) {
-      const s = new Date(startStr);
-      const e = new Date(endStr);
-      if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime())) {
-        toast.error("Invalid exam start or end date-time");
-        return;
-      }
-      if (e.getTime() <= s.getTime()) {
-        toast.error("Exam end must be after exam start");
-        return;
-      }
-      payload.examStartAt = s.toISOString();
-      payload.examEndAt = e.toISOString();
-    } else if (!startStr && !endStr) {
-      payload.examStartAt = null;
-      payload.examEndAt = null;
-    } else {
-      toast.error("Set both exam start and end, or clear both");
-      return;
-    }
-
     const resStr = examResultLocal.trim();
     if (!resStr) {
       toast.error("Results published date-time is required");
@@ -285,10 +256,6 @@ export default function ExamUpsertModal({
     const r = new Date(resStr);
     if (Number.isNaN(r.getTime())) {
       toast.error("Invalid results publication date-time");
-      return;
-    }
-    if (endStr && r.getTime() < new Date(endStr).getTime()) {
-      toast.error("Results date must be on or after exam end");
       return;
     }
     payload.examResultAt = r.toISOString();
@@ -432,30 +399,6 @@ export default function ExamUpsertModal({
             template&apos;s total score.
           </p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <Input
-                label="Exam starts"
-                type="datetime-local"
-                required
-                value={examStartLocal}
-                onChange={(e) => setExamStartLocal(e.target.value)}
-              />
-            </div>
-            <div>
-              <Input
-                label="Exam ends"
-                type="datetime-local"
-                required
-                value={examEndLocal}
-                onChange={(e) => setExamEndLocal(e.target.value)}
-              />
-            </div>
-          </div>
-          <p className="text-xs text-gray-500 -mt-2">
-            Wall-clock window for this template. Set both or clear both.
-          </p>
-
           <Input
             label="Results published"
             type="datetime-local"
@@ -464,8 +407,9 @@ export default function ExamUpsertModal({
             onChange={(e) => setExamResultLocal(e.target.value)}
           />
           <p className="text-xs text-gray-500 -mt-2">
-            When learners can see official results. Must be on or after exam end
-            if a window is set.
+            When learners may see official results. Entrance and certification
+            attempt windows are set per cohort or per learner on the server, not
+            on this template.
           </p>
 
           <CheckBoxContainer

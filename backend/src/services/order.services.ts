@@ -24,6 +24,7 @@ import {
 } from "./internshipVoucher.services";
 import type { CourseDiscount, Discount } from "../types";
 import { getPointsSettings } from "./pointsSettings.services";
+import { parseProgramDurationMonthsFromAnswers } from "../lib/certificationExamSchedule";
 
 const SUCCESS_POINTS_PURCHASE_MAX = 500;
 
@@ -84,6 +85,9 @@ export const createInternshipSeatEnrollmentAfterPayment = async (
 
   enrollment.status = "enrolled";
   enrollment.enrolledAt = new Date();
+  const ans = enrollment.applicationAnswers as Record<string, unknown> | undefined;
+  const months = parseProgramDurationMonthsFromAnswers(ans ?? null);
+  if (months != null) enrollment.programDurationMonths = months;
   enrollment.paymentAmount = order.amount;
   enrollment.paymentOrderId = String(order._id);
   enrollment.paymentConfirmedAt = new Date();

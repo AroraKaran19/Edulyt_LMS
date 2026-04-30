@@ -19,6 +19,7 @@ export * from "./internship-task";
 export * from "./internship-submission";
 export * from "./internship-enrollment";
 export * from "./partner-college";
+export * from "./home-page-settings";
 
 // ===================
 // Type Exports

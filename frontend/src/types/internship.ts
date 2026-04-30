@@ -37,6 +37,8 @@ export interface InternshipPublicListing {
     _id?: string;
     isActive?: boolean;
     plan?: { price?: number } | null;
+    /** ISO string from API — used for “next batch starts” on listing cards. */
+    internshipStartDate?: string;
   }[];
   discount?: CourseDiscount | null;
   plan?: { price?: number; discount?: Discount } | null;
@@ -55,6 +57,9 @@ export interface InternshipBatches {
   plan?: InternshipBatchPlan | null;
   /** Single entrance exam template for this cohort (examType = "entrance"). */
   entranceExamTemplateId?: string | null;
+  /** Entrance exam window (UTC), stored on the batch — not on the template. */
+  entranceExamStartAt?: Date | string;
+  entranceExamEndAt?: Date | string;
   /** Single certification exam template for this cohort (examType = "certification"). */
   certificationExamTemplateId?: string | null;
   /**
@@ -74,6 +79,8 @@ export interface Internship {
   certificationThreshold: number;
   brochure: string;
   jobDescription?: string;
+  /** Learner WhatsApp group invite link (optional). */
+  whatsappGroupLink?: string;
   mode: "online" | "offline" | "hybrid";
 
   perks: {
@@ -159,6 +166,8 @@ export interface InternshipResponse {
   certificationThreshold: number;
   brochure: string;
   jobDescription?: string;
+  /** Learner WhatsApp group invite link (optional). */
+  whatsappGroupLink?: string;
   mode: "online" | "offline" | "hybrid";
 
   perks: {

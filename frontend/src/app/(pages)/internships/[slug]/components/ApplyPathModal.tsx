@@ -41,8 +41,8 @@ export function ApplyPathModal({
     >
       <div className="flex flex-col gap-5 -mt-1">
         <p className="text-sm text-gray-500 leading-relaxed">
-          Pick the path that fits you. You can always reach out to us if you
-          are unsure.
+          Pick the path that fits you. You can always reach out to us if you are
+          unsure.
         </p>
 
         {/* 1 — Primary: entrance */}
@@ -63,7 +63,9 @@ export function ApplyPathModal({
                   Enroll through entrance
                 </p>
                 <p className="mt-0.5 text-xs text-gray-500">
-                  Apply through the standard screening for this program.
+                  Apply through the standard screening for this program. {"->"}{" "}
+                  Standard Path - Apply {"->"} Clear Entrance Exam {"->"} Join
+                  with Offer Letter
                 </p>
               </div>
             </div>
@@ -96,10 +98,11 @@ export function ApplyPathModal({
             </span>
             <div className="min-w-0 flex-1">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-900/80">
-                Learning bundle
+                Not ready for Exam?
               </p>
               <p className="mt-0.5 text-sm font-semibold text-gray-900 leading-snug group-hover:text-primary transition-colors">
-                Purchase a course now to get 1 internship free with it
+                Want to learn + Need Internship {"->"} Enroll in a course and
+                Get Direct Entry in Internship without Exam
               </p>
               <p className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary">
                 Browse courses
@@ -116,9 +119,11 @@ export function ApplyPathModal({
             onClick={() => go(`${enrollBase}?flow=seat`)}
             className="mx-auto max-w-sm text-center text-[10px] sm:text-[11px] leading-relaxed text-gray-400/90 hover:text-gray-500 transition-colors font-normal"
           >
-            <span className="block">Book your seat now without entrance</span>
+            <span className="block">
+              Need a confirm entry without Course and Exam?
+            </span>
             <span className="mt-1.5 block text-[9px] font-normal leading-snug text-gray-300">
-              Pay to secure your spot—no entrance step.
+              Book your seat directly
             </span>
           </button>
         </div>

@@ -25,11 +25,13 @@ export interface InternshipBatchAnalytics {
 
 export type InternshipAnalytics = InternshipBatchAnalytics;
 
-/** One batch row as returned on public list/carousel (pricing slice only). */
+/** One batch row as returned on public list/carousel (pricing + cohort start). */
 export interface InternshipPublicListingBatch {
   _id?: string;
   isActive?: boolean;
   plan?: { price?: number } | null;
+  /** ISO string from API (next-cohort copy on cards). */
+  internshipStartDate?: string;
 }
 
 /**
@@ -62,6 +64,12 @@ export interface InternshipBatches {
   plan?: InternshipBatchPlan | null;
   /** Single entrance exam template for this cohort (examType = "entrance"). */
   entranceExamTemplateId?: string | null;
+  /**
+   * Entrance exam wall-clock window for this cohort (UTC). Set alongside
+   * `entranceExamTemplateId`; evaluated on the server only.
+   */
+  entranceExamStartAt?: Date;
+  entranceExamEndAt?: Date;
   /** Single certification exam template for this cohort (examType = "certification"). */
   certificationExamTemplateId?: string | null;
   /**
@@ -81,6 +89,8 @@ export interface Internship {
   certificationThreshold: number;
   brochure: string;
   jobDescription?: string;
+  /** Learner WhatsApp group invite link (optional). */
+  whatsappGroupLink?: string;
   mode: "online" | "offline" | "hybrid";
 
   perks: {
@@ -166,6 +176,8 @@ export interface InternshipResponse {
   certificationThreshold: number;
   brochure: string;
   jobDescription?: string;
+  /** Learner WhatsApp group invite link (optional). */
+  whatsappGroupLink?: string;
   mode: "online" | "offline" | "hybrid";
 
   perks: {

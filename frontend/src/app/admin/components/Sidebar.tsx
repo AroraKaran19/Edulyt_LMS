@@ -1,5 +1,13 @@
 "use client";
-import { ChevronLeft, ChevronRight, Settings, ShoppingCart, Tag } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  HelpCircle,
+  Settings,
+  ShoppingCart,
+  Tag,
+  Users,
+} from "lucide-react";
 import ImageComponent from "@/components/ui/ImageComponent";
 import React from "react";
 import SidebarMenuItem from "./SidebarMenuItem";
@@ -59,15 +67,17 @@ const AdminSidebar = ({
           label: "Moderation",
           href: "/admin/courses/moderation",
         },
-        {
-          label: "FAQs",
-          href: "/admin/courses/faqs",
-        },
-        {
-          label: "Testimonials",
-          href: "/admin/courses/testimonials",
-        },
       ],
+    },
+    {
+      icon: <HelpCircle className="size-6" />,
+      label: "FAQs",
+      href: "/admin/faq",
+    },
+    {
+      icon: <Users className="size-6" />,
+      label: "Testimonials",
+      href: "/admin/testimonials",
     },
     {
       icon: <ShoppingCart className="size-6" />,
@@ -145,6 +155,10 @@ const AdminSidebar = ({
         {
           label: "Points (INR)",
           href: "/admin/settings/points",
+        },
+        {
+          label: "Home Page",
+          href: "/admin/settings/home-page",
         },
         {
           label: "Colleges List",

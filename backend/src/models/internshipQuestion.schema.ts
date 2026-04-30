@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { QUESTION_CATEGORY_VALUES } from "../constants/questionCategories";
 
 const mcqOptionSchema = new mongoose.Schema(
   {
@@ -25,11 +26,14 @@ const internshipQuestionSchema = new mongoose.Schema(
     isActive: { type: Boolean, default: true },
     options: { type: [mcqOptionSchema], default: undefined },
     referenceFile: { type: String, trim: true, default: "" },
-    categoryId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "QuestionCategory",
-      required: false,
-      default: null,
+    category: {
+      type: String,
+      trim: true,
+      default: undefined,
+      enum: {
+        values: [...QUESTION_CATEGORY_VALUES],
+        message: "Invalid question category",
+      },
     },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,

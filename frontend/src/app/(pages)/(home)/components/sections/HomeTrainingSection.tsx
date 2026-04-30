@@ -1,11 +1,36 @@
 import { Icon } from "@iconify/react";
 import Image from "next/image";
+import type {
+  HomeIconTitleCard,
+  HomeTrainingSectionSettings,
+} from "@/types/home-page-settings";
 
 interface TrainingContent {
   title: string;
   description: string;
   icon: string;
 }
+
+const DEFAULT_PILLARS: HomeIconTitleCard[] = [
+  {
+    title: "Learn",
+    description:
+      "Master concepts through structured courses designed by industry experts. Follow a clear roadmap instead of random tutorials.",
+    icon: "streamline-plump:global-learning-solid",
+  },
+  {
+    title: "Build",
+    description:
+      "Work on real-world projects using real data.Gain hands-on experience that companies actually value.",
+    icon: "material-symbols:build-rounded",
+  },
+  {
+    title: "Launch",
+    description:
+      "Get internship opportunities, career guidance, and placement support to confidently step into your dream role.",
+    icon: "material-symbols:rocket-launch",
+  },
+];
 
 const TrainingCard = ({ title, description, icon }: TrainingContent) => {
   return (
@@ -23,27 +48,22 @@ const TrainingCard = ({ title, description, icon }: TrainingContent) => {
   );
 };
 
-const HomeTrainingSection = () => {
-  const trainingContent: TrainingContent[] = [
-    {
-      title: "Learn",
-      description:
-        "Master concepts through structured courses designed by industry experts. Follow a clear roadmap instead of random tutorials.",
-      icon: "streamline-plump:global-learning-solid",
-    },
-    {
-      title: "Build",
-      description:
-        "Work on real-world projects using real data.Gain hands-on experience that companies actually value.",
-      icon: "material-symbols:build-rounded",
-    },
-    {
-      title: "Launch",
-      description:
-        "Get internship opportunities, career guidance, and placement support to confidently step into your dream role.",
-      icon: "material-symbols:rocket-launch",
-    },
-  ];
+const HomeTrainingSection = ({
+  settings,
+}: {
+  settings?: HomeTrainingSectionSettings;
+}) => {
+  const trainingContent: TrainingContent[] =
+    settings?.pillars && settings.pillars.length > 0
+      ? settings.pillars
+      : DEFAULT_PILLARS;
+  const eyebrow = settings?.eyebrow || "What Makes Our Training Different?";
+  const line1 = settings?.headingLine1 || "A";
+  const highlight1 = settings?.headingHighlight1 || "Career-Focused";
+  const line2 = settings?.headingLine2 || "Learning Model to Make You";
+  const highlight2 = settings?.headingHighlight2 || "Job-Ready";
+  const imageSrc = settings?.imageSrc || "/home/training.jpg";
+  const imageAlt = settings?.imageAlt || "training";
 
   return (
     <section
@@ -56,11 +76,11 @@ const HomeTrainingSection = () => {
         </div>
         <div className="content-body flex flex-col gap-6">
           <h3 className="text-base lg:text-2xl font-semibold capitalize">
-            What Makes Our Training Different?
+            {eyebrow}
           </h3>
           <h2 className="text-2xl lg:text-4xl font-extrabold text-text-primary capitalize max-w-full lg:max-w-3xl">
-            A <span className="text-primary">Career-Focused</span> Learning
-            Model to Make You <span className="text-primary">Job-Ready</span>
+            {line1} <span className="text-primary">{highlight1}</span> {line2}{" "}
+            <span className="text-primary">{highlight2}</span>
           </h2>
 
           <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -71,8 +91,8 @@ const HomeTrainingSection = () => {
             </div>
             <div className="col-span-1">
               <Image
-                src="/home/training.jpg"
-                alt="training"
+                src={imageSrc}
+                alt={imageAlt}
                 width={500}
                 height={500}
                 className="w-full h-full object-cover rounded-2xl select-none pointer-events-none mask-[linear-gradient(to_right,transparent_0%,black_32%,black_68%,transparent_100%)] [-webkit-mask-image:linear-gradient(to_right,transparent_0%,black_32%,black_68%,transparent_100%)]"

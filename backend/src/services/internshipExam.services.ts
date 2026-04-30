@@ -24,7 +24,9 @@ async function resolvePinnedExamTemplateIds(
     return [];
   }
   const doc = await InternshipModel.findById(internshipId)
-    .select("batches.entranceExamTemplateId batches.certificationExamTemplateId batches._id")
+    .select(
+      "batches.entranceExamTemplateId batches.certificationExamTemplateId batches._id",
+    )
     .lean();
   if (!doc || !Array.isArray((doc as { batches?: unknown[] }).batches)) {
     return [];
@@ -43,10 +45,12 @@ async function resolvePinnedExamTemplateIds(
 
   const candidates: unknown[] = [];
   if (examType === "entrance" || !examType) {
-    if (batch.entranceExamTemplateId != null) candidates.push(batch.entranceExamTemplateId);
+    if (batch.entranceExamTemplateId != null)
+      candidates.push(batch.entranceExamTemplateId);
   }
   if (examType === "certification" || !examType) {
-    if (batch.certificationExamTemplateId != null) candidates.push(batch.certificationExamTemplateId);
+    if (batch.certificationExamTemplateId != null)
+      candidates.push(batch.certificationExamTemplateId);
   }
 
   return candidates
@@ -117,7 +121,11 @@ export async function listInternshipExamTemplatesAdmin(
     filter.title = new RegExp(escapeRegex(search.trim()), "i");
   }
 
-  const pinnedIds = await resolvePinnedExamTemplateIds(internshipId, batchId, examType);
+  const pinnedIds = await resolvePinnedExamTemplateIds(
+    internshipId,
+    batchId,
+    examType,
+  );
 
   const total = await InternshipExamModel.countDocuments(filter);
 
@@ -228,12 +236,6 @@ export type UpsertInternshipExamBody = {
   questions?: string[];
   /** Merit-pool minimum; required; must be ≤ totalScore. */
   thresholdScore: number;
-  /**
-   * Wall-clock exam window. Set both ISO strings/dates together, or both `null`
-   * to clear. Omit both only when not changing an existing window (PATCH).
-   */
-  examStartAt?: string | Date | null;
-  examEndAt?: string | Date | null;
   /** Required. ISO string or Date. */
   examResultAt: string | Date;
   isActive?: boolean;
@@ -243,8 +245,6 @@ export type UpsertInternshipExamBody = {
 export type UpdateInternshipExamBody = {
   questions?: string[];
   thresholdScore?: number;
-  examStartAt?: string | Date | null;
-  examEndAt?: string | Date | null;
   examResultAt: string | Date;
   isActive?: boolean;
 };
@@ -266,8 +266,6 @@ export type InternshipExamDetailAdmin = {
   questions: InternshipExamQuestionSummary[];
   totalScore: number;
   thresholdScore?: number;
-  examStartAt?: Date;
-  examEndAt?: Date;
   examResultAt: Date;
   isActive: boolean;
   createdBy: {
@@ -411,11 +409,8 @@ async function computeExamFields(body: UpsertInternshipExamBody): Promise<{
   questions: mongoose.Types.ObjectId[];
   totalScore: number;
   thresholdScore?: number;
-  examStartAt?: Date;
-  examEndAt?: Date;
   examResultAt: Date;
   isActive: boolean;
-  clearExamWindow?: boolean;
 }> {
   const title = typeof body.title === "string" ? body.title.trim() : "";
   if (!title) {
@@ -423,7 +418,10 @@ async function computeExamFields(body: UpsertInternshipExamBody): Promise<{
   }
   const description =
     typeof body.description === "string" ? body.description.trim() : "";
-  if (!body.examType || !["entrance", "certification"].includes(body.examType)) {
+  if (
+    !body.examType ||
+    !["entrance", "certification"].includes(body.examType)
+  ) {
     throw new AppError("examType must be entrance or certification", 400);
   }
   const examType = body.examType as ExamType;
@@ -438,33 +436,10 @@ async function computeExamFields(body: UpsertInternshipExamBody): Promise<{
     totalScore,
   );
   if (thresholdScore === undefined) {
-    throw new AppError("thresholdScore must be a valid non-negative number", 400);
-  }
-
-  let examStartAt: Date | undefined;
-  let examEndAt: Date | undefined;
-  let clearExamWindow = false;
-  const s = body.examStartAt;
-  const e = body.examEndAt;
-  if (s === null && e === null) {
-    clearExamWindow = true;
-  } else if (
-    (s === undefined || s === "") &&
-    (e === undefined || e === "")
-  ) {
-    // no wall-clock window in payload
-  } else {
-    if (s == null || s === "" || e == null || e === "") {
-      throw new AppError(
-        "examStartAt and examEndAt must both be set together, or both null to clear",
-        400,
-      );
-    }
-    examStartAt = parseInstant(s, "examStartAt");
-    examEndAt = parseInstant(e, "examEndAt");
-    if (examEndAt.getTime() <= examStartAt.getTime()) {
-      throw new AppError("examEndAt must be after examStartAt", 400);
-    }
+    throw new AppError(
+      "thresholdScore must be a valid non-negative number",
+      400,
+    );
   }
 
   const resRaw = body.examResultAt;
@@ -472,12 +447,6 @@ async function computeExamFields(body: UpsertInternshipExamBody): Promise<{
     throw new AppError("examResultAt is required", 400);
   }
   const examResultAt = parseInstant(resRaw, "examResultAt");
-  if (examEndAt && examResultAt.getTime() < examEndAt.getTime()) {
-    throw new AppError(
-      "examResultAt must be on or after examEndAt when an exam window is set",
-      400,
-    );
-  }
 
   return {
     title,
@@ -486,10 +455,8 @@ async function computeExamFields(body: UpsertInternshipExamBody): Promise<{
     questions: questionOids,
     totalScore,
     thresholdScore,
-    ...(examStartAt && examEndAt ? { examStartAt, examEndAt } : {}),
     examResultAt,
     isActive: body.isActive !== false,
-    ...(clearExamWindow ? { clearExamWindow: true as const } : {}),
   };
 }
 
@@ -528,10 +495,7 @@ export async function getInternshipExamByIdAdmin(
     throw new AppError("Invalid exam id", 400);
   }
   const doc = await InternshipExamModel.findById(id)
-    .populate(
-      "questions",
-      "questionText type usageType score isActive",
-    )
+    .populate("questions", "questionText type usageType score isActive")
     .populate("createdBy", "firstName lastName email name")
     .lean();
 
@@ -539,20 +503,17 @@ export async function getInternshipExamByIdAdmin(
     throw new AppError("Exam template not found", 404);
   }
 
-  const rawQuestions = (Array.isArray(doc.questions) ? doc.questions : []) as unknown[];
+  const rawQuestions = (
+    Array.isArray(doc.questions) ? doc.questions : []
+  ) as unknown[];
   const questions = rawQuestions
     .filter(
       (q): q is Record<string, unknown> =>
-        q != null &&
-        typeof q === "object" &&
-        "questionText" in q &&
-        "_id" in q,
+        q != null && typeof q === "object" && "questionText" in q && "_id" in q,
     )
     .map((q) => serializePopulatedQuestion(q));
 
   const thresholdScore = doc.thresholdScore;
-  const examStartAt = (doc as { examStartAt?: Date }).examStartAt;
-  const examEndAt = (doc as { examEndAt?: Date }).examEndAt;
   const examResultAt = (doc as { examResultAt?: Date }).examResultAt;
   const rawExamType = (doc as { examType?: string }).examType;
   const examType: ExamType =
@@ -567,18 +528,12 @@ export async function getInternshipExamByIdAdmin(
     totalScore: typeof doc.totalScore === "number" ? doc.totalScore : 0,
     thresholdScore:
       typeof thresholdScore === "number" ? thresholdScore : undefined,
-    examStartAt:
-      examStartAt instanceof Date && !Number.isNaN(examStartAt.getTime())
-        ? examStartAt
-        : undefined,
-    examEndAt:
-      examEndAt instanceof Date && !Number.isNaN(examEndAt.getTime())
-        ? examEndAt
-        : undefined,
     examResultAt:
       examResultAt instanceof Date && !Number.isNaN(examResultAt.getTime())
         ? examResultAt
-        : (() => { throw new AppError("examResultAt is missing on exam template", 500); })(),
+        : (() => {
+            throw new AppError("examResultAt is missing on exam template", 500);
+          })(),
     isActive: doc.isActive !== false,
     createdBy: serializeCreatedBy(doc.createdBy),
     createdAt: doc.createdAt,
@@ -591,10 +546,8 @@ export async function createInternshipExamAdmin(
   createdBy: mongoose.Types.ObjectId,
 ): Promise<InternshipExamDetailAdmin> {
   const fields = await computeExamFields(body);
-  const { clearExamWindow: _cw, ...persist } = fields;
-  void _cw;
   const created = await InternshipExamModel.create({
-    ...persist,
+    ...fields,
     createdBy,
   });
   return getInternshipExamByIdAdmin(String(created._id));
@@ -608,44 +561,14 @@ export async function updateInternshipExamAdmin(
     throw new AppError("Invalid exam id", 400);
   }
 
-  // Resolve and validate the mutable fields only
   const questionOids = normalizeQuestionIdOrder(body.questions);
   const totalScore = await resolveQuestionsForExam(questionOids);
-
-  let examStartAt: Date | undefined;
-  let examEndAt: Date | undefined;
-  let clearExamWindow = false;
-  const s = body.examStartAt;
-  const e = body.examEndAt;
-  if (s === null && e === null) {
-    clearExamWindow = true;
-  } else if ((s === undefined || s === "") && (e === undefined || e === "")) {
-    // no window in payload — leave existing
-  } else {
-    if (s == null || s === "" || e == null || e === "") {
-      throw new AppError(
-        "examStartAt and examEndAt must both be set together, or both null to clear",
-        400,
-      );
-    }
-    examStartAt = parseInstant(s, "examStartAt");
-    examEndAt = parseInstant(e, "examEndAt");
-    if (examEndAt.getTime() <= examStartAt.getTime()) {
-      throw new AppError("examEndAt must be after examStartAt", 400);
-    }
-  }
 
   const resRaw = body.examResultAt;
   if (resRaw == null || resRaw === "") {
     throw new AppError("examResultAt is required", 400);
   }
   const examResultAt = parseInstant(resRaw, "examResultAt");
-  if (examEndAt && examResultAt.getTime() < examEndAt.getTime()) {
-    throw new AppError(
-      "examResultAt must be on or after examEndAt when an exam window is set",
-      400,
-    );
-  }
 
   const thresholdScore = parseOptionalThresholdScore(
     body.thresholdScore,
@@ -658,15 +581,10 @@ export async function updateInternshipExamAdmin(
     ...(thresholdScore !== undefined ? { thresholdScore } : {}),
     examResultAt,
     isActive: body.isActive !== false,
-    ...(examStartAt && examEndAt ? { examStartAt, examEndAt } : {}),
   };
   const $unset: Record<string, ""> = {};
   $unset.maxAttempts = "";
   $unset.duration = "";
-  if (clearExamWindow) {
-    $unset.examStartAt = "";
-    $unset.examEndAt = "";
-  }
 
   const updated = await InternshipExamModel.findByIdAndUpdate(
     id,
@@ -688,7 +606,8 @@ export async function deleteInternshipExamAdmin(id: string): Promise<void> {
     throw new AppError("Exam template not found", 404);
   }
   // Clear the single entrance or certification slot that referenced this template
-  const isEntrance = (res as { examType?: string }).examType !== "certification";
+  const isEntrance =
+    (res as { examType?: string }).examType !== "certification";
   const matchField = isEntrance
     ? "batches.entranceExamTemplateId"
     : "batches.certificationExamTemplateId";
@@ -698,6 +617,13 @@ export async function deleteInternshipExamAdmin(id: string): Promise<void> {
   await InternshipModel.updateMany(
     { [matchField]: res._id },
     { $unset: { [unsetField]: "" } },
-    { arrayFilters: [{ [`elem.${isEntrance ? "entranceExamTemplateId" : "certificationExamTemplateId"}`]: res._id }] },
+    {
+      arrayFilters: [
+        {
+          [`elem.${isEntrance ? "entranceExamTemplateId" : "certificationExamTemplateId"}`]:
+            res._id,
+        },
+      ],
+    },
   );
 }

@@ -42,6 +42,11 @@ const taskTemplateSnapshotSchema = new mongoose.Schema(
 const examTemplateSnapshotSchema = new mongoose.Schema(
   {
     examId: { type: String, required: true },
+    examType: {
+      type: String,
+      enum: ["entrance", "certification"],
+      default: "entrance",
+    },
     title: { type: String, required: true },
     description: { type: String, default: "" },
     questions: { type: [snapshotQuestionSchema], required: true },

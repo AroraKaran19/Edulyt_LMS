@@ -1,4 +1,5 @@
 "use client";
+import "quill/dist/quill.core.css";
 import { Internship, InternshipEnrollmentListRow } from "@/types";
 import Image from "next/image";
 import {
@@ -28,6 +29,7 @@ import { useRouter } from "next/navigation";
 import apiClient from "@/configs/apiConfig";
 import { ENDPOINTS } from "@/constants/endpoints";
 import ApplyPathModal from "./ApplyPathModal";
+import { getUpcomingBatch } from "@/lib/utils/internshipCohortDate";
 
 /** Same internship as this page (by id or slug snapshot). */
 function enrollmentMatchesInternship(
@@ -169,6 +171,28 @@ const InternshipHeader = ({ internship }: { internship: Internship }) => {
     [myEnrollment, internship.slug],
   );
 
+  const upcomingBatch = useMemo(
+    () => getUpcomingBatch(internship.batches ?? []),
+    [internship.batches],
+  );
+
+  /** Application / start rows: next upcoming cohort, or first batch if none upcoming. */
+  const cohortForKeyDates = useMemo(() => {
+    const list = internship.batches ?? [];
+    return upcomingBatch ?? list[0] ?? null;
+  }, [internship.batches, upcomingBatch]);
+
+  const formatCohortDate = (value: Date | string | undefined) => {
+    if (value == null) return "—";
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return "—";
+    return d.toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
   const checkingEnrollment =
     sessionStatus === "authenticated" && myEnrollment === undefined;
 
@@ -197,11 +221,15 @@ const InternshipHeader = ({ internship }: { internship: Internship }) => {
   };
 
   const socialLinks = [
-    {
-      label: "WhatsApp",
-      href: "https://www.whatsapp.com/channel/0029VaIBXP347XeJjHqbNi1X",
-      icon: WhatsAppIcon,
-    },
+    ...(internship.whatsappGroupLink
+      ? [
+          {
+            label: "WhatsApp",
+            href: internship.whatsappGroupLink,
+            icon: WhatsAppIcon,
+          },
+        ]
+      : []),
     {
       label: "Telegram",
       href: "https://t.me/+_XxzFosKYOg2M2I9",
@@ -297,8 +325,21 @@ const InternshipHeader = ({ internship }: { internship: Internship }) => {
                   ))}
                 </ul>
               )}
-              <p
-                className="text-black text-lg font-medium"
+              <div
+                className={cn(
+                  "internship-description ql-editor p-0! h-auto! min-h-0",
+                  "text-lg font-medium text-text-primary max-w-none leading-relaxed",
+                  "[&_p]:my-2 [&_p:first-child]:mt-0",
+                  "[&_strong]:font-semibold",
+                  "[&_a]:text-primary [&_a]:underline",
+                )}
+                style={
+                  {
+                    // Quill inline colors use var(--color-body); define for read-only HTML
+                    ["--color-body" as string]:
+                      "var(--color-text-primary, #2b1508)",
+                  } as React.CSSProperties
+                }
                 dangerouslySetInnerHTML={{
                   __html: internship.description || "",
                 }}
@@ -343,13 +384,9 @@ const InternshipHeader = ({ internship }: { internship: Internship }) => {
                     </td>
                     <td className="text-right">
                       <p className="inline-block p-1.5 px-2 lg:px-3 rounded-full bg-black/10 text-xs lg:text-sm font-normal">
-                        {new Date(
-                          internship.batches[0].applicationLastDate,
-                        ).toLocaleDateString("en-US", {
-                          month: "long",
-                          day: "numeric",
-                          year: "numeric",
-                        })}
+                        {formatCohortDate(
+                          cohortForKeyDates?.applicationLastDate,
+                        )}
                       </p>
                     </td>
                   </tr>
@@ -359,13 +396,9 @@ const InternshipHeader = ({ internship }: { internship: Internship }) => {
                     </td>
                     <td className="text-right">
                       <p className="inline-block p-1.5 px-2 lg:px-3 rounded-full bg-black/10 text-xs lg:text-sm font-normal">
-                        {new Date(
-                          internship.batches[0].internshipStartDate,
-                        ).toLocaleDateString("en-US", {
-                          month: "long",
-                          day: "numeric",
-                          year: "numeric",
-                        })}
+                        {formatCohortDate(
+                          cohortForKeyDates?.internshipStartDate,
+                        )}
                       </p>
                     </td>
                   </tr>
@@ -403,6 +436,18 @@ const InternshipHeader = ({ internship }: { internship: Internship }) => {
                     </td>
                   </tr>
                   <tr className="border-b border-gray-200">
+                    <td className="text-xs lg:text-sm font-medium">
+                      Upcoming batch
+                    </td>
+                    <td className="text-right">
+                      <div className="inline-block p-1.5 px-3 lg:px-4 capitalize rounded-full bg-black/10 text-xs lg:text-sm font-normal">
+                        {formatCohortDate(
+                          upcomingBatch?.internshipStartDate,
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                  {/* <tr className="border-b border-gray-200">
                     <td className="text-xs lg:text-sm font-medium">Rating</td>
                     <td className="text-right">
                       <div className="inline-flex items-center gap-1 p-1.5 px-3 lg:px-4 capitalize rounded-full bg-black/10 text-xs lg:text-sm font-normal">
@@ -410,7 +455,7 @@ const InternshipHeader = ({ internship }: { internship: Internship }) => {
                         <Star className="size-3 lg:size-4 fill-primary text-primary" />
                       </div>
                     </td>
-                  </tr>
+                  </tr> */}
                 </tbody>
               </table>
               <p className="text-xs lg:text-sm font-medium text-center mt-5">

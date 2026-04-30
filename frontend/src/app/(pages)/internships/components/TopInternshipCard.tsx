@@ -1,6 +1,6 @@
 import React from "react";
 import { Instructor, Discount } from "@/types";
-import type { Internship, InternshipPublicListing } from "@/types/internship";
+import type { InternshipPublicListing } from "@/types/internship";
 import { cn } from "@/lib/utils";
 import {
   calculateDiscountDisplay,
@@ -8,12 +8,13 @@ import {
 } from "@/lib/utils/discount";
 import { Plus } from "lucide-react";
 import BestsellerBadge from "@/components/ui/course/BestsellerBadge";
-import RatingContainer from "@/components/ui/course/RatingContainer";
+// import RatingContainer from "@/components/ui/course/RatingContainer";
 import DiscountBadge from "@/components/ui/course/DiscountBadge";
 import InstructorCard from "@/components/ui/course/InstructorCard";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
+import InternshipBatchCountContainer from "@/components/ui/course/InternshipBatchCountContainer";
 import { useRouter } from "next/navigation";
-import { Icon } from "@iconify/react";
+import { getUpcomingBatchStartDate } from "@/lib/utils/internshipCohortDate";
 
 const TopInternshipCard = ({
   internship,
@@ -58,6 +59,19 @@ const TopInternshipCard = ({
 
   const hasAnyDiscount = !!discountInfo.discountLabel;
 
+  const nextBatchStart = getUpcomingBatchStartDate(internship.batches ?? []);
+  const batchStartLabel = nextBatchStart
+    ? nextBatchStart.toLocaleDateString(undefined, {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      })
+    : null;
+
+  const batchStartDateTimeIso = nextBatchStart
+    ? nextBatchStart.toISOString().split("T")[0]
+    : undefined;
+
   return (
     <div
       className={cn(
@@ -91,21 +105,16 @@ const TopInternshipCard = ({
       >
         {internship.title}
       </p>
-      <RatingContainer
+      {/* <RatingContainer
         reviewCount={internship.analytics?.totalReviews || 0}
         totalRating={internship.analytics?.totalRatings || 0}
         className="mt-2"
         internshipSlug={internship.slug}
+      /> */}
+      <InternshipBatchCountContainer
+        batches={internship.batches ?? []}
+        className="mt-2"
       />
-      <div className="flex items-center gap-2 mt-2 select-none">
-        <span className="inline-flex items-center gap-2 rounded-full bg-orange-50 text-primary text-xs font-semibold px-3 py-1 shadow-sm border border-orange-200">
-          <Icon icon="boxicons:community-filled" width="16" height="16" />
-          <span>
-            {internship.batches.length}{" "}
-            {internship.batches.length === 1 ? "batch" : "batches"} available
-          </span>
-        </span>
-      </div>
 
       <div
         className={cn("instructors mt-2 flex gap-2 items-center select-none")}
@@ -127,26 +136,29 @@ const TopInternshipCard = ({
           </div>
         )}
       </div>
-      <div className="price mt-auto flex flex-row flex-wrap items-center justify-between gap-3 w-full select-none">
-        <div className="pricing flex flex-row items-center flex-wrap gap-x-2 gap-y-0">
-          {hasAnyDiscount ? (
-            <>
-              <span className="text-xl font-bold text-black">
-                ₹{discountInfo.discountPrice}
+      <div className="price mt-auto flex w-full flex-wrap items-center justify-between gap-x-3 gap-y-2 pt-2 select-none">
+        <div className="min-w-0 flex-1 basis-[40%] pr-2 sm:basis-auto">
+          {batchStartLabel && batchStartDateTimeIso ? (
+            <p className="truncate text-[13px] leading-snug text-text-secondary sm:text-sm">
+              <span className="font-medium text-text-secondary">Upcoming cohort</span>
+              <span className="mx-1 text-text-secondary/60" aria-hidden>
+                ·
               </span>
-              <p className="text-sm font-normal text-black line-through opacity-50">
-                ₹{originalPrice}
-              </p>
-            </>
+              <time
+                dateTime={batchStartDateTimeIso}
+                className="font-bold tabular-nums text-primary"
+              >
+                {batchStartLabel}
+              </time>
+            </p>
           ) : (
-            <span className="text-xl font-bold text-black">
-              ₹{originalPrice}
-            </span>
+            <p className="truncate text-[13px] leading-snug text-text-secondary sm:text-sm">
+              Cohort dates on details page
+            </p>
           )}
-          <p className="text-sm font-normal text-black">onwards/-</p>
         </div>
         <OrangeButton
-          className="sm:ml-auto font-bold text-sm px-8 py-4"
+          className="ml-auto shrink-0 font-bold text-sm px-6 py-3.5 sm:px-8 sm:py-4 sm:min-w-[136px]"
           onClick={(e) => {
             e.stopPropagation();
             router.push(`/internships/${internship.slug}`);

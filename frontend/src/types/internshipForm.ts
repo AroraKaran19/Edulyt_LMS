@@ -53,6 +53,9 @@ export interface InternshipBatchFormValue {
   plan: InternshipBatchPlan;
   /** Single entrance exam template for this cohort (examType = "entrance"). */
   entranceExamTemplateId?: string | null;
+  /** ISO UTC — entrance window start (set with batch in admin; evaluated on server). */
+  entranceExamStartAt?: string;
+  entranceExamEndAt?: string;
   /** Single certification exam template for this cohort (examType = "certification"). */
   certificationExamTemplateId?: string | null;
   /** Reusable task template ids for this cohort (see `Internship` / `InternshipTask`). */
@@ -145,6 +148,9 @@ export interface InternshipFormData {
   jobDescription: string;
   jobDescriptionSource?: "upload" | "url";
   jobDescriptionS3Key?: string;
+
+  /** WhatsApp community / cohort group invite URL (optional). */
+  whatsappGroupLink: string;
 
   // Testimonials (Screen 12)
   testimonials: string[];

@@ -1,9 +1,11 @@
 import BestsellerBadge from "@/components/ui/course/BestsellerBadge";
 import DiscountBadge from "@/components/ui/course/DiscountBadge";
 import InstructorCard from "@/components/ui/course/InstructorCard";
-import RatingContainer from "@/components/ui/course/RatingContainer";
+// import RatingContainer from "@/components/ui/course/RatingContainer";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
+import InternshipBatchCountContainer from "@/components/ui/course/InternshipBatchCountContainer";
 import { cn } from "@/lib/utils";
+import { getUpcomingBatchStartDate } from "@/lib/utils/internshipCohortDate";
 import {
   calculateDiscountDisplay,
   calculateInternshipDiscountDisplay,
@@ -52,6 +54,18 @@ const InternshipCard = ({
 
   const hasAnyDiscount = !!discountInfo.discountLabel;
 
+  const nextBatchStart = getUpcomingBatchStartDate(internship.batches ?? []);
+  const batchStartLabel = nextBatchStart
+    ? nextBatchStart.toLocaleDateString(undefined, {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      })
+    : null;
+  const batchStartDateTimeIso = nextBatchStart
+    ? nextBatchStart.toISOString().split("T")[0]
+    : undefined;
+
   const showFeaturedBadge = Boolean(
     (internship as Internship & { featured?: boolean }).featured,
   );
@@ -95,12 +109,16 @@ const InternshipCard = ({
         <p className="text-2xl font-bold mt-2 font-coolvetica select-none text-balance wrap-break-words line-clamp-2">
           {internship.title}
         </p>
-        <RatingContainer
+        <InternshipBatchCountContainer
+          batches={internship.batches ?? []}
+          className="mt-2"
+        />
+        {/* <RatingContainer
           reviewCount={internship?.analytics?.totalReviews || 0}
           totalRating={internship.analytics?.totalRatings || 0}
           className="mt-2 text-xs"
           internshipSlug={internship.slug}
-        />
+        /> */}
         <div className="instructors mt-2 flex gap-2 select-none mb-2 flex-col sm:flex-row items-start sm:items-center">
           {internship.mentors?.map((instructor, index) => {
             if (index < 2) {
@@ -121,26 +139,31 @@ const InternshipCard = ({
             </div>
           )}
         </div>
-        <div className="mt-auto flex flex-col sm:flex-row gap-2 sm:items-center select-none">
-          <div className="pricing flex flex-row lg:flex-col xl:flex-row gap-2 sm:items-center flex-wrap">
-            {hasAnyDiscount ? (
-              <>
-                <span className="text-xl font-bold text-black">
-                  ₹{discountInfo.discountPrice}
+        <div className="price mt-auto flex w-full flex-wrap items-center justify-between gap-x-3 gap-y-2 select-none pt-1">
+          <div className="min-w-0 flex-1 basis-[40%] pr-2 sm:basis-auto">
+            {batchStartLabel && batchStartDateTimeIso ? (
+              <p className="truncate text-[13px] leading-snug text-text-secondary sm:text-sm">
+                <span className="font-medium text-text-secondary">
+                  Upcoming cohort
                 </span>
-                <p className="text-sm font-normal text-black line-through opacity-50">
-                  ₹{originalPrice}
-                </p>
-              </>
+                <span className="mx-1 text-text-secondary/60" aria-hidden>
+                  ·
+                </span>
+                <time
+                  dateTime={batchStartDateTimeIso}
+                  className="font-bold tabular-nums text-primary"
+                >
+                  {batchStartLabel}
+                </time>
+              </p>
             ) : (
-              <span className="text-xl font-bold text-black">
-                ₹{originalPrice}
-              </span>
+              <p className="truncate text-[13px] leading-snug text-text-secondary sm:text-sm">
+                Cohort dates on details page
+              </p>
             )}
-            <p className="text-sm font-normal text-black">onwards/-</p>
           </div>
           <OrangeButton
-            className="mt-auto sm:mt-0 sm:ml-auto font-bold text-sm px-8 py-4"
+            className="ml-auto shrink-0 font-bold text-sm px-6 py-3.5 sm:mt-0 sm:px-8 sm:py-4 sm:min-w-[136px]"
             onClick={(e) => {
               e.stopPropagation();
               router.push(`/internships/${internship.slug}`);

@@ -37,11 +37,7 @@ const MobileMenu = ({ isOpen, navItems, onClose }: MobileMenuProps) => {
           return (
             <Link
               key={index}
-              href={
-                item.href === "/internships"
-                  ? "https://edulyt.com/internships.php"
-                  : item.href
-              }
+              href={item.href}
               className={cn(
                 "flex items-center justify-between py-3 px-4 text-base font-semibold capitalize transition-colors rounded-full",
                 isActive

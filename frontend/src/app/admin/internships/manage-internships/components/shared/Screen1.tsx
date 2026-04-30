@@ -9,7 +9,7 @@ import { useUpload } from "@/hooks/useUpload";
 import { useFormContext } from "react-hook-form";
 import { Controller } from "react-hook-form";
 import { InternshipFormData } from "@/types/internshipForm";
-import { stripHtmlForValidation } from "@/lib/internshipScreenValidation";
+import { stripHtmlForValidation, isValidHttpUrl } from "@/lib/internshipScreenValidation";
 import dynamic from "next/dynamic";
 import { ChangeEvent, useRef, useEffect, useState, useCallback } from "react";
 import { Plus, Trash2 } from "lucide-react";
@@ -670,6 +670,21 @@ const Screen1 = () => {
               isUploading={isUploading}
             />
           )}
+        />
+        <Input
+          {...register("whatsappGroupLink", {
+            validate: (value) => {
+              const s = String(value ?? "").trim();
+              if (!s) return true;
+              if (!isValidHttpUrl(s)) {
+                return "Enter a valid http(s) URL (e.g. chat.whatsapp.com invite link)";
+              }
+              return true;
+            },
+          })}
+          label="WhatsApp group link (optional)"
+          placeholder="https://chat.whatsapp.com/..."
+          error={errors.whatsappGroupLink?.message}
         />
       </Container>
     </Container>

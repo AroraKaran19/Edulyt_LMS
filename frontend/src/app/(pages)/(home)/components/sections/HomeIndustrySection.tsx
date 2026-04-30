@@ -1,6 +1,8 @@
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import { Icon } from "@iconify/react";
 import Image from "next/image";
+import Link from "next/link";
+import type { HomeIndustrySectionSettings } from "@/types/home-page-settings";
 
 const HelpBadge = ({ title }: { title: string }) => {
   return (
@@ -15,12 +17,31 @@ const HelpBadge = ({ title }: { title: string }) => {
   );
 };
 
-const HomeIndustrySection = () => {
-  const helpData: string[] = [
-    "Understanding  your current level",
-    "Identifying  skill gaps",
-    "Creating a personalized career roadmap",
-  ];
+const DEFAULT_HELP = [
+  "Understanding your current level",
+  "Identifying skill gaps",
+  "Creating a personalized career roadmap",
+];
+
+const HomeIndustrySection = ({
+  settings,
+}: {
+  settings?: HomeIndustrySectionSettings;
+}) => {
+  const helpData =
+    settings?.expertHelpBullets && settings.expertHelpBullets.length > 0
+      ? settings.expertHelpBullets
+      : DEFAULT_HELP;
+  const headingPrimary =
+    settings?.headingPrimary || "One Conversation Can Change Everything.";
+  const headingSecondary =
+    settings?.headingSecondary || "You don’t need to figure it out alone.";
+  const helpIntroText =
+    settings?.helpIntroText || "Our industry experts help you in...";
+  const ctaLabel = settings?.bookConsultationLabel || "Book Consultation";
+  const ctaHref = settings?.bookConsultationHref || "";
+  const imageSrc = settings?.imageSrc || "/home/industry_image.jpg";
+  const imageAlt = settings?.imageAlt || "industry";
 
   return (
     <section
@@ -34,12 +55,10 @@ const HomeIndustrySection = () => {
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             <div className="col-span-1 flex flex-col gap-6">
-              <h3 className="text-2xl font-extrabold">
-                One Conversation Can Change Everything.
-              </h3>
+              <h3 className="text-2xl font-extrabold">{headingPrimary}</h3>
               <Image
-                src="/home/industry_image.jpg"
-                alt="industry"
+                src={imageSrc}
+                alt={imageAlt}
                 width={500}
                 height={500}
                 className="w-full h-full object-cover rounded-2xl select-none pointer-events-none mask-[linear-gradient(to_right,transparent_0%,black_32%,black_68%,transparent_100%)] [-webkit-mask-image:linear-gradient(to_right,transparent_0%,black_32%,black_68%,transparent_100%)]"
@@ -51,8 +70,7 @@ const HomeIndustrySection = () => {
             </div>
             <div className="col-span-1 flex flex-col gap-6">
               <h3 className="text-2xl lg:text-4xl font-extrabold capitalize">
-                You don’t need to figure it out{" "}
-                <span className="text-primary">alone</span>.
+                {headingSecondary}
               </h3>
 
               <span className="help-container w-full rounded-full flex items-center bg-[#CEFFD2] gap-2.5 mb-5">
@@ -60,7 +78,7 @@ const HomeIndustrySection = () => {
                   <Icon icon="fa7-brands:kakao-talk" width="32" height="32" />
                 </div>
                 <span className="text-base font-bold text-wrap capitalize">
-                  Our industry experts help you in...
+                  {helpIntroText}
                 </span>
               </span>
 
@@ -71,7 +89,13 @@ const HomeIndustrySection = () => {
               </div>
 
               <div className="mt-auto">
-                <OrangeButton>Book Consultation</OrangeButton>
+                {ctaHref ? (
+                  <Link href={ctaHref}>
+                    <OrangeButton>{ctaLabel}</OrangeButton>
+                  </Link>
+                ) : (
+                  <OrangeButton>{ctaLabel}</OrangeButton>
+                )}
               </div>
             </div>
           </div>

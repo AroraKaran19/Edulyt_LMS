@@ -1,6 +1,13 @@
-import HomeCourseSection from "../HomeCourseSection";
+import HomeInternshipSection from "../HomeInternshipSection";
+import type { HomeInternshipPathSettings } from "@/types/home-page-settings";
 
-const HomeInternshipPath = () => {
+const HomeInternshipPath = ({
+  settings,
+}: {
+  settings?: HomeInternshipPathSettings;
+}) => {
+  const titleHighlight = settings?.titleHighlight || "Internships Programs";
+  const titleRest = settings?.titleRest || "Our";
   return (
     <section
       id="home-internship"
@@ -9,9 +16,9 @@ const HomeInternshipPath = () => {
       <div className="content border-l-2 border-gray-300 border-dashed h-full relative px-10 lg:px-12.5 py-20 flex flex-col gap-10">
         <div className="content-body flex flex-col gap-6">
           <h2 className="text-2xl lg:text-4xl font-extrabold text-text-primary capitalize text-balance">
-            Our <span className="text-primary">Internships Programs</span>
+            {titleRest} <span className="text-primary">{titleHighlight}</span>
           </h2>
-          <HomeCourseSection audience="college-students" />
+          <HomeInternshipSection />
         </div>
       </div>
     </section>

@@ -1,10 +1,23 @@
 import { Icon } from "@iconify/react";
 import Image from "next/image";
+import type { HomePathSelectionSectionSettings } from "@/types/home-page-settings";
 
 interface PathSelectionContent {
   title: string;
   description: string;
 }
+
+const DEFAULT_VALUE_PROPS: PathSelectionContent[] = [
+  { title: "Industry-Led Mentorship", description: "Learn directly from professionals." },
+  { title: "Hands-On Projects", description: "Work on real-world problems." },
+  { title: "Internship Opportunities", description: "Learn directly from professionals." },
+  { title: "Career Support", description: "Resume, interviews, and placement." },
+];
+
+const DEFAULT_INTRO_PARAGRAPHS = [
+  "We help students and professionals move from confusion to clarity with expert guidance and practical learning.",
+  "Our programs are designed around real industry demands, focusing on practical skills, hands-on projects, and job-ready training. Everything we offer is aligned toward meaningful career growth and real placement outcomes.",
+];
 
 const PathSelectionCard = ({ title, description }: PathSelectionContent) => {
   return (
@@ -24,25 +37,23 @@ const PathSelectionCard = ({ title, description }: PathSelectionContent) => {
   );
 };
 
-const HomePathSelectionSection = () => {
-  const pathSelectionContent: PathSelectionContent[] = [
-    {
-      title: "Industry-Led Mentorship",
-      description: "Learn directly from professionals.",
-    },
-    {
-      title: "Hands-On Projects",
-      description: "Work on real-world problems.",
-    },
-    {
-      title: "Internship Opportunities",
-      description: "Learn directly from professionals.",
-    },
-    {
-      title: "Career Support",
-      description: "Resume, interviews, and placement.",
-    },
-  ];
+const HomePathSelectionSection = ({
+  settings,
+}: {
+  settings?: HomePathSelectionSectionSettings;
+}) => {
+  const valueProps =
+    settings?.valueProps && settings.valueProps.length > 0
+      ? settings.valueProps
+      : DEFAULT_VALUE_PROPS;
+  const introParagraphs =
+    settings?.introParagraphs && settings.introParagraphs.length > 0
+      ? settings.introParagraphs
+      : DEFAULT_INTRO_PARAGRAPHS;
+  const eyebrow =
+    settings?.eyebrow || "It\u2019s Time to Choose the Right Path.";
+  const headingHighlight =
+    settings?.headingHighlight || "One Decision.";
 
   return (
     <section id="home-path-selection" className="w-full relative">
@@ -65,27 +76,25 @@ const HomePathSelectionSection = () => {
           </div>
           <div className="content-body flex flex-col gap-6">
             <h3 className="text-base lg:text-2xl font-semibold capitalize">
-              It’s Time to Choose the Right Path.
+              {eyebrow}
             </h3>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
               <div className="col-span-1 flex flex-col gap-6">
                 <h2 className="text-2xl lg:text-4xl font-extrabold text-text-primary capitalize">
                   Your Transformation Starts With{" "}
-                  <span className="text-primary">One Decision.</span>
+                  <span className="text-primary">{headingHighlight}</span>
                 </h2>
-                <p className="text-sm lg:text-base font-semibold text-text-secondary">
-                  We help students and professionals move from confusion to
-                  clarity with expert guidance and practical learning.
-                </p>
-                <p className="text-sm lg:text-base font-semibold text-text-secondary">
-                  Our programs are designed around real industry demands,
-                  focusing on practical skills, hands-on projects, and job-ready
-                  training. Everything we offer is aligned toward meaningful
-                  career growth and real placement outcomes.
-                </p>
+                {introParagraphs.map((para, i) => (
+                  <p
+                    key={i}
+                    className="text-sm lg:text-base font-semibold text-text-secondary"
+                  >
+                    {para}
+                  </p>
+                ))}
               </div>
               <div className="col-span-1 flex flex-col gap-4 items-center justify-center">
-                {pathSelectionContent.map((item, index) => (
+                {valueProps.map((item, index) => (
                   <PathSelectionCard key={index} {...item} />
                 ))}
               </div>

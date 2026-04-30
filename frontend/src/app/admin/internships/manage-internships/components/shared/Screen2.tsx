@@ -32,9 +32,44 @@ const defaultBatch = () => ({
   isActive: true,
   plan: createDefaultInternshipBatchPlan(),
   entranceExamTemplateId: null as string | null,
+  entranceExamStartAt: "",
+  entranceExamEndAt: "",
   certificationExamTemplateId: null as string | null,
   taskTemplateIds: [] as string[],
 });
+
+/** Form stores ISO strings; `datetime-local` shows the same instant as UTC clock components. */
+function isoUtcToDatetimeLocal(iso: string): string {
+  if (!iso?.trim()) return "";
+  const t = new Date(iso.trim());
+  if (Number.isNaN(t.getTime())) return "";
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${t.getUTCFullYear()}-${p(t.getUTCMonth() + 1)}-${p(t.getUTCDate())}T${p(t.getUTCHours())}:${p(t.getUTCMinutes())}`;
+}
+
+function datetimeLocalUtcToIso(localValue: string): string {
+  if (!localValue?.trim()) return "";
+  const [dPart, tPart] = localValue.split("T");
+  if (!dPart || !tPart) return "";
+  const [y, mo, da] = dPart.split("-").map(Number);
+  const [h, mi] = tPart.split(":").map(Number);
+  if ([y, mo, da, h, mi].some((n) => Number.isNaN(n))) return "";
+  return new Date(Date.UTC(y, mo - 1, da, h, mi, 0, 0)).toISOString();
+}
+
+function formatShortUtc(iso: string): string {
+  if (!iso?.trim()) return "";
+  const t = new Date(iso.trim());
+  if (Number.isNaN(t.getTime())) return iso;
+  return t.toLocaleString("en-GB", {
+    timeZone: "UTC",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 const discountTypeOptions = ["Percentage", "Fixed Amount"];
 
@@ -174,9 +209,12 @@ const Screen2 = () => {
           </p>
           <p className="text-xs text-gray-600">
             Batches are saved on this internship. Give each batch a name,
-            application deadline, and internship start date. Set exam window,
-            results publication time, and optional per-attempt duration on each
-            linked exam template.
+            application deadline, and internship start date.{" "}
+            <span className="font-medium text-gray-800">
+              Entrance exam start and end are set per batch here (Screen 2),
+              after you pick an entrance template — expand the batch to see them.
+            </span>{" "}
+            Certification timing is computed per learner from their program length.
           </p>
           {batchesRootError && (
             <p className="text-red-500 text-sm">{batchesRootError}</p>
@@ -275,6 +313,38 @@ const Screen2 = () => {
                               <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-blue-100 text-blue-700 border border-blue-200">
                                 Accepting Enrollments
                               </span>
+                            )}
+                          </div>
+
+                          <div className="mt-3 rounded-lg border border-dashed border-gray-200 bg-gray-50/80 px-3 py-2">
+                            <p className="text-xs font-semibold text-gray-700">
+                              Entrance exam window (this cohort)
+                            </p>
+                            {batchData?.entranceExamTemplateId ? (
+                              <p className="text-xs text-gray-600 mt-1">
+                                {batchData.entranceExamStartAt?.trim() &&
+                                batchData.entranceExamEndAt?.trim() ? (
+                                  <>
+                                    <span className="text-gray-500">UTC:</span>{" "}
+                                    {formatShortUtc(batchData.entranceExamStartAt)}{" "}
+                                    → {formatShortUtc(batchData.entranceExamEndAt)}
+                                  </>
+                                ) : (
+                                  <>
+                                    <span className="text-amber-800">
+                                      Not scheduled yet.
+                                    </span>{" "}
+                                    Expand this batch and set window opens/closes
+                                    (UTC) under the entrance template.
+                                  </>
+                                )}
+                              </p>
+                            ) : (
+                              <p className="text-xs text-gray-600 mt-1">
+                                No entrance template linked. Expand the batch to
+                                choose a template, then set when the exam opens
+                                and closes (UTC).
+                              </p>
                             )}
                           </div>
                         </div>
@@ -467,6 +537,64 @@ const Screen2 = () => {
 
                       <div className="rounded-xl border border-gray-200 bg-white p-4 flex flex-col gap-4">
                         <BatchExamTemplatesSelect batchIndex={index} examType="entrance" />
+                        {batchesData?.[index]?.entranceExamTemplateId ? (
+                          <div className="flex flex-col gap-3 border-t border-gray-100 pt-3">
+                            <p className="text-xs font-medium text-gray-800">
+                              When can learners take this cohort&apos;s entrance
+                              exam?
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              Times are stored and enforced in{" "}
+                              <span className="font-medium">UTC</span> (server
+                              clock). Pick date and time below as UTC.
+                            </p>
+                            <Controller
+                              name={`batches.${index}.entranceExamStartAt`}
+                              control={control}
+                              render={({ field: f }) => (
+                                <Input
+                                  label="Window opens (UTC)"
+                                  type="datetime-local"
+                                  value={isoUtcToDatetimeLocal(f.value ?? "")}
+                                  onChange={(e) => {
+                                    const iso = datetimeLocalUtcToIso(
+                                      e.target.value,
+                                    );
+                                    f.onChange(iso || "");
+                                  }}
+                                  onBlur={f.onBlur}
+                                  name={f.name}
+                                />
+                              )}
+                            />
+                            <Controller
+                              name={`batches.${index}.entranceExamEndAt`}
+                              control={control}
+                              render={({ field: f }) => (
+                                <Input
+                                  label="Window closes (UTC)"
+                                  type="datetime-local"
+                                  value={isoUtcToDatetimeLocal(f.value ?? "")}
+                                  onChange={(e) => {
+                                    const iso = datetimeLocalUtcToIso(
+                                      e.target.value,
+                                    );
+                                    f.onChange(iso || "");
+                                  }}
+                                  onBlur={f.onBlur}
+                                  name={f.name}
+                                />
+                              )}
+                            />
+                          </div>
+                        ) : (
+                          <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50/60 px-3 py-2 text-xs text-gray-600">
+                            Select an{" "}
+                            <span className="font-medium">entrance exam template</span>{" "}
+                            above to enable start and end date &amp; time for this
+                            cohort.
+                          </div>
+                        )}
                         <BatchExamTemplatesSelect batchIndex={index} examType="certification" />
                         <p className="text-xs text-gray-500">
                           One entrance and one certification exam template per batch.
@@ -474,13 +602,11 @@ const Screen2 = () => {
                         </p>
                         <p className="text-xs text-amber-950/90 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5 leading-relaxed">
                           <span className="font-semibold">
-                            Certification must happen before learners finish.
+                            Certification timing is per learner.
                           </span>{" "}
-                          There is no fixed internship end date—completion is when you mark a
-                          learner or batch complete. Once an enrollment is{" "}
-                          <span className="font-medium">Completed</span>, they can no longer use
-                          certification flows. Set exam windows in the template so learners sit the
-                          certification exam while still enrolled and active.
+                          The certification template is shared; each learner&apos;s exam day is the
+                          last UTC calendar day of their selected program length from cohort start.
+                          Entrance timing is the batch window above (UTC).
                         </p>
                       </div>
                     </div>

@@ -1,9 +1,9 @@
 import InstructorCarousel from "@/app/(pages)/courses/[slug]/components/InstructorCarousel";
 import { Instructor } from "@/types";
 import { Icon } from "@iconify/react";
+import type { HomeFutureManagerSectionSettings } from "@/types/home-page-settings";
 
-const HomeFutureManagerSection = () => {
-  const instructors: Partial<Instructor>[] = [
+const DEFAULT_INSTRUCTORS: Partial<Instructor>[] = [
     {
       firstName: "John",
       lastName: "Doe",
@@ -34,7 +34,20 @@ const HomeFutureManagerSection = () => {
       industry: "Banking & Financial Services",
       bio: "Specializes in leading high-impact projects, team coordination, and delivering industry-ready training.",
     },
-  ];
+];
+
+const HomeFutureManagerSection = ({
+  settings,
+}: {
+  settings?: HomeFutureManagerSectionSettings;
+}) => {
+  const instructors: Partial<Instructor>[] =
+    settings?.instructors && settings.instructors.length > 0
+      ? settings.instructors
+      : DEFAULT_INSTRUCTORS;
+  const eyebrow = settings?.eyebrow || "Know Your Future Managers";
+  const headingLearn = settings?.headingLearn || "Learn";
+  const headingHire = settings?.headingHire || "From The People Who Hire.";
 
   return (
     <section

@@ -15,9 +15,6 @@ const internshipExamSchema = new mongoose.Schema(
     ],
     totalScore: { type: Number, required: true, default: 0, min: 0 },
     thresholdScore: { type: Number, min: 0 },
-    /** Wall-clock exam window. */
-    examStartAt: { type: Date },
-    examEndAt: { type: Date },
     /** When results are published for this exam. Required. */
     examResultAt: { type: Date, required: true },
     isActive: { type: Boolean, default: true },

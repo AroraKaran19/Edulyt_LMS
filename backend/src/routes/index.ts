@@ -30,6 +30,7 @@ import internshipEnrollmentRoutes from "./internshipEnrollment.routes";
 import partnerCollegeRoutes from "./partnerCollege.routes";
 import questionCategoryRoutes from "./questionCategory.routes";
 import internshipVoucherRoutes from "./internshipVoucher.routes";
+import homePageSettingsRoutes from "./homePageSettings.routes";
 
 export {
   authRoutes,
@@ -64,4 +65,5 @@ export {
   partnerCollegeRoutes,
   questionCategoryRoutes,
   internshipVoucherRoutes,
+  homePageSettingsRoutes,
 };

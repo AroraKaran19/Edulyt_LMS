@@ -4,9 +4,9 @@ import type { InternshipQuestionResponse } from "./internship-question";
 // ─── Exam template ────────────────────────────────────────────────────────────
 
 /**
- * Reusable **exam template** — not tied to a single internship.
- * Scheduling uses explicit wall-clock dates (`examStartAt`, `examEndAt`), NOT
- * relative unlock/due days (those are only for tasks). `examResultAt` is required.
+ * Reusable **exam template**. Exam **windows** are not stored here: entrance
+ * windows live on `InternshipBatches` (`entranceExamStartAt` / `entranceExamEndAt`);
+ * certification windows are computed per learner. `examResultAt` is required.
  */
 export type ExamType = "entrance" | "certification";
 
@@ -27,13 +27,6 @@ export interface InternshipExam {
    * Leave undefined for post-enrollment assessments.
    */
   thresholdScore?: number;
-
-  /**
-   * Optional wall-clock window for this template (full date-time).
-   * When both are set, `examEndAt` must be after `examStartAt`.
-   */
-  examStartAt?: Date;
-  examEndAt?: Date;
 
   /** When results are published for this exam. Required. */
   examResultAt: Date;
@@ -70,8 +63,6 @@ export type InternshipExamTemplateDetail = {
   questions: InternshipExamQuestionSummary[];
   totalScore: number;
   thresholdScore?: number;
-  examStartAt?: string;
-  examEndAt?: string;
   examResultAt: string;
   isActive: boolean;
   createdBy: {

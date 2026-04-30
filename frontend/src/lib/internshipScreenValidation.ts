@@ -45,6 +45,7 @@ export function getInternshipScreenTriggerFields(
         "thumbnail",
         "brochure",
         "jobDescription",
+        "whatsappGroupLink",
         "certificationThreshold",
       ];
       const hl = context?.headerList ?? [];

@@ -107,6 +107,17 @@ const internshipEnrollmentSchema = new mongoose.Schema(
     },
 
     /**
+     * Program length chosen at registration (`internshipDuration` in applicationAnswers), in months.
+     * Drives per-learner certification exam day (last UTC day of the program).
+     */
+    programDurationMonths: {
+      type: Number,
+      min: 1,
+      max: 120,
+      default: undefined,
+    },
+
+    /**
      * Snapshot of the public internship enroll form at submission time (JSON).
      * Used by admins via the enrollment detail → registration modal.
      */

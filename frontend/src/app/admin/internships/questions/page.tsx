@@ -8,7 +8,7 @@ import { ENDPOINTS } from "@/constants/endpoints";
 import Select from "@/components/ui/inputs/Select";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
-import QuestionCategoryInputWithManagement from "@/components/ui/inputs/QuestionCategoryInputWithManagement";
+import { QUESTION_CATEGORY_OPTIONS } from "@/constants/questionCategories";
 import InternshipAdminListShell from "../components/InternshipAdminListShell";
 import QuestionUpsertModal from "./components/QuestionUpsertModal";
 import QuestionDetailModal from "./components/QuestionDetailModal";
@@ -21,6 +21,7 @@ type QuestionRow = {
   usageType: string;
   score: number;
   isActive: boolean;
+  category?: string | null;
   updatedAt?: string;
 };
 
@@ -39,7 +40,7 @@ function formatDate(iso?: string) {
   }
 }
 
-const COL_SPAN = 7;
+const COL_SPAN = 8;
 
 export default function InternshipQuestionsAdminPage() {
   const [questions, setQuestions] = useState<QuestionRow[]>([]);
@@ -49,7 +50,7 @@ export default function InternshipQuestionsAdminPage() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
-  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
+  const [categoryFilter, setCategoryFilter] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -82,7 +83,7 @@ export default function InternshipQuestionsAdminPage() {
       if (typeFilter === "mcq" || typeFilter === "file_upload") {
         params.type = typeFilter;
       }
-      if (categoryFilter) params.categoryId = categoryFilter;
+      if (categoryFilter) params.category = categoryFilter;
 
       const res = await apiClient.get(ENDPOINTS.internshipQuestions.adminList, {
         params,
@@ -108,7 +109,9 @@ export default function InternshipQuestionsAdminPage() {
   }, [fetchQuestions]);
 
   const hasActiveFilters =
-    Boolean(debouncedSearch) || typeFilter !== "all" || Boolean(categoryFilter);
+    Boolean(debouncedSearch) ||
+    typeFilter !== "all" ||
+    Boolean(categoryFilter.trim());
 
   const upsertOpen = createOpen || !!editId;
   const upsertMode = editId ? "edit" : "create";
@@ -160,15 +163,19 @@ export default function InternshipQuestionsAdminPage() {
               />
             </div>
             <div className="sm:min-w-[200px]">
-              <QuestionCategoryInputWithManagement
-                label=""
+              <Select
+                searchable
+                searchPlaceholder="Search categories…"
+                options={[
+                  { value: "", label: "All categories" },
+                  ...QUESTION_CATEGORY_OPTIONS,
+                ]}
                 value={categoryFilter}
-                onChange={(id) => {
-                  setCategoryFilter(id);
+                onChange={(val) => {
+                  setCategoryFilter(val);
                   setPage(1);
                 }}
-                placeholder="All categories"
-                compact
+                placeholder="Category"
               />
             </div>
           </div>
@@ -183,6 +190,9 @@ export default function InternshipQuestionsAdminPage() {
                 </th>
                 <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase whitespace-nowrap">
                   Type
+                </th>
+                <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase whitespace-nowrap">
+                  Category
                 </th>
                 <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase whitespace-nowrap">
                   Usage
@@ -249,6 +259,9 @@ export default function InternshipQuestionsAdminPage() {
                       <span className="uppercase text-xs font-semibold text-gray-600">
                         {q.type}
                       </span>
+                    </td>
+                    <td className="px-4 sm:px-6 py-4 text-sm text-gray-600 whitespace-nowrap">
+                      {q.category?.trim() ? q.category : "—"}
                     </td>
                     <td className="px-4 sm:px-6 py-4 text-sm text-gray-600 capitalize whitespace-nowrap">
                       {q.usageType}

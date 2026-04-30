@@ -95,7 +95,7 @@ export default function AdminPointsSettingsPage() {
       <Container
         icon={IndianRupee}
         title="Points values (INR)"
-        description="How many Indian rupees each point type represents (for display and reporting). This does not change how points are earned."
+        description="Prices used at checkout when learners purchase points. Course success points use the first rate; internship success points use the second — for example if internship points are ₹1 each, buying 120 points to reach a certification threshold of 120 costs ₹120 (before payment gateway)."
         className="w-full border-stone-200 shadow-sm"
         classNameBody="flex flex-col gap-6"
       >
@@ -122,7 +122,9 @@ export default function AdminPointsSettingsPage() {
               1 internship success point = ? ₹
             </label>
             <p className="text-xs text-stone-500">
-              Internship enrollment success points (tasks, certification).
+              Used when enrolled learners buy internship success points (Paytm) to meet the
+              program’s certification threshold. Total = points × this rate (e.g. 120 points ×
+              ₹1 = ₹120).
             </p>
             <Input
               type="number"

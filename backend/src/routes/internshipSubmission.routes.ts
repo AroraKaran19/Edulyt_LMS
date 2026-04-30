@@ -9,6 +9,7 @@ import {
   saveFileAnswerController,
   submitController,
   reviewFileResponseController,
+  finalizeCertificationReviewController,
   listSubmissionsAdminController,
 } from "../controllers/internshipSubmission.controller";
 
@@ -24,6 +25,16 @@ router.get("/admin", verifyAdmin, listSubmissionsAdminController);
 
 /** GET /api/internship-submissions/admin/:submissionId — full detail for admin */
 router.get("/admin/:submissionId", verifyAdmin, getSubmissionAdminController);
+
+/**
+ * POST /api/internship-submissions/admin/:submissionId/finalize-certification
+ * Required final step for certification exam submissions (MCQ-only or after file scoring).
+ */
+router.post(
+  "/admin/:submissionId/finalize-certification",
+  verifyAdmin,
+  finalizeCertificationReviewController,
+);
 
 /** GET /api/internship-submissions/:submissionId */
 router.get("/:submissionId", getSubmissionController);

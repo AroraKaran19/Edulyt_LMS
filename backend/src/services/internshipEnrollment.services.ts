@@ -6,6 +6,11 @@ import { InternshipSubmissionModel } from "../models/internshipSubmission.schema
 import { AppError } from "../middlewares/error.middleware";
 import { isApplicationWindowOpenIst } from "../utils/applicationWindow";
 import { getPointsSettings } from "./pointsSettings.services";
+import {
+  computeCertificationExamWindowUtc,
+  isInstantWithinWindowUtc,
+  parseProgramDurationMonthsFromAnswers,
+} from "../lib/certificationExamSchedule";
 
 function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -80,12 +85,18 @@ export type InternshipEnrollmentListRow = {
   enrolledAt?: string;
   createdAt?: string;
   updatedAt?: string;
-  /** ISO string — when the entrance exam window opens (from the batch's exam template). */
+  /** ISO string — entrance exam window opens (cohort batch, UTC). */
   examStartAt?: string;
-  /** ISO string — when the entrance exam window closes. */
+  /** ISO string — entrance exam window closes (cohort batch, UTC). */
   examEndAt?: string;
   /** ISO string — when the exam result will be announced. */
   examResultAt?: string;
+  /**
+   * Per-learner certification exam day window (UTC), when the cohort batch assigns a
+   * certification template. Derived from cohort start + program duration months.
+   */
+  certificationExamStartAt?: string;
+  certificationExamEndAt?: string;
   /** Snapshot of public enroll form fields at submission (admin + detail API). */
   applicationAnswers?: Record<string, unknown>;
   /** ISO — when {@link applicationAnswers} was stored. */
@@ -464,12 +475,14 @@ async function completeMeritRegistrationForExistingRow(
   const examStatuses = ["exam_registered", "exam_attempted"] as string[];
   if (examStatuses.includes(String(existing.status))) {
     if (answersDoc) {
+      const months = parseProgramDurationMonthsFromAnswers(answersDoc);
       await InternshipEnrollmentModel.updateOne(
         { _id: existing._id },
         {
           $set: {
             applicationAnswers: answersDoc,
             applicationSubmittedAt: new Date(),
+            ...(months != null ? { programDurationMonths: months } : {}),
           },
         },
       );
@@ -495,6 +508,8 @@ async function completePaidSeatRegistrationForExistingDoc(
     if (answersDoc) {
       existing.set("applicationAnswers", answersDoc);
       existing.set("applicationSubmittedAt", new Date());
+      const months = parseProgramDurationMonthsFromAnswers(answersDoc);
+      if (months != null) existing.set("programDurationMonths", months);
       await existing.save();
     }
     return { enrollmentId: String(existing._id) };
@@ -511,6 +526,8 @@ async function completePaidSeatRegistrationForExistingDoc(
     if (answersDoc) {
       existing.set("applicationAnswers", answersDoc);
       existing.set("applicationSubmittedAt", new Date());
+      const months = parseProgramDurationMonthsFromAnswers(answersDoc);
+      if (months != null) existing.set("programDurationMonths", months);
     }
     await existing.save();
     return { enrollmentId: String(existing._id) };
@@ -572,6 +589,9 @@ export async function registerForExam(
   }
 
   try {
+    const durationMonths = answersDoc
+      ? parseProgramDurationMonthsFromAnswers(answersDoc)
+      : undefined;
     const enrollment = await InternshipEnrollmentModel.create({
       internship: new mongoose.Types.ObjectId(internshipId),
       user: userId,
@@ -594,6 +614,9 @@ export async function registerForExam(
         ? {
             applicationAnswers: answersDoc,
             applicationSubmittedAt: new Date(),
+            ...(durationMonths != null
+              ? { programDurationMonths: durationMonths }
+              : {}),
           }
         : {}),
     });
@@ -664,6 +687,9 @@ export async function registerForPaidSeat(
   }
 
   try {
+    const durationMonthsPaid = answersDoc
+      ? parseProgramDurationMonthsFromAnswers(answersDoc)
+      : undefined;
     const enrollment = await InternshipEnrollmentModel.create({
       internship: new mongoose.Types.ObjectId(internshipId),
       user: userId,
@@ -686,6 +712,9 @@ export async function registerForPaidSeat(
         ? {
             applicationAnswers: answersDoc,
             applicationSubmittedAt: new Date(),
+            ...(durationMonthsPaid != null
+              ? { programDurationMonths: durationMonthsPaid }
+              : {}),
           }
         : {}),
     });
@@ -747,7 +776,8 @@ export async function listMyInternshipEnrollments(
 
   const totalPages = Math.max(1, Math.ceil(total / l));
 
-  // For merit-path rows (exam_registered / exam_attempted / in_merit_pool), fetch exam window dates.
+  // For merit-path rows (exam_registered / exam_attempted / in_merit_pool), fetch
+  // entrance window from the internship batch (UTC) and result time from the template.
   const needsExamWindow = new Set(["exam_registered", "exam_attempted", "in_merit_pool"]);
   const examWindowById = new Map<
     string,
@@ -759,55 +789,89 @@ export async function listMyInternshipEnrollments(
   );
 
   if (examRows.length > 0) {
-    // Group by internshipId so we fetch each internship once.
-    const byInternship = new Map<
-      string,
-      { batchId: string; docIds: string[] }[]
-    >();
+    const insIdSet = new Set<string>();
     for (const d of examRows) {
       const insId = String(
         (d.internship as { _id?: unknown })?._id ?? d.internship ?? "",
       );
-      const batchId = String(
-        (d.batchSnapshot as { batchId?: string } | undefined)?.batchId ?? "",
-      );
-      if (!insId || !batchId) continue;
-      if (!byInternship.has(insId)) byInternship.set(insId, []);
-      byInternship.get(insId)!.push({ batchId, docIds: [String(d._id)] });
+      if (insId && mongoose.Types.ObjectId.isValid(insId)) insIdSet.add(insId);
     }
 
-    const insIds = [...byInternship.keys()].filter((id) =>
-      mongoose.Types.ObjectId.isValid(id),
-    );
+    const insIds = [...insIdSet];
     if (insIds.length > 0) {
       const insDocs = await InternshipModel.find({
         _id: { $in: insIds.map((id) => new mongoose.Types.ObjectId(id)) },
       })
-        .select("batches._id batches.entranceExamTemplateId")
+        .select(
+          "batches._id batches.entranceExamTemplateId batches.entranceExamStartAt batches.entranceExamEndAt",
+        )
         .lean();
 
-      // Build map: internshipId → batchId → entranceExamTemplateId
-      const examIdByBatch = new Map<string, string>();
+      type BatchWin = {
+        examStartAt?: string;
+        examEndAt?: string;
+        templateId?: string;
+      };
+      const windowByInsBatch = new Map<string, BatchWin>();
+      const templateIds = new Set<string>();
+
       for (const ins of insDocs) {
         const insId = String((ins as { _id: unknown })._id);
         const batches =
           (
             ins as {
-              batches?: { _id?: unknown; entranceExamTemplateId?: unknown }[];
+              batches?: {
+                _id?: unknown;
+                entranceExamTemplateId?: unknown;
+                entranceExamStartAt?: Date;
+                entranceExamEndAt?: Date;
+              }[];
             }
           ).batches ?? [];
         for (const b of batches) {
-          if (b.entranceExamTemplateId) {
-            examIdByBatch.set(
-              `${insId}::${String(b._id)}`,
-              String(b.entranceExamTemplateId),
-            );
+          const bid = String(b._id);
+          const tid =
+            b.entranceExamTemplateId != null
+              ? String(b.entranceExamTemplateId)
+              : undefined;
+          if (tid) templateIds.add(tid);
+          const s = b.entranceExamStartAt;
+          const e = b.entranceExamEndAt;
+          windowByInsBatch.set(`${insId}::${bid}`, {
+            examStartAt:
+              s instanceof Date && !Number.isNaN(s.getTime())
+                ? s.toISOString()
+                : undefined,
+            examEndAt:
+              e instanceof Date && !Number.isNaN(e.getTime())
+                ? e.toISOString()
+                : undefined,
+            templateId: tid,
+          });
+        }
+      }
+
+      const resultAtByTemplate = new Map<string, string>();
+      if (templateIds.size > 0) {
+        const examDocs = await InternshipExamModel.find({
+          _id: {
+            $in: [...templateIds].map(
+              (id) => new mongoose.Types.ObjectId(id),
+            ),
+          },
+        })
+          .select("examResultAt")
+          .lean();
+
+        for (const ex of examDocs) {
+          const eid = String((ex as { _id: unknown })._id);
+          const r = (ex as { examResultAt?: Date }).examResultAt;
+          if (r instanceof Date && !Number.isNaN(r.getTime())) {
+            resultAtByTemplate.set(eid, r.toISOString());
           }
         }
       }
 
-      // Collect unique exam template ids
-      const examTemplateIds = new Set<string>();
       for (const d of examRows) {
         const insId = String(
           (d.internship as { _id?: unknown })?._id ?? d.internship ?? "",
@@ -815,62 +879,165 @@ export async function listMyInternshipEnrollments(
         const batchId = String(
           (d.batchSnapshot as { batchId?: string } | undefined)?.batchId ?? "",
         );
-        const tid = examIdByBatch.get(`${insId}::${batchId}`);
-        if (tid) examTemplateIds.add(tid);
+        const win = windowByInsBatch.get(`${insId}::${batchId}`);
+        if (!win) continue;
+        const examResultAt = win.templateId
+          ? resultAtByTemplate.get(win.templateId)
+          : undefined;
+        examWindowById.set(String(d._id), {
+          ...(win.examStartAt ? { examStartAt: win.examStartAt } : {}),
+          ...(win.examEndAt ? { examEndAt: win.examEndAt } : {}),
+          ...(examResultAt ? { examResultAt } : {}),
+        });
+      }
+    }
+  }
+
+  // Certification exam window (per learner) — same rule as createInternshipSubmission
+  const certWindowByEnrollmentId = new Map<
+    string,
+    { certificationExamStartAt: string; certificationExamEndAt: string }
+  >();
+  const CERT_ACTIVE_STATUSES = new Set(["enrolled", "completed", "paused"]);
+  const certCandidates = (raw as Record<string, unknown>[]).filter((d) => {
+    const st = String(d.status ?? "");
+    return CERT_ACTIVE_STATUSES.has(st) && d.internship != null && d.batchSnapshot;
+  });
+
+  if (certCandidates.length > 0) {
+    const insIdSet = new Set<string>();
+    for (const d of certCandidates) {
+      const rawIns = d.internship as unknown;
+      const insId = String(
+        rawIns &&
+          typeof rawIns === "object" &&
+          (rawIns as { _id?: unknown })._id != null
+          ? (rawIns as { _id: unknown })._id
+          : rawIns ?? "",
+      );
+      if (insId && mongoose.Types.ObjectId.isValid(insId)) insIdSet.add(insId);
+    }
+    const insIds = [...insIdSet];
+    if (insIds.length > 0) {
+      const insDocs = await InternshipModel.find({
+        _id: { $in: insIds.map((id) => new mongoose.Types.ObjectId(id)) },
+      })
+        .select("batches._id batches.certificationExamTemplateId")
+        .lean();
+
+      const hasCertByInsBatch = new Map<string, boolean>();
+      for (const ins of insDocs) {
+        const iid = String((ins as { _id: unknown })._id);
+        const batches =
+          (
+            ins as {
+              batches?: {
+                _id?: unknown;
+                certificationExamTemplateId?: unknown;
+              }[];
+            }
+          ).batches ?? [];
+        for (const b of batches) {
+          hasCertByInsBatch.set(
+            `${iid}::${String(b._id)}`,
+            b.certificationExamTemplateId != null,
+          );
+        }
       }
 
-      if (examTemplateIds.size > 0) {
-        const examDocs = await InternshipExamModel.find({
-          _id: {
-            $in: [...examTemplateIds].map(
-              (id) => new mongoose.Types.ObjectId(id),
-            ),
-          },
+      const needAnswersIds: mongoose.Types.ObjectId[] = [];
+      for (const d of certCandidates) {
+        const rawIns = d.internship as unknown;
+        const insId = String(
+          rawIns &&
+            typeof rawIns === "object" &&
+            (rawIns as { _id?: unknown })._id != null
+            ? (rawIns as { _id: unknown })._id
+            : rawIns ?? "",
+        );
+        const batchId = String(
+          (d.batchSnapshot as { batchId?: string })?.batchId ?? "",
+        );
+        if (!hasCertByInsBatch.get(`${insId}::${batchId}`)) continue;
+
+        const monthsStored = (d as { programDurationMonths?: unknown })
+          .programDurationMonths;
+        const monthsOk =
+          typeof monthsStored === "number" &&
+          monthsStored >= 1 &&
+          monthsStored <= 120;
+        if (!monthsOk)
+          needAnswersIds.push(new mongoose.Types.ObjectId(String(d._id)));
+      }
+
+      const answersByEnrollment = new Map<string, Record<string, unknown>>();
+      if (needAnswersIds.length > 0) {
+        const answerDocs = await InternshipEnrollmentModel.find({
+          _id: { $in: needAnswersIds },
         })
-          .select("examStartAt examEndAt examResultAt")
+          .select("applicationAnswers")
           .lean();
-
-        const windowByExamId = new Map<
-          string,
-          { examStartAt?: string; examEndAt?: string; examResultAt?: string }
-        >();
-        for (const e of examDocs) {
-          const eid = String((e as { _id: unknown })._id);
-          const eAny = e as {
-            examStartAt?: Date;
-            examEndAt?: Date;
-            examResultAt?: Date;
-          };
-          windowByExamId.set(eid, {
-            examStartAt:
-              eAny.examStartAt instanceof Date
-                ? eAny.examStartAt.toISOString()
-                : undefined,
-            examEndAt:
-              eAny.examEndAt instanceof Date
-                ? eAny.examEndAt.toISOString()
-                : undefined,
-            examResultAt:
-              eAny.examResultAt instanceof Date
-                ? eAny.examResultAt.toISOString()
-                : undefined,
-          });
+        for (const ad of answerDocs) {
+          const aid = String((ad as { _id: unknown })._id);
+          const aa = (ad as { applicationAnswers?: unknown }).applicationAnswers;
+          if (aa && typeof aa === "object" && !Array.isArray(aa))
+            answersByEnrollment.set(aid, aa as Record<string, unknown>);
         }
+      }
 
-        for (const d of examRows) {
-          const insId = String(
-            (d.internship as { _id?: unknown })?._id ?? d.internship ?? "",
+      for (const d of certCandidates) {
+        const eid = String(d._id);
+        const rawIns = d.internship as unknown;
+        const insId = String(
+          rawIns &&
+            typeof rawIns === "object" &&
+            (rawIns as { _id?: unknown })._id != null
+            ? (rawIns as { _id: unknown })._id
+            : rawIns ?? "",
+        );
+        const batchId = String(
+          (d.batchSnapshot as { batchId?: string })?.batchId ?? "",
+        );
+        if (!hasCertByInsBatch.get(`${insId}::${batchId}`)) continue;
+
+        let months: number | undefined;
+        const monthsStored = (d as { programDurationMonths?: unknown })
+          .programDurationMonths;
+        if (
+          typeof monthsStored === "number" &&
+          monthsStored >= 1 &&
+          monthsStored <= 120
+        ) {
+          months = monthsStored;
+        } else {
+          months = parseProgramDurationMonthsFromAnswers(
+            answersByEnrollment.get(eid) ?? null,
           );
-          const batchId = String(
-            (d.batchSnapshot as { batchId?: string } | undefined)?.batchId ??
-              "",
-          );
-          const tid = examIdByBatch.get(`${insId}::${batchId}`);
-          if (tid) {
-            const win = windowByExamId.get(tid);
-            if (win) examWindowById.set(String(d._id), win);
-          }
         }
+        if (months == null || months < 1 || months > 120) continue;
+
+        const bs = d.batchSnapshot as {
+          internshipStartDate?: Date | string;
+        };
+        const startRaw = bs?.internshipStartDate;
+        const progStart =
+          startRaw instanceof Date
+            ? startRaw
+            : startRaw
+              ? new Date(startRaw)
+              : null;
+        if (!progStart || Number.isNaN(progStart.getTime())) continue;
+
+        let window: { examStartAt: Date; examEndAt: Date };
+        try {
+          window = computeCertificationExamWindowUtc(progStart, months);
+        } catch {
+          continue;
+        }
+        certWindowByEnrollmentId.set(eid, {
+          certificationExamStartAt: window.examStartAt.toISOString(),
+          certificationExamEndAt: window.examEndAt.toISOString(),
+        });
       }
     }
   }
@@ -939,6 +1106,7 @@ export async function listMyInternshipEnrollments(
         ? toIso((doc as { updatedAt: unknown }).updatedAt)
         : undefined,
       ...examWindowById.get(String(doc._id)),
+      ...certWindowByEnrollmentId.get(String(doc._id)),
     };
   });
 
@@ -1007,14 +1175,21 @@ export async function getLearnerEntranceExam(
   }
 
   const internship = await InternshipModel.findById(internshipId)
-    .select("batches._id batches.entranceExamTemplateId")
+    .select(
+      "batches._id batches.entranceExamTemplateId batches.entranceExamStartAt batches.entranceExamEndAt",
+    )
     .lean();
   if (!internship) throw new AppError("Internship not found", 404);
 
   const batches =
     (
       internship as {
-        batches?: { _id?: unknown; entranceExamTemplateId?: unknown }[];
+        batches?: {
+          _id?: unknown;
+          entranceExamTemplateId?: unknown;
+          entranceExamStartAt?: Date;
+          entranceExamEndAt?: Date;
+        }[];
       }
     ).batches ?? [];
   const batch = batches.find((b) => String(b._id) === batchId);
@@ -1028,25 +1203,25 @@ export async function getLearnerEntranceExam(
     throw new AppError("Entrance exam not found or inactive", 404);
   }
 
+  const entranceStart = batch.entranceExamStartAt;
+  const entranceEnd = batch.entranceExamEndAt;
+  const now = new Date();
+  if (entranceStart && now.getTime() < entranceStart.getTime()) {
+    throw new AppError("The exam window has not opened yet", 403);
+  }
+  if (entranceEnd && now.getTime() > entranceEnd.getTime()) {
+    throw new AppError("The exam window has closed", 403);
+  }
+
   const eAny = exam as {
     title?: string;
     description?: string;
     totalScore?: number;
     thresholdScore?: number;
-    examStartAt?: Date;
-    examEndAt?: Date;
     examResultAt?: Date;
     questions?: unknown[];
     isActive?: boolean;
   };
-
-  const now = new Date();
-  if (eAny.examStartAt && now < eAny.examStartAt) {
-    throw new AppError("The exam window has not opened yet", 403);
-  }
-  if (eAny.examEndAt && now > eAny.examEndAt) {
-    throw new AppError("The exam window has closed", 403);
-  }
 
   // Fetch questions (scrub isCorrect)
   const qIds = Array.isArray(eAny.questions)
@@ -1112,11 +1287,11 @@ export async function getLearnerEntranceExam(
     thresholdScore:
       typeof eAny.thresholdScore === "number" ? eAny.thresholdScore : undefined,
     examStartAt:
-      eAny.examStartAt instanceof Date
-        ? eAny.examStartAt.toISOString()
+      entranceStart instanceof Date
+        ? entranceStart.toISOString()
         : undefined,
     examEndAt:
-      eAny.examEndAt instanceof Date ? eAny.examEndAt.toISOString() : undefined,
+      entranceEnd instanceof Date ? entranceEnd.toISOString() : undefined,
     examResultAt:
       eAny.examResultAt instanceof Date
         ? eAny.examResultAt.toISOString()
@@ -1179,6 +1354,9 @@ export async function adminUpdateEnrollmentStatus(
   }
   if (newStatus === "enrolled") {
     doc.enrolledAt = new Date();
+    const ans = doc.applicationAnswers as Record<string, unknown> | undefined;
+    const months = parseProgramDurationMonthsFromAnswers(ans ?? null);
+    if (months != null) doc.programDurationMonths = months;
   }
 
   await doc.save();
@@ -1322,6 +1500,9 @@ export async function adminApproveMeritToEnrolled(
   doc.enrolledAt = new Date();
   doc.adminActionBy = adminUserId;
   doc.adminActionAt = new Date();
+  const ans = doc.applicationAnswers as Record<string, unknown> | undefined;
+  const months = parseProgramDurationMonthsFromAnswers(ans ?? null);
+  if (months != null) doc.programDurationMonths = months;
   await doc.save();
   return getInternshipEnrollmentByIdAdmin(enrollmentId);
 }
@@ -1587,6 +1768,14 @@ export type LearnerProgramDetail = {
     internshipSuccessPoints: number;
     /** From live internship doc — min points before certification exam (0 = none). */
     certificationThreshold: number;
+    /**
+     * Points still needed to reach `certificationThreshold` (0 if already met or no gate).
+     */
+    certificationPointsShortfall?: number;
+    /**
+     * Rough INR to buy exactly the shortfall at `internshipSuccessPointPurchase.inrPerPoint`, if purchase is enabled.
+     */
+    approxInrToReachCertificationThreshold?: number;
     internshipId: string;
     batchId: string;
     internshipSnapshot?: {
@@ -1818,17 +2007,36 @@ export async function getLearnerProgramBySlug(
       ? { inrPerPoint: priceInr }
       : undefined;
 
+  const enrolledPoints =
+    typeof doc.internshipSuccessPoints === "number"
+      ? doc.internshipSuccessPoints
+      : 0;
+  const certificationPointsShortfall =
+    certificationThreshold > 0
+      ? Math.max(0, certificationThreshold - enrolledPoints)
+      : undefined;
+  const approxInrToReachCertificationThreshold =
+    certificationPointsShortfall != null &&
+    certificationPointsShortfall > 0 &&
+    typeof priceInr === "number" &&
+    priceInr > 0
+      ? Math.round(certificationPointsShortfall * priceInr * 100) / 100
+      : undefined;
+
   return {
     enrollment: {
       _id: String(doc._id),
       status: doc.status,
       enrollmentType: doc.enrollmentType ?? undefined,
       enrolledAt: toIso(doc.enrolledAt),
-      internshipSuccessPoints:
-        typeof doc.internshipSuccessPoints === "number"
-          ? doc.internshipSuccessPoints
-          : 0,
+      internshipSuccessPoints: enrolledPoints,
       certificationThreshold,
+      ...(certificationPointsShortfall != null
+        ? { certificationPointsShortfall }
+        : {}),
+      ...(approxInrToReachCertificationThreshold != null
+        ? { approxInrToReachCertificationThreshold }
+        : {}),
       internshipId: String(internship._id),
       batchId,
       internshipSnapshot: snap

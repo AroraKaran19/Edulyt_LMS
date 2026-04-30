@@ -220,22 +220,6 @@ export default function ExamDetailModal({
             </div>
             <div>
               <p className="text-xs font-semibold text-gray-500 uppercase mb-1">
-                Exam starts
-              </p>
-              <p className="text-gray-800 tabular-nums">
-                {formatDate(detail.examStartAt)}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase mb-1">
-                Exam ends
-              </p>
-              <p className="text-gray-800 tabular-nums">
-                {formatDate(detail.examEndAt)}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase mb-1">
                 Results published
               </p>
               <p className="text-gray-800 tabular-nums">

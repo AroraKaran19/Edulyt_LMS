@@ -21,7 +21,8 @@ import {
  */
 export const listInternshipQuestionsAdminController = asyncHandler(
   async (req: Request, res: Response) => {
-    const { page = 1, limit = 20, search, type, usageFor, categoryId } = req.query;
+    const { page = 1, limit = 20, search, type, usageFor, category } =
+      req.query;
     const p = Number(page);
     const l = Number(limit);
     if (p < 1 || l < 1) {
@@ -41,7 +42,7 @@ export const listInternshipQuestionsAdminController = asyncHandler(
       typeof search === "string" ? search : undefined,
       qType,
       uFor,
-      typeof categoryId === "string" ? categoryId : undefined,
+      typeof category === "string" ? category : undefined,
     );
     sendSuccessResponse(
       res,

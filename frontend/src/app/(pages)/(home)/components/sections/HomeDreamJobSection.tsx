@@ -1,14 +1,41 @@
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import { Icon } from "@iconify/react";
 import Image from "next/image";
+import Link from "next/link";
+import type { HomeDreamJobSectionSettings } from "@/types/home-page-settings";
 
-const HomeDreamJobSection = () => {
-  const dreamJobContent: string[] = [
-    "Get Placed in top companies",
-    "Earn a Higher Salary",
-    "Break Into Tech with Confidence",
-    "Accelerate Your Career Growth",
-  ];
+const DEFAULT_BULLETS = [
+  "Get Placed in top companies",
+  "Earn a Higher Salary",
+  "Break Into Tech with Confidence",
+  "Accelerate Your Career Growth",
+];
+
+const HomeDreamJobSection = ({
+  settings,
+}: {
+  settings?: HomeDreamJobSectionSettings;
+}) => {
+  const bullets =
+    settings?.bullets && settings.bullets.length > 0
+      ? settings.bullets
+      : DEFAULT_BULLETS;
+  const eyebrow = settings?.eyebrow || "Land in your Dream Job";
+  const line1 = settings?.headingLine1 || "A structured path from";
+  const highlightLearn = settings?.headingHighlightLearn || "Learning";
+  const highlightPlacement = settings?.headingHighlightPlacement || "Placement";
+  const getStartedLabel = settings?.getStartedLabel || "Get Started Now";
+  const getStartedHref = settings?.getStartedHref || "";
+  const imageSrc = settings?.imageSrc || "/home/dream_job.png";
+  const imageAlt = settings?.imageAlt || "dream job";
+
+  const button = getStartedHref ? (
+    <Link href={getStartedHref}>
+      <OrangeButton>{getStartedLabel}</OrangeButton>
+    </Link>
+  ) : (
+    <OrangeButton>{getStartedLabel}</OrangeButton>
+  );
 
   return (
     <section
@@ -21,17 +48,17 @@ const HomeDreamJobSection = () => {
         </div>
         <div className="content-body flex flex-col gap-6">
           <h3 className="text-base lg:text-2xl font-semibold capitalize">
-            Land in your Dream Job
+            {eyebrow}
           </h3>
           <h2 className="text-2xl lg:text-4xl font-extrabold text-text-primary capitalize max-w-full lg:max-w-3xl">
-            A structured path from{" "}
-            <span className="text-primary">Learning</span> to{" "}
-            <span className="text-primary">Placement</span>.
+            {line1}{" "}
+            <span className="text-primary">{highlightLearn}</span> to{" "}
+            <span className="text-primary">{highlightPlacement}</span>.
           </h2>
 
           <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-8">
             <div className="col-span-1 flex flex-col gap-5 max-w-lg">
-              {dreamJobContent.map((item, index) => (
+              {bullets.map((item, index) => (
                 <div className="w-full flex items-center gap-2.5" key={index}>
                   <div className="w-full bg-primary/10 rounded-full flex items-center gap-2.5">
                     <div className="icon-container shrink-0 size-10 bg-primary text-secondary p-2 rounded-full flex items-center justify-center">
@@ -44,13 +71,13 @@ const HomeDreamJobSection = () => {
                 </div>
               ))}
               <div className="mt-auto w-full flex items-center">
-                <OrangeButton>Get Started Now</OrangeButton>
+                {button}
               </div>
             </div>
             <div className="col-span-1">
               <Image
-                src="/home/dream_job.png"
-                alt="dream job"
+                src={imageSrc}
+                alt={imageAlt}
                 width={500}
                 height={500}
                 className="w-full h-full object-cover rounded-2xl select-none pointer-events-none mask-[linear-gradient(to_right,transparent_0%,black_32%,black_68%,transparent_100%)] [-webkit-mask-image:linear-gradient(to_right,transparent_0%,black_32%,black_68%,transparent_100%)]"

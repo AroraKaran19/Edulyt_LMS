@@ -27,8 +27,18 @@ export const getAllFAQ = asyncHandler(async (req: Request, res: Response) => {
     isAdmin
   );
 
-  if (!result || result.faqs.length === 0) {
-    sendSuccessResponse(res, [], "No FAQs found", 200);
+  if (!result) {
+    sendSuccessResponse(
+      res,
+      {
+        faqs: [],
+        total: 0,
+        page: Number(page),
+        totalPages: 0,
+      },
+      "No FAQs found",
+      200,
+    );
     return;
   }
 

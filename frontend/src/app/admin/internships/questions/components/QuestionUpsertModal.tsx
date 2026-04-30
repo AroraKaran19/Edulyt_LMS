@@ -14,7 +14,7 @@ import UploadMediaContainer from "@/components/ui/container/UploadMediaContainer
 import apiClient from "@/configs/apiConfig";
 import { ENDPOINTS } from "@/constants/endpoints";
 import { useUpload } from "@/hooks/useUpload";
-import QuestionCategoryInputWithManagement from "@/components/ui/inputs/QuestionCategoryInputWithManagement";
+import { QUESTION_CATEGORY_OPTIONS } from "@/constants/questionCategories";
 import type {
   InternshipQuestionDetail,
   QuestionType,
@@ -63,7 +63,7 @@ export default function QuestionUpsertModal({
   >(undefined);
   const [referenceS3Key, setReferenceS3Key] = useState("");
   const [options, setOptions] = useState<McqOption[]>(defaultOptions);
-  const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [category, setCategory] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
   const [loadingDetail, setLoadingDetail] = useState(false);
 
@@ -77,7 +77,7 @@ export default function QuestionUpsertModal({
     setReferenceMediaSource(undefined);
     setReferenceS3Key("");
     setOptions(defaultOptions());
-    setCategoryId(null);
+    setCategory("");
     setSubmitting(false);
     setLoadingDetail(false);
   };
@@ -154,7 +154,7 @@ export default function QuestionUpsertModal({
         setReferenceFile(ref);
         setReferenceS3Key("");
         setReferenceMediaSource(ref ? "url" : undefined);
-        setCategoryId(d.categoryId ?? null);
+        setCategory((d.category ?? "").trim());
         if (d.type === "mcq" && d.options?.length) {
           setOptions(
             d.options.map((o) => ({
@@ -219,7 +219,7 @@ export default function QuestionUpsertModal({
       usageType,
       score: scoreNum,
       isActive,
-      categoryId: categoryId ?? null,
+      category: category.trim() ? category.trim() : null,
     };
 
     if (type === "mcq") {
@@ -339,11 +339,17 @@ export default function QuestionUpsertModal({
             onChange={setIsActive}
           />
 
-          <QuestionCategoryInputWithManagement
+          <Select
             label="Category"
-            value={categoryId}
-            onChange={setCategoryId}
-            placeholder="Select or create a category"
+            searchable
+            searchPlaceholder="Search categories…"
+            options={[
+              { value: "", label: "No category" },
+              ...QUESTION_CATEGORY_OPTIONS,
+            ]}
+            value={category}
+            onChange={setCategory}
+            placeholder="Category"
           />
 
           {type === "mcq" ? (

@@ -110,6 +110,8 @@ export const ENDPOINTS = {
     adminList: "/internship-submissions/admin",
     adminById: (id: string) =>
       `/internship-submissions/admin/${encodeURIComponent(id)}`,
+    adminFinalizeCertification: (id: string) =>
+      `/internship-submissions/admin/${encodeURIComponent(id)}/finalize-certification`,
     byId: (id: string) => `/internship-submissions/${id}`,
     saveMcq: (id: string) => `/internship-submissions/${id}/answers/mcq`,
     submit: (id: string) => `/internship-submissions/${id}/submit`,
@@ -144,13 +146,9 @@ export const ENDPOINTS = {
       `/internship-enrollments/admin/${encodeURIComponent(enrollmentId)}`,
   },
 
-  // Question Category Routes
+  /** Read-only fixed list (optional; UI uses `QUESTION_CATEGORY_OPTIONS`). */
   questionCategories: {
     list: "/question-categories",
-    byId: (id: string) => `/question-categories/${encodeURIComponent(id)}`,
-    create: "/question-categories",
-    update: (id: string) => `/question-categories/${encodeURIComponent(id)}`,
-    delete: (id: string) => `/question-categories/${encodeURIComponent(id)}`,
   },
 
   // Category Routes
@@ -265,8 +263,12 @@ export const ENDPOINTS = {
     },
   },
 
+  /** Public marketing home page CMS — read-only. */
+  homePageSettings: "/home-page-settings",
+
   /** `/api/admin/*` — dashboard & global admin config */
   admin: {
     pointsSettings: "/admin/points-settings",
+    homePageSettings: "/admin/home-page-settings",
   },
 };

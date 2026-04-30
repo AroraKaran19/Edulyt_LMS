@@ -44,9 +44,19 @@ function mapLeanDocToPublicListing(
   const batches = batchesRaw.map((b) => {
     const row = b as Record<string, unknown>;
     const plan = row.plan as Record<string, unknown> | null | undefined;
+    let internshipStartDate: string | undefined;
+    const rawStart = row.internshipStartDate;
+    if (rawStart instanceof Date) {
+      internshipStartDate = rawStart.toISOString();
+    } else if (typeof rawStart === "string" && rawStart.length > 0) {
+      const d = new Date(rawStart);
+      internshipStartDate = Number.isNaN(d.getTime()) ? undefined : d.toISOString();
+    }
+
     return {
       _id: row._id != null ? String(row._id) : undefined,
       isActive: row.isActive !== false,
+      internshipStartDate,
       plan:
         plan && typeof plan === "object"
           ? {
@@ -141,10 +151,20 @@ function normalizeBatchDoc(
   }
   const batchAny = b as {
     entranceExamTemplateId?: unknown;
+    entranceExamStartAt?: unknown;
+    entranceExamEndAt?: unknown;
     certificationExamTemplateId?: unknown;
   };
   if (batchAny.entranceExamTemplateId != null) {
     row.entranceExamTemplateId = String(batchAny.entranceExamTemplateId);
+  }
+  if (batchAny.entranceExamStartAt != null) {
+    const d = new Date(batchAny.entranceExamStartAt as string | Date);
+    if (!Number.isNaN(d.getTime())) row.entranceExamStartAt = d;
+  }
+  if (batchAny.entranceExamEndAt != null) {
+    const d = new Date(batchAny.entranceExamEndAt as string | Date);
+    if (!Number.isNaN(d.getTime())) row.entranceExamEndAt = d;
   }
   if (batchAny.certificationExamTemplateId != null) {
     row.certificationExamTemplateId = String(batchAny.certificationExamTemplateId);
@@ -199,6 +219,8 @@ const toInternship = (doc: Record<string, unknown>): Internship => {
         : 0,
     brochure: String(doc.brochure ?? ""),
     jobDescription: doc.jobDescription != null ? String(doc.jobDescription) : "",
+    whatsappGroupLink:
+      doc.whatsappGroupLink != null ? String(doc.whatsappGroupLink) : "",
     mode: (doc.mode as "online" | "offline" | "hybrid") ?? "online",
     perks: Array.isArray(doc.perks) ? doc.perks : [],
     features: Array.isArray(doc.features) ? doc.features : [],
@@ -533,28 +555,21 @@ export const getInternshipEnrollPreviewService = async (
     }
   }
 
-  const examMap = new Map<
-    string,
-    { title: string; examStartAt?: Date; examEndAt?: Date; examResultAt?: Date }
-  >();
+  const examMap = new Map<string, { title: string; examResultAt?: Date }>();
   if (examIdSet.size > 0) {
     const exams = await InternshipExamModel.find({
       _id: { $in: [...examIdSet].map((id) => new mongoose.Types.ObjectId(id)) },
     })
-      .select("title examStartAt examEndAt examResultAt")
+      .select("title examResultAt")
       .lean();
     for (const e of exams) {
       const row = e as {
         _id: unknown;
         title?: string;
-        examStartAt?: Date;
-        examEndAt?: Date;
         examResultAt?: Date;
       };
       examMap.set(String(row._id), {
         title: String(row.title ?? "Entrance exam"),
-        examStartAt: row.examStartAt,
-        examEndAt: row.examEndAt,
         examResultAt: row.examResultAt,
       });
     }
@@ -591,10 +606,20 @@ export const getInternshipEnrollPreviewService = async (
     let entranceExam: InternshipEnrollPreviewEntranceExam | null = null;
     if (eid && examMap.has(eid)) {
       const ex = examMap.get(eid)!;
+      const winStart = br.entranceExamStartAt;
+      const winEnd = br.entranceExamEndAt;
+      const startIso =
+        winStart instanceof Date && !Number.isNaN(winStart.getTime())
+          ? winStart.toISOString()
+          : null;
+      const endIso =
+        winEnd instanceof Date && !Number.isNaN(winEnd.getTime())
+          ? winEnd.toISOString()
+          : null;
       entranceExam = {
         title: ex.title,
-        examStartAt: ex.examStartAt ? ex.examStartAt.toISOString() : null,
-        examEndAt: ex.examEndAt ? ex.examEndAt.toISOString() : null,
+        examStartAt: startIso,
+        examEndAt: endIso,
         examResultAt: ex.examResultAt ? ex.examResultAt.toISOString() : null,
       };
     }

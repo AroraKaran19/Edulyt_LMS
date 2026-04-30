@@ -26,6 +26,9 @@ const Navbar = () => {
   const [coursesCount, setCoursesCount] = useState<number | undefined>(
     undefined,
   );
+  const [internshipsCount, setInternshipsCount] = useState<number | undefined>(
+    undefined,
+  );
 
   useEffect(() => {
     if (!API_BASE_URL) return;
@@ -59,6 +62,31 @@ const Navbar = () => {
       }
     })();
 
+    (async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/internships?page=1&limit=1`, {
+          signal: controller.signal,
+        });
+
+        if (!res.ok) return;
+
+        const json = (await res.json()) as any;
+        const data = json?.data;
+
+        if (Array.isArray(data)) {
+          setInternshipsCount(data.length);
+          return;
+        }
+
+        const total = data?.total;
+        if (typeof total === "number") {
+          setInternshipsCount(total);
+        }
+      } catch {
+        // ignore
+      }
+    })();
+
     return () => controller.abort();
   }, []);
 
@@ -75,7 +103,7 @@ const Navbar = () => {
     {
       label: "internship",
       href: "/internships",
-      count: 101,
+      count: internshipsCount,
     },
     {
       label: "community",

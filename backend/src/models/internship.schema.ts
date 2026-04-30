@@ -86,6 +86,12 @@ const batchSchema = new mongoose.Schema<InternshipBatches>(
       ref: "InternshipExam",
       default: null,
     },
+    /**
+     * Entrance exam wall-clock window for this cohort (UTC). Evaluated on the server only.
+     * Required when `entranceExamTemplateId` is set (validated in admin/services layer).
+     */
+    entranceExamStartAt: { type: Date, default: undefined },
+    entranceExamEndAt: { type: Date, default: undefined },
     /** Single certification exam template for this cohort (examType = "certification"). */
     certificationExamTemplateId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -136,6 +142,11 @@ const internshipSchema = new mongoose.Schema<Internship>(
       default: "",
     },
     jobDescription: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    whatsappGroupLink: {
       type: String,
       trim: true,
       default: "",

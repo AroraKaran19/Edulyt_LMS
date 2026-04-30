@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, Suspense } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, Suspense } from "react";
 import { Search, Loader2 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMyInternshipEnrollments } from "@/hooks/useMyInternshipEnrollments";
 import { fetchMyInternshipEnrollmentsPage } from "@/hooks/useMyInternshipEnrollments";
 import { ENTRANCE_EXAM_ATTENTION_STATUSES } from "@/lib/internshipEntranceFlow";
+import { getCertificationExamListReminder } from "@/lib/internshipCertificationReminder";
 import type { InternshipEnrollmentListRow } from "@/types";
 import EmptyState from "../components/applications/EmptyState";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
@@ -105,6 +106,23 @@ function DashboardInternshipsContent() {
   const isSearching = search !== debouncedSearch && search.trim().length > 0;
   const hasRows = rows.length > 0;
 
+  const programActiveStatuses = useMemo(
+    () => new Set(["enrolled", "completed", "paused"]),
+    [],
+  );
+  const certificationReminderCountOnPage = useMemo(() => {
+    let n = 0;
+    for (const row of rows) {
+      if (!programActiveStatuses.has(row.status)) continue;
+      const r = getCertificationExamListReminder(
+        row.certificationExamStartAt,
+        row.certificationExamEndAt,
+      );
+      if (r.show) n += 1;
+    }
+    return n;
+  }, [rows, programActiveStatuses]);
+
   if (entranceGate === "checking") {
     return (
       <div className="flex items-center justify-center py-20 text-gray-500 gap-2">
@@ -138,6 +156,24 @@ function DashboardInternshipsContent() {
           >
             View pending list →
           </Link>
+        </div>
+      )}
+
+      {certificationReminderCountOnPage > 0 && (
+        <div
+          className="mb-6 rounded-2xl border border-violet-200 bg-linear-to-r from-violet-50/95 to-indigo-50/80 px-4 py-3 sm:px-5"
+          role="status"
+        >
+          <p className="text-sm text-violet-950">
+            <span className="font-semibold">
+              {certificationReminderCountOnPage === 1
+                ? "One program"
+                : `${certificationReminderCountOnPage} programs`}
+            </span>{" "}
+            {certificationReminderCountOnPage === 1 ? "has" : "have"} a
+            certification exam in the next two days or it is open now (UTC). See
+            the violet notice on each card and open the program to take the exam.
+          </p>
         </div>
       )}
 

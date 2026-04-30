@@ -5,11 +5,12 @@ import type { InternshipQuestionResponse } from "./internship-question";
 
 /**
  * Reusable **exam template** — not tied to a single internship.
- * Many internships can reference the same template via `Internship.batches[].examTemplateIds`.
  *
- * Scheduling uses explicit wall-clock dates (`examStartAt`, `examEndAt`) — NOT relative
- * unlock/due days like tasks. `examResultAt` is required: learners can only see results
- * after this instant.
+ * **Scheduling:** Entrance attempts use the internship batch's
+ * `entranceExamStartAt` / `entranceExamEndAt` (UTC). Certification attempts use
+ * a per-learner window derived from enrollment and program duration. This model
+ * only stores `examResultAt` (when results may be shown). The window is copied
+ * onto each submission snapshot when the attempt is created.
  *
  * For entrance exams, `thresholdScore` determines merit-pool eligibility.
  * Questions must have usageType "exam" or "both" in the question bank.
@@ -30,14 +31,6 @@ export interface InternshipExam {
    * Leave undefined for post-enrollment assessments.
    */
   thresholdScore?: number;
-
-  /**
-   * Optional wall-clock window for this template (full date-time).
-   * When both are set, `examEndAt` must be after `examStartAt`. Copied onto
-   * each submission snapshot when the attempt is created.
-   */
-  examStartAt?: Date;
-  examEndAt?: Date;
 
   /** When results are published for this exam. Required. */
   examResultAt: Date;
@@ -73,8 +66,6 @@ export type InternshipExamTemplateDetail = {
   questions: InternshipExamQuestionSummary[];
   totalScore: number;
   thresholdScore?: number;
-  examStartAt?: string;
-  examEndAt?: string;
   examResultAt: string;
   isActive: boolean;
   createdBy: {
