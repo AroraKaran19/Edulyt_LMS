@@ -86,6 +86,7 @@ export const createCategoryService = async (
   name: string,
   description?: string,
   showOnHomePage?: boolean,
+  showOnCourseList?: boolean,
   categoryImage?: string,
   audience?: "college-students" | "professionals"
 ): Promise<Category | null> => {
@@ -106,6 +107,7 @@ export const createCategoryService = async (
     name,
     description,
     showOnHomePage: showOnHomePage ?? false,
+    showOnCourseList: showOnCourseList ?? true,
     categoryImage: categoryImage || "",
     audience: validAudience,
   });
@@ -125,6 +127,7 @@ export const updateCategoryService = async (
     description?: string;
     isActive?: boolean;
     showOnHomePage?: boolean;
+    showOnCourseList?: boolean;
     categoryImage?: string;
     audience?: "college-students" | "professionals";
   }

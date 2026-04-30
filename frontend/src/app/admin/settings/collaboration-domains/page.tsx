@@ -173,6 +173,7 @@ const CollaborationDomainsPage = () => {
               glow={false}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page <= 1}
+              className="flex items-center gap-2"
             >
               <ChevronLeft className="size-4" />
               Previous

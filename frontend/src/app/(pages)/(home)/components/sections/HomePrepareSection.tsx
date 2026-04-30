@@ -1,10 +1,40 @@
 import { Icon } from "@iconify/react";
+import type {
+  HomeIconTitleCard,
+  HomePrepareSectionSettings,
+} from "@/types/home-page-settings";
 
 interface PrepareContent {
   title: string;
   description: string;
   icon: string;
 }
+
+const DEFAULT_ITEMS: HomeIconTitleCard[] = [
+  {
+    title: "1:1 Mentorship Sessions",
+    description:
+      "Personalised support to prepare you for real job opportunities.",
+    icon: "material-symbols:communication-rounded",
+  },
+  {
+    title: "Mock Interviews",
+    description:
+      "Practice real interview scenarios and improve problem-solving skills.",
+    icon: "icon-park-solid:communication",
+  },
+  {
+    title: "Resume & Profile Review",
+    description:
+      "Get your resume reviewed by industry experts and improve your job visibility.",
+    icon: "mdi:resume",
+  },
+  {
+    title: "Soft Skills & Career Training",
+    description: "Improve communication, confidence, and interview presence.",
+    icon: "material-symbols:star-rounded",
+  },
+];
 
 const PrepareCard = ({ title, description, icon }: PrepareContent) => {
   return (
@@ -22,32 +52,19 @@ const PrepareCard = ({ title, description, icon }: PrepareContent) => {
   );
 };
 
-const HomePrepareSection = () => {
-  const prepareContent: PrepareContent[] = [
-    {
-      title: "1:1 Mentorship Sessions",
-      description:
-        "Personalised support to prepare you for real job opportunities.",
-      icon: "material-symbols:communication-rounded",
-    },
-    {
-      title: "Mock Interviews",
-      description:
-        "Practice real interview scenarios and improve problem-solving skills.",
-      icon: "icon-park-solid:communication",
-    },
-    {
-      title: "Resume & Profile Review",
-      description:
-        "Get your resume reviewed by industry experts and improve your job visibility.",
-      icon: "mdi:resume",
-    },
-    {
-      title: "Soft Skills & Career Training",
-      description: "Improve communication, confidence, and interview presence.",
-      icon: "material-symbols:star-rounded",
-    },
-  ];
+const HomePrepareSection = ({
+  settings,
+}: {
+  settings?: HomePrepareSectionSettings;
+}) => {
+  const prepareContent: PrepareContent[] =
+    settings?.items && settings.items.length > 0
+      ? settings.items
+      : DEFAULT_ITEMS;
+  const eyebrow = settings?.eyebrow || "Everything You Need to Succeed";
+  const headingPrefix =
+    settings?.headingPrefix || "We Don’t Just Train, We";
+  const headingHighlight = settings?.headingHighlight || "Prepare You.";
 
   return (
     <section
@@ -60,11 +77,11 @@ const HomePrepareSection = () => {
         </div>
         <div className="content-body flex flex-col gap-6">
           <h3 className="text-base lg:text-2xl font-semibold capitalize">
-            Everything You Need to Succeed
+            {eyebrow}
           </h3>
           <h2 className="text-2xl lg:text-4xl font-extrabold text-text-primary capitalize text-balance">
-            We Don’t Just Train, We{" "}
-            <span className="text-primary">Prepare You.</span>
+            {headingPrefix}{" "}
+            <span className="text-primary">{headingHighlight}</span>
           </h2>
 
           <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-8">

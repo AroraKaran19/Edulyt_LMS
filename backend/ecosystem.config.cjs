@@ -6,7 +6,9 @@
  * This starts:
  * - 4 API instances (load balanced by PM2)
  * - worker-cert: fork — cron + certificate queue (single instance; avoid duplicate crons)
- * - worker-collab: fork — collaboration allotment queue (single instance)
+ * - worker-collab: fork — collaboration job queue (single instance): email-domain allotments,
+ *   partnership-import (CSV) whitelist batching, and course-allotment jobs for import configs.
+ *   There is no separate PM2 app for partnership; see dist/collaboration.worker.js.
  *
  * Scale API instances: pm2 scale api 8
  */

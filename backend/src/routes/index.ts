@@ -18,8 +18,19 @@ import authenticationMediaRoutes from "./authentication-media.routes";
 import certificateRoutes from "./certificate.routes";
 import couponRoutes from "./coupon.routes";
 import collaborationDomainRoutes from "./collaborationDomain.routes";
+import partnershipImportRoutes from "./partnershipImport.routes";
 import instructorDashboardRoutes from "./instructor-dashboard.routes";
 import collegeRoutes from "./college.routes";
+import internshipRoutes from "./internship.routes";
+import internshipExamRoutes from "./internshipExam.routes";
+import internshipQuestionRoutes from "./internshipQuestion.routes";
+import internshipTaskRoutes from "./internshipTask.routes";
+import internshipSubmissionRoutes from "./internshipSubmission.routes";
+import internshipEnrollmentRoutes from "./internshipEnrollment.routes";
+import partnerCollegeRoutes from "./partnerCollege.routes";
+import questionCategoryRoutes from "./questionCategory.routes";
+import internshipVoucherRoutes from "./internshipVoucher.routes";
+import homePageSettingsRoutes from "./homePageSettings.routes";
 
 export {
   authRoutes,
@@ -42,6 +53,17 @@ export {
   certificateRoutes,
   couponRoutes,
   collaborationDomainRoutes,
+  partnershipImportRoutes,
   instructorDashboardRoutes,
   collegeRoutes,
+  internshipRoutes,
+  internshipExamRoutes,
+  internshipQuestionRoutes,
+  internshipTaskRoutes,
+  internshipSubmissionRoutes,
+  internshipEnrollmentRoutes,
+  partnerCollegeRoutes,
+  questionCategoryRoutes,
+  internshipVoucherRoutes,
+  homePageSettingsRoutes,
 };

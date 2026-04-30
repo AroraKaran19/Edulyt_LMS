@@ -18,6 +18,38 @@ const router = Router();
  */
 router.get("/", getAllTestimonials);
 
+// ===================
+// Admin Routes (must be before `/:id` — otherwise "admin" is parsed as an id)
+// ===================
+
+/**
+ * @route   GET /api/testimonials/admin
+ * @desc    Get all testimonials for admin (with full data)
+ * @access  Admin
+ */
+router.get("/admin", verifyUser, verifyAdmin, getAllTestimonials);
+
+/**
+ * @route   GET /api/testimonials/admin/:id
+ * @desc    Get a testimonial by ID for admin (with full data)
+ * @access  Admin
+ */
+router.get("/admin/:id", verifyUser, verifyAdmin, getTestimonialById);
+
+/**
+ * @route   PUT /api/testimonials/admin/:id
+ * @desc    Update a testimonial (Admin can update any testimonial)
+ * @access  Admin
+ */
+router.put("/admin/:id", verifyUser, verifyAdmin, updateTestimonial);
+
+/**
+ * @route   DELETE /api/testimonials/admin/:id
+ * @desc    Delete a testimonial (Admin can delete any testimonial)
+ * @access  Admin
+ */
+router.delete("/admin/:id", verifyUser, verifyAdmin, deleteTestimonial);
+
 /**
  * @route   GET /api/testimonials/:id
  * @desc    Get a testimonial by ID
@@ -45,37 +77,5 @@ router.put("/:id", verifyUser, verifyAdmin, updateTestimonial);
  * @access  Admin
  */
 router.delete("/:id", verifyUser, verifyAdmin, deleteTestimonial);
-
-// ===================
-// Admin Routes
-// ===================
-
-/**
- * @route   GET /api/admin/testimonials
- * @desc    Get all testimonials for admin (with full data)
- * @access  Admin
- */
-router.get("/admin", verifyUser, verifyAdmin, getAllTestimonials);
-
-/**
- * @route   GET /api/admin/testimonials/:id
- * @desc    Get a testimonial by ID for admin (with full data)
- * @access  Admin
- */
-router.get("/admin/:id", verifyUser, verifyAdmin, getTestimonialById);
-
-/**
- * @route   PUT /api/admin/testimonials/:id
- * @desc    Update a testimonial (Admin can update any testimonial)
- * @access  Admin
- */
-router.put("/admin/:id", verifyUser, verifyAdmin, updateTestimonial);
-
-/**
- * @route   DELETE /api/admin/testimonials/:id
- * @desc    Delete a testimonial (Admin can delete any testimonial)
- * @access  Admin
- */
-router.delete("/admin/:id", verifyUser, verifyAdmin, deleteTestimonial);
 
 export default router;

@@ -1,5 +1,45 @@
 import { Affiliate, Course, Review, PaymentOrder, Enrollment } from ".";
 
+export type SuccessPointEarnSource =
+  | "purchased"
+  | "coupon_paid_over_half_effective";
+
+export type SuccessPointCourseSnapshot = {
+  title: string;
+  slug?: string;
+};
+
+export type SuccessPointTransaction =
+  | {
+      transactionId: string;
+      earnedAt: Date;
+      type: "earned";
+      points: number;
+      courseId: string;
+      enrollmentId?: string;
+      earnSource: SuccessPointEarnSource;
+      /** Snapshot saved at award time so the entry remains readable if the course is deleted. */
+      courseSnapshot?: SuccessPointCourseSnapshot;
+    }
+  | {
+      transactionId: string;
+      earnedAt: Date;
+      type: "transferred_in";
+      points: number;
+      fromUserId: string;
+      fromUserDisplayName?: string;
+      peerTransactionId?: string;
+    }
+  | {
+      transactionId: string;
+      earnedAt: Date;
+      type: "transferred_out";
+      points: number;
+      toUserId: string;
+      toUserDisplayName?: string;
+      peerTransactionId?: string;
+    };
+
 export interface Collaborator extends User {
   totalReferrals: number;
   totalEarnings: number;
@@ -69,6 +109,9 @@ export interface Student extends User {
 
   // Pending payments
   pendingPayments: PaymentOrder["_id"][];
+
+  successPoints?: number;
+  successPointsHistory?: SuccessPointTransaction[];
 }
 
 export interface SocialProfiles {

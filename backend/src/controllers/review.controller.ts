@@ -75,7 +75,8 @@ export const getReviewById = asyncHandler(
 
 export const createReview = asyncHandler(
   async (req: Request, res: Response) => {
-    const { rating, comment, reviewableType, reviewableId } = req.body;
+    const { rating, comment, reviewableType, reviewableId, internshipBatchId } =
+      req.body;
     const user = req.user;
 
     if (!user?._id || !rating || !comment || !reviewableType || !reviewableId) {
@@ -85,9 +86,9 @@ export const createReview = asyncHandler(
       );
     }
 
-    if (!["Course", "Instructor"].includes(reviewableType)) {
+    if (!["Course", "Instructor", "Internship"].includes(reviewableType)) {
       throw new AppError(
-        "Reviewable type must be either 'Course' or 'Instructor'",
+        "Reviewable type must be 'Course', 'Instructor', or 'Internship'",
         400
       );
     }
@@ -102,6 +103,8 @@ export const createReview = asyncHandler(
       comment,
       reviewableType,
       reviewableId,
+      internshipBatchId:
+        typeof internshipBatchId === "string" ? internshipBatchId : undefined,
     });
 
     if (!result) {
@@ -183,15 +186,15 @@ export const deleteReview = asyncHandler(
 export const getReviewsByReviewable = asyncHandler(
   async (req: Request, res: Response) => {
     const { reviewableType, reviewableId } = req.params;
-    const { page = 1, limit = 10, rating } = req.query;
+    const { page = 1, limit = 10, rating, internshipBatchId } = req.query;
 
     if (!reviewableType || !reviewableId) {
       throw new AppError("Reviewable type and ID are required", 400);
     }
 
-    if (!["Course", "Instructor"].includes(reviewableType)) {
+    if (!["Course", "Instructor", "Internship"].includes(reviewableType)) {
       throw new AppError(
-        "Reviewable type must be either 'Course' or 'Instructor'",
+        "Reviewable type must be 'Course', 'Instructor', or 'Internship'",
         400
       );
     }
@@ -200,12 +203,16 @@ export const getReviewsByReviewable = asyncHandler(
       throw new AppError("Page and limit must be positive numbers", 400);
     }
 
+    const batchId =
+      typeof internshipBatchId === "string" ? internshipBatchId : undefined;
+
     const result = await getReviewsByReviewableService(
-      reviewableType as "Course" | "Instructor",
+      reviewableType as "Course" | "Instructor" | "Internship",
       reviewableId,
       Number(page),
       Number(limit),
-      rating ? Number(rating) : undefined
+      rating ? Number(rating) : undefined,
+      batchId
     );
 
     sendSuccessResponse(res, result, "Reviews fetched successfully", 200);

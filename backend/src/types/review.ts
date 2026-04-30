@@ -9,8 +9,14 @@ export interface Review {
   userId: User["_id"];
   rating: number;
   comment: string;
-  reviewableType: "Course" | "Instructor";
-  reviewableId: Course["_id"] | Instructor["_id"]; // will be the id of the course or instructor
+  reviewableType: "Course" | "Instructor" | "Internship";
+  /** Course, Instructor, or Internship id (see `reviewableType`). */
+  reviewableId: Course["_id"] | Instructor["_id"] | string;
+  /**
+   * When `reviewableType` is `Internship`, optional id of the embedded batch subdocument
+   * so the review is scoped to that intake batch.
+   */
+  internshipBatchId?: string;
   isActive: boolean;
   approved: boolean; // Instructor/Admin approval required to show review
   createdAt?: Date;

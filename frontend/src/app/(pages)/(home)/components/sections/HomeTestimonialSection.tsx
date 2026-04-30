@@ -1,47 +1,36 @@
-import TestimonialCard from "@/app/(pages)/courses/[slug]/components/TestimonialCard";
 import TestimonialCarousel from "@/app/(pages)/courses/[slug]/components/TestimonialCarousel";
 import { Testimonial } from "@/types";
 import { Icon } from "@iconify/react";
+import type { HomeTestimonialSectionSettings } from "@/types/home-page-settings";
 
-const HomeTestimonialSection = () => {
-  const testimonials: Testimonial[] = [
-    {
-      name: "John Doe",
-      currentRole: "Software Engineer",
-      currentCompany: "Google",
-      linkedin: "https://www.linkedin.com/in/john-doe",
-      feedback: "I love the course and it helped me get a job at Google.",
-      college: "University of California, Los Angeles",
-      collegeUrl: "https://www.ucla.edu",
-      collegeProfileUrl: "https://www.ucla.edu/profile/john-doe",
-      pastRole: "Software Engineer",
-      pastCompany: "Apple",
-    },
-    {
-      name: "John Doe",
-      currentRole: "Software Engineer",
-      currentCompany: "Google",
-      linkedin: "https://www.linkedin.com/in/john-doe",
-      feedback: "I love the course and it helped me get a job at Google.",
-      college: "University of California, Los Angeles",
-      collegeUrl: "https://www.ucla.edu",
-      collegeProfileUrl: "https://www.ucla.edu/profile/john-doe",
-      pastRole: "Software Engineer",
-      pastCompany: "Apple",
-    },
-    {
-      name: "John Doe",
-      currentRole: "Software Engineer",
-      currentCompany: "Google",
-      linkedin: "https://www.linkedin.com/in/john-doe",
-      feedback: "I love the course and it helped me get a job at Google.",
-      college: "University of California, Los Angeles",
-      collegeUrl: "https://www.ucla.edu",
-      collegeProfileUrl: "https://www.ucla.edu/profile/john-doe",
-      pastRole: "Software Engineer",
-      pastCompany: "Apple",
-    },
-  ];
+const DEFAULT_TESTIMONIAL: Testimonial = {
+  name: "John Doe",
+  currentRole: "Software Engineer",
+  currentCompany: "Google",
+  linkedin: "https://www.linkedin.com/in/john-doe",
+  feedback: "I love the course and it helped me get a job at Google.",
+  college: "University of California, Los Angeles",
+  collegeUrl: "https://www.ucla.edu",
+  collegeProfileUrl: "https://www.ucla.edu/profile/john-doe",
+  pastRole: "Software Engineer",
+  pastCompany: "Apple",
+};
+
+const HomeTestimonialSection = ({
+  settings,
+}: {
+  settings?: HomeTestimonialSectionSettings;
+}) => {
+  const testimonials: Testimonial[] =
+    settings?.testimonials && settings.testimonials.length > 0
+      ? settings.testimonials
+      : [DEFAULT_TESTIMONIAL, DEFAULT_TESTIMONIAL, DEFAULT_TESTIMONIAL];
+
+  const eyebrow = settings?.eyebrow || "Hear from our past students";
+  const line1 = settings?.headingLine1 || "Students who started";
+  const highlight1 = settings?.headingHighlight1 || "just like you";
+  const line2 = settings?.headingLine2 || "are now placed in";
+  const highlight2 = settings?.headingHighlight2 || "leading companies.";
 
   return (
     <section
@@ -55,12 +44,11 @@ const HomeTestimonialSection = () => {
           </div>
           <div className="content-body flex flex-col gap-6">
             <h3 className="text-base lg:text-2xl font-semibold capitalize">
-              Hear from our past students
+              {eyebrow}
             </h3>
             <h2 className="text-2xl lg:text-4xl max-w-6xl font-extrabold text-text-primary text-balance">
-              Students who started{" "}
-              <span className="text-primary">just like you</span> are now placed
-              in <span className="text-primary">leading companies.</span>
+              {line1} <span className="text-primary">{highlight1}</span> {line2}{" "}
+              <span className="text-primary">{highlight2}</span>
             </h2>
 
             <TestimonialCarousel testimonials={testimonials} />

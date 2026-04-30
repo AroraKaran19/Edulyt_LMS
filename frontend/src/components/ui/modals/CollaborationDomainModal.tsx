@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { flushSync } from "react-dom";
 import { X, Search, Check, BookOpen, Loader2, Info } from "lucide-react";
 import { useCollaborationDomain } from "@/hooks/useCollaborationDomain";
 import { useCourse } from "@/hooks/useCourse";
@@ -10,11 +11,17 @@ import {
   CollaborationEnrollmentAccess,
   CreateCollaborationDomainData,
 } from "@/types/collaborationDomain";
-import { Plan, Course as CourseType } from "@/types/course";
+import { Plan } from "@/types/course";
 import { Course, CourseModule } from "@/types";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import { toast } from "react-toastify";
+import { mergeCourseSelections } from "@/lib/mergeCourseSelections";
+import {
+  COURSE_AUDIENCE_FILTER_LABEL,
+  enrollmentAudienceForApi,
+  type CourseAudienceFilter,
+} from "@/lib/courseAudienceFilter";
 import CollaborationDomainPartialAccessPicker from "@/app/admin/settings/collaboration-domains/components/CollaborationDomainPartialAccessPicker";
 import {
   buildPartialAccessFromSelections,
@@ -24,11 +31,6 @@ import {
 
 type AccessType = "full" | "partial" | "topN";
 type PartnershipOffer = "course_access" | "discount";
-
-const AUDIENCE_LABEL: Record<CourseType["audience"], string> = {
-  "college-students": "College students",
-  professionals: "Professionals",
-};
 
 interface CollaborationDomainModalProps {
   isOpen: boolean;
@@ -62,8 +64,8 @@ const CollaborationDomainModal = ({
   );
   const [benefitValue, setBenefitValue] = useState<number>(0);
   const [plan, setPlan] = useState<Plan["type"]>("elite");
-  const [audience, setAudience] =
-    useState<CourseType["audience"]>("college-students");
+  const [audienceFilter, setAudienceFilter] =
+    useState<CourseAudienceFilter>("college-students");
   const [durationDays, setDurationDays] = useState<number>(365);
 
   const [courseSearch, setCourseSearch] = useState("");
@@ -86,7 +88,9 @@ const CollaborationDomainModal = ({
       opts?: { applyAudienceFilter?: boolean },
     ) => {
       const applyAudience =
-        opts?.applyAudienceFilter ?? partnershipOffer === "course_access";
+        opts?.applyAudienceFilter ??
+        (partnershipOffer === "course_access" ||
+          partnershipOffer === "discount");
       setLoadingCourses(true);
       try {
         const res = await getAdminCourses({
@@ -94,7 +98,9 @@ const CollaborationDomainModal = ({
           limit: 20,
           search: search.trim() || undefined,
           isActive: true,
-          ...(applyAudience ? { audience } : {}),
+          ...(applyAudience && audienceFilter !== "all"
+            ? { audience: audienceFilter }
+            : {}),
         });
         if (res?.courses) {
           const list = res.courses;
@@ -111,7 +117,7 @@ const CollaborationDomainModal = ({
         setLoadingCourses(false);
       }
     },
-    [getAdminCourses, partnershipOffer, audience],
+    [getAdminCourses, partnershipOffer, audienceFilter],
   );
 
   const [courseDetailForPartial, setCourseDetailForPartial] =
@@ -154,13 +160,13 @@ const CollaborationDomainModal = ({
           setTopN(5);
         }
         setPlan(ea.plan ?? "elite");
-        setAudience(ea.audience ?? "college-students");
+        setAudienceFilter(ea.audience ?? "college-students");
         setDurationDays(ea.durationDays ?? 365);
       } else {
         setAccessType("full");
         setTopN(5);
         setPlan("elite");
-        setAudience("college-students");
+        setAudienceFilter("college-students");
         setDurationDays(365);
       }
       setBenefitType(editingDomain.benefit?.type ?? "percentage");
@@ -307,7 +313,7 @@ const CollaborationDomainModal = ({
     setBenefitType("percentage");
     setBenefitValue(0);
     setPlan("elite");
-    setAudience("college-students");
+    setAudienceFilter("college-students");
     setDurationDays(365);
     setSelectedCourses([]);
     setCourseSearch("");
@@ -326,13 +332,18 @@ const CollaborationDomainModal = ({
     (offer: PartnershipOffer) => {
       setPartnershipOffer(offer);
       if (offer === "discount") {
-        setSelectedCourses([]);
         setShowCourseDropdown(false);
         setAccessType("full");
         setPartialModules(new Set());
         setPartialLessons({});
         setPartialContents({});
         setCourseDetailForPartial(null);
+        setCourseResults([]);
+        setCoursePage(1);
+        setHasMoreCourses(true);
+        void loadCourses(1, courseSearch, false, {
+          applyAudienceFilter: true,
+        });
       } else {
         setBenefitValue(0);
         setBenefitType("percentage");
@@ -347,9 +358,16 @@ const CollaborationDomainModal = ({
     [loadCourses, courseSearch],
   );
 
-  const handleAudienceChange = useCallback(
-    (next: CourseType["audience"]) => {
-      setAudience(next);
+  const handleAudienceFilterChange = useCallback(
+    (next: CourseAudienceFilter) => {
+      setAudienceFilter(next);
+      if (next === "all") {
+        setCourseResults([]);
+        setCoursePage(1);
+        setHasMoreCourses(true);
+        void loadCourses(1, courseSearch, false, { applyAudienceFilter: true });
+        return;
+      }
       setSelectedCourses((prev) => prev.filter((c) => c.audience === next));
       setCourseResults([]);
       setCoursePage(1);
@@ -512,7 +530,16 @@ const CollaborationDomainModal = ({
   );
 
   const handleSelectAllActiveCourses = useCallback(async () => {
-    if (accessType === "partial" || partnershipOffer !== "course_access") {
+    if (
+      partnershipOffer === "course_access" &&
+      accessType === "partial"
+    ) {
+      return;
+    }
+    if (
+      partnershipOffer !== "course_access" &&
+      partnershipOffer !== "discount"
+    ) {
       return;
     }
     setSelectingAllCourses(true);
@@ -524,7 +551,7 @@ const CollaborationDomainModal = ({
         const res = await getAdminCourseOptions({
           page,
           search: courseSearch.trim() || undefined,
-          audience,
+          ...(audienceFilter !== "all" ? { audience: audienceFilter } : {}),
           isActive: true,
         });
         if (res?.courses?.length) {
@@ -534,23 +561,20 @@ const CollaborationDomainModal = ({
         page += 1;
       } while (page <= totalPages);
 
-      let newList: Course[] = [];
-      setSelectedCourses((prev) => {
-        const merged = new Map<string, Course>();
-        prev.forEach((c) => {
-          if (c._id) merged.set(String(c._id), c);
+      let mergedList: Course[] = [];
+      flushSync(() => {
+        setSelectedCourses((prev) => {
+          mergedList = mergeCourseSelections(prev, fetched);
+          return mergedList;
         });
-        fetched.forEach((c) => {
-          if (c._id) merged.set(String(c._id), c);
-        });
-        newList = Array.from(merged.values());
-        return newList;
       });
 
       if (fetched.length === 0) {
         toast.info("No active courses match the current search and audience.");
       } else {
-        toast.success(`${newList.length} course(s) in your selection.`);
+        toast.success(
+          `${mergedList.length} course(s) in your selection.`
+        );
       }
       setShowCourseDropdown(false);
     } catch {
@@ -558,7 +582,7 @@ const CollaborationDomainModal = ({
     } finally {
       setSelectingAllCourses(false);
     }
-  }, [accessType, partnershipOffer, audience, courseSearch, getAdminCourses]);
+  }, [accessType, partnershipOffer, audienceFilter, courseSearch, getAdminCourseOptions]);
 
   const toggleCourse = (course: Course) => {
     setSelectedCourses((prev) => {
@@ -592,12 +616,16 @@ const CollaborationDomainModal = ({
         toast.error("Percentage discount cannot exceed 100");
         return null;
       }
+      if (selectedCourses.length === 0) {
+        toast.error("Select at least one course this discount applies to");
+        return null;
+      }
       return {
         title: title.trim(),
         domain: domain.trim().replace(/^@/, ""),
         isActive,
         collaborationKind: "discount",
-        courses: [],
+        courses: selectedCourses.map((c) => c._id!).filter(Boolean) as string[],
         benefit: { type: benefitType, value: benefitValue },
       };
     }
@@ -637,12 +665,14 @@ const CollaborationDomainModal = ({
       return null;
     }
 
+    const enrollmentAudience = enrollmentAudienceForApi(audienceFilter);
+
     let enrollmentAccess: CollaborationEnrollmentAccess;
     if (accessType === "full") {
       enrollmentAccess = {
         mode: "full",
         plan,
-        audience,
+        audience: enrollmentAudience,
         durationDays,
       };
     } else if (accessType === "topN") {
@@ -650,7 +680,7 @@ const CollaborationDomainModal = ({
         mode: "partial",
         topNSettings: { contentsPerLesson: topN },
         plan,
-        audience,
+        audience: enrollmentAudience,
         durationDays,
       };
     } else {
@@ -670,7 +700,7 @@ const CollaborationDomainModal = ({
         mode: "partial",
         partialAccess: pa,
         plan,
-        audience,
+        audience: enrollmentAudience,
         durationDays,
       };
     }
@@ -782,13 +812,15 @@ const CollaborationDomainModal = ({
                   type="text"
                   value={domain}
                   onChange={(e) => setDomain(e.target.value.replace(/^@/, ""))}
-                  placeholder="college.edu or *.test.com"
+                  placeholder="college.edu or *.mait.ac.in"
                   className="flex-1 px-2 py-2.5 outline-none bg-transparent"
                 />
               </div>
               <p className="text-xs text-gray-500 mt-1">
-                Exact host (e.g. college.edu) or one-level wildcard (*.test.com
-                matches any.test.com, 1.test.com — not test.com or a.b.test.com)
+                Exact host (e.g. college.edu), or wildcard *.suffix — matches
+                apex (suffix) and one subdomain label (e.g. cse.mait.ac.in and
+                mait.ac.in for *.mait.ac.in). Nested hosts like a.b.mait.ac.in
+                are not matched.
               </p>
             </div>
 
@@ -862,7 +894,7 @@ const CollaborationDomainModal = ({
                     Discount
                   </span>
                   <span className="text-xs text-gray-500">
-                    Global % or fixed amount at checkout (no course list)
+                    % or fixed off at checkout for selected courses on this domain
                   </span>
                 </span>
               </label>
@@ -891,17 +923,30 @@ const CollaborationDomainModal = ({
                   Audience <span className="text-red-500">*</span>
                 </label>
                 <select
-                  value={audience}
+                  value={audienceFilter}
                   onChange={(e) =>
-                    handleAudienceChange(
-                      e.target.value as CourseType["audience"],
+                    handleAudienceFilterChange(
+                      e.target.value as CourseAudienceFilter,
                     )
                   }
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
                 >
-                  <option value="college-students">College Students</option>
-                  <option value="professionals">Professionals</option>
+                  <option value="all">{COURSE_AUDIENCE_FILTER_LABEL.all}</option>
+                  <option value="college-students">
+                    {COURSE_AUDIENCE_FILTER_LABEL["college-students"]}
+                  </option>
+                  <option value="professionals">
+                    {COURSE_AUDIENCE_FILTER_LABEL.professionals}
+                  </option>
                 </select>
+                {audienceFilter === "all" && (
+                  <p className="text-xs text-amber-800/90 mt-1.5 leading-snug">
+                    All active courses are listed. Saved collaboration enrollments
+                    are tagged as{" "}
+                    <span className="font-medium">College students</span> unless
+                    you pick a specific audience.
+                  </p>
+                )}
               </div>
 
               <div>
@@ -928,30 +973,141 @@ const CollaborationDomainModal = ({
             </div>
           )}
 
-          {/* Courses (course-access partnerships only) */}
-          {partnershipOffer === "course_access" && (
+          {/* Plan + audience — discount partnerships (filters course picker only) */}
+          {partnershipOffer === "discount" && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                  Plan <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={plan}
+                  onChange={(e) => setPlan(e.target.value as Plan["type"])}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
+                >
+                  <option value="elite">Elite</option>
+                  <option value="essential">Essential</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                  Audience <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={audienceFilter}
+                  onChange={(e) =>
+                    handleAudienceFilterChange(
+                      e.target.value as CourseAudienceFilter,
+                    )
+                  }
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
+                >
+                  <option value="all">{COURSE_AUDIENCE_FILTER_LABEL.all}</option>
+                  <option value="college-students">
+                    {COURSE_AUDIENCE_FILTER_LABEL["college-students"]}
+                  </option>
+                  <option value="professionals">
+                    {COURSE_AUDIENCE_FILTER_LABEL.professionals}
+                  </option>
+                </select>
+              </div>
+            </div>
+          )}
+
+          {partnershipOffer === "discount" && (
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-3">
+                Discount
+              </label>
+              <div className="flex gap-3">
+                <div className="w-40">
+                  <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                    Type
+                  </label>
+                  <select
+                    value={benefitType}
+                    onChange={(e) =>
+                      setBenefitType(e.target.value as "percentage" | "fixed")
+                    }
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all bg-white text-sm"
+                  >
+                    <option value="percentage">Percentage (%)</option>
+                    <option value="fixed">Fixed Amount (₹)</option>
+                  </select>
+                </div>
+
+                <div className="flex-1">
+                  <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                    Value{" "}
+                    {benefitType === "percentage" ? "(0–100)" : "(₹ amount)"}
+                  </label>
+                  <div className="flex items-center border border-gray-300 rounded-lg focus-within:ring-2 focus-within:ring-orange-500 focus-within:border-orange-500 transition-all">
+                    <span className="pl-3 text-gray-500 text-sm font-medium select-none">
+                      {benefitType === "percentage" ? "%" : "₹"}
+                    </span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={benefitType === "percentage" ? 100 : undefined}
+                      value={benefitValue}
+                      onChange={(e) =>
+                        setBenefitValue(parseFloat(e.target.value) || 0)
+                      }
+                      className="flex-1 px-2 py-2.5 outline-none bg-transparent text-sm"
+                    />
+                  </div>
+                </div>
+              </div>
+              <p className="text-xs text-gray-500 mt-2">
+                Applies at checkout when the student&apos;s email matches this
+                domain and the cart includes one of the courses you add below.
+              </p>
+            </div>
+          )}
+
+          {/* Courses — course allot or checkout discount on this domain */}
+          {(partnershipOffer === "course_access" ||
+            partnershipOffer === "discount") && (
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                Courses <span className="text-red-500">*</span>
+                {partnershipOffer === "discount"
+                  ? "Courses this discount applies to"
+                  : "Courses"}{" "}
+                <span className="text-red-500">*</span>
               </label>
               <p className="text-xs text-gray-500 mb-2 leading-snug">
-                Search is filtered to{" "}
-                <span className="font-medium text-gray-700">active</span>{" "}
-                courses tagged for{" "}
-                <span className="font-medium text-gray-700">
-                  {AUDIENCE_LABEL[audience]}
-                </span>
-                , matching the audience above (collaboration enrollments use
-                that audience).
+                {audienceFilter === "all" ? (
+                  <>
+                    Search includes every{" "}
+                    <span className="font-medium text-gray-700">active</span>{" "}
+                    course (any audience).
+                    {partnershipOffer === "discount"
+                      ? " Add courses to limit where this discount applies."
+                      : " Add the courses to link to this domain."}
+                  </>
+                ) : (
+                  <>
+                    Search is filtered to{" "}
+                    <span className="font-medium text-gray-700">active</span>{" "}
+                    courses tagged for{" "}
+                    <span className="font-medium text-gray-700">
+                      {COURSE_AUDIENCE_FILTER_LABEL[audienceFilter]}
+                    </span>
+                    , matching the audience above.
+                    {partnershipOffer === "discount"
+                      ? " The discount applies only when the cart includes one of these courses."
+                      : " (Collaboration enrollments use that audience.)"}
+                  </>
+                )}
               </p>
               <div className="flex flex-wrap items-center gap-2 mb-2">
                 <button
                   type="button"
                   onClick={() => void handleSelectAllActiveCourses()}
                   disabled={
-                    accessType === "partial" ||
                     selectingAllCourses ||
-                    partnershipOffer !== "course_access"
+                    (partnershipOffer === "course_access" &&
+                      accessType === "partial")
                   }
                   className="text-xs font-medium text-orange-600 hover:text-orange-700 hover:underline disabled:opacity-50 disabled:cursor-not-allowed disabled:no-underline"
                 >
@@ -1212,57 +1368,6 @@ const CollaborationDomainModal = ({
                   )}
                 </div>
               )}
-            </div>
-          )}
-
-          {partnershipOffer === "discount" && (
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-3">
-                Discount
-              </label>
-              <div className="flex gap-3">
-                <div className="w-40">
-                  <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                    Type
-                  </label>
-                  <select
-                    value={benefitType}
-                    onChange={(e) =>
-                      setBenefitType(e.target.value as "percentage" | "fixed")
-                    }
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all bg-white text-sm"
-                  >
-                    <option value="percentage">Percentage (%)</option>
-                    <option value="fixed">Fixed Amount (₹)</option>
-                  </select>
-                </div>
-
-                <div className="flex-1">
-                  <label className="block text-xs font-medium text-gray-600 mb-1.5">
-                    Value{" "}
-                    {benefitType === "percentage" ? "(0–100)" : "(₹ amount)"}
-                  </label>
-                  <div className="flex items-center border border-gray-300 rounded-lg focus-within:ring-2 focus-within:ring-orange-500 focus-within:border-orange-500 transition-all">
-                    <span className="pl-3 text-gray-500 text-sm font-medium select-none">
-                      {benefitType === "percentage" ? "%" : "₹"}
-                    </span>
-                    <input
-                      type="number"
-                      min={0}
-                      max={benefitType === "percentage" ? 100 : undefined}
-                      value={benefitValue}
-                      onChange={(e) =>
-                        setBenefitValue(parseFloat(e.target.value) || 0)
-                      }
-                      className="flex-1 px-2 py-2.5 outline-none bg-transparent text-sm"
-                    />
-                  </div>
-                </div>
-              </div>
-              <p className="text-xs text-gray-500 mt-2">
-                Applies to students with this email domain at checkout for any
-                course—no course list is required.
-              </p>
             </div>
           )}
         </div>

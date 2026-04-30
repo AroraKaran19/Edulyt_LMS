@@ -119,8 +119,8 @@ const CollaborationJobsPage = () => {
     <Container
       title="Collaboration Jobs"
       description="Course-allotment jobs from the collaboration worker. Each job stores a snapshot of the collaboration domain (title and email domain) when it is created, so you can still see which partnership it refers to if the domain is deleted later."
-      className="h-full"
-      classNameBody="flex flex-col gap-6 overflow-visible"
+      className="min-h-0"
+      classNameBody="flex min-h-0 flex-col gap-6 overflow-x-hidden overflow-y-visible"
     >
       <CollaborationJobsFilters
         searchInput={searchInput}
@@ -203,6 +203,7 @@ const CollaborationJobsPage = () => {
               glow={false}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page <= 1}
+              className="flex items-center gap-2"
             >
               <ChevronLeft className="size-4" />
               Previous

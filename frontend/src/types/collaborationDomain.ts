@@ -35,6 +35,7 @@ export interface CollaborationDomain {
   domain: string;
   isActive: boolean;
   collaborationKind: CollaborationKind;
+  /** Course allot: enrolled courses. Discount: courses this checkout discount applies to. */
   courses: string[] | Course[];
   /** Course allot only — absent for discount. */
   enrollmentAccess?: CollaborationEnrollmentAccess;
@@ -55,8 +56,7 @@ export interface CreateCollaborationDomainData {
   benefit?: CollaborationBenefit | null;
 }
 
-export interface UpdateCollaborationDomainData
-  extends Partial<CreateCollaborationDomainData> {}
+export interface UpdateCollaborationDomainData extends Partial<CreateCollaborationDomainData> {}
 
 export interface CollaborationDomainFilters {
   page?: number;
@@ -76,6 +76,8 @@ export interface CollaborationDomainResponse {
 export interface CollaborationCheckoutResolve {
   applies: boolean;
   collaborationDomainId?: string;
+  /** Discount from CSV partnership import (not email-domain collaboration). */
+  partnershipImportConfigId?: string;
   title?: string;
   benefit?: CollaborationBenefit;
   enrollmentAccess?: CollaborationEnrollmentAccess;

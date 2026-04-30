@@ -14,6 +14,7 @@ import {
 } from "../services/auth.services";
 import { ACCOUNT_DISABLED_MESSAGE } from "../constants/authMessages";
 import { enqueueCollaborationAllotmentAfterRegister } from "../services/collaborationAllotment.services";
+import { tryPartnershipImportWhitelistAfterRegister } from "../services/collaborationWhitelist.services";
 import { downloadImageAndUploadToS3 } from "../services/upload.services";
 import bcrypt from "bcryptjs";
 import { Student, User } from "../types";
@@ -92,6 +93,11 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
   }
 
   void enqueueCollaborationAllotmentAfterRegister(
+    newUser._id,
+    email,
+    userType
+  );
+  void tryPartnershipImportWhitelistAfterRegister(
     newUser._id,
     email,
     userType
@@ -228,6 +234,11 @@ export const oauthSignin = asyncHandler(async (req: Request, res: Response) => {
     });
     user = newUser;
     void enqueueCollaborationAllotmentAfterRegister(
+      newUser._id,
+      email,
+      "student"
+    );
+    void tryPartnershipImportWhitelistAfterRegister(
       newUser._id,
       email,
       "student"

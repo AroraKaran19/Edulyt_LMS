@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import {
   asyncHandler,
   sendSuccessResponse,
+  AppError,
 } from "../middlewares/error.middleware";
 import {
   generatePresignedUrl,
@@ -18,9 +19,13 @@ import {
  */
 export const generatePresignedUrlController = asyncHandler(
   async (req: Request, res: Response) => {
-    const { fileName, fileType, folderName }: PresignedUrlRequest = req.body;
+    const {
+      fileName,
+      fileType,
+      folderName,
+      fileSize: fileSizeBody,
+    } = req.body as PresignedUrlRequest & { fileSize?: number | string };
 
-    // Validate required fields
     if (!fileName || !fileType || !folderName) {
       return res.status(400).json({
         success: false,
@@ -32,29 +37,22 @@ export const generatePresignedUrlController = asyncHandler(
       });
     }
 
-    // Get validation rules for the folder
-    const validationRules = getFileValidationRules(folderName);
-
-    // Note: We can't validate file size here since we don't have the actual file
-    // The frontend should validate before calling this endpoint
-    if (!validationRules.allowedTypes.includes(fileType)) {
-      return res.status(400).json({
-        success: false,
-        error: {
-          message: `File type ${fileType} is not allowed for folder ${folderName}. Allowed types: ${validationRules.allowedTypes.join(
-            ", "
-          )}`,
-          type: "ValidationError",
-          statusCode: 400,
-        },
-      });
-    }
+    const fileSize =
+      typeof fileSizeBody === "number"
+        ? fileSizeBody
+        : fileSizeBody != null && fileSizeBody !== ""
+          ? Number(fileSizeBody)
+          : undefined;
 
     try {
       const presignedData = await generatePresignedUrl({
         fileName,
         fileType,
         folderName,
+        fileSize:
+          typeof fileSize === "number" && Number.isFinite(fileSize)
+            ? fileSize
+            : undefined,
       });
 
       return sendSuccessResponse(
@@ -63,6 +61,16 @@ export const generatePresignedUrlController = asyncHandler(
         "Presigned URL generated successfully"
       );
     } catch (error) {
+      if (error instanceof AppError) {
+        return res.status(error.statusCode).json({
+          success: false,
+          error: {
+            message: error.message,
+            type: "ValidationError",
+            statusCode: error.statusCode,
+          },
+        });
+      }
       console.error("Error generating presigned URL:", error);
       return res.status(500).json({
         success: false,

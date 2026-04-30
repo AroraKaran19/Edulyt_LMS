@@ -3,20 +3,27 @@ import { v4 as uuidv4 } from "uuid";
 import { AppError } from "../middlewares/error.middleware";
 import { CollaborationJobModel } from "../models/collaborationJob.schema";
 import { CollaborationDomainModel } from "../models/collaborationDomain.schema";
+import { PartnershipImportConfigModel } from "../models/partnershipImportConfig.schema";
 import { UserModel } from "../models/user.schema";
 import {
   CollaborationDomainJobSnapshot,
   CollaborationJob,
   CollaborationJobStatus,
+  PartnershipImportConfigJobSnapshot,
 } from "../types/collaborationJob";
 
-function buildUserSnapshot(user: { firstName?: string; lastName?: string; email?: string } | null): {
+function buildUserSnapshot(
+  user: { firstName?: string; lastName?: string; email?: string } | null,
+): {
   name: string;
   email: string;
 } | null {
   if (!user) return null;
-  const name = `${String(user.firstName ?? "").trim()} ${String(user.lastName ?? "").trim()}`.trim();
-  const email = String(user.email ?? "").trim().toLowerCase();
+  const name =
+    `${String(user.firstName ?? "").trim()} ${String(user.lastName ?? "").trim()}`.trim();
+  const email = String(user.email ?? "")
+    .trim()
+    .toLowerCase();
   if (!name && !email) return null;
   return { name, email };
 }
@@ -33,7 +40,7 @@ export const createCollaborationAllotmentJobService = async (data: {
   const jobId = uuidv4();
 
   const domainDoc = await CollaborationDomainModel.findById(
-    data.collaborationDomainId
+    data.collaborationDomainId,
   )
     .select("title domain")
     .lean();
@@ -57,7 +64,7 @@ export const createCollaborationAllotmentJobService = async (data: {
       {
         userId: new mongoose.Types.ObjectId(data.userId),
         collaborationDomainId: new mongoose.Types.ObjectId(
-          data.collaborationDomainId
+          data.collaborationDomainId,
         ),
         status: { $in: ["pending", "processing"] },
       },
@@ -66,7 +73,7 @@ export const createCollaborationAllotmentJobService = async (data: {
           jobId,
           userId: new mongoose.Types.ObjectId(data.userId),
           collaborationDomainId: new mongoose.Types.ObjectId(
-            data.collaborationDomainId
+            data.collaborationDomainId,
           ),
           status: "pending" as CollaborationJobStatus,
           retryCount: 0,
@@ -74,8 +81,25 @@ export const createCollaborationAllotmentJobService = async (data: {
           userSnapshot: userSnapshot ?? undefined,
         },
       },
-      { upsert: true, new: true }
+      { upsert: true, new: true },
     ).lean();
+
+    // Backfill the snapshot now so it is never lost when the domain doc is later deleted.
+    if (
+      job &&
+      !(job as unknown as Record<string, unknown>).collaborationDomainSnapshot
+    ) {
+      const backfillSet: Record<string, unknown> = {
+        collaborationDomainSnapshot,
+      };
+      if (userSnapshot) backfillSet.userSnapshot = userSnapshot;
+      const patched = await CollaborationJobModel.findOneAndUpdate(
+        { _id: (job as unknown as Record<string, unknown>)._id },
+        { $set: backfillSet },
+        { new: true },
+      ).lean();
+      return (patched ?? job) as unknown as CollaborationJob;
+    }
 
     return job as unknown as CollaborationJob;
   } catch (error: unknown) {
@@ -84,16 +108,139 @@ export const createCollaborationAllotmentJobService = async (data: {
       const existing = await CollaborationJobModel.findOne({
         userId: new mongoose.Types.ObjectId(data.userId),
         collaborationDomainId: new mongoose.Types.ObjectId(
-          data.collaborationDomainId
+          data.collaborationDomainId,
         ),
         status: { $in: ["pending", "processing"] },
       }).lean();
       if (existing) {
+        // Backfill snapshot on the race-condition duplicate as well
+        if (
+          !(existing as unknown as Record<string, unknown>)
+            .collaborationDomainSnapshot
+        ) {
+          const backfillSet: Record<string, unknown> = {
+            collaborationDomainSnapshot,
+          };
+          if (userSnapshot) backfillSet.userSnapshot = userSnapshot;
+          await CollaborationJobModel.updateOne(
+            { _id: (existing as unknown as Record<string, unknown>)._id },
+            { $set: backfillSet },
+          );
+        }
         return existing as unknown as CollaborationJob;
       }
     }
     console.error("Error creating collaboration allotment job:", error);
     throw new AppError("Failed to create collaboration allotment job", 500);
+  }
+};
+
+export const createPartnershipImportAllotmentJobService = async (data: {
+  userId: string;
+  partnershipImportConfigId: string;
+}): Promise<CollaborationJob> => {
+  const jobId = uuidv4();
+
+  const cfgDoc = await PartnershipImportConfigModel.findById(
+    data.partnershipImportConfigId,
+  )
+    .select("title kind")
+    .lean();
+
+  if (!cfgDoc) {
+    throw new AppError("Partnership import config not found", 404);
+  }
+
+  if (cfgDoc.kind !== "course_allot") {
+    throw new AppError("Partnership import config is not course allot", 400);
+  }
+
+  const partnershipImportConfigSnapshot: PartnershipImportConfigJobSnapshot = {
+    title: cfgDoc.title,
+  };
+
+  const userDoc = await UserModel.findById(data.userId)
+    .select("firstName lastName email")
+    .lean();
+  const userSnapshot = buildUserSnapshot(userDoc as any);
+
+  try {
+    const job = await CollaborationJobModel.findOneAndUpdate(
+      {
+        userId: new mongoose.Types.ObjectId(data.userId),
+        partnershipImportConfigId: new mongoose.Types.ObjectId(
+          data.partnershipImportConfigId,
+        ),
+        status: { $in: ["pending", "processing"] },
+      },
+      {
+        $setOnInsert: {
+          jobId,
+          userId: new mongoose.Types.ObjectId(data.userId),
+          partnershipImportConfigId: new mongoose.Types.ObjectId(
+            data.partnershipImportConfigId,
+          ),
+          collaborationDomainId: null,
+          status: "pending" as CollaborationJobStatus,
+          retryCount: 0,
+          partnershipImportConfigSnapshot,
+          userSnapshot: userSnapshot ?? undefined,
+        },
+      },
+      { upsert: true, new: true },
+    ).lean();
+
+    // Backfill snapshot on an existing dedup-matched job that pre-dates snapshot fields.
+    if (
+      job &&
+      !(job as unknown as Record<string, unknown>)
+        .partnershipImportConfigSnapshot
+    ) {
+      const backfillSet: Record<string, unknown> = {
+        partnershipImportConfigSnapshot,
+      };
+      if (userSnapshot) backfillSet.userSnapshot = userSnapshot;
+      const patched = await CollaborationJobModel.findOneAndUpdate(
+        { _id: (job as unknown as Record<string, unknown>)._id },
+        { $set: backfillSet },
+        { new: true },
+      ).lean();
+      return (patched ?? job) as unknown as CollaborationJob;
+    }
+
+    return job as unknown as CollaborationJob;
+  } catch (error: unknown) {
+    const err = error as { code?: number };
+    if (err.code === 11000) {
+      const existing = await CollaborationJobModel.findOne({
+        userId: new mongoose.Types.ObjectId(data.userId),
+        partnershipImportConfigId: new mongoose.Types.ObjectId(
+          data.partnershipImportConfigId,
+        ),
+        status: { $in: ["pending", "processing"] },
+      }).lean();
+      if (existing) {
+        if (
+          !(existing as unknown as Record<string, unknown>)
+            .partnershipImportConfigSnapshot
+        ) {
+          const backfillSet: Record<string, unknown> = {
+            partnershipImportConfigSnapshot,
+          };
+          if (userSnapshot) backfillSet.userSnapshot = userSnapshot;
+          await CollaborationJobModel.updateOne(
+            { _id: (existing as unknown as Record<string, unknown>)._id },
+            { $set: backfillSet },
+          );
+        }
+        return existing as unknown as CollaborationJob;
+      }
+    }
+    console.error("Error creating partnership import allotment job:", error);
+    throw new AppError(
+      "Failed to create partnership import allotment job",
+      500,
+    );
   }
 };
 
@@ -104,7 +251,7 @@ export const updateCollaborationJobStatusService = async (
     error?: string | null;
     startedAt?: Date | null;
     completedAt?: Date | null;
-  }
+  },
 ): Promise<CollaborationJob> => {
   const updateData: Record<string, unknown> = { ...updates };
 
@@ -118,7 +265,7 @@ export const updateCollaborationJobStatusService = async (
   const job = await CollaborationJobModel.findOneAndUpdate(
     { jobId },
     { $set: updateData },
-    { new: true }
+    { new: true },
   ).lean();
 
   if (!job) {
@@ -129,9 +276,12 @@ export const updateCollaborationJobStatusService = async (
 };
 
 export const incrementCollaborationJobRetryService = async (
-  jobId: string
+  jobId: string,
 ): Promise<void> => {
-  await CollaborationJobModel.findOneAndUpdate({ jobId }, { $inc: { retryCount: 1 } });
+  await CollaborationJobModel.findOneAndUpdate(
+    { jobId },
+    { $inc: { retryCount: 1 } },
+  );
 };
 
 export const getNextPendingCollaborationJobService =
@@ -147,7 +297,7 @@ export const getNextPendingCollaborationJobService =
       {
         sort: { createdAt: 1 },
         new: true,
-      }
+      },
     ).lean();
 
     return job as unknown as CollaborationJob | null;
@@ -174,7 +324,7 @@ export const getAllCollaborationJobsService = async (
     limit?: number;
     status?: CollaborationJobStatus;
     search?: string;
-  } = {}
+  } = {},
 ): Promise<{
   jobs: CollaborationJobAdminRow[];
   total: number;
@@ -192,18 +342,16 @@ export const getAllCollaborationJobsService = async (
   }
 
   const enrichJobs = async (
-    raw: Record<string, unknown>[]
+    raw: Record<string, unknown>[],
   ): Promise<CollaborationJobAdminRow[]> => {
     if (raw.length === 0) return [];
 
     const userIds = [
-      ...new Set(
-        raw.map((j) => String(j.userId ?? "")).filter(Boolean)
-      ),
+      ...new Set(raw.map((j) => String(j.userId ?? "")).filter(Boolean)),
     ];
     const domainIds = [
       ...new Set(
-        raw.map((j) => String(j.collaborationDomainId ?? "")).filter(Boolean)
+        raw.map((j) => String(j.collaborationDomainId ?? "")).filter(Boolean),
       ),
     ];
 
@@ -221,16 +369,18 @@ export const getAllCollaborationJobsService = async (
         const id = String(u._id);
         const name = `${u.firstName || ""} ${u.lastName || ""}`.trim();
         return [id, { name, email: u.email || "" }];
-      })
+      }),
     );
     const domainMap = new Map(
       domains.map((d) => [
         String(d._id),
         {
           title: d.title || "",
-          domain: normalizeEmailDomainForSnapshot(String((d as { domain?: string }).domain || "")),
+          domain: normalizeEmailDomainForSnapshot(
+            String((d as { domain?: string }).domain || ""),
+          ),
         },
-      ])
+      ]),
     );
 
     return raw.map((row) => {
@@ -238,7 +388,10 @@ export const getAllCollaborationJobsService = async (
       const uid = String(j.userId ?? "");
       const did = String(j.collaborationDomainId ?? "");
       const u = userMap.get(uid);
-      const userSnap = j.userSnapshot as { name?: string; email?: string } | null | undefined;
+      const userSnap = j.userSnapshot as
+        | { name?: string; email?: string }
+        | null
+        | undefined;
       const snap = j.collaborationDomainSnapshot as
         | CollaborationDomainJobSnapshot
         | undefined
@@ -254,11 +407,10 @@ export const getAllCollaborationJobsService = async (
         userEmail: u?.email || userSnap?.email || "",
         domainTitle,
         domainEmail,
-        collaborationDomainSnapshot:
-          (snap ?? j.collaborationDomainSnapshot) as
-            | CollaborationDomainJobSnapshot
-            | null
-            | undefined,
+        collaborationDomainSnapshot: (snap ?? j.collaborationDomainSnapshot) as
+          | CollaborationDomainJobSnapshot
+          | null
+          | undefined,
         domainRecordMissing,
       };
     });
@@ -268,7 +420,7 @@ export const getAllCollaborationJobsService = async (
     if (searchTrimmed) {
       const searchRegex = new RegExp(
         searchTrimmed.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-        "i"
+        "i",
       );
 
       const usersColl = UserModel.collection.name;
@@ -282,9 +434,7 @@ export const getAllCollaborationJobsService = async (
             localField: "userId",
             foreignField: "_id",
             as: "user",
-            pipeline: [
-              { $project: { firstName: 1, lastName: 1, email: 1 } },
-            ],
+            pipeline: [{ $project: { firstName: 1, lastName: 1, email: 1 } }],
           },
         },
         { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
@@ -383,9 +533,10 @@ export const getAllCollaborationJobsService = async (
         })[]
       ).map((row) => {
         const snap = row.collaborationDomainSnapshot;
-        const domainTitle = String(row.resolvedTitle ?? "").trim() || snap?.title || "";
+        const domainTitle =
+          String(row.resolvedTitle ?? "").trim() || snap?.title || "";
         const domainEmail = normalizeEmailDomainForSnapshot(
-          String(row.resolvedDomain ?? snap?.domain ?? "")
+          String(row.resolvedDomain ?? snap?.domain ?? ""),
         );
         const domainRecordMissing =
           !snap &&
@@ -401,7 +552,9 @@ export const getAllCollaborationJobsService = async (
         return {
           ...(rest as unknown as CollaborationJob),
           userName: row.userName || row.snapshotUserName || "",
-          userEmail: String(row.userEmail ?? row.userSnapshot?.email ?? "").trim(),
+          userEmail: String(
+            row.userEmail ?? row.userSnapshot?.email ?? "",
+          ).trim(),
           domainTitle,
           domainEmail,
           domainRecordMissing,
@@ -433,7 +586,7 @@ export const getAllCollaborationJobsService = async (
  * Retry a failed collaboration job — reset to pending for the worker to pick up.
  */
 export const retryCollaborationJobService = async (
-  jobId: string
+  jobId: string,
 ): Promise<CollaborationJob> => {
   try {
     const job = await CollaborationJobModel.findOne({ jobId }).lean();
@@ -445,21 +598,82 @@ export const retryCollaborationJobService = async (
     if (job.status !== "failed") {
       throw new AppError(
         "Only failed jobs can be retried. Current status: " + job.status,
-        400
+        400,
       );
+    }
+
+    const j = job as unknown as Record<string, unknown>;
+
+    // Build snapshot backfill objects in case they are missing on this job.
+    const snapshotPatch: Record<string, unknown> = {};
+
+    if (!j.collaborationDomainSnapshot && j.collaborationDomainId) {
+      try {
+        const domainDoc = await CollaborationDomainModel.findById(
+          j.collaborationDomainId,
+        )
+          .select("title domain")
+          .lean();
+        if (domainDoc) {
+          snapshotPatch.collaborationDomainSnapshot = {
+            title: (domainDoc as unknown as Record<string, string>).title,
+            domain: normalizeEmailDomainForSnapshot(
+              String(
+                (domainDoc as unknown as Record<string, string>).domain || "",
+              ),
+            ),
+          };
+        }
+      } catch {
+        // snapshot backfill is best-effort; don't block the retry
+      }
+    }
+
+    if (!j.partnershipImportConfigSnapshot && j.partnershipImportConfigId) {
+      try {
+        const cfgDoc = await PartnershipImportConfigModel.findById(
+          j.partnershipImportConfigId,
+        )
+          .select("title")
+          .lean();
+        if (cfgDoc) {
+          snapshotPatch.partnershipImportConfigSnapshot = {
+            title: (cfgDoc as unknown as Record<string, string>).title,
+          };
+        }
+      } catch {
+        // best-effort
+      }
+    }
+
+    if (!j.userSnapshot && j.userId) {
+      try {
+        const userDoc = await UserModel.findById(j.userId)
+          .select("firstName lastName email")
+          .lean();
+        const snap = buildUserSnapshot(
+          userDoc as Parameters<typeof buildUserSnapshot>[0],
+        );
+        if (snap) snapshotPatch.userSnapshot = snap;
+      } catch {
+        // best-effort
+      }
     }
 
     const updated = await CollaborationJobModel.findOneAndUpdate(
       { jobId },
       {
-        $set: { status: "pending" as CollaborationJobStatus },
+        $set: {
+          status: "pending" as CollaborationJobStatus,
+          ...snapshotPatch,
+        },
         $unset: {
           error: "",
           startedAt: "",
           completedAt: "",
         },
       },
-      { new: true }
+      { new: true },
     ).lean();
 
     return updated as unknown as CollaborationJob;

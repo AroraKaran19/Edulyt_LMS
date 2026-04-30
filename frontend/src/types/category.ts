@@ -5,6 +5,7 @@ export interface Category {
   description?: string;
   isActive: boolean;
   showOnHomePage?: boolean;
+  showOnCourseList?: boolean;
   categoryImage?: string;
   createdAt?: Date;
   updatedAt?: Date;

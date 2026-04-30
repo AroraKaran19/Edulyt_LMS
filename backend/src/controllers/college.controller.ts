@@ -71,7 +71,7 @@ const requireNonEmptyLocation = (location: unknown): string => {
 
 export const createCollege = asyncHandler(
   async (req: Request, res: Response) => {
-    const { name, location, isActive } = req.body;
+    const { name, location, website, image, isActive } = req.body;
     if (!name || typeof name !== "string" || !name.trim()) {
       throw new AppError("College name is required", 400);
     }
@@ -79,6 +79,8 @@ export const createCollege = asyncHandler(
     const college = await createCollegeService({
       name,
       location: loc,
+      website: typeof website === "string" ? website : undefined,
+      image: typeof image === "string" ? image : undefined,
       isActive,
     });
     sendSuccessResponse(res, college, "College created successfully", 201);
@@ -89,11 +91,13 @@ export const updateCollege = asyncHandler(
   async (req: Request, res: Response) => {
     const { id } = req.params;
     if (!id) throw new AppError("College id is required", 400);
-    const { name, location, isActive } = req.body;
+    const { name, location, website, image, isActive } = req.body;
     const loc = requireNonEmptyLocation(location);
     const college = await updateCollegeService(id, {
       name,
       location: loc,
+      website: typeof website === "string" ? website : undefined,
+      image: typeof image === "string" ? image : undefined,
       isActive,
     });
     if (!college) throw new AppError("College not found", 404);

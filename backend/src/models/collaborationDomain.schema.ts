@@ -112,7 +112,7 @@ const collaborationDomainSchema = new Schema<CollaborationDomain>(
           );
         },
         message:
-          "Invalid email domain (e.g. college.edu, @college.edu, or *.test.com for any single-label subdomain)",
+          "Invalid email domain (e.g. college.edu, @college.edu, or *.college.edu for apex + single-label subdomains)",
       },
     },
     isActive: { type: Boolean, default: true, index: true },
@@ -122,7 +122,7 @@ const collaborationDomainSchema = new Schema<CollaborationDomain>(
       required: true,
       index: true,
     },
-    /** Course allot: ≥1 course. Discount: must be empty. */
+    /** Course allot or discount: ≥1 linked course (discount applies only to these courses at checkout). */
     courses: {
       type: [{ type: Schema.Types.ObjectId, ref: "Course", index: true }],
       default: [],
@@ -203,11 +203,16 @@ collaborationDomainSchema.pre("validate", function (next) {
 
   if (kind === "discount") {
     this.set("enrollmentAccess", undefined);
-    this.set("courses", []);
     if (!benefit) {
       this.invalidate(
         "benefit",
         "Discount partnerships require a benefit (percentage or fixed amount)"
+      );
+    }
+    if (courseCount === 0) {
+      this.invalidate(
+        "courses",
+        "Discount partnerships require at least one course the discount applies to"
       );
     }
   } else {

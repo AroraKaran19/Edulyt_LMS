@@ -38,6 +38,14 @@ html {
   scrollbar-color: #cbd5e1 #f1f5f9;
 }
 
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
 @utility scrollbar-hide {
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -148,4 +156,18 @@ html {
 
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
+}
+
+/* Partnership import CSV: indeterminate progress bar */
+@keyframes csv-import-shuttle {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(350%);
+  }
+}
+
+.csv-import-shuttle {
+  animation: csv-import-shuttle 1.35s ease-in-out infinite;
 }

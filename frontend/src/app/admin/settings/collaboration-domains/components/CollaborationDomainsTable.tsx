@@ -90,13 +90,13 @@ export default function CollaborationDomainsTable({
               </th>
               <th
                 className="text-left py-4 px-4 font-semibold text-gray-700"
-                title="Course allot only: full, partial, or top-N content. Not used for global discount partnerships."
+                title="Course allot: full, partial, or top-N. Not used when the offer is checkout discount."
               >
                 Access
               </th>
               <th
                 className="text-left py-4 px-4 font-semibold text-gray-700"
-                title="Discount only: global % or fixed off at checkout. None for course allot."
+                title="Checkout discount: % or fixed off for the Courses listed. Empty for course allot."
               >
                 Discount
               </th>
@@ -142,12 +142,10 @@ export default function CollaborationDomainsTable({
                     title={
                       accessLabel
                         ? undefined
-                        : "No per-course enrollment rules; this partnership is checkout discount only."
+                        : "No enrollment access rules — this row is a checkout discount (see Courses + Discount columns)."
                     }
                   >
-                    {accessLabel ?? (
-                      <span className="text-gray-400">None</span>
-                    )}
+                    {accessLabel ?? <span className="text-gray-400">None</span>}
                   </td>
                   <td
                     className="py-3 px-4 text-gray-700 max-w-[120px] truncate"
@@ -157,9 +155,7 @@ export default function CollaborationDomainsTable({
                         : "No checkout discount. Partnership is course access only (see Access column)."
                     }
                   >
-                    {benefit ?? (
-                      <span className="text-gray-400">None</span>
-                    )}
+                    {benefit ?? <span className="text-gray-400">None</span>}
                   </td>
                   <td className="py-3 px-4 text-right">
                     <div className="flex items-center justify-end gap-1 flex-wrap">

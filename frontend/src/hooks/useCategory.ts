@@ -37,6 +37,7 @@ export interface CreateCategoryData {
   audience: "college-students" | "professionals";
   description?: string;
   showOnHomePage?: boolean;
+  showOnCourseList?: boolean;
   categoryImage?: string;
 }
 

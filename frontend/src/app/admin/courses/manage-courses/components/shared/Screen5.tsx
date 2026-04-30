@@ -562,7 +562,7 @@ const Screen5 = () => {
                   </div>
                   <div className="flex-1">
                     <Input
-                      label="Price ($)"
+                      label="Price (₹)"
                       type="number"
                       value={state.plans.essential.price?.toString() || ""}
                       onChange={(e) =>
@@ -941,7 +941,7 @@ const Screen5 = () => {
                   </div>
                   <div className="flex-1">
                     <Input
-                      label="Price ($)"
+                      label="Price (₹)"
                       type="number"
                       value={state.plans.elite.price?.toString() || ""}
                       onChange={(e) =>

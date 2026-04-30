@@ -22,7 +22,9 @@
     "scripts:update-brochures": "ts-node src/scripts/updateCourseBrochures.ts",
     "scripts:reset-enrollments-no-cert": "ts-node src/scripts/reset-enrollments-without-certificate.ts",
     "scripts:remove-certificates-all": "ts-node src/scripts/remove-certificates-all.ts",
-    "scripts:import-colleges": "ts-node src/scripts/import-colleges-json.ts"
+    "scripts:import-colleges": "ts-node src/scripts/import-colleges-json.ts",
+    "scripts:remove-enrollments-window": "ts-node src/scripts/remove-enrollments-by-enrolledAt-window.ts",
+    "scripts:seed-home-page": "ts-node src/scripts/seed-home-page-settings.ts"
   },
   "keywords": [
     "airkrit",

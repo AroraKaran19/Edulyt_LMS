@@ -5,6 +5,8 @@ export interface College {
   _id: string;
   name: string;
   location: string;
+  website?: string;
+  image?: string;
   isActive: boolean;
   createdAt?: string;
   updatedAt?: string;
@@ -20,6 +22,8 @@ export interface ListCollegesResult {
 export interface CreateCollegePayload {
   name: string;
   location: string;
+  website?: string;
+  image?: string;
   isActive?: boolean;
 }
 

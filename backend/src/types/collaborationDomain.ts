@@ -39,10 +39,11 @@ export interface CollaborationDomain {
   domain: string;
   isActive: boolean;
   collaborationKind: CollaborationKind;
+  /** Course allot: enrolled courses. Discount: checkout discount applies only to these courses. */
   courses: Course["_id"][];
   /** Course allot only: full / partial / top-N content rules. */
   enrollmentAccess?: CollaborationEnrollmentAccess;
-  /** Discount only: global checkout discount (percentage or fixed). */
+  /** Discount only: checkout benefit (percentage or fixed). */
   benefit?: CollaborationBenefit;
   createdBy?: User["_id"];
   createdAt?: Date;
@@ -52,6 +53,8 @@ export interface CollaborationDomain {
 export interface CollaborationCheckoutResolve {
   applies: boolean;
   collaborationDomainId?: string;
+  /** When discount comes from partnership import (CSV), not email domain. */
+  partnershipImportConfigId?: string;
   title?: string;
   benefit?: CollaborationBenefit;
   enrollmentAccess?: CollaborationEnrollmentAccess;

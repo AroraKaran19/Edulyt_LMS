@@ -1,0 +1,229 @@
+import mongoose from "mongoose";
+import {
+  InternshipVoucherModel,
+  generateVoucherCode,
+} from "../models/internshipVoucher.schema";
+import { InternshipEnrollmentModel } from "../models/internshipEnrollment.schema";
+import { InternshipModel } from "../models/internship.schema";
+import { AppError } from "../middlewares/error.middleware";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+export type InternshipVoucherStatus = "available" | "redeemed" | "expired";
+
+export interface InternshipVoucherRow {
+  _id: string;
+  code: string;
+  status: InternshipVoucherStatus;
+  issuedAt: string;
+  expiresAt: string | null;
+  redeemedAt: string | null;
+  redeemedInternshipEnrollmentId: string | null;
+}
+
+// ─── Qualification check ──────────────────────────────────────────────────────
+
+/**
+ * A paid course order qualifies for a free-internship voucher when the
+ * learner paid at least 50 % of the original plan price.
+ *
+ *   originalPrice = amountPaid + couponDiscount + collaborationDiscount
+ *   qualifies     = amountPaid ≥ 0.5 × originalPrice
+ *               ⟺ amountPaid ≥ couponDiscount + collaborationDiscount
+ *
+ * Free/fully-discounted orders (amount = 0) never qualify.
+ */
+export function qualifiesForInternshipVoucher(order: {
+  amount: number;
+  couponDiscount?: number;
+  collaborationDiscount?: number;
+}): boolean {
+  const paid = order.amount ?? 0;
+  if (paid <= 0) return false;
+  const discounts =
+    (order.couponDiscount ?? 0) + (order.collaborationDiscount ?? 0);
+  return paid >= discounts;
+}
+
+// ─── Issue ────────────────────────────────────────────────────────────────────
+
+/**
+ * Issue one internship voucher for a qualifying course purchase.
+ *
+ * Idempotent: a second call with the same `orderId` is silently ignored
+ * (unique index on `sourceOrderId` prevents duplicates).
+ *
+ * Retries code generation up to 5 times in the unlikely event of a
+ * collision on the `code` unique index.
+ */
+export async function issueInternshipVoucher(params: {
+  userId: string;
+  enrollmentId: string;
+  orderId: string;
+}): Promise<void> {
+  const { userId, enrollmentId, orderId } = params;
+
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      await InternshipVoucherModel.create({
+        code: generateVoucherCode(),
+        userId: new mongoose.Types.ObjectId(userId),
+        sourceEnrollmentId: new mongoose.Types.ObjectId(enrollmentId),
+        sourceOrderId: new mongoose.Types.ObjectId(orderId),
+        status: "available",
+      });
+      return; // success
+    } catch (err: unknown) {
+      const e = err as { code?: number; keyPattern?: Record<string, unknown> };
+      if (e.code === 11000) {
+        // Duplicate on sourceOrderId → already issued; stop.
+        if (e.keyPattern && "sourceOrderId" in e.keyPattern) return;
+        // Duplicate on code → retry with a new code.
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw new Error("Failed to generate a unique voucher code after 5 attempts.");
+}
+
+// ─── Query ────────────────────────────────────────────────────────────────────
+
+/** Count of vouchers the user can still spend. */
+export async function countAvailableVouchers(userId: string): Promise<number> {
+  return InternshipVoucherModel.countDocuments({
+    userId: new mongoose.Types.ObjectId(userId),
+    status: "available",
+  });
+}
+
+/** All vouchers for the authenticated user, newest first. */
+export async function listVouchersForUser(
+  userId: string,
+): Promise<InternshipVoucherRow[]> {
+  const docs = await InternshipVoucherModel.find({
+    userId: new mongoose.Types.ObjectId(userId),
+  })
+    .sort({ createdAt: -1 })
+    .lean();
+
+  return docs.map((d) => ({
+    _id: String(d._id),
+    code: d.code,
+    status: d.status as InternshipVoucherStatus,
+    issuedAt: (d.createdAt as Date).toISOString(),
+    expiresAt: d.expiresAt ? (d.expiresAt as Date).toISOString() : null,
+    redeemedAt: d.redeemedAt ? (d.redeemedAt as Date).toISOString() : null,
+    redeemedInternshipEnrollmentId: d.redeemedInternshipEnrollmentId
+      ? String(d.redeemedInternshipEnrollmentId)
+      : null,
+  }));
+}
+
+// ─── Redeem ───────────────────────────────────────────────────────────────────
+
+/**
+ * Redeem a voucher to enroll the learner in a free internship seat.
+ *
+ * Accepts either the voucher's `_id` OR its `code` string.
+ * Enforces that the voucher belongs to this user and is still available.
+ * Creates an InternshipEnrollment (type "paid", paymentAmount = 0) and
+ * immediately marks the voucher as "redeemed" — single-use.
+ */
+export async function redeemInternshipVoucher(params: {
+  userId: string;
+  /** Either the Mongo _id or the "INTV-XXXXXX" code string. */
+  voucherIdOrCode: string;
+  internshipId: string;
+  batchId: string;
+}): Promise<{ internshipEnrollmentId: string; code: string }> {
+  const { userId, voucherIdOrCode, internshipId, batchId } = params;
+
+  if (!mongoose.Types.ObjectId.isValid(internshipId))
+    throw new AppError("Invalid internship id", 400);
+
+  // 1. Find voucher — by _id or code
+  const isObjectId = mongoose.Types.ObjectId.isValid(voucherIdOrCode);
+  const query = isObjectId
+    ? { _id: new mongoose.Types.ObjectId(voucherIdOrCode) }
+    : { code: voucherIdOrCode.toUpperCase().trim() };
+
+  const voucher = await InternshipVoucherModel.findOne({
+    ...query,
+    userId: new mongoose.Types.ObjectId(userId),
+    status: "available",
+  });
+  if (!voucher) throw new AppError("Voucher not found or already used", 404);
+
+  // 2. Check wall-clock expiry
+  if (voucher.expiresAt && new Date() > voucher.expiresAt) {
+    await InternshipVoucherModel.findByIdAndUpdate(voucher._id, {
+      status: "expired",
+    });
+    throw new AppError("This voucher has expired", 400);
+  }
+
+  // 3. Validate internship + batch
+  const internship = await InternshipModel.findOne({
+    _id: new mongoose.Types.ObjectId(internshipId),
+    isActive: true,
+  })
+    .select("batches")
+    .lean();
+  if (!internship) throw new AppError("Internship not found", 404);
+
+  type BatchRaw = {
+    _id?: unknown;
+    name?: string;
+    internshipStartDate?: Date;
+    isActive?: boolean;
+    status?: string;
+  };
+
+  const batch = (internship.batches as BatchRaw[]).find(
+    (b) => b._id != null && String(b._id) === batchId,
+  );
+  if (!batch) throw new AppError("Batch not found", 404);
+  if (batch.isActive === false || batch.status !== "active")
+    throw new AppError("This batch is no longer accepting enrollments", 400);
+
+  // 4. Duplicate enrollment guard (same user + internship)
+  const existing = await InternshipEnrollmentModel.findOne({
+    user: new mongoose.Types.ObjectId(userId),
+    internship: new mongoose.Types.ObjectId(internshipId),
+    status: { $nin: ["dropped", "revoked", "admin_rejected"] },
+  });
+  if (existing)
+    throw new AppError(
+      "You are already enrolled in this internship program",
+      400,
+    );
+
+  // 5. Create internship enrollment
+  const enrollment = await InternshipEnrollmentModel.create({
+    user: new mongoose.Types.ObjectId(userId),
+    internship: new mongoose.Types.ObjectId(internshipId),
+    batchSnapshot: {
+      batchId: String(batch._id),
+      name: String(batch.name ?? ""),
+      internshipStartDate: batch.internshipStartDate ?? new Date(),
+    },
+    enrollmentType: "paid",
+    status: "enrolled",
+    paymentAmount: 0,
+    enrolledAt: new Date(),
+    internshipSuccessPoints: 0,
+  });
+
+  // 6. Mark voucher redeemed — expires immediately after single use
+  await InternshipVoucherModel.findByIdAndUpdate(voucher._id, {
+    status: "redeemed",
+    redeemedAt: new Date(),
+    redeemedInternshipEnrollmentId: enrollment._id,
+  });
+
+  return {
+    internshipEnrollmentId: String(enrollment._id),
+    code: voucher.code,
+  };
+}

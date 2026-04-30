@@ -188,7 +188,7 @@ const EnrollmentDetailsModal = ({
         {enrollment.type === "paid" && (enrollment.txnId || enrollment.orderId) && (
           <div className="pt-3 mt-3 border-t border-gray-100">
             <Link
-              href={`/admin/courses/orders?search=${encodeURIComponent(enrollment.txnId ?? enrollment.orderId ?? "")}`}
+              href={`/admin/orders?search=${encodeURIComponent(enrollment.txnId ?? enrollment.orderId ?? "")}`}
               className="inline-flex items-center gap-2 text-sm font-medium text-orange-600 hover:text-orange-700"
               onClick={onClose}
             >

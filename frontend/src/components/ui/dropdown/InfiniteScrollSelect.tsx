@@ -1,6 +1,13 @@
 "use client";
 
-import React, { useState, useCallback, useRef, useEffect } from "react";
+import React, {
+  useState,
+  useCallback,
+  useRef,
+  useEffect,
+  useLayoutEffect,
+} from "react";
+import { createPortal } from "react-dom";
 import { ChevronDown, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -31,9 +38,14 @@ export interface InfiniteScrollSelectProps<T = unknown> {
   disabled?: boolean;
   searchPlaceholder?: string;
   emptyMessage?: string;
+  /** Set false for short static lists (e.g. Active/Inactive) where search is pointless. */
+  showSearch?: boolean;
+  /**
+   * When true, the options panel is rendered in `document.body` with `position: fixed`
+   * so it is not clipped by scroll parents (e.g. admin wizard `overflow-y-auto` bodies).
+   */
+  dropdownPortal?: boolean;
 }
-
-const DEFAULT_PAGE_SIZE = 15;
 
 function normalizeOptions<T>(
   items: InfiniteScrollSelectOption<T>[] | { _id?: string; name?: string }[],
@@ -69,6 +81,8 @@ export function InfiniteScrollSelect<T = unknown>({
   disabled,
   searchPlaceholder = "Search...",
   emptyMessage = "No options found",
+  showSearch = true,
+  dropdownPortal = false,
 }: InfiniteScrollSelectProps<T>) {
   const [isOpen, setIsOpen] = useState(false);
   const [options, setOptions] = useState<InfiniteScrollSelectOption<T>[]>([]);
@@ -77,15 +91,59 @@ export function InfiniteScrollSelect<T = unknown>({
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
+  const [portalRect, setPortalRect] = useState<{
+    top: number;
+    left: number;
+    width: number;
+  } | null>(null);
+
   const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const dropdownPanelRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+
+  const updatePortalPosition = useCallback(() => {
+    if (!dropdownPortal || !triggerRef.current) return;
+    const r = triggerRef.current.getBoundingClientRect();
+    setPortalRect({
+      top: r.bottom + 4,
+      left: r.left,
+      width: Math.max(r.width, 200),
+    });
+  }, [dropdownPortal]);
 
   // Debounce search input so list refetches without an "Apply search" button
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || !showSearch) return;
     const t = setTimeout(() => setSearch(searchInput), 300);
     return () => clearTimeout(t);
-  }, [searchInput, isOpen]);
+  }, [searchInput, isOpen, showSearch]);
+
+  useEffect(() => {
+    if (isOpen && !showSearch) {
+      setSearchInput("");
+      setSearch("");
+    }
+  }, [isOpen, showSearch]);
+
+  useLayoutEffect(() => {
+    if (!isOpen || !dropdownPortal) {
+      setPortalRect(null);
+      return;
+    }
+    updatePortalPosition();
+  }, [isOpen, dropdownPortal, updatePortalPosition]);
+
+  useEffect(() => {
+    if (!isOpen || !dropdownPortal) return;
+    const onReposition = () => updatePortalPosition();
+    window.addEventListener("scroll", onReposition, true);
+    window.addEventListener("resize", onReposition);
+    return () => {
+      window.removeEventListener("scroll", onReposition, true);
+      window.removeEventListener("resize", onReposition);
+    };
+  }, [isOpen, dropdownPortal, updatePortalPosition]);
 
   const selectedValues = Array.isArray(value) ? value : value ? [value] : [];
   const displayLabel =
@@ -121,8 +179,8 @@ export function InfiniteScrollSelect<T = unknown>({
   useEffect(() => {
     if (!isOpen) return;
     setPage(1);
-    loadPage(1, search, false);
-  }, [isOpen, search]);
+    loadPage(1, showSearch ? search : "", false);
+  }, [isOpen, search, showSearch]);
 
   // Load initial options on mount for displaying selected values
   useEffect(() => {
@@ -141,20 +199,11 @@ export function InfiniteScrollSelect<T = unknown>({
   }, [page, totalPages, loading, search, loadPage]);
 
   useEffect(() => {
-    const list = listRef.current;
-    if (!list) return;
-    list.addEventListener("scroll", handleScroll);
-    return () => list.removeEventListener("scroll", handleScroll);
-  }, [handleScroll]);
-
-  useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(e.target as Node)
-      ) {
-        setIsOpen(false);
-      }
+      const t = e.target as Node;
+      if (containerRef.current?.contains(t)) return;
+      if (dropdownPanelRef.current?.contains(t)) return;
+      setIsOpen(false);
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -177,6 +226,79 @@ export function InfiniteScrollSelect<T = unknown>({
     onChange(multi ? [] : "");
   };
 
+  const dropdownPanel = (
+    <div
+      ref={dropdownPanelRef}
+      className={cn(
+        "min-w-[200px] bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden",
+        !dropdownPortal && "absolute z-[200] mt-1 w-full",
+        /* Above app modals (e.g. z-9999) so portaled lists are visible inside dialogs */
+        dropdownPortal && "z-[11000] shadow-xl",
+        dropdownClassName,
+      )}
+      style={
+        dropdownPortal && portalRect
+          ? {
+              position: "fixed",
+              top: portalRect.top,
+              left: portalRect.left,
+              width: portalRect.width,
+            }
+          : undefined
+      }
+    >
+      {showSearch && (
+        <div className="p-2 border-b border-gray-100">
+          <input
+            type="text"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            onKeyDown={(e) =>
+              e.key === "Enter" && (e.preventDefault(), setSearch(searchInput))
+            }
+            placeholder={searchPlaceholder}
+            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none"
+          />
+        </div>
+      )}
+      <div
+        ref={listRef}
+        className="max-h-60 overflow-y-auto"
+        onScroll={handleScroll}
+      >
+        {loading && options.length === 0 ? (
+          <div className="py-6 text-center text-sm text-gray-500">
+            Loading...
+          </div>
+        ) : options.length === 0 ? (
+          <div className="py-6 text-center text-sm text-gray-500">
+            {emptyMessage}
+          </div>
+        ) : (
+          options.map((opt, index) => (
+            <button
+              key={index}
+              type="button"
+              onClick={() => toggleOption(opt)}
+              className={cn(
+                "w-full px-3 py-2.5 text-left text-sm hover:bg-orange-50 transition-colors",
+                selectedValues.includes(opt.value) &&
+                  "bg-orange-100 text-orange-800 font-medium",
+              )}
+            >
+              {opt.label}
+            </button>
+          ))
+        )}
+        {loading && options.length > 0 && (
+          <div className="py-2 text-center text-xs text-gray-400">
+            Loading more...
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <div className={cn("relative", className)} ref={containerRef}>
       {label && (
@@ -185,6 +307,7 @@ export function InfiniteScrollSelect<T = unknown>({
         </label>
       )}
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => !disabled && setIsOpen((o) => !o)}
         disabled={disabled}
@@ -224,63 +347,13 @@ export function InfiniteScrollSelect<T = unknown>({
         </span>
       </button>
 
-      {isOpen && (
-        <div
-          className={cn(
-            "absolute z-50 mt-1 w-full min-w-[200px] bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden",
-            dropdownClassName,
-          )}
-        >
-          <div className="p-2 border-b border-gray-100">
-            <input
-              type="text"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              onKeyDown={(e) =>
-                e.key === "Enter" &&
-                (e.preventDefault(), setSearch(searchInput))
-              }
-              placeholder={searchPlaceholder}
-              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none"
-            />
-          </div>
-          <div
-            ref={listRef}
-            className="max-h-60 overflow-y-auto"
-            onScroll={handleScroll}
-          >
-            {loading && options.length === 0 ? (
-              <div className="py-6 text-center text-sm text-gray-500">
-                Loading...
-              </div>
-            ) : options.length === 0 ? (
-              <div className="py-6 text-center text-sm text-gray-500">
-                {emptyMessage}
-              </div>
-            ) : (
-              options.map((opt, index) => (
-                <button
-                  key={index}
-                  type="button"
-                  onClick={() => toggleOption(opt)}
-                  className={cn(
-                    "w-full px-3 py-2.5 text-left text-sm hover:bg-orange-50 transition-colors",
-                    selectedValues.includes(opt.value) &&
-                      "bg-orange-100 text-orange-800 font-medium",
-                  )}
-                >
-                  {opt.label}
-                </button>
-              ))
-            )}
-            {loading && options.length > 0 && (
-              <div className="py-2 text-center text-xs text-gray-400">
-                Loading more...
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      {isOpen && !dropdownPortal && dropdownPanel}
+
+      {isOpen &&
+        dropdownPortal &&
+        typeof document !== "undefined" &&
+        portalRect &&
+        createPortal(dropdownPanel, document.body)}
     </div>
   );
 }

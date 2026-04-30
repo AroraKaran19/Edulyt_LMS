@@ -22,6 +22,20 @@ import {
   getLatestCertificateService,
 } from "./certificate.services";
 import { createCertificateJobService } from "./certificateJob.services";
+import { tryAwardSuccessPointsOnCourseCompletion } from "./successPoints.services";
+
+async function runSuccessPointsOnCourseCompletion(
+  enrollmentId: string,
+  isCompleted: boolean,
+  completedAt: Date | undefined,
+): Promise<void> {
+  if (!isCompleted || !completedAt) return;
+  try {
+    await tryAwardSuccessPointsOnCourseCompletion(enrollmentId);
+  } catch (e) {
+    console.error("Success points (course completion):", e);
+  }
+}
 
 /**
  * Check if an enrollment is still valid (not expired)
@@ -70,7 +84,10 @@ export const CreateEnrollmentService = async (enrollmentData: {
         .lean();
       if (gifter) {
         const displayName =
-          [gifter.firstName, gifter.lastName].filter(Boolean).join(" ").trim() ||
+          [gifter.firstName, gifter.lastName]
+            .filter(Boolean)
+            .join(" ")
+            .trim() ||
           gifter.email ||
           "Unknown";
         giftFromSnapshot = {
@@ -117,7 +134,7 @@ export const CreateEnrollmentService = async (enrollmentData: {
     await StudentModel.findByIdAndUpdate(
       enrollmentData.userId,
       { $push: { enrollments: savedEnrollment._id } },
-      { new: true }
+      { new: true },
     );
 
     // Update course analytics (total enrollments and active enrollments)
@@ -130,7 +147,7 @@ export const CreateEnrollmentService = async (enrollmentData: {
           enrollments: 1,
         },
       },
-      { new: true }
+      { new: true },
     );
 
     // Get course to access instructors
@@ -170,7 +187,7 @@ export const CreateEnrollmentService = async (enrollmentData: {
         await UserModel.findByIdAndUpdate(
           instructorId,
           { $inc: { totalStudents: 1 } },
-          { new: true }
+          { new: true },
         );
       }
     }
@@ -185,14 +202,14 @@ export const CreateEnrollmentService = async (enrollmentData: {
       `Failed to create enrollment: ${
         error instanceof Error ? error.message : "Unknown error"
       }`,
-      500
+      500,
     );
   }
 };
 
 // Get specific enrollment
 export const GetEnrollmentService = async (
-  enrollmentId: string
+  enrollmentId: string,
 ): Promise<Enrollment | null> => {
   try {
     if (!mongoose.Types.ObjectId.isValid(enrollmentId)) {
@@ -235,7 +252,7 @@ export const GetUserEnrollmentsService = async (
   page: number = 1,
   limit: number = 10,
   search?: string,
-  sortBy?: string
+  sortBy?: string,
 ): Promise<{
   enrollments: Enrollment[];
   total: number;
@@ -285,19 +302,27 @@ export const GetUserEnrollmentsService = async (
       }
     }
 
+    // When searching, resolve matching course IDs first so that skip/limit
+    // and countDocuments operate on the already-narrowed enrollment set.
+    // Case-insensitive **substring** on `title` only. No description (noisy),
+    // no text/fuzzy/typo-tolerant index — just escaped regex.
+    if (search) {
+      const q = String(search).trim();
+      if (q) {
+        const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const matchingCourseIds = await CourseModel.find(
+          { title: { $regex: escaped, $options: "i" } },
+          { _id: 1 },
+        ).lean();
+        filters.courseId = { $in: matchingCourseIds.map((c: any) => c._id) };
+      }
+    }
+
     const enrollments = await EnrollmentModel.find(filters)
       .populate({
         path: "courseId",
         select:
           "title thumbnail description category duration slug instructor plans analytics isFeatured isCertified modules deactivatedModules deactivatedLessons",
-        match: search
-          ? {
-              $or: [
-                { title: { $regex: search, $options: "i" } },
-                { description: { $regex: search, $options: "i" } },
-              ],
-            }
-          : {},
         populate: [
           {
             path: "instructor",
@@ -314,9 +339,8 @@ export const GetUserEnrollmentsService = async (
       .limit(limit)
       .lean();
 
-    // Filter out enrollments where courseId is null (due to search match)
     const filteredEnrollments = enrollments.filter(
-      (enrollment) => enrollment.courseId
+      (enrollment) => enrollment.courseId,
     );
 
     // Add lightweight counts for dashboard cards without populating full modules tree.
@@ -324,8 +348,8 @@ export const GetUserEnrollmentsService = async (
       new Set(
         filteredEnrollments
           .map((e) => String((e as any).courseId?._id ?? (e as any).courseId))
-          .filter((id) => mongoose.Types.ObjectId.isValid(id))
-      )
+          .filter((id) => mongoose.Types.ObjectId.isValid(id)),
+      ),
     ).map((id) => new mongoose.Types.ObjectId(id));
 
     // Lessons live as separate documents keyed by moduleId; module.lessons[] may be stale.
@@ -342,7 +366,7 @@ export const GetUserEnrollmentsService = async (
       const deactivatedModuleIds = new Set(
         Array.isArray(c.deactivatedModules)
           ? c.deactivatedModules.map((x: unknown) => String(x))
-          : []
+          : [],
       );
       const mids = c.modules
         .map((m: unknown) => String(m))
@@ -370,13 +394,15 @@ export const GetUserEnrollmentsService = async (
     })
       .select("_id")
       .lean();
-    const activeModuleIdSet = new Set(activeModules.map((m) => String((m as any)._id)));
+    const activeModuleIdSet = new Set(
+      activeModules.map((m) => String((m as any)._id)),
+    );
 
     // Filter out inactive modules
     for (const [cid, mids] of moduleIdsByCourseId.entries()) {
       moduleIdsByCourseId.set(
         cid,
-        mids.filter((mid) => activeModuleIdSet.has(String(mid)))
+        mids.filter((mid) => activeModuleIdSet.has(String(mid))),
       );
     }
 
@@ -439,12 +465,12 @@ export const GetUserEnrollmentsService = async (
  * Returns Record<userId, courseId[]>
  */
 export const GetEnrollmentsByUserIdsService = async (
-  userIds: string[]
+  userIds: string[],
 ): Promise<Record<string, string[]>> => {
   if (!userIds?.length) return {};
 
   const validIds = userIds.filter(
-    (id) => id && mongoose.Types.ObjectId.isValid(id)
+    (id) => id && mongoose.Types.ObjectId.isValid(id),
   );
   if (validIds.length === 0) return {};
 
@@ -463,8 +489,8 @@ export const GetEnrollmentsByUserIdsService = async (
         typeof e.courseId === "object" && (e.courseId as any)?._id
           ? String((e.courseId as any)._id)
           : e.courseId
-          ? String(e.courseId)
-          : "";
+            ? String(e.courseId)
+            : "";
       if (!cid) continue;
       if (!result[uid]) result[uid] = [];
       if (!result[uid].includes(cid)) result[uid].push(cid);
@@ -478,7 +504,7 @@ export const GetEnrollmentsByUserIdsService = async (
 
 // Helper function to calculate course structure totals
 const calculateCourseStructureTotals = async (
-  courseId: string
+  courseId: string,
 ): Promise<{
   totalModules: number;
   totalLessons: number;
@@ -508,7 +534,7 @@ const calculateCourseStructureTotals = async (
     if (course && course.modules && Array.isArray(course.modules)) {
       // Filter out null modules and only count active ones
       const activeModules = course.modules.filter(
-        (m: any) => m !== null && m !== undefined && m.isActive !== false
+        (m: any) => m !== null && m !== undefined && m.isActive !== false,
       );
       totalModules = activeModules.length;
 
@@ -516,7 +542,7 @@ const calculateCourseStructureTotals = async (
         if (module.lessons && Array.isArray(module.lessons)) {
           // Filter out null lessons and only count active ones
           const activeLessons = module.lessons.filter(
-            (l: any) => l !== null && l !== undefined && l.isActive !== false
+            (l: any) => l !== null && l !== undefined && l.isActive !== false,
           );
           totalLessons += activeLessons.length;
 
@@ -525,7 +551,7 @@ const calculateCourseStructureTotals = async (
               // Filter out null contents and only count active ones
               const activeContents = lesson.contents.filter(
                 (c: any) =>
-                  c !== null && c !== undefined && c.isActive !== false
+                  c !== null && c !== undefined && c.isActive !== false,
               );
               totalContents += activeContents.length;
             }
@@ -536,7 +562,7 @@ const calculateCourseStructureTotals = async (
   } catch (error) {
     console.error(
       `[calculateCourseStructureTotals] Error for course ${courseId}:`,
-      error
+      error,
     );
     throw error;
   }
@@ -546,7 +572,7 @@ const calculateCourseStructureTotals = async (
 
 // Recalculate progress for an enrollment (useful for fixing existing enrollments)
 export const RecalculateEnrollmentProgressService = async (
-  enrollmentId: string
+  enrollmentId: string,
 ): Promise<Enrollment | null> => {
   try {
     const enrollment = await EnrollmentModel.findById(enrollmentId);
@@ -564,7 +590,7 @@ export const RecalculateEnrollmentProgressService = async (
     let overallCompletion = 0;
     if (totalContents > 0) {
       overallCompletion = Math.round(
-        (completedContentsCount / totalContents) * 100
+        (completedContentsCount / totalContents) * 100,
       );
       if (overallCompletion > 100) {
         overallCompletion = 100;
@@ -573,10 +599,10 @@ export const RecalculateEnrollmentProgressService = async (
 
     // Calculate completed modules and lessons
     const completedModuleIds = new Set(
-      completedContents.map((c) => c.moduleId).filter(Boolean)
+      completedContents.map((c) => c.moduleId).filter(Boolean),
     );
     const completedLessonIds = new Set(
-      completedContents.map((c) => c.lessonId).filter(Boolean)
+      completedContents.map((c) => c.lessonId).filter(Boolean),
     );
 
     const updatedProgress: EnrollmentProgressSummary = {
@@ -605,7 +631,7 @@ export const RecalculateEnrollmentProgressService = async (
         completedAt: completedAt,
         lastUpdated: new Date(),
       },
-      { new: true }
+      { new: true },
     ).populate({
       path: "courseId",
       select:
@@ -626,16 +652,18 @@ export const RecalculateEnrollmentProgressService = async (
       try {
         // DO NOT generate certificate for partial access users
         // Only generate certificates for users with FULL course access
-        const hasFullAccess = !updatedEnrollment?.accessControl || 
+        const hasFullAccess =
+          !updatedEnrollment?.accessControl ||
           updatedEnrollment.accessControl.accessType === "full";
 
         if (!hasFullAccess) {
-          console.log(`Skipping certificate generation for enrollment ${enrollmentId} - user has partial access`);
+          console.log(
+            `Skipping certificate generation for enrollment ${enrollmentId} - user has partial access`,
+          );
         } else {
           // Check if certificate already exists
-          const existingCertificate = await getLatestCertificateService(
-            enrollmentId
-          );
+          const existingCertificate =
+            await getLatestCertificateService(enrollmentId);
 
           if (!existingCertificate) {
             // Get course details (already populated above)
@@ -650,7 +678,9 @@ export const RecalculateEnrollmentProgressService = async (
                   courseName: "", // Will be fetched by worker
                   completionDate: completedAt,
                 });
-                console.log(`Certificate generation job created for enrollment ${enrollmentId}`);
+                console.log(
+                  `Certificate generation job created for enrollment ${enrollmentId}`,
+                );
               } catch (jobError) {
                 console.error("Error creating certificate job:", jobError);
                 // Job creation failure shouldn't prevent enrollment completion
@@ -663,13 +693,19 @@ export const RecalculateEnrollmentProgressService = async (
         console.error("Error auto-generating certificate:", certError);
         // Certificate generation failure shouldn't prevent enrollment completion
       }
+
+      await runSuccessPointsOnCourseCompletion(
+        enrollmentId.toString(),
+        isCompleted,
+        completedAt,
+      );
     }
 
     return updatedEnrollment as Enrollment;
   } catch (error) {
     console.error(
       "Database error in RecalculateEnrollmentProgressService:",
-      error
+      error,
     );
     throw new AppError("Failed to recalculate enrollment progress", 500);
   }
@@ -686,7 +722,7 @@ export const UpdateEnrollmentProgressService = async (
     lastPosition?: number;
     completed?: boolean;
     timeSpent?: number;
-  }
+  },
 ): Promise<Enrollment | null> => {
   try {
     const enrollment = await EnrollmentModel.findById(enrollmentId);
@@ -716,7 +752,7 @@ export const UpdateEnrollmentProgressService = async (
     if (progressData.completed && progressData.contentId) {
       // Check if content is already marked as completed
       const existingCompletion = updatedCompletedContents.find(
-        (completion) => completion.contentId === progressData.contentId
+        (completion) => completion.contentId === progressData.contentId,
       );
 
       // Get actual content duration from course structure
@@ -762,12 +798,12 @@ export const UpdateEnrollmentProgressService = async (
               if (!lesson || !lesson.contents) continue;
               const content = lesson.contents.find(
                 (c: any) =>
-                  c && c._id && c._id.toString() === progressData.contentId
+                  c && c._id && c._id.toString() === progressData.contentId,
               );
               if (content && content.type === "video" && content.duration) {
                 // Duration is in seconds, convert to minutes
                 actualContentDurationMinutes = Math.round(
-                  content.duration / 60
+                  content.duration / 60,
                 );
                 break;
               }
@@ -785,7 +821,7 @@ export const UpdateEnrollmentProgressService = async (
       // Use the maximum of: provided timeSpent or actual content duration
       const finalTimeSpent = Math.max(
         progressData.timeSpent || 0,
-        actualContentDurationMinutes
+        actualContentDurationMinutes,
       );
 
       // Only add if not already completed (avoid duplicate entries)
@@ -802,7 +838,7 @@ export const UpdateEnrollmentProgressService = async (
         // Update existing completion with the maximum timeSpent
         existingCompletion.timeSpent = Math.max(
           existingCompletion.timeSpent || 0,
-          finalTimeSpent
+          finalTimeSpent,
         );
       }
     }
@@ -830,9 +866,8 @@ export const UpdateEnrollmentProgressService = async (
         courseIdString = enrollment.courseId.toString();
       }
 
-      const structureTotals = await calculateCourseStructureTotals(
-        courseIdString
-      );
+      const structureTotals =
+        await calculateCourseStructureTotals(courseIdString);
       totalModules = structureTotals.totalModules;
       totalLessons = structureTotals.totalLessons;
       totalContents = structureTotals.totalContents;
@@ -845,16 +880,16 @@ export const UpdateEnrollmentProgressService = async (
       ) {
         // Fallback: conservative estimate - must be > completedContents to avoid false 100%
         const uniqueModules = new Set(
-          updatedCompletedContents.map((c) => c.moduleId).filter(Boolean)
+          updatedCompletedContents.map((c) => c.moduleId).filter(Boolean),
         );
         const uniqueLessons = new Set(
-          updatedCompletedContents.map((c) => c.lessonId).filter(Boolean)
+          updatedCompletedContents.map((c) => c.lessonId).filter(Boolean),
         );
 
         totalContents = Math.max(
           updatedCompletedContents.length + 1,
           uniqueLessons.size * 2,
-          1
+          1,
         );
         totalModules = Math.max(uniqueModules.size || totalModules, 1);
         totalLessons = Math.max(uniqueLessons.size || totalLessons, 1);
@@ -863,10 +898,10 @@ export const UpdateEnrollmentProgressService = async (
       console.error("Error calculating total contents:", error);
       // If calculation fails, use fallback based on completed contents
       const uniqueModules = new Set(
-        updatedCompletedContents.map((c) => c.moduleId).filter(Boolean)
+        updatedCompletedContents.map((c) => c.moduleId).filter(Boolean),
       );
       const uniqueLessons = new Set(
-        updatedCompletedContents.map((c) => c.lessonId).filter(Boolean)
+        updatedCompletedContents.map((c) => c.lessonId).filter(Boolean),
       );
 
       // Use existing values if available, otherwise estimate from completed contents
@@ -882,7 +917,7 @@ export const UpdateEnrollmentProgressService = async (
         updatedProgress.totalModules > 0 && updatedProgress.totalLessons > 0
           ? Math.max(
               updatedCompletedContents.length + 1,
-              updatedProgress.totalLessons * 2
+              updatedProgress.totalLessons * 2,
             )
           : Math.max(updatedCompletedContents.length + 1, 1);
     }
@@ -894,17 +929,17 @@ export const UpdateEnrollmentProgressService = async (
     // Never set totalContents = completedContentsCount — that would wrongly show 100%
     if (totalContents === 0 && completedContentsCount > 0) {
       const uniqueModules = new Set(
-        updatedCompletedContents.map((c) => c.moduleId).filter(Boolean)
+        updatedCompletedContents.map((c) => c.moduleId).filter(Boolean),
       );
       const uniqueLessons = new Set(
-        updatedCompletedContents.map((c) => c.lessonId).filter(Boolean)
+        updatedCompletedContents.map((c) => c.lessonId).filter(Boolean),
       );
 
       // Use conservative minimum so we never falsely mark course complete
       // (totalContents must be > completedContentsCount)
       totalContents = Math.max(
         completedContentsCount + 1,
-        uniqueLessons.size || 1
+        uniqueLessons.size || 1,
       );
       totalModules = Math.max(uniqueModules.size || totalModules, 1);
       totalLessons = Math.max(uniqueLessons.size || totalLessons, 1);
@@ -917,7 +952,7 @@ export const UpdateEnrollmentProgressService = async (
     // Calculate overall completion - this should NEVER be 0 if we have completed contents
     if (totalContents > 0) {
       updatedProgress.overallCompletion = Math.round(
-        (completedContentsCount / totalContents) * 100
+        (completedContentsCount / totalContents) * 100,
       );
       // Cap at 100%
       if (updatedProgress.overallCompletion > 100) {
@@ -928,7 +963,7 @@ export const UpdateEnrollmentProgressService = async (
       // Never set 100% when we don't know the real total
       totalContents = Math.max(completedContentsCount + 1, 1);
       updatedProgress.overallCompletion = Math.round(
-        (completedContentsCount / totalContents) * 100
+        (completedContentsCount / totalContents) * 100,
       );
     } else {
       // No completed contents and no total contents - set to 0
@@ -977,18 +1012,18 @@ export const UpdateEnrollmentProgressService = async (
 
       if (course && course.modules && Array.isArray(course.modules)) {
         const activeModules = course.modules.filter(
-          (m: any) => m !== null && m !== undefined && m.isActive !== false
+          (m: any) => m !== null && m !== undefined && m.isActive !== false,
         );
 
         // Create a Set of completed content IDs for quick lookup
         const completedContentIds = new Set(
-          updatedCompletedContents.map((c) => c.contentId)
+          updatedCompletedContents.map((c) => c.contentId),
         );
 
         activeModules.forEach((module: any) => {
           if (module.lessons && Array.isArray(module.lessons)) {
             const activeLessons = module.lessons.filter(
-              (l: any) => l !== null && l !== undefined && l.isActive !== false
+              (l: any) => l !== null && l !== undefined && l.isActive !== false,
             );
 
             let moduleLessonsCompleted = 0;
@@ -997,14 +1032,14 @@ export const UpdateEnrollmentProgressService = async (
               if (lesson.contents && Array.isArray(lesson.contents)) {
                 const activeContents = lesson.contents.filter(
                   (c: any) =>
-                    c !== null && c !== undefined && c.isActive !== false
+                    c !== null && c !== undefined && c.isActive !== false,
                 );
 
                 // Check if ALL contents in this lesson are completed
                 const allContentsCompleted =
                   activeContents.length > 0 &&
                   activeContents.every((content: any) =>
-                    completedContentIds.has(content._id.toString())
+                    completedContentIds.has(content._id.toString()),
                   );
 
                 if (allContentsCompleted) {
@@ -1028,10 +1063,10 @@ export const UpdateEnrollmentProgressService = async (
       console.error("Error calculating completed lessons/modules:", error);
       // Fallback: use simple count (any content = lesson completed)
       const completedModuleIds = new Set(
-        updatedCompletedContents.map((c) => c.moduleId).filter(Boolean)
+        updatedCompletedContents.map((c) => c.moduleId).filter(Boolean),
       );
       const completedLessonIds = new Set(
-        updatedCompletedContents.map((c) => c.lessonId).filter(Boolean)
+        updatedCompletedContents.map((c) => c.lessonId).filter(Boolean),
       );
       completedLessonsCount = completedLessonIds.size;
       completedModulesCount = completedModuleIds.size;
@@ -1047,15 +1082,15 @@ export const UpdateEnrollmentProgressService = async (
         totalContents = Math.max(completedContentsCount + 1, 1);
         updatedProgress.totalModules = Math.max(
           updatedProgress.totalModules,
-          completedModulesCount || 1
+          completedModulesCount || 1,
         );
         updatedProgress.totalLessons = Math.max(
           updatedProgress.totalLessons,
-          completedLessonsCount || 1
+          completedLessonsCount || 1,
         );
       }
       updatedProgress.overallCompletion = Math.round(
-        (completedContentsCount / totalContents) * 100
+        (completedContentsCount / totalContents) * 100,
       );
       if (updatedProgress.overallCompletion > 100)
         updatedProgress.overallCompletion = 100;
@@ -1077,7 +1112,7 @@ export const UpdateEnrollmentProgressService = async (
     // This ensures accuracy and avoids double-counting
     const totalTimeSpentMinutes = updatedCompletedContents.reduce(
       (total, completion) => total + (completion.timeSpent || 0),
-      0
+      0,
     );
     const newTotalTimeSpent = totalTimeSpentMinutes * 60; // Convert minutes to seconds
 
@@ -1086,13 +1121,13 @@ export const UpdateEnrollmentProgressService = async (
     if (updatedCompletedContents.length > 0) {
       if (updatedProgress.totalModules === 0) {
         const uniqueModules = new Set(
-          updatedCompletedContents.map((c) => c.moduleId).filter(Boolean)
+          updatedCompletedContents.map((c) => c.moduleId).filter(Boolean),
         );
         updatedProgress.totalModules = Math.max(uniqueModules.size, 1);
       }
       if (updatedProgress.totalLessons === 0) {
         const uniqueLessons = new Set(
-          updatedCompletedContents.map((c) => c.lessonId).filter(Boolean)
+          updatedCompletedContents.map((c) => c.lessonId).filter(Boolean),
         );
         updatedProgress.totalLessons = Math.max(uniqueLessons.size, 1);
       }
@@ -1121,7 +1156,7 @@ export const UpdateEnrollmentProgressService = async (
     const updatedEnrollment = await EnrollmentModel.findByIdAndUpdate(
       enrollmentId,
       updateData,
-      { new: true, runValidators: true }
+      { new: true, runValidators: true },
     ).select("-__v"); // Don't use lean() - we need the Mongoose document for proper ObjectId handling
 
     // Automatically generate certificate when course reaches 100% completion
@@ -1134,92 +1169,126 @@ export const UpdateEnrollmentProgressService = async (
       try {
         // Use updatedEnrollment to get the latest enrollment data
         const enrollmentForCert = updatedEnrollment || enrollment;
-        
+
         // Check if certificate already exists
-        const existingCertificate = await getLatestCertificateService(
-          enrollmentId
-        );
+        const existingCertificate =
+          await getLatestCertificateService(enrollmentId);
 
         if (existingCertificate) {
-          console.log(`Certificate already exists for enrollment ${enrollmentId}`);
+          console.log(
+            `Certificate already exists for enrollment ${enrollmentId}`,
+          );
         } else if (enrollmentForCert.isTrial) {
-          console.log(`Skipping certificate generation for trial enrollment ${enrollmentId}`);
+          console.log(
+            `Skipping certificate generation for trial enrollment ${enrollmentId}`,
+          );
         } else {
           // DO NOT generate certificate for partial access users
           // Only generate certificates for users with FULL course access
-          const hasFullAccess = !enrollmentForCert.accessControl || 
+          const hasFullAccess =
+            !enrollmentForCert.accessControl ||
             enrollmentForCert.accessControl.accessType === "full";
 
-        if (!hasFullAccess) {
-          console.log(`Skipping certificate generation for enrollment ${enrollmentId} - user has partial access`);
-        } else {
-          // Get course and user details for certificate generation
-          const courseId = enrollmentForCert.courseId?.toString() || enrollment.courseId?.toString();
-          const userId = enrollmentForCert.userId?.toString() || enrollment.userId?.toString();
-          
-          if (!courseId || !userId) {
-            console.error(`Missing courseId or userId for enrollment ${enrollmentId}`);
+          if (!hasFullAccess) {
+            console.log(
+              `Skipping certificate generation for enrollment ${enrollmentId} - user has partial access`,
+            );
           } else {
-            const course = await CourseModel.findById(courseId)
-              .populate("instructor", "firstName lastName")
-              .lean();
+            // Get course and user details for certificate generation
+            const courseId =
+              enrollmentForCert.courseId?.toString() ||
+              enrollment.courseId?.toString();
+            const userId =
+              enrollmentForCert.userId?.toString() ||
+              enrollment.userId?.toString();
 
-            const user = await UserModel.findById(userId)
-              .select("firstName lastName")
-              .lean();
-
-            if (!course) {
-              console.error(`Course not found for enrollment ${enrollmentId}, courseId: ${courseId}`);
-            } else if (!user) {
-              console.error(`User not found for enrollment ${enrollmentId}, userId: ${userId}`);
-            } else if (!course.isCertified) {
-              console.log(`Course ${courseId} is not certified, skipping certificate generation`);
+            if (!courseId || !userId) {
+              console.error(
+                `Missing courseId or userId for enrollment ${enrollmentId}`,
+              );
             } else {
-              // Get student full name
-              const studentName = `${user.firstName || ""} ${
-                user.lastName || ""
-              }`.trim();
+              const course = await CourseModel.findById(courseId)
+                .populate("instructor", "firstName lastName")
+                .lean();
 
-              if (!studentName) {
-                console.error(`Student name is empty for enrollment ${enrollmentId}`);
+              const user = await UserModel.findById(userId)
+                .select("firstName lastName")
+                .lean();
+
+              if (!course) {
+                console.error(
+                  `Course not found for enrollment ${enrollmentId}, courseId: ${courseId}`,
+                );
+              } else if (!user) {
+                console.error(
+                  `User not found for enrollment ${enrollmentId}, userId: ${userId}`,
+                );
+              } else if (!course.isCertified) {
+                console.log(
+                  `Course ${courseId} is not certified, skipping certificate generation`,
+                );
               } else {
-                // Get course name
-                const courseName = course.title || "";
+                // Get student full name
+                const studentName = `${user.firstName || ""} ${
+                  user.lastName || ""
+                }`.trim();
 
-                // Get key topics from course (if available in course structure)
-                // You might need to extract this from course modules/lessons
-                let keyTopics: string | undefined;
-                // For now, we'll leave it undefined - can be enhanced later
+                if (!studentName) {
+                  console.error(
+                    `Student name is empty for enrollment ${enrollmentId}`,
+                  );
+                } else {
+                  // Get course name
+                  const courseName = course.title || "";
 
-                console.log(`Creating certificate generation job for enrollment ${enrollmentId}`);
-                
-                // Create certificate generation job (non-blocking)
-                try {
-                  await createCertificateJobService({
-                    enrollmentId: enrollmentId.toString(),
-                    studentName: "", // Will be fetched by worker
-                    courseName: "", // Will be fetched by worker
-                    completionDate: completedAt,
-                    keyTopics,
-                  });
-                  console.log(`Certificate generation job created for enrollment ${enrollmentId}`);
-                } catch (jobError) {
-                  console.error("Error creating certificate job:", jobError);
-                  // Job creation failure shouldn't prevent enrollment completion
+                  // Get key topics from course (if available in course structure)
+                  // You might need to extract this from course modules/lessons
+                  let keyTopics: string | undefined;
+                  // For now, we'll leave it undefined - can be enhanced later
+
+                  console.log(
+                    `Creating certificate generation job for enrollment ${enrollmentId}`,
+                  );
+
+                  // Create certificate generation job (non-blocking)
+                  try {
+                    await createCertificateJobService({
+                      enrollmentId: enrollmentId.toString(),
+                      studentName: "", // Will be fetched by worker
+                      courseName: "", // Will be fetched by worker
+                      completionDate: completedAt,
+                      keyTopics,
+                    });
+                    console.log(
+                      `Certificate generation job created for enrollment ${enrollmentId}`,
+                    );
+                  } catch (jobError) {
+                    console.error("Error creating certificate job:", jobError);
+                    // Job creation failure shouldn't prevent enrollment completion
+                  }
                 }
               }
             }
           }
         }
-        }
       } catch (certError) {
         // Log error but don't fail the enrollment update
         console.error("Error auto-generating certificate:", certError);
         if (certError instanceof Error) {
-          console.error("Certificate error details:", certError.message, certError.stack);
+          console.error(
+            "Certificate error details:",
+            certError.message,
+            certError.stack,
+          );
         }
         // Certificate generation failure shouldn't prevent enrollment completion
       }
+
+      await runSuccessPointsOnCourseCompletion(
+        enrollmentId.toString(),
+        isCompleted,
+        completedAt,
+      );
     }
 
     return updatedEnrollment as Enrollment;
@@ -1232,7 +1301,7 @@ export const UpdateEnrollmentProgressService = async (
 // Update enrollment status
 export const UpdateEnrollmentStatusService = async (
   enrollmentId: string,
-  status: "active" | "completed" | "dropped" | "revoked" | "paused"
+  status: "active" | "completed" | "dropped" | "revoked" | "paused",
 ): Promise<Enrollment | null> => {
   try {
     const updateData: any = {
@@ -1247,11 +1316,19 @@ export const UpdateEnrollmentStatusService = async (
     const updatedEnrollment = await EnrollmentModel.findByIdAndUpdate(
       enrollmentId,
       updateData,
-      { new: true }
+      { new: true },
     ).populate(
       "courseId",
-      "title thumbnail description category slug duration instructor plans analytics isFeatured isCertified"
+      "title thumbnail description category slug duration instructor plans analytics isFeatured isCertified",
     );
+
+    if (status === "completed" && updatedEnrollment) {
+      await runSuccessPointsOnCourseCompletion(
+        enrollmentId,
+        true,
+        updateData.completedAt as Date,
+      );
+    }
 
     return updatedEnrollment as Enrollment;
   } catch (error) {
@@ -1262,21 +1339,21 @@ export const UpdateEnrollmentStatusService = async (
 
 // Pause enrollment
 export const PauseEnrollmentService = async (
-  enrollmentId: string
+  enrollmentId: string,
 ): Promise<Enrollment | null> => {
   return UpdateEnrollmentStatusService(enrollmentId, "paused");
 };
 
 // Resume enrollment
 export const ResumeEnrollmentService = async (
-  enrollmentId: string
+  enrollmentId: string,
 ): Promise<Enrollment | null> => {
   return UpdateEnrollmentStatusService(enrollmentId, "active");
 };
 
 // Issue certificate
 export const IssueCertificateService = async (
-  enrollmentId: string
+  enrollmentId: string,
 ): Promise<Enrollment | null> => {
   try {
     const enrollment = await EnrollmentModel.findById(enrollmentId);
@@ -1287,7 +1364,7 @@ export const IssueCertificateService = async (
     if (enrollment.status !== "completed") {
       throw new AppError(
         "Enrollment must be completed to issue certificate",
-        400
+        400,
       );
     }
 
@@ -1298,10 +1375,10 @@ export const IssueCertificateService = async (
         certificateIssuedAt: new Date(),
         lastUpdated: new Date(),
       },
-      { new: true }
+      { new: true },
     ).populate(
       "courseId",
-      "title thumbnail description category slug duration instructor plans analytics isFeatured isCertified"
+      "title thumbnail description category slug duration instructor plans analytics isFeatured isCertified",
     );
 
     return updatedEnrollment as Enrollment;
@@ -1316,7 +1393,7 @@ export const IssueCertificateService = async (
 
 // Get enrollment statistics for user
 export const GetEnrollmentStatsService = async (
-  userId: string
+  userId: string,
 ): Promise<UserEnrollmentStats> => {
   try {
     const stats = await EnrollmentModel.aggregate([
@@ -1386,7 +1463,7 @@ export const GetEnrollmentStatsService = async (
 
 // Get course enrollment statistics
 export const GetCourseEnrollmentStatsService = async (
-  courseId: string
+  courseId: string,
 ): Promise<CourseEnrollmentStats> => {
   try {
     const stats = await EnrollmentModel.aggregate([
@@ -1438,13 +1515,13 @@ export const GetCourseEnrollmentStatsService = async (
 
 // Get detailed progress
 export const GetDetailedProgressService = async (
-  enrollmentId: string
+  enrollmentId: string,
 ): Promise<DetailedEnrollmentProgress | null> => {
   try {
     const enrollment = await EnrollmentModel.findById(enrollmentId)
       .populate(
         "courseId",
-        "title thumbnail description category slug duration instructor plans analytics isFeatured isCertified"
+        "title thumbnail description category slug duration instructor plans analytics isFeatured isCertified",
       )
       .populate("userId", "firstName lastName email profilePicture userType");
 
@@ -1473,7 +1550,7 @@ export const GetDetailedProgressService = async (
 export const getTimeSpentPerDayService = async (
   userId: string,
   fromDate: Date,
-  toDate: Date
+  toDate: Date,
 ): Promise<{ date: string; minutes: number }[]> => {
   try {
     const result = await EnrollmentModel.aggregate([
@@ -1525,7 +1602,7 @@ export const getTimeSpentPerDayService = async (
 // Get enrollment analytics
 export const GetEnrollmentAnalyticsService = async (
   userId: string,
-  period: number = 30
+  period: number = 30,
 ): Promise<any> => {
   try {
     const startDate = new Date(Date.now() - period * 24 * 60 * 60 * 1000);
@@ -1576,7 +1653,7 @@ export const GetEnrollmentAnalyticsService = async (
 export const GetEnrollmentHistoryService = async (
   userId: string,
   page: number = 1,
-  limit: number = 10
+  limit: number = 10,
 ): Promise<{
   enrollments: Enrollment[];
   total: number;
@@ -1624,7 +1701,7 @@ export const GetEnrollmentHistoryService = async (
 
 // Get user dashboard statistics
 export const GetUserDashboardStatsService = async (
-  userId: string
+  userId: string,
 ): Promise<{
   totalTimeSpent: number; // in minutes
   averageTimePerSession: number; // in minutes
@@ -1651,10 +1728,10 @@ export const GetUserDashboardStatsService = async (
     // Calculate basic stats
     const totalCourses = enrollments.length;
     const completedCourses = enrollments.filter(
-      (enrollment) => enrollment.status === "completed"
+      (enrollment) => enrollment.status === "completed",
     ).length;
     const inProgressCourses = enrollments.filter(
-      (enrollment) => enrollment.status === "active"
+      (enrollment) => enrollment.status === "active",
     ).length;
 
     // Calculate total time spent from completedContents (more accurate)
@@ -1669,13 +1746,13 @@ export const GetUserDashboardStatsService = async (
         // Sum up timeSpent from completedContents (already in minutes)
         const enrollmentTimeSpent = enrollment.completedContents.reduce(
           (total, completion) => total + (completion.timeSpent || 0),
-          0
+          0,
         );
         totalTimeSpentMinutes += enrollmentTimeSpent;
       } else {
         // Fallback: use totalTimeSpent from enrollment (convert from seconds to minutes)
         totalTimeSpentMinutes += Math.round(
-          (enrollment.totalTimeSpent || 0) / 60
+          (enrollment.totalTimeSpent || 0) / 60,
         );
       }
     }
@@ -1700,7 +1777,7 @@ export const GetUserDashboardStatsService = async (
       ) {
         const enrollmentTimeSpent = enrollment.completedContents.reduce(
           (total, completion) => total + (completion.timeSpent || 0),
-          0
+          0,
         );
         return enrollmentTimeSpent > 0;
       }
@@ -1761,16 +1838,19 @@ export const GetUserDashboardStatsService = async (
     }
 
     // Get most recent activity
-    const lastActivityAt = enrollments.reduce((latest, enrollment) => {
-      const activityDate = enrollment.lastActivityAt;
-      if (!activityDate) return latest;
+    const lastActivityAt = enrollments.reduce(
+      (latest, enrollment) => {
+        const activityDate = enrollment.lastActivityAt;
+        if (!activityDate) return latest;
 
-      const activityDateObj = new Date(activityDate);
-      if (!latest || activityDateObj > latest) {
-        return activityDateObj;
-      }
-      return latest;
-    }, null as Date | null);
+        const activityDateObj = new Date(activityDate);
+        if (!latest || activityDateObj > latest) {
+          return activityDateObj;
+        }
+        return latest;
+      },
+      null as Date | null,
+    );
 
     return {
       totalTimeSpent,
@@ -1797,7 +1877,7 @@ export const GetUserDashboardStatsService = async (
 
 // Delete enrollment (soft delete)
 export const DeleteEnrollmentService = async (
-  enrollmentId: string
+  enrollmentId: string,
 ): Promise<boolean> => {
   try {
     const result = await EnrollmentModel.findByIdAndUpdate(enrollmentId, {
@@ -1818,7 +1898,7 @@ export const DeleteEnrollmentService = async (
  */
 export const revokeEnrollmentAdminService = async (
   enrollmentId?: string,
-  orderId?: string
+  orderId?: string,
 ): Promise<{ revoked: boolean; enrollmentId: string }> => {
   if (!enrollmentId && !orderId) {
     throw new AppError("Either enrollmentId or orderId is required", 400);
@@ -1837,7 +1917,7 @@ export const revokeEnrollmentAdminService = async (
     if (order.paymentStatus !== "success") {
       throw new AppError(
         `Order has payment status "${order.paymentStatus}". Only orders with successful payment can be revoked.`,
-        400
+        400,
       );
     }
     const inactiveStatuses = ["dropped", "revoked"];
@@ -1857,7 +1937,7 @@ export const revokeEnrollmentAdminService = async (
       }
       throw new AppError(
         "Enrollment not found for this order. The enrollment may not have been created (e.g. if payment completed outside normal flow).",
-        404
+        404,
       );
     }
     targetEnrollmentId = enrollment._id.toString();

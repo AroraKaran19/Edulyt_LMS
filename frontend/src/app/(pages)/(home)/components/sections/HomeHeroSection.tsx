@@ -1,9 +1,15 @@
 import Image from "next/image";
+import Link from "next/link";
 import { Icon } from "@iconify/react";
 import { Check, X } from "lucide-react";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import type {
+  HomeHeroComparisonRow,
+  HomeHeroSettings,
+  HomeHeroTopCard,
+} from "@/types/home-page-settings";
 
 interface TopCardProps {
   title: string;
@@ -15,6 +21,14 @@ interface ComparisonProps {
   airkrit: string | ReactNode;
   youtube: string | ReactNode;
   others: string | ReactNode;
+}
+
+/** "check" / "x" → icon. Anything else passes through as text. */
+function renderComparisonCell(value: string): string | ReactNode {
+  const v = value?.trim().toLowerCase();
+  if (v === "check") return <ComparisonCheck />;
+  if (v === "x") return <ComparisonX />;
+  return value;
 }
 
 const ComparisonCheck = () => (
@@ -58,64 +72,45 @@ const TopCard = ({ title, description }: TopCardProps) => {
   );
 };
 
-const HomeHeroSection = () => {
-  const topCards = [
-    {
-      title: "Who we are ?",
-      description: "Education to Employment Experts",
-    },
-    {
-      title: "What we do ?",
-      description: "100% Project-Based Learning",
-    },
-    {
-      title: "What we offer ?",
-      description: "Industry-Focused Career Programs",
-    },
-    {
-      title: "Why choose us ?",
-      description: "Built From Real Industry Experience",
-    },
-  ];
+const DEFAULT_TOP_CARDS: HomeHeroTopCard[] = [
+  { title: "Who we are ?", description: "Education to Employment Experts" },
+  { title: "What we do ?", description: "100% Project-Based Learning" },
+  { title: "What we offer ?", description: "Industry-Focused Career Programs" },
+  { title: "Why choose us ?", description: "Built From Real Industry Experience" },
+];
 
-  const comparisons: ComparisonProps[] = [
-    {
-      feature: "Project-based learning",
-      airkrit: "100% Real Projects",
-      youtube: "Mostly Theory",
-      others: "Limited",
-    },
-    {
-      feature: "Industry-Derived Curriculum",
-      airkrit: "Build from Projects",
-      youtube: <ComparisonX />,
-      others: <ComparisonX />,
-    },
-    {
-      feature: "Mentors Working in Industry",
-      airkrit: <ComparisonCheck />,
-      youtube: <ComparisonX />,
-      others: <ComparisonX />,
-    },
-    {
-      feature: "Interaction with Future Managers",
-      airkrit: <ComparisonCheck />,
-      youtube: <ComparisonX />,
-      others: <ComparisonX />,
-    },
-    {
-      feature: "Interaction with Future Managers",
-      airkrit: <ComparisonCheck />,
-      youtube: <ComparisonX />,
-      others: <ComparisonX />,
-    },
-    {
-      feature: "Industry-Standard Placement Assistance",
-      airkrit: <ComparisonCheck />,
-      youtube: <ComparisonX />,
-      others: <ComparisonX />,
-    },
-  ];
+const DEFAULT_COMPARISON_ROWS: HomeHeroComparisonRow[] = [
+  { feature: "Project-based learning", airkrit: "100% Real Projects", youtube: "Mostly Theory", others: "Limited" },
+  { feature: "Industry-Derived Curriculum", airkrit: "Build from Projects", youtube: "x", others: "x" },
+  { feature: "Mentors Working in Industry", airkrit: "check", youtube: "x", others: "x" },
+  { feature: "Interaction with Future Managers", airkrit: "check", youtube: "x", others: "x" },
+  { feature: "Industry-Standard Placement Assistance", airkrit: "check", youtube: "x", others: "x" },
+];
+
+const HomeHeroSection = ({ settings }: { settings?: HomeHeroSettings }) => {
+  const topCards =
+    settings?.topCards && settings.topCards.length > 0
+      ? settings.topCards
+      : DEFAULT_TOP_CARDS;
+
+  const comparisonRows =
+    settings?.comparisonRows && settings.comparisonRows.length > 0
+      ? settings.comparisonRows
+      : DEFAULT_COMPARISON_ROWS;
+
+  const comparisons: ComparisonProps[] = comparisonRows.map((row) => ({
+    feature: row.feature,
+    airkrit: renderComparisonCell(row.airkrit),
+    youtube: renderComparisonCell(row.youtube),
+    others: renderComparisonCell(row.others),
+  }));
+
+  const headingHtml =
+    settings?.comparisonHeadingHtml?.trim() ||
+    'The <span class="text-[#F5891D]">Difference</span> That Gets You <span class="text-[#F5891D]">Hired!</span>';
+
+  const exploreLabel = settings?.exploreOfferingsLabel || "Explore Offerings";
+  const exploreHref = settings?.exploreOfferingsHref || "";
 
   return (
     <section id="home-hero" className="w-full relative">
@@ -143,10 +138,10 @@ const HomeHeroSection = () => {
         </div>
         <div className="comparison-table w-full mt-10 grid grid-cols-1 lg:grid-cols-5 gap-5">
           <div className="col-span-3 flex flex-col gap-5">
-            <h3 className="text-xl text-balance text-black font-bold">
-              The <span className="text-[#F5891D]">Difference</span> That Gets
-              You <span className="text-[#F5891D]">Hired!</span>
-            </h3>
+            <h3
+              className="text-xl text-balance text-black font-bold"
+              dangerouslySetInnerHTML={{ __html: headingHtml }}
+            />
             <div className="w-full overflow-x-auto shadow-[0_0_10px_0_rgba(255,102,0,0.2)] rounded-2xl [-webkit-overflow-scrolling:touch]">
               <table className="table-fixed w-full min-w-[640px] bg-white rounded-2xl border-collapse">
                 <thead>
@@ -226,7 +221,13 @@ const HomeHeroSection = () => {
               </table>
             </div>
             <div className="mt-auto">
-              <OrangeButton>Explore Offerings</OrangeButton>
+              {exploreHref ? (
+                <Link href={exploreHref}>
+                  <OrangeButton>{exploreLabel}</OrangeButton>
+                </Link>
+              ) : (
+                <OrangeButton>{exploreLabel}</OrangeButton>
+              )}
             </div>
           </div>
           <div className="col-span-2">

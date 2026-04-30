@@ -8,6 +8,7 @@ const Searchbar2 = ({
   value,
   onChange,
   onSearch,
+  onInputFocus,
   className,
   ...props
 }: {
@@ -15,9 +16,13 @@ const Searchbar2 = ({
   value: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onSearch: () => void;
+  onInputFocus?: () => void;
   className?: string;
   props?: React.ComponentProps<"div">;
 }) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") onSearch();
+  };
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -45,6 +50,8 @@ const Searchbar2 = ({
         type="text"
         value={value}
         onChange={onChange}
+        onFocus={onInputFocus}
+        onKeyDown={handleKeyDown}
         placeholder={placeholder}
         className="w-full outline-none text-xs font-medium bg-transparent"
         style={{

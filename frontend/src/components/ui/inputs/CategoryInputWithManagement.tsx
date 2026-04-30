@@ -69,10 +69,12 @@ const CategoryInputWithManagement: React.FC<
     name: string;
     audience: "college-students" | "professionals";
     showOnHomePage: boolean;
+    showOnCourseList: boolean;
   }>({
     name: "",
     audience: "college-students",
     showOnHomePage: false,
+    showOnCourseList: true,
   });
   const [categoryImage, setCategoryImage] = useState<string>("");
   const [categoryImageS3Key, setCategoryImageS3Key] = useState<string>("");
@@ -281,6 +283,7 @@ const CategoryInputWithManagement: React.FC<
         name: newCategory.name.trim(),
         audience: newCategory.audience,
         showOnHomePage: newCategory.showOnHomePage || false,
+        showOnCourseList: newCategory.showOnCourseList,
         categoryImage: categoryImage || undefined,
       });
 
@@ -297,6 +300,7 @@ const CategoryInputWithManagement: React.FC<
           name: "",
           audience: "college-students",
           showOnHomePage: false,
+          showOnCourseList: true,
         });
         setCategoryImage("");
         setCategoryImageS3Key("");
@@ -348,6 +352,7 @@ const CategoryInputWithManagement: React.FC<
         name: editingCategory.name.trim(),
         audience: editingCategory.audience || "college-students",
         showOnHomePage: editingCategory.showOnHomePage,
+        showOnCourseList: editingCategory.showOnCourseList,
         categoryImage: categoryImage || undefined,
       });
 
@@ -604,6 +609,7 @@ const CategoryInputWithManagement: React.FC<
                       name: "",
                       audience: "college-students",
                       showOnHomePage: false,
+                      showOnCourseList: true,
                     });
                     setCategoryImage("");
                     setCategoryImageS3Key("");
@@ -681,6 +687,27 @@ const CategoryInputWithManagement: React.FC<
                 </label>
               </div>
 
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="showOnCourseList"
+                  checked={newCategory.showOnCourseList !== false}
+                  onChange={(e) =>
+                    setNewCategory((prev) => ({
+                      ...prev,
+                      showOnCourseList: e.target.checked,
+                    }))
+                  }
+                  className="w-4 h-4 text-orange-600 bg-gray-100 border-gray-300 rounded focus:ring-orange-500 focus:ring-2"
+                />
+                <label
+                  htmlFor="showOnCourseList"
+                  className="text-sm font-medium text-gray-700 cursor-pointer"
+                >
+                  Show on course list
+                </label>
+              </div>
+
               <UploadMediaContainer
                 title="Category Image/Thumbnail"
                 description="Upload an image or provide a URL for the category thumbnail"
@@ -714,6 +741,7 @@ const CategoryInputWithManagement: React.FC<
                     name: "",
                     audience: "college-students",
                     showOnHomePage: false,
+                    showOnCourseList: true,
                   });
                   setCategoryImage("");
                   setCategoryImageS3Key("");
@@ -867,6 +895,28 @@ const CategoryInputWithManagement: React.FC<
                         (Max 4 reached)
                       </span>
                     )}
+                </label>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="editShowOnCourseList"
+                  checked={editingCategory.showOnCourseList !== false}
+                  onChange={(e) =>
+                    setEditingCategory((prev) =>
+                      prev
+                        ? { ...prev, showOnCourseList: e.target.checked }
+                        : null,
+                    )
+                  }
+                  className="w-4 h-4 text-orange-600 bg-gray-100 border-gray-300 rounded focus:ring-orange-500 focus:ring-2"
+                />
+                <label
+                  htmlFor="editShowOnCourseList"
+                  className="text-sm font-medium text-gray-700 cursor-pointer"
+                >
+                  Show on course list
                 </label>
               </div>
 

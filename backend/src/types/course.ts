@@ -198,6 +198,8 @@ export interface Course {
 
   isFeatured?: boolean;
   isCertified?: boolean;
+  /** Points granted to eligible students on course completion (admin; Screen 2). 0 = none. */
+  successPoints?: number;
 
   // Course Content
   whatYouWillLearn: string;

@@ -78,7 +78,7 @@ const Error: React.FC<ErrorProps> = ({
             <button
               onClick={onActionClick}
               className={cn(
-                "mt-4 px-4 py-2 bg-[#f77124] text-white rounded-lg hover:bg-[#e6651f] transition-colors",
+                "mt-4 px-4 py-2 bg-primary text-white rounded-lg hover:bg-[#e6651f] transition-colors",
                 actionClassName
               )}
             >

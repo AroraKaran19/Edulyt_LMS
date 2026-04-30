@@ -102,6 +102,38 @@ const GiftCourseModal = ({
   const { giftCourse, isLoading, getUserOptions } = useUserManagement();
   const { getCourses, getCourseById } = useCourseManagement();
 
+  /** Full reset: selections, steps, access UI, pagination, and dedupe refs. */
+  const resetGiftModalState = useCallback(() => {
+    setGiftStep(1);
+    setSelectedUsers([]);
+    setSelectedCourses([]);
+    setSelectedPlans({});
+    setAccessType("full");
+    setTopNCount(5);
+    setSelectedModules({});
+    setSelectedLessons({});
+    setSelectedContents({});
+    setExpandedModules({});
+    setExpandedLessons({});
+    setCourseDetails(null);
+    setCoursesDetails({});
+    setCurrentPage(1);
+    setHasMore(true);
+    setUserCurrentPage(1);
+    setUserHasMore(true);
+    setUserSearch("");
+    setDebouncedUserSearch("");
+    lastSearchRef.current = "";
+    lastSelectedCourseIdsRef.current = "";
+    isLoadingUsersRef.current = false;
+    setCourseSearch("");
+    setDebouncedCourseSearch("");
+    setAudienceFilter("all");
+    lastCourseSearchRef.current = "";
+    lastAudienceFilterRef.current = "";
+    isLoadingCoursesRef.current = false;
+  }, []);
+
   // Fetch courses with pagination and search
   const fetchCourses = useCallback(
     async (page: number, append: boolean = false, search?: string) => {
@@ -180,36 +212,9 @@ const GiftCourseModal = ({
     }
   }, [giftStep, isOpen, debouncedCourseSearch, fetchCourses, audienceFilter]);
 
-  // Reset state when modal closes
   useEffect(() => {
-    if (!isOpen) {
-      setGiftStep(1);
-      setSelectedUsers([]);
-      setSelectedCourses([]);
-      setSelectedPlans({});
-      setAccessType("full");
-      setTopNCount(5);
-      setSelectedModules({});
-      setSelectedLessons({});
-      setSelectedContents({});
-      setExpandedModules({});
-      setExpandedLessons({});
-      setCourseDetails(null);
-      setCoursesDetails({});
-      // Don't reset courses and users - keep them cached for better UX
-      // Reset search when modal closes
-      setUserSearch("");
-      setDebouncedUserSearch("");
-      lastSearchRef.current = "";
-      isLoadingUsersRef.current = false;
-      setCourseSearch("");
-      setDebouncedCourseSearch("");
-      setAudienceFilter("all");
-      lastCourseSearchRef.current = "";
-      lastAudienceFilterRef.current = "";
-      isLoadingCoursesRef.current = false;
-    }
-  }, [isOpen]);
+    if (!isOpen) resetGiftModalState();
+  }, [isOpen, resetGiftModalState]);
 
   // Debounce user search
   useEffect(() => {
@@ -1133,11 +1138,8 @@ const GiftCourseModal = ({
         );
       }
 
-      // Reset and close modal
       onClose();
-      if (onGiftComplete) {
-        onGiftComplete();
-      }
+      onGiftComplete?.();
     } catch (error: any) {
       const errorMessage =
         error.message || "Failed to gift course. Please try again.";

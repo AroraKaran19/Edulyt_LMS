@@ -1,15 +1,22 @@
 import { Icon } from "@iconify/react";
 import HomeCourseSection from "../HomeCourseSection";
+import type { HomeCoursePathSettings } from "@/types/home-page-settings";
 
 const HomeCoursePath = ({
   title,
   audience,
+  settings,
 }: {
   audience: "college-students" | "professionals";
   title: string;
+  settings?: HomeCoursePathSettings;
 }) => {
+  const resolvedAudience = settings?.audience || audience;
+  const resolvedTitle = settings?.title?.trim() || title;
   const audienceText =
-    audience === "college-students" ? "Students" : "Working Professionals";
+    resolvedAudience === "college-students" ? "Students" : "Working Professionals";
+  const coursesPrefix = settings?.coursesHeadingPrefix?.trim() || "Our";
+  const coursesHighlight = settings?.coursesHeadingHighlight?.trim() || "Courses";
   return (
     <section
       id="home-course"
@@ -19,7 +26,7 @@ const HomeCoursePath = ({
         <div className="hand-badge size-12 absolute top-18 -left-6 text-secondary bg-primary rounded-full flex items-center justify-center">
           <Icon
             icon={
-              audience === "college-students"
+              resolvedAudience === "college-students"
                 ? "glyphs:path-1-bold"
                 : "streamline-plump:ai-technology-spark-solid"
             }
@@ -29,13 +36,14 @@ const HomeCoursePath = ({
         </div>
         <div className="content-body flex flex-col gap-6">
           <h3 className="text-base lg:text-2xl font-semibold capitalize">
-            {title}
+            {resolvedTitle}
           </h3>
           <h2 className="text-2xl lg:text-4xl font-extrabold text-text-primary capitalize text-balance">
-            Our <span className="text-primary">Courses</span>{" "}
+            {coursesPrefix}{" "}
+            <span className="text-primary">{coursesHighlight}</span>{" "}
             <span className="font-normal">(For {audienceText})</span>
           </h2>
-          <HomeCourseSection audience={audience} />
+          <HomeCourseSection audience={resolvedAudience} />
         </div>
       </div>
     </section>

@@ -6,7 +6,7 @@ import jwt from "jsonwebtoken";
 export const verifyTokenForRefresh = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     // Get access token from Authorization header
@@ -37,16 +37,20 @@ export const verifyTokenForRefresh = async (
       let user;
       try {
         // Try to find user by ObjectId
-        user = await UserModel.findById(decoded.userId).select("-password");
-        
+        user = await UserModel.findById(decoded.userId).select(
+          "-password -successPointsHistory",
+        );
+
         // If not found, try to find by string ID
         if (!user) {
-          user = await UserModel.findOne({ _id: decoded.userId }).select("-password");
+          user = await UserModel.findOne({ _id: decoded.userId }).select(
+            "-password -successPointsHistory",
+          );
         }
       } catch (dbError) {
         return next(new AppError("Database error", 500));
       }
-      
+
       if (!user) {
         // User not found - token is invalid or user was deleted
         return next(new AppError("Invalid token - user not found", 401));
@@ -59,7 +63,7 @@ export const verifyTokenForRefresh = async (
 
       // Check if the accessToken exists in user's refreshTokens array
       const tokenExists = user.refreshTokens.some(
-        (refreshToken) => refreshToken.token === accessToken
+        (refreshToken) => refreshToken.token === accessToken,
       );
 
       if (!tokenExists) {

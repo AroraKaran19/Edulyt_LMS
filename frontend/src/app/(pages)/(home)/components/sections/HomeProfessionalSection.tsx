@@ -1,5 +1,13 @@
 import { Icon } from "@iconify/react";
 import Image from "next/image";
+import type { HomeProfessionalSectionSettings } from "@/types/home-page-settings";
+
+const DEFAULT_PROMPTS = [
+  "Stuck in a Non-Tech Job?",
+  "Working in a Low-Salary Role?",
+  "Want to Switch to Tech?",
+  "Looking to Upskill for Higher Pay?",
+];
 
 const ConfusionBadge = ({ title }: { title: string }) => {
   return (
@@ -14,13 +22,23 @@ const ConfusionBadge = ({ title }: { title: string }) => {
   );
 };
 
-const HomeProfessionalSection = () => {
-  const clarityData: string[] = [
-    "Stuck in a Non-Tech Job?",
-    "Working in a Low-Salary Role?",
-    "Want to Switch to Tech?",
-    "Looking to Upskill for Higher Pay?",
-  ];
+const HomeProfessionalSection = ({
+  settings,
+}: {
+  settings?: HomeProfessionalSectionSettings;
+}) => {
+  const clarityData =
+    settings?.promptBullets && settings.promptBullets.length > 0
+      ? settings.promptBullets
+      : DEFAULT_PROMPTS;
+  const eyebrow = settings?.eyebrow || "Your Career Path Doesn\u2019t End Here";
+  const line1 = settings?.headingLine1 || "Not a";
+  const highlightStudent =
+    settings?.headingHighlightStudent || "Student Anymore?";
+  const line2 = settings?.headingLine2 || "Already Working,";
+  const highlightWorking = settings?.headingHighlightWorking || "But Not Growing?";
+  const helpCtaText =
+    settings?.helpCtaText || "We have professional courses for you";
 
   return (
     <section
@@ -33,11 +51,13 @@ const HomeProfessionalSection = () => {
         </div>
         <div className="content-body max-w-md h-full flex flex-col gap-10 mb-5">
           <h3 className="text-base lg:text-2xl font-semibold capitalize">
-            Your Career Path Doesn’t End Here
+            {eyebrow}
           </h3>
           <h2 className="text-2xl lg:text-4xl font-extrabold capitalize text-balance">
-            Not a <span className="text-primary">Student Anymore?</span> Already
-            Working, <span className="text-primary">But Not Growing?</span>
+            {line1}{" "}
+            <span className="text-primary">{highlightStudent}</span>{" "}
+            {line2}{" "}
+            <span className="text-primary">{highlightWorking}</span>
           </h2>
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-5 items-end gap-10 lg:gap-4 overflow-visible">
@@ -62,7 +82,7 @@ const HomeProfessionalSection = () => {
                 <Icon icon="solar:heart-bold" width="32" height="32" />
               </div>
               <span className="text-xs lg:text-base font-semibold text-wrap capitalize">
-                We have professional courses for you
+                {helpCtaText}
               </span>
             </span>
             {/* Desktop help container */}
@@ -74,7 +94,7 @@ const HomeProfessionalSection = () => {
                     <Icon icon="solar:heart-bold" width="32" height="32" />
                   </div>
                   <span className="text-xs lg:text-base font-semibold text-wrap capitalize">
-                    We have professional courses for you
+                    {helpCtaText}
                   </span>
                 </span>
               </span>

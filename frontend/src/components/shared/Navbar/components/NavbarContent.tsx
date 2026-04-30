@@ -4,6 +4,7 @@ import ImageComponent from "@/components/ui/ImageComponent";
 import { ENDPOINTS } from "@/constants/endpoints";
 import { cn, fetcher } from "@/lib/utils";
 import { Course, NavItem, Category } from "@/types";
+import type { InternshipPublicListing } from "@/types/internship";
 import { AlertCircle, ChevronRight, Crown, ArrowLeft } from "lucide-react";
 import Loader from "@/components/ui/Loader";
 import Link from "next/link";
@@ -46,6 +47,25 @@ const NavbarContent = ({
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const prevNavLabelRef = useRef<string | null>(null);
+
+  const [internshipPage, setInternshipPage] = useState(1);
+  const [allInternships, setAllInternships] = useState<InternshipPublicListing[]>(
+    [],
+  );
+  const [internshipHasMore, setInternshipHasMore] = useState(true);
+  const [isLoadingMoreInternships, setIsLoadingMoreInternships] =
+    useState(false);
+
+  useEffect(() => {
+    const prev = prevNavLabelRef.current;
+    prevNavLabelRef.current = navLink?.label ?? null;
+    if (navLink?.label === "internship" && prev !== "internship") {
+      setInternshipPage(1);
+      setAllInternships([]);
+      setInternshipHasMore(true);
+    }
+  }, [navLink?.label]);
 
   useEffect(() => {
     setSelectedCategory(null);
@@ -150,6 +170,52 @@ const NavbarContent = ({
     setIsLoadingMore(false);
   }, [data, page, coursesSwrKey]);
 
+  const internshipsSwrKey = useMemo(() => {
+    if (navLink?.label !== "internship") return null;
+    const params = new URLSearchParams();
+    params.append("page", internshipPage.toString());
+    params.append("limit", "12");
+    return `${ENDPOINTS.internships.all}?${params.toString()}`;
+  }, [navLink?.label, internshipPage]);
+
+  const {
+    data: internshipSwrData,
+    isLoading: internshipLoading,
+    error: internshipError,
+  } = useSWR(internshipsSwrKey, fetcher, {
+    revalidateOnFocus: false,
+    revalidateOnReconnect: false,
+    revalidateIfStale: false,
+    revalidateOnMount: true,
+    dedupingInterval: 1000 * 60 * 5,
+  });
+
+  useEffect(() => {
+    if (!internshipsSwrKey) return;
+    const payload =
+      internshipSwrData?.data?.data ?? internshipSwrData?.data;
+    if (payload == null) return;
+
+    const isPayloadArray = Array.isArray(payload);
+    const newItems = isPayloadArray
+      ? []
+      : payload.internships && Array.isArray(payload.internships)
+        ? (payload.internships as InternshipPublicListing[])
+        : [];
+    const totalPages = isPayloadArray ? 1 : (payload.totalPages ?? 1);
+    const currentPage = isPayloadArray ? 1 : (payload.page ?? 1);
+
+    if (currentPage !== internshipPage) return;
+
+    if (currentPage === 1) {
+      setAllInternships(newItems);
+    } else {
+      setAllInternships((prev) => [...prev, ...newItems]);
+    }
+    setInternshipHasMore(currentPage < totalPages);
+    setIsLoadingMoreInternships(false);
+  }, [internshipSwrData, internshipPage, internshipsSwrKey]);
+
   // Load more courses
   const loadMoreCourses = useCallback(() => {
     if (!isLoadingMore && hasMore) {
@@ -157,6 +223,13 @@ const NavbarContent = ({
       setPage((prev) => prev + 1);
     }
   }, [isLoadingMore, hasMore]);
+
+  const loadMoreInternships = useCallback(() => {
+    if (!isLoadingMoreInternships && internshipHasMore) {
+      setIsLoadingMoreInternships(true);
+      setInternshipPage((p) => p + 1);
+    }
+  }, [isLoadingMoreInternships, internshipHasMore]);
 
   const loadMoreCategories = useCallback(() => {
     if (!isLoadingMoreCategories && categoryHasMore) {
@@ -173,22 +246,38 @@ const NavbarContent = ({
       scrollContainerRef.current;
     const isNearBottom = scrollTop + clientHeight >= scrollHeight - 100; // 100px threshold
 
-    if (isNearBottom) {
-      if (selectedCategory) {
-        if (hasMore && !isLoadingMore) {
-          loadMoreCourses();
-        }
-      } else {
-        if (
-          categoryHasMore &&
-          !isLoadingMoreCategories &&
-          !isLoadingCategories
-        ) {
-          loadMoreCategories();
-        }
+    if (!isNearBottom) return;
+
+    if (navLink?.label === "internship") {
+      if (
+        internshipHasMore &&
+        !isLoadingMoreInternships &&
+        !internshipLoading
+      ) {
+        loadMoreInternships();
+      }
+      return;
+    }
+
+    if (selectedCategory) {
+      if (hasMore && !isLoadingMore) {
+        loadMoreCourses();
+      }
+    } else {
+      if (
+        categoryHasMore &&
+        !isLoadingMoreCategories &&
+        !isLoadingCategories
+      ) {
+        loadMoreCategories();
       }
     }
   }, [
+    navLink?.label,
+    internshipHasMore,
+    isLoadingMoreInternships,
+    internshipLoading,
+    loadMoreInternships,
     hasMore,
     isLoadingMore,
     loadMoreCourses,
@@ -417,37 +506,127 @@ const NavbarContent = ({
   };
 
   const renderInternships = (): React.ReactNode => {
-    return null;
+    if (internshipError) {
+      return (
+        <Error
+          icon={AlertCircle}
+          iconSize="lg"
+          iconColor="text-red-500"
+          title="Error"
+          description={
+            (internshipError as Error)?.message ?? "Could not load internships"
+          }
+          containerHeight="h-64"
+        />
+      );
+    }
+
+    if (internshipLoading && allInternships.length === 0) {
+      return (
+        <div className="w-full h-full flex items-center justify-center">
+          <Loader size="lg" variant="spinner" />
+        </div>
+      );
+    }
+
+    if (!internshipLoading && allInternships.length === 0) {
+      return (
+        <div className="w-full h-full flex items-center justify-center">
+          <p className="text-gray-500 text-lg">No internships available</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="w-full h-full flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-bold text-gray-800">Internships</h2>
+          <p className="text-sm text-gray-500">
+            {allInternships.length}{" "}
+            {allInternships.length === 1 ? "program" : "programs"} shown
+          </p>
+        </div>
+        <div className="w-full h-full">
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-10">
+            {allInternships.map((item) => (
+              <Link
+                key={item._id ?? item.slug}
+                href={`/internships/${item.slug}`}
+                onClick={() => {
+                  setTimeout(() => {
+                    closeHoverContainer();
+                  }, 150);
+                }}
+                className={cn(
+                  "w-full flex flex-row max-h-[100px] xl:max-h-[80px] items-center hover:bg-linear-to-tr from-orange-500/10 to-white gap-3 hover:bg-gray-100 transition-all duration-300 cursor-pointer rounded-xl",
+                )}
+                draggable={false}
+              >
+                <div className="w-1/3 h-full shrink-0 relative">
+                  <ImageComponent
+                    src={item.thumbnail || "/CourseCardDemo.jpg"}
+                    alt={item.title || "Internship"}
+                    width={100}
+                    height={100}
+                    className="w-full h-full rounded-xl object-cover"
+                    draggable={false}
+                  />
+                </div>
+                <div className="w-2/3 h-full flex flex-col gap-1 py-2">
+                  <h3 className="text-sm font-bold line-clamp-2">{item.title}</h3>
+                </div>
+              </Link>
+            ))}
+          </div>
+
+          {isLoadingMoreInternships && (
+            <div className="w-full flex items-center justify-center py-4">
+              <Loader
+                size="md"
+                variant="spinner"
+                text="Loading more…"
+                showText={true}
+              />
+            </div>
+          )}
+        </div>
+      </div>
+    );
   };
 
   return (
     <div className="bg-white w-full h-full flex gap-10">
-      <div className="w-2/8 xl:w-1/5 flex flex-col gap-4 shrink-0 items-end">
-        <h1 className="text-2xl font-bold text-black/60">Audience</h1>
-        <div className="w-full flex flex-col gap-2 text-right">
-          {audiences.map((audience, index) => (
-            <div
-              key={index}
-              className={cn(
-                "category w-full px-8 py-4 flex items-center justify-between hover:bg-gray-200 transition-all duration-300 cursor-pointer rounded-xl shrink-0",
-                selectedAudience === audience.value && "bg-gray-200",
-              )}
-              onMouseEnter={() => {
-                setSelectedAudience(audience.value);
-                setSelectedCategory(null); // Reset category when audience changes
-              }}
-            >
-              <span className="text-base lg:text-lg font-normal wrap-break-word">
-                {audience.label}
-              </span>
-              <ChevronRight className="size-4 md:size-6 stroke-2 shrink-0" />
-            </div>
-          ))}
+      {navLink?.label === "courses" && (
+        <div className="w-2/8 xl:w-1/5 flex flex-col gap-4 shrink-0 items-end">
+          <h1 className="text-2xl font-bold text-black/60">Audience</h1>
+          <div className="w-full flex flex-col gap-2 text-right">
+            {audiences.map((audience, index) => (
+              <div
+                key={index}
+                className={cn(
+                  "category w-full px-8 py-4 flex items-center justify-between hover:bg-gray-200 transition-all duration-300 cursor-pointer rounded-xl shrink-0",
+                  selectedAudience === audience.value && "bg-gray-200",
+                )}
+                onMouseEnter={() => {
+                  setSelectedAudience(audience.value);
+                  setSelectedCategory(null); // Reset category when audience changes
+                }}
+              >
+                <span className="text-base lg:text-lg font-normal wrap-break-word">
+                  {audience.label}
+                </span>
+                <ChevronRight className="size-4 md:size-6 stroke-2 shrink-0" />
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
       <div
         ref={scrollContainerRef}
-        className="w-full h-full overflow-y-auto scroll-smooth"
+        className={cn(
+          "flex-1 min-w-0 h-full overflow-y-auto scroll-smooth",
+          navLink?.label === "internship" && "w-full",
+        )}
         style={{ scrollbarWidth: "thin" }}
       >
         <Suspense
@@ -461,7 +640,9 @@ const NavbarContent = ({
             ? selectedCategory
               ? renderCourses()
               : renderCategories()
-            : renderInternships()}
+            : navLink?.label === "internship"
+              ? renderInternships()
+              : null}
         </Suspense>
       </div>
     </div>

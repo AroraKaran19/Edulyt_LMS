@@ -73,7 +73,7 @@ export const getCategoryById = asyncHandler(
 
 export const createCategory = asyncHandler(
   async (req: Request, res: Response) => {
-    const { name, description, showOnHomePage, categoryImage, audience } = req.body;
+    const { name, description, showOnHomePage, showOnCourseList, categoryImage, audience } = req.body;
     if (!name) {
       throw new AppError("Category name is required", 400);
     }
@@ -82,7 +82,14 @@ export const createCategory = asyncHandler(
     }
 
     try {
-      const result = await createCategoryService(name, description, showOnHomePage, categoryImage, audience);
+      const result = await createCategoryService(
+        name,
+        description,
+        showOnHomePage,
+        showOnCourseList,
+        categoryImage,
+        audience
+      );
       if (!result) {
         throw new AppError("Failed to create category", 500);
       }
@@ -101,13 +108,21 @@ export const createCategory = asyncHandler(
 export const updateCategory = asyncHandler(
   async (req: Request, res: Response) => {
     const { id } = req.params;
-    const { name, description, isActive, showOnHomePage, categoryImage, audience } = req.body;
+    const { name, description, isActive, showOnHomePage, showOnCourseList, categoryImage, audience } = req.body;
     if (!id) {
       throw new AppError("Category ID is required", 400);
     }
-    if (!name && !description && isActive === undefined && showOnHomePage === undefined && categoryImage === undefined && audience === undefined) {
+    if (
+      !name &&
+      !description &&
+      isActive === undefined &&
+      showOnHomePage === undefined &&
+      showOnCourseList === undefined &&
+      categoryImage === undefined &&
+      audience === undefined
+    ) {
       throw new AppError(
-        "At least one field (name, description, isActive, showOnHomePage, categoryImage, or audience) is required",
+        "At least one field (name, description, isActive, showOnHomePage, showOnCourseList, categoryImage, or audience) is required",
         400
       );
     }
@@ -121,6 +136,7 @@ export const updateCategory = asyncHandler(
         description,
         isActive,
         showOnHomePage,
+        showOnCourseList,
         categoryImage,
         audience,
       });

@@ -1,6 +1,10 @@
 import mongoose from "mongoose";
 import { AppError } from "../middlewares/error.middleware";
-import { CollaborationDomainModel, UserModel } from "../models";
+import {
+  CollaborationDomainModel,
+  PartnershipImportConfigModel,
+  UserModel,
+} from "../models";
 import { CollaborationEnrollmentAccess } from "../types/collaborationDomain";
 import { collaborationAccessToEnrollmentFields } from "../services/collaborationAllotment.helpers";
 import { CreateEnrollmentService } from "../services/enrollment.services";
@@ -9,6 +13,10 @@ import {
   incrementCollaborationJobRetryService,
   updateCollaborationJobStatusService,
 } from "../services/collaborationJob.services";
+import {
+  processCollaborationWhitelistBatchService,
+  syncCollaborationWhitelistWithJobStatus,
+} from "../services/collaborationWhitelist.services";
 
 const MAX_RETRIES = 3;
 
@@ -53,39 +61,76 @@ async function runPool<T>(
 async function processCollaborationAllotmentJob(job: {
   jobId: string;
   userId: unknown;
-  collaborationDomainId: unknown;
+  collaborationDomainId?: unknown;
+  partnershipImportConfigId?: unknown;
   retryCount?: number;
 }): Promise<void> {
   const { jobId } = job;
   const userId = String(job.userId);
-  const collaborationDomainId = String(job.collaborationDomainId);
 
   try {
-    const domain = await CollaborationDomainModel.findById(
-      collaborationDomainId
-    ).lean();
+    let courseList: unknown[] = [];
+    let accessPayload: ReturnType<typeof collaborationAccessToEnrollmentFields>;
+    let promotionCode: string;
 
-    if (!domain || !domain.isActive) {
-      throw new Error("Collaboration domain not found or inactive");
+    if (job.partnershipImportConfigId) {
+      const configId = String(job.partnershipImportConfigId);
+      const cfg = await PartnershipImportConfigModel.findById(configId).lean();
+
+      if (!cfg || !cfg.isActive) {
+        throw new Error("Partnership import config not found or inactive");
+      }
+      if (cfg.kind !== "course_allot") {
+        throw new Error("Partnership import config is not course allot");
+      }
+
+      const ea = cfg.enrollmentAccess as CollaborationEnrollmentAccess | undefined;
+      if (!ea) {
+        throw new Error("Partnership import config missing enrollment access");
+      }
+
+      accessPayload = collaborationAccessToEnrollmentFields(ea);
+      courseList = cfg.courses ?? [];
+
+      if (!Array.isArray(courseList) || courseList.length === 0) {
+        throw new Error("Partnership import config has no linked courses");
+      }
+
+      promotionCode = `partnership_import:${configId}`;
+    } else {
+      const collaborationDomainId = String(job.collaborationDomainId ?? "");
+      if (!collaborationDomainId) {
+        throw new Error("Job missing collaboration domain or import config");
+      }
+
+      const domain = await CollaborationDomainModel.findById(
+        collaborationDomainId
+      ).lean();
+
+      if (!domain || !domain.isActive) {
+        throw new Error("Collaboration domain not found or inactive");
+      }
+
+      if (domain.collaborationKind !== "course_allot") {
+        throw new Error("Collaboration domain is not course allot");
+      }
+
+      const ea = domain.enrollmentAccess as
+        | CollaborationEnrollmentAccess
+        | undefined;
+      if (!ea) {
+        throw new Error("Collaboration domain missing enrollment access");
+      }
+
+      accessPayload = collaborationAccessToEnrollmentFields(ea);
+      courseList = domain.courses ?? [];
+
+      if (!Array.isArray(courseList) || courseList.length === 0) {
+        throw new Error("Course allot domain has no linked courses");
+      }
+
+      promotionCode = `collaboration:${collaborationDomainId}`;
     }
-
-    if (domain.collaborationKind !== "course_allot") {
-      throw new Error("Collaboration domain is not course allot");
-    }
-
-    const ea = domain.enrollmentAccess as CollaborationEnrollmentAccess | undefined;
-    if (!ea) {
-      throw new Error("Collaboration domain missing enrollment access");
-    }
-
-    const accessPayload = collaborationAccessToEnrollmentFields(ea);
-    const courseList = domain.courses ?? [];
-
-    if (!Array.isArray(courseList) || courseList.length === 0) {
-      throw new Error("Course allot domain has no linked courses");
-    }
-
-    const promotionCode = `collaboration:${collaborationDomainId}`;
 
     for (const cid of courseList) {
       const courseId = String(cid);
@@ -108,7 +153,6 @@ async function processCollaborationAllotmentJob(job: {
       }
     }
 
-    // Align with enrollmentSource: "promotion"; do not override affiliate joins.
     await UserModel.updateOne(
       {
         _id: new mongoose.Types.ObjectId(userId),
@@ -118,6 +162,7 @@ async function processCollaborationAllotmentJob(job: {
     );
 
     await updateCollaborationJobStatusService(jobId, { status: "completed" });
+    await syncCollaborationWhitelistWithJobStatus(jobId, "completed");
     console.log(
       `[Collaboration Worker] Job ${jobId} completed for user ${userId}`
     );
@@ -138,6 +183,7 @@ async function processCollaborationAllotmentJob(job: {
         status: "failed",
         error: message,
       });
+      await syncCollaborationWhitelistWithJobStatus(jobId, "failed", message);
     }
   }
 }
@@ -156,13 +202,14 @@ export function startCollaborationWorker(): void {
       const jobs: Array<{
         jobId: string;
         userId: unknown;
-        collaborationDomainId: unknown;
+        collaborationDomainId?: unknown;
+        partnershipImportConfigId?: unknown;
         retryCount?: number;
       }> = [];
       for (let i = 0; i < MAX_JOBS_PER_TICK; i++) {
         const job = await getNextPendingCollaborationJobService();
         if (!job) break;
-        jobs.push(job);
+        jobs.push(job as (typeof jobs)[0]);
       }
       if (jobs.length > 0) {
         await runPool(jobs, MAX_PARALLEL, (j) =>
@@ -170,6 +217,13 @@ export function startCollaborationWorker(): void {
         );
         console.log(
           `[Collaboration Worker] Finished ${jobs.length} job(s) this tick (parallelism ${MAX_PARALLEL}, max batch ${MAX_JOBS_PER_TICK}).`
+        );
+      }
+
+      const wl = await processCollaborationWhitelistBatchService();
+      if (wl.processed > 0) {
+        console.log(
+          `[Collaboration Worker] Whitelist batch: processed ${wl.processed}, queued ${wl.queued}, skipped ${wl.skipped}`
         );
       }
     } catch (e) {

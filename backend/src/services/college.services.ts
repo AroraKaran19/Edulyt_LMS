@@ -1,7 +1,8 @@
 import mongoose from "mongoose";
 import { CollegeModel } from "../models/college.schema";
 import { College } from "../types/college";
-import { createFuzzySearchOrFilter } from "../utils/lib/fuzzySearch";
+
+const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 export interface ListCollegesResult {
   colleges: College[];
@@ -25,23 +26,53 @@ const toCollege = (doc: Record<string, unknown>): College => {
     _id: doc._id != null ? String(doc._id) : undefined,
     name: String(doc.name ?? ""),
     location: loc ?? "",
+    website:
+      typeof doc.website === "string" ? doc.website.trim() : undefined,
+    image: typeof doc.image === "string" ? doc.image.trim() : undefined,
     isActive: Boolean(doc.isActive),
     createdAt: doc.createdAt as Date | undefined,
     updatedAt: doc.updatedAt as Date | undefined,
   };
 };
 
-const buildSearchFilter = (search?: string) => {
+/**
+ * Each whitespace-separated word must match somewhere (name OR location OR legacy
+ * city/state/country). Words are combined with AND so "Business Schoo" requires
+ * both substrings — unlike fuzzySearch's global $or, which let "Schoo" match
+ * "School" without "Business".
+ */
+const buildSearchFilter = (search?: string): mongoose.FilterQuery<College> => {
   if (!search?.trim()) return {};
-  const q = search.trim();
-  const ors: object[] = [];
-  const main = createFuzzySearchOrFilter(q, ["name", "location"]);
-  if (main?.$or?.length) ors.push(...main.$or);
-  /** Legacy docs may still have city/state/country only */
-  const legacy = createFuzzySearchOrFilter(q, ["city", "state", "country"]);
-  if (legacy?.$or?.length) ors.push(...legacy.$or);
-  if (ors.length) return { $or: ors };
-  return {};
+  const words = search
+    .trim()
+    .replace(/\s+/g, " ")
+    .split(" ")
+    .map((w) => w.trim())
+    .filter((w) => w.length > 0);
+  if (words.length === 0) return {};
+
+  const fields = [
+    "name",
+    "location",
+    "website",
+    "city",
+    "state",
+    "country",
+  ] as const;
+
+  const perWord = words.map((word) => {
+    const rx = escapeRegex(word);
+    return {
+      $or: fields.map((field) => ({
+        [field]: { $regex: rx, $options: "i" as const },
+      })),
+    };
+  });
+
+  if (perWord.length === 1) {
+    return perWord[0] as mongoose.FilterQuery<College>;
+  }
+  return { $and: perWord } as mongoose.FilterQuery<College>;
 };
 
 const totalPages = (total: number, limit: number) =>
@@ -114,11 +145,15 @@ export const getCollegeByIdService = async (
 export const createCollegeService = async (data: {
   name: string;
   location: string;
+  website?: string;
+  image?: string;
   isActive?: boolean;
 }): Promise<College> => {
   const doc = await CollegeModel.create({
     name: data.name.trim(),
     location: data.location.trim(),
+    website: data.website?.trim() ?? "",
+    image: data.image?.trim() ?? "",
     isActive: data.isActive !== false,
   });
   return toCollege(doc.toObject() as unknown as Record<string, unknown>);
@@ -129,6 +164,8 @@ export const updateCollegeService = async (
   data: Partial<{
     name: string;
     location: string;
+    website: string;
+    image: string;
     isActive: boolean;
   }>,
 ): Promise<College | null> => {
@@ -137,6 +174,8 @@ export const updateCollegeService = async (
   if (data.name !== undefined) update.name = String(data.name).trim();
   if (data.location !== undefined)
     update.location = String(data.location).trim();
+  if (data.website !== undefined) update.website = String(data.website).trim();
+  if (data.image !== undefined) update.image = String(data.image).trim();
   if (data.isActive !== undefined) update.isActive = Boolean(data.isActive);
 
   const doc = await CollegeModel.findByIdAndUpdate(id, update, {

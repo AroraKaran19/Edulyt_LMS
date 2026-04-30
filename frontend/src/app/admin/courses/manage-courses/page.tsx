@@ -20,10 +20,8 @@ import {
   BookOpen,
   MoreVertical,
   Copy,
-  Languages,
   Star,
   Filter,
-  ChevronDown,
 } from "lucide-react";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import { InfiniteScrollSelect } from "@/components/ui/dropdown/InfiniteScrollSelect";

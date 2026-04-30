@@ -256,7 +256,10 @@ const CartForm = ({
     if (collabResolve === null) return;
     setAppliedCoupon(null);
     setCouponCode("");
-  }, [collabResolve?.collaborationDomainId]);
+  }, [
+    collabResolve?.collaborationDomainId,
+    collabResolve?.partnershipImportConfigId,
+  ]);
 
   // Check if user has firstName before allowing enrollment
   useEffect(() => {

@@ -1,5 +1,6 @@
 import { Icon } from "@iconify/react";
 import Image from "next/image";
+import type { HomeStudentSectionSettings } from "@/types/home-page-settings";
 
 const ConfusionBadge = ({ title }: { title: string }) => {
   return (
@@ -14,13 +15,28 @@ const ConfusionBadge = ({ title }: { title: string }) => {
   );
 };
 
-const HomeStudentSection = () => {
-  const clarityData: string[] = [
-    "What should I do next?",
-    "How do I get a good job?",
-    "What skills should I learn?",
-    "Am I already too late?",
-  ];
+const DEFAULT_PROMPTS = [
+  "What should I do next?",
+  "How do I get a good job?",
+  "What skills should I learn?",
+  "Am I already too late?",
+];
+
+const HomeStudentSection = ({
+  settings,
+}: {
+  settings?: HomeStudentSectionSettings;
+}) => {
+  const clarityData =
+    settings?.confusionPrompts && settings.confusionPrompts.length > 0
+      ? settings.confusionPrompts
+      : DEFAULT_PROMPTS;
+  const badgeLabel = settings?.badgeLabel || "Hello Students";
+  const headingPrefix =
+    settings?.headingPrefix || "Are you feeling confused about your";
+  const headingHighlight = settings?.headingHighlightCareer || "career?";
+  const helpCtaText =
+    settings?.helpCtaText || "Talk to our professionals and get clarity.";
 
   return (
     <section
@@ -32,10 +48,10 @@ const HomeStudentSection = () => {
           <Icon icon="mdi:hand-wave" width="32" height="32" />
         </div>
         <div className="content-body max-w-md h-full flex flex-col gap-10 mb-5">
-          <h3 className="text-2xl font-bold">Hello Students</h3>
+          <h3 className="text-2xl font-bold">{badgeLabel}</h3>
           <h2 className="text-4xl font-extrabold capitalize text-balance">
-            Are you feeling <span className="text-orange-500">confused</span>{" "}
-            about your <span className="text-orange-500">career?</span>
+            {headingPrefix}{" "}
+            <span className="text-orange-500">{headingHighlight}</span>
           </h2>
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-5 items-end gap-10 lg:gap-4 overflow-visible">
@@ -66,7 +82,7 @@ const HomeStudentSection = () => {
                 <Icon icon="fa7-brands:kakao-talk" width="32" height="32" />
               </div>
               <span className="text-xs lg:text-base font-semibold text-wrap capitalize">
-                Talk to our professionals and get clarity.
+                {helpCtaText}
               </span>
             </span>
             {/* Desktop help container */}

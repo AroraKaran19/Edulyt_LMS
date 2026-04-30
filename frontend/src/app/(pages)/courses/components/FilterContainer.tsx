@@ -1,6 +1,5 @@
 import { cn } from "@/lib/utils";
 import { Filter } from "@/types";
-import React from "react";
 
 const FilterContainer = ({
   filters,

@@ -1,17 +1,11 @@
 import { Icon } from "@iconify/react";
 import InstituteCard from "../InstituteCard";
+import type {
+  HomeInstitutionSectionSettings,
+  HomePageInstitute,
+} from "@/types/home-page-settings";
 
-interface InstituteCardProps {
-  image: string;
-  name: string;
-  line1: string;
-  internship_student_count: number;
-  line2: string;
-  course_student_count: number;
-}
-
-const InstitutionSection = () => {
-  const institutes: InstituteCardProps[] = [
+const DEFAULT_INSTITUTES: HomePageInstitute[] = [
     {
       image: "/home/InstituteDummy.png",
       name: "Harvard University",
@@ -61,7 +55,24 @@ const InstitutionSection = () => {
       line2: "Courses Enrollment",
       course_student_count: 100,
     },
-  ];
+];
+
+const InstitutionSection = ({
+  settings,
+}: {
+  settings?: HomeInstitutionSectionSettings;
+}) => {
+  const institutes =
+    settings?.institutes && settings.institutes.length > 0
+      ? settings.institutes
+      : DEFAULT_INSTITUTES;
+  const eyebrow =
+    settings?.eyebrow || "Trusted by Students from Top Institutions";
+  const headingHighlight = settings?.headingHighlight || "Colleges our";
+  const headingRest = settings?.headingRest || "students comes from";
+  const body =
+    settings?.body ||
+    "Students from diverse academic backgrounds and leading colleges have joined our internship to gain real industry experience and practical skills. Here are some of the institutes our past interns come from.";
 
   return (
     <section
@@ -74,16 +85,13 @@ const InstitutionSection = () => {
         </div>
         <div className="content-body flex flex-col gap-6">
           <h3 className="text-base lg:text-2xl font-semibold capitalize">
-            Trusted by Students from Top Institutions
+            {eyebrow}
           </h3>
           <h2 className="text-2xl lg:text-4xl max-w-6xl font-extrabold text-text-primary text-balance">
-            <span className="text-primary">Colleges our</span> students comes
-            from
+            <span className="text-primary">{headingHighlight}</span> {headingRest}
           </h2>
           <p className="text-sm lg:text-base text-text-secondary max-w-4xl">
-            Students from diverse academic backgrounds and leading colleges have
-            joined our internship to gain real industry experience and practical
-            skills. Here are some of the institutes our past interns come from.
+            {body}
           </p>
 
           <div className="institutes grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

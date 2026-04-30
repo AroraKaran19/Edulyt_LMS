@@ -23,7 +23,12 @@ const manrope = Manrope({
 const Navbar = () => {
   const router = useRouter();
   const { isAuthenticated } = useAuth();
-  const [coursesCount, setCoursesCount] = useState<number | undefined>(undefined);
+  const [coursesCount, setCoursesCount] = useState<number | undefined>(
+    undefined,
+  );
+  const [internshipsCount, setInternshipsCount] = useState<number | undefined>(
+    undefined,
+  );
 
   useEffect(() => {
     if (!API_BASE_URL) return;
@@ -57,6 +62,31 @@ const Navbar = () => {
       }
     })();
 
+    (async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/internships?page=1&limit=1`, {
+          signal: controller.signal,
+        });
+
+        if (!res.ok) return;
+
+        const json = (await res.json()) as any;
+        const data = json?.data;
+
+        if (Array.isArray(data)) {
+          setInternshipsCount(data.length);
+          return;
+        }
+
+        const total = data?.total;
+        if (typeof total === "number") {
+          setInternshipsCount(total);
+        }
+      } catch {
+        // ignore
+      }
+    })();
+
     return () => controller.abort();
   }, []);
 
@@ -73,7 +103,7 @@ const Navbar = () => {
     {
       label: "internship",
       href: "/internships",
-      count: 101,
+      count: internshipsCount,
     },
     {
       label: "community",
@@ -91,6 +121,9 @@ const Navbar = () => {
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [isDropdownClicked, setIsDropdownClicked] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  const navLinkHasHoverDropdown = (item: NavItem) =>
+    item.label === "courses" || item.label === "internship";
 
   useEffect(() => {
     if (isHoverContainerVisible) {
@@ -162,13 +195,10 @@ const Navbar = () => {
           "px-4 sm:px-6 lg:px-8",
           !isHoverContainerVisible && "shadow-[0_0_10px_2px_rgba(0,0,0,0.2)]",
           isHoverContainerVisible && "border-b border-gray-200",
-          manrope.className
+          manrope.className,
         )}
       >
-        <Link
-          href="/"
-          className="h-full flex items-center shrink-0"
-        >
+        <Link href="/" className="h-full flex items-center shrink-0">
           <ImageComponent
             src="/logo.svg"
             alt="Logo"
@@ -184,17 +214,39 @@ const Navbar = () => {
           className="hidden lg:flex h-full absolute left-1/2 -translate-x-1/2 items-center gap-4 lg:gap-5 xl:gap-9"
           onMouseEnter={() => setIsTransitioning(false)}
         >
-          {navItems.map((item) => (
+          {navItems.map((item, index) => (
             <NavLink
-              href={
-                item.href === "/internships"
-                  ? "https://edulyt.com/internships.php"
-                  : item.href
-              }
-              key={item.href}
+              href={item.href}
+              key={index}
               label={item.label}
               count={item.count}
-              onMouseEnter={() => showHoverContainer(item)}
+              onMouseEnter={() => {
+                if (hoverTimeout) {
+                  clearTimeout(hoverTimeout);
+                  setHoverTimeout(null);
+                }
+                if (navLinkHasHoverDropdown(item)) {
+                  showHoverContainer(item);
+                } else {
+                  setIsTransitioning(false);
+                  setIsDropdownClicked(false);
+                  // If the mega menu is open, let it play the exit transition before unmounting
+                  if (
+                    isHoverContainerVisible &&
+                    hoveredNavLink &&
+                    navLinkHasHoverDropdown(hoveredNavLink)
+                  ) {
+                    setIsHoverContainerVisible(false);
+                    const t = setTimeout(() => {
+                      setHoveredNavLink(null);
+                    }, 300);
+                    setHoverTimeout(t);
+                  } else {
+                    setIsHoverContainerVisible(false);
+                    setHoveredNavLink(null);
+                  }
+                }
+              }}
               onMouseLeave={handleNavLinkMouseLeave}
               active={hoveredNavLink?.label === item.label}
             />
@@ -229,7 +281,6 @@ const Navbar = () => {
         navItems={navItems}
         onClose={() => setIsMobileMenuOpen(false)}
       />
-      
 
       {/* Hover Container - Hidden on mobile */}
       {hoveredNavLink &&

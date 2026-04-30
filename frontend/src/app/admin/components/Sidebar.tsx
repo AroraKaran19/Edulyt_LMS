@@ -1,5 +1,13 @@
 "use client";
-import { ChevronLeft, ChevronRight, Settings, Tag } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  HelpCircle,
+  Settings,
+  ShoppingCart,
+  Tag,
+  Users,
+} from "lucide-react";
 import ImageComponent from "@/components/ui/ImageComponent";
 import React from "react";
 import SidebarMenuItem from "./SidebarMenuItem";
@@ -52,10 +60,6 @@ const AdminSidebar = ({
           href: "/admin/courses/enrollments",
         },
         {
-          label: "Orders",
-          href: "/admin/courses/orders",
-        },
-        {
           label: "Live Classes",
           href: "/admin/courses/live-classes",
         },
@@ -63,15 +67,22 @@ const AdminSidebar = ({
           label: "Moderation",
           href: "/admin/courses/moderation",
         },
-        {
-          label: "FAQs",
-          href: "/admin/courses/faqs",
-        },
-        {
-          label: "Testimonials",
-          href: "/admin/courses/testimonials",
-        },
       ],
+    },
+    {
+      icon: <HelpCircle className="size-6" />,
+      label: "FAQs",
+      href: "/admin/faq",
+    },
+    {
+      icon: <Users className="size-6" />,
+      label: "Testimonials",
+      href: "/admin/testimonials",
+    },
+    {
+      icon: <ShoppingCart className="size-6" />,
+      label: "Orders",
+      href: "/admin/orders",
     },
     {
       iconSrc: "/admin/internship.svg",
@@ -83,12 +94,32 @@ const AdminSidebar = ({
           href: "/admin/internships/analytics",
         },
         {
-          label: "All Internships",
-          href: "/admin/internships/all-internships",
-        },
-        {
           label: "Manage Internships",
           href: "/admin/internships/manage-internships",
+        },
+        {
+          label: "Enrollments",
+          href: "/admin/internships/enrollments",
+        },
+        {
+          label: "Entrance exams",
+          href: "/admin/internships/entrance-exams",
+        },
+        {
+          label: "Certification exams",
+          href: "/admin/internships/certification-exams",
+        },
+        {
+          label: "Question bank",
+          href: "/admin/internships/questions",
+        },
+        {
+          label: "Exam templates",
+          href: "/admin/internships/exams",
+        },
+        {
+          label: "Task templates",
+          href: "/admin/internships/tasks",
         },
       ],
     },
@@ -122,6 +153,14 @@ const AdminSidebar = ({
           href: "/admin/settings/authentication-media",
         },
         {
+          label: "Points (INR)",
+          href: "/admin/settings/points",
+        },
+        {
+          label: "Home Page",
+          href: "/admin/settings/home-page",
+        },
+        {
           label: "Colleges List",
           href: "/admin/settings/colleges",
         },
@@ -136,6 +175,10 @@ const AdminSidebar = ({
         {
           label: "Collaboration Domains",
           href: "/admin/settings/collaboration-domains",
+        },
+        {
+          label: "Partnerships",
+          href: "/admin/settings/partnership-import",
         },
       ],
     },

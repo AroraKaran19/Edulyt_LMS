@@ -26,8 +26,19 @@ import {
   certificateRoutes,
   couponRoutes,
   collaborationDomainRoutes,
+  partnershipImportRoutes,
   instructorDashboardRoutes,
   collegeRoutes,
+  internshipRoutes,
+  internshipExamRoutes,
+  internshipQuestionRoutes,
+  internshipTaskRoutes,
+  internshipSubmissionRoutes,
+  internshipEnrollmentRoutes,
+  partnerCollegeRoutes,
+  questionCategoryRoutes,
+  internshipVoucherRoutes,
+  homePageSettingsRoutes,
 } from "./routes";
 
 dotenv.config();
@@ -73,8 +84,19 @@ app.use("/api/authentication-media", authenticationMediaRoutes);
 app.use("/api/certificates", certificateRoutes);
 app.use("/api/coupons", couponRoutes);
 app.use("/api/collaboration-domains", collaborationDomainRoutes);
+app.use("/api/partnership-import-configs", partnershipImportRoutes);
 app.use("/api/instructor", instructorDashboardRoutes);
 app.use("/api/colleges", collegeRoutes);
+app.use("/api/internships", internshipRoutes);
+app.use("/api/internship-exams", internshipExamRoutes);
+app.use("/api/internship-questions", internshipQuestionRoutes);
+app.use("/api/internship-tasks", internshipTaskRoutes);
+app.use("/api/internship-submissions", internshipSubmissionRoutes);
+app.use("/api/internship-enrollments", internshipEnrollmentRoutes);
+app.use("/api/partner-colleges", partnerCollegeRoutes);
+app.use("/api/question-categories", questionCategoryRoutes);
+app.use("/api/internship-vouchers", internshipVoucherRoutes);
+app.use("/api/home-page-settings", homePageSettingsRoutes);
 
 app.use(notFoundHandler); // Handle 404 errors
 app.use(errorHandler); // Handle all other errors

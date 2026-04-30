@@ -292,7 +292,7 @@ const CoursesSection = () => {
           isMobile ? "text-center" : "text-left"
         )}
       >
-        Explore more <span className="text-[#f77124]">Courses</span>
+        Explore more <span className="text-primary">Courses</span>
       </p>
       <div className="search-container w-full mt-6 flex gap-6 items-stretch flex-col md:flex-row">
         <CourseSearchBar

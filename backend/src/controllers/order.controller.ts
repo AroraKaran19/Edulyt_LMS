@@ -6,6 +6,8 @@ import {
 } from "../middlewares/error.middleware";
 import {
   createOrderService,
+  createInternshipSeatOrderService,
+  createInternshipSuccessPointsOrderService,
   deleteOrderService,
   getOrderInfoService,
   getSelfOrdersService,
@@ -75,6 +77,91 @@ export const createOrder = asyncHandler(async (req: Request, res: Response) => {
   sendSuccessResponse(res, order, "Order created successfully", 201);
   return;
 });
+
+/**
+ * Create Paytm order for paid internship seat (enrollment in `payment_pending`).
+ */
+export const createInternshipSeatOrder = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { internshipEnrollmentId } = req.body as {
+      internshipEnrollmentId?: string;
+    };
+    if (!req.user?._id) {
+      throw new AppError("Unauthorized", 401);
+    }
+    if (!internshipEnrollmentId) {
+      throw new AppError("internshipEnrollmentId is required", 400);
+    }
+
+    const order = await createInternshipSeatOrderService(
+      String(req.user._id),
+      internshipEnrollmentId,
+    );
+
+    if (!order) {
+      throw new AppError("Failed to create order", 500);
+    }
+
+    if ("token" in order && order.token) {
+      res.cookie("paymentToken", order.token, {
+        httpOnly: false,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        maxAge: 1000 * 60 * 5,
+        domain:
+          process.env.NODE_ENV === "production" ? ".airkrit.com" : undefined,
+      });
+    }
+    sendSuccessResponse(res, order, "Order created successfully", 201);
+    return;
+  },
+);
+
+/**
+ * Create Paytm order for purchasing internship certification success points.
+ */
+export const createInternshipSuccessPointsOrder = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { internshipEnrollmentId, quantity } = req.body as {
+      internshipEnrollmentId?: string;
+      quantity?: number;
+    };
+    if (!req.user?._id) {
+      throw new AppError("Unauthorized", 401);
+    }
+    if (!internshipEnrollmentId) {
+      throw new AppError("internshipEnrollmentId is required", 400);
+    }
+    if (quantity === undefined || quantity === null) {
+      throw new AppError("quantity is required", 400);
+    }
+
+    const order = await createInternshipSuccessPointsOrderService(
+      String(req.user._id),
+      internshipEnrollmentId,
+      Number(quantity),
+    );
+
+    if (!order) {
+      throw new AppError("Failed to create order", 500);
+    }
+
+    if ("token" in order && order.token) {
+      res.cookie("paymentToken", order.token, {
+        httpOnly: false,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        maxAge: 1000 * 60 * 5,
+        domain:
+          process.env.NODE_ENV === "production" ? ".airkrit.com" : undefined,
+      });
+    }
+    sendSuccessResponse(res, order, "Order created successfully", 201);
+    return;
+  },
+);
 
 export const getOrderInfo = asyncHandler(
   async (req: Request, res: Response) => {
