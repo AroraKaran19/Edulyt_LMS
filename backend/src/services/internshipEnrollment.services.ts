@@ -539,6 +539,10 @@ async function completePaidSeatRegistrationForExistingDoc(
     return { enrollmentId: String(existing._id) };
   }
 
+  // Merit-track learner choosing the paid seat on the form: do NOT flip
+  // enrollmentType here. The promotion to "paid" happens only when payment
+  // succeeds (createInternshipSeatEnrollmentAfterPayment). Until then the row
+  // stays merit so the learner keeps full exam access.
   const upgradeableStatuses = [
     "exam_registered",
     "exam_attempted",
@@ -546,14 +550,13 @@ async function completePaidSeatRegistrationForExistingDoc(
     "admin_rejected",
   ] as string[];
   if (upgradeableStatuses.includes(status)) {
-    (existing as { enrollmentType?: string }).enrollmentType = "paid";
     if (answersDoc) {
       existing.set("applicationAnswers", answersDoc);
       existing.set("applicationSubmittedAt", new Date());
       const months = parseProgramDurationMonthsFromAnswers(answersDoc);
       if (months != null) existing.set("programDurationMonths", months);
+      await existing.save();
     }
-    await existing.save();
     return { enrollmentId: String(existing._id) };
   }
 

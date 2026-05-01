@@ -58,21 +58,27 @@ export const createInternshipSeatEnrollmentAfterPayment = async (
     return enrollment;
   }
 
-  // Accept all statuses that a "paid" enrollment can be in at payment time:
-  //  • "payment_pending"  — fresh direct-seat (no exam registered)
-  //  • "exam_registered"  — upgraded from merit path before exam
-  //  • "exam_attempted"   — upgraded from merit path after exam; payment completes regardless of result
-  const acceptablePayableStatuses = [
-    "payment_pending",
+  // Accept all enrollment shapes that can legitimately complete a seat payment:
+  //  • paid + payment_pending   — fresh direct-seat registration
+  //  • merit + exam_registered  — merit learner upgrading before exam
+  //  • merit + exam_attempted   — merit learner upgrading after exam (any score)
+  //  • merit + in_merit_pool    — merit learner upgrading while awaiting selection
+  //  • merit + admin_rejected   — merit learner rejected from pool, buying a seat
+  // For merit upgrades enrollmentType is promoted to "paid" below, atomically
+  // with status="enrolled" — never on form submit, never before payment.
+  const upgradeableMeritStatuses = [
     "exam_registered",
     "exam_attempted",
     "in_merit_pool",
     "admin_rejected",
   ] as string[];
-  if (
-    enrollment.enrollmentType !== "paid" ||
-    !acceptablePayableStatuses.includes(String(enrollment.status))
-  ) {
+  const isPaidPending =
+    enrollment.enrollmentType === "paid" &&
+    String(enrollment.status) === "payment_pending";
+  const isMeritUpgrade =
+    enrollment.enrollmentType === "merit" &&
+    upgradeableMeritStatuses.includes(String(enrollment.status));
+  if (!isPaidPending && !isMeritUpgrade) {
     throw new AppError(
       "Enrollment is not awaiting payment for a direct seat",
       400,
@@ -84,6 +90,7 @@ export const createInternshipSeatEnrollmentAfterPayment = async (
     throw new AppError("Order does not match this enrollment", 403);
   }
 
+  enrollment.enrollmentType = "paid";
   enrollment.status = "enrolled";
   enrollment.enrolledAt = new Date();
   const ans = enrollment.applicationAnswers as Record<string, unknown> | undefined;
@@ -872,15 +879,28 @@ export const createInternshipSeatOrderService = async (
     throw new AppError("This enrollment does not belong to you", 403);
   }
 
-  // Paid statuses that are still awaiting payment:
-  //  • "payment_pending"     — fresh direct-seat registration
-  //  • "exam_registered"     — upgraded from merit path (seat payment + exam access)
-  //  • "exam_attempted"      — same upgrade, exam already taken but seat not yet paid
-  const payableStatuses = ["payment_pending", "exam_registered", "exam_attempted", "in_merit_pool", "admin_rejected"] as string[];
-  if (
-    enrollment.enrollmentType !== "paid" ||
-    !payableStatuses.includes(String(enrollment.status))
-  ) {
+  // Statuses an enrollment can be in when starting a seat payment:
+  //  • "payment_pending"     — fresh direct-seat registration (enrollmentType=paid)
+  //  • "exam_registered"     — merit learner upgrading to paid; exam access kept
+  //  • "exam_attempted"      — merit learner upgrading after taking the exam
+  //  • "in_merit_pool"       — merit learner upgrading while waiting for selection
+  //  • "admin_rejected"      — merit learner who was rejected and now buys a seat
+  // For upgrade cases enrollmentType is still "merit" — the promotion to "paid"
+  // happens atomically on payment success, not at order-creation time.
+  const payableStatuses = [
+    "payment_pending",
+    "exam_registered",
+    "exam_attempted",
+    "in_merit_pool",
+    "admin_rejected",
+  ] as string[];
+  const isPaidPending =
+    enrollment.enrollmentType === "paid" &&
+    String(enrollment.status) === "payment_pending";
+  const isMeritUpgrade =
+    enrollment.enrollmentType === "merit" &&
+    payableStatuses.includes(String(enrollment.status));
+  if (!isPaidPending && !isMeritUpgrade) {
     throw new AppError("This enrollment is not waiting for a seat payment", 400);
   }
 
