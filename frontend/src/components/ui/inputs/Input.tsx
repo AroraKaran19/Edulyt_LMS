@@ -23,6 +23,8 @@ interface InputProps {
   maxLength?: number;
   showCharacterCount?: boolean;
   error?: string;
+  startAdornment?: React.ReactNode;
+  endAdornment?: React.ReactNode;
   [key: string]: any; // For other HTML input attributes
 }
 
@@ -44,6 +46,8 @@ const Input = ({
   maxLength,
   showCharacterCount = false,
   error,
+  startAdornment,
+  endAdornment,
   ...props
 }: InputProps) => {
   // Calculate character count
@@ -55,6 +59,8 @@ const Input = ({
   const characterCount = getCharacterCount(value || "");
   const isMinLengthMet = minLength ? characterCount >= minLength : true;
   const isMaxLengthExceeded = maxLength ? characterCount > maxLength : false;
+
+  const hasAdornments = Boolean(startAdornment || endAdornment);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     // Call traditional onChange if provided
@@ -90,50 +96,106 @@ const Input = ({
             <IndianFlagIcon className="size-7.5" />
           </div>
         )}
-        <input
-          type={type}
-          placeholder={placeholder}
-          value={value}
-          disabled={disabled}
-          min={min}
-          max={max}
-          minLength={minLength}
-          maxLength={maxLength}
-          {...props}
-          className={cn(
-            "w-full px-4 py-3.5 border rounded-xl bg-white text-black",
-            "focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500",
-            "hover:shadow-sm",
-            "transition-all duration-200 ease-in-out outline-none",
-            "disabled:opacity-50 disabled:cursor-not-allowed",
-            "shadow-sm hover:shadow-md",
-            variant === "small" && "text-xs py-2 px-3",
-            showCharacterCount && "pr-12", // Add right padding when character count is shown
-            error 
-              ? "border-red-500 hover:border-red-500 focus:border-red-500 focus:ring-red-500/20" 
-              : "border-gray-300 hover:border-orange-400"
-          )}
-          required={required}
-          onChange={handleChange}
-          onKeyDown={props.onKeyDown}
-          onPaste={props.onPaste}
-        />
-        {showCharacterCount && (
-          <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs bg-white px-1 rounded">
-            <div
+        {hasAdornments ? (
+          <div
+            className={cn(
+              "relative flex min-h-[48px] w-full items-center gap-3 rounded-[10px] border bg-white px-3.5 transition-colors",
+              "focus-within:border-[#F27420] focus-within:ring-2 focus-within:ring-[#F27420]/15",
+              error
+                ? "border-red-500"
+                : "border-[#E4E7EC] hover:border-[#D0D5DD]"
+            )}
+          >
+            {startAdornment}
+            <input
+              type={type}
+              placeholder={placeholder}
+              value={value}
+              disabled={disabled}
+              min={min}
+              max={max}
+              minLength={minLength}
+              maxLength={maxLength}
+              {...props}
               className={cn(
-                "text-right",
-                isMaxLengthExceeded
-                  ? "text-red-500"
-                  : !isMinLengthMet
-                  ? "text-orange-500"
-                  : "text-gray-500"
+                "min-w-0 flex-1 border-0 bg-transparent py-3 text-sm font-medium text-[#333] outline-none",
+                "placeholder:font-normal placeholder:text-[#98A2B3]",
+                "disabled:opacity-50 disabled:cursor-not-allowed",
+                variant === "small" && "text-xs py-2",
+                showCharacterCount && "pr-12"
               )}
-            >
-              {characterCount}
-              {maxLength && `/${maxLength}`}
-            </div>
+              required={required}
+              onChange={handleChange}
+              onKeyDown={props.onKeyDown}
+              onPaste={props.onPaste}
+            />
+            {endAdornment}
+            {showCharacterCount && (
+              <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs bg-white px-1">
+                <div
+                  className={cn(
+                    "text-right",
+                    isMaxLengthExceeded
+                      ? "text-red-500"
+                      : !isMinLengthMet
+                        ? "text-orange-500"
+                        : "text-gray-500"
+                  )}
+                >
+                  {characterCount}
+                  {maxLength && `/${maxLength}`}
+                </div>
+              </div>
+            )}
           </div>
+        ) : (
+          <>
+            <input
+              type={type}
+              placeholder={placeholder}
+              value={value}
+              disabled={disabled}
+              min={min}
+              max={max}
+              minLength={minLength}
+              maxLength={maxLength}
+              {...props}
+              className={cn(
+                "w-full px-4 py-3.5 border rounded-xl bg-white text-black",
+                "focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500",
+                "hover:shadow-sm",
+                "transition-all duration-200 ease-in-out outline-none",
+                "disabled:opacity-50 disabled:cursor-not-allowed",
+                "shadow-sm hover:shadow-md",
+                variant === "small" && "text-xs py-2 px-3",
+                showCharacterCount && "pr-12",
+                error
+                  ? "border-red-500 hover:border-red-500 focus:border-red-500 focus:ring-red-500/20"
+                  : "border-gray-300 hover:border-orange-400"
+              )}
+              required={required}
+              onChange={handleChange}
+              onKeyDown={props.onKeyDown}
+              onPaste={props.onPaste}
+            />
+            {showCharacterCount && (
+              <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs bg-white px-1 rounded">
+                <div
+                  className={cn(
+                    "text-right",
+                    isMaxLengthExceeded
+                      ? "text-red-500"
+                      : !isMinLengthMet
+                        ? "text-orange-500"
+                        : "text-gray-500"
+                  )}
+                >
+                  {characterCount}
+                  {maxLength && `/${maxLength}`}
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
       {minLength && !isMinLengthMet && (
