@@ -12,6 +12,7 @@ import {
   getInternshipQuestionByIdAdmin,
   updateInternshipQuestionAdmin,
   deleteInternshipQuestionAdmin,
+  randomInternshipQuestionsAdmin,
   type CreateInternshipQuestionBody,
 } from "../services/internshipQuestion.services";
 
@@ -101,6 +102,45 @@ export const bulkCreateInternshipQuestionAdminController = asyncHandler(
       `Imported ${result.created} question(s)`,
       201,
     );
+  },
+);
+
+/**
+ * @route   GET /api/internship-questions/admin/random
+ * @desc    Random pick of N active questions from a single category, filtered
+ *          by usage (exam | task) and excluding caller-provided IDs.
+ * @access  Admin
+ */
+export const randomInternshipQuestionsAdminController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { category, usageFor, limit, exclude } = req.query;
+    const usage =
+      usageFor === "exam" || usageFor === "task" ? usageFor : undefined;
+    if (!usage) {
+      throw new AppError("usageFor must be exam or task", 400);
+    }
+    if (typeof category !== "string" || !category.trim()) {
+      throw new AppError("category is required", 400);
+    }
+    const limitNum = Number(limit);
+    if (!Number.isFinite(limitNum) || limitNum < 1) {
+      throw new AppError("limit must be a positive integer", 400);
+    }
+    const excludeIds =
+      typeof exclude === "string" && exclude.trim()
+        ? exclude
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean)
+        : [];
+
+    const result = await randomInternshipQuestionsAdmin(
+      category,
+      usage,
+      limitNum,
+      excludeIds,
+    );
+    sendSuccessResponse(res, result, "Random questions fetched", 200);
   },
 );
 

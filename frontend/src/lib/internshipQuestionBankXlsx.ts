@@ -10,6 +10,8 @@ export type InternshipQuestionCreateBody = {
   type: "mcq" | "file_upload";
   usageType: "exam" | "task" | "both";
   score: number;
+  /** Non-negative penalty applied to incorrect MCQ answers. 0 = no negative marking. */
+  negativeScore?: number;
   isActive?: boolean;
   options?: { text: string; isCorrect: boolean }[];
   referenceFile?: string;
@@ -146,6 +148,22 @@ export function parseInternshipQuestionRow(
     return { ok: false, message: "score must be a non-negative number" };
   }
 
+  const negativeRaw = cell(
+    norm,
+    "negative",
+    "negativeScore",
+    "negativeMarks",
+    "negative_marks",
+    "penalty",
+  );
+  const negativeScore = negativeRaw === "" ? 0 : Number(negativeRaw);
+  if (Number.isNaN(negativeScore) || negativeScore < 0) {
+    return {
+      ok: false,
+      message: "negative must be a non-negative number",
+    };
+  }
+
   const categoryRaw = cell(norm, "category", "questionCategory");
   let category: string | null | undefined;
   if (categoryRaw) {
@@ -173,6 +191,7 @@ export function parseInternshipQuestionRow(
       type: "file_upload",
       usageType,
       score,
+      negativeScore: 0,
       isActive,
       referenceFile: referenceFile || "",
       ...(category !== undefined ? { category } : {}),
@@ -212,6 +231,7 @@ export function parseInternshipQuestionRow(
     type: "mcq",
     usageType,
     score,
+    negativeScore,
     isActive,
     options,
     ...(category !== undefined ? { category } : {}),
@@ -265,6 +285,7 @@ export function downloadInternshipQuestionBankTemplate(): void {
     "type",
     "usageType",
     "score",
+    "negative",
     "questionText",
     "option1",
     "option2",
@@ -280,6 +301,7 @@ export function downloadInternshipQuestionBankTemplate(): void {
     "mcq",
     "both",
     1,
+    0.25,
     "What does len([1,2,3]) return in Python?",
     "2",
     "3",
@@ -295,6 +317,7 @@ export function downloadInternshipQuestionBankTemplate(): void {
     "file_upload",
     "task",
     5,
+    "",
     "Upload your completed spreadsheet.",
     "",
     "",
@@ -311,6 +334,7 @@ export function downloadInternshipQuestionBankTemplate(): void {
     { wch: 12 },
     { wch: 10 },
     { wch: 6 },
+    { wch: 8 },
     { wch: 48 },
     { wch: 18 },
     { wch: 18 },

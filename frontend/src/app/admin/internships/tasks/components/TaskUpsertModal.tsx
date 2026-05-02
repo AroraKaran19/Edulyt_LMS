@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import Modal from "@/components/ui/Modal";
 import Input from "@/components/ui/inputs/Input";
@@ -9,8 +9,10 @@ import Select from "@/components/ui/inputs/Select";
 import CheckBoxContainer from "@/components/ui/inputs/CheckBoxContainer";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
-import { InfiniteScrollSelect } from "@/components/ui/dropdown/InfiniteScrollSelect";
-import { Lock } from "lucide-react";
+import QuestionPickerModal, {
+  type PickerQuestion,
+} from "@/components/admin/internships/QuestionPickerModal";
+import { ListPlus, Lock, X } from "lucide-react";
 import apiClient from "@/configs/apiConfig";
 import { ENDPOINTS } from "@/constants/endpoints";
 import type { InternshipTaskTemplateDetail, TaskType } from "@/types/internship-task";
@@ -34,15 +36,6 @@ function LockedField({ label, value }: { label: string; value: string | number }
   );
 }
 
-type TaskBankQuestionRow = {
-  _id: string;
-  questionText: string;
-  type: string;
-  usageType: string;
-  score: number;
-  isActive: boolean;
-};
-
 type Props = {
   isOpen: boolean;
   onClose: () => void;
@@ -62,7 +55,10 @@ export default function TaskUpsertModal({
   const [description, setDescription] = useState("");
   const [taskType, setTaskType] = useState<TaskType>("task");
   const [lockedTaskType, setLockedTaskType] = useState<TaskType>("task");
-  const [questionIds, setQuestionIds] = useState<string[]>([]);
+  const [selectedQuestions, setSelectedQuestions] = useState<PickerQuestion[]>(
+    [],
+  );
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [unlockAfterDays, setUnlockAfterDays] = useState("0");
   const [dueDays, setDueDays] = useState("7");
   const [scoreThreshold, setScoreThreshold] = useState("0");
@@ -75,7 +71,7 @@ export default function TaskUpsertModal({
     setDescription("");
     setTaskType("task");
     setLockedTaskType("task");
-    setQuestionIds([]);
+    setSelectedQuestions([]);
     setUnlockAfterDays("0");
     setDueDays("7");
     setScoreThreshold("0");
@@ -83,32 +79,6 @@ export default function TaskUpsertModal({
     setSubmitting(false);
     setLoadingDetail(false);
   };
-
-  const fetchTaskQuestions = useCallback(
-    async (page: number, search: string) => {
-      const res = await apiClient.get(ENDPOINTS.internshipQuestions.adminList, {
-        params: {
-          page,
-          limit: 15,
-          search: search.trim() || undefined,
-          usageFor: "task",
-        },
-      });
-      const payload = res.data?.data as
-        | {
-            questions?: TaskBankQuestionRow[];
-            totalPages?: number;
-          }
-        | undefined;
-      const questions = payload?.questions ?? [];
-      const totalPages =
-        typeof payload?.totalPages === "number" && payload.totalPages >= 1
-          ? payload.totalPages
-          : 1;
-      return { items: questions, totalPages };
-    },
-    [],
-  );
 
   useEffect(() => {
     if (!isOpen) return;
@@ -134,9 +104,16 @@ export default function TaskUpsertModal({
         const tt: TaskType = d.taskType === "attendance" ? "attendance" : "task";
         setLockedTaskType(tt);
         setTaskType(tt);
-        setQuestionIds(
+        setSelectedQuestions(
           Array.isArray(d.questions)
-            ? d.questions.map((q) => String(q._id))
+            ? d.questions.map((q) => ({
+                _id: String(q._id),
+                questionText: q.questionText ?? "",
+                type: q.type ?? "",
+                usageType: q.usageType ?? "",
+                score: typeof q.score === "number" ? q.score : 0,
+                category: q.category ?? null,
+              }))
             : [],
         );
         setUnlockAfterDays(String(d.unlockAfterDays ?? 0));
@@ -164,7 +141,7 @@ export default function TaskUpsertModal({
       toast.error("Title is required");
       return;
     }
-    if (!questionIds.length) {
+    if (!selectedQuestions.length) {
       toast.error("Select at least one question (task or both usage)");
       return;
     }
@@ -193,7 +170,7 @@ export default function TaskUpsertModal({
       title: trimmedTitle,
       description: description.trim(),
       taskType,
-      questions: questionIds,
+      questions: selectedQuestions.map((q) => q._id),
       unlockAfterDays: unlock,
       dueDays: due,
       scoreThreshold: thresholdRaw,
@@ -293,28 +270,66 @@ export default function TaskUpsertModal({
             </div>
           )}
 
-          <InfiniteScrollSelect<TaskBankQuestionRow>
-            label="Questions"
-            placeholder="Search task-eligible questions…"
-            multi
-            value={questionIds}
-            onChange={(v) =>
-              setQuestionIds(Array.isArray(v) ? v : v ? [v] : [])
-            }
-            fetchOptions={fetchTaskQuestions}
-            getOptionLabel={(q) => {
-              const row = q as TaskBankQuestionRow;
-              const t = (row.questionText ?? "").trim() || "Untitled";
-              const short = t.length > 72 ? `${t.slice(0, 72)}…` : t;
-              const pts =
-                typeof row.score === "number" ? ` · ${row.score} pts` : "";
-              return `${short}${pts} · ${row.usageType}`;
-            }}
-            getOptionValue={(q) => String((q as TaskBankQuestionRow)._id ?? "")}
-            searchPlaceholder="Search question text…"
-            emptyMessage="No questions with task/both usage. Add them in the question bank."
-            dropdownPortal
-          />
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-gray-700">
+                Questions
+              </span>
+              <span className="text-xs text-gray-500 tabular-nums">
+                {selectedQuestions.length} selected · Total score{" "}
+                {selectedQuestions.reduce((s, q) => s + (q.score || 0), 0)}
+              </span>
+            </div>
+            <WhiteButton
+              type="button"
+              glow={false}
+              onClick={() => setPickerOpen(true)}
+              className="inline-flex items-center justify-center gap-2"
+            >
+              <ListPlus className="w-4 h-4" />
+              {selectedQuestions.length === 0
+                ? "Add questions"
+                : "Add or remove questions"}
+            </WhiteButton>
+            {selectedQuestions.length > 0 ? (
+              <ul className="rounded-xl border border-gray-200 divide-y divide-gray-100 max-h-[220px] overflow-y-auto">
+                {selectedQuestions.map((q) => (
+                  <li
+                    key={q._id}
+                    className="flex items-start gap-3 px-3 py-2 text-sm"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-gray-900 line-clamp-1">
+                        {q.questionText || "Untitled"}
+                      </p>
+                      <div className="flex flex-wrap gap-1.5 mt-0.5">
+                        {q.category ? (
+                          <span className="inline-flex px-2 py-0.5 text-[11px] font-medium rounded-full bg-blue-50 text-blue-700 border border-blue-100">
+                            {q.category}
+                          </span>
+                        ) : null}
+                        <span className="inline-flex px-2 py-0.5 text-[11px] font-medium rounded-full bg-gray-50 text-gray-600 tabular-nums">
+                          {q.score} pts
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSelectedQuestions((prev) =>
+                          prev.filter((x) => x._id !== q._id),
+                        )
+                      }
+                      className="p-1 rounded-lg text-red-500 hover:bg-red-50"
+                      aria-label="Remove question"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
 
           <p className="text-xs text-gray-500 -mt-2">
             Total score is computed from the selected questions when you save.
@@ -391,6 +406,14 @@ export default function TaskUpsertModal({
           </div>
         </div>
       )}
+
+      <QuestionPickerModal
+        isOpen={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        usageFor="task"
+        selected={selectedQuestions}
+        onApply={(qs) => setSelectedQuestions(qs)}
+      />
     </Modal>
   );
 }

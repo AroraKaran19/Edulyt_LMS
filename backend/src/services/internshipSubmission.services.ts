@@ -52,11 +52,17 @@ async function buildSnapshotQuestion(
       404,
     );
   }
+  const rawNeg = (q as { negativeScore?: unknown }).negativeScore;
   const base: SnapshotQuestion = {
     questionId: String(q._id),
     questionText: String(q.questionText ?? ""),
     type: q.type as "mcq" | "file_upload",
     score: typeof q.score === "number" ? q.score : 0,
+    // File-upload questions are reviewer-graded — penalty is meaningless there.
+    negativeScore:
+      q.type === "mcq" && typeof rawNeg === "number" && rawNeg > 0
+        ? rawNeg
+        : 0,
     referenceFile:
       typeof q.referenceFile === "string" ? q.referenceFile : undefined,
   };
@@ -740,9 +746,18 @@ export async function submitSubmission(
     const isCorrect =
       correctIds.size === selected.size &&
       [...selected].every((id) => correctIds.has(id));
+    const wasAttempted = selected.size > 0;
+    const negative =
+      typeof snapshotQ.negativeScore === "number" && snapshotQ.negativeScore > 0
+        ? snapshotQ.negativeScore
+        : 0;
 
     resp.isCorrect = isCorrect;
-    resp.awardedScore = isCorrect ? snapshotQ.score : 0;
+    resp.awardedScore = isCorrect
+      ? snapshotQ.score
+      : wasAttempted
+        ? -negative
+        : 0;
     mcqTotal += resp.awardedScore;
   }
 

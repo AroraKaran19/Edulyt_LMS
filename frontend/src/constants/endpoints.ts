@@ -93,6 +93,7 @@ export const ENDPOINTS = {
   internshipQuestions: {
     adminList: "/internship-questions/admin",
     adminBulkCreate: "/internship-questions/admin/bulk",
+    adminRandom: "/internship-questions/admin/random",
     adminById: (questionId: string) =>
       `/internship-questions/admin/${encodeURIComponent(questionId)}`,
     create: "/internship-questions",

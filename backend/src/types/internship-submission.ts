@@ -69,6 +69,8 @@ export interface SnapshotQuestion {
   type: "mcq" | "file_upload";
   /** Max points this question is worth (frozen at snapshot time). */
   score: number;
+  /** Penalty deducted on a wrong MCQ answer (frozen at snapshot time). 0 = no negative marking. */
+  negativeScore: number;
   /** Frozen MCQ options — includes isCorrect flags for server-side auto-grading. */
   options?: {
     optionId: string;

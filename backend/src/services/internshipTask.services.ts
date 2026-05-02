@@ -64,6 +64,7 @@ export type InternshipTaskQuestionSummary = {
   usageType: string;
   score: number;
   isActive: boolean;
+  category: string | null;
 };
 
 export type TaskType = "attendance" | "task";
@@ -236,6 +237,7 @@ async function computeTaskFields(body: UpsertInternshipTaskBody): Promise<{
 function serializePopulatedQuestion(
   q: Record<string, unknown>,
 ): InternshipTaskQuestionSummary {
+  const cat = q.category;
   return {
     _id: String(q._id),
     questionText: String(q.questionText ?? ""),
@@ -243,6 +245,7 @@ function serializePopulatedQuestion(
     usageType: String(q.usageType ?? ""),
     score: typeof q.score === "number" ? q.score : 0,
     isActive: q.isActive !== false,
+    category: typeof cat === "string" && cat.trim() ? cat : null,
   };
 }
 
@@ -414,7 +417,7 @@ export async function getInternshipTaskByIdAdmin(
   const doc = await InternshipTaskModel.findById(id)
     .populate(
       "questions",
-      "questionText type usageType score isActive",
+      "questionText type usageType score isActive category",
     )
     .populate("createdBy", "firstName lastName email name")
     .lean();

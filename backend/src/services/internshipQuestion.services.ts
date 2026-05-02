@@ -14,6 +14,8 @@ export type CreateInternshipQuestionBody = {
   type: "mcq" | "file_upload";
   usageType: "exam" | "task" | "both";
   score: number;
+  /** Non-negative penalty applied to incorrect MCQ answers. 0 = no negative marking. */
+  negativeScore?: number;
   isActive?: boolean;
   options?: { text: string; isCorrect: boolean }[];
   referenceFile?: string;
@@ -27,6 +29,7 @@ export type InternshipQuestionDetail = {
   type: string;
   usageType: string;
   score: number;
+  negativeScore: number;
   isActive: boolean;
   referenceFile?: string;
   category?: string | null;
@@ -45,6 +48,10 @@ function serializeQuestionDoc(
     type,
     usageType: String(doc.usageType ?? ""),
     score: typeof doc.score === "number" ? doc.score : 0,
+    negativeScore:
+      typeof doc.negativeScore === "number" && doc.negativeScore > 0
+        ? doc.negativeScore
+        : 0,
     isActive: doc.isActive !== false,
     referenceFile:
       typeof doc.referenceFile === "string" ? doc.referenceFile : "",
@@ -89,11 +96,29 @@ function buildQuestionUpdateFields(
     throw new AppError("score must be a non-negative number", 400);
   }
 
+  const rawNeg = body.negativeScore as unknown;
+  const negativeScore =
+    rawNeg === undefined || rawNeg === null || rawNeg === ""
+      ? 0
+      : typeof rawNeg === "number"
+        ? rawNeg
+        : typeof rawNeg === "string"
+          ? parseFloat(rawNeg)
+          : NaN;
+  if (Number.isNaN(negativeScore) || negativeScore < 0) {
+    throw new AppError(
+      "negativeScore must be a non-negative number",
+      400,
+    );
+  }
+
   const doc: Record<string, unknown> = {
     questionText: questionText.trim(),
     type,
     usageType,
     score,
+    // File-upload questions are reviewer-graded, so penalties don't apply.
+    negativeScore: type === "mcq" ? negativeScore : 0,
     isActive: body.isActive !== false,
   };
 
@@ -207,6 +232,7 @@ export async function createInternshipQuestionAdmin(
   type: string;
   usageType: string;
   score: number;
+  negativeScore: number;
   isActive: boolean;
   category: string | null;
 }> {
@@ -220,6 +246,10 @@ export async function createInternshipQuestionAdmin(
     type: String(created.type ?? ""),
     usageType: String(created.usageType ?? ""),
     score: typeof created.score === "number" ? created.score : 0,
+    negativeScore:
+      typeof created.negativeScore === "number" && created.negativeScore > 0
+        ? created.negativeScore
+        : 0,
     isActive: created.isActive !== false,
     category:
       typeof cat === "string" && isValidQuestionCategory(cat) ? cat : null,
@@ -284,6 +314,100 @@ export async function bulkCreateInternshipQuestionsAdmin(
   }
 }
 
+/** Hard cap on a single random-pick request to keep `$sample` cheap. */
+const RANDOM_PICK_MAX = 200;
+
+/**
+ * Pick up to `limit` random ACTIVE questions from `category`, suitable for
+ * `usageFor` (exam | task), excluding any IDs in `exclude`. Returns fewer rows
+ * than requested if the category does not have enough matching questions.
+ */
+export async function randomInternshipQuestionsAdmin(
+  category: string,
+  usageFor: "exam" | "task",
+  limit: number,
+  exclude: string[],
+): Promise<{
+  questions: {
+    _id: string;
+    questionText: string;
+    type: string;
+    usageType: string;
+    score: number;
+    negativeScore: number;
+    category: string | null;
+  }[];
+  requested: number;
+  returned: number;
+}> {
+  if (!isValidQuestionCategory(category)) {
+    throw new AppError("Invalid question category", 400);
+  }
+  if (usageFor !== "exam" && usageFor !== "task") {
+    throw new AppError("usageFor must be exam or task", 400);
+  }
+  const requested = Math.max(
+    1,
+    Math.min(RANDOM_PICK_MAX, Math.floor(Number.isFinite(limit) ? limit : 0)),
+  );
+
+  const excludedIds = exclude
+    .filter((id) => mongoose.Types.ObjectId.isValid(id))
+    .map((id) => new mongoose.Types.ObjectId(id));
+
+  const match: Record<string, unknown> = {
+    category,
+    isActive: true,
+    usageType: { $in: [usageFor, "both"] },
+  };
+  if (excludedIds.length) {
+    match._id = { $nin: excludedIds };
+  }
+
+  const rows = await InternshipQuestionModel.aggregate<{
+    _id: mongoose.Types.ObjectId;
+    questionText: string;
+    type: string;
+    usageType: string;
+    score: number;
+    negativeScore?: number;
+    category?: string;
+  }>([
+    { $match: match },
+    { $sample: { size: requested } },
+    {
+      $project: {
+        questionText: 1,
+        type: 1,
+        usageType: 1,
+        score: 1,
+        negativeScore: 1,
+        category: 1,
+      },
+    },
+  ]);
+
+  return {
+    questions: rows.map((r) => ({
+      _id: String(r._id),
+      questionText: String(r.questionText ?? ""),
+      type: String(r.type ?? ""),
+      usageType: String(r.usageType ?? ""),
+      score: typeof r.score === "number" ? r.score : 0,
+      negativeScore:
+        typeof r.negativeScore === "number" && r.negativeScore > 0
+          ? r.negativeScore
+          : 0,
+      category:
+        typeof r.category === "string" && isValidQuestionCategory(r.category)
+          ? r.category
+          : null,
+    })),
+    requested,
+    returned: rows.length,
+  };
+}
+
 export async function listInternshipQuestionsAdmin(
   page: number,
   limit: number,
@@ -299,6 +423,7 @@ export async function listInternshipQuestionsAdmin(
     type: string;
     usageType: string;
     score: number;
+    negativeScore: number;
     isActive: boolean;
     category?: string | null;
     updatedAt?: Date | string;
@@ -332,18 +457,22 @@ export async function listInternshipQuestionsAdmin(
     .sort({ updatedAt: -1 })
     .skip(skip)
     .limit(l)
-    .select("questionText type usageType score isActive updatedAt category")
+    .select(
+      "questionText type usageType score negativeScore isActive updatedAt category",
+    )
     .lean();
 
   return {
     questions: rows.map((r) => {
       const c = (r as { category?: unknown }).category;
+      const neg = (r as { negativeScore?: unknown }).negativeScore;
       return {
         _id: String(r._id),
         questionText: String(r.questionText ?? ""),
         type: String(r.type ?? ""),
         usageType: String(r.usageType ?? ""),
         score: typeof r.score === "number" ? r.score : 0,
+        negativeScore: typeof neg === "number" && neg > 0 ? neg : 0,
         isActive: r.isActive !== false,
         category:
           typeof c === "string" && isValidQuestionCategory(c) ? c : null,

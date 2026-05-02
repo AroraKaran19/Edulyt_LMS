@@ -18,6 +18,7 @@ export default function LayoutWrapper({
     !pathname.startsWith("/dashboard") &&
     !pathname.startsWith("/admin") &&
     !pathname.startsWith("/instructor") &&
+    !pathname.startsWith("/partner") &&
     !pathname.startsWith("/login") &&
     !pathname.startsWith("/register") &&
     !pathname.startsWith("/payment/status") &&
@@ -28,6 +29,9 @@ export default function LayoutWrapper({
   }, []);
 
   const isHomePage = pathname === "/";
+  const isPartnerArea = pathname.startsWith("/partner");
+  const isPartnerAuthPage =
+    pathname === "/partner" || pathname.startsWith("/partner/login");
 
   // Skip the full-screen loader on the homepage so it renders immediately.
   if (!isMounted && !isHomePage) {
@@ -39,8 +43,13 @@ export default function LayoutWrapper({
       {visibleLayout && <Navbar />}
       <main
         className={cn(
-          "flex min-h-screen flex-col pt-[78px] relative",
-          !visibleLayout && "pt-0"
+          "flex flex-col relative",
+          visibleLayout && "min-h-screen pt-[78px]",
+          !visibleLayout && !isPartnerArea && "min-h-screen pt-0",
+          isPartnerArea && isPartnerAuthPage && "min-h-screen pt-0",
+          isPartnerArea &&
+            !isPartnerAuthPage &&
+            "h-dvh min-h-0 max-h-dvh overflow-hidden pt-0"
         )}
       >
         {children}

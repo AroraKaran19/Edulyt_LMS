@@ -52,6 +52,7 @@ export type InternshipExamQuestionSummary = {
   usageType: string;
   score: number;
   isActive: boolean;
+  category: string | null;
 };
 
 /** Admin GET /internship-exams/admin/:id — populated questions + creator. */

@@ -256,6 +256,7 @@ export type InternshipExamQuestionSummary = {
   usageType: string;
   score: number;
   isActive: boolean;
+  category: string | null;
 };
 
 export type InternshipExamDetailAdmin = {
@@ -463,6 +464,7 @@ async function computeExamFields(body: UpsertInternshipExamBody): Promise<{
 function serializePopulatedQuestion(
   q: Record<string, unknown>,
 ): InternshipExamQuestionSummary {
+  const cat = q.category;
   return {
     _id: String(q._id),
     questionText: String(q.questionText ?? ""),
@@ -470,6 +472,7 @@ function serializePopulatedQuestion(
     usageType: String(q.usageType ?? ""),
     score: typeof q.score === "number" ? q.score : 0,
     isActive: q.isActive !== false,
+    category: typeof cat === "string" && cat.trim() ? cat : null,
   };
 }
 
@@ -495,7 +498,10 @@ export async function getInternshipExamByIdAdmin(
     throw new AppError("Invalid exam id", 400);
   }
   const doc = await InternshipExamModel.findById(id)
-    .populate("questions", "questionText type usageType score isActive")
+    .populate(
+      "questions",
+      "questionText type usageType score isActive category",
+    )
     .populate("createdBy", "firstName lastName email name")
     .lean();
 
