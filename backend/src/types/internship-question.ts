@@ -24,6 +24,8 @@ interface InternshipQuestionBase {
   usageType: InternshipQuestionUsageType;
   /** Maximum marks this question is worth. */
   score: number;
+  /** Marks deducted on a wrong MCQ answer. Stored as a non-negative number; 0 = no negative marking. Ignored for file_upload. */
+  negativeScore: number;
   isActive: boolean;
   createdBy: User["_id"];
   createdAt?: Date;

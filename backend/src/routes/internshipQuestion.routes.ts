@@ -8,6 +8,7 @@ import {
   getInternshipQuestionByIdAdminController,
   updateInternshipQuestionAdminController,
   deleteInternshipQuestionAdminController,
+  randomInternshipQuestionsAdminController,
 } from "../controllers/internshipQuestion.controller";
 
 const router = Router();
@@ -23,6 +24,9 @@ router.get("/admin", listInternshipQuestionsAdminController);
 
 /** POST /api/internship-questions/admin/bulk — must be before :questionId */
 router.post("/admin/bulk", bulkCreateInternshipQuestionAdminController);
+
+/** GET /api/internship-questions/admin/random — must be before :questionId */
+router.get("/admin/random", randomInternshipQuestionsAdminController);
 
 /** GET/PATCH/DELETE /api/internship-questions/admin/:questionId — single (admin) */
 router.get("/admin/:questionId", getInternshipQuestionByIdAdminController);

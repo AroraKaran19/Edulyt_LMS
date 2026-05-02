@@ -176,6 +176,18 @@ export default function QuestionDetailModal({
               </p>
               <p className="text-gray-800 tabular-nums">{detail.score}</p>
             </div>
+            {detail.type === "mcq" ? (
+              <div>
+                <p className="text-xs font-semibold text-gray-500 uppercase mb-1">
+                  Negative marks
+                </p>
+                <p className="text-gray-800 tabular-nums">
+                  {detail.negativeScore && detail.negativeScore > 0
+                    ? `−${detail.negativeScore}`
+                    : "—"}
+                </p>
+              </div>
+            ) : null}
             <div>
               <p className="text-xs font-semibold text-gray-500 uppercase mb-1">
                 Active

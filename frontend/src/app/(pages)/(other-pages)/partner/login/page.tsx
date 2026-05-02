@@ -67,7 +67,7 @@ export default function PartnerLoginPage() {
       <div className="flex flex-1 flex-col justify-center px-3 py-4 sm:px-5 sm:py-6 lg:min-h-0 lg:flex-1 lg:justify-stretch lg:overflow-hidden lg:p-4">
         <div
           className={cn(
-            "mx-auto flex w-full flex-col lg:h-full lg:min-h-0 lg:max-h-full lg:flex-row lg:gap-4"
+            "mx-auto flex w-full flex-col lg:h-full lg:min-h-0 lg:max-h-full lg:flex-row lg:gap-8"
           )}
         >
           <section
@@ -110,7 +110,7 @@ export default function PartnerLoginPage() {
           <section
             className={cn(
               "flex w-full flex-col gap-0 rounded-3xl bg-[#fffcfa] px-4 py-6 sm:px-8 sm:py-8",
-              "lg:h-full lg:min-h-0 lg:w-1/2 lg:overflow-y-auto lg:overscroll-y-contain lg:px-4 lg:py-0",
+              "lg:h-full lg:min-h-0 lg:w-1/2 lg:justify-center lg:overflow-y-auto lg:overscroll-y-contain lg:px-4 lg:py-0",
               SCROLLBAR_HIDE
             )}
           >
@@ -239,56 +239,6 @@ export default function PartnerLoginPage() {
                 {isLoading ? "Logging in..." : "Login"}
               </OrangeButton>
             </form>
-
-            <div className="my-6 flex items-center gap-3">
-              <div className="h-px flex-1 bg-[#E4E7EC]" />
-              <span className="rounded-full bg-[#F2F4F7] px-3 py-1 text-xs font-semibold text-[#667085]">
-                OR
-              </span>
-              <div className="h-px flex-1 bg-[#E4E7EC]" />
-            </div>
-
-            <div className="flex flex-col gap-3">
-              <WhiteButton
-                type="button"
-                glow={false}
-                className="w-full rounded-[10px] border-[#E4E7EC]! py-3 text-sm font-semibold shadow-none"
-                disabled={isLoading}
-                onClick={goToDashboard}
-              >
-                <span className="inline-flex items-center justify-center gap-2">
-                  <Image
-                    src="/google-icon.svg"
-                    alt="Google"
-                    width={20}
-                    height={20}
-                  />
-                  Sign In using Gmail
-                </span>
-              </WhiteButton>
-              <WhiteButton
-                type="button"
-                glow={false}
-                className="w-full rounded-[10px] border-[#E4E7EC]! py-3 text-sm font-semibold shadow-none"
-                disabled={isLoading}
-                onClick={goToDashboard}
-              >
-                <span className="inline-flex items-center justify-center gap-2">
-                  <MicrosoftLogo />
-                  Sign In using Microsoft
-                </span>
-              </WhiteButton>
-            </div>
-
-            <p className="mt-8 text-center text-sm text-neutral-600">
-              Don&apos;t have an account?{" "}
-              <Link
-                href="/register"
-                className="font-bold text-[#F27420] underline underline-offset-2"
-              >
-                Register now
-              </Link>
-            </p>
           </section>
         </div>
       </div>

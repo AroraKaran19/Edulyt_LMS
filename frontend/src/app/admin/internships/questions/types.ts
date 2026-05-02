@@ -7,6 +7,8 @@ export type InternshipQuestionDetail = {
   type: string;
   usageType: string;
   score: number;
+  /** Penalty deducted on a wrong MCQ answer. 0 = no negative marking. */
+  negativeScore: number;
   isActive: boolean;
   /** Fixed taxonomy label from `QUESTION_CATEGORY_OPTIONS` (optional). */
   category?: string | null;

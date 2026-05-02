@@ -1285,6 +1285,8 @@ export type LearnerEntranceExamQuestion = {
   questionText: string;
   type: "mcq" | "file_upload";
   score: number;
+  /** Penalty deducted on a wrong MCQ answer; 0 = no negative marking. */
+  negativeScore: number;
   options?: { optionId: string; text: string }[];
   referenceFile?: string;
 };
@@ -1396,7 +1398,7 @@ export async function getLearnerEntranceExam(
   const qDocs = await (
     await import("../models/internshipQuestion.schema")
   ).InternshipQuestionModel.find({ _id: { $in: qIds } })
-    .select("questionText type score options referenceFile")
+    .select("questionText type score negativeScore options referenceFile")
     .lean();
 
   const questions: LearnerEntranceExamQuestion[] = qIds
@@ -1410,16 +1412,22 @@ export async function getLearnerEntranceExam(
         questionText?: string;
         type?: string;
         score?: number;
+        negativeScore?: number;
         options?: { _id?: unknown; text?: unknown; isCorrect?: unknown }[];
         referenceFile?: string;
       };
+      const isMcq = qAny.type !== "file_upload";
       const out: LearnerEntranceExamQuestion = {
         questionId: String(qAny._id),
         questionText: String(qAny.questionText ?? ""),
-        type: (qAny.type === "file_upload" ? "file_upload" : "mcq") as
-          | "mcq"
-          | "file_upload",
+        type: (isMcq ? "mcq" : "file_upload") as "mcq" | "file_upload",
         score: typeof qAny.score === "number" ? qAny.score : 0,
+        negativeScore:
+          isMcq &&
+          typeof qAny.negativeScore === "number" &&
+          qAny.negativeScore > 0
+            ? qAny.negativeScore
+            : 0,
       };
       const ref = qAny.referenceFile;
       if (typeof ref === "string" && ref.trim()) {

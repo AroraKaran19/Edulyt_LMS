@@ -56,6 +56,7 @@ export default function QuestionUpsertModal({
   const [type, setType] = useState<QuestionType>("mcq");
   const [usageType, setUsageType] = useState<QuestionUsage>("both");
   const [score, setScore] = useState("1");
+  const [negativeScore, setNegativeScore] = useState("0");
   const [isActive, setIsActive] = useState(true);
   const [referenceFile, setReferenceFile] = useState("");
   const [referenceMediaSource, setReferenceMediaSource] = useState<
@@ -72,6 +73,7 @@ export default function QuestionUpsertModal({
     setType("mcq");
     setUsageType("both");
     setScore("1");
+    setNegativeScore("0");
     setIsActive(true);
     setReferenceFile("");
     setReferenceMediaSource(undefined);
@@ -149,6 +151,11 @@ export default function QuestionUpsertModal({
         setType((d.type as QuestionType) || "mcq");
         setUsageType((d.usageType as QuestionUsage) || "both");
         setScore(String(d.score ?? 0));
+        setNegativeScore(
+          typeof d.negativeScore === "number" && d.negativeScore > 0
+            ? String(d.negativeScore)
+            : "0",
+        );
         setIsActive(d.isActive !== false);
         const ref = (d.referenceFile ?? "").trim();
         setReferenceFile(ref);
@@ -212,12 +219,20 @@ export default function QuestionUpsertModal({
       toast.error("Score must be a non-negative number");
       return;
     }
+    const negativeRaw = negativeScore.trim();
+    const negativeNum = negativeRaw === "" ? 0 : parseFloat(negativeRaw);
+    if (Number.isNaN(negativeNum) || negativeNum < 0) {
+      toast.error("Negative marks must be a non-negative number");
+      return;
+    }
 
     const payload: Record<string, unknown> = {
       questionText: trimmed,
       type,
       usageType,
       score: scoreNum,
+      // File-upload questions are reviewer-graded; ignore the field for them.
+      negativeScore: type === "mcq" ? negativeNum : 0,
       isActive,
       category: category.trim() ? category.trim() : null,
     };
@@ -323,15 +338,27 @@ export default function QuestionUpsertModal({
             />
           </div>
 
-          <Input
-            label="Score (marks)"
-            type="number"
-            min={0}
-            step={0.5}
-            value={score}
-            onChange={(e) => setScore(e.target.value)}
-            required
-          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input
+              label="Score (marks)"
+              type="number"
+              min={0}
+              step={0.5}
+              value={score}
+              onChange={(e) => setScore(e.target.value)}
+              required
+            />
+            {type === "mcq" ? (
+              <Input
+                label="Negative marks (per wrong answer)"
+                type="number"
+                min={0}
+                step={0.25}
+                value={negativeScore}
+                onChange={(e) => setNegativeScore(e.target.value)}
+              />
+            ) : null}
+          </div>
 
           <CheckBoxContainer
             label="Question is active"

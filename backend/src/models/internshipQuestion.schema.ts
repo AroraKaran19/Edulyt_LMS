@@ -23,6 +23,7 @@ const internshipQuestionSchema = new mongoose.Schema(
       required: true,
     },
     score: { type: Number, required: true, default: 0, min: 0 },
+    negativeScore: { type: Number, default: 0, min: 0 },
     isActive: { type: Boolean, default: true },
     options: { type: [mcqOptionSchema], default: undefined },
     referenceFile: { type: String, trim: true, default: "" },

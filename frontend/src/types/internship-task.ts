@@ -76,6 +76,7 @@ export type InternshipTaskQuestionSummary = {
   usageType: string;
   score: number;
   isActive: boolean;
+  category: string | null;
 };
 
 /** Admin GET /internship-tasks/admin/:id — populated questions + creator. */

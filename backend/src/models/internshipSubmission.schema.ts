@@ -18,6 +18,7 @@ const snapshotQuestionSchema = new mongoose.Schema(
     questionText: { type: String, required: true },
     type: { type: String, enum: ["mcq", "file_upload"], required: true },
     score: { type: Number, required: true, min: 0 },
+    negativeScore: { type: Number, default: 0, min: 0 },
     options: { type: [snapshotOptionSchema], default: undefined },
     referenceFile: { type: String, default: "" },
   },
@@ -67,7 +68,8 @@ const mcqResponseSchema = new mongoose.Schema(
     question: { type: String, required: true },
     selectedOptions: { type: [String], default: [] },
     isCorrect: { type: Boolean },
-    awardedScore: { type: Number, min: 0 },
+    // Can be negative when negative marking is configured on the question.
+    awardedScore: { type: Number },
   },
   { _id: false },
 );
@@ -148,7 +150,8 @@ const internshipSubmissionSchema = new mongoose.Schema(
     mcqResponses: { type: [mcqResponseSchema], default: [] },
     fileResponses: { type: [fileResponseSchema], default: [] },
 
-    totalAwardedScore: { type: Number, default: 0, min: 0 },
+    // Can be negative when negative marking pulls the MCQ total below zero.
+    totalAwardedScore: { type: Number, default: 0 },
 
     status: {
       type: String,
