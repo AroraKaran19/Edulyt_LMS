@@ -7,6 +7,31 @@ import { ENDPOINTS } from "@/constants/endpoints";
 import { toast } from "react-toastify";
 import { ExternalLink } from "lucide-react";
 
+type SnapshotMcqOption = {
+  optionId: string;
+  text: string;
+};
+
+type SnapshotQuestionRow = {
+  questionId: string;
+  questionText: string;
+  type: string;
+  score: number;
+  options?: SnapshotMcqOption[];
+};
+
+/** `mcqResponses.selectedOptions` are option IDs; resolve labels from the frozen snapshot. */
+function resolveSelectedMcqLabels(
+  selectedIds: string[] | undefined,
+  options: SnapshotMcqOption[] | undefined,
+): string {
+  if (!selectedIds?.length) return "";
+  if (!options?.length) return selectedIds.join(", ");
+  return selectedIds
+    .map((id) => options.find((o) => o.optionId === id)?.text.trim() || id)
+    .join(", ");
+}
+
 type Props = {
   isOpen: boolean;
   onClose: () => void;
@@ -50,7 +75,7 @@ export default function EntranceExamSubmissionModal({
   }, [isOpen, submissionId, onClose]);
 
   const snap = doc?.templateSnapshot as
-    | { title?: string; questions?: { questionId: string; questionText: string; type: string; score: number }[] }
+    | { title?: string; questions?: SnapshotQuestionRow[] }
     | undefined;
   const mcq = (doc?.mcqResponses as { question: string; selectedOptions?: string[]; awardedScore?: number; isCorrect?: boolean }[]) ?? [];
   const files =
@@ -99,7 +124,10 @@ export default function EntranceExamSubmissionModal({
                   <p className="text-gray-600">
                     Selected:{" "}
                     {r?.selectedOptions?.length
-                      ? r.selectedOptions.join(", ")
+                      ? resolveSelectedMcqLabels(
+                          r.selectedOptions,
+                          q.options,
+                        ) || "—"
                       : "—"}
                   </p>
                   <p className="text-xs text-gray-500">

@@ -6,6 +6,7 @@ import {
 import { InternshipEnrollmentModel } from "../models/internshipEnrollment.schema";
 import { InternshipModel } from "../models/internship.schema";
 import { AppError } from "../middlewares/error.middleware";
+import { isApplicationWindowOpenIst } from "../utils/applicationWindow";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -176,6 +177,7 @@ export async function redeemInternshipVoucher(params: {
     _id?: unknown;
     name?: string;
     internshipStartDate?: Date;
+    applicationLastDate?: Date;
     isActive?: boolean;
     status?: string;
   };
@@ -187,33 +189,90 @@ export async function redeemInternshipVoucher(params: {
   if (batch.isActive === false || batch.status !== "active")
     throw new AppError("This batch is no longer accepting enrollments", 400);
 
-  // 4. Duplicate enrollment guard (same user + internship)
-  const existing = await InternshipEnrollmentModel.findOne({
-    user: new mongoose.Types.ObjectId(userId),
-    internship: new mongoose.Types.ObjectId(internshipId),
-    status: { $nin: ["dropped", "revoked", "admin_rejected"] },
-  });
-  if (existing)
+  // 4. Voucher redemption requires the batch application to still be open.
+  // Vouchers don't get the post-result paid-grace window — they expire at
+  // application close.
+  if (!isApplicationWindowOpenIst(batch.applicationLastDate)) {
     throw new AppError(
-      "You are already enrolled in this internship program",
+      "Voucher can only be redeemed while the batch application is open",
       400,
     );
+  }
 
-  // 5. Create internship enrollment
-  const enrollment = await InternshipEnrollmentModel.create({
+  // 5. Existing-enrollment handling
+  //    - Same batch, terminal/upgradeable status: upgrade in place
+  //    - Same batch, locked status (enrolled/completed/paused/payment_pending): block
+  //    - Different active batch in the same internship: block
+  const lockedStatuses = new Set([
+    "enrolled",
+    "completed",
+    "paused",
+    "payment_pending",
+  ]);
+  const upgradeableStatuses = new Set([
+    "exam_registered",
+    "exam_attempted",
+    "in_merit_pool",
+    "admin_rejected",
+  ]);
+
+  const existingSameBatch = await InternshipEnrollmentModel.findOne({
     user: new mongoose.Types.ObjectId(userId),
     internship: new mongoose.Types.ObjectId(internshipId),
-    batchSnapshot: {
-      batchId: String(batch._id),
-      name: String(batch.name ?? ""),
-      internshipStartDate: batch.internshipStartDate ?? new Date(),
-    },
-    enrollmentType: "paid",
-    status: "enrolled",
-    paymentAmount: 0,
-    enrolledAt: new Date(),
-    internshipSuccessPoints: 0,
+    "batchSnapshot.batchId": String(batch._id),
   });
+
+  if (
+    existingSameBatch &&
+    lockedStatuses.has(String(existingSameBatch.status))
+  ) {
+    throw new AppError(
+      "You are already enrolled in this internship batch",
+      400,
+    );
+  }
+
+  const existingOtherBatch = await InternshipEnrollmentModel.findOne({
+    user: new mongoose.Types.ObjectId(userId),
+    internship: new mongoose.Types.ObjectId(internshipId),
+    "batchSnapshot.batchId": { $ne: String(batch._id) },
+    status: { $nin: ["dropped", "revoked", "admin_rejected"] },
+  });
+  if (existingOtherBatch) {
+    throw new AppError(
+      "You are already enrolled in another batch of this internship",
+      400,
+    );
+  }
+
+  // 6. Create new OR upgrade existing in place
+  let enrollment;
+  if (
+    existingSameBatch &&
+    upgradeableStatuses.has(String(existingSameBatch.status))
+  ) {
+    existingSameBatch.set("enrollmentType", "paid");
+    existingSameBatch.set("status", "enrolled");
+    existingSameBatch.set("paymentAmount", 0);
+    existingSameBatch.set("enrolledAt", new Date());
+    await existingSameBatch.save();
+    enrollment = existingSameBatch;
+  } else {
+    enrollment = await InternshipEnrollmentModel.create({
+      user: new mongoose.Types.ObjectId(userId),
+      internship: new mongoose.Types.ObjectId(internshipId),
+      batchSnapshot: {
+        batchId: String(batch._id),
+        name: String(batch.name ?? ""),
+        internshipStartDate: batch.internshipStartDate ?? new Date(),
+      },
+      enrollmentType: "paid",
+      status: "enrolled",
+      paymentAmount: 0,
+      enrolledAt: new Date(),
+      internshipSuccessPoints: 0,
+    });
+  }
 
   // 6. Mark voucher redeemed — expires immediately after single use
   await InternshipVoucherModel.findByIdAndUpdate(voucher._id, {

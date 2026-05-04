@@ -590,7 +590,18 @@ function CohortContent() {
                         </span>
                       </td>
                       <td className="px-4 sm:px-6 py-4 text-sm text-gray-600 tabular-nums">
-                        {row.examScore != null ? row.examScore : "—"}
+                        {row.examScore != null ? (
+                          row.examScore
+                        ) : !row.examAttemptedAt &&
+                          (row.enrollmentType === "merit" ||
+                            row.enrollmentType == null) &&
+                          row.status !== "exam_registered" ? (
+                          <span className="text-rose-600 italic font-medium not-tabular-nums">
+                            Didn&apos;t attempt
+                          </span>
+                        ) : (
+                          "—"
+                        )}
                       </td>
                       <td className="px-4 sm:px-6 py-4 text-sm text-gray-500 whitespace-nowrap min-w-[120px]">
                         {formatDate(row.updatedAt)}

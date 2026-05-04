@@ -6,7 +6,10 @@ import { InternshipSubmissionModel } from "../models/internshipSubmission.schema
 import { OrderModel } from "../models/order.schema";
 import { UserModel } from "../models/user.schema";
 import { AppError } from "../middlewares/error.middleware";
-import { isApplicationWindowOpenIst } from "../utils/applicationWindow";
+import {
+  isApplicationWindowOpenIst,
+  isPaidUpgradeWindowOpen,
+} from "../utils/applicationWindow";
 import { getPointsSettings } from "./pointsSettings.services";
 import {
   computeCertificationExamWindowUtc,
@@ -99,6 +102,8 @@ export type InternshipEnrollmentListRow = {
   enrollmentType?: "merit" | "paid";
   status: string;
   examScore?: number;
+  /** ISO string — when the learner submitted the entrance exam. Absent = no-show. */
+  examAttemptedAt?: string;
   internshipSuccessPoints: number;
   enrolledAt?: string;
   createdAt?: string;
@@ -367,6 +372,7 @@ export async function listInternshipEnrollmentsAdmin(
       enrollmentType: r.enrollmentType as "merit" | "paid" | undefined,
       status: String(r.status ?? ""),
       examScore: typeof r.examScore === "number" ? r.examScore : undefined,
+      examAttemptedAt: toIso(r.examAttemptedAt),
       internshipSuccessPoints:
         typeof r.internshipSuccessPoints === "number"
           ? r.internshipSuccessPoints
@@ -447,6 +453,7 @@ export async function getInternshipEnrollmentByIdAdmin(
     enrollmentType: doc.enrollmentType as "merit" | "paid" | undefined,
     status: String(doc.status ?? ""),
     examScore: typeof doc.examScore === "number" ? doc.examScore : undefined,
+    examAttemptedAt: toIso(doc.examAttemptedAt),
     internshipSuccessPoints:
       typeof doc.internshipSuccessPoints === "number"
         ? doc.internshipSuccessPoints
@@ -691,15 +698,13 @@ export async function registerForPaidSeat(
       internshipStartDate: Date;
       applicationLastDate?: Date;
       isActive: boolean;
+      entranceExamTemplateId?: unknown;
       plan?: { price: number; isActive?: boolean; discount?: unknown } | null;
     }[]
   )?.find((b) => String(b._id) === batchId);
   if (!batch) throw new AppError("Batch not found", 404);
   if (!batch.isActive)
     throw new AppError("Batch is not accepting registrations", 400);
-  if (!isApplicationWindowOpenIst(batch.applicationLastDate)) {
-    throw new AppError("The application period for this batch has ended", 400);
-  }
   if (!batch.plan || batch.plan.isActive === false) {
     throw new AppError(
       "This cohort is not open for direct seat purchase (no plan configured)",
@@ -707,11 +712,52 @@ export async function registerForPaidSeat(
     );
   }
 
+  // Existing enrollment check is done first so we can decide which window applies:
+  // merit-track upgrades (failed/no-show after exam) get a 15-day post-result
+  // grace window; brand-new paid signups still enforce applicationLastDate.
   const existing = await InternshipEnrollmentModel.findOne({
     user: userId,
     internship: new mongoose.Types.ObjectId(internshipId),
     "batchSnapshot.batchId": batchId,
   });
+
+  const upgradeableMeritStatuses = new Set([
+    "exam_registered",
+    "exam_attempted",
+    "in_merit_pool",
+    "admin_rejected",
+  ]);
+  const isMeritUpgrade = Boolean(
+    existing &&
+      upgradeableMeritStatuses.has(
+        String((existing as { status?: string }).status ?? ""),
+      ),
+  );
+
+  if (isMeritUpgrade) {
+    const templateId = batch.entranceExamTemplateId;
+    if (!templateId) {
+      throw new AppError(
+        "Paid entry is not available for this cohort",
+        400,
+      );
+    }
+    const exam = await InternshipExamModel.findById(
+      new mongoose.Types.ObjectId(String(templateId)),
+    )
+      .select("examResultAt")
+      .lean();
+    const examResultAt = (exam as { examResultAt?: Date } | null)?.examResultAt;
+    if (!isPaidUpgradeWindowOpen(examResultAt)) {
+      throw new AppError(
+        "The 15-day paid entry window has closed for this cohort",
+        400,
+      );
+    }
+  } else if (!isApplicationWindowOpenIst(batch.applicationLastDate)) {
+    throw new AppError("The application period for this batch has ended", 400);
+  }
+
   if (existing) {
     return completePaidSeatRegistrationForExistingDoc(existing, answersDoc);
   }
@@ -835,7 +881,22 @@ export async function listMyInternshipEnrollments(
 
   const baseMatch: Record<string, unknown> = { user: userId };
   if (statuses && statuses.length > 0) {
-    baseMatch.status = { $in: statuses };
+    // Mirror the wire-level masking of `in_merit_pool` → `exam_attempted`:
+    // a learner filtering by either bucket gets both real `exam_attempted`
+    // and (server-side) `in_merit_pool` rows, and a probe query for
+    // `in_merit_pool` alone behaves identically to one for `exam_attempted`.
+    // Without this, the DB filter would otherwise act as an oracle that
+    // reveals pool membership even though the response status is masked.
+    const expanded = new Set<string>();
+    for (const s of statuses) {
+      if (s === "in_merit_pool" || s === "exam_attempted") {
+        expanded.add("exam_attempted");
+        expanded.add("in_merit_pool");
+      } else {
+        expanded.add(s);
+      }
+    }
+    baseMatch.status = { $in: [...expanded] };
   }
   if (search?.trim()) {
     const rx = new RegExp(escapeRegex(search.trim()), "i");
@@ -901,9 +962,15 @@ export async function listMyInternshipEnrollments(
     }
   }
 
-  // For merit-path rows (exam_registered / exam_attempted / in_merit_pool), fetch
-  // entrance window from the internship batch (UTC) and result time from the template.
-  const needsExamWindow = new Set(["exam_registered", "exam_attempted", "in_merit_pool"]);
+  // For merit-path rows, fetch entrance window from the internship batch (UTC)
+  // and result time from the template. `admin_rejected` is included so the
+  // post-result paid-grace window can be computed on the dashboard card.
+  const needsExamWindow = new Set([
+    "exam_registered",
+    "exam_attempted",
+    "in_merit_pool",
+    "admin_rejected",
+  ]);
   const examWindowById = new Map<
     string,
     { examStartAt?: string; examEndAt?: string; examResultAt?: string }
@@ -1183,7 +1250,13 @@ export async function listMyInternshipEnrollments(
         }
       | undefined;
     const internshipIdFromRef = internshipRefToId(doc.internship);
-    const statusStr = String(doc.status ?? "");
+    const rawStatus = String(doc.status ?? "");
+    // Don't expose merit-pool membership on the wire — a learner inspecting
+    // the network tab could otherwise tell they crossed the threshold and
+    // are awaiting an admin pick. Surface as the indistinguishable
+    // `exam_attempted` state; admin endpoints keep the real value.
+    const statusStr =
+      rawStatus === "in_merit_pool" ? "exam_attempted" : rawStatus;
 
     const internship =
       internshipIdFromRef != null
@@ -1258,6 +1331,7 @@ export async function listMyInternshipEnrollments(
       enrollmentType: doc.enrollmentType as "merit" | "paid" | undefined,
       status: statusStr,
       examScore: typeof doc.examScore === "number" ? doc.examScore : undefined,
+      examAttemptedAt: toIso(doc.examAttemptedAt),
       internshipSuccessPoints:
         typeof doc.internshipSuccessPoints === "number"
           ? doc.internshipSuccessPoints

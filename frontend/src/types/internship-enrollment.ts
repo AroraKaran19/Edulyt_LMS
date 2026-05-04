@@ -237,6 +237,8 @@ export interface InternshipEnrollmentListRow {
   /** Known values match {@link InternshipEnrollmentStatus}; `string` allows API drift. */
   status: string;
   examScore?: number;
+  /** ISO — when the learner submitted the entrance exam. Absent = no-show. */
+  examAttemptedAt?: string;
   internshipSuccessPoints: number;
   enrolledAt?: string;
   createdAt?: string;

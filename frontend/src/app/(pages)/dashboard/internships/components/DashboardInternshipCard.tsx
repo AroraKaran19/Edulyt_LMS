@@ -30,7 +30,7 @@ function statusBadgeClass(status: string) {
     return "bg-emerald-100 text-emerald-900 border-emerald-200";
   if (status === "completed")
     return "bg-slate-200 text-slate-900 border-slate-300";
-  if (status === "in_merit_pool" || status === "exam_attempted")
+  if (status === "exam_attempted")
     return "bg-amber-200/90 text-amber-950 border-amber-300";
   if (status === "exam_registered")
     return "bg-sky-100 text-sky-900 border-sky-200";
@@ -73,8 +73,10 @@ type Props = {
 
 /** Only when exam is registered but NOT yet submitted — show countdown + button. */
 const EXAM_ACTION_STATUSES = new Set(["exam_registered"]);
-/** Submitted / awaiting outcome — show passive waiting chip, no button. */
-const EXAM_WAITING_STATUSES = new Set(["exam_attempted", "in_merit_pool"]);
+/** Submitted / awaiting outcome — show passive waiting chip, no button.
+ *  `in_merit_pool` is masked to `exam_attempted` server-side to avoid leaking
+ *  pool membership; we only see `exam_attempted` here. */
+const EXAM_WAITING_STATUSES = new Set(["exam_attempted"]);
 
 /** Buy-confirmed-seat CTA — handles fetching price + payment initiation. */
 function BuyConfirmedSeatCta({
@@ -82,7 +84,7 @@ function BuyConfirmedSeatCta({
   variant,
 }: {
   row: InternshipEnrollmentListRow;
-  variant: "awaiting" | "post_fail";
+  variant: "awaiting" | "post_fail" | "missed_exam";
 }) {
   const [price, setPrice] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
@@ -178,14 +180,16 @@ function BuyConfirmedSeatCta({
     <div className="mt-3 rounded-xl border border-dashed border-orange-300/70 bg-orange-50/60 px-3 py-2.5 flex flex-col gap-2">
       <p className="text-[11px] text-orange-900/80 font-medium leading-snug">
         {variant === "awaiting"
-          ? "Results are still pending — secure your seat now and skip the wait."
-          : "Didn't make the merit cut? You can still join the program."}
+          ? "Unsure about your result? Confirm your seat right now and skip the wait."
+          : variant === "missed_exam"
+            ? "Don't lose your spot — secure a confirmed seat now."
+            : "Didn't make the merit cut? You can still join the program."}
       </p>
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <span className="text-[11px] text-orange-700/70">
           {variant === "awaiting"
             ? "Confirmed seat · pay once, join guaranteed"
-            : "Paid entry stays open for 15 days after your cohort starts ·"}
+            : "Paid entry stays open for 15 days after results ·"}
           {priceLabel ? (
             <span className="ml-1 font-semibold text-orange-900">
               {priceLabel}
@@ -231,7 +235,6 @@ export default function DashboardInternshipCard({ row, onWithdrawn }: Props) {
   const batchName = row.batchSnapshot?.name?.trim() || "Cohort";
   const start = formatCohortDate(row.batchSnapshot?.internshipStartDate);
 
-  const showExamAction = EXAM_ACTION_STATUSES.has(row.status);
   const showExamWaiting = EXAM_WAITING_STATUSES.has(row.status);
   const ENROLLED_STATUSES = new Set(["enrolled", "completed", "paused"]);
   const certReminder = ENROLLED_STATUSES.has(row.status)
@@ -251,31 +254,53 @@ export default function DashboardInternshipCard({ row, onWithdrawn }: Props) {
   const examResultTime = row.examResultAt
     ? new Date(row.examResultAt).getTime()
     : null;
+  const examEndTime = row.examEndAt
+    ? new Date(row.examEndAt).getTime()
+    : null;
   const batchStartTime = row.batchSnapshot?.internshipStartDate
     ? new Date(row.batchSnapshot.internshipStartDate).getTime()
     : null;
 
   const resultAnnounced = examResultTime !== null && now > examResultTime;
 
-  // 15-day grace window from batch start (if no batch start date, assume within window)
+  // Paid-entry window stays open from registration through 15 days after
+  // results — covers early purchase ("unsure about result, lock seat now")
+  // and post-result grace. Mirrors backend `isPaidUpgradeWindowOpen`.
+  // Without a result date there's no upper bound to enforce, so the offer
+  // is treated as closed (matches backend rejection).
   const withinGracePeriod =
-    batchStartTime !== null
-      ? now - batchStartTime < 15 * 24 * 60 * 60 * 1000
-      : true;
+    examResultTime !== null &&
+    now < examResultTime + 15 * 24 * 60 * 60 * 1000;
 
-  // Case 1: results not yet announced for exam_attempted / in_merit_pool
+  // No-show: registered for the merit-track exam but the exam window closed
+  // without an attempt. Status stays `exam_registered` forever (no cron flips it).
+  const isExamNoShow =
+    row.status === "exam_registered" &&
+    examEndTime !== null &&
+    now > examEndTime;
+
+  // Case 1: outcome still uncertain — `exam_attempted` covers both genuine
+  // pre-result waits and (server-masked) merit-pool members. We treat both
+  // identically so the UI never reveals which one this learner actually is,
+  // either pre- or post-result. Post-result is bounded by the grace window.
   const isAwaitingResult =
-    (row.status === "exam_attempted" || row.status === "in_merit_pool") &&
-    !resultAnnounced;
+    row.status === "exam_attempted" &&
+    (!resultAnnounced || withinGracePeriod);
 
-  // Case 2: result out + failed (exam_attempted after result date) OR admin rejected —
-  //         offer a paid seat within 15 days of batch start
+  // Case 2: admin explicitly rejected — terminal, the learner is told they
+  // weren't picked. Paid seat offer stays open for 15 days post-result.
   const isPostFailGrace =
-    ((row.status === "exam_attempted" && resultAnnounced) ||
-      row.status === "admin_rejected") &&
-    withinGracePeriod;
+    row.status === "admin_rejected" && withinGracePeriod;
 
-  const showBuyConfirmedSeat = isAwaitingResult || isPostFailGrace;
+  // Case 3: no-show during paid-entry grace window
+  const isMissedExamGrace = isExamNoShow && withinGracePeriod;
+
+  const showBuyConfirmedSeat =
+    isAwaitingResult || isPostFailGrace || isMissedExamGrace;
+
+  // No-show takes precedence over the exam-registered countdown branch.
+  const showExamAction =
+    EXAM_ACTION_STATUSES.has(row.status) && !isExamNoShow;
 
   /** Enrolled but cohort `internshipStartDate` is still in the future — hide tasks link. */
   const cohortNotStartedYet = batchStartTime !== null && now < batchStartTime;
@@ -481,16 +506,29 @@ export default function DashboardInternshipCard({ row, onWithdrawn }: Props) {
                   size="card"
                 />
               </div>
+            ) : isExamNoShow ? (
+              /* Merit-track learner who didn't attempt the entrance exam — terminal */
+              <div className="flex flex-col gap-1">
+                <p className="text-[11px] text-stone-500">
+                  {isMissedExamGrace
+                    ? "You missed the entrance exam."
+                    : "You missed the entrance exam. The paid entry window has closed."}
+                </p>
+                {isMissedExamGrace && (
+                  <BuyConfirmedSeatCta row={row} variant="missed_exam" />
+                )}
+              </div>
             ) : showExamWaiting ? (
-              /* Exam already submitted / in merit pool — waiting chip + optional buy seat */
+              /* Exam submitted — waiting chip + optional buy seat. Copy is
+                 deliberately neutral: this branch covers both genuine
+                 pre-result waits and (server-masked) merit-pool members,
+                 and we must not reveal which one. */
               <div className="flex flex-col gap-1">
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-[11px] text-stone-500">
-                    {row.status === "exam_attempted"
-                      ? resultAnnounced
-                        ? "Result announced — you didn't reach the merit threshold"
-                        : "Exam submitted — results pending"
-                      : "You're in the merit pool — selection pending"}
+                    {resultAnnounced
+                      ? "Final seat allocations are still being made"
+                      : "Exam submitted — results pending"}
                   </p>
                   <span className="inline-flex items-center gap-1.5 rounded-xl border border-amber-300/60 bg-amber-50 px-3 py-1.5 text-[11px] font-semibold text-amber-900 shrink-0">
                     <Hourglass className="h-3 w-3" />
@@ -498,10 +536,7 @@ export default function DashboardInternshipCard({ row, onWithdrawn }: Props) {
                   </span>
                 </div>
                 {showBuyConfirmedSeat && (
-                  <BuyConfirmedSeatCta
-                    row={row}
-                    variant={isAwaitingResult ? "awaiting" : "post_fail"}
-                  />
+                  <BuyConfirmedSeatCta row={row} variant="awaiting" />
                 )}
               </div>
             ) : row.status === "admin_rejected" ? (

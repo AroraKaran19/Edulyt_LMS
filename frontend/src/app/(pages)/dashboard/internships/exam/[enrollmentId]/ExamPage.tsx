@@ -1,7 +1,8 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useCallback, useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import { CheckCircle2, CircleDot, Loader2, Lock, Send } from "lucide-react";
 import { toast } from "react-toastify";
@@ -11,6 +12,21 @@ import type { LearnerEntranceExam, LearnerEntranceExamQuestion } from "@/types";
 import LearnerInternshipSubmissionFileField from "../../components/LearnerInternshipSubmissionFileField";
 
 type SubmitStatus = "idle" | "submitting" | "submitted";
+
+/** Discourages selecting / copying question text and MCQ options (learners can still use checkboxes and file fields). */
+function ExamAntiCopyBlock({ children }: { children: ReactNode }) {
+  return (
+    <div
+      className="select-none"
+      onCopy={(e) => e.preventDefault()}
+      onCut={(e) => e.preventDefault()}
+      onContextMenu={(e) => e.preventDefault()}
+      onDragStart={(e) => e.preventDefault()}
+    >
+      {children}
+    </div>
+  );
+}
 
 function MCQOption({
   opt,
@@ -102,29 +118,32 @@ function QuestionCard({
 
   return (
     <div className="rounded-2xl border border-stone-200 bg-white p-5 sm:p-6 shadow-sm">
-      <div className="flex gap-3 mb-4">
-        <span className="shrink-0 font-mono text-xs font-bold text-stone-400 pt-0.5">
-          Q{index + 1}.
-        </span>
-        <p className="text-stone-900 font-medium leading-relaxed text-sm sm:text-base">
-          {q.questionText}
-        </p>
-      </div>
-      {q.type === "mcq" && q.options ? (
-        <div className="flex flex-col gap-2 ml-6">
-          {q.options.map((opt) => (
-            <MCQOption
-              key={opt.optionId}
-              opt={opt}
-              selected={selected.includes(opt.optionId)}
-              onChange={() => toggle(opt.optionId)}
-              disabled={disabled}
-            />
-          ))}
+      <ExamAntiCopyBlock>
+        <div className="flex gap-3 mb-4">
+          <span className="shrink-0 font-mono text-xs font-bold text-stone-400 pt-0.5">
+            Q{index + 1}.
+          </span>
+          <p className="text-stone-900 font-medium leading-relaxed text-sm sm:text-base">
+            {q.questionText}
+          </p>
         </div>
-      ) : (
-        <div className="ml-6 space-y-2">
-          <p className="text-sm text-stone-600">
+        {q.type === "mcq" && q.options ? (
+          <div className="flex flex-col gap-2 ml-6">
+            {q.options.map((opt) => (
+              <MCQOption
+                key={opt.optionId}
+                opt={opt}
+                selected={selected.includes(opt.optionId)}
+                onChange={() => toggle(opt.optionId)}
+                disabled={disabled}
+              />
+            ))}
+          </div>
+        ) : null}
+      </ExamAntiCopyBlock>
+      {q.type === "mcq" ? null : (
+        <div className="ml-6 mt-4 space-y-2 [&_input]:select-text [&_textarea]:select-text">
+          <p className="text-sm text-stone-600 select-none">
             Upload a file and/or write your answer in the note below.{" "}
             {q.referenceFile ? (
               <a
@@ -158,7 +177,6 @@ function QuestionCard({
 
 export default function ExamPage() {
   const { enrollmentId } = useParams<{ enrollmentId: string }>();
-  const router = useRouter();
 
   const [exam, setExam] = useState<LearnerEntranceExam | null>(null);
   const [loading, setLoading] = useState(true);
