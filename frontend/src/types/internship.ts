@@ -146,6 +146,14 @@ export interface Internship {
 
   analytics?: InternshipAnalytics;
 
+  /**
+   * Documentation submission window (ISO strings, UTC). Required for each
+   * internship — enrollments pass through `pending_documentation` until KYC is
+   * submitted (admin sets opens/closes on Screen 1).
+   */
+  documentationStartAt?: string;
+  documentationEndAt?: string;
+
   isActive: boolean;
   createdAt?: Date;
   updatedAt?: Date;
@@ -230,6 +238,10 @@ export interface InternshipResponse {
   discount?: CourseDiscount | null;
 
   analytics?: InternshipAnalytics;
+
+  /** Documentation window (ISO strings, UTC). See {@link Internship.documentationStartAt}. */
+  documentationStartAt?: string;
+  documentationEndAt?: string;
 
   isActive: boolean;
   createdAt?: Date;

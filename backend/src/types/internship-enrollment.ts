@@ -43,16 +43,37 @@ export type InternshipEnrollmentType = "merit" | "paid";
  *   paused     — enrollment temporarily frozen (e.g. medical leave).
  */
 export type InternshipEnrollmentStatus =
-  | "exam_registered"  // merit: form submitted, waiting for exam date
-  | "exam_attempted"   // merit: exam submitted, result pending
-  | "in_merit_pool"    // merit: passed threshold, awaiting admin seat selection
-  | "admin_rejected"   // merit: admin did not select this candidate (terminal)
-  | "payment_pending"  // paid: payment initiated, awaiting gateway confirmation
-  | "enrolled"         // both paths: fully active enrollment
-  | "completed"        // post-enrollment: program finished
-  | "dropped"          // post-enrollment: voluntary withdrawal
-  | "revoked"          // post-enrollment: admin-forced removal
-  | "paused";          // post-enrollment: temporarily frozen
+  | "exam_registered"        // merit: form submitted, waiting for exam date
+  | "exam_attempted"         // merit: exam submitted, result pending
+  | "in_merit_pool"          // merit: passed threshold, awaiting admin seat selection
+  | "admin_rejected"         // merit: admin did not select this candidate (terminal)
+  | "payment_pending"        // paid: payment initiated, awaiting gateway confirmation
+  | "pending_documentation"  // both paths: selected, awaiting Aadhar + photo upload before tasks unlock
+  | "enrolled"               // both paths: fully active enrollment (documentation complete if window configured)
+  | "completed"              // post-enrollment: program finished
+  | "dropped"                // post-enrollment: voluntary withdrawal
+  | "revoked"                // post-enrollment: admin-forced removal
+  | "paused";                // post-enrollment: temporarily frozen
+
+/**
+ * Documentation submitted by the learner during the post-result documentation
+ * phase. Aadhar number is stored as AES-256-GCM ciphertext + IV + auth tag
+ * (base64). The plain number is only ever recovered for admin display.
+ *
+ * Submissions are only accepted within `[documentationStartAt, documentationEndAt]`.
+ * Past the window the API rejects with `DOCUMENTATION_WINDOW_CLOSED` and the
+ * learner is directed to the program administrator.
+ */
+export interface InternshipEnrollmentDocumentation {
+  aadharCardNumberEnc: string;
+  aadharCardNumberIv: string;
+  aadharCardNumberTag: string;
+  /** Public S3 URL of the learner's photo. */
+  learnerPhoto: string;
+  /** S3 object key, kept for cleanup if the learner re-uploads. */
+  learnerPhotoS3Key: string;
+  submittedAt: Date;
+}
 
 // ─── Internship snapshot ──────────────────────────────────────────────────────
 
@@ -153,6 +174,13 @@ export interface InternshipEnrollment {
    *   dueAt       = enrolledAt + template.dueDays
    */
   enrolledAt?: Date;
+
+  /**
+   * KYC documents collected after result announcement. Required to leave
+   * `pending_documentation` and become `enrolled` when the parent internship
+   * has a documentation window configured.
+   */
+  documentation?: InternshipEnrollmentDocumentation;
 
   /**
    * Cumulative score points earned from **task** submissions in this internship.

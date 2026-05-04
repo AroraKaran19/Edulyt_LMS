@@ -130,6 +130,24 @@ export type InternshipEnrollmentListRow = {
     batchExistsOnProgram: boolean;
     applicationWindowOpen: boolean;
   };
+  /**
+   * Documentation submission window (ISO UTC). Populated on `pending_documentation`
+   * rows so the learner-facing modal can render the IST window. Both fields
+   * present together or both absent.
+   */
+  documentationStartAt?: string;
+  documentationEndAt?: string;
+  /**
+   * Decrypted documentation. Only included by admin endpoints (never by learner
+   * endpoints). `aadharCardNumber` is the plaintext value re-derived from the
+   * stored ciphertext at request time.
+   */
+  documentation?: {
+    aadharCardNumber: string;
+    learnerPhoto: string;
+    learnerPhotoS3Key: string;
+    submittedAt: string;
+  };
 };
 
 /**
@@ -483,6 +501,70 @@ export async function getInternshipEnrollmentByIdAdmin(
             doc as { applicationSubmittedAt: Date }
           ).applicationSubmittedAt.toISOString()
         : undefined,
+    documentation: decryptDocumentationForAdmin(
+      (doc as { documentation?: unknown }).documentation,
+    ),
+  };
+}
+
+/**
+ * Decrypts the stored Aadhar ciphertext for admin display. Returns `undefined`
+ * if the enrollment hasn't submitted documents yet, or if the key is missing
+ * (we surface a partial response with no number rather than 500 the listing).
+ */
+function decryptDocumentationForAdmin(
+  raw: unknown,
+):
+  | {
+      aadharCardNumber: string;
+      learnerPhoto: string;
+      learnerPhotoS3Key: string;
+      submittedAt: string;
+    }
+  | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const d = raw as {
+    aadharCardNumberEnc?: string;
+    aadharCardNumberIv?: string;
+    aadharCardNumberTag?: string;
+    learnerPhoto?: string;
+    learnerPhotoS3Key?: string;
+    submittedAt?: Date;
+  };
+  if (
+    !d.aadharCardNumberEnc ||
+    !d.aadharCardNumberIv ||
+    !d.aadharCardNumberTag ||
+    !d.learnerPhoto ||
+    !d.learnerPhotoS3Key ||
+    !(d.submittedAt instanceof Date)
+  ) {
+    return undefined;
+  }
+  let aadhar = "";
+  try {
+    // Lazy require so the encryption key isn't demanded at import time.
+
+    const { decryptAadhar } = require("../utils/lib/aadharCrypto") as {
+      decryptAadhar: (ct: {
+        aadharCardNumberEnc: string;
+        aadharCardNumberIv: string;
+        aadharCardNumberTag: string;
+      }) => string;
+    };
+    aadhar = decryptAadhar({
+      aadharCardNumberEnc: d.aadharCardNumberEnc,
+      aadharCardNumberIv: d.aadharCardNumberIv,
+      aadharCardNumberTag: d.aadharCardNumberTag,
+    });
+  } catch {
+    aadhar = "";
+  }
+  return {
+    aadharCardNumber: aadhar,
+    learnerPhoto: d.learnerPhoto,
+    learnerPhotoS3Key: d.learnerPhotoS3Key,
+    submittedAt: d.submittedAt.toISOString(),
   };
 }
 
@@ -520,7 +602,10 @@ async function completeMeritRegistrationForExistingRow(
     }
     return { enrollmentId: String(existing._id) };
   }
-  if (String(existing.status) === "enrolled") {
+  if (
+    String(existing.status) === "enrolled" ||
+    String(existing.status) === "pending_documentation"
+  ) {
     return { enrollmentId: String(existing._id) };
   }
   throw new AppError("You are already registered for this batch", 409);
@@ -962,6 +1047,46 @@ export async function listMyInternshipEnrollments(
     }
   }
 
+  // For `pending_documentation` rows, surface the per-internship documentation
+  // window so the dashboard modal can show IST open/close times.
+  const docsWindowByInternshipId = new Map<
+    string,
+    { documentationStartAt?: string; documentationEndAt?: string }
+  >();
+  const docsRows = (raw as Record<string, unknown>[]).filter(
+    (d) => String(d.status ?? "") === "pending_documentation" && d.internship,
+  );
+  if (docsRows.length > 0) {
+    const insIdSet = new Set<string>();
+    for (const d of docsRows) {
+      const insId = internshipRefToId(d.internship);
+      if (insId) insIdSet.add(insId);
+    }
+    if (insIdSet.size > 0) {
+      const insDocs = await InternshipModel.find({
+        _id: {
+          $in: [...insIdSet].map((id) => new mongoose.Types.ObjectId(id)),
+        },
+      })
+        .select("documentationStartAt documentationEndAt")
+        .lean();
+      for (const ins of insDocs) {
+        const iid = String((ins as { _id: unknown })._id);
+        const start = (ins as { documentationStartAt?: Date })
+          .documentationStartAt;
+        const end = (ins as { documentationEndAt?: Date }).documentationEndAt;
+        docsWindowByInternshipId.set(iid, {
+          ...(start instanceof Date
+            ? { documentationStartAt: start.toISOString() }
+            : {}),
+          ...(end instanceof Date
+            ? { documentationEndAt: end.toISOString() }
+            : {}),
+        });
+      }
+    }
+  }
+
   // For merit-path rows, fetch entrance window from the internship batch (UTC)
   // and result time from the template. `admin_rejected` is included so the
   // post-result paid-grace window can be computed on the dashboard card.
@@ -1345,6 +1470,9 @@ export async function listMyInternshipEnrollments(
         : undefined,
       ...examWindowById.get(String(doc._id)),
       ...certWindowByEnrollmentId.get(String(doc._id)),
+      ...(statusStr === "pending_documentation" && internshipIdFromRef
+        ? docsWindowByInternshipId.get(internshipIdFromRef) ?? {}
+        : {}),
       ...(paymentPendingContext ? { paymentPendingContext } : {}),
     };
   });
@@ -1565,6 +1693,11 @@ const ALLOWED_ADMIN_TRANSITIONS: Record<string, string[]> = {
   in_merit_pool: ["enrolled", "admin_rejected"],
   /** Paid track before gateway clears — admin may still reject the candidate. */
   payment_pending: ["admin_rejected"],
+  /**
+   * Documentation gate. Admin can manually fast-forward to `enrolled`
+   * (e.g. learner submitted docs offline). Revoke and reject also allowed.
+   */
+  pending_documentation: ["enrolled", "admin_rejected", "revoked"],
   enrolled: ["completed", "paused", "revoked"],
   /** Allow marking complete without unpausing first (operational shortcut). */
   paused: ["enrolled", "revoked", "completed"],
@@ -1606,7 +1739,11 @@ export async function adminUpdateEnrollmentStatus(
     doc.adminRejectionNote = rejectionNote;
   }
   if (newStatus === "enrolled") {
-    doc.enrolledAt = new Date();
+    // Preserve existing enrolledAt if already set (e.g. via documentation flow)
+    // so task unlock anchors don't drift when admin manually fast-forwards.
+    if (!(doc.enrolledAt instanceof Date)) {
+      doc.enrolledAt = new Date();
+    }
     const ans = doc.applicationAnswers as Record<string, unknown> | undefined;
     const months = parseProgramDurationMonthsFromAnswers(ans ?? null);
     if (months != null) doc.programDurationMonths = months;
@@ -1727,9 +1864,34 @@ const APPROVABLE_MERIT_TO_ENROLLED = new Set([
 ]);
 
 /**
- * Admin: confirm merit candidates into the program as `enrolled` in a single
- * action (no separate “merit pool” step on the client). Idempotent for
- * already-enrolled rows.
+ * Merit or paid enrollees always pass through `pending_documentation` and must
+ * submit Aadhar + photo before tasks unlock (see internship documentation window).
+ */
+function resolveSelectionStatus(
+  _internshipId: mongoose.Types.ObjectId | string,
+): "enrolled" | "pending_documentation" {
+  return "pending_documentation";
+}
+
+/**
+ * Throw a 403 with code `DOCUMENTATION_PENDING` if the enrollment is gated
+ * waiting for the learner to submit Aadhar + photo. Frontend uses the code
+ * to open the documentation modal.
+ */
+export function assertNotPendingDocumentation(status: string | undefined): void {
+  if (status === "pending_documentation") {
+    throw new AppError(
+      "Submit your Aadhar and photo to unlock tasks and the certification exam.",
+      403,
+      "DOCUMENTATION_PENDING",
+    );
+  }
+}
+
+/**
+ * Admin: confirm merit candidates into the program (`pending_documentation` until
+ * they submit documents, then learners become `enrolled`). Idempotent for rows
+ * already at `enrolled` or `pending_documentation`.
  */
 export async function adminApproveMeritToEnrolled(
   enrollmentId: string,
@@ -1742,14 +1904,20 @@ export async function adminApproveMeritToEnrolled(
   if (!doc) throw new AppError("Enrollment not found", 404);
 
   const s = String(doc.status ?? "");
-  if (s === "enrolled") {
+  if (s === "enrolled" || s === "pending_documentation") {
     return getInternshipEnrollmentByIdAdmin(enrollmentId);
   }
   if (!APPROVABLE_MERIT_TO_ENROLLED.has(s)) {
     throw new AppError(`Cannot approve to enrolled from status "${s}"`, 400);
   }
 
-  doc.status = "enrolled" as typeof doc.status;
+  // `enrolledAt` is set at selection regardless of status — it anchors task
+  // unlock dates, which must align with the cohort schedule, not the moment
+  // the learner submits documents.
+  const nextStatus = resolveSelectionStatus(
+    doc.internship as mongoose.Types.ObjectId,
+  );
+  doc.status = nextStatus as typeof doc.status;
   doc.enrolledAt = new Date();
   doc.adminActionBy = adminUserId;
   doc.adminActionAt = new Date();
@@ -2129,6 +2297,7 @@ export async function getLearnerProgramBySlug(
   };
   const doc = enrollment as LeanEnrollmentDoc;
 
+  assertNotPendingDocumentation(doc.status);
   const ALLOWED_STATUSES = new Set(["enrolled", "completed", "paused"]);
   if (!ALLOWED_STATUSES.has(doc.status)) {
     throw new AppError(
@@ -2313,4 +2482,212 @@ export async function getLearnerProgramBySlug(
       ? { internshipSuccessPointPurchase }
       : {}),
   };
+}
+
+// ─── Documentation submission ────────────────────────────────────────────────
+
+/**
+ * Learner submits Aadhar + photo to leave `pending_documentation` and become
+ * `enrolled`. Submissions outside the configured window are rejected with
+ * `DOCUMENTATION_WINDOW_NOT_OPEN` / `DOCUMENTATION_WINDOW_CLOSED` — past the
+ * close time the learner must contact a program administrator.
+ *
+ * Aadhar is encrypted at the application layer (AES-256-GCM); only the
+ * ciphertext + IV + tag are persisted. The photo URL points at S3 (uploaded
+ * separately by the client through the existing upload flow).
+ */
+export async function submitInternshipDocumentation(
+  enrollmentId: string,
+  userId: mongoose.Types.ObjectId,
+  body: {
+    aadharCardNumber: string;
+    learnerPhoto: string;
+    learnerPhotoS3Key: string;
+  },
+): Promise<{ status: string; submittedAt: string }> {
+  const { encryptAadhar, isValidAadharFormat } = await import(
+    "../utils/lib/aadharCrypto"
+  );
+
+  if (!mongoose.Types.ObjectId.isValid(enrollmentId)) {
+    throw new AppError("Invalid enrollment id", 400);
+  }
+  const aadhar = String(body.aadharCardNumber ?? "").trim();
+  const photo = String(body.learnerPhoto ?? "").trim();
+  const photoKey = String(body.learnerPhotoS3Key ?? "").trim();
+  if (!isValidAadharFormat(aadhar)) {
+    throw new AppError(
+      "Aadhar must be 12 digits and start with 2-9",
+      400,
+      "AADHAR_INVALID",
+    );
+  }
+  if (!photo || !photoKey) {
+    throw new AppError("Learner photo is required", 400);
+  }
+
+  const doc = await InternshipEnrollmentModel.findById(enrollmentId);
+  if (!doc) throw new AppError("Enrollment not found", 404);
+  if (String(doc.user) !== String(userId)) {
+    throw new AppError("Forbidden", 403);
+  }
+  if (String(doc.status) !== "pending_documentation") {
+    throw new AppError(
+      `Cannot submit documents from status "${doc.status}"`,
+      400,
+    );
+  }
+
+  const ins = await InternshipModel.findById(doc.internship)
+    .select("documentationStartAt documentationEndAt")
+    .lean();
+  const startAt = (ins as { documentationStartAt?: Date } | null)
+    ?.documentationStartAt;
+  const endAt = (ins as { documentationEndAt?: Date } | null)
+    ?.documentationEndAt;
+  const now = new Date();
+  if (startAt instanceof Date && now < startAt) {
+    throw new AppError(
+      "The documentation submission window hasn't opened yet.",
+      403,
+      "DOCUMENTATION_WINDOW_NOT_OPEN",
+    );
+  }
+  if (endAt instanceof Date && now > endAt) {
+    throw new AppError(
+      "The documentation submission window has closed. Contact your program administrator.",
+      403,
+      "DOCUMENTATION_WINDOW_CLOSED",
+    );
+  }
+
+  const ct = encryptAadhar(aadhar);
+
+  doc.documentation = {
+    aadharCardNumberEnc: ct.aadharCardNumberEnc,
+    aadharCardNumberIv: ct.aadharCardNumberIv,
+    aadharCardNumberTag: ct.aadharCardNumberTag,
+    learnerPhoto: photo,
+    learnerPhotoS3Key: photoKey,
+    submittedAt: now,
+  } as typeof doc.documentation;
+  doc.status = "enrolled" as typeof doc.status;
+  await doc.save();
+
+  return {
+    status: doc.status as string,
+    submittedAt: now.toISOString(),
+  };
+}
+
+/**
+ * Admin: edit (or upload-on-behalf-of-learner) the documentation on an
+ * enrollment. Two modes, decided by whether the enrollment already has a
+ * `documentation` sub-doc:
+ *
+ *  • Edit existing  — partial; either field may be updated independently.
+ *    Pass only what changes. `submittedAt` is preserved. Status is unchanged.
+ *
+ *  • Create new (used when a learner missed the window and asks the admin to
+ *    upload for them) — both `aadharCardNumber` and `learnerPhoto` must be
+ *    provided. `submittedAt` is set to now. If the enrollment was in
+ *    `pending_documentation`, status is flipped to `enrolled`.
+ *
+ * Window enforcement does NOT apply to admin actions in either mode.
+ *
+ * The Aadhar number is re-encrypted with the current key on every save.
+ */
+export async function adminUpdateInternshipDocumentation(
+  enrollmentId: string,
+  body: {
+    aadharCardNumber?: string;
+    learnerPhoto?: string;
+    learnerPhotoS3Key?: string;
+  },
+): Promise<InternshipEnrollmentListRow> {
+  const { encryptAadhar, isValidAadharFormat } = await import(
+    "../utils/lib/aadharCrypto"
+  );
+
+  if (!mongoose.Types.ObjectId.isValid(enrollmentId)) {
+    throw new AppError("Invalid enrollment id", 400);
+  }
+
+  const aadharRaw = body.aadharCardNumber;
+  const photoRaw = body.learnerPhoto;
+  const photoKeyRaw = body.learnerPhotoS3Key;
+
+  const aadharProvided = typeof aadharRaw === "string" && aadharRaw.trim() !== "";
+  const photoProvided = typeof photoRaw === "string" && photoRaw.trim() !== "";
+
+  if (photoProvided) {
+    if (typeof photoKeyRaw !== "string" || photoKeyRaw.trim() === "") {
+      throw new AppError(
+        "learnerPhotoS3Key is required when uploading learnerPhoto",
+        400,
+      );
+    }
+  }
+
+  const doc = await InternshipEnrollmentModel.findById(enrollmentId);
+  if (!doc) throw new AppError("Enrollment not found", 404);
+
+  const isCreate = !doc.documentation;
+
+  if (isCreate) {
+    if (!aadharProvided || !photoProvided) {
+      throw new AppError(
+        "Both aadharCardNumber and learnerPhoto are required to upload documentation for the first time",
+        400,
+      );
+    }
+  } else {
+    if (!aadharProvided && !photoProvided) {
+      throw new AppError(
+        "Provide at least one of: aadharCardNumber, learnerPhoto",
+        400,
+      );
+    }
+  }
+
+  let aadharCt: ReturnType<typeof encryptAadhar> | null = null;
+  if (aadharProvided) {
+    const aadhar = aadharRaw!.trim();
+    if (!isValidAadharFormat(aadhar)) {
+      throw new AppError(
+        "Aadhar must be 12 digits and start with 2-9",
+        400,
+        "AADHAR_INVALID",
+      );
+    }
+    aadharCt = encryptAadhar(aadhar);
+  }
+
+  if (isCreate) {
+    doc.documentation = {
+      aadharCardNumberEnc: aadharCt!.aadharCardNumberEnc,
+      aadharCardNumberIv: aadharCt!.aadharCardNumberIv,
+      aadharCardNumberTag: aadharCt!.aadharCardNumberTag,
+      learnerPhoto: photoRaw!.trim(),
+      learnerPhotoS3Key: photoKeyRaw!.trim(),
+      submittedAt: new Date(),
+    } as typeof doc.documentation;
+
+    if (String(doc.status) === "pending_documentation") {
+      doc.status = "enrolled" as typeof doc.status;
+    }
+  } else {
+    if (aadharCt) {
+      doc.documentation!.aadharCardNumberEnc = aadharCt.aadharCardNumberEnc;
+      doc.documentation!.aadharCardNumberIv = aadharCt.aadharCardNumberIv;
+      doc.documentation!.aadharCardNumberTag = aadharCt.aadharCardNumberTag;
+    }
+    if (photoProvided) {
+      doc.documentation!.learnerPhoto = photoRaw!.trim();
+      doc.documentation!.learnerPhotoS3Key = photoKeyRaw!.trim();
+    }
+  }
+
+  await doc.save();
+  return getInternshipEnrollmentByIdAdmin(enrollmentId);
 }

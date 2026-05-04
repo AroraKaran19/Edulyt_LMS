@@ -247,6 +247,13 @@ export async function createInternshipSubmission(
     if (!enrollment) {
       throw new AppError("Enrollment not found", 404);
     }
+    if (String(enrollment.status) === "pending_documentation") {
+      throw new AppError(
+        "Submit your Aadhar and photo to unlock task submissions.",
+        403,
+        "DOCUMENTATION_PENDING",
+      );
+    }
     const enrolledAt =
       enrollment.enrolledAt instanceof Date
         ? enrollment.enrolledAt
@@ -343,6 +350,13 @@ export async function createInternshipSubmission(
         throw new AppError(
           "This certification exam is not assigned to your cohort",
           403,
+        );
+      }
+      if (String(enrollment.status) === "pending_documentation") {
+        throw new AppError(
+          "Submit your Aadhar and photo to unlock the certification exam.",
+          403,
+          "DOCUMENTATION_PENDING",
         );
       }
       const allowed = new Set(["enrolled", "completed", "paused"]);

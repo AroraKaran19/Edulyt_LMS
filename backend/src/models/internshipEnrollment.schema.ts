@@ -64,6 +64,7 @@ const internshipEnrollmentSchema = new mongoose.Schema(
         "in_merit_pool",
         "admin_rejected",
         "payment_pending",
+        "pending_documentation",
         "enrolled",
         "completed",
         "dropped",
@@ -125,6 +126,27 @@ const internshipEnrollmentSchema = new mongoose.Schema(
      */
     applicationAnswers: { type: mongoose.Schema.Types.Mixed, required: false },
     applicationSubmittedAt: { type: Date, required: false },
+
+    /**
+     * KYC documents (Aadhar + photo). Required to leave `pending_documentation`
+     * once the parent internship has a documentation window configured.
+     * Aadhar is stored as AES-256-GCM ciphertext + IV + tag (base64); only
+     * decrypted at admin display time.
+     */
+    documentation: {
+      type: new mongoose.Schema(
+        {
+          aadharCardNumberEnc: { type: String, required: true },
+          aadharCardNumberIv: { type: String, required: true },
+          aadharCardNumberTag: { type: String, required: true },
+          learnerPhoto: { type: String, required: true, trim: true },
+          learnerPhotoS3Key: { type: String, required: true, trim: true },
+          submittedAt: { type: Date, required: true },
+        },
+        { _id: false },
+      ),
+      default: undefined,
+    },
   },
   { timestamps: true },
 );

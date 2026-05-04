@@ -11,10 +11,39 @@ import {
   ListPublicInternshipsResult,
 } from "../types/internship";
 import type { CourseDiscount, Discount } from "../types";
+import { AppError } from "../middlewares/error.middleware";
 import { isApplicationWindowOpenIst } from "../utils/applicationWindow";
 import { calculateFinalDiscountedPrice } from "../utils/lib/calculateDiscount";
 
 const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+function coerceDocumentationDate(v: unknown): Date | null {
+  if (v == null || v === "") return null;
+  if (v instanceof Date && !Number.isNaN(v.getTime())) return v;
+  const d = new Date(typeof v === "string" || typeof v === "number" ? v : String(v));
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+/** Every internship must have a valid post-result documentation window (IST stored as UTC). */
+function assertDocumentationSubmissionWindow(
+  start: unknown,
+  end: unknown,
+): void {
+  const s = coerceDocumentationDate(start);
+  const e = coerceDocumentationDate(end);
+  if (!s || !e) {
+    throw new AppError(
+      "Documentation submission window (start and end) is required.",
+      400,
+    );
+  }
+  if (e.getTime() <= s.getTime()) {
+    throw new AppError(
+      "Documentation submission end must be after start.",
+      400,
+    );
+  }
+}
 
 const emptyInternshipAnalytics = (): InternshipAnalytics => ({
   totalRatings: 0,
@@ -702,6 +731,10 @@ export const createInternshipService = async (
   data: Partial<Internship>,
   createdBy: string,
 ): Promise<Internship> => {
+  assertDocumentationSubmissionWindow(
+    data.documentationStartAt,
+    data.documentationEndAt,
+  );
   const { batches, ...rest } = data;
   const doc = await InternshipModel.create({
     ...rest,
@@ -721,12 +754,14 @@ export const updateInternshipService = async (
 ): Promise<InternshipResponse | null> => {
   if (!mongoose.Types.ObjectId.isValid(id)) return null;
 
+  const existingSnap = await InternshipModel.findById(id)
+    .select("documentationStartAt documentationEndAt batches")
+    .lean();
+  if (!existingSnap) return null;
+
   let payload: Partial<Internship> = { ...data };
   if (Array.isArray(data.batches) && actingUserId) {
-    const existing = await InternshipModel.findById(id)
-      .select("batches")
-      .lean();
-    const prev = existing?.batches ?? [];
+    const prev = existingSnap.batches ?? [];
     payload = {
       ...data,
       batches: data.batches.map((b, i) => {
@@ -740,6 +775,17 @@ export const updateInternshipService = async (
       }) as Internship["batches"],
     };
   }
+
+  const mergedStart = Object.prototype.hasOwnProperty.call(
+    data,
+    "documentationStartAt",
+  )
+    ? data.documentationStartAt
+    : existingSnap.documentationStartAt;
+  const mergedEnd = Object.prototype.hasOwnProperty.call(data, "documentationEndAt")
+    ? data.documentationEndAt
+    : existingSnap.documentationEndAt;
+  assertDocumentationSubmissionWindow(mergedStart, mergedEnd);
 
   const doc = await InternshipModel.findByIdAndUpdate(id, payload, {
     new: true,

@@ -48,6 +48,7 @@ export type InternshipEnrollmentStatus =
   | "in_merit_pool" // merit: passed threshold, awaiting admin seat selection
   | "admin_rejected" // merit: admin did not select this candidate (terminal)
   | "payment_pending" // paid: payment initiated, awaiting gateway confirmation
+  | "pending_documentation" // both paths: selected, awaiting Aadhar + photo before tasks unlock
   | "enrolled" // both paths: fully active enrollment
   | "completed" // post-enrollment: program finished
   | "dropped" // post-enrollment: voluntary withdrawal
@@ -259,6 +260,24 @@ export interface InternshipEnrollmentListRow {
   applicationAnswers?: Record<string, unknown>;
   /** ISO — when application answers were saved. */
   applicationSubmittedAt?: string;
+  /**
+   * Documentation submission window (ISO UTC). Populated by the learner list
+   * endpoint on `pending_documentation` rows so the dashboard modal can show
+   * the IST open/close times.
+   */
+  documentationStartAt?: string;
+  documentationEndAt?: string;
+  /**
+   * Decrypted documentation payload — admin-only. `aadharCardNumber` is
+   * plaintext recovered server-side from AES-256-GCM ciphertext. Absent until
+   * the learner submits.
+   */
+  documentation?: {
+    aadharCardNumber: string;
+    learnerPhoto: string;
+    learnerPhotoS3Key: string;
+    submittedAt: string;
+  };
 }
 
 // ─── Learner entrance exam ────────────────────────────────────────────────────

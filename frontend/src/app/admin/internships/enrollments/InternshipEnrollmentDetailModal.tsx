@@ -1,16 +1,22 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Pencil } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import Select from "@/components/ui/inputs/Select";
+import Input from "@/components/ui/inputs/Input";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
+import UploadMediaContainer from "@/components/ui/container/UploadMediaContainer";
+import { useUpload } from "@/hooks/useUpload";
 import apiClient from "@/configs/apiConfig";
 import { ENDPOINTS } from "@/constants/endpoints";
 import { toast } from "react-toastify";
 import type { InternshipEnrollmentListRow } from "@/types";
 import type { InternshipBatches } from "@/types/internship";
 import InternshipEnrollmentApplicationModal from "./InternshipEnrollmentApplicationModal";
+
+const AADHAR_RE = /^[2-9]\d{11}$/;
 
 function formatDate(iso?: string) {
   if (!iso) return "—";
@@ -79,6 +85,22 @@ export default function InternshipEnrollmentDetailModal({
   const [savingComplete, setSavingComplete] = useState(false);
   const [applicationModalOpen, setApplicationModalOpen] = useState(false);
 
+  // Documentation edit state
+  const [editingDocs, setEditingDocs] = useState(false);
+  const [editAadhar, setEditAadhar] = useState("");
+  const [editPhotoUrl, setEditPhotoUrl] = useState("");
+  const [editPhotoS3Key, setEditPhotoS3Key] = useState("");
+  const [editPhotoSource, setEditPhotoSource] = useState<
+    "upload" | "url" | undefined
+  >(undefined);
+  const [savingDocs, setSavingDocs] = useState(false);
+  const [docsError, setDocsError] = useState<string | null>(null);
+  const {
+    uploadFile: uploadDocFile,
+    isUploading: docPhotoUploading,
+    error: docPhotoUploadError,
+  } = useUpload();
+
   useEffect(() => {
     if (!isOpen || !enrollmentId) {
       setDetail(null);
@@ -112,6 +134,16 @@ export default function InternshipEnrollmentDetailModal({
   useEffect(() => {
     if (!isOpen) setApplicationModalOpen(false);
   }, [isOpen]);
+
+  useEffect(() => {
+    // Reset documentation edit state when the modal closes or switches enrollment.
+    setEditingDocs(false);
+    setEditAadhar("");
+    setEditPhotoUrl("");
+    setEditPhotoS3Key("");
+    setEditPhotoSource(undefined);
+    setDocsError(null);
+  }, [isOpen, enrollmentId]);
 
   useEffect(() => {
     if (!detail?.internship?._id || !isOpen) {
@@ -234,6 +266,106 @@ export default function InternshipEnrollmentDetailModal({
     }
   }
 
+  function startEditDocs() {
+    setDocsError(null);
+    setEditAadhar(detail?.documentation?.aadharCardNumber ?? "");
+    setEditPhotoUrl(detail?.documentation?.learnerPhoto ?? "");
+    setEditPhotoS3Key(detail?.documentation?.learnerPhotoS3Key ?? "");
+    setEditPhotoSource(
+      detail?.documentation?.learnerPhoto ? "upload" : undefined,
+    );
+    setEditingDocs(true);
+  }
+
+  function cancelEditDocs() {
+    setEditingDocs(false);
+    setDocsError(null);
+  }
+
+  async function handleEditDocPhotoUpload(file: File, folder: string) {
+    const result = await uploadDocFile(file, folder);
+    if (result.success && result.data) {
+      setEditPhotoUrl(result.data.url);
+      setEditPhotoS3Key(result.data.s3Key);
+      setEditPhotoSource("upload");
+      return result.data.url;
+    }
+    throw new Error(result.error || "Upload failed");
+  }
+
+  function handleEditDocPhotoRemove() {
+    setEditPhotoUrl("");
+    setEditPhotoS3Key("");
+    setEditPhotoSource(undefined);
+  }
+
+  async function handleSaveDocs() {
+    if (!enrollmentId || !detail || savingDocs) return;
+    setDocsError(null);
+
+    const trimmedAadhar = editAadhar.replace(/\s/g, "");
+    const original = detail.documentation;
+    const isCreate = !original;
+
+    const body: Record<string, string> = {};
+
+    if (isCreate) {
+      // First-time upload on behalf of a learner — both fields required.
+      if (!AADHAR_RE.test(trimmedAadhar)) {
+        setDocsError("Aadhar must be 12 digits and start with 2-9.");
+        return;
+      }
+      if (!editPhotoUrl || !editPhotoS3Key) {
+        setDocsError("Please upload a photo before saving.");
+        return;
+      }
+      body.aadharCardNumber = trimmedAadhar;
+      body.learnerPhoto = editPhotoUrl;
+      body.learnerPhotoS3Key = editPhotoS3Key;
+    } else {
+      // Patch — only send changed fields.
+      const aadharChanged = trimmedAadhar !== original.aadharCardNumber;
+      const photoChanged = editPhotoUrl !== original.learnerPhoto;
+      if (!aadharChanged && !photoChanged) {
+        setDocsError("Nothing changed.");
+        return;
+      }
+      if (aadharChanged && !AADHAR_RE.test(trimmedAadhar)) {
+        setDocsError("Aadhar must be 12 digits and start with 2-9.");
+        return;
+      }
+      if (photoChanged && (!editPhotoUrl || !editPhotoS3Key)) {
+        setDocsError("Please upload a photo before saving.");
+        return;
+      }
+      if (aadharChanged) body.aadharCardNumber = trimmedAadhar;
+      if (photoChanged) {
+        body.learnerPhoto = editPhotoUrl;
+        body.learnerPhotoS3Key = editPhotoS3Key;
+      }
+    }
+
+    setSavingDocs(true);
+    try {
+      const res = await apiClient.patch(
+        ENDPOINTS.internshipEnrollments.adminUpdateDocumentation(enrollmentId),
+        body,
+      );
+      const row = res.data?.data as InternshipEnrollmentListRow | undefined;
+      if (row) setDetail(row);
+      toast.success("Documentation updated");
+      setEditingDocs(false);
+      onUpdated?.();
+    } catch (e: unknown) {
+      const msg =
+        (e as { response?: { data?: { error?: { message?: string } } } })
+          ?.response?.data?.error?.message ?? "Could not update documentation";
+      setDocsError(msg);
+    } finally {
+      setSavingDocs(false);
+    }
+  }
+
   return (
     <>
     <Modal
@@ -298,6 +430,226 @@ export default function InternshipEnrollmentDetailModal({
               </p>
             )}
           </div>
+
+          {detail.documentation ? (
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50/60 px-3 py-3 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs font-semibold text-emerald-900 uppercase">
+                  Documentation
+                </p>
+                {!editingDocs ? (
+                  <button
+                    type="button"
+                    onClick={startEditDocs}
+                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-900 hover:text-emerald-950 underline-offset-2 hover:underline"
+                  >
+                    <Pencil className="h-3 w-3" />
+                    Edit
+                  </button>
+                ) : null}
+              </div>
+
+              {editingDocs ? (
+                <div className="flex flex-col gap-3">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[11px] font-semibold text-emerald-900/80 uppercase">
+                      Aadhar number
+                    </label>
+                    <Input
+                      value={editAadhar}
+                      onChange={(e) =>
+                        setEditAadhar(
+                          e.target.value.replace(/\D/g, "").slice(0, 12),
+                        )
+                      }
+                      placeholder="12-digit Aadhar number"
+                      inputMode="numeric"
+                      maxLength={12}
+                    />
+                    <p className="text-[10px] text-emerald-900/70">
+                      12 digits, must start with 2-9. Saved encrypted.
+                    </p>
+                  </div>
+                  <UploadMediaContainer
+                    title="Learner photo"
+                    description="Replace the photo if it's blurry or wrong."
+                    type="image"
+                    folderName={`internships/${
+                      detail.internship?.slug ??
+                      detail.internshipSnapshot?.slug ??
+                      "documentation"
+                    }/learner_photos`}
+                    mediaUrl={editPhotoUrl}
+                    mediaSource={editPhotoSource}
+                    s3Key={editPhotoS3Key}
+                    onFileUpload={handleEditDocPhotoUpload}
+                    onFileRemove={handleEditDocPhotoRemove}
+                    maxSize={2}
+                    acceptedFormats={[".jpg", ".jpeg", ".png"]}
+                    isUploading={docPhotoUploading}
+                    error={docPhotoUploadError ?? undefined}
+                    showConfirmation={false}
+                  />
+                  {docsError && (
+                    <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded px-2 py-1">
+                      {docsError}
+                    </p>
+                  )}
+                  <div className="flex justify-end gap-2 pt-1 border-t border-emerald-200">
+                    <WhiteButton
+                      type="button"
+                      glow={false}
+                      onClick={cancelEditDocs}
+                      disabled={savingDocs}
+                    >
+                      Cancel
+                    </WhiteButton>
+                    <OrangeButton
+                      type="button"
+                      glow={false}
+                      onClick={() => void handleSaveDocs()}
+                      disabled={savingDocs || docPhotoUploading}
+                    >
+                      {savingDocs ? "Saving…" : "Save changes"}
+                    </OrangeButton>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <p className="text-[10px] font-semibold text-emerald-900/70 uppercase mb-0.5">
+                        Aadhar number
+                      </p>
+                      <p className="text-sm font-mono text-emerald-950 tracking-wider">
+                        {detail.documentation.aadharCardNumber ||
+                          "(decryption failed)"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-semibold text-emerald-900/70 uppercase mb-0.5">
+                        Submitted
+                      </p>
+                      <p className="text-xs text-emerald-950">
+                        {formatDate(detail.documentation.submittedAt)}
+                      </p>
+                    </div>
+                  </div>
+                  {detail.documentation.learnerPhoto ? (
+                    <div>
+                      <p className="text-[10px] font-semibold text-emerald-900/70 uppercase mb-1">
+                        Learner photo
+                      </p>
+                      <a
+                        href={detail.documentation.learnerPhoto}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-block"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={detail.documentation.learnerPhoto}
+                          alt="Learner"
+                          className="max-h-40 rounded border border-emerald-200 object-contain bg-white"
+                        />
+                      </a>
+                    </div>
+                  ) : null}
+                </>
+              )}
+            </div>
+          ) : detail.status === "pending_documentation" ? (
+            <div className="rounded-lg border border-rose-200 bg-rose-50/60 px-3 py-3 space-y-2">
+              <p className="text-xs font-semibold text-rose-900 uppercase">
+                Documentation
+              </p>
+              {editingDocs ? (
+                <div className="flex flex-col gap-3">
+                  <p className="text-xs text-rose-900/85 leading-snug">
+                    Upload Aadhar &amp; photo on behalf of the learner. Saving
+                    will move them to <span className="font-semibold">enrolled</span>.
+                  </p>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[11px] font-semibold text-rose-900/80 uppercase">
+                      Aadhar number
+                    </label>
+                    <Input
+                      value={editAadhar}
+                      onChange={(e) =>
+                        setEditAadhar(
+                          e.target.value.replace(/\D/g, "").slice(0, 12),
+                        )
+                      }
+                      placeholder="12-digit Aadhar number"
+                      inputMode="numeric"
+                      maxLength={12}
+                    />
+                    <p className="text-[10px] text-rose-900/70">
+                      12 digits, must start with 2-9. Saved encrypted.
+                    </p>
+                  </div>
+                  <UploadMediaContainer
+                    title="Learner photo"
+                    description="Upload the learner's photo (passport-style)."
+                    type="image"
+                    folderName={`internships/${
+                      detail.internship?.slug ??
+                      detail.internshipSnapshot?.slug ??
+                      "documentation"
+                    }/learner_photos`}
+                    mediaUrl={editPhotoUrl}
+                    mediaSource={editPhotoSource}
+                    s3Key={editPhotoS3Key}
+                    onFileUpload={handleEditDocPhotoUpload}
+                    onFileRemove={handleEditDocPhotoRemove}
+                    maxSize={2}
+                    acceptedFormats={[".jpg", ".jpeg", ".png"]}
+                    isUploading={docPhotoUploading}
+                    error={docPhotoUploadError ?? undefined}
+                    showConfirmation={false}
+                  />
+                  {docsError && (
+                    <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded px-2 py-1">
+                      {docsError}
+                    </p>
+                  )}
+                  <div className="flex justify-end gap-2 pt-1 border-t border-rose-200">
+                    <WhiteButton
+                      type="button"
+                      glow={false}
+                      onClick={cancelEditDocs}
+                      disabled={savingDocs}
+                    >
+                      Cancel
+                    </WhiteButton>
+                    <OrangeButton
+                      type="button"
+                      glow={false}
+                      onClick={() => void handleSaveDocs()}
+                      disabled={savingDocs || docPhotoUploading}
+                    >
+                      {savingDocs ? "Saving…" : "Upload & enrol"}
+                    </OrangeButton>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <p className="text-xs text-rose-900/85 leading-snug">
+                    Awaiting Aadhar &amp; photo from the learner. Tasks and the
+                    certification exam stay locked until they submit.
+                  </p>
+                  <WhiteButton
+                    type="button"
+                    glow={false}
+                    onClick={startEditDocs}
+                    className="w-full text-sm"
+                  >
+                    Upload on behalf of learner
+                  </WhiteButton>
+                </>
+              )}
+            </div>
+          ) : null}
 
           {canMoveBatch ? (
             <div className="rounded-lg border border-amber-100 bg-amber-50/80 px-3 py-3 space-y-2">

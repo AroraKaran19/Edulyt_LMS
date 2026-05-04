@@ -20,6 +20,8 @@ import {
   getLearnerEntranceExam,
   getLearnerProgramBySlug,
   withdrawPaymentPendingEnrollmentForLearner,
+  submitInternshipDocumentation,
+  adminUpdateInternshipDocumentation,
 } from "../services/internshipEnrollment.services";
 
 /**
@@ -330,6 +332,70 @@ export const getLearnerProgramBySlugController = asyncHandler(
       slug,
     );
     sendSuccessResponse(res, result, "Program detail fetched", 200);
+  },
+);
+
+/**
+ * @route   POST /api/internship-enrollments/me/:enrollmentId/documentation
+ * @desc    Learner submits Aadhar + photo to leave `pending_documentation`
+ * @body    { aadharCardNumber, learnerPhoto, learnerPhotoS3Key }
+ * @access  Authenticated user (enrollment owner)
+ */
+export const submitInternshipDocumentationController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const userId = req.user?._id;
+    if (!userId) throw new AppError("Unauthorized", 401);
+
+    const enrollmentId = String(req.params.enrollmentId ?? "").trim();
+    if (!enrollmentId) throw new AppError("enrollmentId is required", 400);
+
+    const { aadharCardNumber, learnerPhoto, learnerPhotoS3Key } =
+      req.body as {
+        aadharCardNumber?: string;
+        learnerPhoto?: string;
+        learnerPhotoS3Key?: string;
+      };
+
+    const result = await submitInternshipDocumentation(
+      enrollmentId,
+      new mongoose.Types.ObjectId(String(userId)),
+      {
+        aadharCardNumber: String(aadharCardNumber ?? ""),
+        learnerPhoto: String(learnerPhoto ?? ""),
+        learnerPhotoS3Key: String(learnerPhotoS3Key ?? ""),
+      },
+    );
+    sendSuccessResponse(res, result, "Documentation submitted", 200);
+  },
+);
+
+/**
+ * @route   PATCH /api/internship-enrollments/admin/:enrollmentId/documentation
+ * @desc    Admin edits the documentation (Aadhar / photo) on an enrollment
+ * @body    { aadharCardNumber?, learnerPhoto?, learnerPhotoS3Key? }
+ * @access  Admin
+ */
+export const adminUpdateInternshipDocumentationController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const adminUserId = req.user?._id;
+    if (!adminUserId) throw new AppError("Unauthorized", 401);
+
+    const enrollmentId = String(req.params.enrollmentId ?? "").trim();
+    if (!enrollmentId) throw new AppError("enrollmentId is required", 400);
+
+    const { aadharCardNumber, learnerPhoto, learnerPhotoS3Key } =
+      req.body as {
+        aadharCardNumber?: string;
+        learnerPhoto?: string;
+        learnerPhotoS3Key?: string;
+      };
+
+    const row = await adminUpdateInternshipDocumentation(enrollmentId, {
+      aadharCardNumber,
+      learnerPhoto,
+      learnerPhotoS3Key,
+    });
+    sendSuccessResponse(res, row, "Documentation updated", 200);
   },
 );
 

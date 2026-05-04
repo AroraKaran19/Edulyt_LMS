@@ -132,6 +132,9 @@ export const ENDPOINTS = {
     /** GET — enrolled-program detail + unlocked tasks by internship slug. */
     meProgramBySlug: (slug: string) =>
       `/internship-enrollments/me/program/${encodeURIComponent(slug)}`,
+    /** POST — learner submits Aadhar + photo to leave `pending_documentation`. */
+    meSubmitDocumentation: (enrollmentId: string) =>
+      `/internship-enrollments/me/${encodeURIComponent(enrollmentId)}/documentation`,
     /** POST — learner registers (entrance exam or paid seat). Body: { internshipId, batchId, path? } */
     create: "/internship-enrollments",
     register: "/internship-enrollments",
@@ -148,6 +151,9 @@ export const ENDPOINTS = {
       `/internship-enrollments/admin/${encodeURIComponent(enrollmentId)}/status`,
     adminChangeBatch: (enrollmentId: string) =>
       `/internship-enrollments/admin/${encodeURIComponent(enrollmentId)}/batch`,
+    /** PATCH — admin edits Aadhar number / learner photo on an enrollment. */
+    adminUpdateDocumentation: (enrollmentId: string) =>
+      `/internship-enrollments/admin/${encodeURIComponent(enrollmentId)}/documentation`,
     adminDelete: (enrollmentId: string) =>
       `/internship-enrollments/admin/${encodeURIComponent(enrollmentId)}`,
   },

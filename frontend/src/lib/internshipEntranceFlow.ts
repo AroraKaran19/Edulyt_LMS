@@ -1,7 +1,10 @@
 /**
  * Merit-path stages where the learner still has an action to take
- * (exam not yet submitted). Used for dashboard reminders.
- * `exam_attempted` and `in_merit_pool` are excluded — nothing actionable there.
+ * (exam not yet submitted). Used for dashboard reminders and the entrance-exam
+ * banner. `exam_attempted` and `in_merit_pool` are excluded — nothing
+ * actionable there. `pending_documentation` is NOT included here because the
+ * dashboard card already renders a dedicated "Submit documents" CTA for it;
+ * adding it would mis-fire the entrance-exam banner.
  */
 export const ENTRANCE_EXAM_ATTENTION_STATUSES = [
   "exam_registered",

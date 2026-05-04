@@ -4,6 +4,7 @@ import Link from "next/link";
 import {
   ArrowUpRight,
   Calendar,
+  FileText,
   GraduationCap,
   Hourglass,
   LockOpen,
@@ -14,6 +15,7 @@ import { cn } from "@/lib/utils";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import Modal from "@/components/ui/Modal";
+import DocumentationSubmissionModal from "./DocumentationSubmissionModal";
 import ExamCountdownButton from "./ExamCountdownButton";
 import {
   formatCertExamUtcRange,
@@ -36,6 +38,8 @@ function statusBadgeClass(status: string) {
     return "bg-sky-100 text-sky-900 border-sky-200";
   if (status === "payment_pending")
     return "bg-orange-200 text-orange-950 border-orange-300";
+  if (status === "pending_documentation")
+    return "bg-rose-100 text-rose-900 border-rose-200";
   if (
     status === "dropped" ||
     status === "revoked" ||
@@ -49,6 +53,7 @@ function statusBadgeClass(status: string) {
 
 function formatStatusLabel(status: string) {
   if (status === "admin_rejected") return "Not Pass";
+  if (status === "pending_documentation") return "Documents needed";
   return status.replace(/_/g, " ");
 }
 
@@ -226,6 +231,7 @@ export default function DashboardInternshipCard({ row, onWithdrawn }: Props) {
   const [withdrawing, setWithdrawing] = useState(false);
   const [resumingPayment, setResumingPayment] = useState(false);
   const [withdrawConfirmOpen, setWithdrawConfirmOpen] = useState(false);
+  const [docsModalOpen, setDocsModalOpen] = useState(false);
   const title =
     row.internshipSnapshot?.title ||
     row.internship?.title ||
@@ -551,6 +557,33 @@ export default function DashboardInternshipCard({ row, onWithdrawn }: Props) {
                   <BuyConfirmedSeatCta row={row} variant="post_fail" />
                 )}
               </div>
+            ) : row.status === "pending_documentation" ? (
+              (() => {
+                const docsEnd = row.documentationEndAt
+                  ? new Date(row.documentationEndAt).getTime()
+                  : null;
+                const windowClosed = docsEnd !== null && now > docsEnd;
+                return (
+                  <div className="flex flex-col gap-2">
+                    <p className="text-[11px] text-rose-900/85 leading-snug">
+                      {windowClosed
+                        ? "The documentation window has closed. Contact your program administrator to complete documentation and unlock tasks."
+                        : "Submit your Aadhar and a recent photo to unlock tasks and the certification exam."}
+                    </p>
+                    <div className="flex justify-end">
+                      <OrangeButton
+                        glow={false}
+                        type="button"
+                        onClick={() => setDocsModalOpen(true)}
+                        className="inline-flex items-center justify-center gap-1.5 min-h-9 px-4 text-xs sm:text-sm font-semibold"
+                      >
+                        <FileText className="h-3.5 w-3.5" />
+                        {windowClosed ? "View status" : "Submit documents"}
+                      </OrangeButton>
+                    </div>
+                  </div>
+                );
+              })()
             ) : row.status === "payment_pending" ? (
               <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
                 <p className="text-[11px] text-stone-600 max-w-xl leading-snug">
@@ -689,6 +722,18 @@ export default function DashboardInternshipCard({ row, onWithdrawn }: Props) {
           </OrangeButton>
         </div>
       </Modal>
+
+      <DocumentationSubmissionModal
+        isOpen={docsModalOpen}
+        onClose={() => setDocsModalOpen(false)}
+        enrollmentId={row._id}
+        internshipSlug={
+          row.internship?.slug ?? row.internshipSnapshot?.slug ?? ""
+        }
+        documentationStartAt={row.documentationStartAt}
+        documentationEndAt={row.documentationEndAt}
+        onSubmitted={() => onWithdrawn?.()}
+      />
     </>
   );
 }

@@ -55,6 +55,8 @@ const getInitialFormData = (
     certificationThreshold: 0,
     featured: false,
     headerList: [],
+    documentationStartAt: "",
+    documentationEndAt: "",
     discount: createDefaultInternshipDiscount(),
     analytics: createDefaultInternshipAnalytics(),
     batches: isEditMode
@@ -242,6 +244,8 @@ const transformFormDataToInternship = (
     headerList: formData.headerList
       .map((s) => String(s).trim())
       .filter((s) => s.length > 0),
+    documentationStartAt: formData.documentationStartAt?.trim() || undefined,
+    documentationEndAt: formData.documentationEndAt?.trim() || undefined,
     discount: formData.discount,
     analytics: formData.analytics,
     batches: formData.batches.map((b): InternshipBatchApiPayload => {
@@ -340,6 +344,14 @@ const transformInternshipToFormData = (
     headerList: Array.isArray(internship.headerList)
       ? [...internship.headerList]
       : [],
+    documentationStartAt:
+      typeof internship.documentationStartAt === "string"
+        ? internship.documentationStartAt
+        : "",
+    documentationEndAt:
+      typeof internship.documentationEndAt === "string"
+        ? internship.documentationEndAt
+        : "",
     discount: normalizeDiscountFromApi(internship.discount ?? undefined),
     analytics: normalizeInternshipAnalyticsFromApi(internship.analytics),
     batches: ensureBatchPlans(
@@ -690,6 +702,20 @@ export const useInternshipForm = (
     });
   }, [currentScreen, generateSlugFromTitle, getValues, setValue, trigger]);
 
+  const ensureDocumentationWindowValidated =
+    useCallback(async (): Promise<boolean> => {
+      const ok = await trigger([
+        "documentationStartAt",
+        "documentationEndAt",
+      ] as Parameters<typeof trigger>[0]);
+      if (!ok) {
+        toast.error(
+          "Documentation submission opens and closes (IST) are required.",
+        );
+      }
+      return ok;
+    }, [trigger]);
+
   const nextScreen = useCallback(async () => {
     const ok = await validateCurrentScreen();
     if (!ok) {
@@ -821,6 +847,13 @@ export const useInternshipForm = (
       setIsCreating(true);
       setCreateError("");
 
+      const docOk = await ensureDocumentationWindowValidated();
+      if (!docOk) {
+        const err = "Documentation submission window is incomplete.";
+        setCreateError(err);
+        throw new Error(err);
+      }
+
       const formData = getValues();
       const partnerCollegeIds = formData.partnerColleges ?? [];
       const internshipData = transformFormDataToInternship(
@@ -877,7 +910,7 @@ export const useInternshipForm = (
     } finally {
       setIsCreating(false);
     }
-  }, [getValues, setValue, createInternshipMetadata]);
+  }, [getValues, setValue, createInternshipMetadata, ensureDocumentationWindowValidated]);
 
   const updateInternshipHandler = useCallback(async (): Promise<void> => {
     if (!isEditMode || !internshipId) {
@@ -889,6 +922,11 @@ export const useInternshipForm = (
     try {
       setIsUpdating(true);
       setUpdateError("");
+
+      const docOk = await ensureDocumentationWindowValidated();
+      if (!docOk) {
+        throw new Error("Documentation submission window is incomplete.");
+      }
 
       const formData = getValues();
       const partnerCollegeIds = formData.partnerColleges ?? [];
@@ -916,7 +954,14 @@ export const useInternshipForm = (
     } finally {
       setIsUpdating(false);
     }
-  }, [isEditMode, internshipId, getValues, setValue, updateInternshipMetadata]);
+  }, [
+    isEditMode,
+    internshipId,
+    getValues,
+    setValue,
+    updateInternshipMetadata,
+    ensureDocumentationWindowValidated,
+  ]);
 
   const updateInternshipMetadataHandler = useCallback(async (): Promise<void> => {
     let targetInternshipId = internshipId;
@@ -938,6 +983,11 @@ export const useInternshipForm = (
     try {
       setIsUpdating(true);
       setUpdateError("");
+
+      const docOk = await ensureDocumentationWindowValidated();
+      if (!docOk) {
+        throw new Error("Documentation submission window is incomplete.");
+      }
 
       const formData = getValues();
       const partnerCollegeIds = formData.partnerColleges ?? [];
@@ -982,6 +1032,7 @@ export const useInternshipForm = (
     setValue,
     updateInternshipMetadata,
     nextScreen,
+    ensureDocumentationWindowValidated,
   ]);
 
   // ===================

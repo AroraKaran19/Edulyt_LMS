@@ -15,6 +15,7 @@ interface ErrorResponse {
     message: string;
     type: string;
     statusCode: number;
+    code?: string;
     details?: any;
     timestamp: string;
     path: string;
@@ -147,12 +148,18 @@ export const errorHandler = (
     errorType = "ServerError";
   }
 
+  const code =
+    typeof (err as { code?: unknown }).code === "string"
+      ? ((err as { code: string }).code)
+      : undefined;
+
   const errorResponse: ErrorResponse = {
     success: false,
     error: {
       message,
       type: errorType,
       statusCode,
+      ...(code && { code }),
       timestamp: new Date().toISOString(),
       path: req.path,
       ...(process.env.NODE_ENV === "development" && {
@@ -219,11 +226,13 @@ export const notFoundHandler = (
 export class AppError extends Error {
   public statusCode: number;
   public isOperational: boolean;
+  public code?: string;
 
-  constructor(message: string, statusCode: number) {
+  constructor(message: string, statusCode: number, code?: string) {
     super(message);
     this.statusCode = statusCode;
     this.isOperational = true;
+    if (code) this.code = code;
 
     Error.captureStackTrace(this, this.constructor);
   }

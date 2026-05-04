@@ -54,7 +54,12 @@ export const createInternshipSeatEnrollmentAfterPayment = async (
     throw new AppError("Internship enrollment not found", 404);
   }
 
-  if (enrollment.status === "enrolled") {
+  if (
+    enrollment.status === "enrolled" ||
+    enrollment.status === "pending_documentation"
+  ) {
+    // Idempotent: payment already settled. Learners may remain in
+    // `pending_documentation` until they submit KYC.
     return enrollment;
   }
 
@@ -91,7 +96,7 @@ export const createInternshipSeatEnrollmentAfterPayment = async (
   }
 
   enrollment.enrollmentType = "paid";
-  enrollment.status = "enrolled";
+  enrollment.status = "pending_documentation";
   enrollment.enrolledAt = new Date();
   const ans = enrollment.applicationAnswers as Record<string, unknown> | undefined;
   const months = parseProgramDurationMonthsFromAnswers(ans ?? null);

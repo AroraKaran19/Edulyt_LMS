@@ -15,6 +15,8 @@ import {
   listEntranceExamCohortsController,
   listCertificationExamCohortsController,
   adminBulkApproveToEnrolledController,
+  submitInternshipDocumentationController,
+  adminUpdateInternshipDocumentationController,
 } from "../controllers/internshipEnrollment.controller";
 
 const router = Router();
@@ -32,6 +34,12 @@ router.delete("/me/:enrollmentId", withdrawPaymentPendingEnrollmentController);
 
 /** GET /api/internship-enrollments/me/entrance-exam?enrollmentId= — learner fetches exam */
 router.get("/me/entrance-exam", getLearnerEntranceExamController);
+
+/** POST /api/internship-enrollments/me/:enrollmentId/documentation — learner submits Aadhar + photo */
+router.post(
+  "/me/:enrollmentId/documentation",
+  submitInternshipDocumentationController,
+);
 
 /** GET /api/internship-enrollments/me/program/:slug — learner program detail + tasks */
 router.get("/me/program/:slug", getLearnerProgramBySlugController);
@@ -86,6 +94,13 @@ router.patch(
   "/admin/:enrollmentId/batch",
   verifyAdmin,
   adminChangeEnrollmentBatchController,
+);
+
+/** PATCH /api/internship-enrollments/admin/:enrollmentId/documentation */
+router.patch(
+  "/admin/:enrollmentId/documentation",
+  verifyAdmin,
+  adminUpdateInternshipDocumentationController,
 );
 
 export default router;

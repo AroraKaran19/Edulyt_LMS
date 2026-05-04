@@ -47,6 +47,8 @@ export function getInternshipScreenTriggerFields(
         "jobDescription",
         "whatsappGroupLink",
         "certificationThreshold",
+        "documentationStartAt",
+        "documentationEndAt",
       ];
       const hl = context?.headerList ?? [];
       hl.forEach((_, i) => {

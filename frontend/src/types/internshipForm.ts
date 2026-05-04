@@ -82,6 +82,14 @@ export interface InternshipFormData {
   /** Hero highlight lines (Screen 1) — shown on public internship header. */
   headerList: string[];
 
+  /**
+   * Documentation submission window (ISO UTC strings; rendered as IST in UI).
+   * Required on Screen 1. Learners enter `pending_documentation` after selection
+   * until they submit Aadhar + photo.
+   */
+  documentationStartAt?: string;
+  documentationEndAt?: string;
+
   /** Document-level discount (Screen 3) — same shape as course `discount`. */
   discount: CourseDiscount;
 

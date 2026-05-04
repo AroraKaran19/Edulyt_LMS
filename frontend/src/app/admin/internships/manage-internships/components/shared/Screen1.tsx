@@ -20,6 +20,33 @@ const RichTextEditor = dynamic(
   { ssr: false },
 );
 
+/**
+ * IST (UTC+5:30) helpers for the documentation window pickers.
+ * The HTML `datetime-local` input is timezone-naive — we treat it as IST.
+ */
+const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+
+function istLocalToIso(istLocal: string): string {
+  if (!istLocal?.trim()) return "";
+  const [d, t] = istLocal.split("T");
+  if (!d || !t) return "";
+  const [y, mo, da] = d.split("-").map(Number);
+  const [h, mi] = t.split(":").map(Number);
+  if ([y, mo, da, h, mi].some((n) => Number.isNaN(n))) return "";
+  const utcMs = Date.UTC(y, mo - 1, da, h, mi, 0, 0) - IST_OFFSET_MS;
+  return new Date(utcMs).toISOString();
+}
+
+function isoToIstLocal(iso: string | undefined): string {
+  const v = (iso ?? "").trim();
+  if (!v) return "";
+  const t = new Date(v);
+  if (Number.isNaN(t.getTime())) return "";
+  const ist = new Date(t.getTime() + IST_OFFSET_MS);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${ist.getUTCFullYear()}-${p(ist.getUTCMonth() + 1)}-${p(ist.getUTCDate())}T${p(ist.getUTCHours())}:${p(ist.getUTCMinutes())}`;
+}
+
 const Screen1 = () => {
   const [isMounted, setIsMounted] = useState(false);
   const descriptionEditorRef = useRef<EditorHandle | null>(null);
@@ -387,6 +414,93 @@ const Screen1 = () => {
           </p>
         </Container>
       )}
+      <Container
+        description="Documentation submission window (post-result Aadhar + photo)"
+        className="w-full shadow-none border-none pb-0"
+        classNameBody="flex flex-col gap-2 max-w-2xl"
+      >
+        <p className="text-xs text-gray-600">
+          After result announcement, all enrolled learners (merit-approved or
+          paid) submit Aadhar &amp; photo within this window. Until they do,
+          tasks and the certification exam stay locked. Late submissions are
+          accepted and flagged. Both fields use <strong>IST</strong> and are
+          required for every internship.
+        </p>
+        <div className="flex flex-col sm:flex-row gap-3 mt-1">
+          <Controller
+            name="documentationStartAt"
+            control={control}
+            rules={{
+              validate: (v) => {
+                const start = String(v ?? "").trim();
+                if (!start) return "Documentation window start is required";
+                const end = String(watch("documentationEndAt") ?? "").trim();
+                if (end && start && new Date(end) <= new Date(start)) {
+                  return "End must be after start";
+                }
+                return true;
+              },
+            }}
+            render={({ field }) => (
+              <div className="flex-1 flex flex-col gap-1">
+                <label className="text-sm font-medium text-black">
+                  Documentation submission opens (IST)
+                </label>
+                <input
+                  type="datetime-local"
+                  value={isoToIstLocal(field.value)}
+                  onChange={(e) =>
+                    field.onChange(istLocalToIso(e.target.value))
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
+                />
+                {errors.documentationStartAt?.message && (
+                  <p className="text-xs text-red-600">
+                    {errors.documentationStartAt.message as string}
+                  </p>
+                )}
+              </div>
+            )}
+          />
+          <Controller
+            name="documentationEndAt"
+            control={control}
+            rules={{
+              validate: (v) => {
+                const end = String(v ?? "").trim();
+                if (!end) return "Documentation window end is required";
+                const start = String(
+                  watch("documentationStartAt") ?? "",
+                ).trim();
+                if (start && new Date(end) <= new Date(start)) {
+                  return "End must be after start";
+                }
+                return true;
+              },
+            }}
+            render={({ field }) => (
+              <div className="flex-1 flex flex-col gap-1">
+                <label className="text-sm font-medium text-black">
+                  Documentation submission closes (IST)
+                </label>
+                <input
+                  type="datetime-local"
+                  value={isoToIstLocal(field.value)}
+                  onChange={(e) =>
+                    field.onChange(istLocalToIso(e.target.value))
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
+                />
+                {errors.documentationEndAt?.message && (
+                  <p className="text-xs text-red-600">
+                    {errors.documentationEndAt.message as string}
+                  </p>
+                )}
+              </div>
+            )}
+          />
+        </div>
+      </Container>
       <Container
         description="Define the core details of your internship"
         className="w-full shadow-none border-none pt-0"

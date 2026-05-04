@@ -341,6 +341,13 @@ const internshipSchema = new mongoose.Schema<Internship>(
       default: defaultInternshipAnalytics,
       _id: false,
     },
+    /**
+     * Documentation submission window (UTC). Required for every internship — merit
+     * or paid enrollees pass through `pending_documentation` before reaching
+     * `enrolled`. See `internship.types.ts`.
+     */
+    documentationStartAt: { type: Date, default: undefined },
+    documentationEndAt: { type: Date, default: undefined },
   },
   { timestamps: true },
 );
