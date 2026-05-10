@@ -148,6 +148,20 @@ export type InternshipEnrollmentListRow = {
     learnerPhotoS3Key: string;
     submittedAt: string;
   };
+  /**
+   * Rejection note written by admin when sending docs back for resubmission.
+   * Returned on both admin and learner responses.
+   */
+  documentationRejectionNote?: string;
+
+  /** ISO — when the offer-letter cron processed this enrollment. Admin-facing. */
+  offerLetterGeneratedAt?: string;
+
+  /** Unique intern ID assigned at offer-letter generation (e.g. "AI-00042"). Admin-facing. */
+  internId?: string;
+
+  /** Public S3 URL of the generated offer letter DOCX. Admin-facing. */
+  offerLetterUrl?: string;
 };
 
 /**

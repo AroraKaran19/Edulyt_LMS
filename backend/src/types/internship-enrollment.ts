@@ -43,17 +43,20 @@ export type InternshipEnrollmentType = "merit" | "paid";
  *   paused     — enrollment temporarily frozen (e.g. medical leave).
  */
 export type InternshipEnrollmentStatus =
-  | "exam_registered"        // merit: form submitted, waiting for exam date
-  | "exam_attempted"         // merit: exam submitted, result pending
-  | "in_merit_pool"          // merit: passed threshold, awaiting admin seat selection
-  | "admin_rejected"         // merit: admin did not select this candidate (terminal)
-  | "payment_pending"        // paid: payment initiated, awaiting gateway confirmation
-  | "pending_documentation"  // both paths: selected, awaiting Aadhar + photo upload before tasks unlock
-  | "enrolled"               // both paths: fully active enrollment (documentation complete if window configured)
-  | "completed"              // post-enrollment: program finished
-  | "dropped"                // post-enrollment: voluntary withdrawal
-  | "revoked"                // post-enrollment: admin-forced removal
-  | "paused";                // post-enrollment: temporarily frozen
+  | "exam_registered"           // merit: form submitted, waiting for exam date
+  | "exam_attempted"            // merit: exam submitted, result pending
+  | "in_merit_pool"             // merit: passed threshold, awaiting admin seat selection
+  | "admin_rejected"            // merit: admin did not select this candidate (terminal)
+  | "payment_pending"           // paid: payment initiated, awaiting gateway confirmation
+  | "pending_documentation"     // both paths: selected, awaiting Aadhar + photo upload
+  | "docs_under_review"         // both paths: learner submitted docs, awaiting admin verification
+  | "offer_letter_pending"      // both paths: admin approved docs, cron will generate offer letter and enroll
+  | "re_pending_documentation"  // both paths: admin rejected docs, learner must resubmit
+  | "enrolled"                  // both paths: fully active enrollment
+  | "completed"                 // post-enrollment: program finished
+  | "dropped"                   // post-enrollment: voluntary withdrawal
+  | "revoked"                   // post-enrollment: admin-forced removal
+  | "paused";                   // post-enrollment: temporarily frozen
 
 /**
  * Documentation submitted by the learner during the post-result documentation
@@ -181,6 +184,27 @@ export interface InternshipEnrollment {
    * has a documentation window configured.
    */
   documentation?: InternshipEnrollmentDocumentation;
+
+  /** `User._id` of the admin who approved or rejected the submitted documentation. */
+  documentationReviewedBy?: string;
+
+  /** Timestamp when the admin reviewed (approved or rejected) the submitted documentation. */
+  documentationReviewedAt?: Date;
+
+  /** Rejection note set by admin when sending enrollment back to `re_pending_documentation`. */
+  documentationRejectionNote?: string;
+
+  /** Timestamp set by the offer-letter cron when it processed this enrollment. */
+  offerLetterGeneratedAt?: Date;
+
+  /**
+   * Unique intern identifier assigned by the offer-letter cron, format: AI-XXXXX.
+   * Printed on the generated offer letter.
+   */
+  internId?: string;
+
+  /** Public S3 URL of the generated offer letter DOCX. Set by the offer-letter cron. */
+  offerLetterUrl?: string;
 
   /**
    * Cumulative score points earned from **task** submissions in this internship.
