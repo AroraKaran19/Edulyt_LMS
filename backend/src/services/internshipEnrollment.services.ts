@@ -2501,14 +2501,14 @@ export async function getLearnerProgramBySlug(
 // ─── Documentation submission ────────────────────────────────────────────────
 
 /**
- * Learner submits Aadhar + photo to leave `pending_documentation` and become
- * `enrolled`. Submissions outside the configured window are rejected with
- * `DOCUMENTATION_WINDOW_NOT_OPEN` / `DOCUMENTATION_WINDOW_CLOSED` — past the
- * close time the learner must contact a program administrator.
+ * Learner submits Aadhar + photo from `pending_documentation` or
+ * `re_pending_documentation`, transitioning the enrollment to
+ * `docs_under_review` for admin review. Submissions outside the configured
+ * window are rejected with `DOCUMENTATION_WINDOW_NOT_OPEN` /
+ * `DOCUMENTATION_WINDOW_CLOSED`.
  *
  * Aadhar is encrypted at the application layer (AES-256-GCM); only the
- * ciphertext + IV + tag are persisted. The photo URL points at S3 (uploaded
- * separately by the client through the existing upload flow).
+ * ciphertext + IV + tag are persisted.
  */
 export async function submitInternshipDocumentation(
   enrollmentId: string,
@@ -2545,7 +2545,10 @@ export async function submitInternshipDocumentation(
   if (String(doc.user) !== String(userId)) {
     throw new AppError("Forbidden", 403);
   }
-  if (String(doc.status) !== "pending_documentation") {
+  if (
+    String(doc.status) !== "pending_documentation" &&
+    String(doc.status) !== "re_pending_documentation"
+  ) {
     throw new AppError(
       `Cannot submit documents from status "${doc.status}"`,
       400,
@@ -2585,7 +2588,7 @@ export async function submitInternshipDocumentation(
     learnerPhotoS3Key: photoKey,
     submittedAt: now,
   } as typeof doc.documentation;
-  doc.status = "enrolled" as typeof doc.status;
+  doc.status = "docs_under_review" as typeof doc.status;
   await doc.save();
 
   return {
