@@ -22,6 +22,7 @@ import {
   withdrawPaymentPendingEnrollmentForLearner,
   submitInternshipDocumentation,
   adminUpdateInternshipDocumentation,
+  adminVerifyInternshipDocumentation,
 } from "../services/internshipEnrollment.services";
 
 /**
@@ -396,6 +397,44 @@ export const adminUpdateInternshipDocumentationController = asyncHandler(
       learnerPhotoS3Key,
     });
     sendSuccessResponse(res, row, "Documentation updated", 200);
+  },
+);
+
+/**
+ * @route   POST /api/internship-enrollments/admin/:enrollmentId/documentation/verify
+ * @desc    Admin approves or rejects submitted documentation on a docs_under_review enrollment
+ * @body    { action: "approve" | "reject", rejectionNote?: string }
+ * @access  Admin
+ */
+export const adminVerifyInternshipDocumentationController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const adminUserId = req.user?._id;
+    if (!adminUserId) throw new AppError("Unauthorized", 401);
+
+    const enrollmentId = String(req.params.enrollmentId ?? "").trim();
+    if (!enrollmentId) throw new AppError("enrollmentId is required", 400);
+
+    const { action, rejectionNote } = req.body as {
+      action?: string;
+      rejectionNote?: string;
+    };
+
+    if (action !== "approve" && action !== "reject") {
+      throw new AppError('action must be "approve" or "reject"', 400);
+    }
+
+    const row = await adminVerifyInternshipDocumentation(
+      enrollmentId,
+      action,
+      new mongoose.Types.ObjectId(String(adminUserId)),
+      typeof rejectionNote === "string" ? rejectionNote : undefined,
+    );
+
+    const message =
+      action === "approve"
+        ? "Documentation approved — enrollment queued for offer letter"
+        : "Documentation rejected — learner must resubmit";
+    sendSuccessResponse(res, row, message, 200);
   },
 );
 

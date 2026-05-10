@@ -17,6 +17,7 @@ import {
   adminBulkApproveToEnrolledController,
   submitInternshipDocumentationController,
   adminUpdateInternshipDocumentationController,
+  adminVerifyInternshipDocumentationController,
 } from "../controllers/internshipEnrollment.controller";
 
 const router = Router();
@@ -101,6 +102,13 @@ router.patch(
   "/admin/:enrollmentId/documentation",
   verifyAdmin,
   adminUpdateInternshipDocumentationController,
+);
+
+/** POST /api/internship-enrollments/admin/:enrollmentId/documentation/verify */
+router.post(
+  "/admin/:enrollmentId/documentation/verify",
+  verifyAdmin,
+  adminVerifyInternshipDocumentationController,
 );
 
 export default router;
