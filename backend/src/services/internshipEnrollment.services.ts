@@ -203,6 +203,10 @@ export async function listInternshipEnrollmentsAdmin(
   } = options;
 
   const PROGRAM_STATUSES = [
+    "pending_documentation",
+    "docs_under_review",
+    "offer_letter_pending",
+    "re_pending_documentation",
     "enrolled",
     "completed",
     "paused",
@@ -518,6 +522,21 @@ export async function getInternshipEnrollmentByIdAdmin(
     documentation: decryptDocumentationForAdmin(
       (doc as { documentation?: unknown }).documentation,
     ),
+    documentationRejectionNote:
+      typeof (doc as { documentationRejectionNote?: string }).documentationRejectionNote === "string"
+        ? (doc as { documentationRejectionNote: string }).documentationRejectionNote
+        : undefined,
+    offerLetterGeneratedAt: toIso(
+      (doc as { offerLetterGeneratedAt?: Date }).offerLetterGeneratedAt,
+    ),
+    internId:
+      typeof (doc as { internId?: string }).internId === "string"
+        ? (doc as { internId: string }).internId
+        : undefined,
+    offerLetterUrl:
+      typeof (doc as { offerLetterUrl?: string }).offerLetterUrl === "string"
+        ? (doc as { offerLetterUrl: string }).offerLetterUrl
+        : undefined,
   };
 }
 
@@ -1068,7 +1087,11 @@ export async function listMyInternshipEnrollments(
     { documentationStartAt?: string; documentationEndAt?: string }
   >();
   const docsRows = (raw as Record<string, unknown>[]).filter(
-    (d) => String(d.status ?? "") === "pending_documentation" && d.internship,
+    (d) =>
+      (String(d.status ?? "") === "pending_documentation" ||
+        String(d.status ?? "") === "docs_under_review" ||
+        String(d.status ?? "") === "re_pending_documentation") &&
+      d.internship,
   );
   if (docsRows.length > 0) {
     const insIdSet = new Set<string>();
@@ -1484,10 +1507,18 @@ export async function listMyInternshipEnrollments(
         : undefined,
       ...examWindowById.get(String(doc._id)),
       ...certWindowByEnrollmentId.get(String(doc._id)),
-      ...(statusStr === "pending_documentation" && internshipIdFromRef
-        ? docsWindowByInternshipId.get(internshipIdFromRef) ?? {}
-        : {}),
+      ...(
+        (statusStr === "pending_documentation" ||
+          statusStr === "docs_under_review" ||
+          statusStr === "re_pending_documentation") &&
+        internshipIdFromRef
+          ? docsWindowByInternshipId.get(internshipIdFromRef) ?? {}
+          : {}
+      ),
       ...(paymentPendingContext ? { paymentPendingContext } : {}),
+      ...(typeof (doc as Record<string, unknown>).documentationRejectionNote === "string"
+        ? { documentationRejectionNote: (doc as Record<string, unknown>).documentationRejectionNote as string }
+        : {}),
     };
   });
 
@@ -1701,19 +1732,15 @@ export async function getLearnerEntranceExam(
 // ─── Admin: update enrollment status ─────────────────────────────────────────
 
 const ALLOWED_ADMIN_TRANSITIONS: Record<string, string[]> = {
-  /** Admin may move straight to merit pool (e.g. shortlist without exam attempt on file). */
   exam_registered: ["exam_attempted", "in_merit_pool", "admin_rejected"],
   exam_attempted: ["in_merit_pool", "admin_rejected"],
   in_merit_pool: ["enrolled", "admin_rejected"],
-  /** Paid track before gateway clears — admin may still reject the candidate. */
   payment_pending: ["admin_rejected"],
-  /**
-   * Documentation gate. Admin can manually fast-forward to `enrolled`
-   * (e.g. learner submitted docs offline). Revoke and reject also allowed.
-   */
-  pending_documentation: ["enrolled", "admin_rejected", "revoked"],
+  pending_documentation: ["docs_under_review", "enrolled", "admin_rejected", "revoked"],
+  docs_under_review: ["offer_letter_pending", "re_pending_documentation", "enrolled", "admin_rejected", "revoked"],
+  offer_letter_pending: ["enrolled", "revoked"],
+  re_pending_documentation: ["docs_under_review", "pending_documentation", "enrolled", "admin_rejected", "revoked"],
   enrolled: ["completed", "paused", "revoked"],
-  /** Allow marking complete without unpausing first (operational shortcut). */
   paused: ["enrolled", "revoked", "completed"],
 };
 
@@ -2702,6 +2729,60 @@ export async function adminUpdateInternshipDocumentation(
     if (photoProvided) {
       doc.documentation!.learnerPhoto = photoRaw!.trim();
       doc.documentation!.learnerPhotoS3Key = photoKeyRaw!.trim();
+    }
+  }
+
+  await doc.save();
+  return getInternshipEnrollmentByIdAdmin(enrollmentId);
+}
+
+/**
+ * Admin: approve or reject submitted documentation from a `docs_under_review`
+ * enrollment.
+ *
+ *  • approve → `offer_letter_pending`   (cron will generate offer letter and enroll)
+ *  • reject  → `re_pending_documentation` (learner must resubmit via the same endpoint)
+ *
+ * Records `documentationReviewedBy` and `documentationReviewedAt` in both cases.
+ * When rejecting, `documentationRejectionNote` is persisted (optional but recommended).
+ */
+export async function adminVerifyInternshipDocumentation(
+  enrollmentId: string,
+  action: "approve" | "reject",
+  adminUserId: mongoose.Types.ObjectId,
+  rejectionNote?: string,
+): Promise<InternshipEnrollmentListRow> {
+  if (!mongoose.Types.ObjectId.isValid(enrollmentId)) {
+    throw new AppError("Invalid enrollment id", 400);
+  }
+
+  const doc = await InternshipEnrollmentModel.findById(enrollmentId);
+  if (!doc) throw new AppError("Enrollment not found", 404);
+
+  if (String(doc.status) !== "docs_under_review") {
+    throw new AppError(
+      `Documentation can only be verified when status is "docs_under_review". Current status: "${doc.status}"`,
+      400,
+    );
+  }
+
+  if (!doc.documentation) {
+    throw new AppError(
+      "No documentation found on this enrollment to verify",
+      400,
+    );
+  }
+
+  const now = new Date();
+  (doc as unknown as Record<string, unknown>).documentationReviewedBy = adminUserId;
+  (doc as unknown as Record<string, unknown>).documentationReviewedAt = now;
+
+  if (action === "approve") {
+    doc.status = "offer_letter_pending" as typeof doc.status;
+  } else {
+    doc.status = "re_pending_documentation" as typeof doc.status;
+    if (rejectionNote) {
+      (doc as unknown as Record<string, unknown>).documentationRejectionNote = rejectionNote;
     }
   }
 
