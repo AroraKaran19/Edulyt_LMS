@@ -9,6 +9,11 @@ import { generatePaytmChecksum } from "../utils/lib/generatePaytmChecksum";
 import axios from "axios";
 import { AppError } from "../middlewares/error.middleware";
 import { createEnrollmentAfterPayment } from "./order.services";
+import * as fs from "fs";
+import * as path from "path";
+import PizZip from "pizzip";
+import { InternshipEnrollmentModel } from "../models/internshipEnrollment.schema";
+import { uploadFileToS3 } from "./upload.services";
 
 /**
  * Update pending payments for a user
@@ -219,6 +224,149 @@ const handleFailedPayment = async (order: any) => {
   }
 };
 
+function escapeXml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+function formatOfferLetterDate(d: Date): string {
+  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  return `${String(d.getUTCDate()).padStart(2,"0")}-${months[d.getUTCMonth()]}-${d.getUTCFullYear()}`;
+}
+
+async function generateInternId(): Promise<string> {
+  const count = await InternshipEnrollmentModel.countDocuments({
+    internId: { $exists: true, $ne: null },
+  });
+  return `AI-${String(count + 1).padStart(5, "0")}`;
+}
+
+function fillOfferLetterXml(
+  xml: string,
+  data: {
+    letterDate: string;
+    name: string;
+    internId: string;
+    joiningDate: string;
+    domain: string;
+    duration: string;
+  },
+): string {
+  const e = escapeXml;
+
+  // 1. Intern ID — single <w:t> node in template
+  xml = xml.replace("<w:t>AI-XXXX</w:t>", `<w:t>${e(data.internId)}</w:t>`);
+
+  // 2. Letter date header "DD - MM - YYYY" — 5 split runs
+  xml = xml.replace(
+    /<w:t>DD<\/w:t>([\s\S]{1,300}?)<w:t>-<\/w:t>([\s\S]{1,300}?)<w:t>MM<\/w:t>([\s\S]{1,300}?)<w:t>-<\/w:t>([\s\S]{1,300}?)<w:t>YYYY<\/w:t>/,
+    `<w:t>${e(data.letterDate)}</w:t>`,
+  );
+
+  // 3–6. Four bracketed placeholders in order: [name], [joiningDate], [domain], [duration]
+  let idx = 0;
+  const values = [e(data.name), e(data.joiningDate), e(data.domain), e(data.duration)];
+  xml = xml.replace(
+    /<w:t>\[<\/w:t>[\s\S]*?<w:t>\]<\/w:t>/g,
+    () => `<w:t>${values[idx++] ?? ""}</w:t>`,
+  );
+
+  return xml;
+}
+
+const OFFER_LETTER_TEMPLATE = path.resolve(
+  __dirname,
+  "../../frontend/public/course-certificates/Certificates/Airkrit India Offer Letter - Intern - AI-02453 - Template.docx",
+);
+
+function generateOfferLetterBuffer(data: Parameters<typeof fillOfferLetterXml>[1]): Buffer {
+  const templateBuffer = fs.readFileSync(OFFER_LETTER_TEMPLATE);
+  const zip = new PizZip(templateBuffer);
+  const docXml = zip.file("word/document.xml")!.asText();
+  zip.file("word/document.xml", fillOfferLetterXml(docXml, data));
+  return zip.generate({ type: "nodebuffer", compression: "DEFLATE" }) as Buffer;
+}
+
+const processOfferLetterQueue = async () => {
+  const pending = await InternshipEnrollmentModel.find({
+    status: "offer_letter_pending",
+  }).lean();
+
+  if (pending.length === 0) return;
+  console.log(`[offer-letter-cron] Processing ${pending.length} enrollment(s)`);
+
+  for (const row of pending) {
+    try {
+      const doc = await InternshipEnrollmentModel.findById(row._id);
+      if (!doc || String(doc.status) !== "offer_letter_pending") continue;
+
+      const userDoc = await UserModel.findById(doc.user)
+        .select("firstName lastName name")
+        .lean();
+      const name = userDoc
+        ? (
+            [
+              (userDoc as { firstName?: string }).firstName,
+              (userDoc as { lastName?: string }).lastName,
+            ]
+              .filter(Boolean)
+              .join(" ") || (userDoc as { name?: string }).name || "Intern"
+          )
+        : "Intern";
+
+      const existing = (doc as unknown as Record<string, unknown>).internId as string | undefined;
+      const internId = existing ?? (await generateInternId());
+
+      const now = new Date();
+      const joiningDate =
+        doc.enrolledAt instanceof Date
+          ? formatOfferLetterDate(doc.enrolledAt)
+          : formatOfferLetterDate(now);
+
+      const rawTitle = doc.internshipSnapshot?.title ?? "";
+      const domain = rawTitle ? `${rawTitle} Intern` : "Intern";
+
+      const programMonths = (doc as unknown as Record<string, unknown>).programDurationMonths;
+      const duration = String(typeof programMonths === "number" ? programMonths : 3);
+
+      const docxBuffer = generateOfferLetterBuffer({
+        letterDate: formatOfferLetterDate(now),
+        name,
+        internId,
+        joiningDate,
+        domain,
+        duration,
+      });
+
+      const offerLetterUrl = await uploadFileToS3(
+        docxBuffer,
+        `offer-letter-${internId}.docx`,
+        "offer-letters",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      );
+
+      (doc as unknown as Record<string, unknown>).internId = internId;
+      (doc as unknown as Record<string, unknown>).offerLetterGeneratedAt = now;
+      (doc as unknown as Record<string, unknown>).offerLetterUrl = offerLetterUrl;
+      if (!(doc.enrolledAt instanceof Date)) {
+        doc.enrolledAt = now;
+      }
+      doc.status = "enrolled" as typeof doc.status;
+      await doc.save();
+
+      console.log(
+        `[offer-letter-cron] Enrolled ${String(doc._id)} as ${internId} — ${offerLetterUrl}`,
+      );
+    } catch (err) {
+      console.error(`[offer-letter-cron] Failed for ${String(row._id)}:`, err);
+    }
+  }
+};
+
 /**
  * Initialize cron jobs
  */
@@ -237,8 +385,21 @@ export const initializeCronJobs = () => {
     }
   );
 
+  // Process offer-letter queue every 15 minutes
+  cron.schedule(
+    "*/15 * * * *",
+    () => {
+      console.log("⏰ Running offer-letter queue cron job...");
+      processOfferLetterQueue();
+    },
+    {
+      timezone: "Asia/Kolkata",
+    }
+  );
+
   console.log("✅ Cron jobs initialized:");
   console.log("  - Payment verification: Every 10 minutes");
+  console.log("  - Offer-letter queue: Every 15 minutes");
 };
 
 /**
