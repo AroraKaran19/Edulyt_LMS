@@ -4,11 +4,15 @@
  * Run: npm run build && pm2 start ecosystem.config.cjs
  *
  * This starts:
- * - 4 API instances (load balanced by PM2)
- * - worker-cert: fork — cron + certificate queue (single instance; avoid duplicate crons)
- * - worker-collab: fork — collaboration job queue (single instance): email-domain allotments,
- *   partnership-import (CSV) whitelist batching, and course-allotment jobs for import configs.
- *   There is no separate PM2 app for partnership; see dist/collaboration.worker.js.
+ * - 4 API instances (load balanced by PM2; RUN_BACKGROUND_JOBS=false so they
+ *   don't double-poll the queues that worker-cert/worker-collab already handle)
+ * - worker-cert: fork — cron + certificate queue + offer-letter queue (single
+ *   instance; avoid duplicate crons and prevent LibreOffice contention by
+ *   keeping both DOCX→PDF flows in one process). See dist/certificate-worker.js.
+ * - worker-collab: fork — collaboration job queue (single instance):
+ *   email-domain allotments, partnership-import (CSV) whitelist batching, and
+ *   course-allotment jobs for import configs. There is no separate PM2 app
+ *   for partnership; see dist/collaboration.worker.js.
  *
  * Scale API instances: pm2 scale api 8
  */
