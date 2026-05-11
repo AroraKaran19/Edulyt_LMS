@@ -1,5 +1,5 @@
 /**
- * PM2 process: scheduled crons + certificate generation queue.
+ * PM2 process: scheduled crons + certificate + offer-letter generation queues.
  * Do not run multiple instances (duplicate crons / duplicate polling).
  *
  * Run: node dist/certificate-worker.js
@@ -9,6 +9,7 @@ import { connectDB, disconnectDB } from "./config/database";
 import { initializeS3 } from "./config/s3";
 import { initializeCronJobs } from "./services/cron.services";
 import { startCertificateWorker } from "./workers/certificate.worker";
+import { startOfferLetterWorker } from "./workers/offerLetter.worker";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -18,9 +19,10 @@ const start = async () => {
     await connectDB();
     await initializeS3();
 
-    console.log("🕐 Starting certificate worker (cron + certificate jobs)...");
+    console.log("🕐 Starting certificate worker (cron + certificate + offer-letter jobs)...");
     initializeCronJobs();
     startCertificateWorker();
+    startOfferLetterWorker();
 
     console.log("✅ Certificate worker running");
 

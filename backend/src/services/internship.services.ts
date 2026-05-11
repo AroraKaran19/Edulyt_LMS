@@ -250,6 +250,10 @@ const toInternship = (doc: Record<string, unknown>): Internship => {
     jobDescription: doc.jobDescription != null ? String(doc.jobDescription) : "",
     whatsappGroupLink:
       doc.whatsappGroupLink != null ? String(doc.whatsappGroupLink) : "",
+    offerLetterDesignation:
+      doc.offerLetterDesignation != null
+        ? String(doc.offerLetterDesignation)
+        : "",
     mode: (doc.mode as "online" | "offline" | "hybrid") ?? "online",
     perks: Array.isArray(doc.perks) ? doc.perks : [],
     features: Array.isArray(doc.features) ? doc.features : [],

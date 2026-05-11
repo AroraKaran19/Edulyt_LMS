@@ -3,7 +3,9 @@
 import Link from "next/link";
 import {
   ArrowUpRight,
+  BadgeCheck,
   Calendar,
+  Download,
   FileText,
   GraduationCap,
   Hourglass,
@@ -625,51 +627,79 @@ export default function DashboardInternshipCard({ row, onWithdrawn }: Props) {
               </div>
             ) : (
               /* Enrolled / other: standard open-program link */
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-[11px] text-stone-500">
-                  {hideDashboardProgramLink ? (
-                    <>
-                      Your cohort begins{" "}
-                      {start !== "—" ? (
+              <div className="flex flex-col gap-2">
+                {row.offerLetterUrl ? (
+                  <div className="flex items-center justify-between gap-2 rounded-lg border border-emerald-200 bg-emerald-50/70 px-2.5 py-1.5">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <BadgeCheck className="h-4 w-4 shrink-0 text-emerald-700" />
+                      <div className="min-w-0 leading-tight">
+                        <p className="text-[11px] font-semibold text-emerald-900 uppercase tracking-wide">
+                          Offer letter
+                        </p>
+                        {row.internId ? (
+                          <p className="font-mono text-[11px] text-emerald-900/85 truncate">
+                            {row.internId}
+                          </p>
+                        ) : null}
+                      </div>
+                    </div>
+                    <a
+                      href={row.offerLetterUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-900 hover:text-emerald-700 underline-offset-2 hover:underline shrink-0"
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                      Download
+                    </a>
+                  </div>
+                ) : null}
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[11px] text-stone-500">
+                    {hideDashboardProgramLink ? (
+                      <>
+                        Your cohort begins{" "}
+                        {start !== "—" ? (
+                          <span className="font-mono text-stone-700">
+                            {start}
+                          </span>
+                        ) : (
+                          "soon"
+                        )}
+                        . Tasks will be available once the internship starts.
+                      </>
+                    ) : row.internshipSuccessPoints > 0 ? (
+                      <>
                         <span className="font-mono text-stone-700">
-                          {start}
-                        </span>
-                      ) : (
-                        "soon"
-                      )}
-                      . Tasks will be available once the internship starts.
-                    </>
-                  ) : row.internshipSuccessPoints > 0 ? (
-                    <>
-                      <span className="font-mono text-stone-700">
-                        {row.internshipSuccessPoints}
-                      </span>{" "}
-                      success points
-                    </>
+                          {row.internshipSuccessPoints}
+                        </span>{" "}
+                        success points
+                      </>
+                    ) : (
+                      "Track your cohort on the program page"
+                    )}
+                  </p>
+                  {programHref && !hideDashboardProgramLink ? (
+                    <Link
+                      href={programHref}
+                      className="inline-flex items-center gap-1.5 text-sm font-semibold text-amber-950 underline-offset-2 transition hover:text-orange-700 hover:underline shrink-0"
+                    >
+                      {ENROLLED_STATUSES.has(row.status)
+                        ? "View tasks"
+                        : "Open program"}
+                      <ArrowUpRight className="h-4 w-4" />
+                    </Link>
+                  ) : hideDashboardProgramLink ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-xl border border-amber-300/60 bg-amber-50 px-3 py-1.5 text-[11px] font-semibold text-amber-900 shrink-0">
+                      <Hourglass className="h-3 w-3" />
+                      Not started yet
+                    </span>
                   ) : (
-                    "Track your cohort on the program page"
+                    <span className="text-xs text-stone-400">
+                      Program link unavailable
+                    </span>
                   )}
-                </p>
-                {programHref && !hideDashboardProgramLink ? (
-                  <Link
-                    href={programHref}
-                    className="inline-flex items-center gap-1.5 text-sm font-semibold text-amber-950 underline-offset-2 transition hover:text-orange-700 hover:underline shrink-0"
-                  >
-                    {ENROLLED_STATUSES.has(row.status)
-                      ? "View tasks"
-                      : "Open program"}
-                    <ArrowUpRight className="h-4 w-4" />
-                  </Link>
-                ) : hideDashboardProgramLink ? (
-                  <span className="inline-flex items-center gap-1.5 rounded-xl border border-amber-300/60 bg-amber-50 px-3 py-1.5 text-[11px] font-semibold text-amber-900 shrink-0">
-                    <Hourglass className="h-3 w-3" />
-                    Not started yet
-                  </span>
-                ) : (
-                  <span className="text-xs text-stone-400">
-                    Program link unavailable
-                  </span>
-                )}
+                </div>
               </div>
             )}
           </div>

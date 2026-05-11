@@ -16,6 +16,8 @@ import {
   AlertTriangle,
   ClipboardList,
   Sparkles,
+  BadgeCheck,
+  Download,
 } from "lucide-react";
 import { ENDPOINTS } from "@/constants/endpoints";
 import type { LearnerProgramDetail, LearnerTaskRow } from "@/types";
@@ -419,6 +421,38 @@ export default function InternshipProgramPage() {
           </div>
         ) : null}
       </div>
+
+      {enrollment.offerLetterUrl ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-200 bg-emerald-50/70 px-4 py-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="rounded-full bg-emerald-100 p-2 shrink-0">
+              <BadgeCheck className="w-5 h-5 text-emerald-700" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-emerald-950">
+                Your offer letter is ready
+              </p>
+              {enrollment.internId ? (
+                <p className="text-xs text-emerald-900/80">
+                  Intern ID{" "}
+                  <span className="font-mono font-semibold">
+                    {enrollment.internId}
+                  </span>
+                </p>
+              ) : null}
+            </div>
+          </div>
+          <a
+            href={enrollment.offerLetterUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white px-3 py-1.5 text-sm font-semibold transition shrink-0"
+          >
+            <Download className="w-4 h-4" />
+            Download
+          </a>
+        </div>
+      ) : null}
 
       {typeof certShortfall === "number" &&
       certShortfall > 0 &&

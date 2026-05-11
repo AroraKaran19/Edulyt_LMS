@@ -81,6 +81,11 @@ export interface Internship {
   jobDescription?: string;
   /** Learner WhatsApp group invite link (optional). */
   whatsappGroupLink?: string;
+  /**
+   * Role / designation printed on the generated offer letter
+   * (e.g. "Data Analytics Intern"). Required on create/update.
+   */
+  offerLetterDesignation: string;
   mode: "online" | "offline" | "hybrid";
 
   perks: {
@@ -176,6 +181,11 @@ export interface InternshipResponse {
   jobDescription?: string;
   /** Learner WhatsApp group invite link (optional). */
   whatsappGroupLink?: string;
+  /**
+   * Role / designation printed on the generated offer letter
+   * (e.g. "Data Analytics Intern"). Required on create/update.
+   */
+  offerLetterDesignation: string;
   mode: "online" | "offline" | "hybrid";
 
   perks: {

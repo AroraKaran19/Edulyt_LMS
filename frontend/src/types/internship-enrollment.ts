@@ -48,7 +48,10 @@ export type InternshipEnrollmentStatus =
   | "in_merit_pool" // merit: passed threshold, awaiting admin seat selection
   | "admin_rejected" // merit: admin did not select this candidate (terminal)
   | "payment_pending" // paid: payment initiated, awaiting gateway confirmation
-  | "pending_documentation" // both paths: selected, awaiting Aadhar + photo before tasks unlock
+  | "pending_documentation" // both paths: selected, awaiting Aadhar + photo upload
+  | "docs_under_review" // both paths: learner submitted docs, awaiting admin verification
+  | "offer_letter_pending" // both paths: admin approved docs, cron generating offer letter
+  | "re_pending_documentation" // both paths: admin rejected docs, learner must resubmit
   | "enrolled" // both paths: fully active enrollment
   | "completed" // post-enrollment: program finished
   | "dropped" // post-enrollment: voluntary withdrawal
@@ -278,6 +281,14 @@ export interface InternshipEnrollmentListRow {
     learnerPhotoS3Key: string;
     submittedAt: string;
   };
+  /** Rejection note written by admin when sending docs back for resubmission. */
+  documentationRejectionNote?: string;
+  /** ISO — when the offer-letter cron processed this enrollment. */
+  offerLetterGeneratedAt?: string;
+  /** Unique intern ID assigned at offer-letter generation (e.g. "AI-00042"). */
+  internId?: string;
+  /** Public S3 URL of the generated offer letter DOCX. */
+  offerLetterUrl?: string;
 }
 
 // ─── Learner entrance exam ────────────────────────────────────────────────────
@@ -355,6 +366,10 @@ export interface LearnerProgramEnrollment {
     name: string;
     internshipStartDate: string;
   };
+  /** Unique intern ID (e.g. "AI-00042") — present once offer letter has been generated. */
+  internId?: string;
+  /** Public URL of the generated offer letter PDF — present once issued. */
+  offerLetterUrl?: string;
 }
 
 export interface LearnerProgramDetail {

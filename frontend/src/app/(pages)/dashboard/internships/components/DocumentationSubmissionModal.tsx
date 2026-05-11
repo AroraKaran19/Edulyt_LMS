@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { toast } from "react-toastify";
-import { AlertCircle, CalendarClock, MailWarning } from "lucide-react";
+import { AlertCircle, CalendarClock, ExternalLink, MailWarning } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
@@ -13,6 +13,8 @@ import apiClient from "@/configs/apiConfig";
 import { ENDPOINTS } from "@/constants/endpoints";
 
 const AADHAR_RE = /^[2-9]\d{11}$/;
+const TERMS_PDF_URL =
+  "/internship/Airkrit%20India%20Annexure%20-%201%20-%20Terms%20%26%20Conditions.pdf";
 
 interface Props {
   isOpen: boolean;
@@ -57,6 +59,7 @@ export default function DocumentationSubmissionModal({
   const [photoSource, setPhotoSource] = useState<"upload" | "url" | undefined>(
     undefined,
   );
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -99,6 +102,7 @@ export default function DocumentationSubmissionModal({
     setPhotoUrl("");
     setPhotoS3Key("");
     setPhotoSource(undefined);
+    setAcceptedTerms(false);
     setError(null);
     setSubmitting(false);
   };
@@ -115,6 +119,10 @@ export default function DocumentationSubmissionModal({
       setError("Please upload your photo.");
       return;
     }
+    if (!acceptedTerms) {
+      setError("Please review and accept the Terms & Conditions to continue.");
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -124,9 +132,12 @@ export default function DocumentationSubmissionModal({
           aadharCardNumber: trimmedAadhar,
           learnerPhoto: photoUrl,
           learnerPhotoS3Key: photoS3Key,
+          acceptedTerms: true,
         },
       );
-      toast.success("Documents submitted — your tasks are now unlocked.");
+      toast.success(
+        "Documents submitted — they're under admin review. You'll receive your offer letter once approved.",
+      );
       reset();
       onSubmitted?.();
       onClose();
@@ -250,6 +261,30 @@ export default function DocumentationSubmissionModal({
           showConfirmation={false}
         />
 
+        <label className="flex items-start gap-2.5 rounded-lg border border-stone-200 bg-stone-50 px-3 py-2.5 cursor-pointer hover:bg-stone-100/70 transition">
+          <input
+            type="checkbox"
+            checked={acceptedTerms}
+            onChange={(e) => setAcceptedTerms(e.target.checked)}
+            disabled={submitting}
+            className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer accent-orange-600"
+          />
+          <span className="text-xs text-stone-800 leading-relaxed">
+            I have read and accept the{" "}
+            <a
+              href={TERMS_PDF_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 font-semibold text-orange-700 hover:text-orange-800 underline underline-offset-2"
+              onClick={(e) => e.stopPropagation()}
+            >
+              Terms &amp; Conditions (Annexure 1)
+              <ExternalLink className="h-3 w-3" />
+            </a>
+            . <span className="text-red-500">*</span>
+          </span>
+        </label>
+
         {error && (
           <div className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
             <AlertCircle className="h-4 w-4 shrink-0" />
@@ -270,7 +305,7 @@ export default function DocumentationSubmissionModal({
             type="button"
             glow={false}
             onClick={() => void handleSubmit()}
-            disabled={submitting || isUploading}
+            disabled={submitting || isUploading || !acceptedTerms}
           >
             {submitting ? "Submitting…" : "Submit documents"}
           </OrangeButton>

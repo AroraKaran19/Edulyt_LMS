@@ -5,6 +5,7 @@ import { initializeS3 } from "./config/s3";
 import { initializeCronJobs } from "./services/cron.services";
 import { startCertificateWorker } from "./workers/certificate.worker";
 import { startCollaborationWorker } from "./workers/collaboration.worker";
+import { startOfferLetterWorker } from "./workers/offerLetter.worker";
 
 dotenv.config();
 
@@ -25,6 +26,7 @@ const startServer = async () => {
       initializeCronJobs();
       startCertificateWorker();
       startCollaborationWorker();
+      startOfferLetterWorker();
     } else {
       console.log("⏭️  Skipping cron & worker (RUN_BACKGROUND_JOBS=false, running behind load balancer)");
     }

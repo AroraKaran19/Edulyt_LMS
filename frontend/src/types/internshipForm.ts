@@ -160,6 +160,12 @@ export interface InternshipFormData {
   /** WhatsApp community / cohort group invite URL (optional). */
   whatsappGroupLink: string;
 
+  /**
+   * Role / designation printed on the generated offer letter
+   * (e.g. "Data Analytics Intern"). Required.
+   */
+  offerLetterDesignation: string;
+
   // Testimonials (Screen 12)
   testimonials: string[];
 

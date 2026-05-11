@@ -10,10 +10,16 @@ import axios from "axios";
 import { AppError } from "../middlewares/error.middleware";
 import { createEnrollmentAfterPayment } from "./order.services";
 import * as fs from "fs";
+import * as os from "os";
 import * as path from "path";
 import PizZip from "pizzip";
+import Docxtemplater from "docxtemplater";
+import ImageModule from "docxtemplater-image-module-free";
+import QRCode from "qrcode";
 import { InternshipEnrollmentModel } from "../models/internshipEnrollment.schema";
+import { InternshipModel } from "../models/internship.schema";
 import { uploadFileToS3 } from "./upload.services";
+import { convertDocxToPdf } from "../utils/certificateGeneratorDocx";
 
 /**
  * Update pending payments for a user
@@ -278,97 +284,217 @@ function fillOfferLetterXml(
   return xml;
 }
 
+// __dirname is backend/dist/services (or src/services); three segments reach repo root.
 const OFFER_LETTER_TEMPLATE = path.resolve(
   __dirname,
-  "../../frontend/public/course-certificates/Certificates/Airkrit India Offer Letter - Intern - AI-02453 - Template.docx",
+  "../../../frontend/public/course-certificates/Certificates/Airkrit India Offer Letter - Intern - AI-02453 - Template.docx",
 );
 
-function generateOfferLetterBuffer(data: Parameters<typeof fillOfferLetterXml>[1]): Buffer {
+/**
+ * Inject the QR PNG at the `[%qrImage]` placeholder via docxtemplater's
+ * ImageModule. The raw-XML pass above has already substituted every other
+ * placeholder, so docxtemplater only ever sees the image tag. If the template
+ * hasn't yet been edited to include `[%qrImage]`, render is a no-op and the
+ * letter goes out without a QR rather than failing.
+ */
+function injectQrIntoDocx(docxBuffer: Buffer, qrPng: Buffer): Buffer {
+  const zip = new PizZip(docxBuffer);
+  const imageModule = new ImageModule({
+    centered: false,
+    getImage: (tagValue: string) =>
+      tagValue === "qrImage" ? qrPng : Buffer.from(""),
+    // 96px @ 96 DPI = 1 inch square — same sizing as the certificate QR.
+    getSize: () => [96, 96],
+  });
+  const doc = new Docxtemplater(zip, {
+    delimiters: { start: "[", end: "]" },
+    paragraphLoop: true,
+    linebreaks: true,
+    modules: [imageModule],
+    nullGetter: () => "",
+  });
+  try {
+    doc.render({ qrImage: "qrImage" });
+  } catch (err) {
+    console.warn(
+      "[offer-letter] QR render skipped (template may be missing [%qrImage]):",
+      err,
+    );
+    return docxBuffer;
+  }
+  return doc.getZip().generate({
+    type: "nodebuffer",
+    compression: "DEFLATE",
+  }) as Buffer;
+}
+
+async function generateOfferLetterBuffer(
+  data: Parameters<typeof fillOfferLetterXml>[1],
+  options: { verificationUrl?: string } = {},
+): Promise<Buffer> {
   const templateBuffer = fs.readFileSync(OFFER_LETTER_TEMPLATE);
   const zip = new PizZip(templateBuffer);
   const docXml = zip.file("word/document.xml")!.asText();
   zip.file("word/document.xml", fillOfferLetterXml(docXml, data));
-  return zip.generate({ type: "nodebuffer", compression: "DEFLATE" }) as Buffer;
+  const textFilled = zip.generate({
+    type: "nodebuffer",
+    compression: "DEFLATE",
+  }) as Buffer;
+
+  if (!options.verificationUrl) return textFilled;
+
+  try {
+    const qrPng = await QRCode.toBuffer(options.verificationUrl, {
+      type: "png",
+      width: 300,
+      margin: 1,
+      errorCorrectionLevel: "M",
+    });
+    return injectQrIntoDocx(textFilled, qrPng);
+  } catch (err) {
+    console.warn("[offer-letter] QR generation failed, shipping without QR:", err);
+    return textFilled;
+  }
 }
 
-const processOfferLetterQueue = async () => {
-  const pending = await InternshipEnrollmentModel.find({
-    status: "offer_letter_pending",
-  }).lean();
+/**
+ * Generate the offer letter DOCX for a single `offer_letter_pending` enrollment,
+ * upload it to S3, and transition the enrollment to `enrolled`. Returns the
+ * generated `internId` and `offerLetterUrl`. Throws if the enrollment is missing
+ * or not in the expected status.
+ */
+export async function processOfferLetterForEnrollment(
+  enrollmentId: string,
+): Promise<{ internId: string; offerLetterUrl: string }> {
+  const doc = await InternshipEnrollmentModel.findById(enrollmentId);
+  if (!doc) throw new Error("Internship enrollment not found");
+  if (String(doc.status) !== "offer_letter_pending") {
+    throw new Error(
+      `Enrollment must be "offer_letter_pending" (got "${doc.status}")`,
+    );
+  }
 
-  if (pending.length === 0) return;
-  console.log(`[offer-letter-cron] Processing ${pending.length} enrollment(s)`);
+  const userDoc = await UserModel.findById(doc.user)
+    .select("firstName lastName name")
+    .lean();
+  const name = userDoc
+    ? (
+        [
+          (userDoc as { firstName?: string }).firstName,
+          (userDoc as { lastName?: string }).lastName,
+        ]
+          .filter(Boolean)
+          .join(" ") || (userDoc as { name?: string }).name || "Intern"
+      )
+    : "Intern";
 
-  for (const row of pending) {
+  const existing = (doc as unknown as Record<string, unknown>).internId as
+    | string
+    | undefined;
+  const internId = existing ?? (await generateInternId());
+
+  const now = new Date();
+
+  // Letter date (top of doc): the date the offer is *issued*. For backfill
+  // enrollments (already had `enrolledAt` before the offer-letter cron rolled
+  // out) this naturally back-dates the letter to the original enrollment day.
+  // For fresh enrollments going forward, the cron sets `enrolledAt` to `now`
+  // below, so the letter date == generation date.
+  const letterDateSrc = doc.enrolledAt instanceof Date ? doc.enrolledAt : now;
+  const letterDate = formatOfferLetterDate(letterDateSrc);
+
+  // Joining date (in-letter): the cohort's actual program start date, as set
+  // by the admin when publishing the internship. Falls back to enrolledAt /
+  // now only if the snapshot is missing.
+  const batchStart = doc.batchSnapshot?.internshipStartDate;
+  const joiningDateSrc =
+    batchStart instanceof Date
+      ? batchStart
+      : batchStart
+        ? new Date(batchStart as unknown as string)
+        : doc.enrolledAt instanceof Date
+          ? doc.enrolledAt
+          : now;
+  const joiningDate = formatOfferLetterDate(joiningDateSrc);
+
+  // Domain / designation: admin-configured `offerLetterDesignation` on the
+  // internship (live-read so admins can fix typos before late backfills go
+  // out). Falls back to "{title} Intern" then "Intern".
+  const insLive = await InternshipModel.findById(doc.internship)
+    .select("offerLetterDesignation title")
+    .lean();
+  const designation = String(
+    (insLive as { offerLetterDesignation?: string } | null)?.offerLetterDesignation ?? "",
+  ).trim();
+  const liveTitle = String((insLive as { title?: string } | null)?.title ?? "").trim();
+  const snapshotTitle = String(doc.internshipSnapshot?.title ?? "").trim();
+  const fallbackTitle = liveTitle || snapshotTitle;
+  const domain =
+    designation || (fallbackTitle ? `${fallbackTitle} Intern` : "Intern");
+
+  const programMonths = (doc as unknown as Record<string, unknown>)
+    .programDurationMonths;
+  const duration = String(typeof programMonths === "number" ? programMonths : 3);
+
+  const frontendBase = (process.env.FRONTEND_URL || "http://localhost:3000").replace(/\/+$/, "");
+  const verificationUrl = `${frontendBase}/verify/intern/${encodeURIComponent(internId)}`;
+
+  const docxBuffer = await generateOfferLetterBuffer(
+    {
+      letterDate,
+      name,
+      internId,
+      joiningDate,
+      domain,
+      duration,
+    },
+    { verificationUrl },
+  );
+
+  const tempDir = path.join(os.tmpdir(), `offer-letters-${Date.now()}`);
+  fs.mkdirSync(tempDir, { recursive: true });
+  const docxPath = path.join(tempDir, `offer-letter-${internId}.docx`);
+  const pdfPath = path.join(tempDir, `offer-letter-${internId}.pdf`);
+
+  let offerLetterUrl: string;
+  try {
+    fs.writeFileSync(docxPath, docxBuffer);
+    await convertDocxToPdf(docxPath, pdfPath);
+    const pdfBuffer = fs.readFileSync(pdfPath);
+    offerLetterUrl = await uploadFileToS3(
+      pdfBuffer,
+      `offer-letter-${internId}.pdf`,
+      "offer-letters",
+      "application/pdf",
+    );
+  } finally {
     try {
-      const doc = await InternshipEnrollmentModel.findById(row._id);
-      if (!doc || String(doc.status) !== "offer_letter_pending") continue;
-
-      const userDoc = await UserModel.findById(doc.user)
-        .select("firstName lastName name")
-        .lean();
-      const name = userDoc
-        ? (
-            [
-              (userDoc as { firstName?: string }).firstName,
-              (userDoc as { lastName?: string }).lastName,
-            ]
-              .filter(Boolean)
-              .join(" ") || (userDoc as { name?: string }).name || "Intern"
-          )
-        : "Intern";
-
-      const existing = (doc as unknown as Record<string, unknown>).internId as string | undefined;
-      const internId = existing ?? (await generateInternId());
-
-      const now = new Date();
-      const joiningDate =
-        doc.enrolledAt instanceof Date
-          ? formatOfferLetterDate(doc.enrolledAt)
-          : formatOfferLetterDate(now);
-
-      const rawTitle = doc.internshipSnapshot?.title ?? "";
-      const domain = rawTitle ? `${rawTitle} Intern` : "Intern";
-
-      const programMonths = (doc as unknown as Record<string, unknown>).programDurationMonths;
-      const duration = String(typeof programMonths === "number" ? programMonths : 3);
-
-      const docxBuffer = generateOfferLetterBuffer({
-        letterDate: formatOfferLetterDate(now),
-        name,
-        internId,
-        joiningDate,
-        domain,
-        duration,
-      });
-
-      const offerLetterUrl = await uploadFileToS3(
-        docxBuffer,
-        `offer-letter-${internId}.docx`,
-        "offer-letters",
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      );
-
-      (doc as unknown as Record<string, unknown>).internId = internId;
-      (doc as unknown as Record<string, unknown>).offerLetterGeneratedAt = now;
-      (doc as unknown as Record<string, unknown>).offerLetterUrl = offerLetterUrl;
-      if (!(doc.enrolledAt instanceof Date)) {
-        doc.enrolledAt = now;
-      }
-      doc.status = "enrolled" as typeof doc.status;
-      await doc.save();
-
-      console.log(
-        `[offer-letter-cron] Enrolled ${String(doc._id)} as ${internId} — ${offerLetterUrl}`,
-      );
-    } catch (err) {
-      console.error(`[offer-letter-cron] Failed for ${String(row._id)}:`, err);
+      if (fs.existsSync(docxPath)) fs.unlinkSync(docxPath);
+      if (fs.existsSync(pdfPath)) fs.unlinkSync(pdfPath);
+      if (fs.existsSync(tempDir)) fs.rmdirSync(tempDir);
+    } catch (cleanupError) {
+      console.warn("[offer-letter] Temp cleanup failed:", cleanupError);
     }
   }
-};
+
+  (doc as unknown as Record<string, unknown>).internId = internId;
+  (doc as unknown as Record<string, unknown>).offerLetterGeneratedAt = now;
+  (doc as unknown as Record<string, unknown>).offerLetterUrl = offerLetterUrl;
+  if (!(doc.enrolledAt instanceof Date)) {
+    doc.enrolledAt = now;
+  }
+  doc.status = "enrolled" as typeof doc.status;
+  await doc.save();
+
+  return { internId, offerLetterUrl };
+}
 
 /**
- * Initialize cron jobs
+ * Initialize cron jobs.
+ *
+ * Note: offer-letter generation is handled by `startOfferLetterWorker`
+ * (queue + retry + stuck-job reclaim), not from here. This file is for true
+ * time-based jobs only.
  */
 export const initializeCronJobs = () => {
   console.log("🕐 Initializing cron jobs...");
@@ -385,21 +511,8 @@ export const initializeCronJobs = () => {
     }
   );
 
-  // Process offer-letter queue every 15 minutes
-  cron.schedule(
-    "*/15 * * * *",
-    () => {
-      console.log("⏰ Running offer-letter queue cron job...");
-      processOfferLetterQueue();
-    },
-    {
-      timezone: "Asia/Kolkata",
-    }
-  );
-
   console.log("✅ Cron jobs initialized:");
   console.log("  - Payment verification: Every 10 minutes");
-  console.log("  - Offer-letter queue: Every 15 minutes");
 };
 
 /**

@@ -14,7 +14,12 @@ export type InternshipEnrollmentType = "merit" | "paid";
 /**
  * Full lifecycle of an internship enrollment.
  *
- * ── Merit path ────────────────────────────────────────────────────────────────
+ * The merit and paid paths differ only in how the learner *qualifies* for a
+ * seat: merit takes the entrance exam and is selected from the pool by an
+ * admin; paid skips the exam by paying directly. From `pending_documentation`
+ * onward both paths are identical.
+ *
+ * ── Merit qualification ───────────────────────────────────────────────────────
  *
  *   exam_registered
  *     └─ User completed the enrollment form; waiting for the exam date.
@@ -25,15 +30,25 @@ export type InternshipEnrollmentType = "merit" | "paid";
  *        Being here does NOT guarantee a seat — admin picks from the pool.
  *   admin_rejected  (terminal)
  *     └─ Admin did not select this candidate.
- *   enrolled
- *     └─ Seat confirmed; tasks and exams start unlocking.
  *
- * ── Paid path ─────────────────────────────────────────────────────────────────
+ * ── Paid qualification ────────────────────────────────────────────────────────
  *
  *   payment_pending
  *     └─ Payment initiated but not yet confirmed by the gateway.
+ *
+ * ── Shared post-qualification path (both merit + paid) ────────────────────────
+ *
+ *   pending_documentation
+ *     └─ Seat is granted in principle; learner must upload Aadhar + photo.
+ *   docs_under_review
+ *     └─ Documents submitted; awaiting admin verification.
+ *   re_pending_documentation
+ *     └─ Admin rejected the documents; learner must resubmit.
+ *   offer_letter_pending
+ *     └─ Admin approved documents; cron is queued to generate the offer letter.
  *   enrolled
- *     └─ Payment confirmed; immediate enrollment, no admin step.
+ *     └─ Offer letter issued. Tasks and exams start unlocking. This is the
+ *        first state where `enrolledAt` is set.
  *
  * ── Post-enrollment ───────────────────────────────────────────────────────────
  *
@@ -50,7 +65,7 @@ export type InternshipEnrollmentStatus =
   | "payment_pending"           // paid: payment initiated, awaiting gateway confirmation
   | "pending_documentation"     // both paths: selected, awaiting Aadhar + photo upload
   | "docs_under_review"         // both paths: learner submitted docs, awaiting admin verification
-  | "offer_letter_pending"      // both paths: admin approved docs, cron will generate offer letter and enroll
+  | "offer_letter_pending"      // both paths: admin approved docs; worker queue generates offer letter and enrolls
   | "re_pending_documentation"  // both paths: admin rejected docs, learner must resubmit
   | "enrolled"                  // both paths: fully active enrollment
   | "completed"                 // post-enrollment: program finished
@@ -194,16 +209,23 @@ export interface InternshipEnrollment {
   /** Rejection note set by admin when sending enrollment back to `re_pending_documentation`. */
   documentationRejectionNote?: string;
 
-  /** Timestamp set by the offer-letter cron when it processed this enrollment. */
+  /**
+   * Timestamp at which the learner accepted the internship Terms & Conditions
+   * (Annexure 1). Set on document submission; submission is rejected without
+   * acceptance.
+   */
+  termsAcceptedAt?: Date;
+
+  /** Timestamp set when the offer-letter worker processed this enrollment. */
   offerLetterGeneratedAt?: Date;
 
   /**
-   * Unique intern identifier assigned by the offer-letter cron, format: AI-XXXXX.
+   * Unique intern identifier assigned by the offer-letter worker, format: AI-XXXXX.
    * Printed on the generated offer letter.
    */
   internId?: string;
 
-  /** Public S3 URL of the generated offer letter DOCX. Set by the offer-letter cron. */
+  /** Public S3 URL of the generated offer letter DOCX. Set by the offer-letter worker. */
   offerLetterUrl?: string;
 
   /**

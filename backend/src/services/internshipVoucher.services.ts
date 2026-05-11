@@ -245,16 +245,21 @@ export async function redeemInternshipVoucher(params: {
     );
   }
 
-  // 6. Create new OR upgrade existing in place
+  // 6. Create new OR upgrade existing in place.
+  //
+  // Voucher redemption is the "free paid seat" path — it grants the seat
+  // without payment, but the learner still goes through the standard
+  // post-qualification flow: pending_documentation → docs_under_review →
+  // offer_letter_pending → enrolled. `enrolledAt` stays unset; it's anchored
+  // by the offer-letter cron when the learner truly reaches `enrolled`.
   let enrollment;
   if (
     existingSameBatch &&
     upgradeableStatuses.has(String(existingSameBatch.status))
   ) {
     existingSameBatch.set("enrollmentType", "paid");
-    existingSameBatch.set("status", "enrolled");
+    existingSameBatch.set("status", "pending_documentation");
     existingSameBatch.set("paymentAmount", 0);
-    existingSameBatch.set("enrolledAt", new Date());
     await existingSameBatch.save();
     enrollment = existingSameBatch;
   } else {
@@ -267,9 +272,8 @@ export async function redeemInternshipVoucher(params: {
         internshipStartDate: batch.internshipStartDate ?? new Date(),
       },
       enrollmentType: "paid",
-      status: "enrolled",
+      status: "pending_documentation",
       paymentAmount: 0,
-      enrolledAt: new Date(),
       internshipSuccessPoints: 0,
     });
   }

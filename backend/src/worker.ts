@@ -1,5 +1,5 @@
 /**
- * All-in-one worker: cron + certificate + collaboration (single process).
+ * All-in-one worker: cron + certificate + offer-letter + collaboration (single process).
  * Prefer PM2 apps `worker-cert` + `worker-collab` in production (see ecosystem.config.cjs).
  *
  * Usage: node dist/worker.js
@@ -9,6 +9,7 @@ import { connectDB, disconnectDB } from "./config/database";
 import { initializeS3 } from "./config/s3";
 import { initializeCronJobs } from "./services/cron.services";
 import { startCertificateWorker } from "./workers/certificate.worker";
+import { startOfferLetterWorker } from "./workers/offerLetter.worker";
 import { startCollaborationWorker } from "./workers/collaboration.worker";
 import dotenv from "dotenv";
 
@@ -22,10 +23,11 @@ const startWorker = async () => {
     console.log("🕐 Starting background jobs...");
     initializeCronJobs();
     startCertificateWorker();
+    startOfferLetterWorker();
     startCollaborationWorker();
 
     console.log(
-      "✅ Worker process running (cron + certificate + collaboration jobs)"
+      "✅ Worker process running (cron + certificate + offer-letter + collaboration jobs)"
     );
 
     process.on("SIGTERM", () => {

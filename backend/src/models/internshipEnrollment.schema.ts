@@ -153,6 +153,12 @@ const internshipEnrollmentSchema = new mongoose.Schema(
     documentationReviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     documentationReviewedAt: { type: Date },
     documentationRejectionNote: { type: String, trim: true },
+    /**
+     * Timestamp at which the learner accepted the internship Terms &
+     * Conditions (Annexure 1). Set when they submit documents — submission
+     * is rejected if this is not accepted.
+     */
+    termsAcceptedAt: { type: Date },
     offerLetterGeneratedAt: { type: Date },
     internId: { type: String, trim: true, sparse: true },
     offerLetterUrl: { type: String, trim: true },

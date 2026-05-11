@@ -138,6 +138,9 @@ export const ENDPOINTS = {
     /** POST — learner registers (entrance exam or paid seat). Body: { internshipId, batchId, path? } */
     create: "/internship-enrollments",
     register: "/internship-enrollments",
+    /** GET — public verify-an-offer-letter by intern ID (scanned from QR). */
+    verify: (internId: string) =>
+      `/internship-enrollments/verify/${encodeURIComponent(internId)}`,
     adminList: "/internship-enrollments/admin",
     /** POST body `{ enrollmentIds: string[] }` — merit path → enrolled (server). */
     adminApproveToEnrolled: "/internship-enrollments/admin/approve-to-enrolled",
@@ -154,6 +157,9 @@ export const ENDPOINTS = {
     /** PATCH — admin edits Aadhar number / learner photo on an enrollment. */
     adminUpdateDocumentation: (enrollmentId: string) =>
       `/internship-enrollments/admin/${encodeURIComponent(enrollmentId)}/documentation`,
+    /** POST body `{ action: "approve" | "reject", rejectionNote?: string }` — verify docs_under_review enrollment. */
+    adminVerifyDocumentation: (enrollmentId: string) =>
+      `/internship-enrollments/admin/${encodeURIComponent(enrollmentId)}/documentation/verify`,
     adminDelete: (enrollmentId: string) =>
       `/internship-enrollments/admin/${encodeURIComponent(enrollmentId)}`,
   },

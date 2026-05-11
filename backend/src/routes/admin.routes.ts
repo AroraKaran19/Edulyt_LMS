@@ -28,6 +28,10 @@ import {
   getAllCollaborationJobs,
   retryCollaborationJob,
 } from "../controllers/collaborationJob.controller";
+import {
+  getAllOfferLetterJobs,
+  retryOfferLetterJob,
+} from "../controllers/offerLetterJob.controller";
 import { getTotalSpendByUserId } from "../controllers/order.controller";
 
 const router = Router();
@@ -53,6 +57,10 @@ router.get("/courses-analytics", getCourseAnalyticsController);
 // Certificate jobs (admin settings)
 router.get("/certificate-jobs", getAllCertificateJobs);
 router.post("/certificate-jobs/:jobId/retry", retryCertificateJob);
+
+// Offer letter jobs (admin settings)
+router.get("/offer-letter-jobs", getAllOfferLetterJobs);
+router.post("/offer-letter-jobs/:jobId/retry", retryOfferLetterJob);
 
 // Collaboration allotment jobs (admin settings)
 router.get("/collaboration-jobs", getAllCollaborationJobs);

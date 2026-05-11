@@ -97,7 +97,12 @@ export const createInternshipSeatEnrollmentAfterPayment = async (
 
   enrollment.enrollmentType = "paid";
   enrollment.status = "pending_documentation";
-  enrollment.enrolledAt = new Date();
+  // NOTE: `enrolledAt` is intentionally NOT set here. The paid path differs
+  // from the merit path only in skipping the entrance exam — everything
+  // downstream (docs, offer letter) is identical, and `enrolledAt` is the
+  // anchor for task unlock schedules, so it must be set when the learner
+  // actually reaches the `enrolled` state (offer-letter cron / admin
+  // status update), not when they pay.
   const ans = enrollment.applicationAnswers as Record<string, unknown> | undefined;
   const months = parseProgramDurationMonthsFromAnswers(ans ?? null);
   if (months != null) enrollment.programDurationMonths = months;

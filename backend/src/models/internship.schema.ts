@@ -151,6 +151,12 @@ const internshipSchema = new mongoose.Schema<Internship>(
       trim: true,
       default: "",
     },
+    offerLetterDesignation: {
+      type: String,
+      required: [true, "Offer letter designation is required"],
+      trim: true,
+      minlength: [1, "Offer letter designation is required"],
+    },
     mode: {
       type: String,
       enum: ["online", "offline", "hybrid"],

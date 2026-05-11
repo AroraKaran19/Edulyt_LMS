@@ -18,9 +18,17 @@ import {
   submitInternshipDocumentationController,
   adminUpdateInternshipDocumentationController,
   adminVerifyInternshipDocumentationController,
+  getInternshipVerificationController,
 } from "../controllers/internshipEnrollment.controller";
 
 const router = Router();
+
+/**
+ * Public — verify an issued offer letter by intern ID (scanned from the QR on
+ * the letter). MUST be declared before the `verifyUser` middleware below so it
+ * stays unauthenticated.
+ */
+router.get("/verify/:internId", getInternshipVerificationController);
 
 router.use(verifyUser);
 

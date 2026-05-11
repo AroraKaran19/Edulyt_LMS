@@ -60,6 +60,15 @@ const DISQUALIFIED_BATCH_MOVE_STATUSES = new Set([
   "revoked",
 ]);
 
+const REVOKABLE_STATUSES = new Set([
+  "pending_documentation",
+  "docs_under_review",
+  "offer_letter_pending",
+  "re_pending_documentation",
+  "enrolled",
+  "paused",
+]);
+
 type Props = {
   isOpen: boolean;
   enrollmentId: string | null;
@@ -84,6 +93,17 @@ export default function InternshipEnrollmentDetailModal({
   const [savingBatch, setSavingBatch] = useState(false);
   const [savingComplete, setSavingComplete] = useState(false);
   const [applicationModalOpen, setApplicationModalOpen] = useState(false);
+
+  // Revoke state
+  const [showRevokeConfirm, setShowRevokeConfirm] = useState(false);
+  const [savingRevoke, setSavingRevoke] = useState(false);
+  const [revokeError, setRevokeError] = useState<string | null>(null);
+
+  // Documentation verify state (docs_under_review)
+  const [verifyingDocs, setVerifyingDocs] = useState(false);
+  const [showRejectForm, setShowRejectForm] = useState(false);
+  const [rejectionNote, setRejectionNote] = useState("");
+  const [verifyError, setVerifyError] = useState<string | null>(null);
 
   // Documentation edit state
   const [editingDocs, setEditingDocs] = useState(false);
@@ -136,13 +156,18 @@ export default function InternshipEnrollmentDetailModal({
   }, [isOpen]);
 
   useEffect(() => {
-    // Reset documentation edit state when the modal closes or switches enrollment.
+    // Reset documentation edit/verify state when the modal closes or switches enrollment.
     setEditingDocs(false);
     setEditAadhar("");
     setEditPhotoUrl("");
     setEditPhotoS3Key("");
     setEditPhotoSource(undefined);
     setDocsError(null);
+    setShowRejectForm(false);
+    setRejectionNote("");
+    setVerifyError(null);
+    setShowRevokeConfirm(false);
+    setRevokeError(null);
   }, [isOpen, enrollmentId]);
 
   useEffect(() => {
@@ -198,6 +223,8 @@ export default function InternshipEnrollmentDetailModal({
   const canMarkComplete =
     detail && (detail.status === "enrolled" || detail.status === "paused");
 
+  const canRevoke = detail && REVOKABLE_STATUSES.has(detail.status);
+
   const currentBatchId = detail?.batchSnapshot?.batchId ?? "";
   const batchDirty =
     selectedBatchId &&
@@ -232,6 +259,39 @@ export default function InternshipEnrollmentDetailModal({
       toast.error(msg);
     } finally {
       setSavingBatch(false);
+    }
+  }
+
+  async function handleRevoke() {
+    if (!enrollmentId || !detail || savingRevoke) return;
+    setRevokeError(null);
+    setSavingRevoke(true);
+    try {
+      const res = await apiClient.patch(
+        ENDPOINTS.internshipEnrollments.adminUpdateStatus(enrollmentId),
+        { status: "revoked" },
+      );
+      const row = res.data?.data as InternshipEnrollmentListRow | undefined;
+      if (row) setDetail(row);
+      toast.success("Enrollment revoked");
+      setShowRevokeConfirm(false);
+      onUpdated?.();
+    } catch (e: unknown) {
+      const msg =
+        e &&
+        typeof e === "object" &&
+        "response" in e &&
+        e.response &&
+        typeof e.response === "object" &&
+        "data" in e.response &&
+        e.response.data &&
+        typeof e.response.data === "object" &&
+        "message" in e.response.data
+          ? String((e.response.data as { message?: string }).message)
+          : "Could not revoke enrollment";
+      setRevokeError(msg);
+    } finally {
+      setSavingRevoke(false);
     }
   }
 
@@ -363,6 +423,35 @@ export default function InternshipEnrollmentDetailModal({
       setDocsError(msg);
     } finally {
       setSavingDocs(false);
+    }
+  }
+
+  async function handleVerifyDocs(action: "approve" | "reject") {
+    if (!enrollmentId || verifyingDocs) return;
+    setVerifyError(null);
+    setVerifyingDocs(true);
+    try {
+      const res = await apiClient.post(
+        ENDPOINTS.internshipEnrollments.adminVerifyDocumentation(enrollmentId),
+        { action, rejectionNote: action === "reject" ? rejectionNote : undefined },
+      );
+      const row = res.data?.data as InternshipEnrollmentListRow | undefined;
+      if (row) setDetail(row);
+      toast.success(
+        action === "approve"
+          ? "Documentation approved — queued for offer letter"
+          : "Documentation rejected — learner notified to resubmit",
+      );
+      setShowRejectForm(false);
+      setRejectionNote("");
+      onUpdated?.();
+    } catch (e: unknown) {
+      const msg =
+        (e as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+        "Could not verify documentation";
+      setVerifyError(msg);
+    } finally {
+      setVerifyingDocs(false);
     }
   }
 
@@ -555,6 +644,122 @@ export default function InternshipEnrollmentDetailModal({
                       </a>
                     </div>
                   ) : null}
+
+                  {detail.status === "re_pending_documentation" ? (
+                    <div className="pt-2 border-t border-emerald-200">
+                      <p className="text-[11px] font-semibold text-rose-700 uppercase mb-1">
+                        Rejected — awaiting resubmission
+                      </p>
+                      {detail.documentationRejectionNote ? (
+                        <p className="text-xs text-rose-900/85 bg-rose-50 border border-rose-200 rounded px-2 py-1.5">
+                          {detail.documentationRejectionNote}
+                        </p>
+                      ) : (
+                        <p className="text-xs text-gray-500">No rejection note provided.</p>
+                      )}
+                    </div>
+                  ) : null}
+
+                  {detail.status === "offer_letter_pending" ? (
+                    <div className="pt-2 border-t border-emerald-200">
+                      <p className="text-[11px] font-semibold text-amber-700 uppercase mb-0.5">
+                        Offer letter generating…
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        Docs approved. The cron will generate and upload the offer letter within 15 minutes.
+                      </p>
+                    </div>
+                  ) : null}
+
+                  {detail.internId || detail.offerLetterUrl ? (
+                    <div className="pt-2 border-t border-emerald-200 space-y-1">
+                      {detail.internId ? (
+                        <p className="text-xs text-emerald-950">
+                          <span className="font-semibold">Intern ID:</span> {detail.internId}
+                        </p>
+                      ) : null}
+                      {detail.offerLetterUrl ? (
+                        <a
+                          href={detail.offerLetterUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-emerald-700 underline underline-offset-2"
+                        >
+                          Download offer letter
+                        </a>
+                      ) : null}
+                    </div>
+                  ) : null}
+
+                  {detail.status === "docs_under_review" ? (
+                    <div className="pt-2 border-t border-emerald-200 space-y-2">
+                      <p className="text-[11px] font-semibold text-emerald-900/80 uppercase">
+                        Review decision
+                      </p>
+                      {showRejectForm ? (
+                        <div className="flex flex-col gap-2">
+                          <textarea
+                            className="w-full text-xs rounded border border-emerald-300 px-2 py-1.5 resize-none focus:outline-none focus:ring-1 focus:ring-emerald-400"
+                            rows={3}
+                            placeholder="Rejection reason (optional — shown to learner)"
+                            value={rejectionNote}
+                            onChange={(e) => setRejectionNote(e.target.value)}
+                          />
+                          {verifyError && (
+                            <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded px-2 py-1">
+                              {verifyError}
+                            </p>
+                          )}
+                          <div className="flex gap-2">
+                            <WhiteButton
+                              type="button"
+                              glow={false}
+                              onClick={() => { setShowRejectForm(false); setVerifyError(null); }}
+                              disabled={verifyingDocs}
+                            >
+                              Cancel
+                            </WhiteButton>
+                            <OrangeButton
+                              type="button"
+                              glow={false}
+                              onClick={() => void handleVerifyDocs("reject")}
+                              disabled={verifyingDocs}
+                            >
+                              {verifyingDocs ? "Rejecting…" : "Confirm reject"}
+                            </OrangeButton>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col gap-2">
+                          {verifyError && (
+                            <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded px-2 py-1">
+                              {verifyError}
+                            </p>
+                          )}
+                          <div className="flex gap-2">
+                            <OrangeButton
+                              type="button"
+                              glow={false}
+                              className="flex-1"
+                              onClick={() => void handleVerifyDocs("approve")}
+                              disabled={verifyingDocs}
+                            >
+                              {verifyingDocs ? "Approving…" : "Approve"}
+                            </OrangeButton>
+                            <WhiteButton
+                              type="button"
+                              glow={false}
+                              className="flex-1"
+                              onClick={() => { setShowRejectForm(true); setVerifyError(null); }}
+                              disabled={verifyingDocs}
+                            >
+                              Reject
+                            </WhiteButton>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : null}
                 </>
               )}
             </div>
@@ -567,7 +772,10 @@ export default function InternshipEnrollmentDetailModal({
                 <div className="flex flex-col gap-3">
                   <p className="text-xs text-rose-900/85 leading-snug">
                     Upload Aadhar &amp; photo on behalf of the learner. Saving
-                    will move them to <span className="font-semibold">enrolled</span>.
+                    will move them to{" "}
+                    <span className="font-semibold">docs_under_review</span> —
+                    you&apos;ll still need to approve from the review panel
+                    below to issue the offer letter.
                   </p>
                   <div className="flex flex-col gap-1">
                     <label className="text-[11px] font-semibold text-rose-900/80 uppercase">
@@ -628,7 +836,7 @@ export default function InternshipEnrollmentDetailModal({
                       onClick={() => void handleSaveDocs()}
                       disabled={savingDocs || docPhotoUploading}
                     >
-                      {savingDocs ? "Saving…" : "Upload & enrol"}
+                      {savingDocs ? "Saving…" : "Upload & send to review"}
                     </OrangeButton>
                   </div>
                 </div>
@@ -749,6 +957,55 @@ export default function InternshipEnrollmentDetailModal({
               >
                 {savingComplete ? "Updating…" : "Mark as completed"}
               </OrangeButton>
+            </div>
+          ) : null}
+
+          {canRevoke ? (
+            <div className="rounded-lg border border-red-200 bg-red-50/70 px-3 py-3 space-y-2">
+              <p className="text-xs font-semibold text-red-900 uppercase">
+                Revoke enrollment
+              </p>
+              <p className="text-xs text-red-900/90 leading-snug">
+                Forcibly removes the learner from this internship. Tasks, exams
+                and the certificate become inaccessible. This action cannot be
+                undone from the UI.
+              </p>
+              {revokeError && (
+                <p className="text-xs text-red-700 bg-red-100 border border-red-300 rounded px-2 py-1">
+                  {revokeError}
+                </p>
+              )}
+              {showRevokeConfirm ? (
+                <div className="flex gap-2">
+                  <WhiteButton
+                    type="button"
+                    glow={false}
+                    className="flex-1"
+                    onClick={() => { setShowRevokeConfirm(false); setRevokeError(null); }}
+                    disabled={savingRevoke}
+                  >
+                    Cancel
+                  </WhiteButton>
+                  <OrangeButton
+                    type="button"
+                    glow={false}
+                    className="flex-1 bg-red-700 hover:bg-red-800 border-red-800"
+                    disabled={savingRevoke}
+                    onClick={() => void handleRevoke()}
+                  >
+                    {savingRevoke ? "Revoking…" : "Confirm revoke"}
+                  </OrangeButton>
+                </div>
+              ) : (
+                <WhiteButton
+                  type="button"
+                  glow={false}
+                  className="w-full text-red-800 border-red-300 hover:bg-red-100"
+                  onClick={() => { setShowRevokeConfirm(true); setRevokeError(null); }}
+                >
+                  Revoke enrollment
+                </WhiteButton>
+              )}
             </div>
           ) : null}
 

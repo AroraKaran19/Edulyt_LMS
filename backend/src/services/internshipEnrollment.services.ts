@@ -154,7 +154,7 @@ export type InternshipEnrollmentListRow = {
    */
   documentationRejectionNote?: string;
 
-  /** ISO — when the offer-letter cron processed this enrollment. Admin-facing. */
+  /** ISO — when the offer-letter worker processed this enrollment. Admin-facing. */
   offerLetterGeneratedAt?: string;
 
   /** Unique intern ID assigned at offer-letter generation (e.g. "AI-00042"). Admin-facing. */
@@ -1791,6 +1791,27 @@ export async function adminUpdateEnrollmentStatus(
   }
 
   await doc.save();
+
+  // Mirrors the auto-enqueue in adminVerifyInternshipDocumentation — when an
+  // admin manually flips an enrollment to `offer_letter_pending` through this
+  // generic status endpoint, the offer-letter worker still needs a job row.
+  if (newStatus === "offer_letter_pending") {
+    try {
+      const { createOfferLetterJobService } = await import(
+        "./offerLetterJob.services"
+      );
+      await createOfferLetterJobService({
+        internshipEnrollmentId: String(doc._id),
+      });
+    } catch (e) {
+      console.error(
+        "[Offer Letter] Failed to enqueue job after admin status update for enrollment",
+        String(doc._id),
+        e,
+      );
+    }
+  }
+
   return getInternshipEnrollmentByIdAdmin(enrollmentId);
 }
 
@@ -2250,6 +2271,10 @@ export type LearnerProgramDetail = {
       name: string;
       internshipStartDate: string;
     };
+    /** Unique intern ID (e.g. "AI-00042") — present once offer letter has been generated. */
+    internId?: string;
+    /** Public URL of the generated offer letter PDF — present once issued. */
+    offerLetterUrl?: string;
   };
   tasks: LearnerTaskRow[];
   /** INR per purchased internship success point (certification), when configured */
@@ -2257,6 +2282,71 @@ export type LearnerProgramDetail = {
     inrPerPoint: number;
   };
 };
+
+// ─── Public offer-letter verification ────────────────────────────────────────
+
+/**
+ * Public-safe payload returned when an HR / verifier scans the QR on an
+ * issued offer letter. Contains no email, no Aadhar, no learner ID — only
+ * what a verifier needs to confirm the letter is authentic.
+ */
+export type InternshipVerification = {
+  internId: string;
+  learnerName: string;
+  internshipTitle: string;
+  batchName?: string;
+  status: string;
+  enrolledAt?: string;
+  offerLetterGeneratedAt?: string;
+};
+
+/**
+ * Look up an enrollment by its public `internId` (printed on the offer letter)
+ * and return a public-safe verification shape. Used by the public
+ * `/verify/intern/:internId` page hit when scanning the QR.
+ */
+export async function getInternshipVerification(
+  internId: string,
+): Promise<InternshipVerification> {
+  const id = String(internId ?? "").trim();
+  if (!/^AI-\d{4,8}$/.test(id)) {
+    throw new AppError("Invalid intern ID", 400);
+  }
+
+  const doc = await InternshipEnrollmentModel.findOne({ internId: id })
+    .select(
+      "internId status enrolledAt offerLetterGeneratedAt internshipSnapshot batchSnapshot user",
+    )
+    .populate({ path: "user", select: "firstName lastName name" })
+    .lean();
+
+  if (!doc) {
+    throw new AppError("Offer letter not found", 404);
+  }
+
+  const u = (doc as { user?: { firstName?: string; lastName?: string; name?: string } }).user;
+  const learnerName = u
+    ? ([u.firstName, u.lastName].filter(Boolean).join(" ").trim() ||
+        u.name ||
+        "Intern")
+    : "Intern";
+
+  const iSnap = (doc as { internshipSnapshot?: { title?: string } })
+    .internshipSnapshot;
+  const bSnap = (doc as { batchSnapshot?: { name?: string } }).batchSnapshot;
+
+  return {
+    internId: String((doc as { internId?: string }).internId ?? id),
+    learnerName,
+    internshipTitle: iSnap?.title ? String(iSnap.title) : "—",
+    batchName: bSnap?.name ? String(bSnap.name) : undefined,
+    status: String((doc as { status?: string }).status ?? ""),
+    enrolledAt: toIso((doc as { enrolledAt?: Date }).enrolledAt),
+    offerLetterGeneratedAt: toIso(
+      (doc as { offerLetterGeneratedAt?: Date }).offerLetterGeneratedAt,
+    ),
+  };
+}
 
 /**
  * Returns the learner's enrolled-program detail for a given internship slug,
@@ -2517,6 +2607,14 @@ export async function getLearnerProgramBySlug(
             internshipStartDate: toIso(bsnap.internshipStartDate) ?? "",
           }
         : undefined,
+      internId:
+        typeof (doc as unknown as { internId?: string }).internId === "string"
+          ? (doc as unknown as { internId: string }).internId
+          : undefined,
+      offerLetterUrl:
+        typeof (doc as unknown as { offerLetterUrl?: string }).offerLetterUrl === "string"
+          ? (doc as unknown as { offerLetterUrl: string }).offerLetterUrl
+          : undefined,
     },
     tasks: unlockedTasks,
     ...(internshipSuccessPointPurchase
@@ -2544,6 +2642,7 @@ export async function submitInternshipDocumentation(
     aadharCardNumber: string;
     learnerPhoto: string;
     learnerPhotoS3Key: string;
+    acceptedTerms: boolean;
   },
 ): Promise<{ status: string; submittedAt: string }> {
   const { encryptAadhar, isValidAadharFormat } = await import(
@@ -2565,6 +2664,13 @@ export async function submitInternshipDocumentation(
   }
   if (!photo || !photoKey) {
     throw new AppError("Learner photo is required", 400);
+  }
+  if (body.acceptedTerms !== true) {
+    throw new AppError(
+      "You must accept the Terms & Conditions to submit documents.",
+      400,
+      "TERMS_NOT_ACCEPTED",
+    );
   }
 
   const doc = await InternshipEnrollmentModel.findById(enrollmentId);
@@ -2616,6 +2722,7 @@ export async function submitInternshipDocumentation(
     submittedAt: now,
   } as typeof doc.documentation;
   doc.status = "docs_under_review" as typeof doc.status;
+  (doc as unknown as { termsAcceptedAt: Date }).termsAcceptedAt = now;
   await doc.save();
 
   return {
@@ -2635,7 +2742,9 @@ export async function submitInternshipDocumentation(
  *  • Create new (used when a learner missed the window and asks the admin to
  *    upload for them) — both `aadharCardNumber` and `learnerPhoto` must be
  *    provided. `submittedAt` is set to now. If the enrollment was in
- *    `pending_documentation`, status is flipped to `enrolled`.
+ *    `pending_documentation`, status is flipped to `docs_under_review` so the
+ *    admin still has to explicitly approve the upload through the review gate
+ *    (matches the learner submit flow exactly).
  *
  * Window enforcement does NOT apply to admin actions in either mode.
  *
@@ -2717,8 +2826,11 @@ export async function adminUpdateInternshipDocumentation(
       submittedAt: new Date(),
     } as typeof doc.documentation;
 
-    if (String(doc.status) === "pending_documentation") {
-      doc.status = "enrolled" as typeof doc.status;
+    if (
+      String(doc.status) === "pending_documentation" ||
+      String(doc.status) === "re_pending_documentation"
+    ) {
+      doc.status = "docs_under_review" as typeof doc.status;
     }
   } else {
     if (aadharCt) {
@@ -2787,5 +2899,26 @@ export async function adminVerifyInternshipDocumentation(
   }
 
   await doc.save();
+
+  // Enqueue the offer-letter generation job inline on approval so the worker
+  // picks it up on its next tick — without this the row would only be queued
+  // by the worker's boot-time sync (i.e. needs a restart).
+  if (action === "approve") {
+    try {
+      const { createOfferLetterJobService } = await import(
+        "./offerLetterJob.services"
+      );
+      await createOfferLetterJobService({
+        internshipEnrollmentId: String(doc._id),
+      });
+    } catch (e) {
+      console.error(
+        "[Offer Letter] Failed to enqueue job after doc approval for enrollment",
+        String(doc._id),
+        e,
+      );
+    }
+  }
+
   return getInternshipEnrollmentByIdAdmin(enrollmentId);
 }

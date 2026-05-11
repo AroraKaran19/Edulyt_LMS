@@ -530,6 +530,35 @@ const Screen1 = () => {
             />
           )}
         />
+        <div className="flex flex-col gap-1">
+          <Controller
+            name="offerLetterDesignation"
+            control={control}
+            rules={{
+              required: "Offer letter designation is required",
+              validate: (v) =>
+                (typeof v === "string" && v.trim().length > 0) ||
+                "Offer letter designation is required",
+              maxLength: {
+                value: 100,
+                message: "Designation must be less than 100 characters",
+              },
+            }}
+            render={({ field }) => (
+              <Input
+                {...field}
+                value={field.value ?? ""}
+                label="Offer Letter Designation"
+                placeholder='e.g. "Data Analytics Intern"'
+                error={errors.offerLetterDesignation?.message}
+                required={true}
+              />
+            )}
+          />
+          <p className="text-xs text-gray-600">
+            Printed as the role on the generated offer letter.
+          </p>
+        </div>
         <div className="flex flex-col gap-2">
           <p className="text-sm font-medium text-black">
             Hero highlight lines{" "}

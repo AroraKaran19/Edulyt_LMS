@@ -23,7 +23,13 @@ import {
   submitInternshipDocumentation,
   adminUpdateInternshipDocumentation,
   adminVerifyInternshipDocumentation,
+  getInternshipVerification,
 } from "../services/internshipEnrollment.services";
+import {
+  getAllOfferLetterJobsService,
+  retryOfferLetterJobService,
+} from "../services/offerLetterJob.services";
+import type { OfferLetterJobStatus } from "../types/offerLetterJob";
 
 /**
  * @route   GET /api/internship-enrollments/me
@@ -62,6 +68,21 @@ export const listMyInternshipEnrollmentsController = asyncHandler(
       "Internship enrollments fetched successfully",
       200,
     );
+  },
+);
+
+/**
+ * @route   GET /api/internship-enrollments/verify/:internId
+ * @desc    Public — verify an issued offer letter by intern ID (scanned from QR).
+ *          Returns name + program + status, no PII.
+ * @access  Public
+ */
+export const getInternshipVerificationController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const internId = String(req.params.internId ?? "").trim();
+    if (!internId) throw new AppError("internId is required", 400);
+    const result = await getInternshipVerification(internId);
+    sendSuccessResponse(res, result, "Verification successful", 200);
   },
 );
 
@@ -350,11 +371,12 @@ export const submitInternshipDocumentationController = asyncHandler(
     const enrollmentId = String(req.params.enrollmentId ?? "").trim();
     if (!enrollmentId) throw new AppError("enrollmentId is required", 400);
 
-    const { aadharCardNumber, learnerPhoto, learnerPhotoS3Key } =
+    const { aadharCardNumber, learnerPhoto, learnerPhotoS3Key, acceptedTerms } =
       req.body as {
         aadharCardNumber?: string;
         learnerPhoto?: string;
         learnerPhotoS3Key?: string;
+        acceptedTerms?: boolean;
       };
 
     const result = await submitInternshipDocumentation(
@@ -364,6 +386,7 @@ export const submitInternshipDocumentationController = asyncHandler(
         aadharCardNumber: String(aadharCardNumber ?? ""),
         learnerPhoto: String(learnerPhoto ?? ""),
         learnerPhotoS3Key: String(learnerPhotoS3Key ?? ""),
+        acceptedTerms: acceptedTerms === true,
       },
     );
     sendSuccessResponse(res, result, "Documentation submitted", 200);
@@ -457,5 +480,55 @@ export const getLearnerEntranceExamController = asyncHandler(
       new mongoose.Types.ObjectId(String(userId)),
     );
     sendSuccessResponse(res, result, "Entrance exam fetched", 200);
+  },
+);
+
+/**
+ * @route   GET /api/admin/offerletter-jobs
+ * @desc    List offer-letter generation jobs (queue)
+ * @query   page, limit, status?=pending|processing|completed|failed, search?
+ *          (`pending` in query matches both pending and processing rows.)
+ * @access  Admin
+ */
+export const listOfferLetterJobsController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const page = req.query.page ? Number(req.query.page) : 1;
+    const limit = req.query.limit ? Number(req.query.limit) : 20;
+    const status = req.query.status as string | undefined;
+    const search = req.query.search as string | undefined;
+
+    const statusFilter:
+      | OfferLetterJobStatus
+      | OfferLetterJobStatus[]
+      | undefined =
+      status === "pending"
+        ? ["pending", "processing"]
+        : status === "processing" ||
+            status === "completed" ||
+            status === "failed"
+          ? (status as OfferLetterJobStatus)
+          : undefined;
+
+    const result = await getAllOfferLetterJobsService({
+      page,
+      limit,
+      status: statusFilter,
+      search,
+    });
+    sendSuccessResponse(res, result, "Offer letter jobs retrieved", 200);
+  },
+);
+
+/**
+ * @route   POST /api/admin/offerletter-jobs/:jobId/retry
+ * @desc    Re-queue a failed offer-letter job for the worker
+ * @access  Admin
+ */
+export const retryOfferLetterJobController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const jobId = String(req.params.jobId ?? "").trim();
+    if (!jobId) throw new AppError("jobId is required", 400);
+    const job = await retryOfferLetterJobService(jobId);
+    sendSuccessResponse(res, job, "Job queued for retry successfully", 200);
   },
 );

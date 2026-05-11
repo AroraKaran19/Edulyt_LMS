@@ -34,6 +34,24 @@ function getPrevInternshipWizardScreen(prev: number): number {
   return Math.max(1, prev - 1);
 }
 
+/**
+ * Extracts a human-readable message from a thrown error, preferring the
+ * backend's envelope (`{ error: { message } }`) over the generic axios
+ * "Request failed with status code 4xx" string.
+ */
+function extractApiErrorMessage(err: unknown, fallback: string): string {
+  const r = (err as { response?: { data?: unknown } })?.response;
+  const data = r?.data as
+    | { error?: { message?: string }; message?: string }
+    | undefined;
+  return (
+    data?.error?.message ||
+    data?.message ||
+    (err instanceof Error ? err.message : "") ||
+    fallback
+  );
+}
+
 // ===================
 // Helper Functions
 // ===================
@@ -90,6 +108,7 @@ const getInitialFormData = (
     jobDescriptionSource: "upload",
     jobDescriptionS3Key: "",
     whatsappGroupLink: "",
+    offerLetterDesignation: "",
     testimonials: [],
     faqs: [],
     mentors: [],
@@ -308,6 +327,7 @@ const transformFormDataToInternship = (
     brochure: formData.brochure,
     jobDescription: formData.jobDescription,
     whatsappGroupLink: String(formData.whatsappGroupLink ?? "").trim(),
+    offerLetterDesignation: String(formData.offerLetterDesignation ?? "").trim(),
     testimonials: formData.testimonials,
     faqs: formData.faqs,
     mentors: formData.mentors,
@@ -420,6 +440,7 @@ const transformInternshipToFormData = (
     jobDescriptionSource: "url",
     jobDescriptionS3Key: "",
     whatsappGroupLink: internship.whatsappGroupLink || "",
+    offerLetterDesignation: internship.offerLetterDesignation || "",
     testimonials: toIdStringList(internship.testimonials),
     faqs: toIdStringList(internship.faqs),
     mentors: toIdStringList(internship.mentors),
@@ -902,8 +923,10 @@ export const useInternshipForm = (
       clearFormDataFromStorage(mode, currentInternshipId);
     } catch (error) {
       console.error("Failed to create internship:", error);
-      const errorMessage =
-        error instanceof Error ? error.message : "Failed to create internship";
+      const errorMessage = extractApiErrorMessage(
+        error,
+        "Failed to create internship",
+      );
       setCreateError(errorMessage);
       toast.error(errorMessage);
       throw error;
@@ -947,9 +970,12 @@ export const useInternshipForm = (
       toast.success("Internship updated successfully!");
     } catch (error) {
       console.error("Failed to update internship:", error);
-      setUpdateError(
-        error instanceof Error ? error.message : "Failed to update internship"
+      const errorMessage = extractApiErrorMessage(
+        error,
+        "Failed to update internship",
       );
+      setUpdateError(errorMessage);
+      toast.error(errorMessage);
       throw error;
     } finally {
       setIsUpdating(false);
@@ -1015,10 +1041,10 @@ export const useInternshipForm = (
       nextScreen();
     } catch (error) {
       console.error("Failed to update internship metadata:", error);
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : "Failed to update internship metadata";
+      const errorMessage = extractApiErrorMessage(
+        error,
+        "Failed to update internship metadata",
+      );
       setUpdateError(errorMessage);
       toast.error(errorMessage);
       throw error;

@@ -169,6 +169,10 @@ const AdminSidebar = ({
           href: "/admin/settings/certificate-jobs",
         },
         {
+          label: "Offer Letter Jobs",
+          href: "/admin/settings/offer-letter-jobs",
+        },
+        {
           label: "Collaboration Jobs",
           href: "/admin/settings/collaboration-jobs",
         },
