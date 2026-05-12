@@ -91,7 +91,7 @@ function BuyConfirmedSeatCta({
   variant,
 }: {
   row: InternshipEnrollmentListRow;
-  variant: "awaiting" | "post_fail" | "missed_exam";
+  variant: "pre_exam" | "awaiting" | "post_fail" | "missed_exam";
 }) {
   const [price, setPrice] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
@@ -186,17 +186,21 @@ function BuyConfirmedSeatCta({
   return (
     <div className="mt-3 rounded-xl border border-dashed border-orange-300/70 bg-orange-50/60 px-3 py-2.5 flex flex-col gap-2">
       <p className="text-[11px] text-orange-900/80 font-medium leading-snug">
-        {variant === "awaiting"
-          ? "Unsure about your result? Confirm your seat right now and skip the wait."
-          : variant === "missed_exam"
-            ? "Don't lose your spot — secure a confirmed seat now."
-            : "Didn't make the merit cut? You can still join the program."}
+        {variant === "pre_exam"
+          ? "Don't want to wait for the exam? Lock in a confirmed seat now and skip the test entirely."
+          : variant === "awaiting"
+            ? "Unsure about your result? Confirm your seat right now and skip the wait."
+            : variant === "missed_exam"
+              ? "Don't lose your spot — secure a confirmed seat now."
+              : "Didn't make the merit cut? You can still join the program."}
       </p>
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <span className="text-[11px] text-orange-700/70">
-          {variant === "awaiting"
-            ? "Confirmed seat · pay once, join guaranteed"
-            : "Paid entry stays open for 15 days after results ·"}
+          {variant === "pre_exam"
+            ? "Confirmed seat · skip the entrance exam"
+            : variant === "awaiting"
+              ? "Confirmed seat · pay once, join guaranteed"
+              : "Paid entry stays open for 15 days after results ·"}
           {priceLabel ? (
             <span className="ml-1 font-semibold text-orange-900">
               {priceLabel}
@@ -303,8 +307,18 @@ export default function DashboardInternshipCard({ row, onWithdrawn }: Props) {
   // Case 3: no-show during paid-entry grace window
   const isMissedExamGrace = isExamNoShow && withinGracePeriod;
 
+  // Case 4: still pre-exam (registered, exam window not yet closed). Lets
+  // the learner skip the exam entirely by paying upfront. Backend already
+  // permits this (isPaidUpgradeWindowOpen opens from registration), it was
+  // just absent from the UI.
+  const isPreExamPurchaseable =
+    row.status === "exam_registered" && !isExamNoShow && withinGracePeriod;
+
   const showBuyConfirmedSeat =
-    isAwaitingResult || isPostFailGrace || isMissedExamGrace;
+    isAwaitingResult ||
+    isPostFailGrace ||
+    isMissedExamGrace ||
+    isPreExamPurchaseable;
 
   // No-show takes precedence over the exam-registered countdown branch.
   const showExamAction =
@@ -489,30 +503,37 @@ export default function DashboardInternshipCard({ row, onWithdrawn }: Props) {
           {/* Bottom action */}
           <div className="mt-4 border-t border-dashed border-amber-800/15 pt-3">
             {showExamAction ? (
-              /* Exam registered but not yet submitted — countdown + take exam */
-              <div className="flex items-end justify-between gap-3">
-                <p className="text-[11px] text-stone-500">
-                  {(() => {
-                    const now = Date.now();
-                    const start = row.examStartAt
-                      ? new Date(row.examStartAt).getTime()
-                      : null;
-                    const end = row.examEndAt
-                      ? new Date(row.examEndAt).getTime()
-                      : null;
-                    if (end && now > end) return "The exam window has closed";
-                    if (start && now < start)
-                      return "Exam window hasn't opened yet";
-                    return "Complete the entrance exam to confirm your seat";
-                  })()}
-                </p>
-                <ExamCountdownButton
-                  enrollmentId={row._id}
-                  examStartAt={row.examStartAt}
-                  examEndAt={row.examEndAt}
-                  examResultAt={row.examResultAt}
-                  size="card"
-                />
+              /* Exam registered but not yet submitted — countdown + take exam,
+                 plus optional pre-exam paid-seat CTA so the learner can skip
+                 the wait entirely. */
+              <div className="flex flex-col gap-2">
+                <div className="flex items-end justify-between gap-3">
+                  <p className="text-[11px] text-stone-500">
+                    {(() => {
+                      const now = Date.now();
+                      const start = row.examStartAt
+                        ? new Date(row.examStartAt).getTime()
+                        : null;
+                      const end = row.examEndAt
+                        ? new Date(row.examEndAt).getTime()
+                        : null;
+                      if (end && now > end) return "The exam window has closed";
+                      if (start && now < start)
+                        return "Exam window hasn't opened yet";
+                      return "Complete the entrance exam to confirm your seat";
+                    })()}
+                  </p>
+                  <ExamCountdownButton
+                    enrollmentId={row._id}
+                    examStartAt={row.examStartAt}
+                    examEndAt={row.examEndAt}
+                    examResultAt={row.examResultAt}
+                    size="card"
+                  />
+                </div>
+                {isPreExamPurchaseable && (
+                  <BuyConfirmedSeatCta row={row} variant="pre_exam" />
+                )}
               </div>
             ) : isExamNoShow ? (
               /* Merit-track learner who didn't attempt the entrance exam — terminal */
