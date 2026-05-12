@@ -27,10 +27,10 @@ const MAX_STUCK_RECLAIMS = Math.max(
   Number(process.env.OFFER_LETTER_WORKER_MAX_STUCK_RECLAIMS) || 2,
 );
 
-/** Poll interval (ms). Env: OFFER_LETTER_WORKER_POLL_MS (default 5 minutes). */
+/** Poll interval (ms). Env: OFFER_LETTER_WORKER_POLL_MS (default 10 seconds). */
 const POLL_INTERVAL_MS = Math.max(
   200,
-  Number(process.env.OFFER_LETTER_WORKER_POLL_MS) || 300_000,
+  Number(process.env.OFFER_LETTER_WORKER_POLL_MS) || 10_000,
 );
 
 /** Max jobs claimed per tick. Env: OFFER_LETTER_WORKER_MAX_JOBS_PER_TICK (default 5). */
@@ -39,14 +39,19 @@ const MAX_JOBS_PER_TICK = Math.max(
   Number(process.env.OFFER_LETTER_WORKER_MAX_JOBS_PER_TICK) || 5,
 );
 
-/** Max concurrent jobs. Env: OFFER_LETTER_WORKER_MAX_PARALLEL */
+/**
+ * Max concurrent jobs. Env: OFFER_LETTER_WORKER_MAX_PARALLEL (default 3).
+ * Each parallel job spawns its own LibreOffice instance (~100–200 MB RAM,
+ * one CPU core for 5–15s) so this is the resource ceiling, not a correctness
+ * one — per-invocation profile dirs prevent any soffice lock contention.
+ */
 const MAX_PARALLEL = Math.max(
   1,
   Math.min(
     MAX_JOBS_PER_TICK,
     Number.isFinite(Number(process.env.OFFER_LETTER_WORKER_MAX_PARALLEL))
       ? Number(process.env.OFFER_LETTER_WORKER_MAX_PARALLEL)
-      : MAX_JOBS_PER_TICK,
+      : 3,
   ),
 );
 
