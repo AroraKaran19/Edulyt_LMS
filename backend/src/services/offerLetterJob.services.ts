@@ -355,6 +355,17 @@ export const retryOfferLetterJobService = async (jobId: string): Promise<OfferLe
       );
     }
 
+    // The worker's sync-on-pending may have already enqueued a fresh
+    // pending job for this same enrollment after this one failed. The
+    // partial unique index on `internshipEnrollmentId` covers
+    // {pending, processing}, so flipping this row back to pending while
+    // a sibling pending row exists would trip E11000. Clear siblings first.
+    await OfferLetterJobModel.deleteMany({
+      internshipEnrollmentId: job.internshipEnrollmentId,
+      jobId: { $ne: jobId },
+      status: { $in: ["pending", "processing"] },
+    });
+
     const updated = await OfferLetterJobModel.findOneAndUpdate(
       { jobId },
       {

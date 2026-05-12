@@ -244,12 +244,6 @@ function formatOfferLetterDate(d: Date): string {
   return `${String(d.getUTCDate()).padStart(2,"0")}-${months[d.getUTCMonth()]}-${d.getUTCFullYear()}`;
 }
 
-async function generateInternId(): Promise<string> {
-  const count = await InternshipEnrollmentModel.countDocuments({
-    internId: { $exists: true, $ne: null },
-  });
-  return `AI-${String(count + 1).padStart(5, "0")}`;
-}
 
 function fillOfferLetterXml(
   xml: string,
@@ -388,10 +382,18 @@ export async function processOfferLetterForEnrollment(
       )
     : "Intern";
 
+  // internId is normally pre-stamped at the doc-verify step by the atomic
+  // counter (services/internId.services.ts). Fall back to the same allocator
+  // here only as a safety net for legacy rows / manual DB edits that
+  // somehow reached `offer_letter_pending` without one.
   const existing = (doc as unknown as Record<string, unknown>).internId as
     | string
     | undefined;
-  const internId = existing ?? (await generateInternId());
+  let internId = existing;
+  if (!internId) {
+    const { allocateNextInternId } = await import("./internId.services");
+    internId = await allocateNextInternId();
+  }
 
   const now = new Date();
 

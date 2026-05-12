@@ -1818,6 +1818,18 @@ export async function adminUpdateEnrollmentStatus(
     if (months != null) doc.programDurationMonths = months;
   }
 
+  // Allocate the intern ID at this single, controlled point so every
+  // downstream consumer reads the same value. Mirrors the path in
+  // adminVerifyInternshipDocumentation. Idempotent: skips if already set.
+  if (newStatus === "offer_letter_pending") {
+    const currentInternId = (doc as unknown as Record<string, unknown>).internId;
+    if (!currentInternId) {
+      const { allocateNextInternId } = await import("./internId.services");
+      (doc as unknown as Record<string, unknown>).internId =
+        await allocateNextInternId();
+    }
+  }
+
   await doc.save();
 
   // Mirrors the auto-enqueue in adminVerifyInternshipDocumentation — when an
@@ -2919,6 +2931,15 @@ export async function adminVerifyInternshipDocumentation(
 
   if (action === "approve") {
     doc.status = "offer_letter_pending" as typeof doc.status;
+    // Allocate the intern ID at this single, controlled point so every
+    // downstream consumer (worker, retries, admin UI) reads the same value.
+    // Skipped if the row already carries an ID (idempotent re-approval).
+    const currentInternId = (doc as unknown as Record<string, unknown>).internId;
+    if (!currentInternId) {
+      const { allocateNextInternId } = await import("./internId.services");
+      (doc as unknown as Record<string, unknown>).internId =
+        await allocateNextInternId();
+    }
   } else {
     doc.status = "re_pending_documentation" as typeof doc.status;
     if (rejectionNote) {

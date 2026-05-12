@@ -725,6 +725,13 @@ export async function convertDocxToPdf(
     );
   }
 
+  // Per-invocation LibreOffice user-installation dir. The default profile at
+  // %APPDATA%\LibreOffice\4\user (or ~/.config/libreoffice/4/user) holds a
+  // singleton lock that `--nolockcheck` does NOT suppress — so two parallel
+  // soffice calls, or a stale soffice from a prior crash, will collide and
+  // exit 1 with empty stdout/stderr. Giving each call its own ephemeral
+  // profile is the only reliable fix.
+  let tempProfileDir: string | null = null;
   try {
     const outputDir = path.dirname(pdfPath);
     const docxFileName = path.basename(docxPath, path.extname(docxPath));
@@ -733,6 +740,16 @@ export async function convertDocxToPdf(
     // Use absolute paths and proper escaping
     const os = require("os");
     const platform = os.platform();
+    const crypto = require("crypto");
+
+    // Ephemeral profile dir, file:// URL with forward slashes (works on
+    // Windows too — LibreOffice insists on URI form here).
+    tempProfileDir = path.join(
+      os.tmpdir(),
+      `lo-profile-${process.pid}-${Date.now()}-${crypto.randomBytes(4).toString("hex")}`,
+    );
+    fs.mkdirSync(tempProfileDir, { recursive: true });
+    const userInstallationUrl = `file:///${tempProfileDir.replace(/\\/g, "/")}`;
 
     console.log(
       `[Certificate] Converting DOCX to PDF using LibreOffice (high quality)`
@@ -741,17 +758,22 @@ export async function convertDocxToPdf(
     console.log(`[Certificate] Input DOCX: ${docxPath}`);
     console.log(`[Certificate] Output directory: ${outputDir}`);
     console.log(`[Certificate] Expected PDF: ${pdfPath}`);
+    console.log(`[Certificate] User profile: ${userInstallationUrl}`);
 
     // Use spawn instead of exec for better error handling, especially on Windows
     const { spawn } = require("child_process");
 
-    // Build command arguments for spawn
-    // On Windows, LibreOffice may need --invisible instead of --headless
+    // Build command arguments for spawn.
+    // -env:UserInstallation MUST come before --headless/--invisible so
+    // LibreOffice parses it as a bootstrap arg (it's a UNO env, not a flag).
     const commandArgs = [
-      platform === "win32" ? "--invisible" : "--headless", // Windows prefers --invisible
+      `-env:UserInstallation=${userInstallationUrl}`,
+      platform === "win32" ? "--invisible" : "--headless",
       "--nodefault",
       "--nolockcheck",
       "--norestore",
+      "--nologo",
+      "--nofirststartwizard",
       "--convert-to",
       "pdf",
       "--outdir",
@@ -979,6 +1001,17 @@ export async function convertDocxToPdf(
         `LibreOffice PDF conversion failed: ${error.message}\n` +
           `Please ensure LibreOffice is properly installed: https://www.libreoffice.org/download/`
       );
+    }
+  } finally {
+    if (tempProfileDir) {
+      try {
+        fs.rmSync(tempProfileDir, { recursive: true, force: true });
+      } catch (cleanupError) {
+        console.warn(
+          `[Certificate] Could not remove temp LibreOffice profile ${tempProfileDir}:`,
+          cleanupError,
+        );
+      }
     }
   }
 }

@@ -157,7 +157,7 @@ const OfferLetterJobsPage = () => {
       title="Offer Letter Jobs"
       description="View and manage internship offer letter generation jobs"
       className="h-full"
-      classNameBody="flex flex-col gap-6 overflow-visible"
+      classNameBody="flex flex-col gap-6"
     >
       {/* Filters & Summary */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
@@ -248,9 +248,8 @@ const OfferLetterJobsPage = () => {
           )}
         </div>
       ) : (
-        <div className="rounded-xl border border-gray-200 overflow-hidden bg-white shadow-sm">
-          <div className="overflow-x-auto overflow-y-hidden">
-            <table className="w-full text-sm">
+        <div className="scrollbar-thin rounded-xl border border-gray-200 bg-white shadow-sm overflow-auto [scrollbar-gutter:stable]">
+          <table className="w-full min-w-[1040px] text-sm">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
                   <th className="text-left py-4 px-4 font-semibold text-gray-700">
@@ -438,8 +437,7 @@ const OfferLetterJobsPage = () => {
                   );
                 })}
               </tbody>
-            </table>
-          </div>
+          </table>
         </div>
       )}
 
