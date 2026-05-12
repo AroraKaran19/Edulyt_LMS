@@ -1,5 +1,5 @@
 import { Mail, Phone, MapPin, Calendar, ExternalLink } from "lucide-react";
-import { User, Instructor, Student } from "@/types/user";
+import { User, Instructor, Student, Partner } from "@/types/user";
 import { cn } from "@/lib/utils";
 
 export function getUserTypeBadgeColor(userType: string) {
@@ -12,6 +12,8 @@ export function getUserTypeBadgeColor(userType: string) {
       return "bg-orange-100 text-orange-800";
     case "super-admin":
       return "bg-red-100 text-red-800";
+    case "partner":
+      return "bg-emerald-100 text-emerald-800";
     default:
       return "bg-gray-100 text-gray-800";
   }
@@ -24,6 +26,7 @@ export function formatUserTypeLabel(userType: string): string {
     admin: "Admin",
     instructor: "Instructor",
     student: "Student",
+    partner: "Partner",
   };
   return map[userType.toLowerCase()] ?? userType.split("-").map((s) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase()).join(" ");
 }
@@ -75,12 +78,19 @@ export function ProfileSection({ user }: { user: User | null }) {
 
   const u = user as any;
   const addr = u.address || {};
+  // Partners don't have a meaningful address (it's not collected at create
+  // time and they can't edit it themselves), so hide the section entirely
+  // rather than render an empty "No address information" panel.
+  const isPartner = u.userType === "partner";
 
   return (
     <div className="space-y-6">
       <h3 className="text-lg font-semibold text-gray-900">Profile Details</h3>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className={cn(
+        "grid grid-cols-1 gap-6",
+        isPartner ? "md:grid-cols-1" : "md:grid-cols-2",
+      )}>
         <section>
           <h4 className="text-sm font-semibold text-gray-500 uppercase mb-3">
             Basic Information
@@ -99,22 +109,24 @@ export function ProfileSection({ user }: { user: User | null }) {
           </div>
         </section>
 
-        <section>
-          <h4 className="text-sm font-semibold text-gray-500 uppercase mb-3">
-            Address
-          </h4>
-          {addr?.address || addr?.city ? (
-            <div className="space-y-3">
-              <InfoRow icon={MapPin} label="Street" value={addr.address || "N/A"} />
-              <InfoRow label="City" value={addr.city || "N/A"} />
-              <InfoRow label="State" value={addr.state || "N/A"} />
-              <InfoRow label="Country" value={addr.country || "N/A"} />
-              <InfoRow label="Pin Code" value={addr.pincode || "N/A"} />
-            </div>
-          ) : (
-            <p className="text-sm text-gray-500">No address information</p>
-          )}
-        </section>
+        {!isPartner && (
+          <section>
+            <h4 className="text-sm font-semibold text-gray-500 uppercase mb-3">
+              Address
+            </h4>
+            {addr?.address || addr?.city ? (
+              <div className="space-y-3">
+                <InfoRow icon={MapPin} label="Street" value={addr.address || "N/A"} />
+                <InfoRow label="City" value={addr.city || "N/A"} />
+                <InfoRow label="State" value={addr.state || "N/A"} />
+                <InfoRow label="Country" value={addr.country || "N/A"} />
+                <InfoRow label="Pin Code" value={addr.pincode || "N/A"} />
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500">No address information</p>
+            )}
+          </section>
+        )}
       </div>
 
       {u.userType === "instructor" && (u as Instructor) && (
@@ -123,7 +135,60 @@ export function ProfileSection({ user }: { user: User | null }) {
       {u.userType === "student" && (u as Student) && (
         <StudentProfileSection user={u as Student} />
       )}
+      {u.userType === "partner" && (u as Partner) && (
+        <PartnerProfileSection user={u as Partner} />
+      )}
     </div>
+  );
+}
+
+function PartnerProfileSection({ user }: { user: Partner }) {
+  // `partnerCollege` is populated by the admin getUserById service so we get
+  // the College document, not the raw ObjectId string. We still tolerate the
+  // string form so a stale list-payload that bypassed populate doesn't crash.
+  const linked = user.partnerCollege as unknown;
+  const college =
+    linked && typeof linked === "object"
+      ? (linked as { _id?: string; name?: string; location?: string; website?: string })
+      : null;
+  const collegeId = college?._id ?? (typeof linked === "string" ? linked : null);
+
+  return (
+    <section className="pt-6 border-t border-gray-200">
+      <h4 className="text-sm font-semibold text-gray-500 uppercase mb-3">
+        Partner Information
+      </h4>
+      {college ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <InfoRow label="College" value={college.name || "N/A"} />
+          <InfoRow label="Location" value={college.location || "N/A"} />
+          {college.website && (
+            <InfoRow
+              label="Website"
+              value={
+                <a
+                  href={college.website}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:underline"
+                >
+                  {college.website}{" "}
+                  <ExternalLink className="w-3 h-3 inline" />
+                </a>
+              }
+            />
+          )}
+          {collegeId && (
+            <InfoRow label="College ID" value={collegeId} mono />
+          )}
+        </div>
+      ) : (
+        <p className="text-sm text-gray-500">
+          No college link found
+          {collegeId ? ` (orphan id: ${collegeId})` : ""}.
+        </p>
+      )}
+    </section>
   );
 }
 

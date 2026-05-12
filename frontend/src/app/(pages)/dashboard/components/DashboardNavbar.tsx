@@ -287,7 +287,7 @@ const DashboardNavbar = () => {
             draggable={false}
           />
         </Link>
-        {pathname !== "/dashboard/profile" && (
+        {pathname !== "/profile" && (
           <div
             className="hidden lg:flex max-w-[350px] w-full min-w-0 flex-1 items-start mt-2"
             ref={searchContainerRef}
@@ -364,7 +364,7 @@ const DashboardNavbar = () => {
           <UserMenu />
         </div>
       </div>
-      {pathname !== "/dashboard/profile" && (
+      {pathname !== "/profile" && (
         <div className="w-full py-4.25 px-4 lg:px-20 shadow-[0_2px_0_rgba(0,0,0,0.1)]">
           <nav className="w-full flex items-center gap-4 overflow-x-auto">
             {navItems.map((item, index) => (

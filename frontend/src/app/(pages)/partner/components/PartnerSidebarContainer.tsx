@@ -26,7 +26,7 @@ export default function PartnerSidebarContainer() {
         aria-label="Close menu"
         className={cn(
           "fixed inset-0 z-40 cursor-pointer bg-black/15 backdrop-blur-sm transition-opacity duration-300 ease-in-out lg:hidden",
-          isMobileOpen ? "opacity-100" : "pointer-events-none opacity-0"
+          isMobileOpen ? "opacity-100" : "pointer-events-none opacity-0",
         )}
         onClick={closeMobileSidebar}
         tabIndex={isMobileOpen ? 0 : -1}
@@ -43,7 +43,7 @@ export default function PartnerSidebarContainer() {
           isCollapsed ? "w-[52px] lg:w-[52px]" : "w-[280px] lg:w-[280px]",
           "max-lg:transition-transform max-lg:duration-300 max-lg:ease-in-out",
           "lg:transition-[width] lg:duration-300 lg:ease-in-out",
-          isMobileOpen && "shadow-xl"
+          isMobileOpen && "shadow-xl",
         )}
       >
         <PartnerSidebar

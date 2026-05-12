@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { User, Instructor, Student, Collaborator } from "../types";
+import { User, Instructor, Student, Collaborator, Partner } from "../types";
 import { validateEmail, validatePhoneNumber } from "./validators";
 import bcrypt from "bcryptjs";
 
@@ -137,7 +137,14 @@ const userSchema = new mongoose.Schema<User>(
     userType: {
       type: String,
       required: true,
-      enum: ["student", "instructor", "collaborator", "admin", "super-admin"],
+      enum: [
+        "student",
+        "instructor",
+        "collaborator",
+        "partner",
+        "admin",
+        "super-admin",
+      ],
       default: "student",
     },
     provider: {
@@ -288,6 +295,16 @@ const studentSchema = new mongoose.Schema<Student>({
     required: false,
     default: [],
   },
+  // Canonical link to the College directory. New writes set this from the
+  // CollegeSelect dropdown's `_id`. `collegeName` is kept as a denormalised
+  // snapshot so the display survives if the linked College is later deleted
+  // or renamed (the cascade in college.services.ts unsets `college` but
+  // leaves `collegeName` intact).
+  college: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "College",
+    required: false,
+  },
   collegeName: { type: String, required: false },
   degreeName: { type: String, required: false },
   fatherOccupation: { type: String, required: false },
@@ -369,6 +386,36 @@ const collaboratorSchema = new mongoose.Schema<Collaborator>({
   },
 });
 
+// Partner discriminator schema (college-side partner portal users).
+// Links to an existing College document by ObjectId — same directory the
+// students pick from in their profile, so admins don't have to maintain a
+// separate partner-only list. Cascade lives in college.services.ts:
+// deleting a college deactivates every partner pointing at it.
+// Schema is intentionally not generically typed with <Partner> because
+// `partnerCollege` is an ObjectId at the storage layer but typed as `string`
+// in the Partner interface (it's serialised across the wire to the frontend).
+// Mongoose's generic strict-match rejects that mismatch; dropping the generic
+// preserves runtime correctness without sprinkling casts.
+const partnerSchema = new mongoose.Schema({
+  partnerCollege: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "College",
+    required: [true, "College is required for partner users"],
+    validate: {
+      validator: async function (
+        value: mongoose.Types.ObjectId,
+      ): Promise<boolean> {
+        if (!value) return false;
+        const College = mongoose.model("College");
+        const exists = await College.exists({ _id: value });
+        return Boolean(exists);
+      },
+      message: (props: { value: unknown }) =>
+        `College "${String(props.value)}" does not exist`,
+    },
+  },
+});
+
 // Create discriminator models
 const InstructorModel = UserModel.discriminator<Instructor>(
   "instructor",
@@ -379,6 +426,7 @@ const CollaboratorModel = UserModel.discriminator<Collaborator>(
   "collaborator",
   collaboratorSchema
 );
+const PartnerModel = UserModel.discriminator<Partner>("partner", partnerSchema);
 
 // reset password
 userSchema.statics.resetPassword = async function (
@@ -395,4 +443,10 @@ userSchema.statics.resetPassword = async function (
   return user;
 };
 
-export { UserModel, InstructorModel, StudentModel, CollaboratorModel };
+export {
+  UserModel,
+  InstructorModel,
+  StudentModel,
+  CollaboratorModel,
+  PartnerModel,
+};

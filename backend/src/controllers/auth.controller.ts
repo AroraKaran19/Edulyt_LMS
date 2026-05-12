@@ -12,7 +12,10 @@ import {
   registerUser,
   resetUserPassword,
 } from "../services/auth.services";
-import { ACCOUNT_DISABLED_MESSAGE } from "../constants/authMessages";
+import {
+  ACCOUNT_DISABLED_MESSAGE,
+  PARTNER_USE_PORTAL_LOGIN_MESSAGE,
+} from "../constants/authMessages";
 import { enqueueCollaborationAllotmentAfterRegister } from "../services/collaborationAllotment.services";
 import { tryPartnershipImportWhitelistAfterRegister } from "../services/collaborationWhitelist.services";
 import { downloadImageAndUploadToS3 } from "../services/upload.services";
@@ -50,6 +53,40 @@ const protectedUser = (user: User) => {
   };
 };
 
+async function finalizeCredentialLogin(
+  req: Request,
+  res: Response,
+  user: User,
+) {
+  const userId = String(user._id ?? "");
+  if (!userId) {
+    throw new AppError("User record is missing an id", 500);
+  }
+  const protectedLoggedInUser = protectedUser(user);
+  const accessToken = await generateAccessToken(userId);
+  await UserModel.findByIdAndUpdate(user._id, {
+    $push: {
+      refreshTokens: {
+        token: accessToken,
+        deviceInfo: {
+          userAgent: req.headers["user-agent"],
+          ipAddress: req.ip,
+          deviceType: detectDeviceType(req.headers["user-agent"] || ""),
+        },
+      },
+    },
+    createdAt: new Date(),
+    lastUsed: new Date(),
+    isActive: true,
+    expiresAt: new Date(Date.now() + 1 * 60 * 60 * 1000), // 1 hour from now
+  });
+  sendSuccessResponse(
+    res,
+    { user: protectedLoggedInUser, accessToken },
+    "User logged in successfully",
+  );
+}
+
 export const register = asyncHandler(async (req: Request, res: Response) => {
   const {
     email,
@@ -79,29 +116,21 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
     throw new AppError("User already exists!", 400);
   }
 
-  const newUser = await registerUser({ 
-    email, 
-    password, 
-    userType, 
+  const newUser = await registerUser({
+    email,
+    password,
+    userType,
     provider,
     firstName: firstName.trim(),
     lastName: lastName?.trim() || "",
-    ...restData // Spread any additional fields (phone, address, bio, etc.)
+    ...restData, // Spread any additional fields (phone, address, bio, etc.)
   });
   if (!newUser) {
     throw new AppError("Failed to register user", 500);
   }
 
-  void enqueueCollaborationAllotmentAfterRegister(
-    newUser._id,
-    email,
-    userType
-  );
-  void tryPartnershipImportWhitelistAfterRegister(
-    newUser._id,
-    email,
-    userType
-  );
+  void enqueueCollaborationAllotmentAfterRegister(newUser._id, email, userType);
+  void tryPartnershipImportWhitelistAfterRegister(newUser._id, email, userType);
 
   const protectedNewUser = protectedUser(newUser);
 
@@ -125,7 +154,7 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
     res,
     { user: protectedNewUser, accessToken },
     "User registered successfully",
-    201
+    201,
   );
 });
 
@@ -141,31 +170,36 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     throw new AppError("Invalid credentials", 401);
   }
 
-  const protectedLoggedInUser = protectedUser(user);
+  if (user.userType === "partner") {
+    throw new AppError(PARTNER_USE_PORTAL_LOGIN_MESSAGE, 403);
+  }
 
-  const accessToken = await generateAccessToken(user._id);
+  await finalizeCredentialLogin(req, res, user);
+});
 
-  await UserModel.findByIdAndUpdate(user._id, {
-    $push: {
-      refreshTokens: {
-        token: accessToken,
-        deviceInfo: {
-          userAgent: req.headers["user-agent"],
-          ipAddress: req.ip,
-          deviceType: detectDeviceType(req.headers["user-agent"] || ""),
-        },
-      },
-    },
-    createdAt: new Date(),
-    lastUsed: new Date(),
-    isActive: true,
-    expiresAt: new Date(Date.now() + 1 * 60 * 60 * 1000), // 1 hour from now
-  });
-  sendSuccessResponse(
-    res,
-    { user: protectedLoggedInUser, accessToken },
-    "User logged in successfully"
-  );
+/**
+ * Credential login for portal partners only ({@link login} rejects partners).
+ */
+export const partnerLogin = asyncHandler(async (req: Request, res: Response) => {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    throw new AppError("Email and password are required", 400);
+  }
+
+  const user = await loginUser(email, password);
+  if (!user) {
+    throw new AppError("Invalid credentials", 401);
+  }
+
+  if (user.userType !== "partner") {
+    throw new AppError(
+      "This login is only for partner accounts. Use the main Airkrit login.",
+      403,
+    );
+  }
+
+  await finalizeCredentialLogin(req, res, user);
 });
 
 export const oauthSignin = asyncHandler(async (req: Request, res: Response) => {
@@ -188,7 +222,7 @@ export const oauthSignin = asyncHandler(async (req: Request, res: Response) => {
     if (originalImageUrl) {
       const s3Url = await downloadImageAndUploadToS3(
         originalImageUrl,
-        "profile-images"
+        "profile-images",
       );
       if (s3Url) profilePictureUrl = s3Url;
     }
@@ -236,18 +270,21 @@ export const oauthSignin = asyncHandler(async (req: Request, res: Response) => {
     void enqueueCollaborationAllotmentAfterRegister(
       newUser._id,
       email,
-      "student"
+      "student",
     );
     void tryPartnershipImportWhitelistAfterRegister(
       newUser._id,
       email,
-      "student"
+      "student",
     );
   } else {
+    if (user.userType === "partner") {
+      throw new AppError(PARTNER_USE_PORTAL_LOGIN_MESSAGE, 403);
+    }
     if (user.provider !== provider) {
       throw new AppError(
         "User already registered with different provider!",
-        401
+        401,
       );
     }
     if (user.status !== "active") {
@@ -282,7 +319,7 @@ export const oauthSignin = asyncHandler(async (req: Request, res: Response) => {
   sendSuccessResponse(
     res,
     { user: protectedOAuthUser, accessToken },
-    "User logged in successfully"
+    "User logged in successfully",
   );
 });
 
@@ -313,7 +350,7 @@ export const refreshToken = asyncHandler(
         },
         {
           arrayFilters: [{ "elem.token": oldAccessToken }],
-        }
+        },
       );
 
       // Add the new access token to the refreshTokens array
@@ -338,9 +375,9 @@ export const refreshToken = asyncHandler(
     sendSuccessResponse(
       res,
       { accessToken: newAccessToken },
-      "Token refreshed successfully"
+      "Token refreshed successfully",
     );
-  }
+  },
 );
 
 export const generateAccessToken = async (userId: string) => {
@@ -381,9 +418,9 @@ export const generateResetPasswordToken = asyncHandler(
       {
         link: `${process.env.FRONTEND_URL}/reset-password?token=${resetPasswordToken}`,
       },
-      "Reset password link"
+      "Reset password link",
     );
-  }
+  },
 );
 
 export const resetPassword = asyncHandler(
@@ -396,12 +433,12 @@ export const resetPassword = asyncHandler(
 
     await resetUserPassword(token, newPassword);
     sendSuccessResponse(res, null, "Password reset successfully");
-  }
+  },
 );
 
 export const generateResetUserPasswordToken = (
   userId: string,
-  email: string
+  email: string,
 ) => {
   if (!process.env.JWT_SECRET) {
     throw new AppError("JWT_SECRET is not set", 500);
@@ -409,7 +446,7 @@ export const generateResetUserPasswordToken = (
   const resetPasswordToken = jwt.sign(
     { userId, email },
     process.env.JWT_SECRET,
-    { expiresIn: "10m" } // 10 minutes
+    { expiresIn: "10m" }, // 10 minutes
   );
   return resetPasswordToken;
 };
@@ -430,5 +467,5 @@ export const changePassword = asyncHandler(
     await changeUserPassword(userId, newPassword, oldPassword);
 
     sendSuccessResponse(res, null, "Password changed successfully");
-  }
+  },
 );

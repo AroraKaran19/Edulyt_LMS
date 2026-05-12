@@ -3,7 +3,6 @@
 import { usePathname } from "next/navigation";
 import DashboardBanner from "./components/DashboardBanner";
 import FreeInternshipCreditBanner from "./components/FreeInternshipCreditBanner";
-import { cn } from "@/lib/utils";
 
 function isFocusRoute(pathname: string): boolean {
   const parts = pathname.split("/").filter(Boolean);
@@ -28,16 +27,9 @@ const LayoutManager = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <div className="pt-40 w-full">
-      {pathname !== "/dashboard/profile" && <DashboardBanner />}
+      <DashboardBanner />
       <FreeInternshipCreditBanner />
-      <div
-        className={cn(
-          "px-4 lg:px-20 min-h-screen w-full",
-          pathname === "/dashboard/profile" && "px-0!"
-        )}
-      >
-        {children}
-      </div>
+      <div className="px-4 lg:px-20 min-h-screen w-full">{children}</div>
     </div>
   );
 };

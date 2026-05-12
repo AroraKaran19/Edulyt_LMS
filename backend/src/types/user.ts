@@ -45,6 +45,18 @@ export interface Collaborator extends User {
   totalEarnings: number;
 }
 
+/**
+ * Partner user (college-side partner portal). Has only base-user identity
+ * + a `partnerCollege` ObjectId reference to an existing PartnerCollege
+ * document. Doesn't carry `address`, `whatsappNumber`, or `dob` — those
+ * base fields are left unset for partners. When the linked PartnerCollege
+ * is deleted, the partner is auto-deactivated (status → "inactive") by
+ * the cascade in partnerCollege.services.ts.
+ */
+export interface Partner extends User {
+  partnerCollege: string;
+}
+
 export interface Instructor extends User {
   slug?: string;
   industry?: string;
@@ -73,6 +85,9 @@ export interface Instructor extends User {
 export interface Student extends User {
   enrollments: Enrollment["_id"][];
 
+  /** Canonical link to a College document (preferred). Falls back to
+   *  `collegeName` snapshot for legacy rows or deleted colleges. */
+  college?: string;
   collegeName?: string;
   degreeName?: string;
   fatherOccupation?: string;
@@ -152,7 +167,13 @@ export interface User {
   phone?: string;
   whatsappNumber?: string;
   password: string;
-  userType: "student" | "instructor" | "collaborator" | "admin" | "super-admin";
+  userType:
+    | "student"
+    | "instructor"
+    | "collaborator"
+    | "partner"
+    | "admin"
+    | "super-admin";
   provider: "credentials" | "google" | "linkedin";
 
   address?: {

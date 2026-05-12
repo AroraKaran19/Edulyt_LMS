@@ -44,7 +44,20 @@ interface CollegeSelectProps {
   placeholder?: string;
   value?: string;
   disabled?: boolean;
+  /** Fires with the formatted display string ("Name, Location" for picks
+   *  from the list, or the raw text for custom entries). Kept for callers
+   *  that only want the human-readable snapshot. */
   onChange?: (value: string) => void;
+  /** Fires when the user picks a college from the list. Gives the canonical
+   *  `_id` plus the original fields. Does NOT fire for custom-text entries,
+   *  since those don't correspond to a real College row. Callers that need
+   *  the ID-link should pass this AND clear their stored id when `onChange`
+   *  fires with no matching `_id` (i.e. custom text). */
+  onSelect?: (college: { _id: string; name: string; location: string; display: string }) => void;
+  /** Disable the "Use [custom text]" hint to enforce dropdown-only selection.
+   *  Required when the consumer stores an ObjectId reference and can't
+   *  accept arbitrary strings. */
+  disallowCustom?: boolean;
   error?: string;
 }
 
@@ -57,6 +70,8 @@ const CollegeSelect = ({
   value,
   disabled = false,
   onChange,
+  onSelect,
+  disallowCustom = false,
   error,
 }: CollegeSelectProps) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -227,17 +242,25 @@ const CollegeSelect = ({
       setIsOpen(false);
       setSearchTerm("");
       onChange?.(collegeValue);
+      onSelect?.({
+        _id: college._id,
+        name: college.name,
+        location: college.location,
+        display: collegeValue,
+      });
     },
-    [onChange],
+    [onChange, onSelect],
   );
 
   const applyCustomCollege = useCallback(() => {
+    if (disallowCustom) return;
     const customValue = searchTerm.trim();
     if (!customValue) return;
     setIsOpen(false);
     setSearchTerm("");
     onChange?.(customValue);
-  }, [onChange, searchTerm]);
+    // Intentionally no onSelect — custom text isn't a real College row.
+  }, [onChange, searchTerm, disallowCustom]);
 
   const showEmptyHint =
     !loadingInitial &&
@@ -399,6 +422,7 @@ const CollegeSelect = ({
               )}
             </div>
 
+            {!disallowCustom && (
             <div className="border-t border-gray-200 bg-gray-50 px-3 py-2.5 space-y-2">
               <p className="text-xs text-gray-600 leading-snug">
                 College not in the list? Type your full college name in the
@@ -421,6 +445,7 @@ const CollegeSelect = ({
                   : "Type a name above to use a custom college"}
               </button>
             </div>
+            )}
           </div>
         )}
       </div>

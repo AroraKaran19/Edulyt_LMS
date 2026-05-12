@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { verifyUser } from "../middlewares/user.middleware";
+import { verifyUser, denyPartners } from "../middlewares/user.middleware";
 import { verifyAdmin } from "../middlewares/admin.middleware";
 import {
   registerForExamController,
@@ -35,7 +35,7 @@ router.get("/verify/:internId", getInternshipVerificationController);
 router.use(verifyUser);
 
 /** POST /api/internship-enrollments — learner registers for entrance exam */
-router.post("/", registerForExamController);
+router.post("/", denyPartners, registerForExamController);
 
 /** GET /api/internship-enrollments/me — learner's enrollments (dashboard) */
 router.get("/me", listMyInternshipEnrollmentsController);
@@ -49,6 +49,7 @@ router.get("/me/entrance-exam", getLearnerEntranceExamController);
 /** POST /api/internship-enrollments/me/:enrollmentId/documentation — learner submits Aadhar + photo */
 router.post(
   "/me/:enrollmentId/documentation",
+  denyPartners,
   submitInternshipDocumentationController,
 );
 

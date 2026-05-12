@@ -24,13 +24,21 @@ export const authOptions: NextAuthOptions = {
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
+        /** Backend: `/login` forbids partners; partner page sends `"partner"` for `/auth/partner/login`. */
+        portal: { label: "Portal", type: "text" },
       },
       authorize: async (credentials) => {
         if (!credentials?.email || !credentials?.password) {
           return null;
         }
         try {
-          const response = await apiClient.post("/auth/login", {
+          const portal =
+            typeof credentials.portal === "string"
+              ? credentials.portal.trim()
+              : "";
+          const path =
+            portal === "partner" ? "/auth/partner/login" : "/auth/login";
+          const response = await apiClient.post(path, {
             email: credentials.email,
             password: credentials.password,
           });

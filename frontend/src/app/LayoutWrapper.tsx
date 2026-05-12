@@ -16,6 +16,8 @@ export default function LayoutWrapper({
   const [isMounted, setIsMounted] = useState(false);
   const visibleLayout =
     !pathname.startsWith("/dashboard") &&
+    !pathname.startsWith("/profile") &&
+    !pathname.startsWith("/settings") &&
     !pathname.startsWith("/admin") &&
     !pathname.startsWith("/instructor") &&
     !pathname.startsWith("/partner") &&

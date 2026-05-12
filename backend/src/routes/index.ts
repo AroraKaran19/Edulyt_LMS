@@ -28,6 +28,7 @@ import internshipTaskRoutes from "./internshipTask.routes";
 import internshipSubmissionRoutes from "./internshipSubmission.routes";
 import internshipEnrollmentRoutes from "./internshipEnrollment.routes";
 import partnerCollegeRoutes from "./partnerCollege.routes";
+import partnerRoutes from "./partner.routes";
 import questionCategoryRoutes from "./questionCategory.routes";
 import internshipVoucherRoutes from "./internshipVoucher.routes";
 import homePageSettingsRoutes from "./homePageSettings.routes";
@@ -63,6 +64,7 @@ export {
   internshipSubmissionRoutes,
   internshipEnrollmentRoutes,
   partnerCollegeRoutes,
+  partnerRoutes,
   questionCategoryRoutes,
   internshipVoucherRoutes,
   homePageSettingsRoutes,

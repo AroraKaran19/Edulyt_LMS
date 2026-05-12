@@ -50,6 +50,15 @@ export const createOrder = asyncHandler(async (req: Request, res: Response) => {
   if (!user) {
     throw new AppError("User not found", 404);
   }
+  // Partners are portal-only — no purchasing. Blocked here because this
+  // route reads userId from the body (no verifyUser middleware) so the
+  // shared `denyPartners` middleware can't be chained.
+  if (user.userType === "partner") {
+    throw new AppError(
+      "Partner accounts can't purchase courses or internships.",
+      403,
+    );
+  }
 
   if (!courseId || !planType) {
     throw new AppError("Missing required fields", 400);

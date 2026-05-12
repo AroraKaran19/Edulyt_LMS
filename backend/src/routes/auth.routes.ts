@@ -3,6 +3,7 @@ import {
   generateAccessToken,
   generateResetPasswordToken,
   login,
+  partnerLogin,
   oauthSignin,
   refreshToken,
   register,
@@ -27,6 +28,13 @@ router.post("/register", register);
  * @access  Public
  */
 router.post("/login", login);
+
+/**
+ * @route   POST /api/auth/partner/login
+ * @desc    Partner portal credential login (main /login rejects partners server-side).
+ * @access  Public
+ */
+router.post("/partner/login", partnerLogin);
 
 /**
  * @route   POST /api/auth/oauth-signin

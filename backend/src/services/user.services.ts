@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import {
   InstructorModel,
+  PartnerModel,
   StudentModel,
   UserModel,
   EnrollmentModel,
@@ -325,6 +326,16 @@ export const getUserByIdService = async (
     user = await InstructorModel.findById(userId)
       .select("-password -refreshTokens -__v -successPointsHistory")
       .lean();
+  } else if (baseUser.userType === "partner") {
+    // Populate the linked College so the admin UI can show "name, location"
+    // without an extra round-trip per partner row.
+    user = await UserModel.findById(userId)
+      .select("-password -refreshTokens -__v -successPointsHistory")
+      .populate({
+        path: "partnerCollege",
+        select: "name location website image",
+      })
+      .lean();
   } else {
     // For other user types (collaborator, admin, etc.), use base UserModel
     user = await UserModel.findById(userId)
@@ -495,28 +506,49 @@ export const updateUserProfileService = async (
     return null;
   }
 
+  // `college` is an ObjectId ref. The frontend sends "" when the student
+  // typed a custom college name (no directory match) — empty string isn't a
+  // valid ObjectId, so let mongoose strip the field via $unset instead of
+  // trying to cast it.
+  const fields = { ...allowedFields } as Record<string, unknown>;
+  const unsetOps: Record<string, ""> = {};
+  if ("college" in fields) {
+    const v = fields.college;
+    if (v === "" || v === null || v === undefined) {
+      delete fields.college;
+      unsetOps.college = "";
+    }
+  }
+  const update: Record<string, unknown> = {
+    ...fields,
+    updatedAt: new Date(),
+  };
+  if (Object.keys(unsetOps).length > 0) update.$unset = unsetOps;
+
   let updatedUser;
 
   // Update using the appropriate model based on user type
   if (existingUser.userType === "student") {
-    updatedUser = await StudentModel.findByIdAndUpdate(
-      userId,
-      { ...allowedFields, updatedAt: new Date() },
-      { new: true, runValidators: true },
-    ).select("-password -refreshTokens -__v -successPointsHistory");
+    updatedUser = await StudentModel.findByIdAndUpdate(userId, update, {
+      new: true,
+      runValidators: true,
+    }).select("-password -refreshTokens -__v -successPointsHistory");
   } else if (existingUser.userType === "instructor") {
-    updatedUser = await InstructorModel.findByIdAndUpdate(
-      userId,
-      { ...allowedFields, updatedAt: new Date() },
-      { new: true, runValidators: true },
-    ).select("-password -refreshTokens -__v -successPointsHistory");
+    updatedUser = await InstructorModel.findByIdAndUpdate(userId, update, {
+      new: true,
+      runValidators: true,
+    }).select("-password -refreshTokens -__v -successPointsHistory");
+  } else if (existingUser.userType === "partner") {
+    updatedUser = await PartnerModel.findByIdAndUpdate(userId, update, {
+      new: true,
+      runValidators: true,
+    }).select("-password -refreshTokens -__v -successPointsHistory");
   } else {
-    // For other user types (collaborator, admin, etc.), use base UserModel
-    updatedUser = await UserModel.findByIdAndUpdate(
-      userId,
-      { ...allowedFields, updatedAt: new Date() },
-      { new: true, runValidators: true },
-    ).select("-password -refreshTokens -__v -successPointsHistory");
+    // collaborator, admin, super-admin — base schema only
+    updatedUser = await UserModel.findByIdAndUpdate(userId, update, {
+      new: true,
+      runValidators: true,
+    }).select("-password -refreshTokens -__v -successPointsHistory");
   }
 
   return updatedUser as User | null;

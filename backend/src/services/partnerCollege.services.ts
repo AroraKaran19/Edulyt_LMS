@@ -2,7 +2,7 @@ import { PartnerCollegeModel } from "../models/partnerCollege.schema";
 import { PartnerCollege } from "../types/partner-college";
 
 export const createPartnerCollegeService = async (
-  partnerCollegeData: Omit<PartnerCollege, "_id">
+  partnerCollegeData: Omit<PartnerCollege, "_id">,
 ): Promise<PartnerCollege> => {
   const partnerCollege = new PartnerCollegeModel(partnerCollegeData);
   await partnerCollege.save();
@@ -47,7 +47,7 @@ export const getAllPartnerCollegesService = async (filters: {
 };
 
 export const getPartnerCollegeByIdService = async (
-  id: string
+  id: string,
 ): Promise<PartnerCollege | null> => {
   const partnerCollege = await PartnerCollegeModel.findById(id).lean();
   return partnerCollege as PartnerCollege | null;
@@ -55,18 +55,18 @@ export const getPartnerCollegeByIdService = async (
 
 export const updatePartnerCollegeService = async (
   id: string,
-  updateData: Partial<PartnerCollege>
+  updateData: Partial<PartnerCollege>,
 ): Promise<PartnerCollege | null> => {
   const partnerCollege = await PartnerCollegeModel.findByIdAndUpdate(
     id,
     updateData,
-    { new: true, runValidators: true }
+    { new: true, runValidators: true },
   ).lean();
   return partnerCollege as PartnerCollege | null;
 };
 
 export const deletePartnerCollegeService = async (
-  id: string
+  id: string,
 ): Promise<void> => {
   await PartnerCollegeModel.findByIdAndDelete(id);
 };

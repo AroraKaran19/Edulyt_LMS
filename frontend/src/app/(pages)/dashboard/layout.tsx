@@ -37,7 +37,7 @@ export const metadata: Metadata = {
 
 const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
   return (
-    <AuthGuard>
+    <AuthGuard requiredUserType={["student"]} wrongRoleShowsNotFound>
       <DashboardNavbar />
       <LayoutManager>{children}</LayoutManager>
     </AuthGuard>

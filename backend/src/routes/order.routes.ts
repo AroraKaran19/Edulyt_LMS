@@ -1,5 +1,5 @@
 import { verifyAdmin } from "../middlewares/admin.middleware";
-import { verifyUser } from "../middlewares/user.middleware";
+import { verifyUser, denyPartners } from "../middlewares/user.middleware";
 import { Router } from "express";
 import {
   createOrder,
@@ -33,7 +33,12 @@ router.post("/", createOrder);
  * @desc    Pay for internship “direct seat” (batch plan); enrollment must be `payment_pending`
  * @access  User (session)
  */
-router.post("/internship-seat", verifyUser, createInternshipSeatOrder);
+router.post(
+  "/internship-seat",
+  verifyUser,
+  denyPartners,
+  createInternshipSeatOrder,
+);
 
 /**
  * @route   POST /api/orders/internship-success-points
@@ -43,6 +48,7 @@ router.post("/internship-seat", verifyUser, createInternshipSeatOrder);
 router.post(
   "/internship-success-points",
   verifyUser,
+  denyPartners,
   createInternshipSuccessPointsOrder,
 );
 

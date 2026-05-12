@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import mongoose from "mongoose";
 import {
   asyncHandler,
   sendSuccessResponse,
@@ -209,10 +210,19 @@ export const getCurrentUserProfile = asyncHandler(
 export const updateUserProfile = asyncHandler(
   async (req: Request, res: Response) => {
     const userId = req.user?._id;
-    const updateData = req.body;
+    const updateData = { ...req.body } as Record<string, unknown>;
 
     if (!userId) {
       throw new AppError("User ID not found", 400);
+    }
+
+    // Partners can't relink themselves — the college is set by an admin and
+    // changing it would let a partner reassign which roster of students they
+    // can see. Server-side strip is the source of truth; admin updates go via
+    // /users/admin/:userId which is exempt from this check.
+    if (req.user?.userType === "partner") {
+      delete updateData.partnerCollege;
+      delete updateData.userType;
     }
 
     const updatedUser = await updateUserProfileService(userId, updateData);
@@ -373,6 +383,73 @@ export const adminUpdateUser = asyncHandler(
       200
     );
   }
+);
+
+/**
+ * Admin endpoint to create a new partner user. Partners get a minimal
+ * profile (first/last name, email, optional phone, password) plus a
+ * `partnerCollegeId` (ObjectId of an existing College from the main
+ * directory). The discriminator's async validator re-verifies the college
+ * exists at save time, so the link is enforced even if the UI is bypassed.
+ */
+export const adminCreatePartner = asyncHandler(
+  async (req: Request, res: Response) => {
+    const {
+      firstName,
+      lastName,
+      email,
+      phone,
+      password,
+      partnerCollegeId,
+    } = req.body as {
+      firstName?: string;
+      lastName?: string;
+      email?: string;
+      phone?: string;
+      password?: string;
+      partnerCollegeId?: string;
+    };
+
+    if (!firstName?.trim()) throw new AppError("First name is required", 400);
+    if (!email?.trim()) throw new AppError("Email is required", 400);
+    if (!password) throw new AppError("Password is required", 400);
+    if (!partnerCollegeId?.trim())
+      throw new AppError("College is required", 400);
+
+    if (!mongoose.Types.ObjectId.isValid(partnerCollegeId)) {
+      throw new AppError("Invalid college id", 400);
+    }
+
+    const { UserModel } = await import("../models");
+    const existing = await UserModel.findOne({ email: email.trim() });
+    if (existing) {
+      throw new AppError("A user with this email already exists", 400);
+    }
+
+    const { registerUser } = await import("../services/auth.services");
+    const newUser = await registerUser({
+      email: email.trim(),
+      password,
+      userType: "partner",
+      provider: "credentials",
+      firstName: firstName.trim(),
+      lastName: lastName?.trim() || "",
+      ...(phone?.trim() ? { phone: phone.trim() } : {}),
+      // Cast the ObjectId-string through as a partner-only field; the
+      // PartnerModel discriminator's validator confirms existence at save
+      // time so a forged ID gets rejected by the model layer.
+      partnerCollege: new mongoose.Types.ObjectId(partnerCollegeId),
+    } as Parameters<typeof registerUser>[0] & {
+      partnerCollege: mongoose.Types.ObjectId;
+    });
+
+    const sanitized = (newUser as { toObject?: () => unknown }).toObject?.() ?? newUser;
+    if (sanitized && typeof sanitized === "object") {
+      delete (sanitized as Record<string, unknown>).password;
+    }
+
+    sendSuccessResponse(res, sanitized, "Partner account created", 201);
+  },
 );
 
 /**

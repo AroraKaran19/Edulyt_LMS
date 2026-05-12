@@ -4,6 +4,7 @@ import { X, Plus, Briefcase, Check, Edit3, Save } from "lucide-react";
 import { Button } from "@/components/ui/buttons/button";
 import Input from "@/components/ui/inputs/Input";
 import Select from "@/components/ui/inputs/Select";
+import CollegeSelect from "@/components/ui/inputs/CollegeSelect";
 import DateSelector from "@/components/ui/inputs/DateSelector";
 import UploadMediaContainer from "@/components/ui/container/UploadMediaContainer";
 import InstructorCompanyImagesEditor from "./InstructorCompanyImagesEditor";
@@ -27,6 +28,32 @@ interface EditUserModalProps {
       | Partial<User & Instructor & Student>
       | ((prev: Partial<User & Instructor & Student>) => Partial<User & Instructor & Student>)
   ) => void;
+}
+
+/**
+ * Pick a "Name, Location" label for the partner's linked college so the
+ * CollegeSelect chip has something to render before the admin picks a new
+ * one. Tolerates three shapes the parent might hand us:
+ *   - populated object `{ name, location }` from `getUserById`
+ *   - raw ObjectId string (admin opened the modal from a list view that
+ *     bypassed the populate path)
+ *   - an in-flight `partnerCollegeDisplay` we stashed after the last pick
+ */
+function resolvePartnerCollegeDisplay(
+  formData: Partial<User & Instructor & Student> & {
+    partnerCollege?: unknown;
+    partnerCollegeDisplay?: string;
+  },
+): string {
+  if (formData.partnerCollegeDisplay) return formData.partnerCollegeDisplay;
+  const pc = formData.partnerCollege;
+  if (pc && typeof pc === "object") {
+    const obj = pc as { name?: string; location?: string };
+    if (obj.name) {
+      return obj.location ? `${obj.name}, ${obj.location}` : obj.name;
+    }
+  }
+  return "";
 }
 
 const EditUserModal: React.FC<EditUserModalProps> = ({
@@ -786,7 +813,8 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
             </div>
           )}
 
-          {/* Address */}
+          {/* Address — hidden for partners since they don't collect it */}
+          {String(user?.userType || "").toLowerCase() !== "partner" && (
           <div>
             <h4 className="text-lg font-semibold text-gray-900 mb-4">
               Address
@@ -861,6 +889,43 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
               />
             </div>
           </div>
+          )}
+
+          {/* Partner Specific Fields */}
+          {String(user?.userType || "").toLowerCase() === "partner" && (
+            <div>
+              <h4 className="text-lg font-semibold text-gray-900 mb-4">
+                Partner Information
+              </h4>
+              <p className="text-xs text-gray-500 mb-3">
+                Re-link this partner to a different college if their role has
+                moved. The dropdown only shows colleges from the main directory
+                — custom names aren&apos;t accepted server-side.
+              </p>
+              <CollegeSelect
+                label="Linked College"
+                placeholder="Search and pick from the directory"
+                value={resolvePartnerCollegeDisplay(formData)}
+                disallowCustom
+                onChange={() => {
+                  /* disallowCustom blocks free text; no-op for safety. */
+                }}
+                onSelect={(c) =>
+                  onFormDataChange({
+                    ...formData,
+                    partnerCollege: c._id,
+                    // Stash a display copy so the input retains a label after
+                    // an admin picks but before the parent re-fetches the
+                    // populated payload.
+                    partnerCollegeDisplay: c.display,
+                  } as Partial<User & Instructor & Student> & {
+                    partnerCollege?: string;
+                    partnerCollegeDisplay?: string;
+                  })
+                }
+              />
+            </div>
+          )}
 
           {/* Student Specific Fields */}
           {String(user?.userType || "").toLowerCase() === "student" && (
@@ -869,14 +934,23 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
                 Student Information
               </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input
+                <CollegeSelect
                   label="College Name"
-                  value={(formData as any).collegeName || ""}
-                  onChange={(e) =>
+                  placeholder="Search and select, or type a custom name"
+                  value={(formData as Student).collegeName || ""}
+                  onChange={(value) =>
                     onFormDataChange({
                       ...formData,
-                      collegeName: e.target.value,
-                    })
+                      collegeName: value,
+                      college: "",
+                    } as Partial<User & Instructor & Student>)
+                  }
+                  onSelect={(c) =>
+                    onFormDataChange({
+                      ...formData,
+                      collegeName: c.display,
+                      college: c._id,
+                    } as Partial<User & Instructor & Student>)
                   }
                 />
                 <Input

@@ -254,6 +254,7 @@ const Navbar = () => {
         </nav>
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           {isAuthenticated ? (
+            // Role-specific links (e.g. partner college portal vs learner dashboard).
             <UserMenu />
           ) : (
             <OrangeButton

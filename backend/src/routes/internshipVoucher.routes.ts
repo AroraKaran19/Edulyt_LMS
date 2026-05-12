@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { verifyUser } from "../middlewares/user.middleware";
+import { verifyUser, denyPartners } from "../middlewares/user.middleware";
 import {
   getMyVouchers,
   redeemVoucher,
@@ -21,6 +21,6 @@ router.get("/me", getMyVouchers);
  * @desc    Redeem a voucher by id or code
  * @access  Private
  */
-router.post("/redeem", redeemVoucher);
+router.post("/redeem", denyPartners, redeemVoucher);
 
 export default router;

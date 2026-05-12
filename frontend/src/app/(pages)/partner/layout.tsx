@@ -23,7 +23,7 @@ export default function PartnerLayout({
       <div
         className={cn(
           "flex w-full min-h-0 flex-1 bg-[#FFF7F2]",
-          "h-full max-h-full overflow-hidden"
+          "h-full max-h-full overflow-hidden",
         )}
       >
         <PartnerSidebarContainer />

@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { CollegeModel } from "../models/college.schema";
+import { UserModel } from "../models";
 import { College } from "../types/college";
 
 const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -186,8 +187,70 @@ export const updateCollegeService = async (
   return toCollege(doc as unknown as Record<string, unknown>);
 };
 
+/**
+ * Best-effort background sweep run after a college delete:
+ *   - Unset `college` on every student linked to the deleted college so the
+ *     dangling ObjectId doesn't accumulate. Leaves `collegeName` snapshot
+ *     intact so the student's profile still shows their historical school.
+ *   - Deactivate every partner user linked to this college. Their portal
+ *     access depended on the link; without it they can't log in legitimately.
+ *     Status `inactive` (not delete) preserves the audit trail and lets an
+ *     admin reactivate if the link is rebuilt later.
+ * Detached from the delete request — admins don't wait on it; errors are
+ * logged but never thrown.
+ */
+function cascadeCollegeDeleteInBackground(collegeId: string): void {
+  setImmediate(async () => {
+    const objId = new mongoose.Types.ObjectId(collegeId);
+    try {
+      const studentRes = await UserModel.updateMany(
+        { userType: "student", college: objId },
+        { $unset: { college: "" } },
+      );
+      if (studentRes.modifiedCount > 0) {
+        console.log(
+          `[College] Unset college ref on ${studentRes.modifiedCount} student(s) ` +
+            `after deletion of college ${collegeId}`,
+        );
+      }
+    } catch (e) {
+      console.error(
+        `[College] Background student-cascade failed for ${collegeId}:`,
+        e,
+      );
+    }
+
+    try {
+      const partnerRes = await UserModel.updateMany(
+        {
+          userType: "partner",
+          partnerCollege: objId,
+          status: { $ne: "inactive" },
+        },
+        { $set: { status: "inactive" } },
+      );
+      if (partnerRes.modifiedCount > 0) {
+        console.log(
+          `[College] Deactivated ${partnerRes.modifiedCount} partner user(s) ` +
+            `after deletion of college ${collegeId}`,
+        );
+      }
+    } catch (e) {
+      console.error(
+        `[College] Background partner-cascade failed for ${collegeId}:`,
+        e,
+      );
+    }
+  });
+}
+
 export const deleteCollegeService = async (id: string): Promise<boolean> => {
   if (!mongoose.Types.ObjectId.isValid(id)) return false;
   const res = await CollegeModel.findByIdAndDelete(id);
-  return !!res;
+  if (!res) return false;
+
+  // Cascade student.college unset + partner deactivate off the request thread
+  // so a delete that touches many rows still returns fast.
+  cascadeCollegeDeleteInBackground(id);
+  return true;
 };

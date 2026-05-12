@@ -141,6 +141,9 @@ interface EnrollmentFormData {
   email: string;
   phone: string;
   collegeName: string;
+  /** Canonical College _id (when user picks from the dropdown). Empty for
+   *  custom text entries. */
+  college: string;
   degreeName: string;
   fatherOccupation: string;
   termsAndConditions: boolean;
@@ -421,6 +424,30 @@ const CartForm = ({
   if (!isAuthenticated || !user) {
     return null;
   }
+  // Partners aren't allowed to enroll — send them back to their dashboard
+  // rather than letting them load the cart and get rejected by the server.
+  if (user.userType === "partner") {
+    return (
+      <div className="w-full min-h-[calc(100dvh-78px)] flex items-center justify-center bg-[#f3f3f3] px-4">
+        <div className="max-w-md rounded-xl bg-white p-6 text-center shadow">
+          <h2 className="text-lg font-semibold text-gray-900">
+            Partners can&apos;t enroll
+          </h2>
+          <p className="mt-2 text-sm text-gray-600">
+            Partner accounts are read-only for student management. Please use a
+            student account to purchase courses or internships.
+          </p>
+          <button
+            type="button"
+            onClick={() => router.push("/partner/college/dashboard")}
+            className="mt-4 rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600"
+          >
+            Back to partner dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
   const {
     register,
     handleSubmit,
@@ -436,6 +463,10 @@ const CartForm = ({
         email: z.email("Invalid email address"),
         phone: z.string().min(10, "Phone number must be 10 digits"),
         collegeName: z.string().min(1, "College name is required"),
+        // Always a string, possibly empty. Set when picked from the
+        // dropdown; cleared on custom text. The snapshot in collegeName
+        // is the mandatory display value.
+        college: z.string(),
         degreeName: z.string().min(1, "Degree name is required"),
         fatherOccupation: z.string().min(1, "Father occupation is required"),
         termsAndConditions: z
@@ -450,6 +481,7 @@ const CartForm = ({
       email: user?.email || "",
       phone: user?.phone || "",
       collegeName: (user as Student).collegeName || "",
+      college: (user as Student).college || "",
       degreeName: (user as Student).degreeName || "",
       fatherOccupation: (user as Student).fatherOccupation || "",
       termsAndConditions: false,
@@ -653,12 +685,22 @@ const CartForm = ({
                           required
                           placeholder="Search and select your college"
                           value={watch("collegeName")}
-                          onChange={(value) =>
+                          onChange={(value) => {
                             setValue("collegeName", value, {
                               shouldValidate: true,
                               shouldDirty: true,
-                            })
-                          }
+                            });
+                            // Custom-text entry → clear the canonical ID so
+                            // we don't ship a stale link with a fresh name.
+                            setValue("college", "", { shouldDirty: true });
+                          }}
+                          onSelect={(c) => {
+                            setValue("collegeName", c.display, {
+                              shouldValidate: true,
+                              shouldDirty: true,
+                            });
+                            setValue("college", c._id, { shouldDirty: true });
+                          }}
                           error={errors.collegeName?.message}
                         />
                         <div className="flex flex-col gap-2">
@@ -1043,6 +1085,11 @@ const CartForm = ({
                                 email: formData.email,
                                 phone: formData.phone,
                                 collegeName: formData.collegeName,
+                                // Canonical ID-link (when picked from
+                                // dropdown). Empty for custom text — we
+                                // explicitly send "" so any prior link is
+                                // cleared on the server.
+                                college: formData.college || "",
                                 degreeName: formData.degreeName,
                                 fatherOccupation: formData.fatherOccupation,
                               });

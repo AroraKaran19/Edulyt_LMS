@@ -1,14 +1,18 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Dancing_Script } from "next/font/google";
-import { Eye, EyeOff, Lock, Mail } from "lucide-react";
+import { Eye, EyeOff, Loader2, Lock, Mail, X } from "lucide-react";
+import { signIn, useSession } from "next-auth/react";
+import { toast } from "react-toastify";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
-import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import Input from "@/components/ui/inputs/Input";
+import { awaitClientSessionAfterSignIn } from "@/lib/awaitClientSession";
+import { showLoginErrorToast } from "@/lib/showLoginErrorToast";
+import { getPostLoginRedirectPath } from "@/lib/postLoginRedirect";
+import type { User } from "@/types/user";
 import { cn } from "@/lib/utils";
 
 const dancingScript = Dancing_Script({
@@ -17,49 +21,72 @@ const dancingScript = Dancing_Script({
 });
 
 const HERO_IMAGE = "/partner/partner-login.png";
+const PARTNER_DASHBOARD = "/partner/college/dashboard";
 
 const SCROLLBAR_HIDE =
   "[scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden";
 
-function MicrosoftLogo({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      width="20"
-      height="20"
-      aria-hidden
-    >
-      <path fill="#F35325" d="M1 1h10.5v10.5H1z" />
-      <path fill="#81BC06" d="M12.5 1H23v10.5H12.5z" />
-      <path fill="#05A6F0" d="M1 12.5h10.5V23H1z" />
-      <path fill="#FFBA08" d="M12.5 12.5H23V23H12.5z" />
-    </svg>
-  );
-}
-
 export default function PartnerLoginPage() {
   const router = useRouter();
-  const [partnerKind, setPartnerKind] = useState<"college" | "institute">(
-    "college"
-  );
+  const { data: session, status } = useSession();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [remember, setRemember] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
 
-  function goToDashboard() {
-    router.push(`/partner/${partnerKind}/dashboard`);
+  // If someone is already logged in, send them where they belong instead of
+  // showing the partner login form. Partners → their dashboard; admins /
+  // instructors / students → their own role home.
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    const u = session?.user as User | undefined;
+    if (!u) return;
+    if (u.userType === "partner") {
+      router.replace(PARTNER_DASHBOARD);
+      return;
+    }
+    router.replace(getPostLoginRedirectPath(u, null));
+  }, [status, session, router]);
+
+  if (status === "loading" || status === "authenticated") {
+    return (
+      <div className="flex min-h-dvh w-full items-center justify-center bg-[#fffcfa]">
+        <Loader2 className="size-10 animate-spin text-[#F27420]" />
+      </div>
+    );
   }
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setIsLoading(true);
-    setTimeout(() => {
+    try {
+      const result = await signIn("credentials", {
+        email: email.trim(),
+        password,
+        portal: "partner",
+        redirect: false,
+        callbackUrl: PARTNER_DASHBOARD,
+      });
+
+      if (result?.error) {
+        showLoginErrorToast(result.error);
+        return;
+      }
+      if (!result?.ok) {
+        toast.error("Login failed. Please try again.");
+        return;
+      }
+
+      // Confirm the session is hydrated before routing — otherwise the dashboard
+      // loads with stale "logged out" state on the first paint.
+      await awaitClientSessionAfterSignIn();
+      router.push(PARTNER_DASHBOARD);
+    } catch {
+      toast.error("Something went wrong. Please try again.");
+    } finally {
       setIsLoading(false);
-      goToDashboard();
-    }, 300);
+    }
   }
 
   return (
@@ -94,14 +121,14 @@ export default function PartnerLoginPage() {
                   "text-xl leading-snug text-white sm:text-3xl"
                 )}
               >
-                Trusted by 500+ Academic Partners
+                Trusted by 500+ College Partners
               </p>
               <h1 className="text-2xl font-medium leading-tight text-white sm:text-6xl">
-                Empowering Institutes &amp; Colleges
+                Empowering Colleges
               </h1>
               <p className="text-sm leading-relaxed text-white/95 sm:text-[18px]">
-                Our platform collaborates with colleges and institutes to help
-                students gain practical skills, internships, and better career
+                Our platform collaborates with colleges to help their students
+                gain practical skills, internships, and better career
                 opportunities.
               </p>
             </div>
@@ -125,42 +152,12 @@ export default function PartnerLoginPage() {
             </header>
 
             <h2 className="text-xl font-bold leading-tight text-neutral-800 sm:text-2xl sm:text-[1.75rem]">
-              Welcome Back Partners !
+              Welcome Back, College Partner!
             </h2>
             <p className="mt-2 text-sm leading-snug text-neutral-600 sm:text-[15px]">
-              Access your dashboard to manage students, programs, and
-              collaborations.
+              Access your dashboard to view your students and manage your
+              college profile.
             </p>
-
-            <p className="mt-6 text-sm font-semibold text-neutral-800">
-              Login as Partner
-            </p>
-            <div className="mt-2 flex rounded-full border-2 border-[#F27420]">
-              <button
-                type="button"
-                onClick={() => setPartnerKind("college")}
-                className={cn(
-                  "flex-1 cursor-pointer rounded-l-full py-2.5 text-sm font-medium transition-colors",
-                  partnerKind === "college"
-                    ? "bg-[#FFF4ED] text-[#F27420] border-r-2 border-[#F27420]"
-                    : "bg-white text-neutral-600"
-                )}
-              >
-                College Partners
-              </button>
-              <button
-                type="button"
-                onClick={() => setPartnerKind("institute")}
-                className={cn(
-                  "flex-1 cursor-pointer rounded-r-full py-2.5 text-sm font-semibold transition-colors",
-                  partnerKind === "institute"
-                    ? "bg-[#FFF4ED] text-[#F27420] border-l-2 border-[#F27420]"
-                    : "bg-white text-neutral-600"
-                )}
-              >
-                Institutes Partners
-              </button>
-            </div>
 
             <form
               className="mt-6 flex flex-col gap-5"
@@ -212,22 +209,14 @@ export default function PartnerLoginPage() {
                 suppressHydrationWarning
               />
 
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <label className="flex cursor-pointer items-center gap-2 text-sm text-[#475467]">
-                  <input
-                    type="checkbox"
-                    checked={remember}
-                    onChange={(e) => setRemember(e.target.checked)}
-                    className="size-4 rounded border-[#D0D5DD] accent-[#F27420]"
-                  />
-                  Remember
-                </label>
-                <Link
-                  href="/forgot-password"
-                  className="text-sm font-semibold text-[#0080f6] hover:underline"
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowForgotPasswordModal(true)}
+                  className="cursor-pointer text-sm font-semibold text-[#0080f6] hover:underline"
                 >
                   Forgot password?
-                </Link>
+                </button>
               </div>
 
               <OrangeButton
@@ -242,6 +231,47 @@ export default function PartnerLoginPage() {
           </section>
         </div>
       </div>
+
+      {showForgotPasswordModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={() => setShowForgotPasswordModal(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl bg-white shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+              <h3 className="text-base font-semibold text-gray-900">
+                Forgot password?
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowForgotPasswordModal(false)}
+                aria-label="Close"
+                className="rounded-md p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+            <div className="px-5 py-5">
+              <p className="text-sm leading-relaxed text-gray-600">
+                Partner accounts can&apos;t reset their own password. Please
+                reach out to the Airkrit admin team and they&apos;ll issue you
+                a new one.
+              </p>
+            </div>
+            <div className="flex justify-end border-t border-gray-100 px-5 py-3">
+              <OrangeButton
+                glow={false}
+                onClick={() => setShowForgotPasswordModal(false)}
+              >
+                Got it
+              </OrangeButton>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

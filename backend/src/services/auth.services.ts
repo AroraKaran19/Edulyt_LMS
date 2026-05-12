@@ -3,6 +3,7 @@ import { AppError } from "../middlewares/error.middleware";
 import {
   CollaboratorModel,
   InstructorModel,
+  PartnerModel,
   StudentModel,
   UserModel,
 } from "../models";
@@ -34,6 +35,9 @@ export const registerUser = async (userData: Partial<User>) => {
         break;
       case "collaborator":
         newUser = new CollaboratorModel(newUserData);
+        break;
+      case "partner":
+        newUser = new PartnerModel(newUserData);
         break;
       default:
         newUser = new StudentModel(newUserData);

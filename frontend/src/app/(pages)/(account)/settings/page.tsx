@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import useAuth from "@/hooks/useAuth";
+import { getPostLoginRedirectPath } from "@/lib/postLoginRedirect";
 import { ChevronLeftIcon, Eye, EyeOff, Lock, AlertCircle } from "lucide-react";
 import { toast } from "react-toastify";
 import apiClient from "@/configs/apiConfig";
@@ -10,6 +12,7 @@ import { validatePassword, getPasswordRequirementsText } from "@/lib/passwordVal
 
 const SettingsPage = () => {
   const router = useRouter();
+  const { user: viewer } = useAuth();
   const [loading, setLoading] = useState(true);
   const [userProvider, setUserProvider] = useState<string | null>(null);
   const [passwordData, setPasswordData] = useState({
@@ -153,9 +156,13 @@ const SettingsPage = () => {
         <div className="flex flex-col gap-3">
           <div className="flex items-center gap-4">
             <button
-              onClick={() => router.push("/dashboard")}
+              onClick={() =>
+                viewer
+                  ? router.push(getPostLoginRedirectPath(viewer, undefined))
+                  : router.push("/")
+              }
               className="p-2.5 rounded-full bg-white hover:bg-gray-50 border border-gray-200 hover:border-orange-300 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md group"
-              title="Back to Dashboard"
+              title="Back"
             >
               <ChevronLeftIcon className="size-5 text-gray-700 group-hover:text-orange-600 transition-colors" />
             </button>

@@ -17,6 +17,7 @@ import {
   unlinkLinkedInAccount,
   adminUpdateUser,
   adminChangeUserPassword,
+  adminCreatePartner,
 } from "../controllers/user.controller";
 
 const router = Router();
@@ -82,6 +83,15 @@ router.put("/admin/:userId/password", adminChangeUserPassword);
  * @access  Admin
  */
 router.delete("/admin/:userId", deleteUser);
+
+/**
+ * @route   POST /api/users/admin/partner
+ * @desc    Create a partner user (college-side partner portal account).
+ *          Body: { firstName, lastName?, email, phone?, password, instituteName }
+ *          `instituteName` must match an existing PartnerCollege name.
+ * @access  Admin
+ */
+router.post("/admin/partner", adminCreatePartner);
 
 /**
  * @route   GET /api/users/admin/stats/overview

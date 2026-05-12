@@ -63,6 +63,9 @@ export function getPostLoginRedirectPath(
   if (ut === "instructor") {
     return "/instructor";
   }
+  if (ut === "partner") {
+    return "/partner/college/dashboard";
+  }
 
   let raw = (callbackUrl ?? "").trim();
   if (!raw) raw = STUDENT_HOME;
@@ -74,6 +77,10 @@ export function getPostLoginRedirectPath(
 
   if (!isGenericStudentHome(raw)) {
     return raw;
+  }
+
+  if (ut === "collaborator") {
+    return "/profile";
   }
 
   return STUDENT_HOME;

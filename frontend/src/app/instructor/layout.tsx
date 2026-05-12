@@ -11,7 +11,7 @@ export default function InstructorLayout({
   return (
     <AuthGuard
       requiredUserType={["instructor"]}
-      fallbackPath="/dashboard"
+      fallbackPath="/login"
     >
       <div className="min-h-screen bg-[#F8F9FB]">
         <InstructorNavbar />

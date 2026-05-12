@@ -4,12 +4,18 @@ import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { User } from "@/types";
 import useAuth from "@/hooks/useAuth";
+import { getPostLoginRedirectPath } from "@/lib/postLoginRedirect";
+import { notFound } from "next/navigation";
 
 interface AuthGuardProps {
   children: React.ReactNode;
   requiredUserType?: User["userType"][];
   requiredPermissions?: string[];
   fallbackPath?: string;
+  /** If true, wrong signed-in role is sent to {@link getPostLoginRedirectPath} instead of history back. Ignored when `wrongRoleShowsNotFound` is true. */
+  redirectToRoleHomeOnMismatch?: boolean;
+  /** If true, authenticated users with the wrong role trigger the nearest `not-found` boundary (404) instead of redirecting. */
+  wrongRoleShowsNotFound?: boolean;
   showLoading?: boolean;
 }
 
@@ -27,6 +33,8 @@ const AuthGuard: React.FC<AuthGuardProps> = ({
   requiredUserType,
   requiredPermissions,
   fallbackPath = "/login",
+  redirectToRoleHomeOnMismatch = false,
+  wrongRoleShowsNotFound = false,
   showLoading = true,
 }) => {
   const { user, isAuthenticated, isLoading, isUnauthenticated } = useAuth();
@@ -54,7 +62,13 @@ const AuthGuard: React.FC<AuthGuardProps> = ({
       requiredUserType.length > 0 &&
       !requiredUserType.includes(user.userType as User["userType"])
     ) {
-      router.back();
+      if (!wrongRoleShowsNotFound) {
+        if (redirectToRoleHomeOnMismatch) {
+          router.replace(getPostLoginRedirectPath(user, undefined));
+        } else {
+          router.back();
+        }
+      }
       return;
     }
 
@@ -76,6 +90,9 @@ const AuthGuard: React.FC<AuthGuardProps> = ({
     router,
     requiredUserType,
     fallbackPath,
+    redirectToRoleHomeOnMismatch,
+    wrongRoleShowsNotFound,
+    requiredPermissions,
     isClient,
   ]);
 
@@ -99,6 +116,9 @@ const AuthGuard: React.FC<AuthGuardProps> = ({
     requiredUserType.length > 0 &&
     !requiredUserType.includes(user.userType as User["userType"])
   ) {
+    if (wrongRoleShowsNotFound) {
+      notFound();
+    }
     return null;
   }
 

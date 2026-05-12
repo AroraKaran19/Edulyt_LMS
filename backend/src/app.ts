@@ -36,6 +36,7 @@ import {
   internshipSubmissionRoutes,
   internshipEnrollmentRoutes,
   partnerCollegeRoutes,
+  partnerRoutes,
   questionCategoryRoutes,
   internshipVoucherRoutes,
   homePageSettingsRoutes,
@@ -94,6 +95,7 @@ app.use("/api/internship-tasks", internshipTaskRoutes);
 app.use("/api/internship-submissions", internshipSubmissionRoutes);
 app.use("/api/internship-enrollments", internshipEnrollmentRoutes);
 app.use("/api/partner-colleges", partnerCollegeRoutes);
+app.use("/api/partner", partnerRoutes);
 app.use("/api/question-categories", questionCategoryRoutes);
 app.use("/api/internship-vouchers", internshipVoucherRoutes);
 app.use("/api/home-page-settings", homePageSettingsRoutes);

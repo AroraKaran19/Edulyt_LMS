@@ -4,6 +4,50 @@ import { AppError } from "./error.middleware";
 import { UserModel } from "../models";
 import jwt from "jsonwebtoken";
 
+/**
+ * Blocks partner accounts from learner-only flows (cart purchases, voucher
+ * redemption, internship enrollment, etc.). Partners are a portal-only
+ * account type — they view their college's students but never enroll in
+ * anything themselves. Must be chained AFTER `verifyUser`.
+ */
+export const denyPartners = (
+  req: Request,
+  _res: Response,
+  next: NextFunction,
+) => {
+  if (!req.user) {
+    return next(new AppError("Authentication required", 401));
+  }
+  if (req.user.userType === "partner") {
+    return next(
+      new AppError(
+        "Partner accounts can't perform this action. Please use a student account.",
+        403,
+      ),
+    );
+  }
+  next();
+};
+
+/**
+ * Gate for the partner portal endpoints (/api/partner/*). Confirms the
+ * authenticated user is a partner; non-partners get a 403. Must be chained
+ * AFTER `verifyUser`.
+ */
+export const verifyPartner = (
+  req: Request,
+  _res: Response,
+  next: NextFunction,
+) => {
+  if (!req.user) {
+    return next(new AppError("Authentication required", 401));
+  }
+  if (req.user.userType !== "partner") {
+    return next(new AppError("Partner access required", 403));
+  }
+  next();
+};
+
 export const verifyUser = async (
   req: Request,
   res: Response,

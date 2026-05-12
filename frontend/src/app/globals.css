@@ -124,6 +124,15 @@ button:disabled {
     }
   }
 
+  @keyframes partnerTopHeaderNameShimmer {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(220%);
+    }
+  }
+
   --animate-fade-from-top: fadeFromTop 0.3s ease-in-out;
   --animate-fade-in: fadeIn 0.8s ease-out;
   --animate-reverse: reverseSpinSlow 1.5s linear infinite;
@@ -137,6 +146,8 @@ button:disabled {
   --animate-marquee-vertical-fast-paused: marqueeVertical 8s linear infinite
     paused;
   --animate-fade-from-left: fadeFromLeft 0.3s ease-in-out forwards;
+  --animate-partner-top-header-name-shimmer: partnerTopHeaderNameShimmer 1.35s
+    ease-in-out infinite;
 }
 
 /* Internship Features Carousel Pagination */

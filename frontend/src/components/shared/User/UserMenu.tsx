@@ -9,6 +9,7 @@ import {
   Settings,
   Star,
   User,
+  Users,
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -31,12 +32,63 @@ const UserMenu = () => {
     {
       label: "Profile",
       icon: User,
-      href: "/dashboard/profile",
+      href: "/profile",
     },
     {
       label: "Settings",
       icon: Settings,
-      href: "/dashboard/settings",
+      href: "/settings",
+    },
+    {
+      label: "Logout",
+      icon: LogOut,
+      href: "",
+    },
+  ];
+
+  const collaboratorMenuItems = [
+    {
+      label: "Home",
+      icon: Home,
+      href: "/",
+    },
+    {
+      label: "Profile",
+      icon: User,
+      href: "/profile",
+    },
+    {
+      label: "Settings",
+      icon: Settings,
+      href: "/settings",
+    },
+    {
+      label: "Logout",
+      icon: LogOut,
+      href: "",
+    },
+  ];
+
+  const partnerMenuItems = [
+    {
+      label: "Dashboard",
+      icon: LayoutDashboard,
+      href: "/partner/college/dashboard",
+    },
+    {
+      label: "Students",
+      icon: Users,
+      href: "/partner/college/students",
+    },
+    {
+      label: "Profile",
+      icon: User,
+      href: "/profile",
+    },
+    {
+      label: "Settings",
+      icon: Settings,
+      href: "/settings",
     },
     {
       label: "Logout",
@@ -59,12 +111,12 @@ const UserMenu = () => {
     {
       label: "Profile",
       icon: User,
-      href: "/dashboard/profile",
+      href: "/profile",
     },
     {
       label: "Settings",
       icon: Settings,
-      href: "/dashboard/settings",
+      href: "/settings",
     },
     {
       label: "Logout",
@@ -81,7 +133,7 @@ const UserMenu = () => {
     {
       label: "Profile",
       icon: User,
-      href: "/dashboard/profile",
+      href: "/profile",
     },
     {
       label: "Logout",
@@ -127,7 +179,13 @@ const UserMenu = () => {
   const iconClass = "size-4 text-gray-600 group-hover:text-orange-600";
 
   const primaryNavItems =
-    user.userType === "instructor" ? instructorMenuItems : userMenuItems;
+    user.userType === "instructor"
+      ? instructorMenuItems
+      : user.userType === "partner"
+        ? partnerMenuItems
+        : user.userType === "collaborator"
+          ? collaboratorMenuItems
+          : userMenuItems;
 
   if (user.userType === "admin" || user.userType === "super-admin") {
     return (

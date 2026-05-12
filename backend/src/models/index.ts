@@ -3,6 +3,7 @@ import {
   InstructorModel,
   StudentModel,
   CollaboratorModel,
+  PartnerModel,
 } from "./user.schema";
 import reviewSchema from "./review.schema";
 import planSchema from "./plans.schema";
@@ -37,6 +38,7 @@ export {
   InstructorModel,
   StudentModel,
   CollaboratorModel,
+  PartnerModel,
   reviewSchema,
   planSchema,
   VideoNoteModel,

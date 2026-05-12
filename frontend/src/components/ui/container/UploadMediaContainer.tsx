@@ -98,9 +98,17 @@ const UploadMediaContainer: React.FC<UploadMediaContainerProps> = ({
   // Use upload hook for file operations
   const { deleteFile } = useUpload();
 
-  // Generate final folder name with context if provided
+  // Generate final folder name with context if provided.
+  // We must strip any character that's unsafe in a URL path component before
+  // it lands in the S3 key — most notably `?` (URL query delimiter), which
+  // would otherwise truncate the stored public URL at the question mark and
+  // leave the video unfetchable even though the S3 object exists. Spaces,
+  // `#`, `&`, etc are squashed for the same reason. Keep alphanumerics,
+  // underscore, and hyphen; collapse runs of unsafe chars into a single `_`.
+  const sanitizeKeySegment = (s: string): string =>
+    s.replace(/[^A-Za-z0-9._-]+/g, "_").replace(/^_+|_+$/g, "");
   const finalFolderName = uploadContext
-    ? `${folderName}/${uploadContext}`
+    ? `${folderName}/${sanitizeKeySegment(uploadContext)}`
     : folderName;
 
   // Determine if file should use presigned URL upload

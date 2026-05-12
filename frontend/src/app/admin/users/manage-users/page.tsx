@@ -26,6 +26,7 @@ import GiftCourseModal from "./components/GiftCourseModal";
 import TrialCourseModal from "./components/TrialCourseModal";
 import EditUserModal from "./components/EditUserModal";
 import UserDetailsModal from "./components/UserDetailsModal";
+import AddPartnerModal from "./components/AddPartnerModal";
 import { formatUserTypeLabel } from "./components/UserDetailsModalShared";
 import {
   validatePassword,
@@ -44,6 +45,7 @@ const ManageUsersPage = () => {
       { value: "all", label: "All Types" },
       { value: "student", label: "Students" },
       { value: "instructor", label: "Instructors" },
+      { value: "partner", label: "Partners" },
       { value: "admin", label: "Admins" },
       ...(isSuperAdmin
         ? [{ value: "super-admin", label: "Super Admins" as const }]
@@ -60,6 +62,7 @@ const ManageUsersPage = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [showGiftModal, setShowGiftModal] = useState(false);
   const [showTrialModal, setShowTrialModal] = useState(false);
+  const [showAddPartnerModal, setShowAddPartnerModal] = useState(false);
   const [showUserDetails, setShowUserDetails] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
@@ -135,7 +138,10 @@ const ManageUsersPage = () => {
     setSelectedUser(user);
     let dataToUse = user;
 
-    if (user.userType === "instructor" && user._id) {
+    // Instructors and partners need a server fetch: instructors for the full
+    // previousExperience payload, partners for the populated `partnerCollege`
+    // so the CollegeSelect can render a readable label.
+    if ((user.userType === "instructor" || user.userType === "partner") && user._id) {
       const fullData = await getUserById(user._id);
       if (fullData) {
         dataToUse = fullData;
@@ -190,6 +196,13 @@ const ManageUsersPage = () => {
         domain: (dataToUse as Student).domain || "",
         portfolio: (dataToUse as Student).portfolio || "",
       }),
+      ...(dataToUse.userType === "partner" && {
+        // Keep the populated object so the CollegeSelect chip can show a
+        // human-readable label. On submit we normalise this back to a plain
+        // ObjectId string in handleUpdateUser.
+        partnerCollege: (dataToUse as unknown as { partnerCollege?: unknown })
+          .partnerCollege,
+      }),
     });
     setCompanyImagesResetKey(`${dataToUse._id}-${Date.now()}`);
     setShowEditModal(true);
@@ -202,7 +215,24 @@ const ManageUsersPage = () => {
     setIsUpdating(true);
     try {
       // Prepare update data - filter instructor previousExperience to valid entries only
-      let updateData = { ...editFormData };
+      let updateData = { ...editFormData } as Record<string, unknown>;
+
+      // Partner cleanup: drop the UI-only display label and unwrap the
+      // populated college object back to a plain `_id` string for mongoose.
+      if (selectedUser.userType === "partner") {
+        delete updateData.partnerCollegeDisplay;
+        const pc = updateData.partnerCollege as unknown;
+        if (pc && typeof pc === "object") {
+          const obj = pc as { _id?: string | { toString(): string } };
+          const idRaw = obj._id;
+          if (idRaw != null) updateData.partnerCollege = String(idRaw);
+          else delete updateData.partnerCollege;
+        } else if (typeof pc === "string") {
+          const t = pc.trim();
+          if (t) updateData.partnerCollege = t;
+          else delete updateData.partnerCollege;
+        }
+      }
       if (
         selectedUser.userType === "instructor" &&
         (updateData as any).previousExperience
@@ -234,7 +264,10 @@ const ManageUsersPage = () => {
         (updateData as any).previousExperience = validExperiences;
       }
 
-      const result = await updateUser(selectedUser._id, updateData);
+      const result = await updateUser(
+        selectedUser._id,
+        updateData as typeof editFormData,
+      );
       if (result) {
         toast.success("User updated successfully");
         setShowEditModal(false);
@@ -588,6 +621,18 @@ const ManageUsersPage = () => {
               <span className="font-medium hidden sm:inline">Give Trial</span>
               <span className="font-medium sm:hidden">Trial</span>
             </OrangeButton>
+            {/* Add Partner Account Button */}
+            <OrangeButton
+              glow={false}
+              className="flex items-center gap-2"
+              onClick={() => setShowAddPartnerModal(true)}
+            >
+              <UserIcon className="w-4 h-4" />
+              <span className="font-medium hidden sm:inline">
+                Add Partner
+              </span>
+              <span className="font-medium sm:hidden">Partner</span>
+            </OrangeButton>
           </div>
         </div>
       </div>
@@ -874,6 +919,13 @@ const ManageUsersPage = () => {
         isOpen={showTrialModal}
         onClose={() => setShowTrialModal(false)}
         onTrialComplete={fetchUsers}
+      />
+
+      {/* Add Partner Modal */}
+      <AddPartnerModal
+        isOpen={showAddPartnerModal}
+        onClose={() => setShowAddPartnerModal(false)}
+        onCreated={fetchUsers}
       />
 
       {/* User Details Modal */}

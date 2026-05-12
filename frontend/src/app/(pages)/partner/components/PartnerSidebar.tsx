@@ -5,9 +5,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
-  BookOpen,
-  CircleHelp,
-  GraduationCap,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -16,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import Image from "next/image";
+import { signOut } from "next-auth/react";
 
 type Item = {
   label: string;
@@ -24,16 +22,12 @@ type Item = {
 };
 
 const COLLEGE_ITEMS: Item[] = [
-  { label: "Dashboard", href: "/partner/college/dashboard", icon: LayoutDashboard },
-  { label: "Courses", href: "/partner/college/courses", icon: BookOpen },
-  { label: "Internships", href: "/partner/college/internships", icon: GraduationCap },
+  {
+    label: "Dashboard",
+    href: "/partner/college/dashboard",
+    icon: LayoutDashboard,
+  },
   { label: "Students", href: "/partner/college/students", icon: Users },
-];
-
-const INSTITUTE_ITEMS: Item[] = [
-  { label: "Dashboard", href: "/partner/institute/dashboard", icon: LayoutDashboard },
-  { label: "Courses", href: "/partner/institute/courses", icon: BookOpen },
-  { label: "Students", href: "/partner/institute/students", icon: Users },
 ];
 
 export default function PartnerSidebar({
@@ -50,14 +44,11 @@ export default function PartnerSidebar({
   onCloseMobile?: () => void;
 }) {
   const pathname = usePathname();
-  const isCollege = pathname.startsWith("/partner/college");
-  const items = isCollege ? COLLEGE_ITEMS : INSTITUTE_ITEMS;
+  const items = COLLEGE_ITEMS;
 
   const showExpandedChrome = !isCollapsed || isMobileOverlay;
   const compactHeader = isCollapsed && !isMobileOverlay;
-  const homeHref = isCollege
-    ? "/partner/college/dashboard"
-    : "/partner/institute/dashboard";
+  const homeHref = "/";
 
   const brandMenuBlock = (
     <Link
@@ -82,14 +73,14 @@ export default function PartnerSidebar({
   const brandWrapClassName = cn(
     "min-w-0 overflow-hidden",
     "duration-300 ease-in-out motion-safe:transition-[max-width,opacity]",
-    showExpandedChrome ? "max-w-[168px] opacity-100" : "max-w-0 opacity-0"
+    showExpandedChrome ? "max-w-[168px] opacity-100" : "max-w-0 opacity-0",
   );
 
   return (
     <aside
       className={cn(
         "flex h-full min-h-0 w-full flex-col overflow-hidden",
-        "bg-[#FFF8F4] border-r border-black/5"
+        "bg-[#FFF8F4] border-r border-black/5",
       )}
     >
       {compactHeader ? (
@@ -98,7 +89,7 @@ export default function PartnerSidebar({
             type="button"
             className={cn(
               "inline-flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-lg",
-              "hover:bg-black/5 transition-colors"
+              "hover:bg-black/5 transition-colors",
             )}
             onClick={() => setIsCollapsed(!isCollapsed)}
             aria-label="Expand sidebar"
@@ -120,7 +111,7 @@ export default function PartnerSidebar({
               type="button"
               className={cn(
                 "mt-0.5 inline-flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-lg",
-                "hover:bg-black/5 transition-colors"
+                "hover:bg-black/5 transition-colors",
               )}
               onClick={() => {
                 if (isMobileOverlay && onCloseMobile) {
@@ -134,7 +125,10 @@ export default function PartnerSidebar({
               {isMobileOverlay ? (
                 <X className="size-6 text-[#475467]" strokeWidth={2} />
               ) : (
-                <PanelLeftClose className="size-6 text-[#475467]" strokeWidth={2} />
+                <PanelLeftClose
+                  className="size-6 text-[#475467]"
+                  strokeWidth={2}
+                />
               )}
             </button>
           </div>
@@ -144,12 +138,13 @@ export default function PartnerSidebar({
       <nav
         className={cn(
           "min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-3",
-          isCollapsed && !isMobileOverlay && "px-2"
+          isCollapsed && !isMobileOverlay && "px-2",
         )}
       >
         <div className="flex flex-col gap-1">
           {items.map((it) => {
-            const active = pathname === it.href || pathname.startsWith(it.href + "/");
+            const active =
+              pathname === it.href || pathname.startsWith(it.href + "/");
             const Icon = it.icon;
             return (
               <Link
@@ -163,16 +158,21 @@ export default function PartnerSidebar({
                     : "justify-between px-3",
                   active
                     ? "bg-[#F77124] text-white shadow-sm"
-                    : "text-[#1D2939] hover:bg-black/5"
+                    : "text-[#1D2939] hover:bg-black/5",
                 )}
                 title={it.label}
               >
                 <span className="flex min-w-0 items-center gap-3">
                   <Icon
-                    className={cn("size-5 shrink-0", active ? "text-white" : "text-[#475467]")}
+                    className={cn(
+                      "size-5 shrink-0",
+                      active ? "text-white" : "text-[#475467]",
+                    )}
                   />
                   {!isCollapsed && (
-                    <span className="truncate text-sm font-medium">{it.label}</span>
+                    <span className="truncate text-sm font-medium">
+                      {it.label}
+                    </span>
                   )}
                 </span>
                 {/* {!isCollapsed && (
@@ -194,36 +194,46 @@ export default function PartnerSidebar({
       <div
         className={cn(
           "shrink-0 border-t border-black/5 py-3",
-          isCollapsed && !isMobileOverlay ? "px-2" : "px-3"
+          isCollapsed && !isMobileOverlay ? "px-2" : "px-3",
         )}
       >
-        <Link
-          href="/partner/login"
-          onClick={onNavigate}
+        <button
+          type="button"
+          onClick={() => {
+            onNavigate?.();
+            // Use a callbackUrl so NextAuth lands the user back on the partner
+            // login page after clearing the session, instead of the public /
+            // homepage.
+            void signOut({ callbackUrl: "/partner/login" });
+          }}
           className={cn(
-            "mt-1 flex min-w-0 cursor-pointer items-center gap-3 overflow-hidden rounded-xl py-2.5 text-[#1D2939] transition-colors hover:bg-black/5",
-            isCollapsed && !isMobileOverlay ? "justify-center px-2" : "px-3"
+            "mt-1 flex w-full min-w-0 cursor-pointer items-center gap-3 overflow-hidden rounded-xl py-2.5 text-left text-[#1D2939] transition-colors hover:bg-black/5",
+            isCollapsed && !isMobileOverlay ? "justify-center px-2" : "px-3",
           )}
           title="Sign out"
         >
           <LogOut className="size-5 shrink-0 text-[#475467]" />
           {!isCollapsed && (
-            <span className="min-w-0 truncate text-sm font-medium">Sign Out</span>
+            <span className="min-w-0 truncate text-sm font-medium">
+              Sign Out
+            </span>
           )}
-        </Link>
-        <Link
+        </button>
+        {/* <Link
           href="#"
           className={cn(
             "mt-1 flex min-w-0 cursor-pointer items-center gap-3 overflow-hidden rounded-xl py-2.5 text-[#667085] transition-colors hover:bg-black/5",
-            isCollapsed && !isMobileOverlay ? "justify-center px-2" : "px-3"
+            isCollapsed && !isMobileOverlay ? "justify-center px-2" : "px-3",
           )}
           title="Help & support"
         >
           <CircleHelp className="size-5 shrink-0 text-[#667085]" />
           {!isCollapsed && (
-            <span className="min-w-0 truncate text-sm font-medium">Help & Support</span>
+            <span className="min-w-0 truncate text-sm font-medium">
+              Help & Support
+            </span>
           )}
-        </Link>
+        </Link> */}
       </div>
     </aside>
   );

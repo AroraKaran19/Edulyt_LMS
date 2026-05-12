@@ -23,6 +23,8 @@ import { toast } from "react-toastify";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import useAuth from "@/hooks/useAuth";
+import { getPostLoginRedirectPath } from "@/lib/postLoginRedirect";
 import { User, Student, Instructor, Collaborator } from "@/types/user";
 import Modal from "@/components/ui/Modal";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
@@ -106,6 +108,7 @@ const ProfilePage = () => {
   const [whatsappSameAsPhone, setWhatsappSameAsPhone] = useState(false);
 
   const router = useRouter();
+  const { user: viewer } = useAuth();
   const { data: session, update: updateSession } = useSession();
   const { uploadFile, deleteFile, validateImageFile } = useUpload();
 
@@ -1267,9 +1270,13 @@ const ProfilePage = () => {
         <div className="flex flex-col gap-4">
           <div className="flex items-center gap-4">
             <button
-              onClick={() => router.push("/dashboard")}
+              onClick={() =>
+                viewer
+                  ? router.push(getPostLoginRedirectPath(viewer, undefined))
+                  : router.push("/")
+              }
               className="p-2.5 rounded-full bg-white hover:bg-gray-50 border border-gray-200 hover:border-orange-300 cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md group"
-              title="Back to Dashboard"
+              title="Back"
             >
               <ChevronLeftIcon className="size-5 text-gray-700 group-hover:text-orange-600 transition-colors" />
             </button>
@@ -2405,7 +2412,16 @@ const StudentFields = ({
           required
           placeholder="Search and select your college"
           value={formData.collegeName || ""}
-          onChange={(value) => handleInputChange("collegeName", value)}
+          onChange={(value) => {
+            handleInputChange("collegeName", value);
+            // Custom-text entries clear the canonical link so we don't
+            // ship a stale ID alongside a free-form name.
+            handleInputChange("college", "");
+          }}
+          onSelect={(c) => {
+            handleInputChange("collegeName", c.display);
+            handleInputChange("college", c._id);
+          }}
           error={errors.collegeName}
         />
         <Input

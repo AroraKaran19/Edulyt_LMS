@@ -378,6 +378,45 @@ const useUserManagement = () => {
     [handleRequest]
   );
 
+  const createPartnerAccount = useCallback(
+    async (data: {
+      firstName: string;
+      lastName?: string;
+      email: string;
+      phone?: string;
+      password: string;
+      partnerCollegeId: string;
+    }): Promise<User | null> => {
+      return handleRequest(async () => {
+        const response = await apiClient.post("/users/admin/partner", data);
+        return response.data.data as User;
+      }, "Failed to create partner account");
+    },
+    [handleRequest],
+  );
+
+  const getPartnerColleges = useCallback(
+    async (): Promise<Array<{ _id: string; name: string }>> => {
+      try {
+        // Bump the limit past any plausible college count so the dropdown
+        // gets the full list in one call — paginated default of 10 isn't
+        // enough for a real partner roster.
+        const response = await apiClient.get("/partner-colleges?limit=1000");
+        const raw = response.data?.data;
+        const list = Array.isArray(raw?.partnerColleges)
+          ? raw.partnerColleges
+          : Array.isArray(raw)
+            ? raw
+            : [];
+        return list as Array<{ _id: string; name: string }>;
+      } catch (e) {
+        console.error("Failed to fetch partner colleges", e);
+        return [];
+      }
+    },
+    [],
+  );
+
   const changeUserPassword = useCallback(
     async (userId: string, newPassword: string): Promise<boolean> => {
       return handleRequest(
@@ -429,6 +468,8 @@ const useUserManagement = () => {
     getTotalSpendByUserId,
     getTimeSpentPerDay,
     getUserDetailsForAdmin,
+    createPartnerAccount,
+    getPartnerColleges,
 
     // Validation
     validateGiftCourseData,
