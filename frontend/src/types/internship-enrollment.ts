@@ -217,6 +217,7 @@ export interface InternshipEnrollmentListRow {
     lastName?: string;
     email?: string;
     name?: string;
+    profilePicture?: string;
   } | null;
   internship: {
     _id: string;

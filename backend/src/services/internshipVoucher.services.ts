@@ -7,6 +7,8 @@ import { InternshipEnrollmentModel } from "../models/internshipEnrollment.schema
 import { InternshipModel } from "../models/internship.schema";
 import { AppError } from "../middlewares/error.middleware";
 import { isApplicationWindowOpenIst } from "../utils/applicationWindow";
+import { sanitizeApplicationAnswers } from "./internshipEnrollment.services";
+import { parseProgramDurationMonthsFromAnswers } from "../lib/certificationExamSchedule";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -137,8 +139,18 @@ export async function redeemInternshipVoucher(params: {
   voucherIdOrCode: string;
   internshipId: string;
   batchId: string;
+  /**
+   * Full public enroll form snapshot (JSON). Captured on voucher redemption
+   * so admins reviewing documentation can see the learner's submitted form
+   * answers — same field that `registerForPaidSeat` writes.
+   */
+  applicationAnswers?: unknown;
 }): Promise<{ internshipEnrollmentId: string; code: string }> {
   const { userId, voucherIdOrCode, internshipId, batchId } = params;
+  const answersDoc = sanitizeApplicationAnswers(params.applicationAnswers);
+  const durationMonths = answersDoc
+    ? parseProgramDurationMonthsFromAnswers(answersDoc)
+    : undefined;
 
   if (!mongoose.Types.ObjectId.isValid(internshipId))
     throw new AppError("Invalid internship id", 400);
@@ -260,6 +272,16 @@ export async function redeemInternshipVoucher(params: {
     existingSameBatch.set("enrollmentType", "paid");
     existingSameBatch.set("status", "pending_documentation");
     existingSameBatch.set("paymentAmount", 0);
+    // Persist the freshly-submitted enroll form. We overwrite any previously
+    // stored answers from the entrance-exam registration since the voucher
+    // redemption is the more recent intent.
+    if (answersDoc) {
+      existingSameBatch.set("applicationAnswers", answersDoc);
+      existingSameBatch.set("applicationSubmittedAt", new Date());
+      if (durationMonths != null) {
+        existingSameBatch.set("programDurationMonths", durationMonths);
+      }
+    }
     await existingSameBatch.save();
     enrollment = existingSameBatch;
   } else {
@@ -275,6 +297,15 @@ export async function redeemInternshipVoucher(params: {
       status: "pending_documentation",
       paymentAmount: 0,
       internshipSuccessPoints: 0,
+      ...(answersDoc
+        ? {
+            applicationAnswers: answersDoc,
+            applicationSubmittedAt: new Date(),
+            ...(durationMonths != null
+              ? { programDurationMonths: durationMonths }
+              : {}),
+          }
+        : {}),
     });
   }
 

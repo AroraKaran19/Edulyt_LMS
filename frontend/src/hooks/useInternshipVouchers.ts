@@ -45,12 +45,14 @@ export function useInternshipVouchers() {
       voucherIdOrCode: string;
       internshipId: string;
       batchId: string;
+      applicationAnswers?: unknown;
     }): Promise<boolean> => {
       try {
         await apiClient.post(ENDPOINTS.internshipVouchers.redeem, {
           voucherIdOrCode: params.voucherIdOrCode,
           internshipId: params.internshipId,
           batchId: params.batchId,
+          applicationAnswers: params.applicationAnswers,
         });
         toast.success("Voucher redeemed — you are now enrolled!");
         await fetch();

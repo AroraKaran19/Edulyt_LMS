@@ -254,9 +254,18 @@ export default function InternshipEnrollmentsAdminPage() {
                   >
                     <td className="px-4 sm:px-6 py-4 min-w-[160px]">
                       <div className="flex items-center gap-2 min-w-0">
-                        <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center shrink-0">
-                          <User className="w-4 h-4 text-orange-600" />
-                        </div>
+                        {row.user?.profilePicture ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={row.user.profilePicture}
+                            alt={userDisplayName(row.user)}
+                            className="w-8 h-8 rounded-full object-cover shrink-0 border border-gray-200"
+                          />
+                        ) : (
+                          <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center shrink-0">
+                            <User className="w-4 h-4 text-orange-600" />
+                          </div>
+                        )}
                         <div className="min-w-0">
                           <div className="text-sm font-medium text-gray-900 truncate">
                             {userDisplayName(row.user)}

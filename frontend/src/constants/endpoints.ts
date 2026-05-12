@@ -160,6 +160,12 @@ export const ENDPOINTS = {
     /** POST body `{ action: "approve" | "reject", rejectionNote?: string }` — verify docs_under_review enrollment. */
     adminVerifyDocumentation: (enrollmentId: string) =>
       `/internship-enrollments/admin/${encodeURIComponent(enrollmentId)}/documentation/verify`,
+    /** GET — internships that have at least one `docs_under_review` enrollment, with pending counts. */
+    adminPendingDocInternships:
+      "/internship-enrollments/admin/documentation/pending-internships",
+    /** POST body `{ enrollmentIds: string[] }` — bulk-approve docs_under_review enrollments. */
+    adminBulkApproveDocumentation:
+      "/internship-enrollments/admin/documentation/bulk-approve",
     adminDelete: (enrollmentId: string) =>
       `/internship-enrollments/admin/${encodeURIComponent(enrollmentId)}`,
   },

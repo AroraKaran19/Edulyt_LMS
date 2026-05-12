@@ -102,6 +102,10 @@ const AdminSidebar = ({
           href: "/admin/internships/enrollments",
         },
         {
+          label: "Doc Review",
+          href: "/admin/internships/doc-review",
+        },
+        {
           label: "Entrance exams",
           href: "/admin/internships/entrance-exams",
         },

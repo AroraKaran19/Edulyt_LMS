@@ -395,6 +395,8 @@ const EnrollForm = ({ preview }: { preview: InternshipEnrollPreview }) => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const isSeatFlow = searchParams.get("flow") === "seat";
+  const voucherCode = (searchParams.get("voucher") ?? "").trim().toUpperCase();
+  const isVoucherFlow = isSeatFlow && voucherCode.length > 0;
   const slug = preview.internship.slug;
 
   const [profileLoading, setProfileLoading] = useState(true);
@@ -449,6 +451,17 @@ const EnrollForm = ({ preview }: { preview: InternshipEnrollPreview }) => {
   const batchId = watch("batchId");
   const selectedBatch = openBatches.find((b) => b._id === batchId);
   const formValues = useWatch({ control });
+
+  // Pre-select the batch when the URL carries `?batchId=...` (e.g. voucher
+  // modal redirects with the cohort the learner already chose). Only applied
+  // when the URL value matches an open batch.
+  useEffect(() => {
+    const qBatchId = searchParams.get("batchId");
+    if (qBatchId && openBatchIds.has(qBatchId) && batchId !== qBatchId) {
+      setValue("batchId", qBatchId, { shouldValidate: false });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, openBatchIds]);
 
   useEffect(() => {
     sessionHydratedRef.current = false;
@@ -574,7 +587,21 @@ const EnrollForm = ({ preview }: { preview: InternshipEnrollPreview }) => {
 
       const applicationAnswers = buildApplicationAnswersPayload(data);
 
-      if (isSeatFlow) {
+      if (isVoucherFlow) {
+        // ── Voucher-redeem path ───────────────────────────────────────────────
+        // Same form, same applicationAnswers — but the enrollment is created
+        // (or upgraded) by the voucher endpoint with paymentAmount=0 and no
+        // Paytm step.
+        await apiClient.post(ENDPOINTS.internshipVouchers.redeem, {
+          voucherIdOrCode: voucherCode,
+          internshipId: preview.internship._id,
+          batchId: data.batchId,
+          applicationAnswers,
+        });
+        clearEnrollDraft(slug);
+        toast.success("Voucher redeemed — you are now enrolled!");
+        router.replace("/dashboard");
+      } else if (isSeatFlow) {
         // ── Paid-seat path ────────────────────────────────────────────────────
         const enrollRes = await apiClient.post(
           ENDPOINTS.internshipEnrollments.create,
@@ -820,7 +847,22 @@ const EnrollForm = ({ preview }: { preview: InternshipEnrollPreview }) => {
                 </div>
 
                 <div className="space-y-0">
-                  {isSeatFlow && selectedBatch.plan && (
+                  {isVoucherFlow && (
+                    <div className="border-b border-stone-200 border-l-4 border-l-emerald-500 bg-emerald-50/60 px-4 py-4 sm:px-5">
+                      <p className="text-xs text-emerald-800 uppercase font-semibold tracking-wide">
+                        Free via voucher
+                      </p>
+                      <p className="mt-1 font-mono text-sm font-bold text-emerald-900">
+                        {voucherCode}
+                      </p>
+                      <p className="mt-2 text-sm text-emerald-900/80 leading-relaxed">
+                        Your seat is free — no payment screen. The voucher is
+                        marked redeemed when you submit this form.
+                      </p>
+                    </div>
+                  )}
+
+                  {isSeatFlow && !isVoucherFlow && selectedBatch.plan && (
                     <div className="border-b border-stone-200 border-l-4 border-l-primary bg-white px-4 py-4 sm:px-5">
                       <p className="text-xs text-stone-500">
                         Fee for this intake
@@ -1410,18 +1452,28 @@ const EnrollForm = ({ preview }: { preview: InternshipEnrollPreview }) => {
               >
                 {isSubmitting
                   ? "Working on it…"
-                  : isSeatFlow
-                    ? "Continue to payment"
-                    : "Register"}
+                  : isVoucherFlow
+                    ? "Redeem voucher & enroll (free)"
+                    : isSeatFlow
+                      ? "Continue to payment"
+                      : "Register"}
               </OrangeButton>
-              {isSeatFlow && selectedBatch?.plan && (
+              {isVoucherFlow ? (
+                <p className="text-center text-xs text-stone-500">
+                  Voucher{" "}
+                  <span className="font-mono font-semibold text-stone-800">
+                    {voucherCode}
+                  </span>{" "}
+                  will be marked as redeemed.
+                </p>
+              ) : isSeatFlow && selectedBatch?.plan ? (
                 <p className="text-center text-xs text-stone-500">
                   Next: Paytm checkout for{" "}
                   <span className="font-semibold text-stone-800 tabular-nums">
                     ₹{selectedBatch.plan.amount.toLocaleString("en-IN")}
                   </span>
                 </p>
-              )}
+              ) : null}
             </div>
           </div>
         </form>

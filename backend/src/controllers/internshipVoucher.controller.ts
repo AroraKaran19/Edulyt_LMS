@@ -39,18 +39,20 @@ export const getMyVouchers = asyncHandler(
  * @desc    Redeem a voucher (by _id or code) → enroll in chosen internship batch
  * @access  Private
  *
- * Body: { voucherIdOrCode, internshipId, batchId }
+ * Body: { voucherIdOrCode, internshipId, batchId, applicationAnswers? }
  */
 export const redeemVoucher = asyncHandler(
   async (req: Request, res: Response) => {
     const userId = (req as any).user?._id as string | undefined;
     if (!userId) throw new AppError("Unauthorized", 401);
 
-    const { voucherIdOrCode, internshipId, batchId } = req.body as {
-      voucherIdOrCode?: string;
-      internshipId?: string;
-      batchId?: string;
-    };
+    const { voucherIdOrCode, internshipId, batchId, applicationAnswers } =
+      req.body as {
+        voucherIdOrCode?: string;
+        internshipId?: string;
+        batchId?: string;
+        applicationAnswers?: unknown;
+      };
 
     if (!voucherIdOrCode)
       throw new AppError("voucherIdOrCode is required", 400);
@@ -62,6 +64,7 @@ export const redeemVoucher = asyncHandler(
       voucherIdOrCode,
       internshipId,
       batchId,
+      applicationAnswers,
     });
 
     sendSuccessResponse(

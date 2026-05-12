@@ -81,6 +81,7 @@ export type InternshipEnrollmentListRow = {
     lastName?: string;
     email?: string;
     name?: string;
+    profilePicture?: string;
   } | null;
   internship: {
     _id: string;
@@ -261,7 +262,15 @@ export async function listInternshipEnrollmentsAdmin(
         foreignField: "_id",
         as: "userDoc",
         pipeline: [
-          { $project: { firstName: 1, lastName: 1, email: 1, name: 1 } },
+          {
+            $project: {
+              firstName: 1,
+              lastName: 1,
+              email: 1,
+              name: 1,
+              profilePicture: 1,
+            },
+          },
         ],
       },
     },
@@ -351,6 +360,11 @@ export async function listInternshipEnrollmentsAdmin(
               typeof (u as { name?: string }).name === "string"
                 ? (u as { name: string }).name
                 : undefined,
+            profilePicture:
+              typeof (u as { profilePicture?: string }).profilePicture ===
+              "string"
+                ? (u as { profilePicture: string }).profilePicture
+                : undefined,
           }
         : null;
     const internshipOut =
@@ -416,6 +430,18 @@ export async function listInternshipEnrollmentsAdmin(
       enrolledAt: toIso(r.enrolledAt),
       createdAt: toIso(r.createdAt),
       updatedAt: toIso(r.updatedAt),
+      // Decrypted Aadhar + photo so admin pages (doc-review queue, detail
+      // modal) can render the upload without a separate per-row fetch. Only
+      // populated when the learner has submitted documents.
+      documentation: decryptDocumentationForAdmin(
+        (r as { documentation?: unknown }).documentation,
+      ),
+      documentationRejectionNote:
+        typeof (r as { documentationRejectionNote?: string })
+          .documentationRejectionNote === "string"
+          ? (r as { documentationRejectionNote: string })
+              .documentationRejectionNote
+          : undefined,
     };
   });
 
@@ -429,7 +455,7 @@ export async function getInternshipEnrollmentByIdAdmin(
     throw new AppError("Invalid enrollment id", 400);
   }
   const doc = await InternshipEnrollmentModel.findById(id)
-    .populate("user", "firstName lastName email name")
+    .populate("user", "firstName lastName email name profilePicture")
     .populate("internship", "title slug")
     .lean();
   if (!doc) {
@@ -445,6 +471,8 @@ export async function getInternshipEnrollmentByIdAdmin(
           lastName: typeof u.lastName === "string" ? u.lastName : undefined,
           email: typeof u.email === "string" ? u.email : undefined,
           name: typeof u.name === "string" ? u.name : undefined,
+          profilePicture:
+            typeof u.profilePicture === "string" ? u.profilePicture : undefined,
         }
       : null;
   const internshipOut =
@@ -2921,4 +2949,135 @@ export async function adminVerifyInternshipDocumentation(
   }
 
   return getInternshipEnrollmentByIdAdmin(enrollmentId);
+}
+
+// ─── Admin: bulk documentation review ────────────────────────────────────────
+
+/**
+ * Admin-only: paginated list of internships that have at least one enrollment
+ * currently in `docs_under_review`, with per-internship pending counts. Drives
+ * the InfiniteScrollSelect on the doc-review queue page. Supports `search`
+ * against live + snapshot internship title (case-insensitive).
+ */
+export async function listInternshipsWithPendingDocReview(
+  options: { page?: number; limit?: number; search?: string } = {},
+): Promise<{
+  items: { internshipId: string; title: string; slug: string; pendingCount: number }[];
+  total: number;
+  page: number;
+  totalPages: number;
+}> {
+  const page = Math.max(1, Number(options.page) || 1);
+  const limit = Math.min(50, Math.max(1, Number(options.limit) || 20));
+  const skip = (page - 1) * limit;
+
+  const basePipeline: mongoose.PipelineStage[] = [
+    { $match: { status: "docs_under_review" } },
+    {
+      $group: {
+        _id: "$internship",
+        pendingCount: { $sum: 1 },
+        snapshotTitle: { $first: "$internshipSnapshot.title" },
+        snapshotSlug: { $first: "$internshipSnapshot.slug" },
+      },
+    },
+    {
+      $lookup: {
+        from: "internships",
+        localField: "_id",
+        foreignField: "_id",
+        as: "internshipDoc",
+        pipeline: [{ $project: { title: 1, slug: 1 } }],
+      },
+    },
+    { $unwind: { path: "$internshipDoc", preserveNullAndEmptyArrays: true } },
+    {
+      $addFields: {
+        _resolvedTitle: {
+          $ifNull: ["$internshipDoc.title", "$snapshotTitle"],
+        },
+        _resolvedSlug: {
+          $ifNull: ["$internshipDoc.slug", "$snapshotSlug"],
+        },
+      },
+    },
+  ];
+
+  const search = (options.search ?? "").trim();
+  if (search) {
+    const rx = new RegExp(escapeRegex(search), "i");
+    basePipeline.push({ $match: { _resolvedTitle: rx } });
+  }
+
+  const [countAgg, rows] = await Promise.all([
+    InternshipEnrollmentModel.aggregate([...basePipeline, { $count: "total" }]),
+    InternshipEnrollmentModel.aggregate([
+      ...basePipeline,
+      { $sort: { pendingCount: -1, _resolvedTitle: 1 } },
+      { $skip: skip },
+      { $limit: limit },
+    ]),
+  ]);
+
+  const total = (countAgg[0] as { total?: number } | undefined)?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / limit));
+
+  const items = rows.map((r) => {
+    const o = r as {
+      _id: unknown;
+      _resolvedTitle?: string;
+      _resolvedSlug?: string;
+      pendingCount?: number;
+    };
+    return {
+      internshipId: String(o._id),
+      title: String(o._resolvedTitle ?? ""),
+      slug: String(o._resolvedSlug ?? ""),
+      pendingCount: Number(o.pendingCount ?? 0),
+    };
+  });
+
+  return { items, total, page, totalPages };
+}
+
+export type BulkVerifyDocsItem = {
+  enrollmentId: string;
+  ok: boolean;
+  error?: string;
+};
+
+/**
+ * Admin-only: bulk-approve a set of `docs_under_review` enrollments. Mirrors
+ * `adminBulkApproveMeritToEnrolled` — iterates serially through
+ * `adminVerifyInternshipDocumentation(..., "approve")` so each row gets its
+ * inline offer-letter job enqueued, with per-row error capture so a single
+ * bad row doesn't abort the batch.
+ */
+export async function adminBulkApproveInternshipDocumentation(
+  enrollmentIds: string[],
+  adminUserId: mongoose.Types.ObjectId,
+): Promise<{
+  results: BulkVerifyDocsItem[];
+  ok: number;
+  failed: number;
+}> {
+  const unique = [
+    ...new Set(enrollmentIds.map((id) => String(id).trim())),
+  ].filter((id) => mongoose.Types.ObjectId.isValid(id));
+
+  const results: BulkVerifyDocsItem[] = [];
+  let ok = 0;
+  let failed = 0;
+  for (const id of unique) {
+    try {
+      await adminVerifyInternshipDocumentation(id, "approve", adminUserId);
+      results.push({ enrollmentId: id, ok: true });
+      ok += 1;
+    } catch (e) {
+      const msg = e instanceof AppError ? e.message : "Approve failed";
+      results.push({ enrollmentId: id, ok: false, error: msg });
+      failed += 1;
+    }
+  }
+  return { results, ok, failed };
 }

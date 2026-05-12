@@ -19,6 +19,8 @@ import {
   adminUpdateInternshipDocumentationController,
   adminVerifyInternshipDocumentationController,
   getInternshipVerificationController,
+  listInternshipsWithPendingDocReviewController,
+  adminBulkApproveInternshipDocumentationController,
 } from "../controllers/internshipEnrollment.controller";
 
 const router = Router();
@@ -75,6 +77,28 @@ router.post(
   "/admin/approve-to-enrolled",
   verifyAdmin,
   adminBulkApproveToEnrolledController,
+);
+
+/**
+ * GET /api/internship-enrollments/admin/documentation/pending-internships
+ * — drives the internship filter on the doc-review queue.
+ * Declared before the `/admin/:enrollmentId` catch-all so `documentation`
+ * isn't captured as an enrollmentId.
+ */
+router.get(
+  "/admin/documentation/pending-internships",
+  verifyAdmin,
+  listInternshipsWithPendingDocReviewController,
+);
+
+/**
+ * POST /api/internship-enrollments/admin/documentation/bulk-approve
+ * Body: { enrollmentIds: string[] } — bulk-approve docs_under_review rows.
+ */
+router.post(
+  "/admin/documentation/bulk-approve",
+  verifyAdmin,
+  adminBulkApproveInternshipDocumentationController,
 );
 
 /** DELETE /api/internship-enrollments/admin/:enrollmentId */

@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import Modal from "@/components/ui/Modal";
 import { ENDPOINTS } from "@/constants/endpoints";
 import apiClient from "@/configs/apiConfig";
-import { useInternshipVouchers, type InternshipVoucher } from "@/hooks/useInternshipVouchers";
+import { type InternshipVoucher } from "@/hooks/useInternshipVouchers";
 import type { InternshipPublicListing, InternshipEnrollPreviewBatch } from "@/types";
 import { cn } from "@/lib/utils";
 import { ChevronRight, Loader2, Tag } from "lucide-react";
@@ -32,7 +33,7 @@ export default function FreeInternshipClaimModal({
   voucher,
   onClose,
 }: Props) {
-  const { redeem } = useInternshipVouchers();
+  const router = useRouter();
 
   const [step, setStep] = useState<Step>("pick-internship");
   const [internships, setInternships] = useState<InternshipPublicListing[]>([]);
@@ -45,7 +46,6 @@ export default function FreeInternshipClaimModal({
 
   const [selectedBatch, setSelectedBatch] =
     useState<InternshipEnrollPreviewBatch | null>(null);
-  const [submitting, setSubmitting] = useState(false);
 
   // Reset state whenever the modal opens/closes.
   useEffect(() => {
@@ -108,16 +108,25 @@ export default function FreeInternshipClaimModal({
     setStep("confirm");
   };
 
-  const handleConfirm = async () => {
-    if (!voucher || !selectedInternship?._id || !selectedBatch?._id) return;
-    setSubmitting(true);
-    const ok = await redeem({
-      voucherIdOrCode: voucher.code,
-      internshipId: selectedInternship._id,
+  const handleConfirm = () => {
+    if (
+      !voucher ||
+      !selectedInternship?.slug ||
+      !selectedBatch?._id
+    )
+      return;
+    // Route through the same public enroll form regular paid signups use, so
+    // applicationAnswers gets captured. The form detects `?voucher=` and
+    // submits to the voucher-redeem endpoint instead of paid + Paytm.
+    const params = new URLSearchParams({
+      flow: "seat",
       batchId: selectedBatch._id,
+      voucher: voucher.code,
     });
-    setSubmitting(false);
-    if (ok) onClose();
+    onClose();
+    router.push(
+      `/internships/${encodeURIComponent(selectedInternship.slug)}/enroll?${params.toString()}`,
+    );
   };
 
   const titleMap: Record<Step, string> = {
@@ -173,13 +182,13 @@ export default function FreeInternshipClaimModal({
                       <img
                         src={int.thumbnail}
                         alt={int.title}
-                        className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
+                        className="w-10 h-10 rounded-lg object-cover shrink-0"
                       />
                     )}
                     <span className="flex-1 text-sm font-medium text-gray-800 leading-snug">
                       {int.title}
                     </span>
-                    <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                    <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
                   </button>
                 </li>
               ))}
@@ -279,23 +288,24 @@ export default function FreeInternshipClaimModal({
           </div>
 
           <p className="text-sm text-gray-600">
-            Voucher <span className="font-mono font-bold text-orange-600">{voucher?.code}</span> will
-            be marked as <strong>redeemed</strong> and cannot be used again.
+            Continue to fill the enrollment form. Voucher{" "}
+            <span className="font-mono font-bold text-orange-600">
+              {voucher?.code}
+            </span>{" "}
+            will be applied on submission and marked as{" "}
+            <strong>redeemed</strong> (it cannot be used again).
           </p>
 
           <button
             type="button"
-            disabled={submitting}
             onClick={handleConfirm}
             className={cn(
               "w-full py-3 rounded-xl font-semibold text-white text-sm transition-all",
               "bg-orange-500 hover:bg-orange-600 active:scale-[0.98]",
-              "disabled:opacity-60 disabled:cursor-not-allowed",
               "flex items-center justify-center gap-2",
             )}
           >
-            {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
-            {submitting ? "Enrolling…" : "Redeem voucher & enroll (free)"}
+            Continue to enrollment form
           </button>
         </div>
       )}

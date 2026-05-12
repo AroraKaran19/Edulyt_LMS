@@ -395,13 +395,11 @@ export async function processOfferLetterForEnrollment(
 
   const now = new Date();
 
-  // Letter date (top of doc): the date the offer is *issued*. For backfill
-  // enrollments (already had `enrolledAt` before the offer-letter cron rolled
-  // out) this naturally back-dates the letter to the original enrollment day.
-  // For fresh enrollments going forward, the cron sets `enrolledAt` to `now`
-  // below, so the letter date == generation date.
-  const letterDateSrc = doc.enrolledAt instanceof Date ? doc.enrolledAt : now;
-  const letterDate = formatOfferLetterDate(letterDateSrc);
+  // TEMPORARY: letter date is hard-pinned to 07-May-2026 for the current
+  // onboarding batch (admin wants every issued offer letter in this rollout
+  // to carry this exact date regardless of enrolledAt). Revert to the
+  // `enrolledAt ?? now` rule once the backfill is complete.
+  const letterDate = "07-May-2026";
 
   // Joining date (in-letter): the cohort's actual program start date, as set
   // by the admin when publishing the internship. Falls back to enrolledAt /

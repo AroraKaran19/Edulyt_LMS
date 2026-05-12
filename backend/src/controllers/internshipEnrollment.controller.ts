@@ -24,6 +24,8 @@ import {
   adminUpdateInternshipDocumentation,
   adminVerifyInternshipDocumentation,
   getInternshipVerification,
+  listInternshipsWithPendingDocReview,
+  adminBulkApproveInternshipDocumentation,
 } from "../services/internshipEnrollment.services";
 import {
   getAllOfferLetterJobsService,
@@ -458,6 +460,66 @@ export const adminVerifyInternshipDocumentationController = asyncHandler(
         ? "Documentation approved — enrollment queued for offer letter"
         : "Documentation rejected — learner must resubmit";
     sendSuccessResponse(res, row, message, 200);
+  },
+);
+
+/**
+ * @route   GET /api/internship-enrollments/admin/documentation/pending-internships
+ * @desc    List internships that have at least one `docs_under_review`
+ *          enrollment, with per-internship pending counts. Drives the
+ *          internship filter on the admin doc-review queue.
+ * @access  Admin
+ */
+export const listInternshipsWithPendingDocReviewController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 20));
+    const search =
+      typeof req.query.search === "string" ? req.query.search : undefined;
+    const result = await listInternshipsWithPendingDocReview({
+      page,
+      limit,
+      search,
+    });
+    sendSuccessResponse(res, result, "Pending-doc internships fetched", 200);
+  },
+);
+
+/**
+ * @route   POST /api/internship-enrollments/admin/documentation/bulk-approve
+ * @desc    Bulk-approve a set of `docs_under_review` enrollments. Returns
+ *          per-row results so partial failures are visible to the admin UI.
+ * @body    { enrollmentIds: string[] }
+ * @access  Admin
+ */
+export const adminBulkApproveInternshipDocumentationController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const adminUserId = req.user?._id;
+    if (!adminUserId) throw new AppError("Unauthorized", 401);
+
+    const { enrollmentIds } = req.body as { enrollmentIds?: unknown };
+    if (!Array.isArray(enrollmentIds) || enrollmentIds.length === 0) {
+      throw new AppError("enrollmentIds must be a non-empty array", 400);
+    }
+
+    const ids = enrollmentIds
+      .filter((v): v is string => typeof v === "string")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (ids.length === 0) {
+      throw new AppError("No valid enrollmentIds provided", 400);
+    }
+
+    const result = await adminBulkApproveInternshipDocumentation(
+      ids,
+      new mongoose.Types.ObjectId(String(adminUserId)),
+    );
+    sendSuccessResponse(
+      res,
+      result,
+      `Approved ${result.ok}/${ids.length} — ${result.failed} failed`,
+      200,
+    );
   },
 );
 
