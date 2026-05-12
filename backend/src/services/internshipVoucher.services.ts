@@ -181,9 +181,18 @@ export async function redeemInternshipVoucher(params: {
     _id: new mongoose.Types.ObjectId(internshipId),
     isActive: true,
   })
-    .select("batches")
+    .select("batches title slug thumbnail")
     .lean();
   if (!internship) throw new AppError("Internship not found", 404);
+
+  const internshipSnapshot = {
+    title: String((internship as { title?: unknown }).title ?? ""),
+    slug: String((internship as { slug?: unknown }).slug ?? ""),
+    thumbnail:
+      typeof (internship as { thumbnail?: unknown }).thumbnail === "string"
+        ? (internship as { thumbnail: string }).thumbnail
+        : undefined,
+  };
 
   type BatchRaw = {
     _id?: unknown;
@@ -272,6 +281,11 @@ export async function redeemInternshipVoucher(params: {
     existingSameBatch.set("enrollmentType", "paid");
     existingSameBatch.set("status", "pending_documentation");
     existingSameBatch.set("paymentAmount", 0);
+    // Backfill internshipSnapshot if the prior row never got one (legacy
+    // exam-registration rows pre-date this snapshot field on some paths).
+    if (!existingSameBatch.get("internshipSnapshot")) {
+      existingSameBatch.set("internshipSnapshot", internshipSnapshot);
+    }
     // Persist the freshly-submitted enroll form. We overwrite any previously
     // stored answers from the entrance-exam registration since the voucher
     // redemption is the more recent intent.
@@ -288,6 +302,7 @@ export async function redeemInternshipVoucher(params: {
     enrollment = await InternshipEnrollmentModel.create({
       user: new mongoose.Types.ObjectId(userId),
       internship: new mongoose.Types.ObjectId(internshipId),
+      internshipSnapshot,
       batchSnapshot: {
         batchId: String(batch._id),
         name: String(batch.name ?? ""),

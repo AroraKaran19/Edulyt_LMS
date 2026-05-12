@@ -666,7 +666,7 @@ export default function InternshipEnrollmentDetailModal({
                         Offer letter generating…
                       </p>
                       <p className="text-xs text-gray-500">
-                        Docs approved. The cron will generate and upload the offer letter within 15 minutes.
+                        Docs approved. The cron will generate and upload the offer letter.
                       </p>
                     </div>
                   ) : null}
