@@ -209,6 +209,40 @@ export const createInternshipSuccessPointsAfterPayment = async (order: any) => {
     throw err;
   }
 
+  // After crediting points, check if learner now qualifies for a certificate
+  try {
+    const freshEnrollment = await InternshipEnrollmentModel.findById(enrollmentId)
+      .select("internshipSuccessPoints")
+      .lean();
+    if (freshEnrollment && ((freshEnrollment as any).internshipSuccessPoints ?? 0) >= threshold) {
+      const { InternshipSubmissionModel } = await import("../models/internshipSubmission.schema");
+      const passingSub = await InternshipSubmissionModel.findOne({
+        enrollmentId: String(enrollmentId),
+        submissionFor: "exam",
+        status: "fully_reviewed",
+        "templateSnapshot.examType": "certification",
+      })
+        .select("totalAwardedScore templateSnapshot")
+        .lean();
+      if (passingSub) {
+        const awardedScore = (passingSub as any).totalAwardedScore ?? 0;
+        const examThreshold = (passingSub as any).templateSnapshot?.thresholdScore ?? 0;
+        if (awardedScore >= examThreshold) {
+          const { createCertificateJobService } = await import("./certificateJob.services");
+          await createCertificateJobService({
+            enrollmentId: String(enrollmentId),
+            certificateType: "internship",
+            studentName: "",
+            courseName: "",
+            completionDate: new Date(),
+          });
+        }
+      }
+    }
+  } catch (certErr) {
+    console.error("[Certificate] Failed to queue internship certificate job after payment:", certErr);
+  }
+
   return InternshipEnrollmentModel.findById(enrollmentId);
 };
 

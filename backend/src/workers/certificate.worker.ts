@@ -4,7 +4,10 @@ import {
   updateCertificateJobStatusService,
   incrementJobRetryService,
 } from "../services/certificateJob.services";
-import { createCertificateService } from "../services/certificate.services";
+import {
+  createCertificateService,
+  createInternshipCertificateService,
+} from "../services/certificate.services";
 import { EnrollmentModel } from "../models/enrollment.schema";
 import { UserModel } from "../models/user.schema";
 import { CourseModel } from "../models/course.schema";
@@ -55,9 +58,49 @@ async function runPool<T>(
 }
 
 /**
+ * Process an internship certificate generation job
+ */
+async function processInternshipCertificateJob(job: any): Promise<void> {
+  const { jobId, enrollmentId } = job;
+  try {
+    console.log(`[Certificate Worker] Processing internship job ${jobId} for enrollment ${enrollmentId}`);
+
+    await updateCertificateJobStatusService(jobId, { progress: 20 });
+    const result = await createInternshipCertificateService(enrollmentId);
+    await updateCertificateJobStatusService(jobId, {
+      status: "completed",
+      progress: 100,
+      certificateId: result.certificateId,
+      certificateUrl: result.fileUrl,
+    });
+
+    console.log(`[Certificate Worker] Internship job ${jobId} completed. Certificate: ${result.certificateId}`);
+  } catch (error: any) {
+    console.error(`[Certificate Worker] Error processing internship job ${jobId}:`, error);
+    const currentRetryCount = job.retryCount || 0;
+    if (currentRetryCount < MAX_RETRIES) {
+      await incrementJobRetryService(jobId);
+      await updateCertificateJobStatusService(jobId, {
+        status: "pending",
+        error: `Retry ${currentRetryCount + 1}/${MAX_RETRIES}: ${error.message}`,
+      });
+    } else {
+      await updateCertificateJobStatusService(jobId, {
+        status: "failed",
+        error: error.message || "Internship certificate generation failed",
+      });
+    }
+  }
+}
+
+/**
  * Process a single certificate generation job
  */
 async function processCertificateJob(job: any): Promise<void> {
+  if (job.certificateType === "internship") {
+    return processInternshipCertificateJob(job);
+  }
+
   const { jobId, enrollmentId } = job;
 
   try {

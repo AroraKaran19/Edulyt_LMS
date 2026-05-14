@@ -73,5 +73,19 @@ export const useInternshipAdmin = () => {
     []
   );
 
-  return { listAdmin, deleteInternship, updateMetadata };
+  const duplicateInternship = useCallback(
+    async (id: string): Promise<InternshipResponse | null> => {
+      try {
+        const response = await apiClient.post(
+          `${ENDPOINTS.internships.base}/${id}/duplicate`
+        );
+        return response.data?.data ?? null;
+      } catch {
+        return null;
+      }
+    },
+    []
+  );
+
+  return { listAdmin, deleteInternship, updateMetadata, duplicateInternship };
 };

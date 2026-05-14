@@ -1,7 +1,9 @@
 import mongoose from "mongoose";
 import { AppError } from "../middlewares/error.middleware";
 import { CertificateJobModel } from "../models/certificateJob.schema";
-import { CertificateJob, CertificateJobData, CertificateJobStatus } from "../types/certificateJob";
+import { CertificateJob, CertificateJobData, CertificateJobStatus, CertificateJobType } from "../types/certificateJob";
+import { InternshipEnrollmentModel } from "../models/internshipEnrollment.schema";
+import { InternshipModel } from "../models/internship.schema";
 import { v4 as uuidv4 } from "uuid";
 
 /**
@@ -24,6 +26,7 @@ export const createCertificateJobService = async (
         $setOnInsert: {
           jobId,
           enrollmentId: data.enrollmentId,
+          certificateType: (data.certificateType ?? "course") as CertificateJobType,
           status: "pending" as CertificateJobStatus,
           progress: 0,
           retryCount: 0,
@@ -176,6 +179,7 @@ export const getAllCertificateJobsService = async (
     page?: number;
     limit?: number;
     status?: CertificateJobStatus;
+    certificateType?: CertificateJobType;
     search?: string;
   } = {}
 ): Promise<{
@@ -197,6 +201,9 @@ export const getAllCertificateJobsService = async (
     if (options.status) {
       filter.status = options.status;
     }
+    if (options.certificateType) {
+      filter.certificateType = options.certificateType;
+    }
 
     // When search is provided, use aggregation to search across jobId, enrollmentId, userName, courseName
     if (searchTrimmed) {
@@ -205,21 +212,17 @@ export const getAllCertificateJobsService = async (
         "i"
       );
 
+      const eidConvert = {
+        $convert: { input: "$enrollmentId", to: "objectId", onError: null, onNull: null },
+      };
+
       const pipeline: mongoose.PipelineStage[] = [
         { $match: filter },
+        // Course enrollment lookup
         {
           $lookup: {
             from: "enrollments",
-            let: {
-              eid: {
-                $convert: {
-                  input: "$enrollmentId",
-                  to: "objectId",
-                  onError: null,
-                  onNull: null,
-                },
-              },
-            },
+            let: { eid: eidConvert },
             pipeline: [
               { $match: { $expr: { $and: [{ $ne: ["$$eid", null] }, { $eq: ["$_id", "$$eid"] }] } } },
               { $project: { userId: 1, courseId: 1 } },
@@ -229,16 +232,43 @@ export const getAllCertificateJobsService = async (
           },
         },
         { $unwind: { path: "$enrollment", preserveNullAndEmptyArrays: true } },
+        // Internship enrollment lookup
+        {
+          $lookup: {
+            from: "internshipenrollments",
+            let: { eid: eidConvert },
+            pipeline: [
+              { $match: { $expr: { $and: [{ $ne: ["$$eid", null] }, { $eq: ["$_id", "$$eid"] }] } } },
+              { $project: { user: 1, internship: 1 } },
+              { $limit: 1 },
+            ],
+            as: "internshipEnrollment",
+          },
+        },
+        { $unwind: { path: "$internshipEnrollment", preserveNullAndEmptyArrays: true } },
+        // User via course enrollment
         {
           $lookup: {
             from: "users",
             localField: "enrollment.userId",
             foreignField: "_id",
-            as: "user",
+            as: "courseUser",
             pipeline: [{ $project: { firstName: 1, lastName: 1, email: 1 } }],
           },
         },
-        { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
+        { $unwind: { path: "$courseUser", preserveNullAndEmptyArrays: true } },
+        // User via internship enrollment
+        {
+          $lookup: {
+            from: "users",
+            localField: "internshipEnrollment.user",
+            foreignField: "_id",
+            as: "internshipUser",
+            pipeline: [{ $project: { firstName: 1, lastName: 1, email: 1 } }],
+          },
+        },
+        { $unwind: { path: "$internshipUser", preserveNullAndEmptyArrays: true } },
+        // Course lookup
         {
           $lookup: {
             from: "courses",
@@ -249,20 +279,55 @@ export const getAllCertificateJobsService = async (
           },
         },
         { $unwind: { path: "$course", preserveNullAndEmptyArrays: true } },
+        // Internship program lookup
+        {
+          $lookup: {
+            from: "internships",
+            localField: "internshipEnrollment.internship",
+            foreignField: "_id",
+            as: "internshipProgram",
+            pipeline: [{ $project: { title: 1 } }],
+          },
+        },
+        { $unwind: { path: "$internshipProgram", preserveNullAndEmptyArrays: true } },
         {
           $addFields: {
+            isInternship: { $eq: ["$certificateType", "internship"] },
             userName: {
               $trim: {
                 input: {
                   $concat: [
-                    { $ifNull: ["$user.firstName", ""] },
+                    {
+                      $ifNull: [
+                        { $cond: { if: { $eq: ["$certificateType", "internship"] }, then: "$internshipUser.firstName", else: "$courseUser.firstName" } },
+                        "",
+                      ],
+                    },
                     " ",
-                    { $ifNull: ["$user.lastName", ""] },
+                    {
+                      $ifNull: [
+                        { $cond: { if: { $eq: ["$certificateType", "internship"] }, then: "$internshipUser.lastName", else: "$courseUser.lastName" } },
+                        "",
+                      ],
+                    },
                   ],
                 },
               },
             },
-            courseName: { $ifNull: ["$course.title", ""] },
+            courseName: {
+              $cond: {
+                if: { $eq: ["$certificateType", "internship"] },
+                then: { $ifNull: ["$internshipProgram.title", ""] },
+                else: { $ifNull: ["$course.title", ""] },
+              },
+            },
+            resolvedEmail: {
+              $cond: {
+                if: { $eq: ["$certificateType", "internship"] },
+                then: "$internshipUser.email",
+                else: "$courseUser.email",
+              },
+            },
           },
         },
         {
@@ -272,7 +337,7 @@ export const getAllCertificateJobsService = async (
               { enrollmentId: searchRegex },
               { userName: searchRegex },
               { courseName: searchRegex },
-              { "user.email": searchRegex },
+              { resolvedEmail: searchRegex },
             ],
           },
         },
@@ -291,8 +356,13 @@ export const getAllCertificateJobsService = async (
           {
             $project: {
               enrollment: 0,
-              user: 0,
+              internshipEnrollment: 0,
+              courseUser: 0,
+              internshipUser: 0,
               course: 0,
+              internshipProgram: 0,
+              resolvedEmail: 0,
+              isInternship: 0,
             },
           },
         ]),
@@ -328,34 +398,44 @@ export const getAllCertificateJobsService = async (
         try {
           const eid = job.enrollmentId;
           if (!eid || typeof eid !== "string") return { ...job, userName, courseName };
-
           const objId = mongoose.Types.ObjectId.isValid(eid)
             ? new mongoose.Types.ObjectId(eid)
             : null;
           if (!objId) return { ...job, userName, courseName };
 
-          const enrollment = await EnrollmentModel.findById(objId)
-            .select("userId courseId")
-            .lean();
-          if (!enrollment?.userId) return { ...job, userName, courseName };
-
-          const [user, course] = await Promise.all([
-            UserModel.findById(enrollment.userId).select("firstName lastName").lean(),
-            enrollment.courseId
-              ? CourseModel.findById(enrollment.courseId).select("title").lean()
-              : null,
-          ]);
-
-          userName =
-            user && typeof user === "object"
+          if (job.certificateType === "internship") {
+            const enrollment = await InternshipEnrollmentModel.findById(objId)
+              .select("user internship")
+              .lean();
+            if (!enrollment) return { ...job, userName, courseName };
+            const [user, internship] = await Promise.all([
+              UserModel.findById((enrollment as any).user).select("firstName lastName").lean(),
+              (enrollment as any).internship
+                ? InternshipModel.findById((enrollment as any).internship).select("title").lean()
+                : null,
+            ]);
+            userName = user
+              ? `${(user as any).firstName || ""} ${(user as any).lastName || ""}`.trim()
+              : "";
+            courseName = (internship as any)?.title || "";
+          } else {
+            const enrollment = await EnrollmentModel.findById(objId)
+              .select("userId courseId")
+              .lean();
+            if (!enrollment?.userId) return { ...job, userName, courseName };
+            const [user, course] = await Promise.all([
+              UserModel.findById(enrollment.userId).select("firstName lastName").lean(),
+              enrollment.courseId
+                ? CourseModel.findById(enrollment.courseId).select("title").lean()
+                : null,
+            ]);
+            userName = user
               ? `${(user as { firstName?: string }).firstName || ""} ${(user as { lastName?: string }).lastName || ""}`.trim()
               : "";
-          courseName =
-            course && typeof course === "object"
-              ? (course as { title?: string }).title || ""
-              : "";
+            courseName = (course as any)?.title || "";
+          }
         } catch {
-          // Ignore enrichment errors - keep empty userName/courseName
+          // Ignore enrichment errors
         }
         return { ...job, userName, courseName };
       })

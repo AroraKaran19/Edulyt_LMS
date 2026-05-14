@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+﻿import mongoose from "mongoose";
 import { InternshipSubmissionModel } from "../models/internshipSubmission.schema";
 import { InternshipEnrollmentModel } from "../models/internshipEnrollment.schema";
 import { InternshipTaskModel } from "../models/internshipTask.schema";
@@ -6,7 +6,6 @@ import { InternshipExamModel } from "../models/internshipExam.schema";
 import { InternshipQuestionModel } from "../models/internshipQuestion.schema";
 import { InternshipModel } from "../models/internship.schema";
 import { AppError } from "../middlewares/error.middleware";
-import { getPointsSettings } from "./pointsSettings.services";
 import type {
   SnapshotQuestion,
   TaskTemplateSnapshot,
@@ -359,37 +358,9 @@ export async function createInternshipSubmission(
           "DOCUMENTATION_PENDING",
         );
       }
-      const allowed = new Set(["enrolled", "completed", "paused"]);
-      if (!allowed.has(String(enrollment.status))) {
+      if (String(enrollment.status) !== "enrolled") {
         throw new AppError(
-          "You must be an active program participant to take the certification exam",
-          403,
-        );
-      }
-      const thresholdRaw = (internship as { certificationThreshold?: unknown })
-        .certificationThreshold;
-      const threshold =
-        typeof thresholdRaw === "number" && !Number.isNaN(thresholdRaw)
-          ? Math.max(0, Math.floor(thresholdRaw))
-          : 0;
-      const points =
-        typeof enrollment.internshipSuccessPoints === "number"
-          ? enrollment.internshipSuccessPoints
-          : 0;
-      if (threshold > 0 && points < threshold) {
-        const shortfall = threshold - points;
-        const settings = await getPointsSettings();
-        const inr = settings.internshipSuccessPointInr;
-        const approxCost =
-          typeof inr === "number" && inr > 0 && Number.isFinite(inr)
-            ? Math.round(shortfall * inr * 100) / 100
-            : null;
-        const buyHint =
-          approxCost != null
-            ? ` Buying ${shortfall} point${shortfall === 1 ? "" : "s"} is about ₹${approxCost.toLocaleString("en-IN")} at the current rate (set under Admin → Settings → Points). Open your program page and use “Buy success points”, or earn more from graded tasks.`
-            : " Earn more from graded tasks, or buy points on your program page once your institute has enabled purchasing (Admin → Settings → Points).";
-        throw new AppError(
-          `The certification exam requires ${threshold} internship success points; you have ${points} (${shortfall} short).${buyHint}`,
+          "You must be actively enrolled to take the certification exam",
           403,
         );
       }
@@ -1018,6 +989,38 @@ export async function finalizeCertificationExamReview(
 
   sub.status = "fully_reviewed";
   await sub.save();
+
+  // Create certificate job if learner qualifies (exam passed + points met)
+  try {
+    const enrollment = await InternshipEnrollmentModel.findById(String(sub.enrollmentId)).lean();
+    if (enrollment) {
+      const internship = await InternshipModel.findById((enrollment as any).internship)
+        .select("certificationThreshold")
+        .lean();
+      const threshold =
+        typeof (internship as any)?.certificationThreshold === "number" &&
+        !Number.isNaN((internship as any).certificationThreshold)
+          ? Math.max(0, Math.floor((internship as any).certificationThreshold))
+          : 0;
+      const examPassed =
+        snap.thresholdScore == null || sub.totalAwardedScore >= snap.thresholdScore;
+      const pointsMet =
+        threshold <= 0 || ((enrollment as any).internshipSuccessPoints ?? 0) >= threshold;
+      if (examPassed && pointsMet) {
+        const { createCertificateJobService } = await import("./certificateJob.services");
+        await createCertificateJobService({
+          enrollmentId: String(sub.enrollmentId),
+          certificateType: "internship",
+          studentName: "",
+          courseName: "",
+          completionDate: new Date(),
+        });
+      }
+    }
+  } catch (certErr) {
+    console.error("[Certificate] Failed to queue internship certificate job:", certErr);
+  }
+
   return serializeSubmission(sub.toObject());
 }
 

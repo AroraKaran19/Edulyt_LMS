@@ -2313,8 +2313,18 @@ export type LearnerProgramDetail = {
     };
     /** Unique intern ID (e.g. "AI-00042") — present once offer letter has been generated. */
     internId?: string;
-    /** Public URL of the generated offer letter PDF — present once issued. */
+    /** Offer letter PDF — present once issued. */
     offerLetterUrl?: string;
+    /**
+     * Cohort assigns a certification exam template (`certification`).
+     * When false, certification points/top-up UX uses task-only thresholds.
+     */
+    certificationExamConfigured?: boolean;
+    /**
+     * When `certificationExamConfigured`: learner has a non-draft submission for that exam (sat / submitted exam).
+     * Omitted when not configured — client treats `certificationExamSubmitted === true` only when cohort has an exam.
+     */
+    certificationExamSubmitted?: boolean;
   };
   tasks: LearnerTaskRow[];
   /** INR per purchased internship success point (certification), when configured */
@@ -2479,7 +2489,7 @@ export async function getLearnerProgramBySlug(
 
   // 3. Get the batch's task template IDs
   const batchId = doc.batchSnapshot?.batchId ?? "";
-  type BatchLike = { _id?: unknown; taskTemplateIds?: unknown[] };
+  type BatchLike = { _id?: unknown; taskTemplateIds?: unknown[]; certificationExamTemplateId?: unknown };
   const batches =
     (internship as { batches?: BatchLike[] }).batches ?? [];
   const matchedBatch = batches.find((b) => String(b._id) === batchId);
@@ -2616,6 +2626,23 @@ export async function getLearnerProgramBySlug(
       ? Math.round(certificationPointsShortfall * priceInr * 100) / 100
       : undefined;
 
+  const rawCertExamId = matchedBatch?.certificationExamTemplateId;
+  const certificationExamConfigured =
+    rawCertExamId != null && String(rawCertExamId).trim().length > 0;
+  let certificationExamSubmitted: boolean | undefined;
+  if (certificationExamConfigured) {
+    const certSub = await InternshipSubmissionModel.findOne({
+      userId,
+      batchId,
+      examId: String(rawCertExamId),
+      submissionFor: "exam",
+    })
+      .select("status")
+      .lean();
+    certificationExamSubmitted =
+      certSub != null && String((certSub as { status?: string }).status ?? "") !== "draft";
+  }
+
   return {
     enrollment: {
       _id: String(doc._id),
@@ -2655,6 +2682,12 @@ export async function getLearnerProgramBySlug(
         typeof (doc as unknown as { offerLetterUrl?: string }).offerLetterUrl === "string"
           ? (doc as unknown as { offerLetterUrl: string }).offerLetterUrl
           : undefined,
+      ...(certificationExamConfigured
+        ? {
+            certificationExamConfigured: true as const,
+            certificationExamSubmitted: certificationExamSubmitted === true,
+          }
+        : { certificationExamConfigured: false as const }),
     },
     tasks: unlockedTasks,
     ...(internshipSuccessPointPurchase

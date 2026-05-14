@@ -267,12 +267,14 @@ export const getAllCertificateJobs = asyncHandler(
     const page = req.query.page ? Number(req.query.page) : 1;
     const limit = req.query.limit ? Number(req.query.limit) : 20;
     const status = req.query.status as string | undefined;
+    const certificateType = req.query.certificateType as string | undefined;
     const search = req.query.search as string | undefined;
 
     const result = await getAllCertificateJobsService({
       page,
       limit,
       status: status as "pending" | "processing" | "completed" | "failed" | undefined,
+      certificateType: certificateType as "course" | "internship" | undefined,
       search,
     });
 

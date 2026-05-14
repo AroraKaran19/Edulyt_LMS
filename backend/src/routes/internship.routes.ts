@@ -12,6 +12,7 @@ import {
   createInternship,
   updateInternship,
   deleteInternship,
+  duplicateInternship,
 } from "../controllers/internship.controller";
 
 const router = Router();
@@ -82,6 +83,13 @@ router.post("/metadata", createInternship);
  * @access  Admin
  */
 router.put("/:id/metadata", updateInternship);
+
+/**
+ * @route   POST /api/internships/:id/duplicate
+ * @desc    Duplicate internship
+ * @access  Admin
+ */
+router.post("/:id/duplicate", duplicateInternship);
 
 /**
  * @route   DELETE /api/internships/:id

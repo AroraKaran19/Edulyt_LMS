@@ -13,6 +13,12 @@ const certificateJobSchema = new mongoose.Schema<CertificateJob>(
       type: String,
       required: true,
     },
+    certificateType: {
+      type: String,
+      enum: ["course", "internship"],
+      default: "course",
+      required: true,
+    },
     status: {
       type: String,
       enum: ["pending", "processing", "completed", "failed"],

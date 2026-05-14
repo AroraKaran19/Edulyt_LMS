@@ -3,6 +3,8 @@ import { CertificateModel } from "../models/certificate.schema";
 import { EnrollmentModel } from "../models/enrollment.schema";
 import { UserModel } from "../models/user.schema";
 import { CourseModel } from "../models/course.schema";
+import { InternshipEnrollmentModel } from "../models/internshipEnrollment.schema";
+import { InternshipModel } from "../models/internship.schema";
 import { Certificate, CertificateGenerationData } from "../types/certificate";
 import { generateCertificateFromDocx } from "../utils/certificateGeneratorDocx";
 import { convertDocxToPdf } from "../utils/certificateGeneratorDocx";
@@ -239,6 +241,80 @@ export const createCertificateService = async (
     }
     console.error("Error creating certificate:", error);
     throw new AppError("Failed to create certificate", 500);
+  }
+};
+
+/**
+ * Generate an internship certificate PDF, upload to S3, and return the URL.
+ * Does not create a CertificateModel record — the URL is stored on the job.
+ */
+export const createInternshipCertificateService = async (
+  enrollmentId: string
+): Promise<{ certificateId: string; fileUrl: string }> => {
+  const enrollment = await InternshipEnrollmentModel.findById(enrollmentId).lean();
+  if (!enrollment) throw new AppError("Internship enrollment not found", 404);
+
+  const [user, internship] = await Promise.all([
+    UserModel.findById((enrollment as any).user).select("firstName lastName").lean(),
+    InternshipModel.findById((enrollment as any).internship).select("title").lean(),
+  ]);
+  if (!user || !internship) throw new AppError("User or internship not found", 404);
+
+  const studentName = `${(user as any).firstName || ""} ${(user as any).lastName || ""}`.trim();
+  const internshipTitle = (internship as any).title || "Internship";
+
+  const certificateId = generateCertificateId(
+    (user as any)._id.toString(),
+    enrollmentId.toString()
+  );
+
+  const verificationCode = `VER-${certificateId}-${Date.now().toString(36).toUpperCase()}`;
+  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+  const verificationUrl = `${frontendUrl}/verify-certificate/${verificationCode}`;
+
+  const templatePath = path.join(
+    process.cwd(),
+    "../frontend/public/course-certificates/Certificates",
+    "Airkrit India Certificate Internship - AI-01171 - Template.docx"
+  );
+
+  if (!fs.existsSync(templatePath)) {
+    throw new AppError("Internship certificate template not found", 404);
+  }
+
+  const tempDir = path.join(os.tmpdir(), `intern-cert-${Date.now()}`);
+  fs.mkdirSync(tempDir, { recursive: true });
+  const docxPath = path.join(tempDir, `cert-${certificateId}.docx`);
+  const pdfPath = path.join(tempDir, `cert-${certificateId}.pdf`);
+
+  const cleanup = () => {
+    try { fs.rmSync(tempDir, { recursive: true, force: true }); } catch {}
+  };
+
+  try {
+    await generateCertificateFromDocx(templatePath, docxPath, {
+      studentName,
+      courseName: internshipTitle,
+      completionDate: ((enrollment as any).enrolledAt || new Date()).toISOString(),
+      certificateId,
+      verificationUrl,
+    });
+
+    await convertDocxToPdf(docxPath, pdfPath);
+    const pdfBuffer = fs.readFileSync(pdfPath);
+
+    const sanitize = (s: string) =>
+      s.replace(/[^a-zA-Z0-9\s-]/g, "").replace(/\s+/g, "_").substring(0, 100);
+    const pdfFileName = `Airkrit_Internship_${sanitize(internshipTitle)}_${sanitize(studentName)}.pdf`;
+
+    const fileUrl = await uploadFileToS3(pdfBuffer, pdfFileName, "certificates", "application/pdf");
+    cleanup();
+    return { certificateId, fileUrl };
+  } catch (error) {
+    cleanup();
+    if (error instanceof AppError) throw error;
+    console.error("Error creating internship certificate:", error);
+    throw new AppError("Failed to create internship certificate", 500);
   }
 };
 

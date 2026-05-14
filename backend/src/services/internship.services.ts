@@ -816,3 +816,72 @@ export const deleteInternshipService = async (id: string): Promise<boolean> => {
   const res = await InternshipModel.findByIdAndDelete(id);
   return !!res;
 };
+
+/**
+ * Duplicate an internship (admin).
+ * Creates a fully independent copy: new _id, new batch _ids, unique slug,
+ * "Copy of …" title, isActive=false, zeroed analytics.
+ */
+export const duplicateInternshipService = async (
+  id: string,
+  createdBy: string,
+): Promise<InternshipResponse> => {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new AppError("Invalid internship ID", 400);
+  }
+
+  const original = await InternshipModel.findById(id).lean();
+  if (!original) throw new AppError("Internship not found", 404);
+
+  // Build a unique slug: append -copy, then -copy-2, -copy-3 … until free
+  const baseSlug = `${(original as any).slug}-copy`;
+  let candidateSlug = baseSlug;
+  let suffix = 2;
+  while (await InternshipModel.exists({ slug: candidateSlug })) {
+    candidateSlug = `${baseSlug}-${suffix++}`;
+  }
+
+  // Strip doc-level fields that must not carry over, then override
+  const {
+    _id,
+    __v,
+    createdAt,
+    updatedAt,
+    slug: _slug,
+    isActive: _isActive,
+    analytics: _analytics,
+    batches: originalBatches,
+    ...rest
+  } = original as any;
+
+  // Give each batch a fresh _id so they are independent subdocuments
+  const batches = (originalBatches ?? []).map((b: any) => ({
+    ...b,
+    _id: new mongoose.Types.ObjectId(),
+    analytics: { totalRatings: 0, totalReviews: 0, totalEnrollments: 0, averageRating: 0 },
+    createdBy: new mongoose.Types.ObjectId(createdBy),
+  }));
+
+  const copy = await InternshipModel.create({
+    ...rest,
+    title: `Copy of ${(original as any).title}`,
+    slug: candidateSlug,
+    isActive: false,
+    analytics: { totalRatings: 0, totalReviews: 0, totalEnrollments: 0, averageRating: 0 },
+    batches,
+    createdBy: new mongoose.Types.ObjectId(createdBy),
+  });
+
+  const populated = await InternshipModel.findById(copy._id)
+    .populate("testimonials", "name currentRole feedback verified")
+    .populate("partnerColleges", "name location website image")
+    .populate("faqs", "question answer")
+    .populate(
+      "mentors",
+      "-password -refreshTokens -permissions -accounts -phone -whatsappNumber -address -dob -reviews -ownedCourses -previousExperience",
+    )
+    .populate("createdBy", "name email")
+    .lean();
+
+  return populated as unknown as InternshipResponse;
+};

@@ -15,6 +15,7 @@ import {
   createInternshipService,
   updateInternshipService,
   deleteInternshipService,
+  duplicateInternshipService,
 } from "../services/internship.services";
 
 /**
@@ -287,6 +288,22 @@ export const updateInternship = asyncHandler(
       "Internship updated successfully",
       200
     );
+  }
+);
+
+/**
+ * @route   POST /api/internships/:id/duplicate
+ * @desc    Duplicate internship — creates a fully independent copy
+ * @access  Admin
+ */
+export const duplicateInternship = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { id } = req.params;
+    if (!id) throw new AppError("Internship ID is required", 400);
+    const userId = (req as any).user?._id;
+    if (!userId) throw new AppError("Unauthorized", 401);
+    const copy = await duplicateInternshipService(id, String(userId));
+    sendSuccessResponse(res, copy, "Internship duplicated successfully", 201);
   }
 );
 

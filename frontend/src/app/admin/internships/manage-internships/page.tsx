@@ -17,6 +17,7 @@ import {
   Briefcase,
   Filter,
   ChevronDown,
+  Copy,
 } from "lucide-react";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import { InfiniteScrollSelect } from "@/components/ui/dropdown/InfiniteScrollSelect";
@@ -59,7 +60,7 @@ function stripHtml(html: string) {
 
 const ManageInternshipsPage = () => {
   const router = useRouter();
-  const { listAdmin, deleteInternship, updateMetadata } = useInternshipAdmin();
+  const { listAdmin, deleteInternship, updateMetadata, duplicateInternship } = useInternshipAdmin();
 
   const [internships, setInternships] = useState<InternshipResponse[]>([]);
   const [totalPages, setTotalPages] = useState(1);
@@ -80,6 +81,7 @@ const ManageInternshipsPage = () => {
     return stored?.sortOrder ?? "newest";
   });
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
+  const [isCopying, setIsCopying] = useState<string | null>(null);
   const [internshipToDelete, setInternshipToDelete] =
     useState<InternshipResponse | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -258,6 +260,25 @@ const ManageInternshipsPage = () => {
     if (id) {
       setOpenMenuId(null);
       router.push(`/admin/internships/manage-internships/edit/${id}`);
+    }
+  };
+
+  const handleCopy = async (id: string) => {
+    setIsCopying(id);
+    setOpenMenuId(null);
+    try {
+      const copy = await duplicateInternship(id);
+      if (copy) {
+        setInternships((prev) => [copy, ...prev]);
+        setTotalCount((c) => c + 1);
+        toast.success(`"${copy.title}" created — inactive by default`);
+      } else {
+        toast.error("Failed to duplicate internship");
+      }
+    } catch {
+      toast.error("Failed to duplicate internship");
+    } finally {
+      setIsCopying(null);
     }
   };
 
@@ -523,6 +544,19 @@ const ManageInternshipsPage = () => {
                             >
                               <Edit3 className="w-4 h-4 text-gray-500" />
                               Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleCopy(internship._id || "")}
+                              disabled={isCopying === internship._id}
+                              className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors text-left cursor-pointer disabled:opacity-50"
+                            >
+                              {isCopying === internship._id ? (
+                                <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                              ) : (
+                                <Copy className="w-4 h-4 text-gray-500" />
+                              )}
+                              {isCopying === internship._id ? "Copying…" : "Copy"}
                             </button>
                             <div className="border-t border-gray-200">
                               <button

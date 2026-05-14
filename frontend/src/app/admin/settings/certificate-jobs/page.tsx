@@ -28,6 +28,7 @@ interface CertificateJob {
   _id?: string;
   jobId: string;
   enrollmentId: string;
+  certificateType?: "course" | "internship";
   status: JobStatus;
   certificateId?: string;
   certificateUrl?: string;
@@ -79,6 +80,7 @@ const CertificateJobsPage = () => {
   const [page, setPage] = useState(1);
   const [limit] = useState(20);
   const [statusFilter, setStatusFilter] = useState<JobStatus | "">("");
+  const [typeFilter, setTypeFilter] = useState<"course" | "internship" | "">("");
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -100,6 +102,7 @@ const CertificateJobsPage = () => {
       params.set("page", String(page));
       params.set("limit", String(limit));
       if (statusFilter) params.set("status", statusFilter);
+      if (typeFilter) params.set("certificateType", typeFilter);
       if (searchQuery) params.set("search", searchQuery);
 
       const response = await apiClient.get<{ data: JobsResponse }>(
@@ -120,7 +123,7 @@ const CertificateJobsPage = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [page, limit, statusFilter, searchQuery]);
+  }, [page, limit, statusFilter, typeFilter, searchQuery]);
 
   useEffect(() => {
     loadJobs();
@@ -167,7 +170,7 @@ const CertificateJobsPage = () => {
             <Search className="absolute left-3 size-4 text-gray-400 pointer-events-none" />
             <input
               type="text"
-              placeholder="Search job ID, user, course..."
+              placeholder="Search job ID, user, program..."
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               className="pl-9 pr-3 py-2 rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-800 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 h-[38px] min-w-[220px]"
@@ -190,6 +193,23 @@ const CertificateJobsPage = () => {
               <option value="processing">Processing</option>
               <option value="completed">Completed</option>
               <option value="failed">Failed</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-semibold text-gray-700">
+              Type
+            </label>
+            <select
+              value={typeFilter}
+              onChange={(e) => {
+                setTypeFilter(e.target.value as "course" | "internship" | "");
+                setPage(1);
+              }}
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-800 shadow-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 h-[38px]"
+            >
+              <option value="">All</option>
+              <option value="course">Course</option>
+              <option value="internship">Internship</option>
             </select>
           </div>
           <WhiteButton
@@ -233,12 +253,13 @@ const CertificateJobsPage = () => {
               ? `No jobs match "${searchQuery}". Try a different search.`
               : statusFilter
                 ? `No jobs with status "${statusFilter}". Try a different filter.`
-                : "Certificate jobs will appear here when users complete courses."}
+                : "Certificate jobs will appear here when users qualify for course or internship certificates."}
           </p>
-          {(statusFilter || searchQuery) && (
+          {(statusFilter || typeFilter || searchQuery) && (
             <WhiteButton
               onClick={() => {
                 setStatusFilter("");
+                setTypeFilter("");
                 setSearchInput("");
                 setSearchQuery("");
                 setPage(1);
@@ -261,7 +282,10 @@ const CertificateJobsPage = () => {
                     User
                   </th>
                   <th className="text-left py-4 px-4 font-semibold text-gray-700">
-                    Course
+                    Type
+                  </th>
+                  <th className="text-left py-4 px-4 font-semibold text-gray-700">
+                    Program
                   </th>
                   <th className="text-left py-4 px-4 font-semibold text-gray-700">
                     Status
@@ -313,6 +337,17 @@ const CertificateJobsPage = () => {
                       <td className="py-3 px-4 font-medium text-gray-800 max-w-[140px] truncate">
                         {job.userName || (
                           <span className="text-gray-400 italic">—</span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4">
+                        {job.certificateType === "internship" ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-violet-100 text-violet-700 border border-violet-200">
+                            Internship
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700 border border-blue-200">
+                            Course
+                          </span>
                         )}
                       </td>
                       <td

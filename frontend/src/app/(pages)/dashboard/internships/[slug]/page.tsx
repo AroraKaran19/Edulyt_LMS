@@ -373,6 +373,17 @@ export default function InternshipProgramPage() {
   const certShortfall = enrollment.certificationPointsShortfall;
   const approxInr = enrollment.approxInrToReachCertificationThreshold;
 
+  /** Hide “buy points” / certificate shortfall banners until certification exam work is done — when cohort has one. */
+  const certificationExamConfigured =
+    enrollment.certificationExamConfigured === true;
+  const certificationExamSubmitted =
+    enrollment.certificationExamSubmitted === true;
+  const awaitingCertificateBelowPoints =
+    typeof certShortfall === "number" &&
+    certShortfall > 0 &&
+    enrollment.certificationThreshold > 0 &&
+    (!certificationExamConfigured || certificationExamSubmitted);
+
   return (
     <div className="max-w-4xl lg:max-w-7xl mx-auto py-6 space-y-6">
       {/* Back */}
@@ -407,7 +418,7 @@ export default function InternshipProgramPage() {
             )}
           </div>
         </div>
-        {pointsPurchase ? (
+        {pointsPurchase && awaitingCertificateBelowPoints ? (
           <div
             id="buy-success-points"
             className="w-full lg:w-auto lg:max-w-md shrink-0"
@@ -454,17 +465,16 @@ export default function InternshipProgramPage() {
         </div>
       ) : null}
 
-      {typeof certShortfall === "number" &&
-      certShortfall > 0 &&
-      enrollment.certificationThreshold > 0 ? (
+      {awaitingCertificateBelowPoints ? (
         <div className="rounded-2xl border border-amber-300/80 bg-amber-100/40 px-4 py-3 text-sm text-amber-950">
-          <p className="font-semibold">Certification points</p>
+          <p className="font-semibold">Certificate — success points</p>
           <p className="mt-1 text-amber-950/90 text-xs sm:text-sm leading-relaxed">
             You need{" "}
             <span className="font-mono font-semibold">
               {enrollment.certificationThreshold}
             </span>{" "}
-            internship success points to attempt the certification exam. You have{" "}
+            internship success points total to qualify for your certificate.
+            You have{" "}
             <span className="font-mono font-semibold">
               {enrollment.internshipSuccessPoints}
             </span>{" "}

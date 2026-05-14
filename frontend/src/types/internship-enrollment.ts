@@ -349,7 +349,7 @@ export interface LearnerProgramEnrollment {
   enrollmentType?: string;
   enrolledAt?: string;
   internshipSuccessPoints: number;
-  /** Minimum internship success points before certification exam (from internship doc). */
+  /** Minimum internship success points required for issuing the certificate (from internship doc). */
   certificationThreshold: number;
   /** When certificationThreshold > 0 — points still needed (0 = met). */
   certificationPointsShortfall?: number;
@@ -371,6 +371,15 @@ export interface LearnerProgramEnrollment {
   internId?: string;
   /** Public URL of the generated offer letter PDF — present once issued. */
   offerLetterUrl?: string;
+  /**
+   * Whether this cohort attaches a certification exam (vs points-only/task path).
+   */
+  certificationExamConfigured?: boolean;
+  /**
+   * When the cohort has a certification exam: the learner moved past draft (submitted sitting).
+   * Used so “buy points” appears after the exam while awaiting certificate thresholds.
+   */
+  certificationExamSubmitted?: boolean;
 }
 
 export interface LearnerProgramDetail {

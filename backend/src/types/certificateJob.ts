@@ -1,9 +1,11 @@
 export type CertificateJobStatus = "pending" | "processing" | "completed" | "failed";
+export type CertificateJobType = "course" | "internship";
 
 export interface CertificateJob {
   _id?: string;
-  jobId: string; // Unique job identifier
-  enrollmentId: string; // Reference to enrollment
+  jobId: string;
+  enrollmentId: string;
+  certificateType: CertificateJobType;
   status: CertificateJobStatus;
   certificateId?: string; // Certificate ID once generated
   certificateUrl?: string; // URL to certificate file once generated
@@ -18,6 +20,7 @@ export interface CertificateJob {
 
 export interface CertificateJobData {
   enrollmentId: string;
+  certificateType?: CertificateJobType;
   studentName: string;
   courseName: string;
   completionDate: Date;
