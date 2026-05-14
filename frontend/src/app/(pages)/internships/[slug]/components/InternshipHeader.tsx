@@ -405,6 +405,7 @@ const InternshipHeader = ({ internship }: { internship: Internship }) => {
                 }}
               />
             </div>
+            <div className="flex items-center gap-4 justify-start">
             {internship.brochure && internship.brochure !== "" && (
               <div className="mt-auto self-center lg:self-start">
                 <WhiteButton2
@@ -429,6 +430,7 @@ const InternshipHeader = ({ internship }: { internship: Internship }) => {
                 </WhiteButton2>
               </div>
             )}
+            </div>
             <div className="flex items-center gap-2 justify-start">
               <p
                 className={cn(

@@ -4,9 +4,11 @@ import { Enrollment } from "./enrollment";
 
 export interface Certificate {
   _id?: string;
-  enrollmentId: Enrollment["_id"]; // Reference to enrollment
+  certificateType: "course" | "internship";
+  enrollmentModel: "Enrollment" | "InternshipEnrollment";
+  enrollmentId: Enrollment["_id"]; // ObjectId — ref resolved via enrollmentModel (refPath)
   userId: User["_id"]; // Reference to user (for easier querying)
-  courseId: Course["_id"]; // Reference to course (for easier querying)
+  courseId?: Course["_id"]; // Reference to course — null for internship certificates
 
   // Certificate details
   certificateId: string; // Unique certificate ID (e.g., "AI-12345")

@@ -187,6 +187,8 @@ export const createCertificateService = async (
 
       // Create certificate document with verification code and URL
       const certificate = new CertificateModel({
+        certificateType: "course",
+        enrollmentModel: "Enrollment",
         enrollmentId: data.enrollmentId,
         userId: enrollment.userId,
         courseId: enrollment.courseId,
@@ -245,8 +247,8 @@ export const createCertificateService = async (
 };
 
 /**
- * Generate an internship certificate PDF, upload to S3, and return the URL.
- * Does not create a CertificateModel record — the URL is stored on the job.
+ * Generate an internship certificate PDF, upload to S3, save a CertificateModel
+ * record (so the QR code verify endpoint works), and return the result.
  */
 export const createInternshipCertificateService = async (
   enrollmentId: string
@@ -309,6 +311,28 @@ export const createInternshipCertificateService = async (
 
     const fileUrl = await uploadFileToS3(pdfBuffer, pdfFileName, "certificates", "application/pdf");
     cleanup();
+
+    // Save CertificateModel record so the QR verify endpoint can find it.
+    // enrollmentModel drives refPath so .populate("enrollmentId") resolves correctly.
+    await CertificateModel.create({
+      certificateType: "internship",
+      enrollmentModel: "InternshipEnrollment",
+      enrollmentId,
+      userId: (user as any)._id,
+      courseId: null,
+      certificateId,
+      studentName,
+      courseName: internshipTitle,
+      completionDate: (enrollment as any).enrolledAt || new Date(),
+      issuedAt: new Date(),
+      fileUrl,
+      verificationCode,
+      verificationUrl,
+      isLatest: true,
+      version: 1,
+      isActive: true,
+    });
+
     return { certificateId, fileUrl };
   } catch (error) {
     cleanup();
@@ -461,6 +485,8 @@ export const regenerateCertificateService = async (
 
       // Create new certificate with verification code and URL
       const newCertificate = new CertificateModel({
+        certificateType: oldCertificate.certificateType ?? "course",
+        enrollmentModel: oldCertificate.enrollmentModel ?? "Enrollment",
         enrollmentId: oldCertificate.enrollmentId,
         userId: oldCertificate.userId,
         courseId: oldCertificate.courseId,

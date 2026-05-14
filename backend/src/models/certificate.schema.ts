@@ -3,9 +3,24 @@ import { Certificate } from "../types/certificate";
 
 const certificateSchema = new mongoose.Schema<Certificate>(
   {
+    certificateType: {
+      type: String,
+      enum: ["course", "internship"],
+      default: "course",
+      required: true,
+    },
+    // Holds the Mongoose model name so refPath resolves populate correctly:
+    //   course      → "Enrollment"
+    //   internship  → "InternshipEnrollment"
+    enrollmentModel: {
+      type: String,
+      enum: ["Enrollment", "InternshipEnrollment"],
+      default: "Enrollment",
+      required: true,
+    },
     enrollmentId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Enrollment",
+      refPath: "enrollmentModel",
       required: true,
     },
     userId: {
@@ -17,7 +32,8 @@ const certificateSchema = new mongoose.Schema<Certificate>(
     courseId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Course",
-      required: true,
+      required: false,
+      default: null,
       index: true,
     },
 
