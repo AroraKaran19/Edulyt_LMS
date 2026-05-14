@@ -70,21 +70,6 @@ const AdminSidebar = ({
       ],
     },
     {
-      icon: <HelpCircle className="size-6" />,
-      label: "FAQs",
-      href: "/admin/faq",
-    },
-    {
-      icon: <Users className="size-6" />,
-      label: "Testimonials",
-      href: "/admin/testimonials",
-    },
-    {
-      icon: <ShoppingCart className="size-6" />,
-      label: "Orders",
-      href: "/admin/orders",
-    },
-    {
       iconSrc: "/admin/internship.svg",
       label: "Internships",
       href: "/admin/internships",
@@ -125,6 +110,10 @@ const AdminSidebar = ({
           label: "Task templates",
           href: "/admin/internships/tasks",
         },
+        {
+          label: "Live meetings",
+          href: "/admin/internships/live-meetings",
+        },
       ],
     },
     {
@@ -141,6 +130,21 @@ const AdminSidebar = ({
           href: "/admin/users/create-instructor",
         },
       ],
+    },
+    {
+      icon: <HelpCircle className="size-6" />,
+      label: "FAQs",
+      href: "/admin/faq",
+    },
+    {
+      icon: <Users className="size-6" />,
+      label: "Testimonials",
+      href: "/admin/testimonials",
+    },
+    {
+      icon: <ShoppingCart className="size-6" />,
+      label: "Orders",
+      href: "/admin/orders",
     },
     {
       icon: <Tag className="size-6" />,

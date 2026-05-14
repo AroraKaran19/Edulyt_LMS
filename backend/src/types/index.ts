@@ -43,4 +43,5 @@ export * from "./internship-submission";
 export * from "./partner-college";
 export * from "./assessment";
 export * from "./internship-meet";
+export * from "./internship-live-meeting";
 export * from "./question";

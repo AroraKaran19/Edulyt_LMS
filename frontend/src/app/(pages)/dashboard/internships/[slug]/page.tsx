@@ -18,9 +18,13 @@ import {
   Sparkles,
   BadgeCheck,
   Download,
+  Video,
+  ExternalLink,
+  Check,
 } from "lucide-react";
 import { ENDPOINTS } from "@/constants/endpoints";
 import type { LearnerProgramDetail, LearnerTaskRow } from "@/types";
+import type { StudentLiveMeetingItem } from "@/types/internship-live-meeting";
 import { cn } from "@/lib/utils";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -247,9 +251,6 @@ function TaskCard({ task, slug }: { task: LearnerTaskRow; slug: string }) {
             {icon}
             {label}
           </span>
-          <span className="text-[11px] text-stone-500 font-mono capitalize">
-            {task.taskType}
-          </span>
         </div>
         <h3 className="text-sm font-semibold text-stone-900 line-clamp-2">
           {task.title}
@@ -295,6 +296,125 @@ function TaskCard({ task, slug }: { task: LearnerTaskRow; slug: string }) {
             {actionLabel}
           </span>
         )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Live meetings ────────────────────────────────────────────────────────────
+
+function formatMeetingDateTime(iso: string): string {
+  try {
+    return new Date(iso).toLocaleString("en-IN", {
+      day: "numeric",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return "—";
+  }
+}
+
+function meetingTiming(m: StudentLiveMeetingItem): {
+  label: string;
+  cls: string;
+} {
+  const now = Date.now();
+  const start = new Date(m.startDateTime).getTime();
+  const end = m.endDateTime ? new Date(m.endDateTime).getTime() : null;
+
+  if (!Number.isNaN(start) && now < start) {
+    return { label: "Upcoming", cls: "bg-sky-100 text-sky-900 border-sky-200" };
+  }
+  if (end && now < end) {
+    return { label: "Live now", cls: "bg-emerald-100 text-emerald-900 border-emerald-200 animate-pulse" };
+  }
+  if (!end && now < start + 4 * 60 * 60 * 1000) {
+    return { label: "Live now", cls: "bg-emerald-100 text-emerald-900 border-emerald-200 animate-pulse" };
+  }
+  return { label: "Past", cls: "bg-stone-100 text-stone-700 border-stone-200" };
+}
+
+function LiveMeetingCard({ m }: { m: StudentLiveMeetingItem }) {
+  const t = meetingTiming(m);
+  const both = m.link1Clicked && m.link2Clicked;
+  const partial = (m.link1Clicked || m.link2Clicked) && !both;
+
+  return (
+    <div className="flex items-start gap-4 rounded-2xl border border-stone-200/80 bg-white p-4 shadow-sm hover:shadow-md transition-shadow">
+      <div className="shrink-0 w-10 h-10 rounded-xl bg-amber-100 border border-amber-200/80 flex items-center justify-center">
+        <Video className="w-5 h-5 text-amber-800" />
+      </div>
+      <div className="min-w-0 flex-1 space-y-1.5">
+        <div className="flex flex-wrap items-center gap-2">
+          <span
+            className={cn(
+              "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium",
+              t.cls,
+            )}
+          >
+            {t.label}
+          </span>
+          {both ? (
+            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-900">
+              <Check className="w-3 h-3" /> Present
+            </span>
+          ) : partial ? (
+            <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-900">
+              1 of 2 attendances done
+            </span>
+          ) : null}
+        </div>
+        <h3 className="text-sm font-semibold text-stone-900 line-clamp-2">
+          {m.name}
+        </h3>
+        {m.description ? (
+          <p className="text-xs text-stone-500 line-clamp-2">{m.description}</p>
+        ) : null}
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-stone-500">
+          <span className="font-mono">{formatMeetingDateTime(m.startDateTime)}</span>
+          {m.endDateTime ? (
+            <span className="font-mono text-stone-400">
+              → {formatMeetingDateTime(m.endDateTime)}
+            </span>
+          ) : null}
+        </div>
+      </div>
+      <div className="shrink-0 self-center">
+        <a
+          href={m.meetingLink}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 rounded-xl bg-stone-900 px-3 py-2 text-xs font-semibold text-amber-200 hover:bg-stone-700 transition"
+        >
+          Join
+          <ExternalLink className="w-3.5 h-3.5" />
+        </a>
+      </div>
+    </div>
+  );
+}
+
+function LiveMeetingsSection({
+  meetings,
+}: {
+  meetings: StudentLiveMeetingItem[];
+}) {
+  if (!meetings || meetings.length === 0) return null;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-bold text-stone-900">Live meetings</h2>
+        <span className="text-sm text-stone-500">
+          {meetings.length} {meetings.length === 1 ? "scheduled" : "scheduled"}
+        </span>
+      </div>
+      <div className="space-y-3">
+        {meetings.map((m) => (
+          <LiveMeetingCard key={m._id} m={m} />
+        ))}
       </div>
     </div>
   );
@@ -373,16 +493,27 @@ export default function InternshipProgramPage() {
   const certShortfall = enrollment.certificationPointsShortfall;
   const approxInr = enrollment.approxInrToReachCertificationThreshold;
 
-  /** Hide “buy points” / certificate shortfall banners until certification exam work is done — when cohort has one. */
+  /**
+   * Show "buy points" / certificate shortfall banners only when:
+   *   - learner has submitted the cohort's certification exam (cohort has one), OR
+   *   - internship has reached `completed` — they can still purchase points to
+   *     upgrade to a certificate even after the program ends.
+   * Otherwise (e.g. enrolled but exam not yet taken, or cohort has no cert
+   * exam and program is still running), keep these hidden so users aren't
+   * pushed to buy before it's relevant.
+   */
   const certificationExamConfigured =
     enrollment.certificationExamConfigured === true;
   const certificationExamSubmitted =
     enrollment.certificationExamSubmitted === true;
+  const isCompleted = String(enrollment.status) === "completed";
+  const pointsPurchaseUnlocked =
+    (certificationExamConfigured && certificationExamSubmitted) || isCompleted;
   const awaitingCertificateBelowPoints =
     typeof certShortfall === "number" &&
     certShortfall > 0 &&
     enrollment.certificationThreshold > 0 &&
-    (!certificationExamConfigured || certificationExamSubmitted);
+    pointsPurchaseUnlocked;
 
   return (
     <div className="max-w-4xl lg:max-w-7xl mx-auto py-6 space-y-6">
@@ -499,6 +630,9 @@ export default function InternshipProgramPage() {
           )}
         </div>
       ) : null}
+
+      {/* Live meetings */}
+      <LiveMeetingsSection meetings={data.liveMeetings ?? []} />
 
       {/* Tasks */}
       <div className="space-y-4">

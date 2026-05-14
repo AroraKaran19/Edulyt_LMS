@@ -31,6 +31,7 @@ import partnerCollegeRoutes from "./partnerCollege.routes";
 import partnerRoutes from "./partner.routes";
 import questionCategoryRoutes from "./questionCategory.routes";
 import internshipVoucherRoutes from "./internshipVoucher.routes";
+import internshipLiveMeetingRoutes from "./liveMeeting.routes";
 import homePageSettingsRoutes from "./homePageSettings.routes";
 
 export {
@@ -67,5 +68,6 @@ export {
   partnerRoutes,
   questionCategoryRoutes,
   internshipVoucherRoutes,
+  internshipLiveMeetingRoutes,
   homePageSettingsRoutes,
 };

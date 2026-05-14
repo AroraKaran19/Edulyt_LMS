@@ -4,12 +4,6 @@ const internshipTaskSchema = new mongoose.Schema(
   {
     title: { type: String, required: true, trim: true },
     description: { type: String, trim: true, default: "" },
-    taskType: {
-      type: String,
-      enum: ["attendance", "task"],
-      required: true,
-      default: "task",
-    },
     questions: [
       { type: mongoose.Schema.Types.ObjectId, ref: "InternshipQuestion" },
     ],

@@ -48,7 +48,6 @@ async function resolvePinnedTaskTemplateIds(
 export type UpsertInternshipTaskBody = {
   title: string;
   description?: string;
-  taskType: TaskType;
   questions: string[];
   unlockAfterDays: number;
   dueDays: number;
@@ -67,13 +66,10 @@ export type InternshipTaskQuestionSummary = {
   category: string | null;
 };
 
-export type TaskType = "attendance" | "task";
-
 export type InternshipTaskDetailAdmin = {
   _id: string;
   title: string;
   description: string;
-  taskType: TaskType;
   questions: InternshipTaskQuestionSummary[];
   totalScore: number;
   scoreThreshold: number;
@@ -186,7 +182,6 @@ function parseScoreThreshold(value: unknown, totalScore: number): number {
 async function computeTaskFields(body: UpsertInternshipTaskBody): Promise<{
   title: string;
   description: string;
-  taskType: TaskType;
   questions: mongoose.Types.ObjectId[];
   totalScore: number;
   scoreThreshold: number;
@@ -200,9 +195,6 @@ async function computeTaskFields(body: UpsertInternshipTaskBody): Promise<{
   }
   const description =
     typeof body.description === "string" ? body.description.trim() : "";
-
-  const taskType: TaskType =
-    body.taskType === "attendance" ? "attendance" : "task";
 
   const unlockAfterDays = parseNonNegInt(
     body.unlockAfterDays,
@@ -224,7 +216,6 @@ async function computeTaskFields(body: UpsertInternshipTaskBody): Promise<{
   return {
     title,
     description,
-    taskType,
     questions: questionOids,
     totalScore,
     scoreThreshold,
@@ -280,7 +271,6 @@ export async function listInternshipTasksAdmin(
   tasks: {
     _id: string;
     title: string;
-    taskType: TaskType;
     questionCount: number;
     totalScore: number;
     scoreThreshold: number;
@@ -317,7 +307,7 @@ export async function listInternshipTasksAdmin(
       .skip(skip)
       .limit(l)
       .select(
-        "title taskType totalScore scoreThreshold unlockAfterDays dueDays isActive updatedAt questions",
+        "title totalScore scoreThreshold unlockAfterDays dueDays isActive updatedAt questions",
       )
       .lean();
 
@@ -325,7 +315,6 @@ export async function listInternshipTasksAdmin(
       tasks: rows.map((r) => ({
         _id: String(r._id),
         title: String(r.title ?? ""),
-        taskType: ((r as { taskType?: string }).taskType === "attendance" ? "attendance" : "task") as TaskType,
         questionCount: Array.isArray(r.questions) ? r.questions.length : 0,
         totalScore: typeof r.totalScore === "number" ? r.totalScore : 0,
         scoreThreshold:
@@ -361,7 +350,6 @@ export async function listInternshipTasksAdmin(
       $project: {
         _id: 1,
         title: 1,
-        taskType: 1,
         totalScore: 1,
         scoreThreshold: 1,
         unlockAfterDays: 1,
@@ -376,7 +364,6 @@ export async function listInternshipTasksAdmin(
   const rows = await InternshipTaskModel.aggregate<{
     _id: mongoose.Types.ObjectId;
     title: string;
-    taskType?: string;
     totalScore: number;
     scoreThreshold: number;
     unlockAfterDays: number;
@@ -390,7 +377,6 @@ export async function listInternshipTasksAdmin(
     tasks: rows.map((r) => ({
       _id: String(r._id),
       title: String(r.title ?? ""),
-      taskType: (r.taskType === "attendance" ? "attendance" : "task") as TaskType,
       questionCount:
         typeof r.questionCount === "number" ? r.questionCount : 0,
       totalScore: typeof r.totalScore === "number" ? r.totalScore : 0,
@@ -441,7 +427,6 @@ export async function getInternshipTaskByIdAdmin(
     _id: String(doc._id),
     title: String(doc.title ?? ""),
     description: String(doc.description ?? ""),
-    taskType: ((doc as { taskType?: string }).taskType === "attendance" ? "attendance" : "task") as TaskType,
     questions,
     totalScore: typeof doc.totalScore === "number" ? doc.totalScore : 0,
     scoreThreshold:

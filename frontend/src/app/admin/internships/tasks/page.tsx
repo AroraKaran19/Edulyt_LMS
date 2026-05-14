@@ -13,12 +13,10 @@ import TaskUpsertModal from "./components/TaskUpsertModal";
 import TaskDetailModal from "./components/TaskDetailModal";
 import DeleteTaskConfirmModal from "./components/DeleteTaskConfirmModal";
 import TaskSubmissionsModal from "./components/TaskSubmissionsModal";
-import type { TaskType } from "@/types/internship-task";
 
 type TaskRow = {
   _id: string;
   title: string;
-  taskType: TaskType;
   questionCount: number;
   totalScore: number;
   scoreThreshold: number;
@@ -26,11 +24,6 @@ type TaskRow = {
   dueDays: number;
   isActive: boolean;
   updatedAt?: string;
-};
-
-const TASK_TYPE_LABEL: Record<TaskType, string> = {
-  task: "Task",
-  attendance: "Attendance",
 };
 
 function formatDate(iso?: string) {
@@ -107,7 +100,6 @@ export default function InternshipTaskTemplatesAdminPage() {
       setTasks(
         rows.map((r) => ({
           ...r,
-          taskType: r.taskType === "attendance" ? "attendance" : "task",
           questionCount:
             typeof r.questionCount === "number" ? r.questionCount : 0,
           scoreThreshold:
@@ -196,9 +188,6 @@ export default function InternshipTaskTemplatesAdminPage() {
                   Title
                 </th>
                 <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 whitespace-nowrap">
-                  Type
-                </th>
-                <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 whitespace-nowrap">
                   Questions
                 </th>
                 <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 tabular-nums">
@@ -268,17 +257,6 @@ export default function InternshipTaskTemplatesAdminPage() {
                     <td className="px-4 sm:px-6 py-4 text-sm text-gray-900 max-w-xs">
                       <span className="line-clamp-2 font-medium">
                         {t.title || "—"}
-                      </span>
-                    </td>
-                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full border ${
-                          t.taskType === "attendance"
-                            ? "bg-sky-50 text-sky-800 border-sky-200"
-                            : "bg-amber-50 text-amber-900 border-amber-200"
-                        }`}
-                      >
-                        {TASK_TYPE_LABEL[t.taskType]}
                       </span>
                     </td>
                     <td className="px-4 sm:px-6 py-4 text-sm text-gray-600 tabular-nums whitespace-nowrap">

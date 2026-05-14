@@ -39,6 +39,7 @@ import {
   partnerRoutes,
   questionCategoryRoutes,
   internshipVoucherRoutes,
+  internshipLiveMeetingRoutes,
   homePageSettingsRoutes,
 } from "./routes";
 
@@ -98,6 +99,7 @@ app.use("/api/partner-colleges", partnerCollegeRoutes);
 app.use("/api/partner", partnerRoutes);
 app.use("/api/question-categories", questionCategoryRoutes);
 app.use("/api/internship-vouchers", internshipVoucherRoutes);
+app.use("/api/internship-live-meetings", internshipLiveMeetingRoutes);
 app.use("/api/home-page-settings", homePageSettingsRoutes);
 
 app.use(notFoundHandler); // Handle 404 errors

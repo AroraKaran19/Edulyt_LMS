@@ -18,13 +18,10 @@ import type { InternshipQuestionResponse } from "./internship-question";
  * **scoreThreshold** — minimum total points a learner must reach to pass;
  * must not exceed **totalScore** (sum of linked question scores).
  */
-export type TaskType = "attendance" | "task";
-
 export interface InternshipTask {
   _id?: string;
   title: string;
   description?: string;
-  taskType: TaskType;
 
   /** IDs of questions from the question bank (usageType: "task" | "both"). */
   questions: string[];

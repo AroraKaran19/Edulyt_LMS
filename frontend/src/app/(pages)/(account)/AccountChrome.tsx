@@ -20,7 +20,7 @@ export default function AccountChrome({
       return (
         <>
           <DashboardNavbar />
-          <div className="pt-40">{children}</div>
+          <div className="pt-25">{children}</div>
         </>
       );
     case "instructor":

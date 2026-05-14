@@ -2262,7 +2262,6 @@ export type LearnerTaskRow = {
   _id: string;
   title: string;
   description: string;
-  taskType: "attendance" | "task";
   totalScore: number;
   scoreThreshold: number;
   unlockAfterDays: number;
@@ -2331,6 +2330,12 @@ export type LearnerProgramDetail = {
   internshipSuccessPointPurchase?: {
     inrPerPoint: number;
   };
+  /**
+   * Recent + upcoming live meetings for this learner's batch (newest first,
+   * capped). Each entry includes whether *this* learner has already clicked
+   * each checkpoint link.
+   */
+  liveMeetings: import("../types/internship-live-meeting").StudentLiveMeetingItem[];
 };
 
 // ─── Public offer-letter verification ────────────────────────────────────────
@@ -2552,10 +2557,6 @@ export async function getLearnerProgramBySlug(
       description: String(
         (task as { description?: string }).description ?? "",
       ),
-      taskType:
-        (task as { taskType?: string }).taskType === "attendance"
-          ? "attendance"
-          : "task",
       totalScore: typeof task.totalScore === "number" ? task.totalScore : 0,
       scoreThreshold:
         typeof (task as { scoreThreshold?: number }).scoreThreshold === "number"
@@ -2626,6 +2627,18 @@ export async function getLearnerProgramBySlug(
       ? Math.round(certificationPointsShortfall * priceInr * 100) / 100
       : undefined;
 
+  const { getStudentLiveMeetingsForBatch } = await import(
+    "./liveMeeting.services"
+  );
+  const liveMeetings = batchId
+    ? await getStudentLiveMeetingsForBatch(
+        String(internship._id),
+        batchId,
+        userId,
+        10,
+      )
+    : [];
+
   const rawCertExamId = matchedBatch?.certificationExamTemplateId;
   const certificationExamConfigured =
     rawCertExamId != null && String(rawCertExamId).trim().length > 0;
@@ -2693,6 +2706,7 @@ export async function getLearnerProgramBySlug(
     ...(internshipSuccessPointPurchase
       ? { internshipSuccessPointPurchase }
       : {}),
+    liveMeetings,
   };
 }
 

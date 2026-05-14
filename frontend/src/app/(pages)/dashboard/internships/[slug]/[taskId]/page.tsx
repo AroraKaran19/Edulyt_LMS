@@ -414,9 +414,6 @@ export default function InternshipTaskPage() {
     <div className="max-w-3xl mx-auto">
       {/* Task header */}
       <div className="mb-6 rounded-2xl border border-amber-200/80 bg-white px-5 py-4 space-y-1">
-        <p className="text-xs font-semibold tracking-widest text-amber-800/70 capitalize">
-          {task.taskType} task
-        </p>
         <h1 className="text-xl sm:text-2xl font-bold text-stone-900">
           {taskTitle}
         </h1>

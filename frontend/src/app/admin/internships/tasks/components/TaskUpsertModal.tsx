@@ -5,7 +5,6 @@ import { toast } from "react-toastify";
 import Modal from "@/components/ui/Modal";
 import Input from "@/components/ui/inputs/Input";
 import TextArea from "@/components/ui/inputs/TextArea";
-import Select from "@/components/ui/inputs/Select";
 import CheckBoxContainer from "@/components/ui/inputs/CheckBoxContainer";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
@@ -15,12 +14,7 @@ import QuestionPickerModal, {
 import { ListPlus, Lock, X } from "lucide-react";
 import apiClient from "@/configs/apiConfig";
 import { ENDPOINTS } from "@/constants/endpoints";
-import type { InternshipTaskTemplateDetail, TaskType } from "@/types/internship-task";
-
-const TASK_TYPE_LABELS: Record<TaskType, string> = {
-  task: "Task",
-  attendance: "Attendance",
-};
+import type { InternshipTaskTemplateDetail } from "@/types/internship-task";
 
 /** Read-only display field used in edit mode for locked values. */
 function LockedField({ label, value }: { label: string; value: string | number }) {
@@ -53,8 +47,6 @@ export default function TaskUpsertModal({
 }: Props) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [taskType, setTaskType] = useState<TaskType>("task");
-  const [lockedTaskType, setLockedTaskType] = useState<TaskType>("task");
   const [selectedQuestions, setSelectedQuestions] = useState<PickerQuestion[]>(
     [],
   );
@@ -69,8 +61,6 @@ export default function TaskUpsertModal({
   const resetCreate = () => {
     setTitle("");
     setDescription("");
-    setTaskType("task");
-    setLockedTaskType("task");
     setSelectedQuestions([]);
     setUnlockAfterDays("0");
     setDueDays("7");
@@ -101,9 +91,6 @@ export default function TaskUpsertModal({
         if (cancelled || !d) return;
         setTitle(d.title ?? "");
         setDescription(d.description ?? "");
-        const tt: TaskType = d.taskType === "attendance" ? "attendance" : "task";
-        setLockedTaskType(tt);
-        setTaskType(tt);
         setSelectedQuestions(
           Array.isArray(d.questions)
             ? d.questions.map((q) => ({
@@ -169,7 +156,6 @@ export default function TaskUpsertModal({
     const payload = {
       title: trimmedTitle,
       description: description.trim(),
-      taskType,
       questions: selectedQuestions.map((q) => q._id),
       unlockAfterDays: unlock,
       dueDays: due,
@@ -241,17 +227,6 @@ export default function TaskUpsertModal({
                 rows={3}
               />
 
-              <Select
-                label="Task type"
-                required
-                options={[
-                  { value: "task", label: "Task" },
-                  { value: "attendance", label: "Attendance" },
-                ]}
-                value={taskType}
-                onChange={(v) => setTaskType(v as TaskType)}
-                placeholder="Select type"
-              />
             </>
           )}
 
@@ -266,7 +241,6 @@ export default function TaskUpsertModal({
               </div>
               <LockedField label="Title" value={title} />
               {description && <LockedField label="Description" value={description} />}
-              <LockedField label="Type" value={TASK_TYPE_LABELS[lockedTaskType]} />
             </div>
           )}
 

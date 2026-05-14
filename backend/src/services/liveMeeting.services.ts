@@ -1,0 +1,656 @@
+import crypto from "crypto";
+import mongoose from "mongoose";
+import { InternshipLiveMeetingModel } from "../models/liveMeeting.schema";
+import { InternshipLiveMeetingAttendanceModel } from "../models/liveMeetingAttendance.schema";
+import { InternshipModel } from "../models/internship.schema";
+import { InternshipEnrollmentModel } from "../models/internshipEnrollment.schema";
+import { AppError } from "../middlewares/error.middleware";
+import { validateUrl } from "../models/validators";
+import type {
+  AdminLiveMeetingAttendanceResponse,
+  AdminLiveMeetingAttendanceRow,
+  AdminLiveMeetingListItem,
+  CreateInternshipLiveMeetingBody,
+  LiveMeetingPhase,
+  StudentAttendResult,
+  StudentLiveMeetingItem,
+} from "../types/internship-live-meeting";
+
+const ENROLLED_STATUSES = ["enrolled", "completed"] as const;
+
+function frontendBase(): string {
+  return (process.env.FRONTEND_URL || "http://localhost:3000").replace(
+    /\/+$/,
+    "",
+  );
+}
+
+function generateToken(): string {
+  return crypto.randomBytes(32).toString("base64url");
+}
+
+function attendanceUrl(token: string): string {
+  return `${frontendBase()}/live-meeting/attend/${token}`;
+}
+
+function parseNonNegInt(value: unknown, field: string): number {
+  const n =
+    typeof value === "number"
+      ? value
+      : typeof value === "string"
+        ? parseInt(value, 10)
+        : NaN;
+  if (Number.isNaN(n) || !Number.isFinite(n) || n < 0) {
+    throw new AppError(`${field} must be a non-negative integer`, 400);
+  }
+  return Math.floor(n);
+}
+
+function parsePositiveInt(value: unknown, field: string): number {
+  const n = parseNonNegInt(value, field);
+  if (n < 1) {
+    throw new AppError(`${field} must be at least 1`, 400);
+  }
+  return n;
+}
+
+function parseDate(value: unknown, field: string): Date {
+  if (!value) {
+    throw new AppError(`${field} is required`, 400);
+  }
+  const d = new Date(value as string | number | Date);
+  if (Number.isNaN(d.getTime())) {
+    throw new AppError(`${field} must be a valid date`, 400);
+  }
+  return d;
+}
+
+async function assertBatchExists(
+  internshipId: string,
+  batchId: string,
+): Promise<void> {
+  if (
+    !mongoose.Types.ObjectId.isValid(internshipId) ||
+    !mongoose.Types.ObjectId.isValid(batchId)
+  ) {
+    throw new AppError("Invalid internshipId or batchId", 400);
+  }
+  const internship = await InternshipModel.findById(internshipId)
+    .select("batches._id")
+    .lean();
+  if (!internship) {
+    throw new AppError("Internship not found", 404);
+  }
+  const batches = (internship.batches ?? []) as { _id?: unknown }[];
+  const found = batches.some((b) => String(b._id) === batchId);
+  if (!found) {
+    throw new AppError("Batch not found on the given internship", 404);
+  }
+}
+
+function computePhase(meeting: {
+  link1: { activatedAt?: Date | null; expiryMins: number };
+  link2: { activatedAt?: Date | null; expiryMins: number };
+}): LiveMeetingPhase {
+  const now = Date.now();
+  const l1Active =
+    meeting.link1.activatedAt != null &&
+    now < new Date(meeting.link1.activatedAt).getTime() +
+      meeting.link1.expiryMins * 60_000;
+  const l2Active =
+    meeting.link2.activatedAt != null &&
+    now < new Date(meeting.link2.activatedAt).getTime() +
+      meeting.link2.expiryMins * 60_000;
+  const l1Closed = meeting.link1.activatedAt != null && !l1Active;
+  const l2Closed = meeting.link2.activatedAt != null && !l2Active;
+
+  if (l2Active) return "link2-active";
+  if (l1Active) return "link1-active";
+  if (l1Closed && l2Closed) return "closed";
+  if (l1Closed) return "link1-closed";
+  return "not-activated";
+}
+
+function serializeListItem(doc: {
+  _id: unknown;
+  internship: unknown;
+  batchId: string;
+  name: string;
+  description?: string;
+  meetingLink: string;
+  startDateTime: Date;
+  endDateTime?: Date | null;
+  link1: {
+    token: string;
+    expiryMins: number;
+    activatedAt?: Date | null;
+    clickedBy?: unknown[];
+  };
+  link2: {
+    token: string;
+    expiryMins: number;
+    activatedAt?: Date | null;
+    clickedBy?: unknown[];
+  };
+  finalizedAt?: Date | null;
+  createdAt?: Date;
+  updatedAt?: Date;
+}): AdminLiveMeetingListItem {
+  return {
+    _id: String(doc._id),
+    internship: String(doc.internship),
+    batchId: String(doc.batchId),
+    name: doc.name,
+    description: doc.description ?? "",
+    meetingLink: doc.meetingLink,
+    startDateTime: new Date(doc.startDateTime).toISOString(),
+    endDateTime: doc.endDateTime ? new Date(doc.endDateTime).toISOString() : null,
+    link1: {
+      expiryMins: doc.link1.expiryMins,
+      activatedAt: doc.link1.activatedAt
+        ? new Date(doc.link1.activatedAt).toISOString()
+        : null,
+      clickedCount: Array.isArray(doc.link1.clickedBy)
+        ? doc.link1.clickedBy.length
+        : 0,
+      url: attendanceUrl(doc.link1.token),
+    },
+    link2: {
+      expiryMins: doc.link2.expiryMins,
+      activatedAt: doc.link2.activatedAt
+        ? new Date(doc.link2.activatedAt).toISOString()
+        : null,
+      clickedCount: Array.isArray(doc.link2.clickedBy)
+        ? doc.link2.clickedBy.length
+        : 0,
+      url: attendanceUrl(doc.link2.token),
+    },
+    phase: computePhase(doc),
+    finalizedAt: doc.finalizedAt ? new Date(doc.finalizedAt).toISOString() : null,
+    createdAt: doc.createdAt ? new Date(doc.createdAt).toISOString() : "",
+    updatedAt: doc.updatedAt ? new Date(doc.updatedAt).toISOString() : "",
+  };
+}
+
+// ───────── Admin: create ─────────
+
+export async function createInternshipLiveMeetingAdmin(
+  body: CreateInternshipLiveMeetingBody,
+  createdBy: mongoose.Types.ObjectId,
+): Promise<AdminLiveMeetingListItem> {
+  const internshipId = String(body.internshipId ?? "").trim();
+  const batchId = String(body.batchId ?? "").trim();
+  await assertBatchExists(internshipId, batchId);
+
+  const name = typeof body.name === "string" ? body.name.trim() : "";
+  if (!name) throw new AppError("name is required", 400);
+
+  const description =
+    typeof body.description === "string" ? body.description.trim() : "";
+
+  const meetingLink =
+    typeof body.meetingLink === "string" ? body.meetingLink.trim() : "";
+  if (!meetingLink || !validateUrl(meetingLink)) {
+    throw new AppError(
+      "meetingLink must be a valid URL (http:// or https://)",
+      400,
+    );
+  }
+
+  const startDateTime = parseDate(body.startDateTime, "startDateTime");
+  const endDateTime = parseDate(body.endDateTime, "endDateTime");
+  if (endDateTime <= startDateTime) {
+    throw new AppError("endDateTime must be after startDateTime", 400);
+  }
+
+  const link1ExpiryMins = parsePositiveInt(
+    body.link1ExpiryMins,
+    "link1ExpiryMins",
+  );
+  const link2ExpiryMins = parsePositiveInt(
+    body.link2ExpiryMins,
+    "link2ExpiryMins",
+  );
+
+  const created = await InternshipLiveMeetingModel.create({
+    internship: new mongoose.Types.ObjectId(internshipId),
+    batchId,
+    name,
+    description,
+    meetingLink,
+    startDateTime,
+    endDateTime,
+    link1: {
+      token: generateToken(),
+      expiryMins: link1ExpiryMins,
+      activatedAt: null,
+      clickedBy: [],
+    },
+    link2: {
+      token: generateToken(),
+      expiryMins: link2ExpiryMins,
+      activatedAt: null,
+      clickedBy: [],
+    },
+    createdBy,
+  });
+
+  return serializeListItem(created.toObject());
+}
+
+// ───────── Admin: list ─────────
+
+export async function listInternshipLiveMeetingsAdmin(
+  internshipId: string,
+  batchId?: string,
+  page = 1,
+  limit = 20,
+): Promise<{
+  meetings: AdminLiveMeetingListItem[];
+  total: number;
+  page: number;
+  totalPages: number;
+}> {
+  if (!mongoose.Types.ObjectId.isValid(internshipId)) {
+    throw new AppError("Invalid internshipId", 400);
+  }
+  const p = Math.max(1, page);
+  const l = Math.min(100, Math.max(1, limit));
+  const skip = (p - 1) * l;
+
+  const filter: Record<string, unknown> = {
+    internship: new mongoose.Types.ObjectId(internshipId),
+  };
+  if (batchId) {
+    if (!mongoose.Types.ObjectId.isValid(batchId)) {
+      throw new AppError("Invalid batchId", 400);
+    }
+    filter.batchId = batchId;
+  }
+
+  const total = await InternshipLiveMeetingModel.countDocuments(filter);
+  const docs = await InternshipLiveMeetingModel.find(filter)
+    .sort({ startDateTime: -1, createdAt: -1 })
+    .skip(skip)
+    .limit(l)
+    .lean();
+
+  return {
+    meetings: docs.map(serializeListItem),
+    total,
+    page: p,
+    totalPages: Math.max(1, Math.ceil(total / l)),
+  };
+}
+
+// ───────── Admin: get one ─────────
+
+export async function getInternshipLiveMeetingAdmin(
+  id: string,
+): Promise<AdminLiveMeetingListItem> {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new AppError("Invalid meeting id", 400);
+  }
+  const doc = await InternshipLiveMeetingModel.findById(id).lean();
+  if (!doc) throw new AppError("Meeting not found", 404);
+  return serializeListItem(doc);
+}
+
+// ───────── Admin: update editable fields ─────────
+
+/**
+ * Update the meeting URL after creation. All other fields are immutable
+ * post-creation — admins can delete + recreate if they need to change
+ * anything structural.
+ */
+export async function updateInternshipLiveMeetingAdmin(
+  id: string,
+  body: { meetingLink?: string },
+): Promise<AdminLiveMeetingListItem> {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new AppError("Invalid meeting id", 400);
+  }
+  const ml = typeof body.meetingLink === "string" ? body.meetingLink.trim() : "";
+  if (!ml || !validateUrl(ml)) {
+    throw new AppError(
+      "meetingLink must be a valid URL (http:// or https://)",
+      400,
+    );
+  }
+  const updated = await InternshipLiveMeetingModel.findByIdAndUpdate(
+    id,
+    { $set: { meetingLink: ml } },
+    { new: true, runValidators: true },
+  ).lean();
+  if (!updated) throw new AppError("Meeting not found", 404);
+  return serializeListItem(updated);
+}
+
+// ───────── Admin: activate link ─────────
+
+export async function activateInternshipLiveMeetingLinkAdmin(
+  id: string,
+  slot: 1 | 2,
+): Promise<AdminLiveMeetingListItem> {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new AppError("Invalid meeting id", 400);
+  }
+  if (slot !== 1 && slot !== 2) {
+    throw new AppError("slot must be 1 or 2", 400);
+  }
+  const field = slot === 1 ? "link1.activatedAt" : "link2.activatedAt";
+  const now = new Date();
+
+  // Conditional update: only activate if not already activated.
+  const updated = await InternshipLiveMeetingModel.findOneAndUpdate(
+    { _id: new mongoose.Types.ObjectId(id), [field]: null },
+    { $set: { [field]: now } },
+    { new: true },
+  ).lean();
+
+  if (!updated) {
+    // Either meeting doesn't exist OR link already activated.
+    const exists = await InternshipLiveMeetingModel.findById(id)
+      .select("_id")
+      .lean();
+    if (!exists) throw new AppError("Meeting not found", 404);
+    throw new AppError(`Link ${slot} is already activated`, 409);
+  }
+
+  return serializeListItem(updated);
+}
+
+// ───────── Admin: delete ─────────
+
+export async function deleteInternshipLiveMeetingAdmin(
+  id: string,
+): Promise<void> {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new AppError("Invalid meeting id", 400);
+  }
+  const oid = new mongoose.Types.ObjectId(id);
+  const session = await mongoose.startSession();
+  try {
+    await session.withTransaction(async () => {
+      const deleted = await InternshipLiveMeetingModel.findByIdAndDelete(oid, {
+        session,
+      });
+      if (!deleted) {
+        throw new AppError("Meeting not found", 404);
+      }
+      await InternshipLiveMeetingAttendanceModel.deleteMany(
+        { meeting: oid },
+        { session },
+      );
+    });
+  } finally {
+    await session.endSession();
+  }
+}
+
+// ───────── Admin: attendance view (with lazy finalize) ─────────
+
+export async function getInternshipLiveMeetingAttendanceAdmin(
+  id: string,
+): Promise<AdminLiveMeetingAttendanceResponse> {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new AppError("Invalid meeting id", 400);
+  }
+  const meeting = await InternshipLiveMeetingModel.findById(id).lean();
+  if (!meeting) throw new AppError("Meeting not found", 404);
+
+  const now = Date.now();
+  const link1Closes = meeting.link1.activatedAt
+    ? new Date(meeting.link1.activatedAt).getTime() +
+      meeting.link1.expiryMins * 60_000
+    : Infinity;
+  const link2Closes = meeting.link2.activatedAt
+    ? new Date(meeting.link2.activatedAt).getTime() +
+      meeting.link2.expiryMins * 60_000
+    : Infinity;
+  const bothClosed =
+    meeting.link1.activatedAt != null &&
+    meeting.link2.activatedAt != null &&
+    now >= link1Closes &&
+    now >= link2Closes;
+
+  // Lazy finalize: insert absent docs once both windows are closed.
+  if (bothClosed && !meeting.finalizedAt) {
+    await finalizeAttendance(meeting._id);
+  }
+
+  // Refetch in case finalize ran.
+  const fresh = await InternshipLiveMeetingModel.findById(id).lean();
+  if (!fresh) throw new AppError("Meeting not found", 404);
+
+  // Roster: enrolled users in this batch.
+  const enrollments = await InternshipEnrollmentModel.find({
+    internship: fresh.internship,
+    "batchSnapshot.batchId": fresh.batchId,
+    status: { $in: ENROLLED_STATUSES },
+  })
+    .populate("user", "firstName lastName name email")
+    .lean();
+
+  const link1Set = new Set(
+    (fresh.link1.clickedBy ?? []).map((u: unknown) => String(u)),
+  );
+  const link2Set = new Set(
+    (fresh.link2.clickedBy ?? []).map((u: unknown) => String(u)),
+  );
+
+  // For verdict: present iff both clicks. Absent iff both windows closed AND
+  // not present. Otherwise pending.
+  const rows: AdminLiveMeetingAttendanceRow[] = enrollments.map((enr) => {
+    const u = (enr.user ?? {}) as {
+      _id?: unknown;
+      firstName?: string;
+      lastName?: string;
+      name?: string;
+      email?: string;
+    };
+    const uid = String(u._id ?? "");
+    const inL1 = link1Set.has(uid);
+    const inL2 = link2Set.has(uid);
+
+    let verdict: AdminLiveMeetingAttendanceRow["verdict"];
+    if (inL1 && inL2) verdict = "present";
+    else if (bothClosed) verdict = "absent";
+    else verdict = "pending";
+
+    return {
+      user: {
+        _id: uid,
+        firstName: typeof u.firstName === "string" ? u.firstName : undefined,
+        lastName: typeof u.lastName === "string" ? u.lastName : undefined,
+        name: typeof u.name === "string" ? u.name : undefined,
+        email: typeof u.email === "string" ? u.email : undefined,
+      },
+      enrollmentId: String(enr._id),
+      link1Clicked: inL1,
+      link2Clicked: inL2,
+      verdict,
+    };
+  });
+
+  return {
+    meeting: serializeListItem(fresh),
+    rows,
+  };
+}
+
+async function finalizeAttendance(
+  meetingId: mongoose.Types.ObjectId,
+): Promise<void> {
+  const meeting = await InternshipLiveMeetingModel.findById(meetingId).lean();
+  if (!meeting || meeting.finalizedAt) return;
+
+  const link1Set = new Set(
+    (meeting.link1.clickedBy ?? []).map((u: unknown) => String(u)),
+  );
+  const link2Set = new Set(
+    (meeting.link2.clickedBy ?? []).map((u: unknown) => String(u)),
+  );
+
+  const enrollments = await InternshipEnrollmentModel.find({
+    internship: meeting.internship,
+    "batchSnapshot.batchId": meeting.batchId,
+    status: { $in: ENROLLED_STATUSES },
+  })
+    .select("user")
+    .lean();
+
+  const absentOps: { insertOne: { document: Record<string, unknown> } }[] = [];
+  for (const enr of enrollments) {
+    const uid = String(enr.user);
+    const present = link1Set.has(uid) && link2Set.has(uid);
+    if (!present) {
+      absentOps.push({
+        insertOne: {
+          document: {
+            meeting: meetingId,
+            user: new mongoose.Types.ObjectId(uid),
+          },
+        },
+      });
+    }
+  }
+
+  if (absentOps.length > 0) {
+    try {
+      await InternshipLiveMeetingAttendanceModel.bulkWrite(absentOps, {
+        ordered: false,
+      });
+    } catch (e: unknown) {
+      // Ignore unique-index duplicate-key errors — finalize is idempotent.
+      const code = (e as { code?: number })?.code;
+      if (code !== 11000) throw e;
+    }
+  }
+
+  await InternshipLiveMeetingModel.updateOne(
+    { _id: meetingId, finalizedAt: null },
+    { $set: { finalizedAt: new Date() } },
+  );
+}
+
+// ───────── Student: list meetings for their batch ─────────
+
+/**
+ * Student-safe view of live meetings for a given (internshipId, batchId).
+ * Returns meetings whose `endDateTime` is still in the future — once a
+ * meeting ends, it disappears from the dashboard. Sorted by startDateTime
+ * ascending so the next-up meeting is the top row.
+ *
+ * Tokens / admin URLs are never returned — only the meeting URL the admin
+ * shared, plus whether *this* user has clicked each attendance.
+ */
+export async function getStudentLiveMeetingsForBatch(
+  internshipId: mongoose.Types.ObjectId | string,
+  batchId: string,
+  userId: mongoose.Types.ObjectId,
+  limit = 10,
+): Promise<StudentLiveMeetingItem[]> {
+  const now = new Date();
+  const docs = await InternshipLiveMeetingModel.find({
+    internship: internshipId,
+    batchId,
+    endDateTime: { $gt: now },
+  })
+    .sort({ startDateTime: 1 })
+    .limit(Math.max(1, Math.min(50, limit)))
+    .lean();
+
+  const userIdStr = String(userId);
+  return docs.map((doc): StudentLiveMeetingItem => {
+    const link1ClickedBy = (doc.link1.clickedBy ?? []).map((u: unknown) =>
+      String(u),
+    );
+    const link2ClickedBy = (doc.link2.clickedBy ?? []).map((u: unknown) =>
+      String(u),
+    );
+    return {
+      _id: String(doc._id),
+      name: doc.name,
+      description: doc.description ?? "",
+      meetingLink: doc.meetingLink,
+      startDateTime: new Date(doc.startDateTime).toISOString(),
+      endDateTime: doc.endDateTime
+        ? new Date(doc.endDateTime).toISOString()
+        : null,
+      phase: computePhase(doc),
+      link1Clicked: link1ClickedBy.includes(userIdStr),
+      link2Clicked: link2ClickedBy.includes(userIdStr),
+    };
+  });
+}
+
+// ───────── Student: click handler ─────────
+
+export async function recordAttendanceClick(
+  token: string,
+  userId: mongoose.Types.ObjectId,
+): Promise<StudentAttendResult> {
+  if (typeof token !== "string" || !token.trim()) {
+    return { ok: false, reason: "invalid" };
+  }
+
+  const meeting = await InternshipLiveMeetingModel.findOne({
+    $or: [{ "link1.token": token }, { "link2.token": token }],
+  });
+
+  if (!meeting) return { ok: false, reason: "invalid" };
+
+  const slot: 1 | 2 = meeting.link1.token === token ? 1 : 2;
+  const link = slot === 1 ? meeting.link1 : meeting.link2;
+
+  if (!link.activatedAt) return { ok: false, reason: "not-activated" };
+
+  // If this user is already in clickedBy, surface "already marked"
+  // regardless of whether the window has since closed — gives a friendly
+  // confirmation on re-clicks rather than misleading "expired".
+  const userIdStr = String(userId);
+  const alreadyInArray = (link.clickedBy ?? []).some(
+    (u) => String(u) === userIdStr,
+  );
+  if (alreadyInArray) {
+    return {
+      ok: true,
+      slot,
+      alreadyMarked: true,
+      meetingName: meeting.name,
+    };
+  }
+
+  const closesAt =
+    new Date(link.activatedAt).getTime() + link.expiryMins * 60_000;
+  if (Date.now() >= closesAt) {
+    return { ok: false, reason: "expired" };
+  }
+
+  // Eligibility: enrolled student in matching batch (only checked for
+  // new clicks — already-marked users above were valid at original click).
+  const enrollment = await InternshipEnrollmentModel.findOne({
+    internship: meeting.internship,
+    user: userId,
+    "batchSnapshot.batchId": meeting.batchId,
+    status: { $in: ENROLLED_STATUSES },
+  })
+    .select("_id")
+    .lean();
+
+  if (!enrollment) return { ok: false, reason: "not-enrolled" };
+
+  const field = slot === 1 ? "link1.clickedBy" : "link2.clickedBy";
+  const result = await InternshipLiveMeetingModel.updateOne(
+    { _id: meeting._id },
+    { $addToSet: { [field]: userId } },
+  );
+
+  return {
+    ok: true,
+    slot,
+    alreadyMarked: result.modifiedCount === 0,
+    meetingName: meeting.name,
+  };
+}

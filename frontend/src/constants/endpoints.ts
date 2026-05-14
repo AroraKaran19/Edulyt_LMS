@@ -106,6 +106,30 @@ export const ENDPOINTS = {
     create: "/internship-tasks",
   },
 
+  /**
+   * One-off live meetings per internship batch + two-checkpoint attendance.
+   * Admin creates a meeting, manually activates each link mid-meeting, and
+   * shares the URL with students; a student is **present** only if both
+   * links are clicked within their windows.
+   */
+  internshipLiveMeetings: {
+    /** POST — create a meeting (admin). */
+    create: "/internship-live-meetings",
+    /** GET — list by internship/batch (admin). */
+    adminList: "/internship-live-meetings/admin",
+    adminById: (meetingId: string) =>
+      `/internship-live-meetings/admin/${encodeURIComponent(meetingId)}`,
+    adminAttendance: (meetingId: string) =>
+      `/internship-live-meetings/admin/${encodeURIComponent(meetingId)}/attendance`,
+    adminUpdate: (meetingId: string) =>
+      `/internship-live-meetings/admin/${encodeURIComponent(meetingId)}`,
+    adminActivate: (meetingId: string, slot: 1 | 2) =>
+      `/internship-live-meetings/admin/${encodeURIComponent(meetingId)}/activate/${slot}`,
+    /** POST — student records attendance click via token. */
+    attend: (token: string) =>
+      `/internship-live-meetings/attend/${encodeURIComponent(token)}`,
+  },
+
   internshipSubmissions: {
     /** POST — create a new exam/task submission. */
     create: "/internship-submissions",

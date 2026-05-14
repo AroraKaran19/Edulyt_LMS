@@ -326,7 +326,6 @@ export interface LearnerTaskRow {
   _id: string;
   title: string;
   description: string;
-  taskType: "attendance" | "task";
   totalScore: number;
   scoreThreshold: number;
   unlockAfterDays: number;
@@ -389,4 +388,10 @@ export interface LearnerProgramDetail {
   internshipSuccessPointPurchase?: {
     inrPerPoint: number;
   };
+  /**
+   * Recent + upcoming live meetings for this learner's batch (newest first,
+   * capped). `linkNClicked` reflects whether the current viewer has clicked
+   * each checkpoint inside its window.
+   */
+  liveMeetings: import("./internship-live-meeting").StudentLiveMeetingItem[];
 }
