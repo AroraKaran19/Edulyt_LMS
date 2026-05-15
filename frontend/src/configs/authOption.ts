@@ -24,7 +24,7 @@ export const authOptions: NextAuthOptions = {
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
-        /** Backend: `/login` forbids partners; partner page sends `"partner"` for `/auth/partner/login`. */
+        /** Partner page sends `"partner"` to route to `/auth/partner/login`; otherwise `/auth/login`. */
         portal: { label: "Portal", type: "text" },
       },
       authorize: async (credentials) => {

@@ -170,15 +170,11 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     throw new AppError("Invalid credentials", 401);
   }
 
-  if (user.userType === "partner") {
-    throw new AppError(PARTNER_USE_PORTAL_LOGIN_MESSAGE, 403);
-  }
-
   await finalizeCredentialLogin(req, res, user);
 });
 
 /**
- * Credential login for portal partners only ({@link login} rejects partners).
+ * Credential login for portal partners only (rejects non-partner accounts).
  */
 export const partnerLogin = asyncHandler(async (req: Request, res: Response) => {
   const { email, password } = req.body;
