@@ -53,7 +53,7 @@ export default function AccountChrome({
         <>
           <header className="fixed top-0 left-0 right-0 z-9999 flex h-14 items-center gap-4 border-b border-orange-100 bg-[#FFF7F2] px-4 lg:px-10">
             <Link
-              href="/partner/college/dashboard"
+              href="/partner/dashboard"
               className="text-sm font-semibold text-orange-700 hover:underline"
             >
               ← College portal

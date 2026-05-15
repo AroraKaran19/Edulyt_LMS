@@ -64,7 +64,7 @@ export function getPostLoginRedirectPath(
     return "/instructor";
   }
   if (ut === "partner") {
-    return "/partner/college/dashboard";
+    return "/partner/dashboard";
   }
 
   let raw = (callbackUrl ?? "").trim();

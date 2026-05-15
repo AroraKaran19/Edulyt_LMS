@@ -12,6 +12,7 @@ import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import Input from "@/components/ui/inputs/Input";
 import Loader from "@/components/ui/Loader";
+import PartnerAnnouncementCard from "@/components/ui/partner/PartnerAnnouncementCard";
 import usePartner, {
   type PartnerDashboardResponse,
 } from "@/hooks/usePartner";
@@ -73,7 +74,6 @@ export default function CollegePartnerDashboardPage() {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only refetch on range or hook identity changes
   }, [appliedRange, getDashboard]);
 
   function applyDraftRange() {
@@ -175,6 +175,8 @@ export default function CollegePartnerDashboardPage() {
           {college.location ? `, ${college.location}` : ""}
         </p>
       </div>
+
+      <PartnerAnnouncementCard />
 
       <PartnerCard className="p-4 sm:p-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end lg:justify-between">
@@ -285,7 +287,7 @@ export default function CollegePartnerDashboardPage() {
           )}
         </dl>
         <p className="mt-4 text-xs text-[#667085]">
-          Use the Students tab to view who&apos;s enrolled and their progress.
+          Use the Courses and Internships tabs to view enrolment analytics.
         </p>
       </PartnerCard>
     </div>

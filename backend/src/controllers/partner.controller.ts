@@ -9,7 +9,10 @@ import {
   getPartnerCollegeContext,
   getPartnerDashboardStatsService,
   getPartnerDashboardTrendsService,
-  listPartnerStudentsService,
+  getPartnerCoursesService,
+  getPartnerCourseDetailService,
+  getPartnerInternshipsService,
+  getPartnerInternshipDetailService,
 } from "../services/partner.services";
 
 const parsePartnerTrendMonths = (raw: unknown): number => {
@@ -57,6 +60,34 @@ const requirePartnerCollegeId = (req: Request): mongoose.Types.ObjectId => {
   return new mongoose.Types.ObjectId(String(user.partnerCollege));
 };
 
+/**
+ * Throws 403 unless the authenticated partner has the given analytics gate
+ * enabled. Treats a missing flag as enabled (legacy docs / lean reads).
+ */
+const requirePartnerAnalyticsAccess = (
+  req: Request,
+  kind: "course" | "internship",
+): void => {
+  const user = req.user as unknown as
+    | {
+        courseAnalyticsEnabled?: boolean;
+        internshipAnalyticsEnabled?: boolean;
+      }
+    | undefined;
+  const enabled =
+    kind === "course"
+      ? user?.courseAnalyticsEnabled !== false
+      : user?.internshipAnalyticsEnabled !== false;
+  if (!enabled) {
+    throw new AppError(
+      `${
+        kind === "course" ? "Course" : "Internship"
+      } analytics is not enabled for your account.`,
+      403,
+    );
+  }
+};
+
 export const getPartnerMe = asyncHandler(
   async (req: Request, res: Response) => {
     const collegeId = requirePartnerCollegeId(req);
@@ -67,7 +98,21 @@ export const getPartnerMe = asyncHandler(
         404,
       );
     }
-    sendSuccessResponse(res, { college }, "Partner context fetched");
+    const user = req.user as unknown as {
+      courseAnalyticsEnabled?: boolean;
+      internshipAnalyticsEnabled?: boolean;
+    };
+    sendSuccessResponse(
+      res,
+      {
+        college,
+        access: {
+          courseAnalytics: user?.courseAnalyticsEnabled !== false,
+          internshipAnalytics: user?.internshipAnalyticsEnabled !== false,
+        },
+      },
+      "Partner context fetched",
+    );
   },
 );
 
@@ -102,18 +147,44 @@ export const getPartnerDashboard = asyncHandler(
   },
 );
 
-export const listPartnerStudents = asyncHandler(
+export const getPartnerCourses = asyncHandler(
   async (req: Request, res: Response) => {
+    requirePartnerAnalyticsAccess(req, "course");
     const collegeId = requirePartnerCollegeId(req);
-    const page = parseInt(String(req.query.page ?? "1"), 10) || 1;
-    const limit = parseInt(String(req.query.limit ?? "20"), 10) || 20;
-    const search =
-      typeof req.query.search === "string" ? req.query.search : undefined;
-    const result = await listPartnerStudentsService(collegeId, {
-      page,
-      limit,
-      search,
-    });
-    sendSuccessResponse(res, result, "Students fetched");
+    const result = await getPartnerCoursesService(collegeId);
+    sendSuccessResponse(res, result, "Partner courses fetched");
+  },
+);
+
+export const getPartnerCourseDetail = asyncHandler(
+  async (req: Request, res: Response) => {
+    requirePartnerAnalyticsAccess(req, "course");
+    const collegeId = requirePartnerCollegeId(req);
+    const slug = String(req.params.slug ?? "").trim();
+    if (!slug) throw new AppError("Course slug is required", 400);
+    const result = await getPartnerCourseDetailService(collegeId, slug);
+    if (!result) throw new AppError("Course not found", 404);
+    sendSuccessResponse(res, result, "Partner course analytics fetched");
+  },
+);
+
+export const getPartnerInternships = asyncHandler(
+  async (req: Request, res: Response) => {
+    requirePartnerAnalyticsAccess(req, "internship");
+    const collegeId = requirePartnerCollegeId(req);
+    const result = await getPartnerInternshipsService(collegeId);
+    sendSuccessResponse(res, result, "Partner internships fetched");
+  },
+);
+
+export const getPartnerInternshipDetail = asyncHandler(
+  async (req: Request, res: Response) => {
+    requirePartnerAnalyticsAccess(req, "internship");
+    const collegeId = requirePartnerCollegeId(req);
+    const slug = String(req.params.slug ?? "").trim();
+    if (!slug) throw new AppError("Internship slug is required", 400);
+    const result = await getPartnerInternshipDetailService(collegeId, slug);
+    if (!result) throw new AppError("Internship not found", 404);
+    sendSuccessResponse(res, result, "Partner internship analytics fetched");
   },
 );

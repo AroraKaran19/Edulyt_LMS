@@ -33,6 +33,7 @@ import questionCategoryRoutes from "./questionCategory.routes";
 import internshipVoucherRoutes from "./internshipVoucher.routes";
 import internshipLiveMeetingRoutes from "./liveMeeting.routes";
 import homePageSettingsRoutes from "./homePageSettings.routes";
+import announcementRoutes from "./announcement.routes";
 
 export {
   authRoutes,
@@ -70,4 +71,5 @@ export {
   internshipVoucherRoutes,
   internshipLiveMeetingRoutes,
   homePageSettingsRoutes,
+  announcementRoutes,
 };

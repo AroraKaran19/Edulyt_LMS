@@ -21,7 +21,7 @@ const dancingScript = Dancing_Script({
 });
 
 const HERO_IMAGE = "/partner/partner-login.png";
-const PARTNER_DASHBOARD = "/partner/college/dashboard";
+const PARTNER_DASHBOARD = "/partner/dashboard";
 
 const SCROLLBAR_HIDE =
   "[scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden";

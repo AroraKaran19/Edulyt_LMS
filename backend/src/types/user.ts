@@ -55,6 +55,10 @@ export interface Collaborator extends User {
  */
 export interface Partner extends User {
   partnerCollege: string;
+  /** Admin gate for the Courses analytics page. Defaults to true. */
+  courseAnalyticsEnabled: boolean;
+  /** Admin gate for the Internships analytics page. Defaults to true. */
+  internshipAnalyticsEnabled: boolean;
 }
 
 export interface Instructor extends User {

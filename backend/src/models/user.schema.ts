@@ -414,6 +414,10 @@ const partnerSchema = new mongoose.Schema({
         `College "${String(props.value)}" does not exist`,
     },
   },
+  /** Admin gate: when true the partner can open the Courses analytics page. */
+  courseAnalyticsEnabled: { type: Boolean, required: true, default: true },
+  /** Admin gate: when true the partner can open the Internships analytics page. */
+  internshipAnalyticsEnabled: { type: Boolean, required: true, default: true },
 });
 
 // Create discriminator models

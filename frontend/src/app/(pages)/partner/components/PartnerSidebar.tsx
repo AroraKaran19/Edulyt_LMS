@@ -5,29 +5,44 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
+  BookOpen,
+  Briefcase,
   LayoutDashboard,
   LogOut,
   Menu,
   PanelLeftClose,
-  Users,
   X,
 } from "lucide-react";
 import Image from "next/image";
 import { signOut } from "next-auth/react";
+import { usePartnerAccess } from "../state/PartnerAccessProvider";
 
 type Item = {
   label: string;
   href: string;
   icon: ComponentType<{ className?: string }>;
+  /** Gate key; `undefined` means always visible. */
+  gate?: "course" | "internship";
 };
 
-const COLLEGE_ITEMS: Item[] = [
+const PARTNER_ITEMS: Item[] = [
   {
     label: "Dashboard",
-    href: "/partner/college/dashboard",
+    href: "/partner/dashboard",
     icon: LayoutDashboard,
   },
-  { label: "Students", href: "/partner/college/students", icon: Users },
+  {
+    label: "Courses",
+    href: "/partner/courses",
+    icon: BookOpen,
+    gate: "course",
+  },
+  {
+    label: "Internships",
+    href: "/partner/internships",
+    icon: Briefcase,
+    gate: "internship",
+  },
 ];
 
 export default function PartnerSidebar({
@@ -44,7 +59,12 @@ export default function PartnerSidebar({
   onCloseMobile?: () => void;
 }) {
   const pathname = usePathname();
-  const items = COLLEGE_ITEMS;
+  const { access } = usePartnerAccess();
+  const items = PARTNER_ITEMS.filter((it) => {
+    if (it.gate === "course") return access.courseAnalytics;
+    if (it.gate === "internship") return access.internshipAnalytics;
+    return true;
+  });
 
   const showExpandedChrome = !isCollapsed || isMobileOverlay;
   const compactHeader = isCollapsed && !isMobileOverlay;

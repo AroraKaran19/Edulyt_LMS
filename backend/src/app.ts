@@ -41,6 +41,7 @@ import {
   internshipVoucherRoutes,
   internshipLiveMeetingRoutes,
   homePageSettingsRoutes,
+  announcementRoutes,
 } from "./routes";
 
 dotenv.config();
@@ -101,6 +102,7 @@ app.use("/api/question-categories", questionCategoryRoutes);
 app.use("/api/internship-vouchers", internshipVoucherRoutes);
 app.use("/api/internship-live-meetings", internshipLiveMeetingRoutes);
 app.use("/api/home-page-settings", homePageSettingsRoutes);
+app.use("/api/announcements", announcementRoutes);
 
 app.use(notFoundHandler); // Handle 404 errors
 app.use(errorHandler); // Handle all other errors
