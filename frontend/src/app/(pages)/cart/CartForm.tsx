@@ -439,7 +439,7 @@ const CartForm = ({
           </p>
           <button
             type="button"
-            onClick={() => router.push("/partner/college/dashboard")}
+            onClick={() => router.push("/partner/dashboard")}
             className="mt-4 rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600"
           >
             Back to partner dashboard

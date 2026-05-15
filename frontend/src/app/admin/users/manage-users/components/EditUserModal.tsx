@@ -8,6 +8,7 @@ import CollegeSelect from "@/components/ui/inputs/CollegeSelect";
 import DateSelector from "@/components/ui/inputs/DateSelector";
 import UploadMediaContainer from "@/components/ui/container/UploadMediaContainer";
 import InstructorCompanyImagesEditor from "./InstructorCompanyImagesEditor";
+import PartnerAnalyticsToggles from "./PartnerAnalyticsToggles";
 import { User, Instructor, Student } from "@/types/user";
 import { useUpload } from "@/hooks/useUpload";
 import { toast } from "react-toastify";
@@ -924,6 +925,24 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
                   })
                 }
               />
+              <div className="mt-4">
+                <PartnerAnalyticsToggles
+                  courseAnalyticsEnabled={
+                    (formData as { courseAnalyticsEnabled?: boolean })
+                      .courseAnalyticsEnabled !== false
+                  }
+                  internshipAnalyticsEnabled={
+                    (formData as { internshipAnalyticsEnabled?: boolean })
+                      .internshipAnalyticsEnabled !== false
+                  }
+                  onChange={(next) =>
+                    onFormDataChange({
+                      ...formData,
+                      ...next,
+                    } as Partial<User & Instructor & Student>)
+                  }
+                />
+              </div>
             </div>
           )}
 

@@ -3,6 +3,10 @@ import { UserModel } from "../models";
 import { EnrollmentModel } from "../models/enrollment.schema";
 import { InternshipEnrollmentModel } from "../models/internshipEnrollment.schema";
 import { CollegeModel } from "../models/college.schema";
+import { CourseModel } from "../models/course.schema";
+import { CategoryModel } from "../models/category.schema";
+import { CertificateModel } from "../models/certificate.schema";
+import { InternshipModel } from "../models/internship.schema";
 
 const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -503,159 +507,557 @@ export const getPartnerDashboardStatsService = async (
   };
 };
 
-export interface PartnerStudentRow {
-  _id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone?: string;
-  status: string;
-  collegeName?: string;
-  createdAt?: Date;
-  enrolledCourses: number;
-  enrolledInternships: number;
+// ── Course analytics ────────────────────────────────────────────────────────
+
+export interface PartnerCourseCategorySlice {
+  categoryId: string;
+  categoryName: string;
+  enrollments: number;
 }
 
-export interface ListPartnerStudentsResult {
-  students: PartnerStudentRow[];
-  total: number;
-  page: number;
-  totalPages: number;
+export interface PartnerCourseListItem {
+  courseId: string;
+  title: string;
+  slug: string;
+  thumbnail: string;
+  categories: string[];
+  studentsEnrolled: number;
 }
+
+export interface PartnerCoursesResult {
+  stats: {
+    totalCourses: number;
+    totalEnrollments: number;
+    distinctLearners: number;
+    certificatesIssued: number;
+  };
+  categoryBreakdown: PartnerCourseCategorySlice[];
+  courses: PartnerCourseListItem[];
+}
+
+const EMPTY_COURSES_RESULT: PartnerCoursesResult = {
+  stats: {
+    totalCourses: 0,
+    totalEnrollments: 0,
+    distinctLearners: 0,
+    certificatesIssued: 0,
+  },
+  categoryBreakdown: [],
+  courses: [],
+};
 
 /**
- * Paginated student list scoped to the partner's college. Includes per-student
- * enrollment counts so the table can show "X courses / Y internships" without
- * a follow-up call per row.
+ * Courses the partner's college students have enrolled in, with top-line stats
+ * and a category breakdown for the pie chart. Course enrolments count
+ * `status ∈ {active, completed}` only, consistent with the dashboard stats.
  */
-export const listPartnerStudentsService = async (
+export const getPartnerCoursesService = async (
   partnerCollegeId: mongoose.Types.ObjectId,
-  filters: { page?: number; limit?: number; search?: string } = {},
-): Promise<ListPartnerStudentsResult> => {
-  const page = Math.max(1, filters.page ?? 1);
-  const limit = Math.min(100, Math.max(1, filters.limit ?? 20));
-  const search = filters.search?.trim();
+): Promise<PartnerCoursesResult> => {
+  const roster = await getPartnerScopedStudentIds(partnerCollegeId);
+  if (roster.length === 0) return EMPTY_COURSES_RESULT;
 
-  const rosterIds = await getPartnerScopedStudentIds(partnerCollegeId);
-  if (rosterIds.length === 0) {
-    return {
-      students: [],
-      total: 0,
-      page,
-      totalPages: 0,
-    };
+  const enrollments = await EnrollmentModel.find({
+    userId: { $in: roster },
+    status: { $in: ["active", "completed"] },
+  })
+    .select("userId courseId")
+    .lean();
+  if (enrollments.length === 0) return EMPTY_COURSES_RESULT;
+
+  const perCourseLearners = new Map<string, Set<string>>();
+  const distinctLearners = new Set<string>();
+  for (const e of enrollments) {
+    const courseId = String(e.courseId);
+    const userId = String(e.userId);
+    distinctLearners.add(userId);
+    if (!perCourseLearners.has(courseId)) {
+      perCourseLearners.set(courseId, new Set());
+    }
+    perCourseLearners.get(courseId)!.add(userId);
   }
 
-  const scope = {
-    userType: "student" as const,
-    _id: { $in: rosterIds },
-  };
+  const courseIds = [...perCourseLearners.keys()].map(
+    (id) => new mongoose.Types.ObjectId(id),
+  );
 
-  const query =
-    typeof search === "string" && search.length > 0
-      ? {
-          ...scope,
-          $or: [
-            {
-              firstName: {
-                $regex: escapeRegex(search),
-                $options: "i",
-              },
-            },
-            {
-              lastName: {
-                $regex: escapeRegex(search),
-                $options: "i",
-              },
-            },
-            {
-              email: {
-                $regex: escapeRegex(search),
-                $options: "i",
-              },
-            },
-          ],
-        }
-      : scope;
+  const courses = await CourseModel.find({ _id: { $in: courseIds } })
+    .select("_id title slug thumbnail category")
+    .lean();
 
-  const [total, rawStudents] = await Promise.all([
-    UserModel.countDocuments(query),
-    UserModel.find(query)
-      .select("_id firstName lastName email phone status collegeName createdAt")
-      .sort({ createdAt: -1 })
-      .skip((page - 1) * limit)
-      .limit(limit)
-      .lean(),
-  ]);
-
-  if (rawStudents.length === 0) {
-    return {
-      students: [],
-      total,
-      page,
-      totalPages: Math.max(0, Math.ceil(total / limit)),
-    };
+  const courseCategoryIds = new Map<string, string[]>();
+  const allCategoryIds = new Set<string>();
+  for (const c of courses) {
+    const cats = (
+      (c as unknown as { category?: mongoose.Types.ObjectId[] }).category ?? []
+    ).map((x) => String(x));
+    courseCategoryIds.set(String(c._id), cats);
+    cats.forEach((id) => allCategoryIds.add(id));
   }
 
-  const studentIds = rawStudents.map((s) => s._id);
-
-  // Aggregate enrollment counts per user in a single round-trip each.
-  const [courseCounts, internshipCounts] = await Promise.all([
-    EnrollmentModel.aggregate<{ _id: mongoose.Types.ObjectId; count: number }>([
-      {
-        $match: {
-          userId: { $in: studentIds },
-          status: { $in: ["active", "completed"] },
-        },
-      },
-      { $group: { _id: "$userId", count: { $sum: 1 } } },
-    ]),
-    InternshipEnrollmentModel.aggregate<{
-      _id: mongoose.Types.ObjectId;
-      count: number;
-    }>([
-      {
-        $match: {
-          user: { $in: studentIds },
-          status: { $nin: ["admin_rejected", "dropped", "revoked"] },
-        },
-      },
-      { $group: { _id: "$user", count: { $sum: 1 } } },
-    ]),
-  ]);
-
-  const courseMap = new Map(
-    courseCounts.map((c) => [String(c._id), c.count] as const),
-  );
-  const internshipMap = new Map(
-    internshipCounts.map((c) => [String(c._id), c.count] as const),
+  const categories = await CategoryModel.find({
+    _id: {
+      $in: [...allCategoryIds].map((id) => new mongoose.Types.ObjectId(id)),
+    },
+  })
+    .select("_id name")
+    .lean();
+  const categoryNameById = new Map(
+    categories.map((c) => [String(c._id), String((c as { name?: string }).name ?? "")]),
   );
 
-  const students: PartnerStudentRow[] = rawStudents.map((s) => {
-    const id = String(s._id);
-    const sr = s as Record<string, unknown>;
-    return {
-      _id: id,
-      firstName: String(sr.firstName ?? ""),
-      lastName: String(sr.lastName ?? ""),
-      email: String(sr.email ?? ""),
-      phone:
-        typeof sr.phone === "string" && sr.phone.trim().length > 0
-          ? (sr.phone as string)
-          : undefined,
-      status: String(sr.status ?? ""),
-      collegeName:
-        typeof sr.collegeName === "string" ? (sr.collegeName as string) : undefined,
-      createdAt: sr.createdAt as Date | undefined,
-      enrolledCourses: courseMap.get(id) ?? 0,
-      enrolledInternships: internshipMap.get(id) ?? 0,
-    };
+  const courseList: PartnerCourseListItem[] = courses
+    .map((c) => {
+      const courseId = String(c._id);
+      const catIds = courseCategoryIds.get(courseId) ?? [];
+      return {
+        courseId,
+        title: String((c as { title?: string }).title ?? ""),
+        slug: String((c as { slug?: string }).slug ?? ""),
+        thumbnail: String((c as { thumbnail?: string }).thumbnail ?? ""),
+        categories: catIds.map(
+          (id) => categoryNameById.get(id) ?? "Uncategorised",
+        ),
+        studentsEnrolled: perCourseLearners.get(courseId)?.size ?? 0,
+      };
+    })
+    .sort((a, b) => b.studentsEnrolled - a.studentsEnrolled);
+
+  const categoryEnrollments = new Map<string, number>();
+  for (const e of enrollments) {
+    const cats = courseCategoryIds.get(String(e.courseId)) ?? [];
+    for (const catId of cats) {
+      categoryEnrollments.set(catId, (categoryEnrollments.get(catId) ?? 0) + 1);
+    }
+  }
+  const categoryBreakdown: PartnerCourseCategorySlice[] = [
+    ...categoryEnrollments.entries(),
+  ]
+    .map(([categoryId, count]) => ({
+      categoryId,
+      categoryName: categoryNameById.get(categoryId) ?? "Uncategorised",
+      enrollments: count,
+    }))
+    .sort((a, b) => b.enrollments - a.enrollments);
+
+  const certificatesIssued = await CertificateModel.countDocuments({
+    certificateType: "course",
+    userId: { $in: roster },
+    courseId: { $in: courseIds },
+    isLatest: true,
+    isActive: true,
   });
 
   return {
-    students,
-    total,
-    page,
-    totalPages: Math.max(0, Math.ceil(total / limit)),
+    stats: {
+      totalCourses: courseList.length,
+      totalEnrollments: enrollments.length,
+      distinctLearners: distinctLearners.size,
+      certificatesIssued,
+    },
+    categoryBreakdown,
+    courses: courseList,
   };
+};
+
+export interface PartnerCourseStudentRow {
+  userId: string;
+  name: string;
+  email: string;
+  completion: number;
+  certified: boolean;
+}
+
+export interface PartnerCourseDetailResult {
+  course: {
+    courseId: string;
+    title: string;
+    slug: string;
+    thumbnail: string;
+    categories: string[];
+  };
+  stats: {
+    studentsEnrolled: number;
+    certificatesIssued: number;
+    averageCompletion: number;
+  };
+  students: PartnerCourseStudentRow[];
+}
+
+/**
+ * Per-course analytics for the partner's roster: completion %, certificate
+ * status, and the student name/email list. Returns `null` if the slug matches
+ * no course.
+ */
+export const getPartnerCourseDetailService = async (
+  partnerCollegeId: mongoose.Types.ObjectId,
+  slug: string,
+): Promise<PartnerCourseDetailResult | null> => {
+  const course = await CourseModel.findOne({ slug })
+    .select("_id title slug thumbnail category")
+    .lean();
+  if (!course) return null;
+
+  const categoryDocs = await CategoryModel.find({
+    _id: {
+      $in:
+        (course as unknown as { category?: mongoose.Types.ObjectId[] })
+          .category ?? [],
+    },
+  })
+    .select("name")
+    .lean();
+  const categoryNames = categoryDocs.map(
+    (c) => String((c as { name?: string }).name ?? ""),
+  );
+
+  const courseInfo = {
+    courseId: String(course._id),
+    title: String((course as { title?: string }).title ?? ""),
+    slug: String((course as { slug?: string }).slug ?? ""),
+    thumbnail: String((course as { thumbnail?: string }).thumbnail ?? ""),
+    categories: categoryNames,
+  };
+
+  const buildResult = (
+    students: PartnerCourseStudentRow[],
+    averageCompletion: number,
+    certificatesIssued: number,
+  ): PartnerCourseDetailResult => ({
+    course: courseInfo,
+    stats: {
+      studentsEnrolled: students.length,
+      certificatesIssued,
+      averageCompletion,
+    },
+    students,
+  });
+
+  const roster = await getPartnerScopedStudentIds(partnerCollegeId);
+  if (roster.length === 0) return buildResult([], 0, 0);
+
+  const enrollments = await EnrollmentModel.find({
+    courseId: course._id,
+    userId: { $in: roster },
+    status: { $in: ["active", "completed"] },
+  })
+    .select("userId progress.overallCompletion")
+    .lean();
+  if (enrollments.length === 0) return buildResult([], 0, 0);
+
+  const enrolledUserIds = enrollments.map((e) => e.userId);
+
+  const users = await UserModel.find({ _id: { $in: enrolledUserIds } })
+    .select("_id firstName lastName email")
+    .lean();
+  const userById = new Map(users.map((u) => [String(u._id), u]));
+
+  const certs = await CertificateModel.find({
+    certificateType: "course",
+    courseId: course._id,
+    userId: { $in: enrolledUserIds },
+    isLatest: true,
+    isActive: true,
+  })
+    .select("userId")
+    .lean();
+  const certifiedUserIds = new Set(certs.map((c) => String(c.userId)));
+
+  let completionSum = 0;
+  const students: PartnerCourseStudentRow[] = enrollments
+    .map((e) => {
+      const userId = String(e.userId);
+      const u = userById.get(userId) as
+        | { firstName?: string; lastName?: string; email?: string }
+        | undefined;
+      const completion = Number(
+        (e as { progress?: { overallCompletion?: number } }).progress
+          ?.overallCompletion ?? 0,
+      );
+      completionSum += completion;
+      return {
+        userId,
+        name: u
+          ? `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim() || "—"
+          : "—",
+        email: u ? String(u.email ?? "") : "",
+        completion,
+        certified: certifiedUserIds.has(userId),
+      };
+    })
+    .sort((a, b) => b.completion - a.completion);
+
+  const averageCompletion = Math.round(completionSum / enrollments.length);
+  return buildResult(students, averageCompletion, certifiedUserIds.size);
+};
+
+// ── Internship analytics ────────────────────────────────────────────────────
+
+export interface PartnerInternshipListItem {
+  internshipId: string;
+  title: string;
+  slug: string;
+  thumbnail: string;
+  studentsEnrolled: number;
+}
+
+export interface PartnerInternshipsResult {
+  stats: {
+    totalInternships: number;
+    totalEnrolled: number;
+    appearedInExam: number;
+    certificatesIssued: number;
+  };
+  internships: PartnerInternshipListItem[];
+}
+
+const EMPTY_INTERNSHIPS_RESULT: PartnerInternshipsResult = {
+  stats: {
+    totalInternships: 0,
+    totalEnrolled: 0,
+    appearedInExam: 0,
+    certificatesIssued: 0,
+  },
+  internships: [],
+};
+
+/** Internship enrolments of the partner's roster, excluding `revoked`. */
+export const getPartnerInternshipsService = async (
+  partnerCollegeId: mongoose.Types.ObjectId,
+): Promise<PartnerInternshipsResult> => {
+  const roster = await getPartnerScopedStudentIds(partnerCollegeId);
+  if (roster.length === 0) return EMPTY_INTERNSHIPS_RESULT;
+
+  const enrollments = await InternshipEnrollmentModel.find({
+    user: { $in: roster },
+    status: { $ne: "revoked" },
+  })
+    .select("internship user examAttemptedAt")
+    .lean();
+  if (enrollments.length === 0) return EMPTY_INTERNSHIPS_RESULT;
+
+  const perInternshipLearners = new Map<string, Set<string>>();
+  let appearedInExam = 0;
+  for (const e of enrollments) {
+    const internshipId = String((e as { internship?: unknown }).internship);
+    if (!perInternshipLearners.has(internshipId)) {
+      perInternshipLearners.set(internshipId, new Set());
+    }
+    perInternshipLearners
+      .get(internshipId)!
+      .add(String((e as { user?: unknown }).user));
+    if ((e as { examAttemptedAt?: unknown }).examAttemptedAt) appearedInExam++;
+  }
+
+  const internshipIds = [...perInternshipLearners.keys()].map(
+    (id) => new mongoose.Types.ObjectId(id),
+  );
+  const internships = await InternshipModel.find({
+    _id: { $in: internshipIds },
+  })
+    .select("_id title slug thumbnail")
+    .lean();
+
+  const list: PartnerInternshipListItem[] = internships
+    .map((i) => ({
+      internshipId: String(i._id),
+      title: String((i as { title?: string }).title ?? ""),
+      slug: String((i as { slug?: string }).slug ?? ""),
+      thumbnail: String((i as { thumbnail?: string }).thumbnail ?? ""),
+      studentsEnrolled: perInternshipLearners.get(String(i._id))?.size ?? 0,
+    }))
+    .sort((a, b) => b.studentsEnrolled - a.studentsEnrolled);
+
+  const certificatesIssued = await CertificateModel.countDocuments({
+    certificateType: "internship",
+    userId: { $in: roster },
+    isLatest: true,
+    isActive: true,
+  });
+
+  return {
+    stats: {
+      totalInternships: list.length,
+      totalEnrolled: enrollments.length,
+      appearedInExam,
+      certificatesIssued,
+    },
+    internships: list,
+  };
+};
+
+export interface PartnerInternshipFunnel {
+  enrolled: number;
+  appearedInExam: number;
+  selected: number;
+  certified: number;
+}
+
+/** One enrolled student in a batch, with the funnel stages they reached. */
+export interface PartnerInternshipBatchStudent {
+  name: string;
+  email: string;
+  appearedInExam: boolean;
+  selected: boolean;
+  certified: boolean;
+}
+
+export interface PartnerInternshipBatchBreakdown {
+  batchId: string;
+  name: string;
+  counts: PartnerInternshipFunnel;
+  students: PartnerInternshipBatchStudent[];
+}
+
+export interface PartnerInternshipDetailResult {
+  internship: {
+    internshipId: string;
+    title: string;
+    slug: string;
+    thumbnail: string;
+  };
+  totals: PartnerInternshipFunnel;
+  batches: PartnerInternshipBatchBreakdown[];
+}
+
+/**
+ * Per-internship funnel (enrolled → appeared in exam → selected → certified)
+ * for the partner's roster, with totals across all batches plus a per-batch
+ * breakdown that carries the student name/email lists. Returns `null` if the
+ * slug matches no internship.
+ */
+export const getPartnerInternshipDetailService = async (
+  partnerCollegeId: mongoose.Types.ObjectId,
+  slug: string,
+): Promise<PartnerInternshipDetailResult | null> => {
+  const internship = await InternshipModel.findOne({ slug })
+    .select("_id title slug thumbnail")
+    .lean();
+  if (!internship) return null;
+
+  const internshipInfo = {
+    internshipId: String(internship._id),
+    title: String((internship as { title?: string }).title ?? ""),
+    slug: String((internship as { slug?: string }).slug ?? ""),
+    thumbnail: String((internship as { thumbnail?: string }).thumbnail ?? ""),
+  };
+  const zeroFunnel = (): PartnerInternshipFunnel => ({
+    enrolled: 0,
+    appearedInExam: 0,
+    selected: 0,
+    certified: 0,
+  });
+
+  const roster = await getPartnerScopedStudentIds(partnerCollegeId);
+  if (roster.length === 0) {
+    return { internship: internshipInfo, totals: zeroFunnel(), batches: [] };
+  }
+
+  const enrollments = await InternshipEnrollmentModel.find({
+    internship: internship._id,
+    user: { $in: roster },
+    status: { $ne: "revoked" },
+  })
+    .select("_id user examAttemptedAt offerLetterGeneratedAt batchSnapshot")
+    .lean();
+  if (enrollments.length === 0) {
+    return { internship: internshipInfo, totals: zeroFunnel(), batches: [] };
+  }
+
+  const userIds = enrollments.map((e) => (e as { user: unknown }).user);
+  const users = await UserModel.find({ _id: { $in: userIds } })
+    .select("_id firstName lastName email")
+    .lean();
+  const studentById = new Map<string, { name: string; email: string }>(
+    users.map((u) => [
+      String(u._id),
+      {
+        name:
+          `${(u as { firstName?: string }).firstName ?? ""} ${
+            (u as { lastName?: string }).lastName ?? ""
+          }`.trim() || "—",
+        email: String((u as { email?: string }).email ?? ""),
+      },
+    ]),
+  );
+
+  const certs = await CertificateModel.find({
+    enrollmentModel: "InternshipEnrollment",
+    enrollmentId: { $in: enrollments.map((e) => e._id) },
+    isLatest: true,
+    isActive: true,
+  })
+    .select("enrollmentId")
+    .lean();
+  const certifiedEnrollmentIds = new Set(
+    certs.map((c) => String((c as { enrollmentId?: unknown }).enrollmentId)),
+  );
+
+  const UNBATCHED_ID = "__unbatched__";
+  const batchMap = new Map<string, PartnerInternshipBatchBreakdown>();
+  const ensureBatch = (batchId: string, name: string) => {
+    let batch = batchMap.get(batchId);
+    if (!batch) {
+      batch = {
+        batchId,
+        name,
+        counts: zeroFunnel(),
+        students: [],
+      };
+      batchMap.set(batchId, batch);
+    }
+    return batch;
+  };
+
+  const totals = zeroFunnel();
+
+  for (const e of enrollments) {
+    const snap = (e as {
+      batchSnapshot?: { batchId?: string; name?: string };
+    }).batchSnapshot;
+    const batchId = snap?.batchId ? String(snap.batchId) : UNBATCHED_ID;
+    const batchName = snap?.name ? String(snap.name) : "Unassigned batch";
+    const batch = ensureBatch(batchId, batchName);
+    const student =
+      studentById.get(String((e as { user: unknown }).user)) ?? {
+        name: "—",
+        email: "",
+      };
+
+    const appearedInExam = Boolean(
+      (e as { examAttemptedAt?: unknown }).examAttemptedAt,
+    );
+    const selected = Boolean(
+      (e as { offerLetterGeneratedAt?: unknown }).offerLetterGeneratedAt,
+    );
+    const certified = certifiedEnrollmentIds.has(String(e._id));
+
+    batch.students.push({
+      name: student.name,
+      email: student.email,
+      appearedInExam,
+      selected,
+      certified,
+    });
+
+    batch.counts.enrolled++;
+    totals.enrolled++;
+    if (appearedInExam) {
+      batch.counts.appearedInExam++;
+      totals.appearedInExam++;
+    }
+    if (selected) {
+      batch.counts.selected++;
+      totals.selected++;
+    }
+    if (certified) {
+      batch.counts.certified++;
+      totals.certified++;
+    }
+  }
+
+  const batches = [...batchMap.values()].sort((a, b) =>
+    a.name.localeCompare(b.name),
+  );
+  return { internship: internshipInfo, totals, batches };
 };

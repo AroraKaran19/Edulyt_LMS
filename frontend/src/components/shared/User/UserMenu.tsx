@@ -2,6 +2,8 @@
 import ImageComponent from "@/components/ui/ImageComponent";
 import useAuth from "@/hooks/useAuth";
 import {
+  BookOpen,
+  Briefcase,
   ChevronDown,
   Home,
   LayoutDashboard,
@@ -9,7 +11,6 @@ import {
   Settings,
   Star,
   User,
-  Users,
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -73,12 +74,17 @@ const UserMenu = () => {
     {
       label: "Dashboard",
       icon: LayoutDashboard,
-      href: "/partner/college/dashboard",
+      href: "/partner/dashboard",
     },
     {
-      label: "Students",
-      icon: Users,
-      href: "/partner/college/students",
+      label: "Courses",
+      icon: BookOpen,
+      href: "/partner/courses",
+    },
+    {
+      label: "Internships",
+      icon: Briefcase,
+      href: "/partner/internships",
     },
     {
       label: "Profile",

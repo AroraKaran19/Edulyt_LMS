@@ -386,6 +386,8 @@ const useUserManagement = () => {
       phone?: string;
       password: string;
       partnerCollegeId: string;
+      courseAnalyticsEnabled: boolean;
+      internshipAnalyticsEnabled: boolean;
     }): Promise<User | null> => {
       return handleRequest(async () => {
         const response = await apiClient.post("/users/admin/partner", data);

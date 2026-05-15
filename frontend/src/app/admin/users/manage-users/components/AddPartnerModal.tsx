@@ -6,6 +6,7 @@ import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import Input from "@/components/ui/inputs/Input";
 import CollegeSelect from "@/components/ui/inputs/CollegeSelect";
+import PartnerAnalyticsToggles from "./PartnerAnalyticsToggles";
 import { toast } from "react-toastify";
 import useUserManagement from "@/hooks/useUserManagement";
 import {
@@ -32,6 +33,8 @@ type Form = {
    *  payload uses the id so renames/deletes don't desync the link. */
   partnerCollegeId: string;
   collegeDisplay: string;
+  courseAnalyticsEnabled: boolean;
+  internshipAnalyticsEnabled: boolean;
 };
 
 const EMPTY_FORM: Form = {
@@ -43,6 +46,8 @@ const EMPTY_FORM: Form = {
   confirmPassword: "",
   partnerCollegeId: "",
   collegeDisplay: "",
+  courseAnalyticsEnabled: true,
+  internshipAnalyticsEnabled: true,
 };
 
 export default function AddPartnerModal({
@@ -88,6 +93,8 @@ export default function AddPartnerModal({
       phone: form.phone.trim() || undefined,
       password: form.password,
       partnerCollegeId: form.partnerCollegeId.trim(),
+      courseAnalyticsEnabled: form.courseAnalyticsEnabled,
+      internshipAnalyticsEnabled: form.internshipAnalyticsEnabled,
     });
 
     if (result) {
@@ -176,6 +183,14 @@ export default function AddPartnerModal({
               setField("collegeDisplay", c.display);
             }}
           />
+
+          <div className="mt-4">
+            <PartnerAnalyticsToggles
+              courseAnalyticsEnabled={form.courseAnalyticsEnabled}
+              internshipAnalyticsEnabled={form.internshipAnalyticsEnabled}
+              onChange={(next) => setForm((prev) => ({ ...prev, ...next }))}
+            />
+          </div>
 
           <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Input

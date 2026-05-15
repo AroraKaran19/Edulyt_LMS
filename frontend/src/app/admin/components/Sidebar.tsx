@@ -192,6 +192,10 @@ const AdminSidebar = ({
           label: "Partnerships",
           href: "/admin/settings/partnership-import",
         },
+        {
+          label: "Announcements",
+          href: "/admin/settings/announcements",
+        },
       ],
     },
   ];

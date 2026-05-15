@@ -401,6 +401,8 @@ export const adminCreatePartner = asyncHandler(
       phone,
       password,
       partnerCollegeId,
+      courseAnalyticsEnabled,
+      internshipAnalyticsEnabled,
     } = req.body as {
       firstName?: string;
       lastName?: string;
@@ -408,6 +410,8 @@ export const adminCreatePartner = asyncHandler(
       phone?: string;
       password?: string;
       partnerCollegeId?: string;
+      courseAnalyticsEnabled?: boolean;
+      internshipAnalyticsEnabled?: boolean;
     };
 
     if (!firstName?.trim()) throw new AppError("First name is required", 400);
@@ -435,12 +439,17 @@ export const adminCreatePartner = asyncHandler(
       firstName: firstName.trim(),
       lastName: lastName?.trim() || "",
       ...(phone?.trim() ? { phone: phone.trim() } : {}),
-      // Cast the ObjectId-string through as a partner-only field; the
-      // PartnerModel discriminator's validator confirms existence at save
-      // time so a forged ID gets rejected by the model layer.
+      // Cast partner-only fields through; the PartnerModel discriminator
+      // validates `partnerCollege` existence at save time so a forged ID
+      // gets rejected by the model layer. `!== false` makes an omitted
+      // analytics flag default to enabled, matching the schema default.
       partnerCollege: new mongoose.Types.ObjectId(partnerCollegeId),
+      courseAnalyticsEnabled: courseAnalyticsEnabled !== false,
+      internshipAnalyticsEnabled: internshipAnalyticsEnabled !== false,
     } as Parameters<typeof registerUser>[0] & {
       partnerCollege: mongoose.Types.ObjectId;
+      courseAnalyticsEnabled: boolean;
+      internshipAnalyticsEnabled: boolean;
     });
 
     const sanitized = (newUser as { toObject?: () => unknown }).toObject?.() ?? newUser;
