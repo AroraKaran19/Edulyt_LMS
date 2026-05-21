@@ -5,13 +5,9 @@ import Searchbar2 from "@/components/ui/Searchbar2";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import useDashboardStats from "@/hooks/useDashboardStats";
+import useUserStats from "@/hooks/useUserStats";
 import { useEffect, useRef, useState, useCallback } from "react";
 import apiClient from "@/configs/apiConfig";
-import {
-  DASHBOARD_MY_INTERNSHIPS_CHANGED,
-  fetchMyInternshipEnrollmentTotal,
-} from "@/hooks/useMyInternshipEnrollments";
 import { Course } from "@/types/course";
 import { Enrollment } from "@/types/enrollment";
 import { Loader2, X } from "lucide-react";
@@ -43,12 +39,7 @@ type SearchHit = {
 const DashboardNavbar = () => {
   const pathname = usePathname();
   const router = useRouter();
-  const { stats, isLoading } = useDashboardStats();
-  const [courseCount, setCourseCount] = useState(0);
-  const [certificateCount, setCertificateCount] = useState(0);
-  const [certificateCountLoading, setCertificateCountLoading] = useState(true);
-  const [internshipCount, setInternshipCount] = useState(0);
-  const [internshipCountLoading, setInternshipCountLoading] = useState(true);
+  const { stats, isLoading } = useUserStats();
   const [navSearch, setNavSearch] = useState("");
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [hits, setHits] = useState<SearchHit[]>([]);
@@ -56,74 +47,6 @@ const DashboardNavbar = () => {
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const activeRequest = useRef(0);
-
-  useEffect(() => {
-    if (!isLoading && stats) {
-      setCourseCount(stats.totalCourses);
-    }
-  }, [stats, isLoading]);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setCertificateCountLoading(true);
-      try {
-        const res = await apiClient.get("/certificates?page=1&limit=1");
-        const data = res.data?.data;
-        const total =
-          data && typeof data === "object" && "total" in data
-            ? (data.total as number)
-            : 0;
-        if (!cancelled) setCertificateCount(total);
-      } catch {
-        if (!cancelled) setCertificateCount(0);
-      } finally {
-        if (!cancelled) setCertificateCountLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const refreshInternshipNavCount = useCallback(() => {
-    void (async () => {
-      setInternshipCountLoading(true);
-      try {
-        const t = await fetchMyInternshipEnrollmentTotal();
-        setInternshipCount(t);
-      } catch {
-        setInternshipCount(0);
-      } finally {
-        setInternshipCountLoading(false);
-      }
-    })();
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setInternshipCountLoading(true);
-      try {
-        const t = await fetchMyInternshipEnrollmentTotal();
-        if (!cancelled) setInternshipCount(t);
-      } catch {
-        if (!cancelled) setInternshipCount(0);
-      } finally {
-        if (!cancelled) setInternshipCountLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    const onChange = () => refreshInternshipNavCount();
-    window.addEventListener(DASHBOARD_MY_INTERNSHIPS_CHANGED, onChange);
-    return () =>
-      window.removeEventListener(DASHBOARD_MY_INTERNSHIPS_CHANGED, onChange);
-  }, [refreshInternshipNavCount]);
 
   useEffect(() => {
     const onDocMouseDown = (e: MouseEvent) => {
@@ -215,16 +138,20 @@ const DashboardNavbar = () => {
 
   const navItems = [
     { label: "Home", href: "/dashboard" },
-    { label: "My Courses", href: "/dashboard/courses", count: courseCount },
+    {
+      label: "My Courses",
+      href: "/dashboard/courses",
+      count: stats.totalCourses,
+    },
     {
       label: "My Internships",
       href: "/dashboard/internships",
-      count: internshipCount,
+      count: stats.totalInternships,
     },
     {
       label: "Certificates",
       href: "/dashboard/certificates",
-      count: certificateCount,
+      count: stats.totalCertificates,
     },
   ];
 
@@ -386,17 +313,7 @@ const DashboardNavbar = () => {
                         : "bg-gray-200 text-gray-700",
                     )}
                   >
-                    {item.href === "/dashboard/internships"
-                      ? internshipCountLoading
-                        ? "..."
-                        : item.count
-                      : item.href === "/dashboard/certificates"
-                        ? certificateCountLoading
-                          ? "..."
-                          : item.count
-                        : isLoading
-                          ? "..."
-                          : item.count}
+                    {isLoading ? "..." : item.count}
                   </span>
                 )}
               </Link>

@@ -18,6 +18,8 @@ import type {
 
 const ENROLLED_STATUSES = ["enrolled", "completed"] as const;
 
+const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 function frontendBase(): string {
   return (process.env.FRONTEND_URL || "http://localhost:3000").replace(
     /\/+$/,
@@ -118,6 +120,7 @@ function serializeListItem(doc: {
   name: string;
   description?: string;
   meetingLink: string;
+  recordingLink?: string;
   startDateTime: Date;
   endDateTime?: Date | null;
   link1: {
@@ -143,6 +146,7 @@ function serializeListItem(doc: {
     name: doc.name,
     description: doc.description ?? "",
     meetingLink: doc.meetingLink,
+    recordingLink: doc.recordingLink ?? "",
     startDateTime: new Date(doc.startDateTime).toISOString(),
     endDateTime: doc.endDateTime ? new Date(doc.endDateTime).toISOString() : null,
     link1: {
@@ -197,6 +201,15 @@ export async function createInternshipLiveMeetingAdmin(
     );
   }
 
+  const recordingLink =
+    typeof body.recordingLink === "string" ? body.recordingLink.trim() : "";
+  if (recordingLink && !validateUrl(recordingLink)) {
+    throw new AppError(
+      "recordingLink must be a valid URL (http:// or https://)",
+      400,
+    );
+  }
+
   const startDateTime = parseDate(body.startDateTime, "startDateTime");
   const endDateTime = parseDate(body.endDateTime, "endDateTime");
   if (endDateTime <= startDateTime) {
@@ -218,6 +231,7 @@ export async function createInternshipLiveMeetingAdmin(
     name,
     description,
     meetingLink,
+    recordingLink,
     startDateTime,
     endDateTime,
     link1: {
@@ -299,27 +313,51 @@ export async function getInternshipLiveMeetingAdmin(
 // ───────── Admin: update editable fields ─────────
 
 /**
- * Update the meeting URL after creation. All other fields are immutable
- * post-creation — admins can delete + recreate if they need to change
- * anything structural.
+ * Update the editable fields after creation — the meeting URL and the optional
+ * recording URL. Each is applied only when present in the body; `recordingLink`
+ * may be set to "" to clear it. All other fields are immutable post-creation —
+ * admins can delete + recreate if they need to change anything structural.
  */
 export async function updateInternshipLiveMeetingAdmin(
   id: string,
-  body: { meetingLink?: string },
+  body: { meetingLink?: string; recordingLink?: string },
 ): Promise<AdminLiveMeetingListItem> {
   if (!mongoose.Types.ObjectId.isValid(id)) {
     throw new AppError("Invalid meeting id", 400);
   }
-  const ml = typeof body.meetingLink === "string" ? body.meetingLink.trim() : "";
-  if (!ml || !validateUrl(ml)) {
-    throw new AppError(
-      "meetingLink must be a valid URL (http:// or https://)",
-      400,
-    );
+
+  const update: { meetingLink?: string; recordingLink?: string } = {};
+
+  if (body.meetingLink !== undefined) {
+    const ml = typeof body.meetingLink === "string" ? body.meetingLink.trim() : "";
+    if (!ml || !validateUrl(ml)) {
+      throw new AppError(
+        "meetingLink must be a valid URL (http:// or https://)",
+        400,
+      );
+    }
+    update.meetingLink = ml;
   }
+
+  if (body.recordingLink !== undefined) {
+    const rl =
+      typeof body.recordingLink === "string" ? body.recordingLink.trim() : "";
+    if (rl && !validateUrl(rl)) {
+      throw new AppError(
+        "recordingLink must be a valid URL (http:// or https://)",
+        400,
+      );
+    }
+    update.recordingLink = rl;
+  }
+
+  if (Object.keys(update).length === 0) {
+    throw new AppError("No editable fields provided", 400);
+  }
+
   const updated = await InternshipLiveMeetingModel.findByIdAndUpdate(
     id,
-    { $set: { meetingLink: ml } },
+    { $set: update },
     { new: true, runValidators: true },
   ).lean();
   if (!updated) throw new AppError("Meeting not found", 404);
@@ -537,32 +575,43 @@ async function finalizeAttendance(
 // ───────── Student: list meetings for their batch ─────────
 
 /**
- * Student-safe view of live meetings for a given (internshipId, batchId).
- * Returns meetings whose `endDateTime` is still in the future — once a
- * meeting ends, it disappears from the dashboard. Sorted by startDateTime
- * ascending so the next-up meeting is the top row.
+ * Paginated student-safe view of live meetings for a given (internshipId,
+ * batchId). Returns every meeting for the batch (upcoming, live, and past) so
+ * learners can see the full history with attendance + recording links. Sorted
+ * by `startDateTime` descending so the most recent / next-up meeting is at
+ * the top.
  *
  * Tokens / admin URLs are never returned — only the meeting URL the admin
  * shared, plus whether *this* user has clicked each attendance.
  */
-export async function getStudentLiveMeetingsForBatch(
+export async function getStudentLiveMeetingsForBatchPaginated(
   internshipId: mongoose.Types.ObjectId | string,
   batchId: string,
   userId: mongoose.Types.ObjectId,
+  page = 1,
   limit = 10,
-): Promise<StudentLiveMeetingItem[]> {
-  const now = new Date();
-  const docs = await InternshipLiveMeetingModel.find({
-    internship: internshipId,
-    batchId,
-    endDateTime: { $gt: now },
-  })
-    .sort({ startDateTime: 1 })
-    .limit(Math.max(1, Math.min(50, limit)))
-    .lean();
+): Promise<{
+  items: StudentLiveMeetingItem[];
+  total: number;
+  page: number;
+  totalPages: number;
+}> {
+  const p = Math.max(1, Math.floor(page));
+  const l = Math.min(50, Math.max(1, Math.floor(limit)));
+  const skip = (p - 1) * l;
+
+  const filter = { internship: internshipId, batchId };
+  const [docs, total] = await Promise.all([
+    InternshipLiveMeetingModel.find(filter)
+      .sort({ startDateTime: -1 })
+      .skip(skip)
+      .limit(l)
+      .lean(),
+    InternshipLiveMeetingModel.countDocuments(filter),
+  ]);
 
   const userIdStr = String(userId);
-  return docs.map((doc): StudentLiveMeetingItem => {
+  const items = docs.map((doc): StudentLiveMeetingItem => {
     const link1ClickedBy = (doc.link1.clickedBy ?? []).map((u: unknown) =>
       String(u),
     );
@@ -574,6 +623,10 @@ export async function getStudentLiveMeetingsForBatch(
       name: doc.name,
       description: doc.description ?? "",
       meetingLink: doc.meetingLink,
+      recordingLink:
+        typeof (doc as { recordingLink?: string }).recordingLink === "string"
+          ? (doc as { recordingLink: string }).recordingLink
+          : "",
       startDateTime: new Date(doc.startDateTime).toISOString(),
       endDateTime: doc.endDateTime
         ? new Date(doc.endDateTime).toISOString()
@@ -583,6 +636,13 @@ export async function getStudentLiveMeetingsForBatch(
       link2Clicked: link2ClickedBy.includes(userIdStr),
     };
   });
+
+  return {
+    items,
+    total,
+    page: p,
+    totalPages: Math.max(1, Math.ceil(total / l)),
+  };
 }
 
 // ───────── Student: click handler ─────────
@@ -653,4 +713,99 @@ export async function recordAttendanceClick(
     alreadyMarked: result.modifiedCount === 0,
     meetingName: meeting.name,
   };
+}
+
+// ───────── Student: paginated meetings for an enrolled program (by slug) ─────────
+
+/**
+ * Resolves the learner's enrollment for the given internship slug (canonical
+ * slug first, snapshot-slug fallback), enforces the same access gate as the
+ * program-detail endpoint, and returns the paginated live-meeting list for
+ * their batch (newest first). Used by the program page's "Live Classes" tab.
+ */
+export async function getStudentLiveMeetingsBySlugPaginated(
+  userId: mongoose.Types.ObjectId,
+  slug: string,
+  page: number,
+  limit: number,
+): Promise<{
+  items: StudentLiveMeetingItem[];
+  total: number;
+  page: number;
+  totalPages: number;
+}> {
+  const trimmed = slug.trim();
+  if (!trimmed) throw new AppError("slug is required", 400);
+  const normalized = trimmed.toLowerCase();
+
+  let internship = await InternshipModel.findOne({ slug: normalized })
+    .select("_id")
+    .lean();
+
+  let enrollment: Record<string, unknown> | null = null;
+  if (internship) {
+    enrollment = await InternshipEnrollmentModel.findOne({
+      user: userId,
+      internship: internship._id,
+    })
+      .select("status batchSnapshot")
+      .sort({ createdAt: -1 })
+      .lean();
+  } else {
+    enrollment = await InternshipEnrollmentModel.findOne({
+      user: userId,
+      "internshipSnapshot.slug": new RegExp(`^${escapeRegex(trimmed)}$`, "i"),
+    })
+      .select("status batchSnapshot internship")
+      .sort({ createdAt: -1 })
+      .lean();
+    if (enrollment) {
+      internship = await InternshipModel.findById(
+        enrollment.internship as mongoose.Types.ObjectId,
+      )
+        .select("_id")
+        .lean();
+    }
+  }
+
+  if (!internship) throw new AppError("Program not found", 404);
+  if (!enrollment) {
+    throw new AppError("You are not enrolled in this program", 403);
+  }
+
+  const status = String((enrollment as { status?: string }).status ?? "");
+  const PENDING_DOCS = new Set([
+    "pending_documentation",
+    "docs_under_review",
+    "re_pending_documentation",
+  ]);
+  if (PENDING_DOCS.has(status)) {
+    throw new AppError(
+      "Complete documentation submission first.",
+      403,
+      "DOCUMENTATION_PENDING",
+    );
+  }
+  const ALLOWED = new Set(["enrolled", "completed", "paused"]);
+  if (!ALLOWED.has(status)) {
+    throw new AppError(
+      "Your enrollment is not yet active for this program",
+      403,
+    );
+  }
+
+  const batchId = (
+    enrollment as { batchSnapshot?: { batchId?: string } }
+  ).batchSnapshot?.batchId;
+  if (!batchId) {
+    return { items: [], total: 0, page: Math.max(1, page), totalPages: 1 };
+  }
+
+  return getStudentLiveMeetingsForBatchPaginated(
+    String(internship._id),
+    batchId,
+    userId,
+    page,
+    limit,
+  );
 }

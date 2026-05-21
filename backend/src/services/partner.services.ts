@@ -512,7 +512,9 @@ export const getPartnerDashboardStatsService = async (
 export interface PartnerCourseCategorySlice {
   categoryId: string;
   categoryName: string;
+  audience: "college-students" | "professionals";
   enrollments: number;
+  completions: number;
 }
 
 export interface PartnerCourseListItem {
@@ -548,22 +550,68 @@ const EMPTY_COURSES_RESULT: PartnerCoursesResult = {
 
 /**
  * Courses the partner's college students have enrolled in, with top-line stats
- * and a category breakdown for the pie chart. Course enrolments count
+ * and a category breakdown for the pie chart. Course enrollments count
  * `status ∈ {active, completed}` only, consistent with the dashboard stats.
  */
 export const getPartnerCoursesService = async (
   partnerCollegeId: mongoose.Types.ObjectId,
 ): Promise<PartnerCoursesResult> => {
   const roster = await getPartnerScopedStudentIds(partnerCollegeId);
-  if (roster.length === 0) return EMPTY_COURSES_RESULT;
+
+  const allCategories = await CategoryModel.find({ isActive: true })
+    .select("_id name audience sortOrder")
+    .lean();
+  const categoryMeta = new Map<
+    string,
+    {
+      name: string;
+      audience: "college-students" | "professionals";
+      sortOrder: number;
+    }
+  >(
+    allCategories.map((c) => [
+      String(c._id),
+      {
+        name: String((c as { name?: string }).name ?? "Uncategorised"),
+        audience:
+          ((c as { audience?: "college-students" | "professionals" }).audience ??
+            "college-students"),
+        sortOrder: Number((c as { sortOrder?: number }).sortOrder ?? 999),
+      },
+    ]),
+  );
+
+  const buildEmptyBreakdown = (): PartnerCourseCategorySlice[] =>
+    allCategories
+      .map((c) => {
+        const meta = categoryMeta.get(String(c._id))!;
+        return {
+          categoryId: String(c._id),
+          categoryName: meta.name,
+          audience: meta.audience,
+          enrollments: 0,
+          completions: 0,
+        };
+      })
+      .sort(
+        (a, b) =>
+          categoryMeta.get(a.categoryId)!.sortOrder -
+          categoryMeta.get(b.categoryId)!.sortOrder,
+      );
+
+  if (roster.length === 0) {
+    return { ...EMPTY_COURSES_RESULT, categoryBreakdown: buildEmptyBreakdown() };
+  }
 
   const enrollments = await EnrollmentModel.find({
     userId: { $in: roster },
     status: { $in: ["active", "completed"] },
   })
-    .select("userId courseId")
+    .select("userId courseId status")
     .lean();
-  if (enrollments.length === 0) return EMPTY_COURSES_RESULT;
+  if (enrollments.length === 0) {
+    return { ...EMPTY_COURSES_RESULT, categoryBreakdown: buildEmptyBreakdown() };
+  }
 
   const perCourseLearners = new Map<string, Set<string>>();
   const distinctLearners = new Set<string>();
@@ -586,25 +634,12 @@ export const getPartnerCoursesService = async (
     .lean();
 
   const courseCategoryIds = new Map<string, string[]>();
-  const allCategoryIds = new Set<string>();
   for (const c of courses) {
     const cats = (
       (c as unknown as { category?: mongoose.Types.ObjectId[] }).category ?? []
     ).map((x) => String(x));
     courseCategoryIds.set(String(c._id), cats);
-    cats.forEach((id) => allCategoryIds.add(id));
   }
-
-  const categories = await CategoryModel.find({
-    _id: {
-      $in: [...allCategoryIds].map((id) => new mongoose.Types.ObjectId(id)),
-    },
-  })
-    .select("_id name")
-    .lean();
-  const categoryNameById = new Map(
-    categories.map((c) => [String(c._id), String((c as { name?: string }).name ?? "")]),
-  );
 
   const courseList: PartnerCourseListItem[] = courses
     .map((c) => {
@@ -616,7 +651,7 @@ export const getPartnerCoursesService = async (
         slug: String((c as { slug?: string }).slug ?? ""),
         thumbnail: String((c as { thumbnail?: string }).thumbnail ?? ""),
         categories: catIds.map(
-          (id) => categoryNameById.get(id) ?? "Uncategorised",
+          (id) => categoryMeta.get(id)?.name ?? "Uncategorised",
         ),
         studentsEnrolled: perCourseLearners.get(courseId)?.size ?? 0,
       };
@@ -624,21 +659,41 @@ export const getPartnerCoursesService = async (
     .sort((a, b) => b.studentsEnrolled - a.studentsEnrolled);
 
   const categoryEnrollments = new Map<string, number>();
+  const categoryCompletions = new Map<string, number>();
   for (const e of enrollments) {
     const cats = courseCategoryIds.get(String(e.courseId)) ?? [];
+    const isCompleted = (e as { status?: string }).status === "completed";
     for (const catId of cats) {
-      categoryEnrollments.set(catId, (categoryEnrollments.get(catId) ?? 0) + 1);
+      categoryEnrollments.set(
+        catId,
+        (categoryEnrollments.get(catId) ?? 0) + 1,
+      );
+      if (isCompleted) {
+        categoryCompletions.set(
+          catId,
+          (categoryCompletions.get(catId) ?? 0) + 1,
+        );
+      }
     }
   }
-  const categoryBreakdown: PartnerCourseCategorySlice[] = [
-    ...categoryEnrollments.entries(),
-  ]
-    .map(([categoryId, count]) => ({
-      categoryId,
-      categoryName: categoryNameById.get(categoryId) ?? "Uncategorised",
-      enrollments: count,
-    }))
-    .sort((a, b) => b.enrollments - a.enrollments);
+
+  const categoryBreakdown: PartnerCourseCategorySlice[] = allCategories
+    .map((c) => {
+      const id = String(c._id);
+      const meta = categoryMeta.get(id)!;
+      return {
+        categoryId: id,
+        categoryName: meta.name,
+        audience: meta.audience,
+        enrollments: categoryEnrollments.get(id) ?? 0,
+        completions: categoryCompletions.get(id) ?? 0,
+      };
+    })
+    .sort(
+      (a, b) =>
+        categoryMeta.get(a.categoryId)!.sortOrder -
+        categoryMeta.get(b.categoryId)!.sortOrder,
+    );
 
   const certificatesIssued = await CertificateModel.countDocuments({
     certificateType: "course",
@@ -657,6 +712,506 @@ export const getPartnerCoursesService = async (
     },
     categoryBreakdown,
     courses: courseList,
+  };
+};
+
+export interface PartnerCoursesStudentRow {
+  userId: string;
+  name: string;
+  email: string;
+  coursesEnrolled: number;
+  coursesCompleted: number;
+  certificatesIssued: number;
+}
+
+export interface PartnerCoursesStudentsResult {
+  items: PartnerCoursesStudentRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+/**
+ * Paginated list of the partner's students with their course-enrollment
+ * aggregates. Sorted by student name. Optional `q` matches name/email
+ * case-insensitively.
+ */
+export const getPartnerCoursesStudentsService = async (
+  partnerCollegeId: mongoose.Types.ObjectId,
+  opts: { page: number; pageSize: number; q?: string },
+): Promise<PartnerCoursesStudentsResult> => {
+  const page = Math.max(1, Math.floor(opts.page));
+  const pageSize = Math.min(100, Math.max(1, Math.floor(opts.pageSize)));
+  const q = (opts.q ?? "").trim();
+
+  const roster = await getPartnerScopedStudentIds(partnerCollegeId);
+  if (roster.length === 0) {
+    return { items: [], total: 0, page, pageSize };
+  }
+
+  const userFilter: Record<string, unknown> = { _id: { $in: roster } };
+  if (q) {
+    const re = new RegExp(escapeRegex(q), "i");
+    userFilter.$or = [
+      { firstName: re },
+      { lastName: re },
+      { email: re },
+    ];
+  }
+
+  const total = await UserModel.countDocuments(userFilter);
+  if (total === 0) {
+    return { items: [], total: 0, page, pageSize };
+  }
+
+  const users = await UserModel.find(userFilter)
+    .select("_id firstName lastName email")
+    .collation({ locale: "en", strength: 2 })
+    .sort({ firstName: 1, lastName: 1 })
+    .skip((page - 1) * pageSize)
+    .limit(pageSize)
+    .lean();
+
+  const pageUserIds = users.map((u) => u._id);
+
+  const enrollments = await EnrollmentModel.find({
+    userId: { $in: pageUserIds },
+    status: { $in: ["active", "completed"] },
+  })
+    .select("userId status")
+    .lean();
+
+  const enrolledByUser = new Map<string, number>();
+  const completedByUser = new Map<string, number>();
+  for (const e of enrollments) {
+    const uid = String(e.userId);
+    enrolledByUser.set(uid, (enrolledByUser.get(uid) ?? 0) + 1);
+    if ((e as { status?: string }).status === "completed") {
+      completedByUser.set(uid, (completedByUser.get(uid) ?? 0) + 1);
+    }
+  }
+
+  const certs = await CertificateModel.find({
+    certificateType: "course",
+    userId: { $in: pageUserIds },
+    isLatest: true,
+    isActive: true,
+  })
+    .select("userId")
+    .lean();
+  const certsByUser = new Map<string, number>();
+  for (const c of certs) {
+    const uid = String((c as { userId?: unknown }).userId);
+    certsByUser.set(uid, (certsByUser.get(uid) ?? 0) + 1);
+  }
+
+  const items: PartnerCoursesStudentRow[] = users.map((u) => {
+    const uid = String(u._id);
+    const name =
+      `${(u as { firstName?: string }).firstName ?? ""} ${
+        (u as { lastName?: string }).lastName ?? ""
+      }`.trim() || "—";
+    return {
+      userId: uid,
+      name,
+      email: String((u as { email?: string }).email ?? ""),
+      coursesEnrolled: enrolledByUser.get(uid) ?? 0,
+      coursesCompleted: completedByUser.get(uid) ?? 0,
+      certificatesIssued: certsByUser.get(uid) ?? 0,
+    };
+  });
+
+  return { items, total, page, pageSize };
+};
+
+export type PartnerAudience = "college-students" | "professionals";
+
+export interface PartnerEnrollmentRow {
+  enrollmentId: string;
+  userId: string;
+  studentName: string;
+  email: string;
+  courseId: string;
+  courseTitle: string;
+  domains: string[];
+  audiences: PartnerAudience[];
+  status: "active" | "completed";
+  certified: boolean;
+}
+
+export interface PartnerEnrollmentFilterOptions {
+  courses: { courseId: string; title: string }[];
+  domains: { categoryId: string; name: string; audience: PartnerAudience }[];
+}
+
+export interface PartnerCoursesEnrollmentsResult {
+  items: PartnerEnrollmentRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+  filters: PartnerEnrollmentFilterOptions;
+}
+
+/**
+ * One row per (student × course) enrollment for the partner's roster, with
+ * the course's domains/audiences attached. Supports search + filtering by
+ * audience / domain / course. Includes the filter option lists (drawn from
+ * the partner's own enrollment data so dropdowns never show empty results).
+ */
+export const getPartnerCoursesEnrollmentsService = async (
+  partnerCollegeId: mongoose.Types.ObjectId,
+  opts: {
+    page: number;
+    pageSize: number;
+    q?: string;
+    audience?: PartnerAudience;
+    categoryId?: string;
+    courseId?: string;
+  },
+): Promise<PartnerCoursesEnrollmentsResult> => {
+  const page = Math.max(1, Math.floor(opts.page));
+  const pageSize = Math.min(100, Math.max(1, Math.floor(opts.pageSize)));
+  const q = (opts.q ?? "").trim().toLowerCase();
+  const audienceFilter = opts.audience;
+  const categoryFilter = (opts.categoryId ?? "").trim();
+  const courseFilter = (opts.courseId ?? "").trim();
+
+  const emptyResult: PartnerCoursesEnrollmentsResult = {
+    items: [],
+    total: 0,
+    page,
+    pageSize,
+    filters: { courses: [], domains: [] },
+  };
+
+  const roster = await getPartnerScopedStudentIds(partnerCollegeId);
+  if (roster.length === 0) return emptyResult;
+
+  const enrollments = await EnrollmentModel.find({
+    userId: { $in: roster },
+    status: { $in: ["active", "completed"] },
+  })
+    .select("_id userId courseId status")
+    .lean();
+  if (enrollments.length === 0) return emptyResult;
+
+  const userIdSet = new Set<string>();
+  const courseIdSet = new Set<string>();
+  for (const e of enrollments) {
+    userIdSet.add(String(e.userId));
+    courseIdSet.add(String(e.courseId));
+  }
+
+  const [users, courses, certs] = await Promise.all([
+    UserModel.find({ _id: { $in: [...userIdSet] } })
+      .select("_id firstName lastName email")
+      .lean(),
+    CourseModel.find({ _id: { $in: [...courseIdSet] } })
+      .select("_id title category")
+      .lean(),
+    CertificateModel.find({
+      certificateType: "course",
+      userId: { $in: [...userIdSet] },
+      courseId: { $in: [...courseIdSet] },
+      isLatest: true,
+      isActive: true,
+    })
+      .select("userId courseId")
+      .lean(),
+  ]);
+
+  const userById = new Map(
+    users.map((u) => [
+      String(u._id),
+      {
+        name:
+          `${(u as { firstName?: string }).firstName ?? ""} ${
+            (u as { lastName?: string }).lastName ?? ""
+          }`.trim() || "—",
+        email: String((u as { email?: string }).email ?? ""),
+      },
+    ]),
+  );
+
+  const courseCategoryIds = new Map<string, string[]>();
+  const courseTitleById = new Map<string, string>();
+  const allCategoryIds = new Set<string>();
+  for (const c of courses) {
+    const cid = String(c._id);
+    courseTitleById.set(cid, String((c as { title?: string }).title ?? ""));
+    const cats = (
+      (c as unknown as { category?: mongoose.Types.ObjectId[] }).category ?? []
+    ).map((x) => String(x));
+    courseCategoryIds.set(cid, cats);
+    cats.forEach((id) => allCategoryIds.add(id));
+  }
+
+  const categoryDocs = await CategoryModel.find({
+    _id: {
+      $in: [...allCategoryIds].map((id) => new mongoose.Types.ObjectId(id)),
+    },
+  })
+    .select("_id name audience sortOrder")
+    .lean();
+  const categoryById = new Map<
+    string,
+    { name: string; audience: PartnerAudience; sortOrder: number }
+  >(
+    categoryDocs.map((c) => [
+      String(c._id),
+      {
+        name: String((c as { name?: string }).name ?? "Uncategorised"),
+        audience:
+          ((c as { audience?: PartnerAudience }).audience ??
+            "college-students"),
+        sortOrder: Number((c as { sortOrder?: number }).sortOrder ?? 999),
+      },
+    ]),
+  );
+
+  const certPairs = new Set(
+    certs.map(
+      (c) =>
+        `${String((c as { userId?: unknown }).userId)}:${String(
+          (c as { courseId?: unknown }).courseId,
+        )}`,
+    ),
+  );
+
+  const allRows: PartnerEnrollmentRow[] = enrollments.map((e) => {
+    const uid = String(e.userId);
+    const cid = String(e.courseId);
+    const user = userById.get(uid);
+    const catIds = courseCategoryIds.get(cid) ?? [];
+    const domains: string[] = [];
+    const audienceSet = new Set<PartnerAudience>();
+    for (const id of catIds) {
+      const meta = categoryById.get(id);
+      if (meta) {
+        domains.push(meta.name);
+        audienceSet.add(meta.audience);
+      }
+    }
+    return {
+      enrollmentId: String(e._id),
+      userId: uid,
+      studentName: user?.name ?? "—",
+      email: user?.email ?? "",
+      courseId: cid,
+      courseTitle: courseTitleById.get(cid) ?? "",
+      domains,
+      audiences: [...audienceSet],
+      status:
+        (e as { status?: string }).status === "completed"
+          ? "completed"
+          : "active",
+      certified: certPairs.has(`${uid}:${cid}`),
+    };
+  });
+
+  let filtered = allRows;
+  if (q) {
+    filtered = filtered.filter(
+      (r) =>
+        r.studentName.toLowerCase().includes(q) ||
+        r.email.toLowerCase().includes(q) ||
+        r.courseTitle.toLowerCase().includes(q),
+    );
+  }
+  if (audienceFilter) {
+    filtered = filtered.filter((r) => r.audiences.includes(audienceFilter));
+  }
+  if (categoryFilter) {
+    const catName = categoryById.get(categoryFilter)?.name;
+    if (catName) {
+      filtered = filtered.filter((r) => r.domains.includes(catName));
+    } else {
+      filtered = [];
+    }
+  }
+  if (courseFilter) {
+    filtered = filtered.filter((r) => r.courseId === courseFilter);
+  }
+
+  filtered.sort((a, b) => {
+    const n = a.studentName.localeCompare(b.studentName);
+    return n !== 0 ? n : a.courseTitle.localeCompare(b.courseTitle);
+  });
+
+  const total = filtered.length;
+  const items = filtered.slice((page - 1) * pageSize, page * pageSize);
+
+  const filterCourses = [...courseIdSet]
+    .map((id) => ({ courseId: id, title: courseTitleById.get(id) ?? "" }))
+    .filter((c) => c.title)
+    .sort((a, b) => a.title.localeCompare(b.title));
+
+  const filterDomains = [...allCategoryIds]
+    .map((id) => {
+      const meta = categoryById.get(id);
+      if (!meta) return null;
+      return { categoryId: id, name: meta.name, audience: meta.audience };
+    })
+    .filter(
+      (x): x is { categoryId: string; name: string; audience: PartnerAudience } =>
+        x !== null,
+    )
+    .sort(
+      (a, b) =>
+        (categoryById.get(a.categoryId)?.sortOrder ?? 999) -
+          (categoryById.get(b.categoryId)?.sortOrder ?? 999) ||
+        a.name.localeCompare(b.name),
+    );
+
+  return {
+    items,
+    total,
+    page,
+    pageSize,
+    filters: { courses: filterCourses, domains: filterDomains },
+  };
+};
+
+/** Course IDs the partner's roster has active/completed enrollments in. */
+const getPartnerEnrolledCourseIds = async (
+  partnerCollegeId: mongoose.Types.ObjectId,
+): Promise<mongoose.Types.ObjectId[]> => {
+  const roster = await getPartnerScopedStudentIds(partnerCollegeId);
+  if (roster.length === 0) return [];
+  const ids = await EnrollmentModel.distinct("courseId", {
+    userId: { $in: roster },
+    status: { $in: ["active", "completed"] },
+  });
+  return ids.map((id) => new mongoose.Types.ObjectId(String(id)));
+};
+
+export interface PartnerFilterCoursesResult {
+  items: { courseId: string; title: string }[];
+  total: number;
+  page: number;
+  pageSize: number;
+  hasMore: boolean;
+}
+
+/**
+ * Paginated, searchable list of the courses the partner's roster has
+ * enrollments in. Used as the option source for the Course filter combobox.
+ */
+export const getPartnerFilterCoursesService = async (
+  partnerCollegeId: mongoose.Types.ObjectId,
+  opts: { page: number; pageSize: number; q?: string },
+): Promise<PartnerFilterCoursesResult> => {
+  const page = Math.max(1, Math.floor(opts.page));
+  const pageSize = Math.min(100, Math.max(1, Math.floor(opts.pageSize)));
+  const q = (opts.q ?? "").trim();
+
+  const courseIds = await getPartnerEnrolledCourseIds(partnerCollegeId);
+  if (courseIds.length === 0) {
+    return { items: [], total: 0, page, pageSize, hasMore: false };
+  }
+
+  const filter: Record<string, unknown> = { _id: { $in: courseIds } };
+  if (q) filter.title = { $regex: escapeRegex(q), $options: "i" };
+
+  const total = await CourseModel.countDocuments(filter);
+  if (total === 0) {
+    return { items: [], total: 0, page, pageSize, hasMore: false };
+  }
+
+  const docs = await CourseModel.find(filter)
+    .select("_id title")
+    .collation({ locale: "en", strength: 2 })
+    .sort({ title: 1 })
+    .skip((page - 1) * pageSize)
+    .limit(pageSize)
+    .lean();
+
+  const items = docs.map((c) => ({
+    courseId: String(c._id),
+    title: String((c as { title?: string }).title ?? ""),
+  }));
+
+  return {
+    items,
+    total,
+    page,
+    pageSize,
+    hasMore: page * pageSize < total,
+  };
+};
+
+export interface PartnerFilterDomainsResult {
+  items: { categoryId: string; name: string; audience: PartnerAudience }[];
+  total: number;
+  page: number;
+  pageSize: number;
+  hasMore: boolean;
+}
+
+/**
+ * Paginated, searchable list of domains (categories) attached to the courses
+ * the partner's roster has enrollments in. Used as the option source for the
+ * Domain filter combobox; optional `audience` narrows the list.
+ */
+export const getPartnerFilterDomainsService = async (
+  partnerCollegeId: mongoose.Types.ObjectId,
+  opts: {
+    page: number;
+    pageSize: number;
+    q?: string;
+    audience?: PartnerAudience;
+  },
+): Promise<PartnerFilterDomainsResult> => {
+  const page = Math.max(1, Math.floor(opts.page));
+  const pageSize = Math.min(100, Math.max(1, Math.floor(opts.pageSize)));
+  const q = (opts.q ?? "").trim();
+  const audience = opts.audience;
+
+  const courseIds = await getPartnerEnrolledCourseIds(partnerCollegeId);
+  if (courseIds.length === 0) {
+    return { items: [], total: 0, page, pageSize, hasMore: false };
+  }
+
+  const categoryIds = await CourseModel.distinct("category", {
+    _id: { $in: courseIds },
+  });
+  if (categoryIds.length === 0) {
+    return { items: [], total: 0, page, pageSize, hasMore: false };
+  }
+
+  const filter: Record<string, unknown> = {
+    _id: { $in: categoryIds.map((id) => new mongoose.Types.ObjectId(String(id))) },
+    isActive: true,
+  };
+  if (audience) filter.audience = audience;
+  if (q) filter.name = { $regex: escapeRegex(q), $options: "i" };
+
+  const total = await CategoryModel.countDocuments(filter);
+  if (total === 0) {
+    return { items: [], total: 0, page, pageSize, hasMore: false };
+  }
+
+  const docs = await CategoryModel.find(filter)
+    .select("_id name audience sortOrder")
+    .collation({ locale: "en", strength: 2 })
+    .sort({ sortOrder: 1, name: 1 })
+    .skip((page - 1) * pageSize)
+    .limit(pageSize)
+    .lean();
+
+  const items = docs.map((c) => ({
+    categoryId: String(c._id),
+    name: String((c as { name?: string }).name ?? "Uncategorised"),
+    audience:
+      ((c as { audience?: PartnerAudience }).audience ?? "college-students"),
+  }));
+
+  return {
+    items,
+    total,
+    page,
+    pageSize,
+    hasMore: page * pageSize < total,
   };
 };
 
@@ -806,6 +1361,7 @@ export interface PartnerInternshipsResult {
     totalInternships: number;
     totalEnrolled: number;
     appearedInExam: number;
+    offerLettersReceived: number;
     certificatesIssued: number;
   };
   internships: PartnerInternshipListItem[];
@@ -816,12 +1372,13 @@ const EMPTY_INTERNSHIPS_RESULT: PartnerInternshipsResult = {
     totalInternships: 0,
     totalEnrolled: 0,
     appearedInExam: 0,
+    offerLettersReceived: 0,
     certificatesIssued: 0,
   },
   internships: [],
 };
 
-/** Internship enrolments of the partner's roster, excluding `revoked`. */
+/** Internship enrollments of the partner's roster, excluding `revoked`. */
 export const getPartnerInternshipsService = async (
   partnerCollegeId: mongoose.Types.ObjectId,
 ): Promise<PartnerInternshipsResult> => {
@@ -832,12 +1389,13 @@ export const getPartnerInternshipsService = async (
     user: { $in: roster },
     status: { $ne: "revoked" },
   })
-    .select("internship user examAttemptedAt")
+    .select("internship user examAttemptedAt offerLetterGeneratedAt")
     .lean();
   if (enrollments.length === 0) return EMPTY_INTERNSHIPS_RESULT;
 
   const perInternshipLearners = new Map<string, Set<string>>();
   let appearedInExam = 0;
+  let offerLettersReceived = 0;
   for (const e of enrollments) {
     const internshipId = String((e as { internship?: unknown }).internship);
     if (!perInternshipLearners.has(internshipId)) {
@@ -847,6 +1405,9 @@ export const getPartnerInternshipsService = async (
       .get(internshipId)!
       .add(String((e as { user?: unknown }).user));
     if ((e as { examAttemptedAt?: unknown }).examAttemptedAt) appearedInExam++;
+    if ((e as { offerLetterGeneratedAt?: unknown }).offerLetterGeneratedAt) {
+      offerLettersReceived++;
+    }
   }
 
   const internshipIds = [...perInternshipLearners.keys()].map(
@@ -880,6 +1441,7 @@ export const getPartnerInternshipsService = async (
       totalInternships: list.length,
       totalEnrolled: enrollments.length,
       appearedInExam,
+      offerLettersReceived,
       certificatesIssued,
     },
     internships: list,

@@ -1,5 +1,5 @@
 import { useCallback, useState, useEffect } from "react";
-import { useForm, UseFormReturn } from "react-hook-form";
+import { useForm, UseFormReturn, type FieldErrors } from "react-hook-form";
 import {
   InternshipFormData,
   UseInternshipFormOptions,
@@ -73,8 +73,6 @@ const getInitialFormData = (
     certificationThreshold: 0,
     featured: false,
     headerList: [],
-    documentationStartAt: "",
-    documentationEndAt: "",
     discount: createDefaultInternshipDiscount(),
     analytics: createDefaultInternshipAnalytics(),
     batches: isEditMode
@@ -92,6 +90,8 @@ const getInitialFormData = (
             entranceExamEndAt: "",
             certificationExamTemplateId: null,
             taskTemplateIds: [],
+            documentationStartAt: "",
+            documentationEndAt: "",
           },
         ],
     perks: [],
@@ -123,6 +123,71 @@ const getInitialFormData = (
     internshipId,
   };
 };
+
+/** Read a dotted/array path (e.g. `batches.0.documentationStartAt`) off an object. */
+function getByPath(obj: unknown, path: string): unknown {
+  return path.split(".").reduce<unknown>((acc, key) => {
+    if (acc && typeof acc === "object") {
+      return (acc as Record<string, unknown>)[key];
+    }
+    return undefined;
+  }, obj);
+}
+
+/**
+ * Collect human-readable error messages for the given field paths from a
+ * react-hook-form errors object, prefixing batch fields with "Batch N:" so the
+ * validation toast names exactly what failed instead of a generic message.
+ */
+function collectFieldErrorMessages(
+  errors: FieldErrors<InternshipFormData>,
+  names: string[],
+): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const name of names) {
+    const node = getByPath(errors, name);
+    const message =
+      node && typeof node === "object" && "message" in node
+        ? String((node as { message?: unknown }).message ?? "").trim()
+        : "";
+    if (!message) continue;
+    const batchMatch = name.match(/^batches\.(\d+)\./);
+    const label = batchMatch
+      ? `Batch ${Number(batchMatch[1]) + 1}: ${message}`
+      : message;
+    if (!seen.has(label)) {
+      seen.add(label);
+      out.push(label);
+    }
+  }
+  return out;
+}
+
+/**
+ * Validate every batch's documentation window straight from form values.
+ * Batch cards are collapsible, so the per-field react-hook-form rules don't
+ * run while a batch is collapsed — this data-level check works either way.
+ */
+function collectBatchDocWindowErrors(
+  batches: InternshipFormData["batches"] | undefined,
+): string[] {
+  const out: string[] = [];
+  (batches ?? []).forEach((b, i) => {
+    const name = String(b?.name ?? "").trim();
+    const label = name ? `Batch "${name}"` : `Batch ${i + 1}`;
+    const start = String(b?.documentationStartAt ?? "").trim();
+    const end = String(b?.documentationEndAt ?? "").trim();
+    if (!start || !end) {
+      out.push(
+        `${label}: documentation submission window (opens & closes) is required`,
+      );
+    } else if (new Date(end).getTime() <= new Date(start).getTime()) {
+      out.push(`${label}: documentation must close after it opens`);
+    }
+  });
+  return out;
+}
 
 /** Normalize populated docs or raw ids from GET responses into form id strings. */
 const toIdStringList = (items: unknown): string[] => {
@@ -263,8 +328,6 @@ const transformFormDataToInternship = (
     headerList: formData.headerList
       .map((s) => String(s).trim())
       .filter((s) => s.length > 0),
-    documentationStartAt: formData.documentationStartAt?.trim() || undefined,
-    documentationEndAt: formData.documentationEndAt?.trim() || undefined,
     discount: formData.discount,
     analytics: formData.analytics,
     batches: formData.batches.map((b): InternshipBatchApiPayload => {
@@ -310,6 +373,22 @@ const transformFormDataToInternship = (
       } else if (b._id) {
         row.entranceExamStartAt = null;
         row.entranceExamEndAt = null;
+      }
+      const docStartRaw = (b.documentationStartAt ?? "").trim();
+      const docEndRaw = (b.documentationEndAt ?? "").trim();
+      if (docStartRaw) {
+        const d = new Date(docStartRaw);
+        if (Number.isNaN(d.getTime())) {
+          throw new Error("Invalid documentation start (use ISO UTC)");
+        }
+        row.documentationStartAt = d;
+      }
+      if (docEndRaw) {
+        const d = new Date(docEndRaw);
+        if (Number.isNaN(d.getTime())) {
+          throw new Error("Invalid documentation end (use ISO UTC)");
+        }
+        row.documentationEndAt = d;
       }
       return row;
     }) as unknown as InternshipBatches[],
@@ -364,14 +443,6 @@ const transformInternshipToFormData = (
     headerList: Array.isArray(internship.headerList)
       ? [...internship.headerList]
       : [],
-    documentationStartAt:
-      typeof internship.documentationStartAt === "string"
-        ? internship.documentationStartAt
-        : "",
-    documentationEndAt:
-      typeof internship.documentationEndAt === "string"
-        ? internship.documentationEndAt
-        : "",
     discount: normalizeDiscountFromApi(internship.discount ?? undefined),
     analytics: normalizeInternshipAnalyticsFromApi(internship.analytics),
     batches: ensureBatchPlans(
@@ -418,6 +489,20 @@ const transformInternshipToFormData = (
         taskTemplateIds: Array.isArray(b.taskTemplateIds)
           ? b.taskTemplateIds.map((id) => String(id))
           : [],
+        documentationStartAt: (() => {
+          const raw = (b as { documentationStartAt?: Date | string })
+            .documentationStartAt;
+          if (raw == null) return "";
+          const d = new Date(raw as string | Date);
+          return Number.isNaN(d.getTime()) ? "" : d.toISOString();
+        })(),
+        documentationEndAt: (() => {
+          const raw = (b as { documentationEndAt?: Date | string })
+            .documentationEndAt;
+          if (raw == null) return "";
+          const d = new Date(raw as string | Date);
+          return Number.isNaN(d.getTime()) ? "" : d.toISOString();
+        })(),
       })),
     ),
     perks: internship.perks || [],
@@ -725,26 +810,58 @@ export const useInternshipForm = (
 
   const ensureDocumentationWindowValidated =
     useCallback(async (): Promise<boolean> => {
-      const ok = await trigger([
-        "documentationStartAt",
-        "documentationEndAt",
-      ] as Parameters<typeof trigger>[0]);
+      const batches = getValues("batches") ?? [];
+      if (batches.length === 0) return true;
+      const names = batches.flatMap((_, i) => [
+        `batches.${i}.documentationStartAt`,
+        `batches.${i}.documentationEndAt`,
+      ]);
+      const ok = await trigger(names as Parameters<typeof trigger>[0]);
       if (!ok) {
         toast.error(
-          "Documentation submission opens and closes (IST) are required.",
+          "Each batch needs a documentation submission window (opens and closes).",
         );
       }
       return ok;
-    }, [trigger]);
+    }, [getValues, trigger]);
 
   const nextScreen = useCallback(async () => {
-    const ok = await validateCurrentScreen();
-    if (!ok) {
-      toast.error("Please fix the errors before continuing.");
+    const rhfOk = await validateCurrentScreen();
+
+    // Screen 2 batch documentation windows live in collapsible cards — check
+    // them at the data level so a collapsed batch can't slip an empty window
+    // past validation with no visible error.
+    const batchDocErrors =
+      currentScreen === 2
+        ? collectBatchDocWindowErrors(getValues("batches"))
+        : [];
+
+    if (!rhfOk || batchDocErrors.length > 0) {
+      const names = getInternshipScreenTriggerFields(currentScreen, {
+        batches: getValues("batches"),
+        discount: getValues("discount"),
+        headerList: getValues("headerList"),
+      }).filter(
+        // documentation fields are covered by the data-level check above
+        (n) =>
+          !n.endsWith(".documentationStartAt") &&
+          !n.endsWith(".documentationEndAt"),
+      );
+      const rhfMessages = collectFieldErrorMessages(formState.errors, names);
+      const messages = [...new Set([...batchDocErrors, ...rhfMessages])];
+      if (messages.length === 0) {
+        toast.error("Please fix the errors before continuing.");
+      } else if (messages.length === 1) {
+        toast.error(messages[0]);
+      } else {
+        const shown = messages.slice(0, 3).join(" · ");
+        const extra = messages.length > 3 ? ` · +${messages.length - 3} more` : "";
+        toast.error(`Fix these to continue: ${shown}${extra}`);
+      }
       return;
     }
     setCurrentScreen((prev) => getNextInternshipWizardScreen(prev));
-  }, [validateCurrentScreen]);
+  }, [validateCurrentScreen, currentScreen, getValues, formState]);
 
   useEffect(() => {
     const initialData = getInitialData();

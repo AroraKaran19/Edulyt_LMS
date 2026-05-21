@@ -50,6 +50,16 @@ const internshipLiveMeetingSchema = new mongoose.Schema(
         message: "Meeting link must be a valid URL (http:// or https://)",
       },
     },
+    /** Optional link to the recorded session, set after the meeting. */
+    recordingLink: {
+      type: String,
+      trim: true,
+      default: "",
+      validate: {
+        validator: (v: string) => !v || validateUrl(v),
+        message: "Recording link must be a valid URL (http:// or https://)",
+      },
+    },
 
     startDateTime: { type: Date, required: true },
     endDateTime: { type: Date, default: null },

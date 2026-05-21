@@ -24,25 +24,46 @@ function coerceDocumentationDate(v: unknown): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-/** Every internship must have a valid post-result documentation window (IST stored as UTC). */
+/** Every batch must have a valid post-result documentation window (IST stored as UTC). */
 function assertDocumentationSubmissionWindow(
   start: unknown,
   end: unknown,
+  context?: string,
 ): void {
   const s = coerceDocumentationDate(start);
   const e = coerceDocumentationDate(end);
+  const prefix = context ? `${context}: ` : "";
   if (!s || !e) {
     throw new AppError(
-      "Documentation submission window (start and end) is required.",
+      `${prefix}Documentation submission window (start and end) is required.`,
       400,
     );
   }
   if (e.getTime() <= s.getTime()) {
     throw new AppError(
-      "Documentation submission end must be after start.",
+      `${prefix}Documentation submission end must be after start.`,
       400,
     );
   }
+}
+
+/** Validate the documentation window of every batch in the payload. */
+function assertBatchDocumentationWindows(
+  batches: Internship["batches"] | undefined,
+): void {
+  if (!Array.isArray(batches)) return;
+  batches.forEach((b, i) => {
+    const label =
+      typeof (b as { name?: unknown }).name === "string" &&
+      (b as { name: string }).name.trim()
+        ? `Batch "${(b as { name: string }).name.trim()}"`
+        : `Batch ${i + 1}`;
+    assertDocumentationSubmissionWindow(
+      (b as { documentationStartAt?: unknown }).documentationStartAt,
+      (b as { documentationEndAt?: unknown }).documentationEndAt,
+      label,
+    );
+  });
 }
 
 const emptyInternshipAnalytics = (): InternshipAnalytics => ({
@@ -735,10 +756,7 @@ export const createInternshipService = async (
   data: Partial<Internship>,
   createdBy: string,
 ): Promise<Internship> => {
-  assertDocumentationSubmissionWindow(
-    data.documentationStartAt,
-    data.documentationEndAt,
-  );
+  assertBatchDocumentationWindows(data.batches);
   const { batches, ...rest } = data;
   const doc = await InternshipModel.create({
     ...rest,
@@ -759,37 +777,30 @@ export const updateInternshipService = async (
   if (!mongoose.Types.ObjectId.isValid(id)) return null;
 
   const existingSnap = await InternshipModel.findById(id)
-    .select("documentationStartAt documentationEndAt batches")
+    .select("batches")
     .lean();
   if (!existingSnap) return null;
 
   let payload: Partial<Internship> = { ...data };
-  if (Array.isArray(data.batches) && actingUserId) {
-    const prev = existingSnap.batches ?? [];
-    payload = {
-      ...data,
-      batches: data.batches.map((b, i) => {
-        const prior = prev[i] as { createdBy?: unknown } | undefined;
-        const existingId =
-          prior?.createdBy != null ? String(prior.createdBy) : undefined;
-        return {
-          ...b,
-          createdBy: existingId ?? actingUserId,
-        };
-      }) as Internship["batches"],
-    };
+  if (Array.isArray(data.batches)) {
+    // The documentation window is required on every batch in the payload.
+    assertBatchDocumentationWindows(data.batches);
+    if (actingUserId) {
+      const prev = existingSnap.batches ?? [];
+      payload = {
+        ...data,
+        batches: data.batches.map((b, i) => {
+          const prior = prev[i] as { createdBy?: unknown } | undefined;
+          const existingId =
+            prior?.createdBy != null ? String(prior.createdBy) : undefined;
+          return {
+            ...b,
+            createdBy: existingId ?? actingUserId,
+          };
+        }) as Internship["batches"],
+      };
+    }
   }
-
-  const mergedStart = Object.prototype.hasOwnProperty.call(
-    data,
-    "documentationStartAt",
-  )
-    ? data.documentationStartAt
-    : existingSnap.documentationStartAt;
-  const mergedEnd = Object.prototype.hasOwnProperty.call(data, "documentationEndAt")
-    ? data.documentationEndAt
-    : existingSnap.documentationEndAt;
-  assertDocumentationSubmissionWindow(mergedStart, mergedEnd);
 
   const doc = await InternshipModel.findByIdAndUpdate(id, payload, {
     new: true,

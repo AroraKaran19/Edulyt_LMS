@@ -34,6 +34,7 @@ import internshipVoucherRoutes from "./internshipVoucher.routes";
 import internshipLiveMeetingRoutes from "./liveMeeting.routes";
 import homePageSettingsRoutes from "./homePageSettings.routes";
 import announcementRoutes from "./announcement.routes";
+import referralRoutes from "./referral.routes";
 
 export {
   authRoutes,
@@ -72,4 +73,5 @@ export {
   internshipLiveMeetingRoutes,
   homePageSettingsRoutes,
   announcementRoutes,
+  referralRoutes,
 };

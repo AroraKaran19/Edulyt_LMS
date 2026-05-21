@@ -24,10 +24,17 @@
     "scripts:remove-certificates-all": "ts-node src/scripts/remove-certificates-all.ts",
     "scripts:import-colleges": "ts-node src/scripts/import-colleges-json.ts",
     "scripts:college-students": "ts-node src/scripts/college-student-counts.ts",
+    "scripts:export-students-by-college": "ts-node src/scripts/export-students-with-college.ts",
     "scripts:remove-enrollments-window": "ts-node src/scripts/remove-enrollments-by-enrolledAt-window.ts",
     "scripts:seed-home-page": "ts-node src/scripts/seed-home-page-settings.ts",
     "scripts:wipe-questions": "ts-node src/scripts/wipe-internship-questions.ts",
-    "scripts:wipe-questions:confirm": "ts-node src/scripts/wipe-internship-questions.ts --confirm"
+    "scripts:wipe-questions:confirm": "ts-node src/scripts/wipe-internship-questions.ts --confirm",
+    "scripts:migrate-task-due-days": "ts-node src/scripts/migrate-task-due-days.ts",
+    "scripts:migrate-task-due-days:apply": "ts-node src/scripts/migrate-task-due-days.ts --apply",
+    "scripts:migrate-documentation-to-batch": "ts-node src/scripts/migrate-documentation-to-batch.ts",
+    "scripts:migrate-documentation-to-batch:apply": "ts-node src/scripts/migrate-documentation-to-batch.ts --apply",
+    "scripts:cleanup-orphan-task-templates": "ts-node src/scripts/cleanup-orphan-task-templates.ts",
+    "scripts:cleanup-orphan-task-templates:apply": "ts-node src/scripts/cleanup-orphan-task-templates.ts --apply"
   },
   "keywords": [
     "airkrit",

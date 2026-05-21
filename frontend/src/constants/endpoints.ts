@@ -156,6 +156,9 @@ export const ENDPOINTS = {
     /** GET — enrolled-program detail + unlocked tasks by internship slug. */
     meProgramBySlug: (slug: string) =>
       `/internship-enrollments/me/program/${encodeURIComponent(slug)}`,
+    /** GET — paginated live-meetings (history + upcoming) for the learner's batch. */
+    meProgramLiveMeetingsBySlug: (slug: string) =>
+      `/internship-enrollments/me/program/${encodeURIComponent(slug)}/live-meetings`,
     /** POST — learner submits Aadhar + photo to leave `pending_documentation`. */
     meSubmitDocumentation: (enrollmentId: string) =>
       `/internship-enrollments/me/${encodeURIComponent(enrollmentId)}/documentation`,
@@ -283,6 +286,29 @@ export const ENDPOINTS = {
     me: "/internship-vouchers/me",
     /** POST — redeem a voucher by id or code. */
     redeem: "/internship-vouchers/redeem",
+  },
+
+  /** Referral module — per-user referral code, commission accrual, withdrawals. */
+  referral: {
+    /** GET — overview (code, balance, tiers, recent sales, UPI). Lazy-creates the profile. */
+    me: "/referral/me",
+    /** PATCH — set/update payout UPI: body { upiId }. */
+    meUpi: "/referral/me/upi",
+    /** POST — validate a referral code: body { code } → { valid, referrerName? }. */
+    validateCode: "/referral/validate-code",
+    /** GET — paginated commission transactions for the current user. */
+    meSales: "/referral/me/sales",
+    /** POST — request a withdrawal: body { amount }. */
+    meWithdrawals: "/referral/me/withdrawals",
+    /** GET — paginated withdrawal history for the current user. */
+    meWithdrawalsList: "/referral/me/withdrawals",
+    /** Admin — global commission tier configuration. */
+    adminConfig: "/referral/admin/config",
+    /** Admin — paginated list of all withdrawal requests. */
+    adminWithdrawals: "/referral/admin/withdrawals",
+    /** Admin — PATCH transition: body { status, notes? }. */
+    adminWithdrawalStatus: (id: string) =>
+      `/referral/admin/withdrawals/${encodeURIComponent(id)}/status`,
   },
 
   // QnA Routes

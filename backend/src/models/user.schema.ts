@@ -163,6 +163,11 @@ const userSchema = new mongoose.Schema<User>(
       default: {},
     },
     dob: { type: Date, required: false },
+    gender: {
+      type: String,
+      enum: ["male", "female", "other"],
+      required: false,
+    },
     permissions: {
       type: [String],
       required: true,
@@ -320,6 +325,21 @@ const studentSchema = new mongoose.Schema<Student>({
   currentPosition: { type: String, required: false },
   currentCompany: { type: String, required: false },
   domain: { type: String, required: false },
+  // Free-text LinkedIn profile URL entered by the learner (e.g. on the
+  // internship enrollment form). The OAuth provider snapshot lives in
+  // `accounts.linkedin` and is separate.
+  linkedinUrl: {
+    type: String,
+    required: false,
+    trim: true,
+    validate: {
+      validator: function (v: string) {
+        if (!v) return true;
+        return /^https?:\/\/(www\.)?linkedin\.com\/.+/.test(v);
+      },
+      message: "Invalid LinkedIn URL format",
+    },
+  },
   portfolio: {
     type: String,
     required: false,

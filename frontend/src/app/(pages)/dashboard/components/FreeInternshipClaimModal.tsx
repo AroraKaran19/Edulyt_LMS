@@ -2,22 +2,50 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "react-toastify";
 import Modal from "@/components/ui/Modal";
 import { ENDPOINTS } from "@/constants/endpoints";
 import apiClient from "@/configs/apiConfig";
 import { type InternshipVoucher } from "@/hooks/useInternshipVouchers";
-import type { InternshipPublicListing, InternshipEnrollPreviewBatch } from "@/types";
+import {
+  fetchMyInternshipEnrollmentsPage,
+  notifyDashboardMyInternshipsChanged,
+} from "@/hooks/useMyInternshipEnrollments";
+import type {
+  InternshipPublicListing,
+  InternshipEnrollPreviewBatch,
+  InternshipEnrollmentListRow,
+} from "@/types";
 import { cn } from "@/lib/utils";
-import { ChevronRight, Loader2, Tag } from "lucide-react";
+import { ChevronRight, Info, Loader2, Tag } from "lucide-react";
 
-type Step = "pick-internship" | "pick-batch" | "confirm";
+type Step =
+  | "loading"
+  | "existing-list"
+  | "pick-internship"
+  | "pick-batch"
+  | "confirm";
 
 interface Props {
   isOpen: boolean;
   /** The voucher to spend. */
   voucher: InternshipVoucher | null;
   onClose: () => void;
+  /** Called after a voucher is successfully redeemed (parent should refetch). */
+  onRedeemed?: () => void;
 }
+
+/**
+ * Entrance-flow statuses a voucher can upgrade in place (mirrors the backend
+ * `upgradeableStatuses` in `redeemInternshipVoucher`). When the learner has an
+ * enrollment in one of these, the voucher confirms that exact internship+batch
+ * — so we lock the picker to it instead of letting them choose freely.
+ */
+const UPGRADEABLE_STATUSES = [
+  "exam_registered",
+  "exam_attempted",
+  "admin_rejected",
+];
 
 function formatDate(iso: string | null | undefined) {
   if (!iso) return null;
@@ -28,36 +56,77 @@ function formatDate(iso: string | null | undefined) {
   });
 }
 
+/** Normalised view of an existing enrollment the voucher can confirm. */
+interface ExistingChoice {
+  enrollmentId: string;
+  internshipId: string;
+  slug: string;
+  title: string;
+  batchId: string;
+  batchName: string;
+  startDate?: string;
+}
+
+function toExistingChoice(
+  row: InternshipEnrollmentListRow,
+): ExistingChoice | null {
+  const internshipId = row.internship?._id;
+  const slug = row.internship?.slug ?? row.internshipSnapshot?.slug;
+  const title =
+    row.internship?.title ?? row.internshipSnapshot?.title ?? "Internship";
+  const batchId = row.batchSnapshot?.batchId;
+  const batchName = row.batchSnapshot?.name;
+  if (!internshipId || !slug || !batchId || !batchName) return null;
+  return {
+    enrollmentId: row._id,
+    internshipId,
+    slug,
+    title,
+    batchId,
+    batchName,
+    startDate: row.batchSnapshot?.internshipStartDate,
+  };
+}
+
 export default function FreeInternshipClaimModal({
   isOpen,
   voucher,
   onClose,
+  onRedeemed,
 }: Props) {
   const router = useRouter();
 
-  const [step, setStep] = useState<Step>("pick-internship");
+  const [step, setStep] = useState<Step>("loading");
+  const [redeeming, setRedeeming] = useState(false);
+
+  // Existing-enrollment (restricted) flow.
+  const [existingChoices, setExistingChoices] = useState<ExistingChoice[]>([]);
+  const [selectedExisting, setSelectedExisting] =
+    useState<ExistingChoice | null>(null);
+
+  // Free-pick flow (no existing enrollment).
   const [internships, setInternships] = useState<InternshipPublicListing[]>([]);
   const [listLoading, setListLoading] = useState(false);
-
   const [selectedInternship, setSelectedInternship] =
     useState<InternshipPublicListing | null>(null);
   const [batches, setBatches] = useState<InternshipEnrollPreviewBatch[]>([]);
   const [batchLoading, setBatchLoading] = useState(false);
-
   const [selectedBatch, setSelectedBatch] =
     useState<InternshipEnrollPreviewBatch | null>(null);
 
-  // Reset state whenever the modal opens/closes.
+  // Reset state whenever the modal closes.
   useEffect(() => {
     if (!isOpen) {
-      setStep("pick-internship");
+      setStep("loading");
+      setRedeeming(false);
+      setExistingChoices([]);
+      setSelectedExisting(null);
       setSelectedInternship(null);
       setBatches([]);
       setSelectedBatch(null);
     }
   }, [isOpen]);
 
-  // Load open internships when modal opens.
   const fetchInternships = useCallback(async () => {
     setListLoading(true);
     try {
@@ -74,11 +143,50 @@ export default function FreeInternshipClaimModal({
     }
   }, []);
 
+  // On open: check for existing entrance registrations. If found, lock the
+  // flow to those; otherwise fall back to the free internship/batch picker.
   useEffect(() => {
-    if (isOpen) fetchInternships();
+    if (!isOpen) return;
+    let cancelled = false;
+    setStep("loading");
+    (async () => {
+      try {
+        const page = await fetchMyInternshipEnrollmentsPage({
+          page: 1,
+          limit: 50,
+          statuses: UPGRADEABLE_STATUSES,
+        });
+        if (cancelled) return;
+        const choices = page.enrollments
+          .map(toExistingChoice)
+          .filter((c): c is ExistingChoice => c !== null);
+        if (choices.length > 0) {
+          setExistingChoices(choices);
+          // Single registration → jump straight to confirm.
+          if (choices.length === 1) {
+            setSelectedExisting(choices[0]);
+            setStep("confirm");
+          } else {
+            setStep("existing-list");
+          }
+          return;
+        }
+        // No existing registration — open the free picker.
+        setStep("pick-internship");
+        void fetchInternships();
+      } catch {
+        if (cancelled) return;
+        // On failure, don't block the learner — fall back to free picker.
+        setStep("pick-internship");
+        void fetchInternships();
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [isOpen, fetchInternships]);
 
-  // Load batches for the chosen internship.
+  // Load batches for the chosen internship (free-pick flow only).
   const fetchBatches = useCallback(async (slug: string) => {
     setBatchLoading(true);
     try {
@@ -108,32 +216,76 @@ export default function FreeInternshipClaimModal({
     setStep("confirm");
   };
 
-  const handleConfirm = () => {
-    if (
-      !voucher ||
-      !selectedInternship?.slug ||
-      !selectedBatch?._id
-    )
-      return;
-    // Route through the same public enroll form regular paid signups use, so
-    // applicationAnswers gets captured. The form detects `?voucher=` and
-    // submits to the voucher-redeem endpoint instead of paid + Paytm.
+  /** Build the enroll-form URL and navigate (free-pick flow only). */
+  const goToEnrollForm = (slug: string, batchId: string) => {
+    if (!voucher) return;
     const params = new URLSearchParams({
       flow: "seat",
-      batchId: selectedBatch._id,
+      batchId,
       voucher: voucher.code,
     });
     onClose();
     router.push(
-      `/internships/${encodeURIComponent(selectedInternship.slug)}/enroll?${params.toString()}`,
+      `/internships/${encodeURIComponent(slug)}/enroll?${params.toString()}`,
     );
   };
 
+  /**
+   * Redeem the voucher directly against an existing registration. The
+   * entrance registration already captured the enrollment form, so there's
+   * nothing to re-fill — the backend upgrades that row in place and keeps the
+   * stored answers.
+   */
+  const redeemForExisting = async (choice: ExistingChoice) => {
+    if (!voucher) return;
+    setRedeeming(true);
+    try {
+      await apiClient.post(ENDPOINTS.internshipVouchers.redeem, {
+        voucherIdOrCode: voucher.code,
+        internshipId: choice.internshipId,
+        batchId: choice.batchId,
+      });
+      toast.success("Voucher redeemed — your seat is confirmed!");
+      notifyDashboardMyInternshipsChanged();
+      onRedeemed?.();
+      onClose();
+      router.push("/dashboard/internships");
+    } catch (err: unknown) {
+      const msg =
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message ?? "Failed to redeem voucher. Please try again.";
+      toast.error(msg);
+      setRedeeming(false);
+    }
+  };
+
+  const handleConfirm = () => {
+    if (selectedExisting) {
+      void redeemForExisting(selectedExisting);
+      return;
+    }
+    if (selectedInternship?.slug && selectedBatch?._id) {
+      goToEnrollForm(selectedInternship.slug, selectedBatch._id);
+    }
+  };
+
   const titleMap: Record<Step, string> = {
+    loading: "Claim your voucher",
+    "existing-list": "Confirm your internship",
     "pick-internship": "Choose an internship",
     "pick-batch": "Choose a batch",
     confirm: "Confirm enrollment",
   };
+
+  const contactAdminNote = (
+    <div className="flex items-start gap-2 rounded-xl bg-gray-50 border border-gray-200 px-3 py-2.5">
+      <Info className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" />
+      <p className="text-xs text-gray-500 leading-relaxed">
+        Your voucher confirms the batch you already registered for. To switch
+        to a different batch or internship, please contact your program admin.
+      </p>
+    </div>
+  );
 
   return (
     <Modal
@@ -153,7 +305,53 @@ export default function FreeInternshipClaimModal({
         </div>
       )}
 
-      {/* ── Step 1: pick internship ─────────────────────────────────────── */}
+      {/* ── Loading ──────────────────────────────────────────────────────── */}
+      {step === "loading" && (
+        <div className="flex justify-center py-12">
+          <Loader2 className="animate-spin text-orange-500 w-7 h-7" />
+        </div>
+      )}
+
+      {/* ── Existing registrations: restricted list ──────────────────────── */}
+      {step === "existing-list" && (
+        <div className="flex flex-col gap-3">
+          <p className="text-sm text-gray-500">
+            You&apos;re already registered for the internship
+            {existingChoices.length === 1 ? "" : "s"} below. Pick which one to
+            confirm with your voucher.
+          </p>
+          <ul className="divide-y divide-gray-100 overflow-y-auto max-h-[50vh] rounded-xl border border-gray-100">
+            {existingChoices.map((c) => (
+              <li key={c.enrollmentId}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedExisting(c);
+                    setStep("confirm");
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-orange-50 transition-colors"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-800 leading-snug">
+                      {c.title}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Batch: {c.batchName}
+                      {c.startDate
+                        ? ` · Starts ${formatDate(c.startDate)}`
+                        : ""}
+                    </p>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
+                </button>
+              </li>
+            ))}
+          </ul>
+          {contactAdminNote}
+        </div>
+      )}
+
+      {/* ── Step 1: pick internship (free-pick flow) ─────────────────────── */}
       {step === "pick-internship" && (
         <div className="flex flex-col gap-3">
           <p className="text-sm text-gray-500">
@@ -197,7 +395,7 @@ export default function FreeInternshipClaimModal({
         </div>
       )}
 
-      {/* ── Step 2: pick batch ──────────────────────────────────────────── */}
+      {/* ── Step 2: pick batch (free-pick flow) ──────────────────────────── */}
       {step === "pick-batch" && selectedInternship && (
         <div className="flex flex-col gap-3">
           <button
@@ -252,63 +450,117 @@ export default function FreeInternshipClaimModal({
         </div>
       )}
 
-      {/* ── Step 3: confirm ─────────────────────────────────────────────── */}
-      {step === "confirm" && selectedInternship && selectedBatch && (
-        <div className="flex flex-col gap-4">
-          <button
-            type="button"
-            onClick={() => setStep("pick-batch")}
-            className="text-xs text-orange-600 hover:underline self-start"
-          >
-            ← Back
-          </button>
+      {/* ── Step 3: confirm ──────────────────────────────────────────────── */}
+      {step === "confirm" &&
+        (selectedExisting || (selectedInternship && selectedBatch)) && (
+          <div className="flex flex-col gap-4">
+            {/* Back button — only when there's somewhere to go back to. */}
+            {selectedExisting ? (
+              existingChoices.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedExisting(null);
+                    setStep("existing-list");
+                  }}
+                  className="text-xs text-orange-600 hover:underline self-start"
+                >
+                  ← Back
+                </button>
+              )
+            ) : (
+              <button
+                type="button"
+                onClick={() => setStep("pick-batch")}
+                className="text-xs text-orange-600 hover:underline self-start"
+              >
+                ← Back
+              </button>
+            )}
 
-          <div className="rounded-xl bg-orange-50 border border-orange-200 p-4 space-y-1.5">
-            <p className="text-xs font-semibold text-orange-600 uppercase tracking-wide">
-              Your selection
-            </p>
-            <p className="text-sm font-bold text-gray-900">
-              {selectedInternship.title}
-            </p>
-            <p className="text-sm text-gray-700">
-              Batch: <span className="font-medium">{selectedBatch.name}</span>
-            </p>
-            {selectedBatch.internshipStartDate && (
-              <p className="text-xs text-gray-500">
-                Starts {formatDate(selectedBatch.internshipStartDate)}
+            <div className="rounded-xl bg-orange-50 border border-orange-200 p-4 space-y-1.5">
+              <p className="text-xs font-semibold text-orange-600 uppercase tracking-wide">
+                Your selection
               </p>
-            )}
-            {selectedBatch.entranceExam?.examStartAt && (
-              <p className="text-xs text-orange-700">
-                Entrance exam: {formatDate(selectedBatch.entranceExam.examStartAt)}
-                {selectedBatch.entranceExam.examEndAt &&
-                  ` – ${formatDate(selectedBatch.entranceExam.examEndAt)}`}
+              <p className="text-sm font-bold text-gray-900">
+                {selectedExisting
+                  ? selectedExisting.title
+                  : selectedInternship?.title}
               </p>
-            )}
+              <p className="text-sm text-gray-700">
+                Batch:{" "}
+                <span className="font-medium">
+                  {selectedExisting
+                    ? selectedExisting.batchName
+                    : selectedBatch?.name}
+                </span>
+              </p>
+              {(() => {
+                const startDate = selectedExisting
+                  ? selectedExisting.startDate
+                  : selectedBatch?.internshipStartDate;
+                return startDate ? (
+                  <p className="text-xs text-gray-500">
+                    Starts {formatDate(startDate)}
+                  </p>
+                ) : null;
+              })()}
+              {!selectedExisting && selectedBatch?.entranceExam?.examStartAt && (
+                <p className="text-xs text-orange-700">
+                  Entrance exam:{" "}
+                  {formatDate(selectedBatch.entranceExam.examStartAt)}
+                  {selectedBatch.entranceExam.examEndAt &&
+                    ` – ${formatDate(selectedBatch.entranceExam.examEndAt)}`}
+                </p>
+              )}
+            </div>
+
+            {/* Existing registration → remind them switching needs admin. */}
+            {selectedExisting && contactAdminNote}
+
+            <p className="text-sm text-gray-600">
+              {selectedExisting ? (
+                <>
+                  Your registration details are already on file from your exam
+                  signup — no form to fill again. Voucher{" "}
+                  <span className="font-mono font-bold text-orange-600">
+                    {voucher?.code}
+                  </span>{" "}
+                  will be marked <strong>redeemed</strong> (single use) and your
+                  seat moves to the documentation step.
+                </>
+              ) : (
+                <>
+                  Continue to fill the enrollment form. Voucher{" "}
+                  <span className="font-mono font-bold text-orange-600">
+                    {voucher?.code}
+                  </span>{" "}
+                  will be applied on submission and marked as{" "}
+                  <strong>redeemed</strong> (it cannot be used again).
+                </>
+              )}
+            </p>
+
+            <button
+              type="button"
+              onClick={handleConfirm}
+              disabled={redeeming}
+              className={cn(
+                "w-full py-3 rounded-xl font-semibold text-white text-sm transition-all",
+                "bg-orange-500 hover:bg-orange-600 active:scale-[0.98]",
+                "disabled:opacity-60 disabled:cursor-not-allowed",
+                "flex items-center justify-center gap-2",
+              )}
+            >
+              {redeeming && <Loader2 className="w-4 h-4 animate-spin" />}
+              {selectedExisting
+                ? redeeming
+                  ? "Confirming…"
+                  : "Confirm my seat"
+                : "Continue to enrollment form"}
+            </button>
           </div>
-
-          <p className="text-sm text-gray-600">
-            Continue to fill the enrollment form. Voucher{" "}
-            <span className="font-mono font-bold text-orange-600">
-              {voucher?.code}
-            </span>{" "}
-            will be applied on submission and marked as{" "}
-            <strong>redeemed</strong> (it cannot be used again).
-          </p>
-
-          <button
-            type="button"
-            onClick={handleConfirm}
-            className={cn(
-              "w-full py-3 rounded-xl font-semibold text-white text-sm transition-all",
-              "bg-orange-500 hover:bg-orange-600 active:scale-[0.98]",
-              "flex items-center justify-center gap-2",
-            )}
-          >
-            Continue to enrollment form
-          </button>
-        </div>
-      )}
+        )}
     </Modal>
   );
 }

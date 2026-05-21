@@ -66,6 +66,8 @@ const orderSchema = new Schema<PaymentOrder>(
       ref: "PartnershipImportConfig",
       required: false,
     },
+    /** Referral code snapshot — payout to referrer, doesn't alter order amount. */
+    referralCode: { type: String, required: false, uppercase: true, trim: true },
   },
   { timestamps: true },
 );

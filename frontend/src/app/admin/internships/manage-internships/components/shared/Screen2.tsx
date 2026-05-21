@@ -36,6 +36,8 @@ const defaultBatch = () => ({
   entranceExamEndAt: "",
   certificationExamTemplateId: null as string | null,
   taskTemplateIds: [] as string[],
+  documentationStartAt: "",
+  documentationEndAt: "",
 });
 
 /** Form stores ISO strings; `datetime-local` shows the same instant as UTC clock components. */
@@ -608,6 +610,102 @@ const Screen2 = () => {
                           last UTC calendar day of their selected program length from cohort start.
                           Entrance timing is the batch window above (UTC).
                         </p>
+                      </div>
+
+                      <div className="rounded-xl border border-gray-200 bg-white p-4 flex flex-col gap-3">
+                        <p className="text-xs font-medium text-gray-800">
+                          Documentation submission window (post-result Aadhar +
+                          photo)
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          After result announcement, learners in this cohort
+                          submit Aadhar &amp; photo within this window. Until
+                          they do, tasks and the certification exam stay locked.
+                          Late submissions are accepted and flagged. Times are
+                          stored and enforced in{" "}
+                          <span className="font-medium">UTC</span> and are
+                          required for every batch.
+                        </p>
+                        <Controller
+                          name={`batches.${index}.documentationStartAt`}
+                          control={control}
+                          rules={{
+                            validate: (v) => {
+                              const start = String(v ?? "").trim();
+                              if (!start)
+                                return "Documentation opens date is required";
+                              const end = String(
+                                getValues(
+                                  `batches.${index}.documentationEndAt`,
+                                ) ?? "",
+                              ).trim();
+                              if (end && new Date(end) <= new Date(start)) {
+                                return "Documentation must close after it opens";
+                              }
+                              return true;
+                            },
+                          }}
+                          render={({ field: f }) => (
+                            <Input
+                              label="Documentation opens (UTC)"
+                              type="datetime-local"
+                              value={isoUtcToDatetimeLocal(f.value ?? "")}
+                              onChange={(e) => {
+                                const iso = datetimeLocalUtcToIso(
+                                  e.target.value,
+                                );
+                                f.onChange(iso || "");
+                              }}
+                              onBlur={f.onBlur}
+                              name={f.name}
+                              error={
+                                errors.batches?.[index]?.documentationStartAt
+                                  ?.message as string | undefined
+                              }
+                              required
+                            />
+                          )}
+                        />
+                        <Controller
+                          name={`batches.${index}.documentationEndAt`}
+                          control={control}
+                          rules={{
+                            validate: (v) => {
+                              const end = String(v ?? "").trim();
+                              if (!end)
+                                return "Documentation closes date is required";
+                              const start = String(
+                                getValues(
+                                  `batches.${index}.documentationStartAt`,
+                                ) ?? "",
+                              ).trim();
+                              if (start && new Date(end) <= new Date(start)) {
+                                return "Documentation must close after it opens";
+                              }
+                              return true;
+                            },
+                          }}
+                          render={({ field: f }) => (
+                            <Input
+                              label="Documentation closes (UTC)"
+                              type="datetime-local"
+                              value={isoUtcToDatetimeLocal(f.value ?? "")}
+                              onChange={(e) => {
+                                const iso = datetimeLocalUtcToIso(
+                                  e.target.value,
+                                );
+                                f.onChange(iso || "");
+                              }}
+                              onBlur={f.onBlur}
+                              name={f.name}
+                              error={
+                                errors.batches?.[index]?.documentationEndAt
+                                  ?.message as string | undefined
+                              }
+                              required
+                            />
+                          )}
+                        />
                       </div>
                     </div>
                   )}

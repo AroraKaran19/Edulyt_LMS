@@ -360,6 +360,37 @@ export const getLearnerProgramBySlugController = asyncHandler(
 );
 
 /**
+ * @route   GET /api/internship-enrollments/me/program/:slug/live-meetings
+ * @desc    Paginated live meetings (history + upcoming) for the learner's
+ *          batch on this program. Newest first.
+ * @access  Authenticated user (must be enrolled & past documentation)
+ */
+export const getLearnerProgramLiveMeetingsController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const userId = req.user?._id;
+    if (!userId) throw new AppError("Unauthorized", 401);
+    const slug =
+      typeof req.params.slug === "string" ? req.params.slug.trim() : "";
+    if (!slug) throw new AppError("slug is required", 400);
+    const page = Math.max(1, parseInt(String(req.query.page ?? "1"), 10) || 1);
+    const limit = Math.min(
+      50,
+      Math.max(1, parseInt(String(req.query.limit ?? "10"), 10) || 10),
+    );
+    const { getStudentLiveMeetingsBySlugPaginated } = await import(
+      "../services/liveMeeting.services"
+    );
+    const result = await getStudentLiveMeetingsBySlugPaginated(
+      new mongoose.Types.ObjectId(String(userId)),
+      slug,
+      page,
+      limit,
+    );
+    sendSuccessResponse(res, result, "Live meetings fetched", 200);
+  },
+);
+
+/**
  * @route   POST /api/internship-enrollments/me/:enrollmentId/documentation
  * @desc    Learner submits Aadhar + photo to leave `pending_documentation`
  * @body    { aadharCardNumber, learnerPhoto, learnerPhotoS3Key }

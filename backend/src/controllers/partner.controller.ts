@@ -10,6 +10,10 @@ import {
   getPartnerDashboardStatsService,
   getPartnerDashboardTrendsService,
   getPartnerCoursesService,
+  getPartnerCoursesStudentsService,
+  getPartnerCoursesEnrollmentsService,
+  getPartnerFilterCoursesService,
+  getPartnerFilterDomainsService,
   getPartnerCourseDetailService,
   getPartnerInternshipsService,
   getPartnerInternshipDetailService,
@@ -153,6 +157,102 @@ export const getPartnerCourses = asyncHandler(
     const collegeId = requirePartnerCollegeId(req);
     const result = await getPartnerCoursesService(collegeId);
     sendSuccessResponse(res, result, "Partner courses fetched");
+  },
+);
+
+export const getPartnerCoursesStudents = asyncHandler(
+  async (req: Request, res: Response) => {
+    requirePartnerAnalyticsAccess(req, "course");
+    const collegeId = requirePartnerCollegeId(req);
+    const page = Math.max(1, parseInt(String(req.query.page ?? "1"), 10) || 1);
+    const pageSize = Math.min(
+      100,
+      Math.max(1, parseInt(String(req.query.pageSize ?? "10"), 10) || 10),
+    );
+    const q = typeof req.query.q === "string" ? req.query.q : "";
+    const result = await getPartnerCoursesStudentsService(collegeId, {
+      page,
+      pageSize,
+      q,
+    });
+    sendSuccessResponse(res, result, "Partner courses students fetched");
+  },
+);
+
+export const getPartnerCoursesEnrollments = asyncHandler(
+  async (req: Request, res: Response) => {
+    requirePartnerAnalyticsAccess(req, "course");
+    const collegeId = requirePartnerCollegeId(req);
+    const page = Math.max(1, parseInt(String(req.query.page ?? "1"), 10) || 1);
+    const pageSize = Math.min(
+      100,
+      Math.max(1, parseInt(String(req.query.pageSize ?? "10"), 10) || 10),
+    );
+    const q = typeof req.query.q === "string" ? req.query.q : "";
+    const audienceRaw =
+      typeof req.query.audience === "string" ? req.query.audience : "";
+    const audience =
+      audienceRaw === "college-students" || audienceRaw === "professionals"
+        ? audienceRaw
+        : undefined;
+    const categoryId =
+      typeof req.query.categoryId === "string" ? req.query.categoryId : "";
+    const courseId =
+      typeof req.query.courseId === "string" ? req.query.courseId : "";
+    const result = await getPartnerCoursesEnrollmentsService(collegeId, {
+      page,
+      pageSize,
+      q,
+      audience,
+      categoryId,
+      courseId,
+    });
+    sendSuccessResponse(res, result, "Partner courses enrollments fetched");
+  },
+);
+
+export const getPartnerFilterCourses = asyncHandler(
+  async (req: Request, res: Response) => {
+    requirePartnerAnalyticsAccess(req, "course");
+    const collegeId = requirePartnerCollegeId(req);
+    const page = Math.max(1, parseInt(String(req.query.page ?? "1"), 10) || 1);
+    const pageSize = Math.min(
+      100,
+      Math.max(1, parseInt(String(req.query.pageSize ?? "25"), 10) || 25),
+    );
+    const q = typeof req.query.q === "string" ? req.query.q : "";
+    const result = await getPartnerFilterCoursesService(collegeId, {
+      page,
+      pageSize,
+      q,
+    });
+    sendSuccessResponse(res, result, "Partner filter courses fetched");
+  },
+);
+
+export const getPartnerFilterDomains = asyncHandler(
+  async (req: Request, res: Response) => {
+    requirePartnerAnalyticsAccess(req, "course");
+    const collegeId = requirePartnerCollegeId(req);
+    const page = Math.max(1, parseInt(String(req.query.page ?? "1"), 10) || 1);
+    const pageSize = Math.min(
+      100,
+      Math.max(1, parseInt(String(req.query.pageSize ?? "25"), 10) || 25),
+    );
+    const q = typeof req.query.q === "string" ? req.query.q : "";
+    const audienceRaw =
+      typeof req.query.audience === "string" ? req.query.audience : "";
+    const audience =
+      audienceRaw === "college-students" || audienceRaw === "professionals"
+        ? audienceRaw
+        : undefined;
+    const result = await getPartnerFilterDomainsService(collegeId, {
+      page,
+      pageSize,
+      q,
+      audience,
+    });
+    sendSuccessResponse(res, result, "Partner filter domains fetched");
   },
 );
 

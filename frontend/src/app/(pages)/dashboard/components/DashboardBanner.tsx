@@ -1,45 +1,17 @@
 "use client";
+import { useState } from "react";
 import Card from "./dashboard/ui/Card";
 import Image from "next/image";
-import useDashboardStats from "@/hooks/useDashboardStats";
-import useCertificates from "@/hooks/useCertificates";
 import { useSession } from "next-auth/react";
+import { Sparkles } from "lucide-react";
 import Loader from "@/components/ui/Loader";
-import { useEffect, useState } from "react";
-import {
-  DASHBOARD_MY_INTERNSHIPS_CHANGED,
-  fetchMyInternshipEnrollmentTotal,
-} from "@/hooks/useMyInternshipEnrollments";
+import useUserStats from "@/hooks/useUserStats";
+import ReferAndEarnModal from "@/components/shared/Referral/ReferAndEarnModal";
 
 const DashboardBanner = () => {
   const { data: session } = useSession();
-  const { stats, isLoading } = useDashboardStats();
-  const [internshipCount, setInternshipCount] = useState<number>(0);
-  const { total: certificateCount, fetchCertificates } = useCertificates();
-
-  useEffect(() => {
-    let cancelled = false;
-    const load = () => {
-      fetchMyInternshipEnrollmentTotal()
-        .then((t) => {
-          if (!cancelled) setInternshipCount(t);
-        })
-        .catch(() => {
-          if (!cancelled) setInternshipCount(0);
-        });
-    };
-    load();
-    const onChange = () => load();
-    window.addEventListener(DASHBOARD_MY_INTERNSHIPS_CHANGED, onChange);
-    return () => {
-      cancelled = true;
-      window.removeEventListener(DASHBOARD_MY_INTERNSHIPS_CHANGED, onChange);
-    };
-  }, []);
-
-  useEffect(() => {
-    fetchCertificates({ page: 1, limit: 1 });
-  }, [fetchCertificates]);
+  const { stats, isLoading } = useUserStats();
+  const [referModalOpen, setReferModalOpen] = useState(false);
 
   const hour = new Date().getHours();
   const timeMessage =
@@ -90,7 +62,7 @@ const DashboardBanner = () => {
       <div className="ml-auto w-max flex items-center gap-2 sm:gap-4 lg:gap-6 flex-wrap">
         <Card
           title="Courses"
-          count={stats?.totalCourses || 0}
+          count={stats.totalCourses}
           icon={
             <Image
               src="/dashboard/CourseBannerIcon.svg"
@@ -103,7 +75,7 @@ const DashboardBanner = () => {
         />
         <Card
           title="Certificates"
-          count={certificateCount}
+          count={stats.totalCertificates}
           icon={
             <Image
               src="/dashboard/CertificateBannerIcon.svg"
@@ -116,7 +88,7 @@ const DashboardBanner = () => {
         />
         <Card
           title="Internships"
-          count={internshipCount}
+          count={stats.totalInternships}
           icon={
             <Image
               src="/dashboard/CourseBannerIcon.svg"
@@ -127,7 +99,19 @@ const DashboardBanner = () => {
             />
           }
         />
+        <button
+          type="button"
+          onClick={() => setReferModalOpen(true)}
+          className="flex items-center gap-2 rounded-lg bg-linear-to-r from-orange-500 to-amber-500 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:from-orange-600 hover:to-amber-600 transition"
+        >
+          <Sparkles className="w-4 h-4" />
+          Refer &amp; Earn
+        </button>
       </div>
+      <ReferAndEarnModal
+        isOpen={referModalOpen}
+        onClose={() => setReferModalOpen(false)}
+      />
     </div>
   );
 };

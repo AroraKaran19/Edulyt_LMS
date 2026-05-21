@@ -4,12 +4,14 @@ import Link from "next/link";
 import {
   ArrowUpRight,
   BadgeCheck,
+  BookOpen,
   Calendar,
   Download,
   FileText,
   GraduationCap,
   Hourglass,
-  LockOpen,
+  ShieldCheck,
+  Sparkles,
   Ticket,
 } from "lucide-react";
 import type { InternshipEnrollmentListRow } from "@/types";
@@ -183,49 +185,133 @@ function BuyConfirmedSeatCta({
   const priceLabel =
     price !== null ? `₹${price.toLocaleString("en-IN")}` : null;
 
+  // Pre-exam variant leads with the course-purchase path (recommended) and
+  // demotes the seat-only fee to a subtle secondary option. Other variants
+  // (awaiting / post-fail / missed-exam) keep the original single-CTA layout
+  // since the course path is most useful before the exam takes place.
+  if (variant === "pre_exam") {
+    return (
+      <div className="mt-3 space-y-2">
+        {/* Primary path: buy a course to confirm seat */}
+        <div
+          className={cn(
+            "rounded-xl border-2 border-orange-300 bg-linear-to-br from-orange-50 to-amber-50/60",
+            "px-3.5 py-3 space-y-2.5 shadow-[0_1px_0_0_rgba(255,255,255,0.7)_inset]",
+          )}
+        >
+          <p className="text-xs text-stone-700 leading-relaxed">
+            Buy any course from our catalogue and your cohort seat is confirmed
+            automatically skip the entrance exam and keep the full course on
+            top.
+          </p>
+          <div className="flex justify-end pt-0.5">
+            <Link
+              href="/courses"
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold transition shrink-0",
+                "bg-orange-500 text-white hover:bg-orange-600 shadow-sm",
+              )}
+            >
+              <BookOpen className="size-3.5" aria-hidden />
+              Browse courses
+              <ArrowUpRight className="size-3.5" aria-hidden />
+            </Link>
+          </div>
+        </div>
+
+        {/* Secondary, subtle path: pay seat fee directly */}
+        <div className="flex items-center justify-between gap-2 flex-wrap rounded-lg border border-stone-200 bg-white/60 px-3 py-2">
+          <p className="text-[11px] text-stone-600 leading-snug">
+            Or pay a one-time seat fee
+            {priceLabel ? (
+              <>
+                {" "}
+                of{" "}
+                <span className="font-semibold tabular-nums text-stone-800">
+                  {priceLabel}
+                </span>
+              </>
+            ) : null}{" "}
+            for seat-only confirmation.
+          </p>
+          <button
+            type="button"
+            onClick={handlePurchase}
+            disabled={loading}
+            className={cn(
+              "inline-flex items-center gap-1 text-[11px] font-semibold underline-offset-2 hover:underline shrink-0",
+              "text-stone-600 hover:text-orange-700 disabled:opacity-60 disabled:cursor-not-allowed",
+            )}
+          >
+            {loading && (
+              <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-stone-300 border-t-stone-700" />
+            )}
+            {loading
+              ? "Please wait…"
+              : row.enrollmentType === "paid"
+                ? "Complete payment"
+                : "Confirm seat"}
+          </button>
+        </div>
+
+        {error && (
+          <p className="text-[11px] text-red-600 font-medium">{error}</p>
+        )}
+      </div>
+    );
+  }
+
+  const heading =
+    variant === "awaiting"
+      ? "Skip the wait for results?"
+      : variant === "missed_exam"
+        ? "Missed the entrance exam?"
+        : "Didn't make the merit cut?";
+
+  const body =
+    variant === "awaiting"
+      ? "Lock in your seat now with a one-time fee — no need to wait on results."
+      : variant === "missed_exam"
+        ? "You can still join this cohort with a one-time paid seat."
+        : "Paid seats stay open for 15 days after results — you can still join this cohort.";
+
   return (
-    <div className="mt-3 rounded-xl border border-dashed border-orange-300/70 bg-orange-50/60 px-3 py-2.5 flex flex-col gap-2">
-      <p className="text-[11px] text-orange-900/80 font-medium leading-snug">
-        {variant === "pre_exam"
-          ? "Don't want to wait for the exam? Lock in a confirmed seat now and skip the test entirely."
-          : variant === "awaiting"
-            ? "Unsure about your result? Confirm your seat right now and skip the wait."
-            : variant === "missed_exam"
-              ? "Don't lose your spot — secure a confirmed seat now."
-              : "Didn't make the merit cut? You can still join the program."}
+    <div
+      className={cn(
+        "mt-3 rounded-xl border border-amber-200/80 bg-amber-50/40",
+        "px-3.5 py-3 space-y-2.5",
+      )}
+    >
+      <p className="text-[11px] font-bold uppercase tracking-wide text-amber-900/90 flex items-center gap-1.5">
+        <ShieldCheck className="size-3.5 shrink-0" aria-hidden />
+        {heading}
       </p>
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <span className="text-[11px] text-orange-700/70">
-          {variant === "pre_exam"
-            ? "Confirmed seat · skip the entrance exam"
-            : variant === "awaiting"
-              ? "Confirmed seat · pay once, join guaranteed"
-              : "Paid entry stays open for 15 days after results ·"}
-          {priceLabel ? (
-            <span className="ml-1 font-semibold text-orange-900">
-              {priceLabel}
-            </span>
-          ) : null}
-        </span>
+      <p className="text-xs text-stone-700 leading-relaxed">{body}</p>
+      <div className="flex items-center justify-between gap-2 flex-wrap pt-0.5">
+        {priceLabel ? (
+          <span className="text-base font-bold tabular-nums text-stone-900">
+            {priceLabel}
+          </span>
+        ) : (
+          <span />
+        )}
         <button
           type="button"
           onClick={handlePurchase}
           disabled={loading}
           className={cn(
-            "inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition shrink-0",
+            "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition shrink-0",
             "bg-orange-500 text-white hover:bg-orange-600 disabled:opacity-60 disabled:cursor-not-allowed",
           )}
         >
-          {loading ? (
+          {loading && (
             <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-          ) : (
-            <LockOpen className="h-3 w-3" />
           )}
           {loading
             ? "Please wait…"
             : row.enrollmentType === "paid"
               ? "Complete Payment"
-              : "Purchase Confirmed Seat"}
+              : "Confirm Seat"}
         </button>
       </div>
       {error && <p className="text-[11px] text-red-600 font-medium">{error}</p>}
@@ -266,9 +352,7 @@ export default function DashboardInternshipCard({ row, onWithdrawn }: Props) {
   const examResultTime = row.examResultAt
     ? new Date(row.examResultAt).getTime()
     : null;
-  const examEndTime = row.examEndAt
-    ? new Date(row.examEndAt).getTime()
-    : null;
+  const examEndTime = row.examEndAt ? new Date(row.examEndAt).getTime() : null;
   const batchStartTime = row.batchSnapshot?.internshipStartDate
     ? new Date(row.batchSnapshot.internshipStartDate).getTime()
     : null;
@@ -278,10 +362,17 @@ export default function DashboardInternshipCard({ row, onWithdrawn }: Props) {
   // Paid-entry window stays open from registration through 15 days after
   // results — covers early purchase ("unsure about result, lock seat now")
   // and post-result grace. Mirrors backend `isPaidUpgradeWindowOpen`.
-  // Without a result date there's no upper bound to enforce, so the offer
-  // is treated as closed (matches backend rejection).
+  //
+  // Three "open" branches, in order:
+  //   1. Exam window hasn't ended yet (or no `examEndAt`) — the window
+  //      cannot close before the exam itself concludes. Guards against
+  //      malformed configs where `examResultAt` predates the exam.
+  //   2. `examResultAt` not scheduled — no upper bound, treat as open.
+  //   3. Within 15 days of the announced result.
+  const examEnded = examEndTime !== null && now > examEndTime;
   const withinGracePeriod =
-    examResultTime !== null &&
+    !examEnded ||
+    examResultTime === null ||
     now < examResultTime + 15 * 24 * 60 * 60 * 1000;
 
   // No-show: registered for the merit-track exam but the exam window closed
@@ -296,13 +387,11 @@ export default function DashboardInternshipCard({ row, onWithdrawn }: Props) {
   // identically so the UI never reveals which one this learner actually is,
   // either pre- or post-result. Post-result is bounded by the grace window.
   const isAwaitingResult =
-    row.status === "exam_attempted" &&
-    (!resultAnnounced || withinGracePeriod);
+    row.status === "exam_attempted" && (!resultAnnounced || withinGracePeriod);
 
   // Case 2: admin explicitly rejected — terminal, the learner is told they
   // weren't picked. Paid seat offer stays open for 15 days post-result.
-  const isPostFailGrace =
-    row.status === "admin_rejected" && withinGracePeriod;
+  const isPostFailGrace = row.status === "admin_rejected" && withinGracePeriod;
 
   // Case 3: no-show during paid-entry grace window
   const isMissedExamGrace = isExamNoShow && withinGracePeriod;
@@ -321,8 +410,7 @@ export default function DashboardInternshipCard({ row, onWithdrawn }: Props) {
     isPreExamPurchaseable;
 
   // No-show takes precedence over the exam-registered countdown branch.
-  const showExamAction =
-    EXAM_ACTION_STATUSES.has(row.status) && !isExamNoShow;
+  const showExamAction = EXAM_ACTION_STATUSES.has(row.status) && !isExamNoShow;
 
   /** Enrolled but cohort `internshipStartDate` is still in the future — hide tasks link. */
   const cohortNotStartedYet = batchStartTime !== null && now < batchStartTime;
@@ -396,14 +484,14 @@ export default function DashboardInternshipCard({ row, onWithdrawn }: Props) {
     <>
       <div
         className={cn(
-          "group relative flex min-h-[168px] overflow-hidden rounded-2xl border-2 border-dashed border-amber-400/50",
-          "bg-linear-to-br from-amber-50 via-orange-50/80 to-amber-100/40",
-          "shadow-[0_1px_0_0_rgba(255,255,255,0.9)_inset,0_8px_24px_-12px_rgba(120,60,20,0.18)]",
+          "group relative flex min-h-[168px] overflow-hidden rounded-2xl border border-stone-200",
+          "bg-white",
+          "shadow-[0_1px_0_0_rgba(255,255,255,0.9)_inset,0_6px_20px_-12px_rgba(120,60,20,0.15)]",
         )}
       >
         {/* Vertical ticket rail */}
         <div
-          className="flex w-12 shrink-0 flex-col items-center justify-between border-r-2 border-dashed border-amber-400/40 bg-stone-900 py-4 text-center"
+          className="flex w-12 shrink-0 flex-col items-center justify-between border-r border-stone-200 bg-stone-900 py-4 text-center"
           aria-hidden
         >
           <Ticket className="h-4 w-4 text-amber-200" strokeWidth={2} />
@@ -419,7 +507,7 @@ export default function DashboardInternshipCard({ row, onWithdrawn }: Props) {
           {/* Top info */}
           <div className="min-w-0 space-y-2">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.25em] text-amber-900/55">
+              <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.25em] text-stone-500">
                 Internship
               </span>
               <span
@@ -500,8 +588,9 @@ export default function DashboardInternshipCard({ row, onWithdrawn }: Props) {
             )}
           </div>
 
-          {/* Bottom action */}
-          <div className="mt-4 border-t border-dashed border-amber-800/15 pt-3">
+          {/* Bottom action — edge-to-edge panel with a distinct background
+             so it reads as a separate "what to do next" zone. */}
+          <div className="mt-4 -mx-4 -mb-4 sm:-mx-5 sm:-mb-5 border-t border-stone-200 bg-stone-50 px-4 pt-3 pb-4 sm:px-5 sm:pb-5">
             {showExamAction ? (
               /* Exam registered but not yet submitted — countdown + take exam,
                  plus optional pre-exam paid-seat CTA so the learner can skip

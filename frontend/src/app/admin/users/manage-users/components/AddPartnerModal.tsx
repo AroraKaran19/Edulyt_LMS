@@ -173,11 +173,6 @@ export default function AddPartnerModal({
             label="College *"
             placeholder="Search and pick from the directory"
             value={form.collegeDisplay}
-            disallowCustom
-            onChange={() => {
-              /* Custom text is disabled via disallowCustom — picks only.
-               *  Server-side validator requires an existing College _id. */
-            }}
             onSelect={(c) => {
               setField("partnerCollegeId", c._id);
               setField("collegeDisplay", c.display);

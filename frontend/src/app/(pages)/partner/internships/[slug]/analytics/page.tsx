@@ -81,7 +81,9 @@ export default function PartnerInternshipAnalyticsPage() {
     null,
   );
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedBatchId, setSelectedBatchId] = useState<string>("");
+  const [selectedBatchIds, setSelectedBatchIds] = useState<Set<string>>(
+    () => new Set(),
+  );
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [search, setSearch] = useState("");
 
@@ -94,7 +96,7 @@ export default function PartnerInternshipAnalyticsPage() {
         const d = await getInternshipDetail(slug);
         if (cancelled) return;
         setData(d);
-        setSelectedBatchId(d.batches[0]?.batchId ?? "");
+        setSelectedBatchIds(new Set(d.batches.map((b) => b.batchId)));
       } catch (e) {
         console.error("Internship analytics load failed:", e);
         if (!cancelled) toast.error("Could not load internship analytics.");
@@ -107,13 +109,36 @@ export default function PartnerInternshipAnalyticsPage() {
     };
   }, [slug, getInternshipDetail]);
 
-  const selectedBatch = useMemo(
-    () => data?.batches.find((b) => b.batchId === selectedBatchId) ?? null,
-    [data, selectedBatchId],
-  );
+  const selectedBatches = useMemo(() => {
+    if (!data) return [];
+    return data.batches.filter((b) => selectedBatchIds.has(b.batchId));
+  }, [data, selectedBatchIds]);
+
+  const selectedTotals = useMemo(() => {
+    return selectedBatches.reduce(
+      (acc, b) => ({
+        enrolled: acc.enrolled + b.counts.enrolled,
+        appearedInExam: acc.appearedInExam + b.counts.appearedInExam,
+        selected: acc.selected + b.counts.selected,
+        certified: acc.certified + b.counts.certified,
+      }),
+      { enrolled: 0, appearedInExam: 0, selected: 0, certified: 0 },
+    );
+  }, [selectedBatches]);
+
+  const toggleBatch = (batchId: string) => {
+    setSelectedBatchIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(batchId)) next.delete(batchId);
+      else next.add(batchId);
+      return next;
+    });
+  };
 
   const filteredStudents = useMemo(() => {
-    const all = selectedBatch?.students ?? [];
+    const all = selectedBatches.flatMap((b) =>
+      b.students.map((s) => ({ ...s, batchName: b.name })),
+    );
     let byStatus = all;
     if (statusFilter === "exam") {
       byStatus = all.filter((s) => s.appearedInExam);
@@ -133,7 +158,7 @@ export default function PartnerInternshipAnalyticsPage() {
         s.name.toLowerCase().includes(q) ||
         s.email.toLowerCase().includes(q),
     );
-  }, [selectedBatch, statusFilter, search]);
+  }, [selectedBatches, statusFilter, search]);
 
   if (isLoading && !data) {
     return (
@@ -161,7 +186,9 @@ export default function PartnerInternshipAnalyticsPage() {
     );
   }
 
-  const { internship, totals, batches } = data;
+  const { internship, batches } = data;
+  const allBatchesSelected =
+    batches.length > 0 && selectedBatchIds.size === batches.length;
 
   return (
     <div className="space-y-4 p-2 py-6 sm:p-4">
@@ -179,27 +206,29 @@ export default function PartnerInternshipAnalyticsPage() {
 
       <div>
         <p className="mb-2 text-sm font-semibold text-[#101828]">
-          Totals across all batches
+          {allBatchesSelected
+            ? "Totals across all batches"
+            : `Totals across ${selectedBatchIds.size} selected ${selectedBatchIds.size === 1 ? "batch" : "batches"}`}
         </p>
         <div className="grid grid-cols-2 gap-2 sm:gap-4 xl:grid-cols-4">
           <PartnerStatCard
             icon={<Users className="size-5" />}
-            value={String(totals.enrolled)}
+            value={String(selectedTotals.enrolled)}
             label="Enrolled"
           />
           <PartnerStatCard
             icon={<FileCheck className="size-5" />}
-            value={String(totals.appearedInExam)}
+            value={String(selectedTotals.appearedInExam)}
             label="Appeared in Exam"
           />
           <PartnerStatCard
             icon={<Stamp className="size-5" />}
-            value={String(totals.selected)}
+            value={String(selectedTotals.selected)}
             label="Selected / Offer Letter"
           />
           <PartnerStatCard
             icon={<Award className="size-5" />}
-            value={String(totals.certified)}
+            value={String(selectedTotals.certified)}
             label="Cleared with Certificate"
           />
         </div>
@@ -212,102 +241,143 @@ export default function PartnerInternshipAnalyticsPage() {
           </p>
         ) : (
           <>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <h2 className="text-base font-semibold text-black sm:text-xl">
                 Student lists by batch
               </h2>
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                <label className="flex items-center gap-2 text-sm">
-                  <span className="font-medium text-[#344054]">Batch</span>
-                  <select
-                    value={selectedBatchId}
-                    onChange={(e) => setSelectedBatchId(e.target.value)}
-                    className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#F77124] focus:ring-2 focus:ring-[#F77124]/20"
-                  >
-                    {batches.map((b) => (
-                      <option key={b.batchId} value={b.batchId}>
-                        {b.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="flex items-center gap-2 text-sm">
-                  <span className="font-medium text-[#344054]">Status</span>
-                  <select
-                    value={statusFilter}
-                    onChange={(e) =>
-                      setStatusFilter(e.target.value as StatusFilter)
+              <label className="flex items-center gap-2 text-sm">
+                <span className="font-medium text-[#344054]">Status</span>
+                <select
+                  value={statusFilter}
+                  onChange={(e) =>
+                    setStatusFilter(e.target.value as StatusFilter)
+                  }
+                  className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#F77124] focus:ring-2 focus:ring-[#F77124]/20"
+                >
+                  {STATUS_FILTER_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <div className="mt-4">
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <span className="text-sm font-medium text-[#344054]">
+                  Batches
+                </span>
+                <div className="flex items-center gap-3 text-xs font-semibold">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSelectedBatchIds(
+                        new Set(batches.map((b) => b.batchId)),
+                      )
                     }
-                    className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#F77124] focus:ring-2 focus:ring-[#F77124]/20"
+                    className="text-[#F77124] hover:underline"
                   >
-                    {STATUS_FILTER_OPTIONS.map((o) => (
-                      <option key={o.value} value={o.value}>
-                        {o.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                    Select all
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedBatchIds(new Set())}
+                    className="text-[#475467] hover:underline"
+                  >
+                    Clear
+                  </button>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {batches.map((b) => {
+                  const active = selectedBatchIds.has(b.batchId);
+                  return (
+                    <button
+                      type="button"
+                      key={b.batchId}
+                      onClick={() => toggleBatch(b.batchId)}
+                      aria-pressed={active}
+                      className={cn(
+                        "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+                        active
+                          ? "border-[#F77124] bg-[#FFF4EB] text-[#B45309]"
+                          : "border-gray-300 bg-white text-[#475467] hover:border-[#F77124]/50",
+                      )}
+                    >
+                      {b.name}
+                      <span
+                        className={cn(
+                          "ml-1.5 text-[10px]",
+                          active ? "text-[#B45309]/70" : "text-[#98A2B3]",
+                        )}
+                      >
+                        {b.counts.enrolled}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
-            {selectedBatch && (
-              <>
-                <div className="relative mt-4 w-full sm:max-w-xs">
-                  <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="search"
-                    placeholder="Search by name or email"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="w-full rounded-lg border border-gray-300 bg-white py-2 pl-9 pr-3 text-sm outline-none focus:border-[#F77124] focus:ring-2 focus:ring-[#F77124]/20"
-                  />
-                </div>
-                <div className="mt-3 overflow-x-auto">
-                  <table className="w-full min-w-[560px] text-sm">
-                  <thead>
-                    <tr className="border-b border-[#F2F4F7] text-left">
-                      <th className="pb-3 font-semibold text-black">
-                        Student Name
-                      </th>
-                      <th className="pb-3 font-semibold text-black">Email</th>
-                      <th className="pb-3 font-semibold text-black">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredStudents.length === 0 ? (
-                      <tr>
-                        <td
-                          colSpan={3}
-                          className="py-10 text-center text-gray-500"
-                        >
-                          {search.trim()
+            <div className="relative mt-4 w-full sm:max-w-xs">
+              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
+              <input
+                type="search"
+                placeholder="Search by name or email"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 bg-white py-2 pl-9 pr-3 text-sm outline-none focus:border-[#F77124] focus:ring-2 focus:ring-[#F77124]/20"
+              />
+            </div>
+            <div className="mt-3 overflow-x-auto">
+              <table className="w-full min-w-[640px] text-sm">
+                <thead>
+                  <tr className="border-b border-[#F2F4F7] text-left">
+                    <th className="pb-3 font-semibold text-black">
+                      Student Name
+                    </th>
+                    <th className="pb-3 font-semibold text-black">Email</th>
+                    <th className="pb-3 font-semibold text-black">Batch</th>
+                    <th className="pb-3 font-semibold text-black">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredStudents.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={4}
+                        className="py-10 text-center text-gray-500"
+                      >
+                        {selectedBatchIds.size === 0
+                          ? "Select at least one batch to view students."
+                          : search.trim()
                             ? "No students matched your search."
                             : statusFilter === "all"
-                              ? "No students in this batch."
+                              ? "No students in the selected batches."
                               : "No students match this status filter."}
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredStudents.map((s, i) => (
+                      <tr
+                        key={`${s.email}-${s.batchName}-${i}`}
+                        className="border-b border-[#F2F4F7] last:border-0"
+                      >
+                        <td className="py-3 font-medium text-[#1D2939]">
+                          {s.name}
+                        </td>
+                        <td className="py-3 text-[#344054]">{s.email}</td>
+                        <td className="py-3 text-[#475467]">{s.batchName}</td>
+                        <td className="py-3">
+                          <StatusBadges student={s} />
                         </td>
                       </tr>
-                    ) : (
-                      filteredStudents.map((s, i) => (
-                        <tr
-                          key={`${s.email}-${i}`}
-                          className="border-b border-[#F2F4F7] last:border-0"
-                        >
-                          <td className="py-3 font-medium text-[#1D2939]">
-                            {s.name}
-                          </td>
-                          <td className="py-3 text-[#344054]">{s.email}</td>
-                          <td className="py-3">
-                            <StatusBadges student={s} />
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-                </div>
-              </>
-            )}
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </>
         )}
       </PartnerCard>

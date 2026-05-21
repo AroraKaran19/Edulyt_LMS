@@ -126,6 +126,10 @@ const AdminSidebar = ({
           href: "/admin/users/manage-users",
         },
         {
+          label: "Referral Withdrawals",
+          href: "/admin/users/referral-withdrawals",
+        },
+        {
           label: "Create Instructor",
           href: "/admin/users/create-instructor",
         },
@@ -195,6 +199,10 @@ const AdminSidebar = ({
         {
           label: "Announcements",
           href: "/admin/settings/announcements",
+        },
+        {
+          label: "Referral Commission Tiers",
+          href: "/admin/settings/referral-commission-tiers",
         },
       ],
     },

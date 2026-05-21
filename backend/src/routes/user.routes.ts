@@ -10,6 +10,7 @@ import {
   getUserStats,
   updateUserProfile,
   getCurrentUserProfile,
+  getCurrentUserStats,
   changeUserPassword,
   changeUserEmail,
   setUserPassword,
@@ -24,6 +25,7 @@ const router = Router();
 
 // User profile routes
 router.get("/me", verifyUser, getCurrentUserProfile);
+router.get("/me/stats", verifyUser, getCurrentUserStats);
 router.put("/me", verifyUser, updateUserProfile);
 router.put("/change-password", verifyUser, changeUserPassword);
 router.put("/set-password", verifyUser, setUserPassword);

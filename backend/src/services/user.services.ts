@@ -14,11 +14,46 @@ import {
   CourseModel,
   LiveClassModel,
 } from "../models";
+import { InternshipEnrollmentModel } from "../models/internshipEnrollment.schema";
 import { deleteFilesFromS3, extractS3KeyFromUrl } from "./upload.services";
 import { User } from "../types/user";
 import { AppError } from "../middlewares/error.middleware";
 import bcrypt from "bcrypt";
 import { validatePassword } from "../utils/passwordValidation";
+
+/**
+ * Lightweight dashboard counts for the authenticated learner: course
+ * enrollments, certificates, and internship enrollments. Replaces three
+ * full-data calls (dashboard-stats, certificates list, internships list)
+ * used purely to read the totals shown in the dashboard navbar + banner.
+ */
+export interface CurrentUserDashboardCounts {
+  totalCourses: number;
+  totalCertificates: number;
+  totalInternships: number;
+}
+
+export const getCurrentUserDashboardCountsService = async (
+  userId: string,
+): Promise<CurrentUserDashboardCounts> => {
+  const [totalCourses, totalCertificates, totalInternships] = await Promise.all(
+    [
+      EnrollmentModel.countDocuments({
+        userId,
+        status: { $nin: ["dropped", "revoked"] },
+      }),
+      CertificateModel.countDocuments({
+        userId,
+        isActive: true,
+        isLatest: true,
+      }),
+      InternshipEnrollmentModel.countDocuments({
+        user: new mongoose.Types.ObjectId(userId),
+      }),
+    ],
+  );
+  return { totalCourses, totalCertificates, totalInternships };
+};
 
 export interface GetUsersParams {
   page: number;

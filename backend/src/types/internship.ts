@@ -76,6 +76,15 @@ export interface InternshipBatches {
    * Reusable task template ids (`InternshipTask` collection) for this cohort.
    */
   taskTemplateIds?: string[];
+  /**
+   * Documentation submission window (UTC, displayed as IST in admin UI).
+   * Required for every batch. Merit or paid enrollees enter
+   * `pending_documentation` until Aadhar + photo are submitted, then reach
+   * `enrolled`. Submissions after `documentationEndAt` are flagged as late
+   * but still accepted.
+   */
+  documentationStartAt?: Date;
+  documentationEndAt?: Date;
 }
 
 export interface Internship {
@@ -163,16 +172,6 @@ export interface Internship {
   discount?: CourseDiscount | null;
 
   analytics?: InternshipAnalytics;
-
-  /**
-   * Documentation submission window (UTC, displayed as IST in admin UI).
-   * Required: all internships must define opens and closes. Merit or paid enrollees
-   * enter `pending_documentation` until Aadhar + photo are submitted, then reach
-   * `enrolled`. Submissions after `documentationEndAt` are flagged as late but
-   * still accepted.
-   */
-  documentationStartAt?: Date;
-  documentationEndAt?: Date;
 
   isActive: boolean;
   createdAt?: Date;
@@ -264,10 +263,6 @@ export interface InternshipResponse {
   discount?: CourseDiscount | null;
 
   analytics?: InternshipAnalytics;
-
-  /** Documentation submission window (UTC). See {@link Internship.documentationStartAt}. */
-  documentationStartAt?: Date;
-  documentationEndAt?: Date;
 
   isActive: boolean;
   createdAt?: Date;

@@ -9,17 +9,20 @@ import {
   LayoutDashboard,
   LogOut,
   Settings,
+  Sparkles,
   Star,
   User,
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
+import ReferAndEarnModal from "@/components/shared/Referral/ReferAndEarnModal";
 
 const UserMenu = () => {
   const { user: userFromAuth, handleSignOut } = useAuth();
   const { data: session } = useSession();
   const [isUserOpen, setIsUserOpen] = useState(false);
+  const [referModalOpen, setReferModalOpen] = useState(false);
 
   // Use session user data directly to ensure reactivity to session updates
   // This ensures that when updateSession() is called elsewhere, this component updates
@@ -420,6 +423,28 @@ const UserMenu = () => {
                     </span>
                   </Link>
                 ))}
+              {/* Learner-only: Refer & Earn modal trigger. */}
+              {(!user.userType || user.userType === "student") && (
+                <button
+                  type="button"
+                  className={`${menuItemClass} mx-2 hover:bg-orange-50 w-[calc(100%-1rem)]`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsUserOpen(false);
+                    setReferModalOpen(true);
+                  }}
+                  role="menuitem"
+                >
+                  <div
+                    className={`${iconWrapperClass} group-hover:bg-orange-100`}
+                  >
+                    <Sparkles className={iconClass} />
+                  </div>
+                  <span className="font-medium text-gray-700 group-hover:text-gray-900">
+                    Refer &amp; Earn
+                  </span>
+                </button>
+              )}
               <div className="my-1.5 border-t border-gray-100" />
               <button
                 type="button"
@@ -441,6 +466,10 @@ const UserMenu = () => {
           </div>
         </>
       )}
+      <ReferAndEarnModal
+        isOpen={referModalOpen}
+        onClose={() => setReferModalOpen(false)}
+      />
     </div>
   );
 };

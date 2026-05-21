@@ -900,17 +900,13 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
               </h4>
               <p className="text-xs text-gray-500 mb-3">
                 Re-link this partner to a different college if their role has
-                moved. The dropdown only shows colleges from the main directory
-                — custom names aren&apos;t accepted server-side.
+                moved. The dropdown only shows colleges from the main
+                directory.
               </p>
               <CollegeSelect
                 label="Linked College"
                 placeholder="Search and pick from the directory"
                 value={resolvePartnerCollegeDisplay(formData)}
-                disallowCustom
-                onChange={() => {
-                  /* disallowCustom blocks free text; no-op for safety. */
-                }}
                 onSelect={(c) =>
                   onFormDataChange({
                     ...formData,
@@ -954,7 +950,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
               </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <CollegeSelect
-                  label="College Name"
+                  label="University / College Name"
                   placeholder="Search and select, or type a custom name"
                   value={(formData as Student).collegeName || ""}
                   onChange={(value) =>

@@ -7,6 +7,7 @@ import {
   withdrawPaymentPendingEnrollmentController,
   getLearnerEntranceExamController,
   getLearnerProgramBySlugController,
+  getLearnerProgramLiveMeetingsController,
   listInternshipEnrollmentsAdminController,
   getInternshipEnrollmentByIdAdminController,
   adminUpdateEnrollmentStatusController,
@@ -55,6 +56,12 @@ router.post(
 
 /** GET /api/internship-enrollments/me/program/:slug — learner program detail + tasks */
 router.get("/me/program/:slug", getLearnerProgramBySlugController);
+
+/** GET /api/internship-enrollments/me/program/:slug/live-meetings — paginated history */
+router.get(
+  "/me/program/:slug/live-meetings",
+  getLearnerProgramLiveMeetingsController,
+);
 
 /** GET /api/internship-enrollments/admin/entrance-exam-cohorts (before :enrollmentId) */
 router.get(

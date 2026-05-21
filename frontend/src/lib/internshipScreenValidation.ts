@@ -47,8 +47,6 @@ export function getInternshipScreenTriggerFields(
         "jobDescription",
         "whatsappGroupLink",
         "certificationThreshold",
-        "documentationStartAt",
-        "documentationEndAt",
       ];
       const hl = context?.headerList ?? [];
       hl.forEach((_, i) => {
@@ -60,7 +58,12 @@ export function getInternshipScreenTriggerFields(
       const batches = context?.batches ?? [];
       const names: string[] = ["batches"];
       batches.forEach((_, bi) => {
-        names.push(`batches.${bi}.plan.price`, `batches.${bi}.applicationLastDate`);
+        names.push(
+          `batches.${bi}.plan.price`,
+          `batches.${bi}.applicationLastDate`,
+          `batches.${bi}.documentationStartAt`,
+          `batches.${bi}.documentationEndAt`,
+        );
       });
 
       // Add discount validation if discount is active

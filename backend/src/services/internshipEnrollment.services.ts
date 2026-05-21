@@ -845,6 +845,7 @@ export async function registerForPaidSeat(
       applicationLastDate?: Date;
       isActive: boolean;
       entranceExamTemplateId?: unknown;
+      entranceExamEndAt?: Date;
       plan?: { price: number; isActive?: boolean; discount?: unknown } | null;
     }[]
   )?.find((b) => String(b._id) === batchId);
@@ -894,7 +895,7 @@ export async function registerForPaidSeat(
       .select("examResultAt")
       .lean();
     const examResultAt = (exam as { examResultAt?: Date } | null)?.examResultAt;
-    if (!isPaidUpgradeWindowOpen(examResultAt)) {
+    if (!isPaidUpgradeWindowOpen(examResultAt, batch.entranceExamEndAt)) {
       throw new AppError(
         "The 15-day paid entry window has closed for this cohort",
         400,
@@ -1108,9 +1109,9 @@ export async function listMyInternshipEnrollments(
     }
   }
 
-  // For `pending_documentation` rows, surface the per-internship documentation
-  // window so the dashboard modal can show IST open/close times.
-  const docsWindowByInternshipId = new Map<
+  // For `pending_documentation` rows, surface the documentation window of the
+  // learner's batch so the dashboard modal can show IST open/close times.
+  const docsWindowByEnrollmentId = new Map<
     string,
     { documentationStartAt?: string; documentationEndAt?: string }
   >();
@@ -1133,19 +1134,37 @@ export async function listMyInternshipEnrollments(
           $in: [...insIdSet].map((id) => new mongoose.Types.ObjectId(id)),
         },
       })
-        .select("documentationStartAt documentationEndAt")
+        .select("batches")
         .lean();
+      // Index each batch's documentation window by `${internshipId}:${batchId}`.
+      const batchWindowByKey = new Map<
+        string,
+        { start?: Date; end?: Date }
+      >();
       for (const ins of insDocs) {
         const iid = String((ins as { _id: unknown })._id);
-        const start = (ins as { documentationStartAt?: Date })
-          .documentationStartAt;
-        const end = (ins as { documentationEndAt?: Date }).documentationEndAt;
-        docsWindowByInternshipId.set(iid, {
-          ...(start instanceof Date
-            ? { documentationStartAt: start.toISOString() }
+        const batches =
+          (ins as { batches?: Record<string, unknown>[] }).batches ?? [];
+        for (const b of batches) {
+          batchWindowByKey.set(`${iid}:${String(b._id)}`, {
+            start: b.documentationStartAt as Date | undefined,
+            end: b.documentationEndAt as Date | undefined,
+          });
+        }
+      }
+      for (const d of docsRows) {
+        const insId = internshipRefToId(d.internship);
+        const batchId = (d.batchSnapshot as { batchId?: unknown } | undefined)
+          ?.batchId;
+        if (!insId || !batchId) continue;
+        const win = batchWindowByKey.get(`${insId}:${String(batchId)}`);
+        if (!win) continue;
+        docsWindowByEnrollmentId.set(String(d._id), {
+          ...(win.start instanceof Date
+            ? { documentationStartAt: win.start.toISOString() }
             : {}),
-          ...(end instanceof Date
-            ? { documentationEndAt: end.toISOString() }
+          ...(win.end instanceof Date
+            ? { documentationEndAt: win.end.toISOString() }
             : {}),
         });
       }
@@ -1536,11 +1555,10 @@ export async function listMyInternshipEnrollments(
       ...examWindowById.get(String(doc._id)),
       ...certWindowByEnrollmentId.get(String(doc._id)),
       ...(
-        (statusStr === "pending_documentation" ||
-          statusStr === "docs_under_review" ||
-          statusStr === "re_pending_documentation") &&
-        internshipIdFromRef
-          ? docsWindowByInternshipId.get(internshipIdFromRef) ?? {}
+        statusStr === "pending_documentation" ||
+        statusStr === "docs_under_review" ||
+        statusStr === "re_pending_documentation"
+          ? docsWindowByEnrollmentId.get(String(doc._id)) ?? {}
           : {}
       ),
       ...(paymentPendingContext ? { paymentPendingContext } : {}),
@@ -2330,12 +2348,6 @@ export type LearnerProgramDetail = {
   internshipSuccessPointPurchase?: {
     inrPerPoint: number;
   };
-  /**
-   * Recent + upcoming live meetings for this learner's batch (newest first,
-   * capped). Each entry includes whether *this* learner has already clicked
-   * each checkpoint link.
-   */
-  liveMeetings: import("../types/internship-live-meeting").StudentLiveMeetingItem[];
 };
 
 // ─── Public offer-letter verification ────────────────────────────────────────
@@ -2512,10 +2524,16 @@ export async function getLearnerProgramBySlug(
     })
     .filter((x): x is mongoose.Types.ObjectId => x !== null);
 
-  // 4. Compute anchor date
-  const rawEnrolledAt = doc.enrolledAt ?? doc.createdAt;
-  const enrolledAt =
-    rawEnrolledAt instanceof Date ? rawEnrolledAt : new Date(rawEnrolledAt ?? Date.now());
+  // 4. Compute anchor date — task timelines are scheduled cohort-wide from the
+  // batch's internship start date, so every learner in a batch sees the same
+  // unlock/due calendar. Falls back to the enrolment date only if the batch
+  // snapshot somehow lacks a start date (defensive — it is normally always set).
+  const rawAnchor =
+    doc.batchSnapshot?.internshipStartDate ?? doc.enrolledAt ?? doc.createdAt;
+  const anchor =
+    rawAnchor instanceof Date
+      ? rawAnchor
+      : new Date(rawAnchor ?? Date.now());
 
   const MS_PER_DAY = 86_400_000;
   const now = Date.now();
@@ -2537,9 +2555,10 @@ export async function getLearnerProgramBySlug(
       typeof task.unlockAfterDays === "number" ? task.unlockAfterDays : 0;
     const dueDays = typeof task.dueDays === "number" ? task.dueDays : 0;
     const visibleFrom = new Date(
-      enrolledAt.getTime() + unlockAfterDays * MS_PER_DAY,
+      anchor.getTime() + unlockAfterDays * MS_PER_DAY,
     );
-    const dueAt = new Date(enrolledAt.getTime() + dueDays * MS_PER_DAY);
+    // `dueDays` is the window length after unlock, not an offset from the anchor.
+    const dueAt = new Date(visibleFrom.getTime() + dueDays * MS_PER_DAY);
 
     if (now < visibleFrom.getTime()) continue; // locked — skip
 
@@ -2627,18 +2646,6 @@ export async function getLearnerProgramBySlug(
       ? Math.round(certificationPointsShortfall * priceInr * 100) / 100
       : undefined;
 
-  const { getStudentLiveMeetingsForBatch } = await import(
-    "./liveMeeting.services"
-  );
-  const liveMeetings = batchId
-    ? await getStudentLiveMeetingsForBatch(
-        String(internship._id),
-        batchId,
-        userId,
-        10,
-      )
-    : [];
-
   const rawCertExamId = matchedBatch?.certificationExamTemplateId;
   const certificationExamConfigured =
     rawCertExamId != null && String(rawCertExamId).trim().length > 0;
@@ -2706,7 +2713,6 @@ export async function getLearnerProgramBySlug(
     ...(internshipSuccessPointPurchase
       ? { internshipSuccessPointPurchase }
       : {}),
-    liveMeetings,
   };
 }
 
@@ -2775,12 +2781,22 @@ export async function submitInternshipDocumentation(
     );
   }
 
+  // The documentation window lives on the learner's batch.
   const ins = await InternshipModel.findById(doc.internship)
-    .select("documentationStartAt documentationEndAt")
+    .select("batches")
     .lean();
-  const startAt = (ins as { documentationStartAt?: Date } | null)
+  const batchId = (
+    doc.batchSnapshot as { batchId?: unknown } | undefined
+  )?.batchId;
+  const batch =
+    ins && batchId
+      ? ((ins as { batches?: Record<string, unknown>[] }).batches ?? []).find(
+          (b) => String(b._id) === String(batchId),
+        )
+      : undefined;
+  const startAt = (batch as { documentationStartAt?: Date } | undefined)
     ?.documentationStartAt;
-  const endAt = (ins as { documentationEndAt?: Date } | null)
+  const endAt = (batch as { documentationEndAt?: Date } | undefined)
     ?.documentationEndAt;
   const now = new Date();
   if (startAt instanceof Date && now < startAt) {

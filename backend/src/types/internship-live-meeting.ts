@@ -22,6 +22,8 @@ export interface InternshipLiveMeeting {
   description?: string;
   /** Zoom / Meet / etc. URL the admin shares with students. */
   meetingLink: string;
+  /** Optional link to the recorded session, set after the meeting. */
+  recordingLink?: string;
 
   startDateTime: Date;
   endDateTime?: Date;
@@ -68,6 +70,8 @@ export interface CreateInternshipLiveMeetingBody {
   name: string;
   description?: string;
   meetingLink: string;
+  /** Optional link to the recorded session. */
+  recordingLink?: string;
   startDateTime: string | Date;
   endDateTime?: string | Date;
   link1ExpiryMins: number;
@@ -88,6 +92,8 @@ export interface AdminLiveMeetingListItem {
   name: string;
   description: string;
   meetingLink: string;
+  /** Optional link to the recorded session ("" when not set). */
+  recordingLink: string;
   startDateTime: string;
   endDateTime: string | null;
   link1: {
@@ -145,10 +151,20 @@ export interface StudentLiveMeetingItem {
   name: string;
   description: string;
   meetingLink: string;
+  /** Optional link to the recorded session ("" when not set). */
+  recordingLink: string;
   startDateTime: string;
   endDateTime: string | null;
   phase: LiveMeetingPhase;
   /** Whether *this* student has clicked link1 inside its window. */
   link1Clicked: boolean;
   link2Clicked: boolean;
+}
+
+/** Paginated student view of live meetings for the learner's batch. */
+export interface StudentLiveMeetingsPage {
+  items: StudentLiveMeetingItem[];
+  total: number;
+  page: number;
+  totalPages: number;
 }

@@ -23,6 +23,7 @@ import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import z from "zod";
 import { toast } from "react-toastify";
+import { useSession } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import EnrollPathChoiceModal from "./EnrollPathChoiceModal";
 import {
@@ -96,7 +97,7 @@ const enrollFormSchema = z.object({
     }),
   gender: z.string().min(1, "Please select your gender"),
   experience: z.string().min(1, "Please choose your experience"),
-  university: z.string().min(1, "Please choose your university"),
+  university: z.string().min(1, "Please choose your university / college"),
   country: z.string().min(1, "Please choose your country"),
   courseName: z.string().min(1, "Please choose your course"),
   yearOfPassing: z
@@ -315,21 +316,21 @@ const countryOptions: SelectOption[] = [
 ];
 
 const courseOptions: SelectOption[] = [
-  { value: "be", label: "BE" },
-  { value: "btech", label: "B.Tech" },
-  { value: "mtech", label: "M.Tech" },
-  { value: "bba", label: "BBA" },
-  { value: "mba", label: "MBA" },
-  { value: "bca", label: "BCA" },
-  { value: "mca", label: "MCA" },
-  { value: "bcom", label: "B.COM" },
-  { value: "mcom", label: "M.COM" },
-  { value: "bsc", label: "B.SC." },
-  { value: "msc", label: "M.SC." },
-  { value: "ba", label: "BA" },
-  { value: "ma", label: "MA" },
-  { value: "diploma", label: "Diploma" },
-  { value: "others", label: "Others" },
+  { value: "BE", label: "BE" },
+  { value: "B.Tech", label: "B.Tech" },
+  { value: "M.Tech", label: "M.Tech" },
+  { value: "BBA", label: "BBA" },
+  { value: "MBA", label: "MBA" },
+  { value: "BCA", label: "BCA" },
+  { value: "MCA", label: "MCA" },
+  { value: "B.COM", label: "B.COM" },
+  { value: "M.COM", label: "M.COM" },
+  { value: "B.SC.", label: "B.SC." },
+  { value: "M.SC.", label: "M.SC." },
+  { value: "BA", label: "BA" },
+  { value: "MA", label: "MA" },
+  { value: "Diploma", label: "Diploma" },
+  { value: "Others", label: "Others" },
 ];
 
 const graduationYears: SelectOption[] = Array.from({ length: 16 }, (_, i) => {
@@ -404,6 +405,12 @@ const EnrollForm = ({ preview }: { preview: InternshipEnrollPreview }) => {
   const [pendingFormData, setPendingFormData] = useState<EnrollFormData | null>(
     null,
   );
+  // Tracks the College ObjectId when the learner picked from the directory.
+  // Stays "" for custom-text entries so the backend $unsets `college` instead
+  // of writing a stale link.
+  const [collegeId, setCollegeId] = useState<string>("");
+
+  const { update: updateSession } = useSession();
 
   const sessionHydratedRef = useRef(false);
 
@@ -497,18 +504,36 @@ const EnrollForm = ({ preview }: { preview: InternshipEnrollPreview }) => {
         const gender = u.gender as string | undefined;
         if (gender) setValue("gender", gender);
 
-        const linkedin = (u.accounts as Record<string, unknown> | undefined)
-          ?.linkedin;
-        const linkedinUrl =
-          typeof linkedin === "object" && linkedin !== null
-            ? ((linkedin as Record<string, unknown>).url as string | undefined)
-            : undefined;
-        if (linkedinUrl) setValue("linkedinUrl", linkedinUrl);
+        const linkedinUrl = u.linkedinUrl as string | undefined;
+        if (typeof linkedinUrl === "string" && linkedinUrl)
+          setValue("linkedinUrl", linkedinUrl);
 
         const instagram = (u.accounts as Record<string, unknown> | undefined)
           ?.instagram;
         if (typeof instagram === "string" && instagram)
           setValue("instagramUrl", instagram);
+
+        // Student-discriminator fields — these mirror the User-modal schema
+        // fields the enroll form later writes back via PUT /users/me.
+        const collegeName = u.collegeName as string | undefined;
+        if (typeof collegeName === "string" && collegeName)
+          setValue("university", collegeName);
+
+        const college = u.college as string | { _id?: string } | undefined;
+        if (typeof college === "string" && college) setCollegeId(college);
+        else if (college && typeof college === "object" && college._id)
+          setCollegeId(String(college._id));
+
+        const degreeName = u.degreeName as string | undefined;
+        if (typeof degreeName === "string" && degreeName)
+          setValue("courseName", degreeName);
+
+        if (typeof u.passingYear === "number")
+          setValue("yearOfPassing", String(u.passingYear));
+
+        const experienceLevel = u.experienceLevel as string | undefined;
+        if (typeof experienceLevel === "string" && experienceLevel)
+          setValue("experience", experienceLevel);
       } catch {
         // Non-critical; user fills manually.
       } finally {
@@ -575,15 +600,53 @@ const EnrollForm = ({ preview }: { preview: InternshipEnrollPreview }) => {
       const [firstName, ...rest] = data.fullName.trim().split(" ");
       const lastName = rest.join(" ") || undefined;
 
-      // 1. Update the user's profile with form data
-      await apiClient.put("/users/me", {
+      const passingYearNum = Number(data.yearOfPassing);
+
+      // 1. Update the user's profile with form data. We mirror everything
+      //    the form collects that has a real field on the User/Student
+      //    discriminator schema. `accounts.instagram` uses dot-notation so
+      //    the rest of the `accounts` subdoc (google/linkedin) isn't wiped.
+      //    Empty `college` is sent intentionally — the backend $unsets it
+      //    when the learner used a custom-text college name.
+      const userUpdatePayload: Record<string, unknown> = {
         firstName,
         lastName,
         email: data.email,
         phone: data.phone,
         dob: data.dob.toISOString(),
         gender: data.gender,
-      });
+        collegeName: data.university,
+        college: collegeId,
+        degreeName: data.courseName,
+        experienceLevel: data.experience,
+        "accounts.instagram": data.instagramUrl ?? "",
+      };
+      if (Number.isFinite(passingYearNum)) {
+        userUpdatePayload.passingYear = passingYearNum;
+      }
+      await apiClient.put("/users/me", userUpdatePayload);
+
+      // Keep the active NextAuth session in sync so other pages that read
+      // from `useSession()` see the freshly-saved values without a reload.
+      try {
+        await updateSession?.({
+          firstName,
+          lastName,
+          email: data.email,
+          phone: data.phone,
+          dob: data.dob.toISOString(),
+          gender: data.gender,
+          collegeName: data.university,
+          college: collegeId || undefined,
+          degreeName: data.courseName,
+          experienceLevel: data.experience,
+          ...(Number.isFinite(passingYearNum)
+            ? { passingYear: passingYearNum }
+            : {}),
+        });
+      } catch {
+        // Session sync is best-effort — DB is the source of truth.
+      }
 
       const applicationAnswers = buildApplicationAnswersPayload(data);
 
@@ -1038,12 +1101,19 @@ const EnrollForm = ({ preview }: { preview: InternshipEnrollPreview }) => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 w-full">
               <CollegeSelect
-                label="University Name"
+                label="University / College Name"
                 value={watch("university")}
-                onChange={(value) =>
-                  setValue("university", value, { shouldValidate: true })
-                }
-                placeholder="Choose Your University"
+                onChange={(value) => {
+                  setValue("university", value, { shouldValidate: true });
+                  // Custom-text entry — drop any prior canonical link so the
+                  // PUT doesn't ship a stale ObjectId alongside free-form text.
+                  setCollegeId("");
+                }}
+                onSelect={(c) => {
+                  setValue("university", c.display, { shouldValidate: true });
+                  setCollegeId(c._id);
+                }}
+                placeholder="Search and select your university / college"
                 required
                 error={errors.university?.message}
               />

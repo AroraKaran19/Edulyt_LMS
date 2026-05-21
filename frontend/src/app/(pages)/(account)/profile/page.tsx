@@ -2408,9 +2408,9 @@ const StudentFields = ({
       </h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <CollegeSelect
-          label="College Name"
+          label="University / College Name"
           required
-          placeholder="Search and select your college"
+          placeholder="Search and select your university / college"
           value={formData.collegeName || ""}
           onChange={(value) => {
             handleInputChange("collegeName", value);

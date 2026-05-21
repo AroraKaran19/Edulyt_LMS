@@ -139,11 +139,7 @@ export default function TaskUpsertModal({
       return;
     }
     if (Number.isNaN(due) || due < 0) {
-      toast.error("Due (days) must be a non-negative integer");
-      return;
-    }
-    if (due < unlock) {
-      toast.error("Due days must be greater than or equal to unlock days");
+      toast.error("Due window (days) must be a non-negative integer");
       return;
     }
 
@@ -335,7 +331,7 @@ export default function TaskUpsertModal({
               onChange={(e) => setUnlockAfterDays(e.target.value)}
             />
             <Input
-              label="Due after (days)"
+              label="Due window (days after unlock)"
               type="number"
               min={0}
               required
@@ -345,13 +341,12 @@ export default function TaskUpsertModal({
             />
           </div>
           <p className="text-xs text-gray-500 -mt-2">
-            The template stores the same day counts for everyone; each
-            learner&apos;s actual dates depend on when they enrolled.
-            Someone who enrolls Monday and someone who enrolls Friday get
-            different calendar unlock and due times, but the same offset
-            from their own enrollment. Unlock: days after enroll before the
-            task appears. Due: days after enroll for the deadline (e.g. 7 =
-            due 7 days after they enrolled). Due must be on or after unlock.
+            Task dates are scheduled cohort-wide from the batch&apos;s
+            internship start date — every learner in a batch shares the same
+            calendar. <strong>Unlock after</strong>: days after the start date
+            before the task appears (start + 10 → unlocks on day 10).{" "}
+            <strong>Due window</strong>: days the task stays open once unlocked
+            (unlock + 3 → due 3 days after it appears).
           </p>
 
           <CheckBoxContainer

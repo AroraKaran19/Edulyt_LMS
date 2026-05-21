@@ -25,6 +25,7 @@ import { useSession } from "next-auth/react";
 import Modal from "@/components/ui/Modal";
 import { User as UserIcon, Tag, X, Check } from "lucide-react";
 import { useCoupon } from "@/hooks/useCoupon";
+import useReferral from "@/hooks/useReferral";
 
 // PDF from public/assets (served at /assets/...)
 const TERMS_PDF_PATH = "/assets/Terms and Conditions - Courses.pdf";
@@ -179,6 +180,14 @@ const CartForm = ({
     finalAmount: number;
   } | null>(null);
   const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
+
+  // Referral code state — pure payout to the referrer, does NOT alter price.
+  const [referralCodeInput, setReferralCodeInput] = useState("");
+  const [appliedReferral, setAppliedReferral] = useState<{
+    code: string;
+    referrerName: string;
+  } | null>(null);
+  const [isValidatingReferral, setIsValidatingReferral] = useState(false);
 
   const [collabResolve, setCollabResolve] =
     useState<CollaborationCheckoutResolve | null>(null);
@@ -343,6 +352,46 @@ const CartForm = ({
     toast.info("Coupon removed");
   };
 
+  // Referral code apply/remove. The code is purely a payout to the referrer —
+  // it doesn't alter the order price or stack with the coupon discount.
+  const { validateCode: validateReferralCode } = useReferral();
+  const handleApplyReferral = async () => {
+    const code = referralCodeInput.trim().toUpperCase();
+    if (!code) {
+      toast.error("Please enter a referral code");
+      return;
+    }
+    setIsValidatingReferral(true);
+    try {
+      const result = await validateReferralCode(code);
+      if (result.valid) {
+        setAppliedReferral({
+          code,
+          referrerName: result.referrerName ?? "Referrer",
+        });
+        toast.success(`Referral code applied — credit to ${result.referrerName}`);
+      } else if (result.reason === "self") {
+        toast.error("You can't use your own referral code.");
+      } else if (result.reason === "not-found") {
+        toast.error("Referral code not found.");
+      } else {
+        toast.error("Invalid referral code.");
+      }
+    } catch (error: any) {
+      toast.error(
+        error.response?.data?.error?.message ?? "Failed to validate referral code",
+      );
+    } finally {
+      setIsValidatingReferral(false);
+    }
+  };
+
+  const handleRemoveReferral = () => {
+    setAppliedReferral(null);
+    setReferralCodeInput("");
+    toast.info("Referral code removed");
+  };
+
   const handleUpdateFirstName = async () => {
     if (!firstNameInput.trim()) {
       toast.error("First name is required");
@@ -462,7 +511,7 @@ const CartForm = ({
         name: z.string().min(1, "Name is required"),
         email: z.email("Invalid email address"),
         phone: z.string().min(10, "Phone number must be 10 digits"),
-        collegeName: z.string().min(1, "College name is required"),
+        collegeName: z.string().min(1, "University / College name is required"),
         // Always a string, possibly empty. Set when picked from the
         // dropdown; cleared on custom text. The snapshot in collegeName
         // is the mandatory display value.
@@ -680,10 +729,10 @@ const CartForm = ({
                           </span>
                         </div>
                         <CollegeSelect
-                          label="College Name"
+                          label="University / College Name"
                           labelClassName="text-base text-text-primary font-bold"
                           required
-                          placeholder="Search and select your college"
+                          placeholder="Search and select your university / college"
                           value={watch("collegeName")}
                           onChange={(value) => {
                             setValue("collegeName", value, {
@@ -953,6 +1002,65 @@ const CartForm = ({
                           )}
                         </div>
 
+                        {/* Referral Code Section — pure payout to referrer, no discount. */}
+                        <div className="bg-linear-to-r from-violet-50 to-purple-50 border border-violet-200 rounded-lg p-4">
+                          <label className="text-sm font-semibold text-text-primary flex items-center gap-2 mb-1">
+                            <Tag className="w-4 h-4 text-violet-600" />
+                            Got a referral code?
+                          </label>
+                          <p className="text-xs text-violet-700/80 mb-3">
+                            Helps the person who referred you earn a commission.
+                          </p>
+                          {!appliedReferral ? (
+                            <div className="flex gap-2">
+                              <input
+                                type="text"
+                                placeholder="Enter referral code"
+                                value={referralCodeInput}
+                                onChange={(e) =>
+                                  setReferralCodeInput(
+                                    e.target.value.toUpperCase(),
+                                  )
+                                }
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") handleApplyReferral();
+                                }}
+                                disabled={isValidatingReferral}
+                                className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent uppercase font-mono"
+                              />
+                              <OrangeButton
+                                onClick={handleApplyReferral}
+                                disabled={
+                                  isValidatingReferral ||
+                                  !referralCodeInput.trim()
+                                }
+                                className="px-6 whitespace-nowrap"
+                              >
+                                {isValidatingReferral ? "Checking..." : "Apply"}
+                              </OrangeButton>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-between bg-violet-50 border-2 border-violet-300 rounded-lg px-4 py-3">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <Check className="w-5 h-5 text-violet-600 shrink-0" />
+                                <span className="font-bold text-violet-800 font-mono shrink-0">
+                                  {appliedReferral.code}
+                                </span>
+                                <span className="text-sm text-violet-700 font-medium truncate">
+                                  · credits {appliedReferral.referrerName}
+                                </span>
+                              </div>
+                              <button
+                                onClick={handleRemoveReferral}
+                                className="text-red-600 hover:text-red-700 hover:bg-red-100 p-1 rounded transition-colors"
+                                title="Remove referral code"
+                              >
+                                <X className="w-5 h-5" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
                         {/* Order Summary */}
                         <div className="bg-gray-50 rounded-lg p-4">
                           <h3 className="font-semibold text-text-primary mb-3">
@@ -1094,6 +1202,25 @@ const CartForm = ({
                                 fatherOccupation: formData.fatherOccupation,
                               });
 
+                              // Mirror the writes into the active NextAuth
+                              // session so subsequent pages reading from
+                              // useSession() see the new values without a
+                              // reload. Best-effort — DB is source of truth.
+                              try {
+                                await updateSession?.({
+                                  firstName,
+                                  lastName,
+                                  email: formData.email,
+                                  phone: formData.phone,
+                                  collegeName: formData.collegeName,
+                                  college: formData.college || undefined,
+                                  degreeName: formData.degreeName,
+                                  fatherOccupation: formData.fatherOccupation,
+                                });
+                              } catch {
+                                /* session sync is best-effort */
+                              }
+
                               const orderData: any = {
                                 courseId: course._id,
                                 planType: planType,
@@ -1101,6 +1228,9 @@ const CartForm = ({
                               };
                               if (appliedCoupon) {
                                 orderData.couponCode = appliedCoupon.code;
+                              }
+                              if (appliedReferral) {
+                                orderData.referralCode = appliedReferral.code;
                               }
 
                               const response = await apiClient.post(

@@ -239,7 +239,10 @@ export async function createInternshipSubmission(
       throw new AppError("A submission for this task already exists", 409);
     }
 
-    // Enforce the task window: enrolledAt + unlockAfterDays ≤ now < enrolledAt + dueDays
+    // Enforce the task window, scheduled cohort-wide from the batch internship
+    // start date:
+    //   visibleFrom = internshipStartDate + unlockAfterDays
+    //   dueAt       = visibleFrom + dueDays
     const enrollment = await InternshipEnrollmentModel.findById(enrollmentId)
       .select("-applicationAnswers -applicationSubmittedAt")
       .lean();
@@ -253,13 +256,19 @@ export async function createInternshipSubmission(
         "DOCUMENTATION_PENDING",
       );
     }
-    const enrolledAt =
-      enrollment.enrolledAt instanceof Date
-        ? enrollment.enrolledAt
-        : enrollment.createdAt instanceof Date
-          ? enrollment.createdAt
+    // Anchor to the batch start date; fall back to enrolment date only when the
+    // batch snapshot lacks a start date (defensive — normally always set).
+    const rawAnchor =
+      enrollment.batchSnapshot?.internshipStartDate ??
+      enrollment.enrolledAt ??
+      enrollment.createdAt;
+    const anchor =
+      rawAnchor instanceof Date
+        ? rawAnchor
+        : rawAnchor
+          ? new Date(rawAnchor)
           : null;
-    if (enrolledAt) {
+    if (anchor) {
       const task = await InternshipTaskModel.findById(body.taskId)
         .select("unlockAfterDays dueDays")
         .lean();
@@ -269,9 +278,10 @@ export async function createInternshipSubmission(
           typeof task.unlockAfterDays === "number" ? task.unlockAfterDays : 0;
         const dueDays = typeof task.dueDays === "number" ? task.dueDays : 0;
         const visibleFrom = new Date(
-          enrolledAt.getTime() + unlockAfterDays * MS_PER_DAY,
+          anchor.getTime() + unlockAfterDays * MS_PER_DAY,
         );
-        const dueAt = new Date(enrolledAt.getTime() + dueDays * MS_PER_DAY);
+        // `dueDays` is the window length after unlock, not an anchor offset.
+        const dueAt = new Date(visibleFrom.getTime() + dueDays * MS_PER_DAY);
         const now = new Date();
         if (now < visibleFrom) {
           throw new AppError(

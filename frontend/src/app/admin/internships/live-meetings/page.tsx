@@ -377,6 +377,16 @@ export default function AdminLiveMeetingsPage() {
                       >
                         {m.meetingLink}
                       </a>
+                      {m.recordingLink ? (
+                        <a
+                          href={m.recordingLink}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                          className="text-xs text-violet-600 hover:underline line-clamp-1"
+                        >
+                          Recording: {m.recordingLink}
+                        </a>
+                      ) : null}
                       <span
                         className={`mt-2 inline-flex px-2 py-0.5 text-[11px] font-semibold rounded-full border ${phaseChipClasses(m.phase)}`}
                       >

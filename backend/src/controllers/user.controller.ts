@@ -13,6 +13,7 @@ import {
   getUserStatsService,
   updateUserProfileService,
   getCurrentUserProfileService,
+  getCurrentUserDashboardCountsService,
   changeUserPasswordService,
   changeUserEmailService,
   setUserPasswordService,
@@ -204,6 +205,21 @@ export const getCurrentUserProfile = asyncHandler(
     }
 
     sendSuccessResponse(res, user, "Profile fetched successfully", 200);
+  }
+);
+
+/**
+ * Lightweight dashboard counts (courses / certificates / internships) for
+ * the navbar tabs and welcome banner — replaces three full-data list calls.
+ */
+export const getCurrentUserStats = asyncHandler(
+  async (req: Request, res: Response) => {
+    const userId = req.user?._id;
+    if (!userId) {
+      throw new AppError("User ID not found", 400);
+    }
+    const stats = await getCurrentUserDashboardCountsService(String(userId));
+    sendSuccessResponse(res, stats, "User stats fetched", 200);
   }
 );
 

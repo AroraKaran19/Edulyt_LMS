@@ -103,6 +103,13 @@ const batchSchema = new mongoose.Schema<InternshipBatches>(
       type: [mongoose.Schema.Types.ObjectId],
       default: [],
     },
+    /**
+     * Documentation submission window (UTC) for this cohort. Required — merit
+     * or paid enrollees pass through `pending_documentation` before reaching
+     * `enrolled`. Validated in the admin/services layer.
+     */
+    documentationStartAt: { type: Date, default: undefined },
+    documentationEndAt: { type: Date, default: undefined },
   },
   { _id: true, timestamps: true },
 );
@@ -347,13 +354,6 @@ const internshipSchema = new mongoose.Schema<Internship>(
       default: defaultInternshipAnalytics,
       _id: false,
     },
-    /**
-     * Documentation submission window (UTC). Required for every internship — merit
-     * or paid enrollees pass through `pending_documentation` before reaching
-     * `enrolled`. See `internship.types.ts`.
-     */
-    documentationStartAt: { type: Date, default: undefined },
-    documentationEndAt: { type: Date, default: undefined },
   },
   { timestamps: true },
 );

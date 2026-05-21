@@ -22,6 +22,8 @@ export interface AdminLiveMeetingListItem {
   name: string;
   description: string;
   meetingLink: string;
+  /** Optional link to the recorded session ("" when not set). */
+  recordingLink: string;
   startDateTime: string;
   endDateTime: string | null;
   link1: {
@@ -48,6 +50,7 @@ export interface CreateLiveMeetingBody {
   name: string;
   description?: string;
   meetingLink: string;
+  recordingLink?: string;
   startDateTime: string;
   endDateTime?: string;
   link1ExpiryMins: number;
@@ -86,9 +89,19 @@ export interface StudentLiveMeetingItem {
   name: string;
   description: string;
   meetingLink: string;
+  /** Optional link to the recorded session ("" when not set). */
+  recordingLink: string;
   startDateTime: string;
   endDateTime: string | null;
   phase: LiveMeetingPhase;
   link1Clicked: boolean;
   link2Clicked: boolean;
+}
+
+/** Paginated student-facing live-meetings page response. */
+export interface StudentLiveMeetingsPage {
+  items: StudentLiveMeetingItem[];
+  total: number;
+  page: number;
+  totalPages: number;
 }

@@ -7,7 +7,7 @@ import FreeInternshipClaimModal from "./FreeInternshipClaimModal";
 import { cn } from "@/lib/utils";
 
 export default function FreeInternshipCreditBanner() {
-  const { available, vouchers, isLoading } = useInternshipVouchers();
+  const { available, vouchers, isLoading, refetch } = useInternshipVouchers();
   const [dismissed, setDismissed] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
 
@@ -72,6 +72,7 @@ export default function FreeInternshipCreditBanner() {
         isOpen={modalOpen}
         voucher={nextVoucher}
         onClose={() => setModalOpen(false)}
+        onRedeemed={refetch}
       />
     </>
   );

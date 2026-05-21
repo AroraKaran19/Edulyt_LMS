@@ -27,6 +27,21 @@ async function fetchCourse(
   }
 }
 
+/**
+ * A course is only safe to render on the public page once its content step is
+ * complete. Draft courses created in the admin wizard but never finished are
+ * missing these required arrays, which would crash the overview components —
+ * treat them as not-found instead.
+ */
+function isPublicViewableCourse(course: Course | null): course is Course {
+  return (
+    !!course &&
+    Array.isArray(course.skills) &&
+    Array.isArray(course.highlights) &&
+    Array.isArray(course.careerPaths)
+  );
+}
+
 // Generate metadata for the course page
 export async function generateMetadata({
   params,
@@ -36,7 +51,7 @@ export async function generateMetadata({
   const slug = (await params).slug;
   const { course } = await fetchCourse(slug);
 
-  if (!course) {
+  if (!isPublicViewableCourse(course)) {
     return {
       title: "Not Found | Airkrit",
       description: "The requested course could not be found.",
@@ -87,7 +102,7 @@ const IndividualCoursePage = async ({
     statusCode: status,
     errorType: "backend",
   });
-  if (status === 404 || !course) {
+  if (status === 404 || !isPublicViewableCourse(course)) {
     return (
       <Error
         icon={errorConfig.icon}

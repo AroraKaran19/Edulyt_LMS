@@ -428,7 +428,7 @@ export default function QuestionUpsertModal({
             <UploadMediaContainer
               type="document"
               title="Reference file (optional)"
-              description="Upload instructions or a template (PDF, Word, or text), or paste a direct file URL."
+              description="Upload instructions, a template, or a starter ZIP (PDF, Word, text, ZIP), or paste a direct file URL."
               folderName={REFERENCE_FOLDER}
               mediaUrl={referenceFile || undefined}
               mediaSource={referenceMediaSource}
@@ -439,7 +439,7 @@ export default function QuestionUpsertModal({
               allowUrlInput
               showConfirmation={false}
               maxSize={50}
-              acceptedFormats={[".pdf", ".doc", ".docx", ".txt"]}
+              acceptedFormats={[".pdf", ".doc", ".docx", ".txt", ".zip"]}
               isUploading={isUploading}
               error={uploadError}
               required={false}

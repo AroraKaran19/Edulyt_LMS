@@ -66,6 +66,13 @@ export interface InternshipBatches {
    * Reusable task template ids (`InternshipTask` collection) for this cohort.
    */
   taskTemplateIds?: string[];
+  /**
+   * Documentation submission window (ISO strings, UTC) for this cohort.
+   * Required for each batch — enrollments pass through `pending_documentation`
+   * until KYC is submitted (admin sets opens/closes on Screen 2).
+   */
+  documentationStartAt?: Date | string;
+  documentationEndAt?: Date | string;
 }
 
 export interface Internship {
@@ -150,14 +157,6 @@ export interface Internship {
   discount?: CourseDiscount | null;
 
   analytics?: InternshipAnalytics;
-
-  /**
-   * Documentation submission window (ISO strings, UTC). Required for each
-   * internship — enrollments pass through `pending_documentation` until KYC is
-   * submitted (admin sets opens/closes on Screen 1).
-   */
-  documentationStartAt?: string;
-  documentationEndAt?: string;
 
   isActive: boolean;
   createdAt?: Date;
@@ -248,10 +247,6 @@ export interface InternshipResponse {
   discount?: CourseDiscount | null;
 
   analytics?: InternshipAnalytics;
-
-  /** Documentation window (ISO strings, UTC). See {@link Internship.documentationStartAt}. */
-  documentationStartAt?: string;
-  documentationEndAt?: string;
 
   isActive: boolean;
   createdAt?: Date;

@@ -130,7 +130,7 @@ export default function LearnerInternshipSubmissionFileField({
           ref={inputRef}
           type="file"
           className="sr-only"
-          accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.jpg,.jpeg,.png,.webp"
+          accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.jpg,.jpeg,.png,.webp,.zip"
           disabled={disabled || isUploading}
           onChange={(e) => void handleChange(e)}
         />
@@ -152,7 +152,7 @@ export default function LearnerInternshipSubmissionFileField({
               : "Upload file (optional)"}
         </button>
         <p className="text-xs text-stone-500">
-          PDF, Office, images, TXT, CSV · max {maxMb} MB
+          PDF, Office, images, TXT, CSV, ZIP · max {maxMb} MB
         </p>
       </div>
 

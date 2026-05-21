@@ -11,6 +11,7 @@ import UploadMediaContainer from "@/components/ui/container/UploadMediaContainer
 import { useUpload } from "@/hooks/useUpload";
 import apiClient from "@/configs/apiConfig";
 import { ENDPOINTS } from "@/constants/endpoints";
+import { cn } from "@/lib/utils";
 
 const AADHAR_RE = /^[2-9]\d{11}$/;
 const TERMS_PDF_URL =
@@ -60,6 +61,8 @@ export default function DocumentationSubmissionModal({
     undefined,
   );
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  /** The accept checkbox unlocks only after the learner opens the T&C link. */
+  const [termsLinkOpened, setTermsLinkOpened] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -103,6 +106,7 @@ export default function DocumentationSubmissionModal({
     setPhotoS3Key("");
     setPhotoSource(undefined);
     setAcceptedTerms(false);
+    setTermsLinkOpened(false);
     setError(null);
     setSubmitting(false);
   };
@@ -261,13 +265,20 @@ export default function DocumentationSubmissionModal({
           showConfirmation={false}
         />
 
-        <label className="flex items-start gap-2.5 rounded-lg border border-stone-200 bg-stone-50 px-3 py-2.5 cursor-pointer hover:bg-stone-100/70 transition">
+        <label
+          className={cn(
+            "flex items-start gap-2.5 rounded-lg border border-stone-200 bg-stone-50 px-3 py-2.5 transition",
+            termsLinkOpened
+              ? "cursor-pointer hover:bg-stone-100/70"
+              : "cursor-not-allowed",
+          )}
+        >
           <input
             type="checkbox"
             checked={acceptedTerms}
             onChange={(e) => setAcceptedTerms(e.target.checked)}
-            disabled={submitting}
-            className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer accent-orange-600"
+            disabled={submitting || !termsLinkOpened}
+            className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer accent-orange-600 disabled:cursor-not-allowed"
           />
           <span className="text-xs text-stone-800 leading-relaxed">
             I have read and accept the{" "}
@@ -276,12 +287,21 @@ export default function DocumentationSubmissionModal({
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 font-semibold text-orange-700 hover:text-orange-800 underline underline-offset-2"
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+                setTermsLinkOpened(true);
+              }}
             >
               Terms &amp; Conditions (Annexure 1)
               <ExternalLink className="h-3 w-3" />
             </a>
             . <span className="text-red-500">*</span>
+            {!termsLinkOpened && (
+              <span className="mt-1 block text-[11px] font-medium text-stone-500">
+                Open the Terms &amp; Conditions link above to enable this
+                checkbox.
+              </span>
+            )}
           </span>
         </label>
 

@@ -34,6 +34,7 @@ export default function LiveMeetingCreateModal({
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [meetingLink, setMeetingLink] = useState("");
+  const [recordingLink, setRecordingLink] = useState("");
   const [startLocal, setStartLocal] = useState("");
   const [endLocal, setEndLocal] = useState("");
   const [link1ExpiryMins, setLink1ExpiryMins] = useState("10");
@@ -45,6 +46,7 @@ export default function LiveMeetingCreateModal({
     setName("");
     setDescription("");
     setMeetingLink("");
+    setRecordingLink("");
     setStartLocal("");
     setEndLocal("");
     setLink1ExpiryMins("10");
@@ -61,6 +63,11 @@ export default function LiveMeetingCreateModal({
     const link = meetingLink.trim();
     if (!/^https?:\/\//.test(link)) {
       toast.error("Meeting link must start with http:// or https://");
+      return;
+    }
+    const recording = recordingLink.trim();
+    if (recording && !/^https?:\/\//.test(recording)) {
+      toast.error("Recording link must start with http:// or https://");
       return;
     }
     const startIso = toIsoFromLocalInput(startLocal);
@@ -96,6 +103,7 @@ export default function LiveMeetingCreateModal({
         name: trimmedName,
         description: description.trim() || undefined,
         meetingLink: link,
+        recordingLink: recording || undefined,
         startDateTime: startIso,
         endDateTime: endIso,
         link1ExpiryMins: l1,
@@ -141,6 +149,12 @@ export default function LiveMeetingCreateModal({
           placeholder="https://teams.microsoft.com/j/123…"
           value={meetingLink}
           onChange={(e) => setMeetingLink(e.target.value)}
+        />
+        <Input
+          label="Recording URL (optional)"
+          placeholder="https://… link to the recorded session"
+          value={recordingLink}
+          onChange={(e) => setRecordingLink(e.target.value)}
         />
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Input

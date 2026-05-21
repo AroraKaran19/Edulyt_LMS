@@ -384,6 +384,36 @@ export const createEnrollmentAfterPayment = async (order: any) => {
       }
     }
 
+    // Record a referral sale when the order carried a code from a different
+    // user. Idempotent via the `orderId` unique index on `ReferralSale`.
+    if (order.referralCode) {
+      try {
+        const { recordReferralSaleForOrder } = await import(
+          "./referral.services"
+        );
+        const buyer = await UserModel.findById(order.userId)
+          .select("firstName lastName email")
+          .lean();
+        const buyerName =
+          `${(buyer as { firstName?: string } | null)?.firstName ?? ""} ${
+            (buyer as { lastName?: string } | null)?.lastName ?? ""
+          }`.trim() ||
+          String((buyer as { email?: string } | null)?.email ?? "");
+        await recordReferralSaleForOrder({
+          orderId: String(order._id),
+          code: order.referralCode,
+          buyerUserId: String(order.userId),
+          courseId: order.courseId ? String(order.courseId) : undefined,
+          courseName: String(order.courseName ?? course.title ?? ""),
+          buyerName,
+          amount: Number(order.amount ?? 0),
+        });
+      } catch (refErr) {
+        // Non-critical: the referrer can be reconciled manually if this fails.
+        console.error("Failed to record referral sale:", refErr);
+      }
+    }
+
     return savedEnrollment;
   } catch (error) {
     console.error("Failed to create enrollment after payment:", error);
@@ -700,7 +730,8 @@ export const createOrderService = async (
   userId: string,
   courseId: string,
   planType: "elite" | "essential",
-  couponCode?: string
+  couponCode?: string,
+  referralCode?: string,
 ) => {
   if (!process.env.PAYTM_MID || !process.env.PAYTM_WEBSITE) {
     throw new AppError("PAYTM_MID or PAYTM_WEBSITE is not set", 500);
@@ -760,6 +791,29 @@ export const createOrderService = async (
       ? `${((user as any).firstName ?? "").trim()} ${((user as any).lastName ?? "").trim()}`.trim()
       : "";
 
+  // Referral: pure payout to the referrer — does NOT alter `amount`. Code is
+  // attached to the order so the post-payment hook can credit the referrer.
+  let referralCodeSnapshot: string | undefined;
+  const refRaw =
+    typeof referralCode === "string" ? referralCode.trim().toUpperCase() : "";
+  if (refRaw) {
+    const { validateReferralCode } = await import("./referral.services");
+    const res = await validateReferralCode(
+      refRaw,
+      new mongoose.Types.ObjectId(userId),
+    );
+    if (!res.valid) {
+      if (res.reason === "self") {
+        throw new AppError("You can't use your own referral code.", 400);
+      }
+      if (res.reason === "not-found") {
+        throw new AppError("Referral code not found.", 400);
+      }
+      throw new AppError("Invalid referral code.", 400);
+    }
+    referralCodeSnapshot = refRaw;
+  }
+
   const order = new OrderModel({
     txnId: Math.random().toString(36).substring(2, 15),
     token: "", // Will be set by Paytm's txnToken
@@ -783,6 +837,7 @@ export const createOrderService = async (
     partnershipImportConfigId: partnershipImportConfigId
       ? new mongoose.Types.ObjectId(partnershipImportConfigId)
       : undefined,
+    referralCode: referralCodeSnapshot,
   });
   await order.save();
 

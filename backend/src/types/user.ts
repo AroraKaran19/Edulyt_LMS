@@ -113,6 +113,10 @@ export interface Student extends User {
   domain?: string;
 
   portfolio?: string;
+  /** Free-text LinkedIn profile URL the learner entered (e.g. on the
+   *  enrollment form). Mirrors `Instructor.linkedinUrl`. The OAuth-linked
+   *  LinkedIn provider snapshot lives in `accounts.linkedin` separately. */
+  linkedinUrl?: string;
 
   accounts: SocialProfiles;
 
@@ -191,6 +195,7 @@ export interface User {
   accounts: SocialProfiles;
 
   dob?: Date;
+  gender?: "male" | "female" | "other";
 
   permissions: string[];
 

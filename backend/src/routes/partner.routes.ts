@@ -4,6 +4,10 @@ import {
   getPartnerMe,
   getPartnerDashboard,
   getPartnerCourses,
+  getPartnerCoursesStudents,
+  getPartnerCoursesEnrollments,
+  getPartnerFilterCourses,
+  getPartnerFilterDomains,
   getPartnerCourseDetail,
   getPartnerInternships,
   getPartnerInternshipDetail,
@@ -21,6 +25,16 @@ router.get("/dashboard", getPartnerDashboard);
 
 /** Courses the partner's students have enrolled in, plus top-line analytics. */
 router.get("/courses", getPartnerCourses);
+
+/** Paginated list of the partner's students with course-enrollment aggregates. */
+router.get("/courses/students", getPartnerCoursesStudents);
+
+/** Paginated enrollment rows (one per student×course) with filter options. */
+router.get("/courses/enrollments", getPartnerCoursesEnrollments);
+
+/** Paginated option lists for the Enrollments filter comboboxes. */
+router.get("/courses/filter-options/courses", getPartnerFilterCourses);
+router.get("/courses/filter-options/domains", getPartnerFilterDomains);
 
 /** Single-course analytics (gated by courseAnalyticsEnabled). */
 router.get("/courses/:slug/analytics", getPartnerCourseDetail);

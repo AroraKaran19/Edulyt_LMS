@@ -277,8 +277,41 @@ export const getFileValidationRules = (
         "image/jpg",
         "image/png",
         "image/webp",
+        // ZIP archives — common for code/project submissions. Browsers
+        // report either of these MIME types depending on OS/source.
+        "application/zip",
+        "application/x-zip-compressed",
       ],
       maxSize: INTERNSHIP_SUBMISSION_MAX_FILE_BYTES,
+    };
+  }
+
+  // Admin-side reference files attached to file-type questions. Same set as
+  // learner submissions plus a larger budget so admins can attach hefty
+  // templates / starter ZIPs.
+  if (
+    folderName === "internship-questions/references" ||
+    folderName.startsWith("internship-questions/references/")
+  ) {
+    return {
+      allowedTypes: [
+        "application/pdf",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/vnd.ms-excel",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "application/vnd.ms-powerpoint",
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        "text/plain",
+        "text/csv",
+        "image/jpeg",
+        "image/jpg",
+        "image/png",
+        "image/webp",
+        "application/zip",
+        "application/x-zip-compressed",
+      ],
+      maxSize: 50 * 1024 * 1024, // 50MB
     };
   }
 

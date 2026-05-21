@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Briefcase, FileCheck, GraduationCap, Users } from "lucide-react";
+import {
+  Briefcase,
+  FileCheck,
+  GraduationCap,
+  Stamp,
+  Users,
+} from "lucide-react";
 import { toast } from "react-toastify";
 import PartnerCard from "@/components/ui/partner/PartnerCard";
 import PartnerStatCard from "@/components/ui/partner/PartnerStatCard";
@@ -67,8 +73,8 @@ export default function PartnerInternshipsPage() {
       icon: <Briefcase className="size-5" />,
     },
     {
-      key: "enrolled",
-      label: "Total Enrolled",
+      key: "registered",
+      label: "Registered",
       value: stats.totalEnrolled,
       icon: <Users className="size-5" />,
     },
@@ -79,8 +85,14 @@ export default function PartnerInternshipsPage() {
       icon: <FileCheck className="size-5" />,
     },
     {
+      key: "offerLetters",
+      label: "Offer Letters Received",
+      value: stats.offerLettersReceived,
+      icon: <Stamp className="size-5" />,
+    },
+    {
       key: "certs",
-      label: "Certificates Issued",
+      label: "Completed / Certified",
       value: stats.certificatesIssued,
       icon: <GraduationCap className="size-5" />,
     },
@@ -92,7 +104,7 @@ export default function PartnerInternshipsPage() {
         Internships
       </h1>
 
-      <div className="grid grid-cols-2 gap-2 sm:gap-4 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 sm:gap-4 sm:grid-cols-3 xl:grid-cols-5">
         {statCards.map((s) => (
           <PartnerStatCard
             key={s.key}

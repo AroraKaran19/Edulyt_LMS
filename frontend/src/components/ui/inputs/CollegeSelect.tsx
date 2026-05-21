@@ -2,8 +2,14 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import axios from "axios";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { cn } from "@/lib/utils";
-import { ChevronDown, ChevronUp, Search } from "lucide-react";
+import { ChevronDown, ChevronUp, Search, MessageCircle } from "lucide-react";
 import apiClient from "@/configs/apiConfig";
+import Modal from "@/components/ui/Modal";
+
+// Admin WhatsApp number shown when a learner can't find their college in the
+// directory. Keep in sync if the support contact rotates.
+const COLLEGE_SUPPORT_WHATSAPP_NUMBER = "89292252575";
+const COLLEGE_SUPPORT_WHATSAPP_URL = `https://wa.me/${COLLEGE_SUPPORT_WHATSAPP_NUMBER}`;
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -44,20 +50,13 @@ interface CollegeSelectProps {
   placeholder?: string;
   value?: string;
   disabled?: boolean;
-  /** Fires with the formatted display string ("Name, Location" for picks
-   *  from the list, or the raw text for custom entries). Kept for callers
-   *  that only want the human-readable snapshot. */
+  /** Fires with the formatted display string ("Name, Location") when the
+   *  learner picks a college from the directory. Free-text entries are not
+   *  supported — the dropdown is the only path to a value. */
   onChange?: (value: string) => void;
-  /** Fires when the user picks a college from the list. Gives the canonical
-   *  `_id` plus the original fields. Does NOT fire for custom-text entries,
-   *  since those don't correspond to a real College row. Callers that need
-   *  the ID-link should pass this AND clear their stored id when `onChange`
-   *  fires with no matching `_id` (i.e. custom text). */
+  /** Fires when the learner picks a college from the directory. Gives the
+   *  canonical `_id` plus the original fields. */
   onSelect?: (college: { _id: string; name: string; location: string; display: string }) => void;
-  /** Disable the "Use [custom text]" hint to enforce dropdown-only selection.
-   *  Required when the consumer stores an ObjectId reference and can't
-   *  accept arbitrary strings. */
-  disallowCustom?: boolean;
   error?: string;
 }
 
@@ -66,12 +65,11 @@ const CollegeSelect = ({
   labelClassName,
   required = false,
   className,
-  placeholder = "Search and select your college",
+  placeholder = "Search and select your university / college",
   value,
   disabled = false,
   onChange,
   onSelect,
-  disallowCustom = false,
   error,
 }: CollegeSelectProps) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -83,6 +81,7 @@ const CollegeSelect = ({
   const [loadingInitial, setLoadingInitial] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [listError, setListError] = useState<string | null>(null);
+  const [helpOpen, setHelpOpen] = useState(false);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -252,15 +251,10 @@ const CollegeSelect = ({
     [onChange, onSelect],
   );
 
-  const applyCustomCollege = useCallback(() => {
-    if (disallowCustom) return;
-    const customValue = searchTerm.trim();
-    if (!customValue) return;
+  const openHelpModal = useCallback(() => {
     setIsOpen(false);
-    setSearchTerm("");
-    onChange?.(customValue);
-    // Intentionally no onSelect — custom text isn't a real College row.
-  }, [onChange, searchTerm, disallowCustom]);
+    setHelpOpen(true);
+  }, []);
 
   const showEmptyHint =
     !loadingInitial &&
@@ -363,9 +357,9 @@ const CollegeSelect = ({
 
               {showEmptyHint && (
                 <div className="p-4 text-center text-gray-500 text-sm">
-                  No colleges loaded yet. Try a search, or enter your college
-                  name in the box above and use &quot;Use this name as my
-                  college&quot; at the bottom.
+                  Type to search the directory. If your college isn&apos;t
+                  listed, use the &quot;Can&apos;t find your college?&quot;
+                  link below to message an admin.
                 </div>
               )}
 
@@ -375,7 +369,8 @@ const CollegeSelect = ({
                   <span className="font-semibold">
                     &quot;{searchDebounce}&quot;
                   </span>
-                  . You can still save it using the button below.
+                  . Use the &quot;Can&apos;t find your college?&quot; link
+                  below to message an admin.
                 </div>
               )}
 
@@ -422,35 +417,60 @@ const CollegeSelect = ({
               )}
             </div>
 
-            {!disallowCustom && (
-            <div className="border-t border-gray-200 bg-gray-50 px-3 py-2.5 space-y-2">
-              <p className="text-xs text-gray-600 leading-snug">
-                College not in the list? Type your full college name in the
-                search field, then confirm here — it will be saved as you
-                entered it.
-              </p>
+            <div className="border-t border-gray-200 bg-gray-50 px-3 py-2.5">
               <button
                 type="button"
-                onClick={applyCustomCollege}
-                disabled={!searchTerm.trim()}
+                onClick={openHelpModal}
                 className={cn(
                   "w-full rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors",
-                  searchTerm.trim()
-                    ? "bg-orange-500 text-white shadow-sm hover:bg-orange-600"
-                    : "cursor-not-allowed bg-gray-200 text-gray-500",
+                  "bg-white text-orange-700 border border-orange-200 hover:bg-orange-50",
+                  "flex items-center justify-center gap-2",
                 )}
               >
-                {searchTerm.trim()
-                  ? `Use "${searchTerm.trim().length > 48 ? `${searchTerm.trim().slice(0, 45)}…` : searchTerm.trim()}" as my college`
-                  : "Type a name above to use a custom college"}
+                <MessageCircle className="h-4 w-4" aria-hidden />
+                Can&apos;t find your college?
               </button>
             </div>
-            )}
           </div>
         )}
       </div>
 
       {error && <p className="text-red-500 text-sm mt-1">{error}</p>}
+
+      <Modal
+        isOpen={helpOpen}
+        onClose={() => setHelpOpen(false)}
+        title="Can't find your college?"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-700 leading-relaxed">
+            If your university or college isn&apos;t listed in the directory,
+            send us a WhatsApp message with your college name and location.
+            Our admin team will add it and confirm back to you.
+          </p>
+          <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 text-center">
+            <p className="text-xs uppercase tracking-wide text-gray-500 font-semibold">
+              WhatsApp
+            </p>
+            <p className="mt-1 text-lg font-bold tabular-nums text-gray-900">
+              {COLLEGE_SUPPORT_WHATSAPP_NUMBER}
+            </p>
+          </div>
+          <a
+            href={COLLEGE_SUPPORT_WHATSAPP_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(
+              "w-full rounded-lg px-4 py-3 text-sm font-semibold transition-colors",
+              "bg-green-500 text-white hover:bg-green-600",
+              "flex items-center justify-center gap-2",
+            )}
+          >
+            <MessageCircle className="h-4 w-4" aria-hidden />
+            Message admin on WhatsApp
+          </a>
+        </div>
+      </Modal>
     </div>
   );
 };

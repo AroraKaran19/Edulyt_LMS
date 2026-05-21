@@ -52,7 +52,9 @@ export interface PartnerDashboardResponse {
 export interface PartnerCourseCategorySlice {
   categoryId: string;
   categoryName: string;
+  audience: "college-students" | "professionals";
   enrollments: number;
+  completions: number;
 }
 
 export interface PartnerCourseListItem {
@@ -73,6 +75,66 @@ export interface PartnerCoursesResponse {
   };
   categoryBreakdown: PartnerCourseCategorySlice[];
   courses: PartnerCourseListItem[];
+}
+
+export interface PartnerCoursesStudentRow {
+  userId: string;
+  name: string;
+  email: string;
+  coursesEnrolled: number;
+  coursesCompleted: number;
+  certificatesIssued: number;
+}
+
+export interface PartnerCoursesStudentsResponse {
+  items: PartnerCoursesStudentRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export type PartnerAudience = "college-students" | "professionals";
+
+export interface PartnerEnrollmentRow {
+  enrollmentId: string;
+  userId: string;
+  studentName: string;
+  email: string;
+  courseId: string;
+  courseTitle: string;
+  domains: string[];
+  audiences: PartnerAudience[];
+  status: "active" | "completed";
+  certified: boolean;
+}
+
+export interface PartnerEnrollmentFilterOptions {
+  courses: { courseId: string; title: string }[];
+  domains: { categoryId: string; name: string; audience: PartnerAudience }[];
+}
+
+export interface PartnerCoursesEnrollmentsResponse {
+  items: PartnerEnrollmentRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+  filters: PartnerEnrollmentFilterOptions;
+}
+
+export interface PartnerFilterCoursesResponse {
+  items: { courseId: string; title: string }[];
+  total: number;
+  page: number;
+  pageSize: number;
+  hasMore: boolean;
+}
+
+export interface PartnerFilterDomainsResponse {
+  items: { categoryId: string; name: string; audience: PartnerAudience }[];
+  total: number;
+  page: number;
+  pageSize: number;
+  hasMore: boolean;
 }
 
 export interface PartnerCourseStudentRow {
@@ -112,6 +174,7 @@ export interface PartnerInternshipsResponse {
     totalInternships: number;
     totalEnrolled: number;
     appearedInExam: number;
+    offerLettersReceived: number;
     certificatesIssued: number;
   };
   internships: PartnerInternshipListItem[];
@@ -203,6 +266,94 @@ export default function usePartner() {
     [],
   );
 
+  const getCoursesStudents = useCallback(
+    async (opts: {
+      page: number;
+      pageSize: number;
+      q?: string;
+    }): Promise<PartnerCoursesStudentsResponse> => {
+      const qs = new URLSearchParams({
+        page: String(opts.page),
+        pageSize: String(opts.pageSize),
+      });
+      const search = opts.q?.trim() ?? "";
+      if (search) qs.set("q", search);
+      const res = await apiClient.get<
+        ApiSuccessBody<PartnerCoursesStudentsResponse>
+      >(`/partner/courses/students?${qs}`);
+      return res.data.data;
+    },
+    [],
+  );
+
+  const getCoursesEnrollments = useCallback(
+    async (opts: {
+      page: number;
+      pageSize: number;
+      q?: string;
+      audience?: PartnerAudience;
+      categoryId?: string;
+      courseId?: string;
+    }): Promise<PartnerCoursesEnrollmentsResponse> => {
+      const qs = new URLSearchParams({
+        page: String(opts.page),
+        pageSize: String(opts.pageSize),
+      });
+      const search = opts.q?.trim() ?? "";
+      if (search) qs.set("q", search);
+      if (opts.audience) qs.set("audience", opts.audience);
+      if (opts.categoryId) qs.set("categoryId", opts.categoryId);
+      if (opts.courseId) qs.set("courseId", opts.courseId);
+      const res = await apiClient.get<
+        ApiSuccessBody<PartnerCoursesEnrollmentsResponse>
+      >(`/partner/courses/enrollments?${qs}`);
+      return res.data.data;
+    },
+    [],
+  );
+
+  const getCourseFilterCourses = useCallback(
+    async (opts: {
+      page: number;
+      pageSize: number;
+      q?: string;
+    }): Promise<PartnerFilterCoursesResponse> => {
+      const qs = new URLSearchParams({
+        page: String(opts.page),
+        pageSize: String(opts.pageSize),
+      });
+      const search = opts.q?.trim() ?? "";
+      if (search) qs.set("q", search);
+      const res = await apiClient.get<
+        ApiSuccessBody<PartnerFilterCoursesResponse>
+      >(`/partner/courses/filter-options/courses?${qs}`);
+      return res.data.data;
+    },
+    [],
+  );
+
+  const getCourseFilterDomains = useCallback(
+    async (opts: {
+      page: number;
+      pageSize: number;
+      q?: string;
+      audience?: PartnerAudience;
+    }): Promise<PartnerFilterDomainsResponse> => {
+      const qs = new URLSearchParams({
+        page: String(opts.page),
+        pageSize: String(opts.pageSize),
+      });
+      const search = opts.q?.trim() ?? "";
+      if (search) qs.set("q", search);
+      if (opts.audience) qs.set("audience", opts.audience);
+      const res = await apiClient.get<
+        ApiSuccessBody<PartnerFilterDomainsResponse>
+      >(`/partner/courses/filter-options/domains?${qs}`);
+      return res.data.data;
+    },
+    [],
+  );
+
   const getCourseDetail = useCallback(
     async (slug: string): Promise<PartnerCourseDetailResponse> => {
       const res = await apiClient.get<
@@ -237,6 +388,10 @@ export default function usePartner() {
     getMe,
     getDashboard,
     getCourses,
+    getCoursesStudents,
+    getCoursesEnrollments,
+    getCourseFilterCourses,
+    getCourseFilterDomains,
     getCourseDetail,
     getInternships,
     getInternshipDetail,

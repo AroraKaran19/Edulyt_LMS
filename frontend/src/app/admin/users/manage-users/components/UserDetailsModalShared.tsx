@@ -277,7 +277,7 @@ function StudentProfileSection({ user }: { user: Student }) {
         Student Information
       </h4>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <InfoRow label="College" value={user.collegeName || "N/A"} />
+        <InfoRow label="University / College" value={user.collegeName || "N/A"} />
         <InfoRow label="Degree" value={user.degreeName || "N/A"} />
         <InfoRow label="Position" value={user.currentPosition || "N/A"} />
         <InfoRow label="Domain" value={user.domain || "N/A"} />

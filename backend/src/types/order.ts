@@ -56,6 +56,8 @@ export interface PaymentOrder {
   collaborationDomainId?: string;
   /** CSV / manual partnership import discount (not email-domain collaboration). */
   partnershipImportConfigId?: string;
+  /** Referral code used at checkout — snapshot only; does NOT alter `amount`. */
+  referralCode?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }

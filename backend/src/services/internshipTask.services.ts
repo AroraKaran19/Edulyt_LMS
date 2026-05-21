@@ -200,13 +200,10 @@ async function computeTaskFields(body: UpsertInternshipTaskBody): Promise<{
     body.unlockAfterDays,
     "unlockAfterDays",
   );
+  // `dueDays` is the submission window length measured from the unlock date
+  // (dueAt = internshipStartDate + unlockAfterDays + dueDays), so it is
+  // independent of `unlockAfterDays` — any non-negative value is valid.
   const dueDays = parseNonNegInt(body.dueDays, "dueDays");
-  if (dueDays < unlockAfterDays) {
-    throw new AppError(
-      "dueDays must be greater than or equal to unlockAfterDays",
-      400,
-    );
-  }
   const questionOids = normalizeQuestionIdOrder(body.questions);
   const totalScore = await resolveQuestionsForTask(questionOids);
   const scoreThreshold = parseScoreThreshold(
