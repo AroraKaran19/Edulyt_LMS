@@ -901,6 +901,70 @@ const Screen5 = () => {
                     description="This plan will be highlighted and recommended to students"
                   />
                 </div>
+
+                {/* Success Points Settings */}
+                <div className="rounded-xl p-5 border border-gray-200 bg-gray-50/60 space-y-4">
+                  <div>
+                    <h5 className="text-sm font-semibold text-gray-800">
+                      Success Points
+                    </h5>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Per-plan settings for points earned and points
+                      redeemable as a checkout discount.
+                    </p>
+                  </div>
+                  <div className="flex gap-4 flex-col md:flex-row">
+                    <div className="flex-1">
+                      <Input
+                        label="Points granted on purchase"
+                        type="number"
+                        value={
+                          state.plans.essential.purchaseSuccessPoints?.toString() ??
+                          "0"
+                        }
+                        onChange={(e) =>
+                          updatePlan(
+                            "essential",
+                            "purchaseSuccessPoints",
+                            Math.max(0, parseInt(e.target.value, 10) || 0),
+                          )
+                        }
+                        min={0}
+                        max={1_000_000}
+                        step={1}
+                        placeholder="0"
+                      />
+                      <p className="text-xs text-gray-500 mt-1.5">
+                        Credited to the buyer&apos;s wallet on purchase. 0 = none.
+                      </p>
+                    </div>
+                    <div className="flex-1">
+                      <Input
+                        label="Max points usable at checkout"
+                        type="number"
+                        value={
+                          state.plans.essential.maxSuccessPointsUsage?.toString() ??
+                          "0"
+                        }
+                        onChange={(e) =>
+                          updatePlan(
+                            "essential",
+                            "maxSuccessPointsUsage",
+                            Math.max(0, parseInt(e.target.value, 10) || 0),
+                          )
+                        }
+                        min={0}
+                        max={1_000_000}
+                        step={1}
+                        placeholder="0"
+                      />
+                      <p className="text-xs text-gray-500 mt-1.5">
+                        Cap on points a buyer can redeem as a discount on this
+                        plan. 0 = disabled.
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -1276,6 +1340,70 @@ const Screen5 = () => {
                     }
                     description="This plan will be highlighted and recommended to students"
                   />
+                </div>
+
+                {/* Success Points Settings */}
+                <div className="rounded-xl p-5 border border-gray-200 bg-gray-50/60 space-y-4">
+                  <div>
+                    <h5 className="text-sm font-semibold text-gray-800">
+                      Success Points
+                    </h5>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Per-plan settings for points earned and points
+                      redeemable as a checkout discount.
+                    </p>
+                  </div>
+                  <div className="flex gap-4 flex-col md:flex-row">
+                    <div className="flex-1">
+                      <Input
+                        label="Points granted on purchase"
+                        type="number"
+                        value={
+                          state.plans.elite.purchaseSuccessPoints?.toString() ??
+                          "0"
+                        }
+                        onChange={(e) =>
+                          updatePlan(
+                            "elite",
+                            "purchaseSuccessPoints",
+                            Math.max(0, parseInt(e.target.value, 10) || 0),
+                          )
+                        }
+                        min={0}
+                        max={1_000_000}
+                        step={1}
+                        placeholder="0"
+                      />
+                      <p className="text-xs text-gray-500 mt-1.5">
+                        Credited to the buyer&apos;s wallet on purchase. 0 = none.
+                      </p>
+                    </div>
+                    <div className="flex-1">
+                      <Input
+                        label="Max points usable at checkout"
+                        type="number"
+                        value={
+                          state.plans.elite.maxSuccessPointsUsage?.toString() ??
+                          "0"
+                        }
+                        onChange={(e) =>
+                          updatePlan(
+                            "elite",
+                            "maxSuccessPointsUsage",
+                            Math.max(0, parseInt(e.target.value, 10) || 0),
+                          )
+                        }
+                        min={0}
+                        max={1_000_000}
+                        step={1}
+                        placeholder="0"
+                      />
+                      <p className="text-xs text-gray-500 mt-1.5">
+                        Cap on points a buyer can redeem as a discount on this
+                        plan. 0 = disabled.
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

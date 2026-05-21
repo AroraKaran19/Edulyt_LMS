@@ -19,12 +19,16 @@ import { generatePaytmChecksum } from "../utils/lib/generatePaytmChecksum";
 import axios from "axios";
 import { validateCouponService } from "./coupon.services";
 import {
+  tryAwardPurchaseSuccessPoints,
+  tryRedeemSuccessPointsForOrder,
+} from "./successPoints.services";
+import { getPointsSettings } from "./pointsSettings.services";
+import {
   qualifiesForInternshipVoucher,
   issueInternshipVoucher,
 } from "./internshipVoucher.services";
 import type { CourseDiscount, Discount } from "../types";
 import { isApplicationWindowOpenIst } from "../utils/applicationWindow";
-import { getPointsSettings } from "./pointsSettings.services";
 import { parseProgramDurationMonthsFromAnswers } from "../lib/certificationExamSchedule";
 
 const SUCCESS_POINTS_PURCHASE_MAX = 500;
@@ -264,6 +268,30 @@ export const createEnrollmentAfterPayment = async (order: any) => {
     });
 
     if (existingEnrollment) {
+      // Idempotent retry: still attempt both the grant and the redemption
+      // deduction. Each is no-op when its respective flag is already set.
+      if (order.planType && order.courseId && order._id) {
+        try {
+          await tryAwardPurchaseSuccessPoints({
+            orderId: String(order._id),
+            userId: String(order.userId),
+            courseId: String(order.courseId),
+            planType: order.planType,
+            enrollmentId: String(existingEnrollment._id),
+          });
+        } catch (e) {
+          console.error("Purchase success points grant failed:", e);
+        }
+        try {
+          await tryRedeemSuccessPointsForOrder({
+            orderId: String(order._id),
+            userId: String(order.userId),
+            courseId: String(order.courseId),
+          });
+        } catch (e) {
+          console.error("Success points redemption failed:", e);
+        }
+      }
       return existingEnrollment;
     }
 
@@ -411,6 +439,31 @@ export const createEnrollmentAfterPayment = async (order: any) => {
       } catch (refErr) {
         // Non-critical: the referrer can be reconciled manually if this fails.
         console.error("Failed to record referral sale:", refErr);
+      }
+    }
+
+    // Grant per-plan purchase success points + redeem points the buyer
+    // chose to apply at checkout. Both are idempotent at the order level.
+    if (order.planType && order.courseId && order._id) {
+      try {
+        await tryAwardPurchaseSuccessPoints({
+          orderId: String(order._id),
+          userId: String(order.userId),
+          courseId: String(order.courseId),
+          planType: order.planType,
+          enrollmentId: String(savedEnrollment._id),
+        });
+      } catch (e) {
+        console.error("Purchase success points grant failed:", e);
+      }
+      try {
+        await tryRedeemSuccessPointsForOrder({
+          orderId: String(order._id),
+          userId: String(order.userId),
+          courseId: String(order.courseId),
+        });
+      } catch (e) {
+        console.error("Success points redemption failed:", e);
       }
     }
 
@@ -732,6 +785,7 @@ export const createOrderService = async (
   planType: "elite" | "essential",
   couponCode?: string,
   referralCode?: string,
+  useSuccessPoints?: boolean,
 ) => {
   if (!process.env.PAYTM_MID || !process.env.PAYTM_WEBSITE) {
     throw new AppError("PAYTM_MID or PAYTM_WEBSITE is not set", 500);
@@ -769,7 +823,7 @@ export const createOrderService = async (
       : undefined;
 
   const {
-    amount,
+    amount: subtotal,
     couponCode: appliedCouponCode,
     couponDiscount,
     collaborationDiscount,
@@ -784,6 +838,47 @@ export const createOrderService = async (
     userEmail,
     couponCode,
   });
+
+  // Apply success-points discount last in the stack, capped at amount due.
+  // The buyer's balance check + actual deduction happens at payment success;
+  // here we only price the order and snapshot the intended redemption.
+  let amount = subtotal;
+  let successPointsApplied = 0;
+  let successPointsDiscount = 0;
+
+  if (useSuccessPoints) {
+    const planMax = Math.max(
+      0,
+      Math.floor(Number(plan.maxSuccessPointsUsage ?? 0)),
+    );
+    if (planMax > 0) {
+      const settings = await getPointsSettings();
+      const rate = Number(settings.successPointRedemptionInr ?? 0);
+      if (rate > 0) {
+        const student = await StudentModel.findById(userId)
+          .select("successPoints")
+          .lean<{ successPoints?: number } | null>();
+        const balance = Math.max(
+          0,
+          Math.floor(Number(student?.successPoints ?? 0)),
+        );
+        const wantedPoints = Math.min(balance, planMax);
+        if (wantedPoints > 0) {
+          const wantedDiscount = Math.round(wantedPoints * rate * 100) / 100;
+          const actualDiscount =
+            Math.round(Math.min(wantedDiscount, subtotal) * 100) / 100;
+          // Cap-aware: only spend the points needed for the granted discount.
+          const actualPoints =
+            wantedDiscount > subtotal
+              ? Math.min(wantedPoints, Math.ceil(subtotal / rate))
+              : wantedPoints;
+          successPointsApplied = actualPoints;
+          successPointsDiscount = actualDiscount;
+          amount = Math.round((subtotal - actualDiscount) * 100) / 100;
+        }
+      }
+    }
+  }
 
   const courseName = (course as any).title ?? "";
   const userName =
@@ -838,6 +933,8 @@ export const createOrderService = async (
       ? new mongoose.Types.ObjectId(partnershipImportConfigId)
       : undefined,
     referralCode: referralCodeSnapshot,
+    successPointsApplied,
+    successPointsDiscount,
   });
   await order.save();
 

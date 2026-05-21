@@ -206,7 +206,7 @@ const Screen2 = () => {
         </div>
         <div className="w-full max-w-md">
           <Controller
-            name="successPoints"
+            name="completionSuccessPoints"
             control={control}
             rules={{
               required: "Success points is required",
@@ -223,14 +223,14 @@ const Screen2 = () => {
             render={({ field }) => (
               <Input
                 type="number"
-                label="Success points (on course completion)"
+                label="Success points (on certificate generation)"
                 required
                 min={0}
                 max={1_000_000}
                 step={1}
                 value={
                   field.value === undefined || field.value === null
-                    ? 100
+                    ? 0
                     : field.value
                 }
                 onChange={(e) => {
@@ -244,12 +244,12 @@ const Screen2 = () => {
                     field.onChange(Math.trunc(n));
                   }
                 }}
-                error={errors.successPoints?.message as string}
+                error={errors.completionSuccessPoints?.message as string}
               />
             )}
           />
           <p className="text-xs text-gray-500 mt-1.5 pl-0.5">
-            Awarded when a student finishes the course (
+            Awarded when the student&apos;s certificate is generated (
             <button
               type="button"
               onClick={() => setShowSuccessPointsRulesModal(true)}
@@ -268,8 +268,9 @@ const Screen2 = () => {
             <ul className="list-disc pl-4 space-y-3 text-sm text-gray-700">
               <li>
                 <span className="font-medium text-gray-900">Purchased course.</span>{" "}
-                Students earn the success points you set here when they complete a
-                course they bought through a successful payment.
+                Students earn the success points you set here when their
+                certificate is generated for a course they bought through a
+                successful payment.
               </li>
               <li>
                 <span className="font-medium text-gray-900">With a coupon.</span>{" "}
@@ -283,8 +284,9 @@ const Screen2 = () => {
               </li>
             </ul>
             <p className="text-xs text-gray-500 mt-4">
-              This field only sets how many points to award for this course when a
-              student completes it and the rules above are met.
+              This field only sets how many points to award for this course when
+              the student&apos;s certificate is generated and the rules above are
+              met.
             </p>
           </Modal>
         </div>

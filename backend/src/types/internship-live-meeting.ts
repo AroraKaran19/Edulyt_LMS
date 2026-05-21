@@ -28,6 +28,9 @@ export interface InternshipLiveMeeting {
   startDateTime: Date;
   endDateTime?: Date;
 
+  /** Internship success points awarded to learners present for this meeting. */
+  successPoints?: number;
+
   link1: InternshipLiveMeetingLink;
   link2: InternshipLiveMeetingLink;
 
@@ -76,6 +79,8 @@ export interface CreateInternshipLiveMeetingBody {
   endDateTime?: string | Date;
   link1ExpiryMins: number;
   link2ExpiryMins: number;
+  /** Points awarded to learners present for this meeting. 0 = none. */
+  successPoints?: number;
 }
 
 export type LiveMeetingPhase =
@@ -96,6 +101,8 @@ export interface AdminLiveMeetingListItem {
   recordingLink: string;
   startDateTime: string;
   endDateTime: string | null;
+  /** Points awarded to learners present for this meeting. */
+  successPoints: number;
   link1: {
     expiryMins: number;
     activatedAt: string | null;

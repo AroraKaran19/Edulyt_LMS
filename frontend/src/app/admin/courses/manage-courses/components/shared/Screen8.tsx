@@ -228,14 +228,13 @@ const Screen8 = () => {
         await validateSlug(slug);
       }
 
-      // Also add keywords as tags
-      if (tags && tags.length > 0) {
-        const existingTags = tags || [];
-        const newTags = [...new Set([...existingTags, ...allKeywords])];
-        setValue("tags", newTags, { shouldDirty: true, shouldTouch: true });
-      } else {
-        setValue("tags", allKeywords, { shouldDirty: true, shouldTouch: true });
-      }
+      // Merge keywords into tags, deduped and capped at the TagInput limit
+      // (10). Without the slice, repeated generates / pre-existing tags can
+      // blow past the cap because setValue bypasses TagInput's input guard.
+      const mergedTags = [
+        ...new Set([...(tags || []), ...allKeywords]),
+      ].slice(0, 10);
+      setValue("tags", mergedTags, { shouldDirty: true, shouldTouch: true });
     } catch (error) {
       console.error("Error generating SEO content:", error);
     } finally {

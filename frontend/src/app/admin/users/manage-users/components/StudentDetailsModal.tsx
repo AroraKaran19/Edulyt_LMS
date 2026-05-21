@@ -11,6 +11,7 @@ import {
   BookOpen,
   Award,
   Building2,
+  Briefcase,
   Mail,
   Phone,
   Calendar,
@@ -21,11 +22,13 @@ import {
   BarChart3,
   Search,
   Clock,
+  Star,
 } from "lucide-react";
 import { Button } from "@/components/ui/buttons/button";
 import useUserManagement from "@/hooks/useUserManagement";
 import { User } from "@/types/user";
 import { Enrollment } from "@/types/enrollment";
+import type { InternshipEnrollmentListRow } from "@/types";
 import { cn } from "@/lib/utils";
 import {
   getUserTypeBadgeColor,
@@ -47,7 +50,13 @@ import {
 import Zoom from "react-medium-image-zoom";
 import "react-medium-image-zoom/dist/styles.css";
 
-type TabId = "overview" | "profile" | "courses" | "certificates" | "account";
+type TabId =
+  | "overview"
+  | "profile"
+  | "courses"
+  | "internships"
+  | "certificates"
+  | "account";
 
 interface StudentDetailsModalProps {
   isOpen: boolean;
@@ -61,6 +70,7 @@ const TAB_ITEMS: { id: TabId; label: string; icon: React.ElementType }[] = [
   { id: "overview", label: "Overview", icon: UserIcon },
   { id: "profile", label: "Profile", icon: UserIcon },
   { id: "courses", label: "Courses", icon: BookOpen },
+  { id: "internships", label: "Internships", icon: Briefcase },
   { id: "certificates", label: "Certificates", icon: Award },
   { id: "account", label: "Account", icon: Building2 },
 ];
@@ -75,6 +85,9 @@ export default function StudentDetailsModal({
   const [activeTab, setActiveTab] = useState<TabId>("overview");
   const [fullUserData, setFullUserData] = useState<User | null>(null);
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
+  const [internshipEnrollments, setInternshipEnrollments] = useState<
+    InternshipEnrollmentListRow[]
+  >([]);
   const [certificates, setCertificates] = useState<any[]>([]);
   const [totalSpend, setTotalSpend] = useState<number>(0);
   const [averageTimeToCompleteSeconds, setAverageTimeToCompleteSeconds] =
@@ -95,6 +108,7 @@ export default function StudentDetailsModal({
         if (details) {
           if (details.user) setFullUserData(details.user);
           setEnrollments(details.enrollments);
+          setInternshipEnrollments(details.internshipEnrollments ?? []);
           setCertificates(details.certificates);
           setTotalSpend(details.totalSpend);
           setAverageTimeToCompleteSeconds(
@@ -116,6 +130,7 @@ export default function StudentDetailsModal({
       setActiveTab("overview");
       setFullUserData(null);
       setEnrollments([]);
+      setInternshipEnrollments([]);
       setCertificates([]);
       setTotalSpend(0);
       setAverageTimeToCompleteSeconds(null);
@@ -281,6 +296,9 @@ export default function StudentDetailsModal({
                 )}
                 {activeTab === "courses" && (
                   <CoursesSection user={user} enrollments={enrollments} />
+                )}
+                {activeTab === "internships" && (
+                  <InternshipsSection enrollments={internshipEnrollments} />
                 )}
                 {activeTab === "certificates" && (
                   <CertificatesSection certificates={certificates} />
@@ -651,6 +669,12 @@ function OverviewSection({
       color: "bg-green-50 border-green-200 text-green-700",
     },
     {
+      icon: Star,
+      label: "Success Points",
+      value: (user as { successPoints?: number }).successPoints ?? 0,
+      color: "bg-orange-50 border-orange-200 text-orange-700",
+    },
+    {
       icon: UserIcon,
       label: "User ID",
       value: (user as any)._id?.slice(-8) || "N/A",
@@ -836,6 +860,115 @@ function CoursesSection({
               </div>
             );
           })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function internshipStatusBadgeClass(status: string): string {
+  if (status === "enrolled")
+    return "bg-green-100 text-green-800 border-green-200";
+  if (status === "completed")
+    return "bg-blue-100 text-blue-800 border-blue-200";
+  if (status === "in_merit_pool" || status === "exam_attempted")
+    return "bg-amber-100 text-amber-800 border-amber-200";
+  if (status === "exam_registered")
+    return "bg-sky-100 text-sky-800 border-sky-200";
+  if (status === "payment_pending")
+    return "bg-orange-100 text-orange-800 border-orange-200";
+  if (status === "dropped" || status === "revoked" || status === "admin_rejected")
+    return "bg-gray-200 text-gray-700 border-gray-300";
+  if (status === "paused")
+    return "bg-violet-100 text-violet-800 border-violet-200";
+  return "bg-gray-100 text-gray-800 border-gray-200";
+}
+
+function formatInternshipDate(iso?: string): string {
+  if (!iso) return "—";
+  try {
+    return new Date(iso).toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  } catch {
+    return "—";
+  }
+}
+
+function InternshipsSection({
+  enrollments,
+}: {
+  enrollments: InternshipEnrollmentListRow[];
+}) {
+  return (
+    <div className="space-y-6">
+      <h3 className="text-lg font-semibold text-gray-900">
+        Internship Enrollments
+      </h3>
+      {enrollments.length === 0 ? (
+        <p className="text-gray-500">No internship enrollments</p>
+      ) : (
+        <div className="space-y-3">
+          {enrollments.map((e) => (
+            <div
+              key={e._id}
+              className="p-4 bg-gray-50 rounded-xl border border-gray-100"
+            >
+              <div className="flex items-start justify-between gap-4 flex-wrap">
+                <div className="flex items-center gap-4 min-w-0">
+                  <div className="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center shrink-0">
+                    <Briefcase className="w-5 h-5 text-indigo-600" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-medium text-gray-900">
+                      {e.internship?.title ?? "Internship"}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {e.batchSnapshot?.name ?? "No batch assigned"}
+                    </p>
+                  </div>
+                </div>
+                <span
+                  className={cn(
+                    "inline-flex px-2 py-1 text-xs font-semibold rounded-full border capitalize",
+                    internshipStatusBadgeClass(e.status),
+                  )}
+                >
+                  {e.status.replace(/_/g, " ")}
+                </span>
+              </div>
+              <div className="flex flex-wrap items-center gap-x-5 gap-y-1 mt-3 sm:pl-14 text-xs text-gray-500">
+                {e.enrollmentType && (
+                  <span>
+                    Path:{" "}
+                    <span className="font-medium text-gray-700">
+                      {e.enrollmentType === "merit" ? "Merit" : "Paid"}
+                    </span>
+                  </span>
+                )}
+                <span>
+                  Points:{" "}
+                  <span className="font-medium text-gray-700">
+                    {e.internshipSuccessPoints ?? 0}
+                  </span>
+                </span>
+                <span>
+                  Enrolled:{" "}
+                  <span className="font-medium text-gray-700">
+                    {formatInternshipDate(e.enrolledAt)}
+                  </span>
+                </span>
+                <span>
+                  Updated:{" "}
+                  <span className="font-medium text-gray-700">
+                    {formatInternshipDate(e.updatedAt)}
+                  </span>
+                </span>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>

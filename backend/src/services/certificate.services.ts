@@ -9,6 +9,8 @@ import { Certificate, CertificateGenerationData } from "../types/certificate";
 import { generateCertificateFromDocx } from "../utils/certificateGeneratorDocx";
 import { convertDocxToPdf } from "../utils/certificateGeneratorDocx";
 import { uploadFileToS3 } from "./upload.services";
+import { tryAwardCompletionSuccessPoints } from "./successPoints.services";
+import { computeInternshipEligibility } from "./internshipEligibility.services";
 import path from "path";
 import fs from "fs";
 import os from "os";
@@ -215,6 +217,15 @@ export const createCertificateService = async (
         certificateIssuedAt: new Date(),
       });
 
+      // Grant the course's completion success points now that the
+      // certificate exists. Idempotent (guarded by an enrollment flag) and
+      // best-effort — a points failure must not fail certificate creation.
+      try {
+        await tryAwardCompletionSuccessPoints(data.enrollmentId.toString());
+      } catch (e) {
+        console.error("Completion success points award failed:", e);
+      }
+
       // Clean up temporary files
       try {
         fs.unlinkSync(docxPath);
@@ -255,6 +266,19 @@ export const createInternshipCertificateService = async (
 ): Promise<{ certificateId: string; fileUrl: string }> => {
   const enrollment = await InternshipEnrollmentModel.findById(enrollmentId).lean();
   if (!enrollment) throw new AppError("Internship enrollment not found", 404);
+
+  // Percentage-threshold gate: the certificate is only issued when the
+  // learner's earned `internshipSuccessPoints` clears the configured percent
+  // of total achievable (tasks + meetings + cert exam in their window).
+  const eligibility = await computeInternshipEligibility(enrollmentId);
+  if (!eligibility.meetsThreshold) {
+    throw new AppError(
+      `Learner has not met the certification threshold ` +
+        `(${eligibility.earned} / ${eligibility.requiredPoints} points; ` +
+        `${eligibility.thresholdPct}% of ${eligibility.totalAchievable}).`,
+      400,
+    );
+  }
 
   const [user, internship] = await Promise.all([
     UserModel.findById((enrollment as any).user).select("firstName lastName").lean(),

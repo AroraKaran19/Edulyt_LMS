@@ -87,8 +87,10 @@ const successPointTransactionSchema = new mongoose.Schema(
   {
     transactionId: { type: String, required: true }, // uuid generated at award time
     earnedAt:  { type: Date,   required: true },
-    type:      { type: String, required: true, enum: ["earned", "transferred_in", "transferred_out"] },
-    points:    { type: Number, required: true, min: 0 },
+    type:      { type: String, required: true, enum: ["earned", "transferred_in", "transferred_out", "admin_adjustment", "redeemed"] },
+    // Signed for "admin_adjustment" (negative = deduction); a positive
+    // magnitude for every other type.
+    points:    { type: Number, required: true },
     // "earned" fields
     courseId:       { type: mongoose.Schema.Types.ObjectId, ref: "Course",      required: false },
     enrollmentId:   { type: mongoose.Schema.Types.ObjectId, ref: "Enrollment",  required: false },
@@ -102,6 +104,11 @@ const successPointTransactionSchema = new mongoose.Schema(
     toUserDisplayName: { type: String, required: false },
     // shared transfer field
     peerTransactionId: { type: String, required: false },
+    // "admin_adjustment" fields
+    adjustedByUserId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: false },
+    adjustedByName:   { type: String, required: false },
+    // "redeemed" field — orderId is what links a redemption to its purchase
+    orderId: { type: mongoose.Schema.Types.ObjectId, ref: "Order", required: false },
   },
   { _id: false } // transactionId is the explicit identifier; no auto _id needed
 );
@@ -383,7 +390,8 @@ const studentSchema = new mongoose.Schema<Student>({
     required: false,
     default: [],
   },
-  successPoints: { type: Number, required: false, default: 0, min: 0 },
+  // No `min` — an admin adjustment may intentionally push a balance negative.
+  successPoints: { type: Number, required: false, default: 0 },
   successPointsHistory: {
     type: [successPointTransactionSchema],
     default: [],

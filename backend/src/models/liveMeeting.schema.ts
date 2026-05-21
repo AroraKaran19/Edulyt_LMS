@@ -64,6 +64,19 @@ const internshipLiveMeetingSchema = new mongoose.Schema(
     startDateTime: { type: Date, required: true },
     endDateTime: { type: Date, default: null },
 
+    /**
+     * Internship success points awarded to learners who are **present** for
+     * this meeting (clicked both link1 and link2 inside their windows).
+     * 0 = no points granted. Counts toward the certification threshold via
+     * the per-enrollment "total achievable" computation.
+     */
+    successPoints: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 1_000_000,
+    },
+
     link1: { type: liveMeetingLinkSchema, required: true },
     link2: { type: liveMeetingLinkSchema, required: true },
 

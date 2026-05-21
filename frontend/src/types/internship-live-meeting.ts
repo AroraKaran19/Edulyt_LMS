@@ -26,6 +26,8 @@ export interface AdminLiveMeetingListItem {
   recordingLink: string;
   startDateTime: string;
   endDateTime: string | null;
+  /** Points awarded to learners present for this meeting. 0 = none. */
+  successPoints: number;
   link1: {
     expiryMins: number;
     activatedAt: string | null;
@@ -55,6 +57,8 @@ export interface CreateLiveMeetingBody {
   endDateTime?: string;
   link1ExpiryMins: number;
   link2ExpiryMins: number;
+  /** Points awarded to learners present for this meeting. 0 = none. */
+  successPoints?: number;
 }
 
 export interface AdminLiveMeetingAttendanceRow {

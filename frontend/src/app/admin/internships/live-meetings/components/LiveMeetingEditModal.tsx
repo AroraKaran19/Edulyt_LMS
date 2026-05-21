@@ -19,12 +19,14 @@ type Props = {
 export default function LiveMeetingEditModal({ meeting, onClose, onSaved }: Props) {
   const [meetingLink, setMeetingLink] = useState("");
   const [recordingLink, setRecordingLink] = useState("");
+  const [successPoints, setSuccessPoints] = useState("0");
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (!meeting) return;
     setMeetingLink(meeting.meetingLink ?? "");
     setRecordingLink(meeting.recordingLink ?? "");
+    setSuccessPoints(String(meeting.successPoints ?? 0));
     setSubmitting(false);
   }, [meeting]);
 
@@ -40,9 +42,17 @@ export default function LiveMeetingEditModal({ meeting, onClose, onSaved }: Prop
       toast.error("Recording URL must start with http:// or https://");
       return;
     }
+    const sp = parseInt(successPoints, 10);
+    if (!Number.isFinite(sp) || sp < 0 || sp > 1_000_000) {
+      toast.error(
+        "Success points must be a whole number between 0 and 1,000,000",
+      );
+      return;
+    }
     if (
       link === meeting.meetingLink &&
-      recording === (meeting.recordingLink ?? "")
+      recording === (meeting.recordingLink ?? "") &&
+      sp === (meeting.successPoints ?? 0)
     ) {
       onClose();
       return;
@@ -50,9 +60,20 @@ export default function LiveMeetingEditModal({ meeting, onClose, onSaved }: Prop
 
     setSubmitting(true);
     try {
+      // Only include `successPoints` when actually changed — sending it
+      // unchanged would still trip the backend lock once the meeting is
+      // finalized, blocking link-only edits.
+      const patchBody: {
+        meetingLink: string;
+        recordingLink: string;
+        successPoints?: number;
+      } = { meetingLink: link, recordingLink: recording };
+      if (sp !== (meeting.successPoints ?? 0)) {
+        patchBody.successPoints = sp;
+      }
       await apiClient.patch(
         ENDPOINTS.internshipLiveMeetings.adminUpdate(meeting._id),
-        { meetingLink: link, recordingLink: recording },
+        patchBody,
       );
       toast.success("Meeting updated");
       onSaved();
@@ -76,8 +97,8 @@ export default function LiveMeetingEditModal({ meeting, onClose, onSaved }: Prop
     >
       <div className="flex flex-col gap-4">
         <p className="text-xs text-gray-500">
-          Only the meeting URL and recording URL can be edited. To change
-          anything else, delete this meeting and create a new one.
+          Editable: meeting URL, recording URL, and success points. To
+          change anything else, delete this meeting and create a new one.
         </p>
         <Input
           label="Meeting URL"
@@ -92,6 +113,25 @@ export default function LiveMeetingEditModal({ meeting, onClose, onSaved }: Prop
           value={recordingLink}
           onChange={(e) => setRecordingLink(e.target.value)}
         />
+        <Input
+          label="Internship success points (for present learners)"
+          type="number"
+          min={0}
+          max={1_000_000}
+          step={1}
+          value={successPoints}
+          onChange={(e) => setSuccessPoints(e.target.value)}
+          disabled={Boolean(meeting?.finalizedAt)}
+        />
+        {meeting?.finalizedAt && (
+          <p className="text-xs text-amber-700 -mt-3">
+            Locked — attendance was finalized on{" "}
+            {new Date(meeting.finalizedAt).toLocaleString()}. Present learners
+            have already been credited at the current value. Use Admin → All
+            Users → ★ to adjust an individual learner&apos;s success points if
+            needed.
+          </p>
+        )}
         <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
           <WhiteButton type="button" glow={false} disabled={submitting} onClick={onClose}>
             Cancel

@@ -1000,24 +1000,38 @@ export async function finalizeCertificationExamReview(
   sub.status = "fully_reviewed";
   await sub.save();
 
-  // Create certificate job if learner qualifies (exam passed + points met)
+  // Cert exam: credit `totalAwardedScore` to the learner's
+  // `internshipSuccessPoints` (the same accumulator tasks write to).
+  // Idempotency note — `finalizeCertificationExamReview` transitions a sub
+  // out of "submitted" / "partially_reviewed", so the status guard prevents
+  // a re-run from awarding twice.
+  await accrueSuccessPointsIfPassed({
+    submissionFor: String(
+      (sub as { submissionFor?: unknown }).submissionFor ?? "",
+    ),
+    enrollmentId: (sub as { enrollmentId?: unknown }).enrollmentId,
+    totalAwardedScore: sub.totalAwardedScore,
+    templateSnapshot: sub.toObject().templateSnapshot,
+  });
+
+  // Queue the cert job if the learner has passed the exam *and* met the
+  // configured percentage-of-total threshold. The eligibility service
+  // re-reads `internshipSuccessPoints` so it picks up the credit above.
   try {
-    const enrollment = await InternshipEnrollmentModel.findById(String(sub.enrollmentId)).lean();
-    if (enrollment) {
-      const internship = await InternshipModel.findById((enrollment as any).internship)
-        .select("certificationThreshold")
-        .lean();
-      const threshold =
-        typeof (internship as any)?.certificationThreshold === "number" &&
-        !Number.isNaN((internship as any).certificationThreshold)
-          ? Math.max(0, Math.floor((internship as any).certificationThreshold))
-          : 0;
-      const examPassed =
-        snap.thresholdScore == null || sub.totalAwardedScore >= snap.thresholdScore;
-      const pointsMet =
-        threshold <= 0 || ((enrollment as any).internshipSuccessPoints ?? 0) >= threshold;
-      if (examPassed && pointsMet) {
-        const { createCertificateJobService } = await import("./certificateJob.services");
+    const examPassed =
+      snap.thresholdScore == null ||
+      sub.totalAwardedScore >= snap.thresholdScore;
+    if (examPassed) {
+      const { computeInternshipEligibility } = await import(
+        "./internshipEligibility.services"
+      );
+      const eligibility = await computeInternshipEligibility(
+        String(sub.enrollmentId),
+      );
+      if (eligibility.meetsThreshold) {
+        const { createCertificateJobService } = await import(
+          "./certificateJob.services"
+        );
         await createCertificateJobService({
           enrollmentId: String(sub.enrollmentId),
           certificateType: "internship",
@@ -1139,13 +1153,15 @@ export async function listSubmissionsAdmin(
 // ─── Success-points accrual ───────────────────────────────────────────────────
 
 /**
- * Called whenever a **task** submission transitions to `fully_reviewed`.
- * If the learner's `totalAwardedScore` meets or exceeds the task's
- * `scoreThreshold` (stored in the snapshot), increment
- * `internshipSuccessPoints` on their enrollment by `totalAwardedScore`.
+ * Called whenever a submission transitions to `fully_reviewed`.
  *
- * Only runs for task submissions — exam results do NOT contribute to
- * success points (they are entrance-gate events, not accumulated progress).
+ * Awards `totalAwardedScore` into the learner's `internshipSuccessPoints`
+ * when:
+ *   • a **task** submission's score >= its snapshot `scoreThreshold`, OR
+ *   • a **certification exam** submission's score >= its snapshot
+ *     `thresholdScore`.
+ *
+ * Entrance-exam submissions never contribute (they're a gate event only).
  * Runs via `$inc` so concurrent updates are safe.
  */
 async function accrueSuccessPointsIfPassed(sub: {
@@ -1154,11 +1170,26 @@ async function accrueSuccessPointsIfPassed(sub: {
   totalAwardedScore: number;
   templateSnapshot: unknown;
 }): Promise<void> {
-  if (sub.submissionFor !== "task") return;
+  let threshold = 0;
 
-  const snapshot = sub.templateSnapshot as { scoreThreshold?: number } | null;
-  const threshold =
-    typeof snapshot?.scoreThreshold === "number" ? snapshot.scoreThreshold : 0;
+  if (sub.submissionFor === "task") {
+    const snapshot = sub.templateSnapshot as { scoreThreshold?: number } | null;
+    threshold =
+      typeof snapshot?.scoreThreshold === "number"
+        ? snapshot.scoreThreshold
+        : 0;
+  } else if (sub.submissionFor === "exam") {
+    const snapshot = sub.templateSnapshot as {
+      examType?: string;
+      thresholdScore?: number;
+    } | null;
+    // Only certification exams count — entrance is gate-only.
+    if (snapshot?.examType !== "certification") return;
+    threshold =
+      typeof snapshot?.thresholdScore === "number" ? snapshot.thresholdScore : 0;
+  } else {
+    return;
+  }
 
   if (sub.totalAwardedScore < threshold) return; // did not pass — no points
 

@@ -242,6 +242,18 @@ export interface InternshipEnrollment {
    */
   internshipSuccessPoints: number;
 
+  /**
+   * Program length the learner picked at registration (months).
+   */
+  programDurationMonths?: number;
+
+  /**
+   * Materialized end of the learner's program window
+   * (`enrolledAt + programDurationMonths`). Used to scope which tasks /
+   * meetings / exams count toward "total achievable" for certification.
+   */
+  endDate?: Date;
+
   createdAt?: Date;
   updatedAt?: Date;
 }

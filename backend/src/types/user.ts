@@ -2,7 +2,8 @@ import { Affiliate, Course, Review, PaymentOrder, Enrollment } from ".";
 
 export type SuccessPointEarnSource =
   | "purchased"
-  | "coupon_paid_over_half_effective";
+  | "coupon_paid_over_half_effective"
+  | "plan_purchase";
 
 export type SuccessPointCourseSnapshot = {
   title: string;
@@ -38,6 +39,25 @@ export type SuccessPointTransaction =
       toUserId: string;
       toUserDisplayName?: string;
       peerTransactionId?: string;
+    }
+  | {
+      transactionId: string;
+      earnedAt: Date;
+      type: "admin_adjustment";
+      /** Signed: positive = points granted, negative = points deducted. */
+      points: number;
+      adjustedByUserId?: string;
+      adjustedByName?: string;
+    }
+  | {
+      transactionId: string;
+      earnedAt: Date;
+      type: "redeemed";
+      /** Magnitude (positive); the type itself signals it's a debit. */
+      points: number;
+      orderId?: string;
+      courseId?: string;
+      courseSnapshot?: SuccessPointCourseSnapshot;
     };
 
 export interface Collaborator extends User {

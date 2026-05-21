@@ -11,6 +11,7 @@ import {
   isPaidUpgradeWindowOpen,
 } from "../utils/applicationWindow";
 import { getPointsSettings } from "./pointsSettings.services";
+import { computeInternshipEligibility } from "./internshipEligibility.services";
 import {
   computeCertificationExamWindowUtc,
   isInstantWithinWindowUtc,
@@ -2306,10 +2307,19 @@ export type LearnerProgramDetail = {
     enrollmentType?: string;
     enrolledAt?: string;
     internshipSuccessPoints: number;
-    /** From live internship doc — min points before certification exam (0 = none). */
-    certificationThreshold: number;
     /**
-     * Points still needed to reach `certificationThreshold` (0 if already met or no gate).
+     * From live internship doc — **percentage** (0–100) of total achievable
+     * required to receive the certificate. 0 = no gate.
+     */
+    certificationThreshold: number;
+    /** Total points achievable across tasks + meetings + cert exam in window. */
+    certificationTotalAchievable?: number;
+    /** `ceil(totalAchievable × certificationThreshold / 100)` — absolute points required. */
+    certificationRequiredPoints?: number;
+    /** True if learner has met the threshold. */
+    certificationMeetsThreshold?: boolean;
+    /**
+     * Points still needed to reach `certificationRequiredPoints` (0 if already met or no gate).
      */
     certificationPointsShortfall?: number;
     /**
@@ -2612,14 +2622,15 @@ export async function getLearnerProgramBySlug(
       }
     | undefined;
 
-  const certificationThresholdRaw = (internship as {
-    certificationThreshold?: unknown;
-  }).certificationThreshold;
-  const certificationThreshold =
-    typeof certificationThresholdRaw === "number" &&
-    !Number.isNaN(certificationThresholdRaw)
-      ? Math.max(0, Math.floor(certificationThresholdRaw))
-      : 0;
+  // Percentage-of-total eligibility. The service walks the learner's window
+  // (enrolledAt → endDate), sums task / meeting / cert-exam point values,
+  // and returns earned + required + shortfall + meetsThreshold.
+  const eligibility = await computeInternshipEligibility(String(doc._id));
+  const certificationThreshold = eligibility.thresholdPct;
+  const certificationTotalAchievable = eligibility.totalAchievable;
+  const certificationRequiredPoints = eligibility.requiredPoints;
+  const certificationMeetsThreshold = eligibility.meetsThreshold;
+  const enrolledPoints = eligibility.earned;
 
   const settings = await getPointsSettings();
   const priceInr = settings.internshipSuccessPointInr;
@@ -2630,14 +2641,8 @@ export async function getLearnerProgramBySlug(
       ? { inrPerPoint: priceInr }
       : undefined;
 
-  const enrolledPoints =
-    typeof doc.internshipSuccessPoints === "number"
-      ? doc.internshipSuccessPoints
-      : 0;
   const certificationPointsShortfall =
-    certificationThreshold > 0
-      ? Math.max(0, certificationThreshold - enrolledPoints)
-      : undefined;
+    certificationThreshold > 0 ? eligibility.shortfall : undefined;
   const approxInrToReachCertificationThreshold =
     certificationPointsShortfall != null &&
     certificationPointsShortfall > 0 &&
@@ -2671,6 +2676,9 @@ export async function getLearnerProgramBySlug(
       enrolledAt: toIso(doc.enrolledAt),
       internshipSuccessPoints: enrolledPoints,
       certificationThreshold,
+      certificationTotalAchievable,
+      certificationRequiredPoints,
+      certificationMeetsThreshold,
       ...(certificationPointsShortfall != null
         ? { certificationPointsShortfall }
         : {}),

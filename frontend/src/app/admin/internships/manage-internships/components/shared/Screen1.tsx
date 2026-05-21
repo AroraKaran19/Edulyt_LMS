@@ -343,8 +343,8 @@ const Screen1 = () => {
             rules={{
               validate: (v) => {
                 const n = typeof v === "number" ? v : Number(v);
-                if (Number.isNaN(n) || n < 0)
-                  return "Must be 0 or greater";
+                if (Number.isNaN(n) || n < 0 || n > 100)
+                  return "Must be between 0 and 100";
                 return true;
               },
             }}
@@ -353,8 +353,9 @@ const Screen1 = () => {
                 {...field}
                 type="number"
                 min={0}
+                max={100}
                 step={1}
-                label="Minimum internship success points"
+                label="Required success points (% of total achievable)"
                 placeholder="0"
                 value={
                   field.value === undefined || field.value === null
@@ -368,16 +369,23 @@ const Screen1 = () => {
                     return;
                   }
                   const n = parseInt(raw, 10);
-                  field.onChange(Number.isNaN(n) ? 0 : n);
+                  const clamped = Number.isNaN(n)
+                    ? 0
+                    : Math.max(0, Math.min(100, n));
+                  field.onChange(clamped);
                 }}
                 error={errors.certificationThreshold?.message as string | undefined}
               />
             )}
           />
           <p className="text-xs text-gray-600">
-            Total internship success points required before a learner can attempt the
-            certification exam. Use 0 for no minimum. Below threshold, learners may top
-            up points using your admin success-points price (e.g. ₹1 per point).
+            Percentage (0–100) of the total achievable success points a
+            learner must earn within their enrolled window — summed across
+            tasks, live meetings, and the certification exam scheduled in
+            that window — to receive the certificate. The learner may
+            still attempt the exam below this threshold, but the
+            certificate is only issued once they cross it. Use 0 for no
+            minimum (every exam passer gets a certificate).
           </p>
           <p className="text-xs text-amber-950/85 bg-amber-50/90 border border-amber-200/90 rounded-lg px-3 py-2 mt-2 leading-relaxed">
             Plan certification before marking learners{" "}

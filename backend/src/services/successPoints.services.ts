@@ -7,6 +7,7 @@ import {
   StudentModel,
 } from "../models";
 import { calculateFinalDiscountedPrice } from "../utils/lib/calculateDiscount";
+import { AppError } from "../middlewares/error.middleware";
 import type { PaymentOrder } from "../types/order";
 import type { Course } from "../types/course";
 import type { Enrollment } from "../types/enrollment";
@@ -16,12 +17,24 @@ import type {
   SuccessPointTransaction,
 } from "../types/user";
 
+const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+function resolveDisplayName(u: {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+}): string {
+  const full = [u.firstName, u.lastName].filter(Boolean).join(" ").trim();
+  return full || u.email || "User";
+}
+
 /**
- * Returns how many points to credit for a completed eligible enrollment, or 0 to skip.
- * If `successPoints` is **missing** or **0**, do not award (no success points for that course).
+ * Returns how many points to credit for an eligible enrollment, or 0 to skip.
+ * If `completionSuccessPoints` is **missing** or **0**, do not award (no success
+ * points for that course).
  */
 function resolveCompletionPointsForCourse(course: Course): number {
-  const raw = course.successPoints;
+  const raw = course.completionSuccessPoints;
   if (raw == null) return 0;
   if (!Number.isFinite(Number(raw))) return 0;
   const p = Math.max(0, Math.floor(Number(raw)));
@@ -103,11 +116,11 @@ async function findQualifyingOrder(
 }
 
 /**
- * Idempotent: credits at most once per enrollment when the course is completed and
- * payment / coupon rules are satisfied. Mirrors cert rules: not trial, full access, not gift.
- * Does nothing if the course’s `successPoints` is 0 or not set — no success points for that course.
+ * Idempotent: credits at most once per enrollment when the course certificate is
+ * generated and payment / coupon rules are satisfied. Not trial, full access, not gift.
+ * Does nothing if the course's `completionSuccessPoints` is 0 or not set.
  */
-export async function tryAwardSuccessPointsOnCourseCompletion(
+export async function tryAwardCompletionSuccessPoints(
   enrollmentId: string,
 ): Promise<void> {
   const enrollment = await EnrollmentModel.findById(enrollmentId).lean<
@@ -195,4 +208,369 @@ export async function tryAwardSuccessPointsOnCourseCompletion(
   } finally {
     await session.endSession();
   }
+}
+
+/**
+ * Grant the plan-level `purchaseSuccessPoints` to the buyer once a course
+ * order is paid. Idempotent at the order level via a one-shot guarded write
+ * on `successPointsPurchaseGranted`, so webhook retries can't double-credit.
+ *
+ * No-op when the plan's `purchaseSuccessPoints` is 0 / unset, when the order
+ * lacks a planType/courseId (non-course orders), or when the order has
+ * already been granted.
+ */
+export async function tryAwardPurchaseSuccessPoints(input: {
+  orderId: string;
+  userId: string;
+  courseId: string;
+  planType: "elite" | "essential";
+  enrollmentId?: string;
+}): Promise<void> {
+  const course = await CourseModel.findById(input.courseId).lean<
+    Course | null
+  >();
+  if (!course) return;
+
+  const plan = course.plans?.[input.planType];
+  if (!plan) return;
+
+  const raw = plan.purchaseSuccessPoints;
+  const points = Math.max(
+    0,
+    Math.min(Math.floor(Number(raw ?? 0)), 1_000_000),
+  );
+  if (points <= 0) return;
+
+  // Atomic "claim" — flips successPointsPurchaseGranted from false→true
+  // exactly once. Subsequent runs (retries, replays) find no match and exit.
+  const claimed = await OrderModel.findOneAndUpdate(
+    {
+      _id: new mongoose.Types.ObjectId(input.orderId),
+      successPointsPurchaseGranted: { $ne: true },
+    },
+    { $set: { successPointsPurchaseGranted: true } },
+    { new: true },
+  );
+  if (!claimed) return;
+
+  const courseSnapshot: SuccessPointCourseSnapshot = {
+    title: course.title || "",
+    ...(course.slug ? { slug: course.slug } : {}),
+  };
+
+  const tx: SuccessPointTransaction = {
+    transactionId: uuidv4(),
+    earnedAt: new Date(),
+    type: "earned",
+    points,
+    courseId: String(course._id),
+    enrollmentId: input.enrollmentId,
+    earnSource: "plan_purchase",
+    courseSnapshot,
+  };
+
+  try {
+    await StudentModel.findByIdAndUpdate(input.userId, {
+      $inc: { successPoints: points },
+      $push: { successPointsHistory: tx },
+    });
+  } catch (e) {
+    // Roll back the claim so a later retry can re-attempt the credit.
+    await OrderModel.findByIdAndUpdate(input.orderId, {
+      $set: { successPointsPurchaseGranted: false },
+    });
+    throw e;
+  }
+}
+
+/**
+ * Deduct redeemed points from the buyer's wallet once the order is paid.
+ * Idempotent via the order's `successPointsRedeemed` flag — a webhook retry
+ * (or any second call) finds the flag already true and exits.
+ *
+ * No-op when the order didn't apply points (`successPointsApplied <= 0`).
+ *
+ * Allows the buyer's balance to go negative under rare concurrent-checkout
+ * conditions (two orders spending the same points before either deduction
+ * lands). Admin adjustments can reconcile; matches the broader policy that
+ * a balance may dip below zero.
+ */
+export async function tryRedeemSuccessPointsForOrder(input: {
+  orderId: string;
+  userId: string;
+  courseId?: string;
+}): Promise<void> {
+  const claimed = await OrderModel.findOneAndUpdate(
+    {
+      _id: new mongoose.Types.ObjectId(input.orderId),
+      successPointsRedeemed: { $ne: true },
+      successPointsApplied: { $gt: 0 },
+    },
+    { $set: { successPointsRedeemed: true } },
+    { new: true },
+  ).lean<{
+    successPointsApplied?: number;
+    courseId?: mongoose.Types.ObjectId;
+  } | null>();
+  if (!claimed) return;
+
+  const points = Math.max(0, Math.floor(Number(claimed.successPointsApplied ?? 0)));
+  if (points <= 0) return;
+
+  const courseId = input.courseId ?? (claimed.courseId ? String(claimed.courseId) : undefined);
+  let courseSnapshot: SuccessPointCourseSnapshot | undefined;
+  if (courseId) {
+    const course = await CourseModel.findById(courseId)
+      .select("title slug")
+      .lean<{ title?: string; slug?: string } | null>();
+    if (course) {
+      courseSnapshot = {
+        title: course.title || "",
+        ...(course.slug ? { slug: course.slug } : {}),
+      };
+    }
+  }
+
+  const tx: SuccessPointTransaction = {
+    transactionId: uuidv4(),
+    earnedAt: new Date(),
+    type: "redeemed",
+    points,
+    orderId: input.orderId,
+    courseId,
+    courseSnapshot,
+  };
+
+  try {
+    await StudentModel.findByIdAndUpdate(input.userId, {
+      $inc: { successPoints: -points },
+      $push: { successPointsHistory: tx },
+    });
+  } catch (e) {
+    // Roll back the claim so a later retry can re-attempt.
+    await OrderModel.findByIdAndUpdate(input.orderId, {
+      $set: { successPointsRedeemed: false },
+    });
+    throw e;
+  }
+}
+
+// ===================================================================
+// Wallet: balance, history, peer-to-peer transfer
+// ===================================================================
+
+/** Returns the current success-points balance for a student. */
+export async function getSuccessPointsBalanceService(
+  userId: string,
+): Promise<{ balance: number }> {
+  const student = await StudentModel.findById(userId)
+    .select("successPoints")
+    .lean<{ successPoints?: number } | null>();
+  if (!student) {
+    throw new AppError("Account not found", 404);
+  }
+  return { balance: student.successPoints ?? 0 };
+}
+
+/** Paginated success-points history (newest first). */
+export async function getSuccessPointsHistoryService(
+  userId: string,
+  page: number,
+  limit: number,
+) {
+  const safePage = Math.max(1, Math.floor(page) || 1);
+  const safeLimit = Math.max(1, Math.min(50, Math.floor(limit) || 10));
+
+  const student = await StudentModel.findById(userId)
+    .select("successPointsHistory")
+    .lean<{ successPointsHistory?: SuccessPointTransaction[] } | null>();
+  if (!student) {
+    throw new AppError("Account not found", 404);
+  }
+
+  const all = [...(student.successPointsHistory ?? [])].sort(
+    (a, b) =>
+      new Date(b.earnedAt).getTime() - new Date(a.earnedAt).getTime(),
+  );
+  const total = all.length;
+  const start = (safePage - 1) * safeLimit;
+  const items = all.slice(start, start + safeLimit);
+
+  return {
+    items,
+    total,
+    page: safePage,
+    totalPages: Math.max(1, Math.ceil(total / safeLimit)),
+  };
+}
+
+export interface TransferSuccessPointsInput {
+  senderId: string;
+  recipientEmail: string;
+  points: number;
+}
+
+/**
+ * Peer-to-peer transfer of success points, by recipient email.
+ * Atomic: if the recipient can't be found or the sender lacks balance, the
+ * function throws before any write commits — the sender never loses points.
+ */
+export async function transferSuccessPointsService(
+  input: TransferSuccessPointsInput,
+): Promise<{
+  points: number;
+  balance: number;
+  recipient: { name: string; email: string };
+}> {
+  const points = Math.floor(Number(input.points));
+  if (!Number.isFinite(points) || points <= 0) {
+    throw new AppError(
+      "Enter a whole number of points greater than 0",
+      400,
+    );
+  }
+
+  const email = String(input.recipientEmail ?? "").trim().toLowerCase();
+  if (!email) {
+    throw new AppError("Recipient email is required", 400);
+  }
+
+  // StudentModel is the student discriminator — this naturally rejects
+  // instructor / admin / partner accounts.
+  const recipient = await StudentModel.findOne({
+    email: new RegExp(`^${escapeRegex(email)}$`, "i"),
+  }).select("_id firstName lastName email status");
+  if (!recipient) {
+    throw new AppError("No student account found with that email", 404);
+  }
+  if (recipient.status !== "active") {
+    throw new AppError("That account can't receive points right now", 400);
+  }
+  if (String(recipient._id) === String(input.senderId)) {
+    throw new AppError("You can't transfer points to yourself", 400);
+  }
+
+  const sender = await StudentModel.findById(input.senderId).select(
+    "_id firstName lastName email",
+  );
+  if (!sender) {
+    throw new AppError("Sender account not found", 404);
+  }
+
+  const now = new Date();
+  const peerTransactionId = uuidv4();
+  const senderName = resolveDisplayName(sender);
+  const recipientName = resolveDisplayName(recipient);
+
+  const outTx: SuccessPointTransaction = {
+    transactionId: uuidv4(),
+    earnedAt: now,
+    type: "transferred_out",
+    points,
+    toUserId: String(recipient._id),
+    toUserDisplayName: recipientName,
+    peerTransactionId,
+  };
+  const inTx: SuccessPointTransaction = {
+    transactionId: uuidv4(),
+    earnedAt: now,
+    type: "transferred_in",
+    points,
+    fromUserId: String(sender._id),
+    fromUserDisplayName: senderName,
+    peerTransactionId,
+  };
+
+  let newBalance = 0;
+  const session = await mongoose.startSession();
+  try {
+    await session.withTransaction(async () => {
+      // Guarded debit: the `$gte` filter makes concurrent transfers
+      // overdraft-safe — a racing transfer simply matches no document.
+      const updatedSender = await StudentModel.findOneAndUpdate(
+        { _id: sender._id, successPoints: { $gte: points } },
+        {
+          $inc: { successPoints: -points },
+          $push: { successPointsHistory: outTx },
+        },
+        { new: true, session },
+      );
+      if (!updatedSender) {
+        throw new AppError(
+          "You don't have enough success points for this transfer",
+          400,
+        );
+      }
+      newBalance = updatedSender.successPoints ?? 0;
+
+      const updatedRecipient = await StudentModel.findByIdAndUpdate(
+        recipient._id,
+        {
+          $inc: { successPoints: points },
+          $push: { successPointsHistory: inTx },
+        },
+        { new: true, session },
+      );
+      if (!updatedRecipient) {
+        throw new AppError("Recipient account not found", 404);
+      }
+    });
+  } finally {
+    await session.endSession();
+  }
+
+  return {
+    points,
+    balance: newBalance,
+    recipient: { name: recipientName, email: recipient.email },
+  };
+}
+
+export interface AdminAdjustSuccessPointsInput {
+  adminId: string;
+  adminName: string;
+  targetUserId: string;
+  /** Signed: positive grants points, negative deducts them. */
+  points: number;
+}
+
+/**
+ * Admin grant / deduction of success points on a student account.
+ * The resulting balance is allowed to go negative — admins can intentionally
+ * claw back more than a student currently holds.
+ */
+export async function adminAdjustSuccessPointsService(
+  input: AdminAdjustSuccessPointsInput,
+): Promise<{ balance: number; applied: number }> {
+  const points = Math.trunc(Number(input.points));
+  if (!Number.isFinite(points) || points === 0) {
+    throw new AppError("Enter a non-zero whole number of points", 400);
+  }
+  if (!mongoose.Types.ObjectId.isValid(input.targetUserId)) {
+    throw new AppError("Invalid user id", 400);
+  }
+
+  const adjustTx: SuccessPointTransaction = {
+    transactionId: uuidv4(),
+    earnedAt: new Date(),
+    type: "admin_adjustment",
+    points,
+    adjustedByUserId: String(input.adminId),
+    adjustedByName: input.adminName,
+  };
+
+  const updated = await StudentModel.findByIdAndUpdate(
+    input.targetUserId,
+    {
+      $inc: { successPoints: points },
+      $push: { successPointsHistory: adjustTx },
+    },
+    { new: true },
+  ).select("successPoints");
+
+  if (!updated) {
+    throw new AppError("Student account not found", 404);
+  }
+
+  return { balance: updated.successPoints ?? 0, applied: points };
 }

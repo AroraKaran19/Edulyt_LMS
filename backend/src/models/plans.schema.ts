@@ -63,6 +63,20 @@ const planSchema = new mongoose.Schema<Plan>(
     },
     isPopular: { type: Boolean, default: false, required: true },
     isActive: { type: Boolean, default: true, required: true },
+    /** Success points granted to the buyer when this plan is purchased. */
+    purchaseSuccessPoints: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 1_000_000,
+    },
+    /** Max success points a buyer may redeem as a checkout discount for this plan. */
+    maxSuccessPointsUsage: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 1_000_000,
+    },
   },
   { timestamps: true, _id: false }
 );

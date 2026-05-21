@@ -68,6 +68,27 @@ const orderSchema = new Schema<PaymentOrder>(
     },
     /** Referral code snapshot — payout to referrer, doesn't alter order amount. */
     referralCode: { type: String, required: false, uppercase: true, trim: true },
+    /** Idempotency flag: per-plan `purchaseSuccessPoints` already credited. */
+    successPointsPurchaseGranted: {
+      type: Boolean,
+      required: false,
+      default: false,
+    },
+    /** Number of success points the buyer chose to redeem at checkout. */
+    successPointsApplied: { type: Number, required: false, default: 0, min: 0 },
+    /** ₹ discount produced by `successPointsApplied × redemption rate`. */
+    successPointsDiscount: {
+      type: Number,
+      required: false,
+      default: 0,
+      min: 0,
+    },
+    /** Idempotency flag: redeemed points already deducted from buyer's wallet. */
+    successPointsRedeemed: {
+      type: Boolean,
+      required: false,
+      default: false,
+    },
   },
   { timestamps: true },
 );

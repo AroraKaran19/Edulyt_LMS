@@ -36,6 +36,7 @@ import homePageSettingsRoutes from "./homePageSettings.routes";
 import announcementRoutes from "./announcement.routes";
 import referralRoutes from "./referral.routes";
 import communityReviewRoutes from "./community-review.routes";
+import successPointsRoutes from "./successPoints.routes";
 
 export {
   authRoutes,
@@ -76,4 +77,5 @@ export {
   announcementRoutes,
   referralRoutes,
   communityReviewRoutes,
+  successPointsRoutes,
 };

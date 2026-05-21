@@ -1,9 +1,11 @@
+import mongoose from "mongoose";
 import { UserModel, CourseModel, EnrollmentModel, OrderModel, CertificateModel } from "../models";
 import { AppError } from "../middlewares/error.middleware";
 import { getUserByIdService } from "./user.services";
 import { GetUserEnrollmentsService } from "./enrollment.services";
 import { getUserCertificatesService } from "./certificate.services";
 import { getTotalSpendByUserIdService } from "./order.services";
+import { listMyInternshipEnrollments } from "./internshipEnrollment.services";
 
 // User types to include in analytics (exclude admin, super-admin)
 const ANALYTICS_USER_TYPES = ["student", "instructor", "collaborator"];
@@ -316,14 +318,20 @@ export const getDashboardStats = async (
  * Single API call instead of 4 separate calls.
  */
 export const getUserDetailsForAdmin = async (userId: string) => {
-  const [user, enrollmentsResult, certificates, totalSpend] = await Promise.all([
-    getUserByIdService(userId),
-    GetUserEnrollmentsService(userId, undefined, 1, 1000),
-    getUserCertificatesService(userId, { page: 1, limit: 100 }).then((r) =>
-      Array.isArray(r) ? r : r.certificates
-    ),
-    getTotalSpendByUserIdService(userId),
-  ]);
+  const [user, enrollmentsResult, certificates, totalSpend, internshipResult] =
+    await Promise.all([
+      getUserByIdService(userId),
+      GetUserEnrollmentsService(userId, undefined, 1, 1000),
+      getUserCertificatesService(userId, { page: 1, limit: 100 }).then((r) =>
+        Array.isArray(r) ? r : r.certificates
+      ),
+      getTotalSpendByUserIdService(userId),
+      listMyInternshipEnrollments(
+        new mongoose.Types.ObjectId(userId),
+        1,
+        50,
+      ).catch(() => null),
+    ]);
 
   const enrollments = enrollmentsResult?.enrollments ?? [];
   const completedEnrollments = enrollments.filter(
@@ -347,5 +355,6 @@ export const getUserDetailsForAdmin = async (userId: string) => {
     certificates: certificates ?? [],
     totalSpend: totalSpend ?? 0,
     averageTimeToCompleteSeconds,
+    internshipEnrollments: internshipResult?.enrollments ?? [],
   };
 };

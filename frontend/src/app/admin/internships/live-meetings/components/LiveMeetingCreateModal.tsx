@@ -39,6 +39,7 @@ export default function LiveMeetingCreateModal({
   const [endLocal, setEndLocal] = useState("");
   const [link1ExpiryMins, setLink1ExpiryMins] = useState("10");
   const [link2ExpiryMins, setLink2ExpiryMins] = useState("10");
+  const [successPoints, setSuccessPoints] = useState("0");
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -51,6 +52,7 @@ export default function LiveMeetingCreateModal({
     setEndLocal("");
     setLink1ExpiryMins("10");
     setLink2ExpiryMins("10");
+    setSuccessPoints("0");
     setSubmitting(false);
   }, [isOpen]);
 
@@ -94,6 +96,11 @@ export default function LiveMeetingCreateModal({
       toast.error("Link 2 expiry minutes must be a positive integer");
       return;
     }
+    const sp = parseInt(successPoints, 10);
+    if (!Number.isFinite(sp) || sp < 0 || sp > 1_000_000) {
+      toast.error("Success points must be a whole number between 0 and 1,000,000");
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -108,6 +115,7 @@ export default function LiveMeetingCreateModal({
         endDateTime: endIso,
         link1ExpiryMins: l1,
         link2ExpiryMins: l2,
+        successPoints: sp,
       });
       toast.success("Live meeting created");
       onCreated();
@@ -195,6 +203,21 @@ export default function LiveMeetingCreateModal({
           mid-meeting. The expiry timer starts at activation. A student is
           marked <span className="font-semibold"> present </span>
           only if they open both within their windows.
+        </p>
+
+        <Input
+          label="Internship success points (for present learners)"
+          type="number"
+          min={0}
+          max={1_000_000}
+          step={1}
+          value={successPoints}
+          onChange={(e) => setSuccessPoints(e.target.value)}
+        />
+        <p className="text-xs text-gray-500 -mt-2">
+          Awarded to learners marked present for this meeting. 0 = no
+          points. Counts toward the certification threshold (% of total
+          achievable) via the per-enrollment calculation.
         </p>
 
         <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">

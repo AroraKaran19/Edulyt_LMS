@@ -123,6 +123,7 @@ function serializeListItem(doc: {
   recordingLink?: string;
   startDateTime: Date;
   endDateTime?: Date | null;
+  successPoints?: number;
   link1: {
     token: string;
     expiryMins: number;
@@ -149,6 +150,10 @@ function serializeListItem(doc: {
     recordingLink: doc.recordingLink ?? "",
     startDateTime: new Date(doc.startDateTime).toISOString(),
     endDateTime: doc.endDateTime ? new Date(doc.endDateTime).toISOString() : null,
+    successPoints:
+      typeof doc.successPoints === "number" && !Number.isNaN(doc.successPoints)
+        ? Math.max(0, Math.floor(doc.successPoints))
+        : 0,
     link1: {
       expiryMins: doc.link1.expiryMins,
       activatedAt: doc.link1.activatedAt
@@ -225,6 +230,20 @@ export async function createInternshipLiveMeetingAdmin(
     "link2ExpiryMins",
   );
 
+  // Optional points awarded to present learners. Defaults to 0 (no points).
+  const successPointsRaw = body.successPoints;
+  let successPoints = 0;
+  if (successPointsRaw !== undefined && successPointsRaw !== null) {
+    const n = Math.floor(Number(successPointsRaw));
+    if (!Number.isFinite(n) || n < 0 || n > 1_000_000) {
+      throw new AppError(
+        "successPoints must be a whole number between 0 and 1,000,000",
+        400,
+      );
+    }
+    successPoints = n;
+  }
+
   const created = await InternshipLiveMeetingModel.create({
     internship: new mongoose.Types.ObjectId(internshipId),
     batchId,
@@ -234,6 +253,7 @@ export async function createInternshipLiveMeetingAdmin(
     recordingLink,
     startDateTime,
     endDateTime,
+    successPoints,
     link1: {
       token: generateToken(),
       expiryMins: link1ExpiryMins,
@@ -320,13 +340,21 @@ export async function getInternshipLiveMeetingAdmin(
  */
 export async function updateInternshipLiveMeetingAdmin(
   id: string,
-  body: { meetingLink?: string; recordingLink?: string },
+  body: {
+    meetingLink?: string;
+    recordingLink?: string;
+    successPoints?: number;
+  },
 ): Promise<AdminLiveMeetingListItem> {
   if (!mongoose.Types.ObjectId.isValid(id)) {
     throw new AppError("Invalid meeting id", 400);
   }
 
-  const update: { meetingLink?: string; recordingLink?: string } = {};
+  const update: {
+    meetingLink?: string;
+    recordingLink?: string;
+    successPoints?: number;
+  } = {};
 
   if (body.meetingLink !== undefined) {
     const ml = typeof body.meetingLink === "string" ? body.meetingLink.trim() : "";
@@ -349,6 +377,30 @@ export async function updateInternshipLiveMeetingAdmin(
       );
     }
     update.recordingLink = rl;
+  }
+
+  if (body.successPoints !== undefined) {
+    // Locked once attendance is finalized — present learners are already
+    // credited at the old value, and re-pricing the meeting after the fact
+    // would desync earned points from the "total achievable" calculation.
+    const existing = await InternshipLiveMeetingModel.findById(id)
+      .select("finalizedAt")
+      .lean();
+    if (!existing) throw new AppError("Meeting not found", 404);
+    if (existing.finalizedAt) {
+      throw new AppError(
+        "Success points can't be changed after attendance is finalized.",
+        400,
+      );
+    }
+    const n = Math.floor(Number(body.successPoints));
+    if (!Number.isFinite(n) || n < 0 || n > 1_000_000) {
+      throw new AppError(
+        "successPoints must be a whole number between 0 and 1,000,000",
+        400,
+      );
+    }
+    update.successPoints = n;
   }
 
   if (Object.keys(update).length === 0) {
@@ -520,14 +572,22 @@ export async function getInternshipLiveMeetingAttendanceAdmin(
 async function finalizeAttendance(
   meetingId: mongoose.Types.ObjectId,
 ): Promise<void> {
-  const meeting = await InternshipLiveMeetingModel.findById(meetingId).lean();
-  if (!meeting || meeting.finalizedAt) return;
+  // Claim the finalization atomically up front. Whichever caller wins is the
+  // one that writes absent docs AND credits points to present learners.
+  // Subsequent calls find `finalizedAt` set and no-op — this is what keeps
+  // the per-meeting points credit from double-applying on retry.
+  const meeting = await InternshipLiveMeetingModel.findOneAndUpdate(
+    { _id: meetingId, finalizedAt: null },
+    { $set: { finalizedAt: new Date() } },
+    { new: true },
+  ).lean();
+  if (!meeting) return;
 
   const link1Set = new Set(
-    (meeting.link1.clickedBy ?? []).map((u: unknown) => String(u)),
+    (meeting.link1?.clickedBy ?? []).map((u: unknown) => String(u)),
   );
   const link2Set = new Set(
-    (meeting.link2.clickedBy ?? []).map((u: unknown) => String(u)),
+    (meeting.link2?.clickedBy ?? []).map((u: unknown) => String(u)),
   );
 
   const enrollments = await InternshipEnrollmentModel.find({
@@ -535,14 +595,19 @@ async function finalizeAttendance(
     "batchSnapshot.batchId": meeting.batchId,
     status: { $in: ENROLLED_STATUSES },
   })
-    .select("user")
+    .select("_id user")
     .lean();
 
   const absentOps: { insertOne: { document: Record<string, unknown> } }[] = [];
+  const presentEnrollmentIds: mongoose.Types.ObjectId[] = [];
   for (const enr of enrollments) {
     const uid = String(enr.user);
-    const present = link1Set.has(uid) && link2Set.has(uid);
-    if (!present) {
+    const isPresent = link1Set.has(uid) && link2Set.has(uid);
+    if (isPresent) {
+      presentEnrollmentIds.push(
+        enr._id as unknown as mongoose.Types.ObjectId,
+      );
+    } else {
       absentOps.push({
         insertOne: {
           document: {
@@ -566,10 +631,15 @@ async function finalizeAttendance(
     }
   }
 
-  await InternshipLiveMeetingModel.updateOne(
-    { _id: meetingId, finalizedAt: null },
-    { $set: { finalizedAt: new Date() } },
-  );
+  // Credit `meeting.successPoints` into `enrollment.internshipSuccessPoints`
+  // for every learner marked present. No-op when the admin set 0 points.
+  const pointsToAward = Math.max(0, Math.floor(Number(meeting.successPoints ?? 0)));
+  if (pointsToAward > 0 && presentEnrollmentIds.length > 0) {
+    await InternshipEnrollmentModel.updateMany(
+      { _id: { $in: presentEnrollmentIds } },
+      { $inc: { internshipSuccessPoints: pointsToAward } },
+    );
+  }
 }
 
 // ───────── Student: list meetings for their batch ─────────

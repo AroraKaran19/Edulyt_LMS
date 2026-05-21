@@ -69,6 +69,7 @@ export default function QuestionPickerModal({
   const [manualSearch, setManualSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [manualCategory, setManualCategory] = useState("");
+  const [manualType, setManualType] = useState<"" | "mcq" | "file_upload">("");
   const [manualPage, setManualPage] = useState(1);
   const [manualRows, setManualRows] = useState<PickerQuestion[]>([]);
   const [manualTotalPages, setManualTotalPages] = useState(1);
@@ -86,6 +87,7 @@ export default function QuestionPickerModal({
       setManualSearch("");
       setDebouncedSearch("");
       setManualCategory("");
+      setManualType("");
       setManualPage(1);
     }
     prevOpenRef.current = isOpen;
@@ -100,7 +102,7 @@ export default function QuestionPickerModal({
   // Reset to page 1 whenever a manual filter changes.
   useEffect(() => {
     setManualPage(1);
-  }, [debouncedSearch, manualCategory]);
+  }, [debouncedSearch, manualCategory, manualType]);
 
   const fetchManual = useCallback(async () => {
     setManualLoading(true);
@@ -112,6 +114,7 @@ export default function QuestionPickerModal({
           search: debouncedSearch || undefined,
           usageFor,
           category: manualCategory || undefined,
+          type: manualType || undefined,
         },
       });
       const d = res.data?.data as ListResponse | undefined;
@@ -130,7 +133,7 @@ export default function QuestionPickerModal({
     } finally {
       setManualLoading(false);
     }
-  }, [manualPage, debouncedSearch, usageFor, manualCategory]);
+  }, [manualPage, debouncedSearch, usageFor, manualCategory, manualType]);
 
   useEffect(() => {
     if (!isOpen || tab !== "manual") return;
@@ -287,7 +290,7 @@ export default function QuestionPickerModal({
           </div>
         ) : (
           <div className="flex flex-col gap-3">
-            <div className="grid grid-cols-1 sm:grid-cols-[1fr_220px] gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-[1fr_180px_180px] gap-3">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                 <input
@@ -298,6 +301,18 @@ export default function QuestionPickerModal({
                   className="w-full rounded-xl border border-gray-200 bg-white pl-9 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
                 />
               </div>
+              <Select
+                options={[
+                  { value: "", label: "All types" },
+                  { value: "mcq", label: "MCQ" },
+                  { value: "file_upload", label: "File upload" },
+                ]}
+                value={manualType}
+                onChange={(v) =>
+                  setManualType(v as "" | "mcq" | "file_upload")
+                }
+                placeholder="Filter by type"
+              />
               <Select
                 searchable
                 searchPlaceholder="Search categories…"

@@ -4,8 +4,8 @@ import { AppError } from "../middlewares/error.middleware";
 const GLOBAL_KEY = "global";
 
 export type PointsSettingsPayload = {
-  successPointInr: number;
   internshipSuccessPointInr: number;
+  successPointRedemptionInr: number;
 };
 
 function parseNonNegNumber(value: unknown, field: string): number {
@@ -24,14 +24,16 @@ function parseNonNegNumber(value: unknown, field: string): number {
 export async function getPointsSettings(): Promise<PointsSettingsPayload> {
   const doc = await PointsSettingsModel.findOne({ key: GLOBAL_KEY }).lean();
   if (!doc) {
-    return { successPointInr: 0, internshipSuccessPointInr: 0 };
+    return { internshipSuccessPointInr: 0, successPointRedemptionInr: 0 };
   }
   return {
-    successPointInr:
-      typeof doc.successPointInr === "number" ? doc.successPointInr : 0,
     internshipSuccessPointInr:
       typeof doc.internshipSuccessPointInr === "number"
         ? doc.internshipSuccessPointInr
+        : 0,
+    successPointRedemptionInr:
+      typeof doc.successPointRedemptionInr === "number"
+        ? doc.successPointRedemptionInr
         : 0,
   };
 }
@@ -39,10 +41,6 @@ export async function getPointsSettings(): Promise<PointsSettingsPayload> {
 export async function updatePointsSettings(
   body: Partial<Record<keyof PointsSettingsPayload, unknown>>,
 ): Promise<PointsSettingsPayload> {
-  const successPointInr =
-    body.successPointInr !== undefined
-      ? parseNonNegNumber(body.successPointInr, "successPointInr")
-      : undefined;
   const internshipSuccessPointInr =
     body.internshipSuccessPointInr !== undefined
       ? parseNonNegNumber(
@@ -50,28 +48,36 @@ export async function updatePointsSettings(
           "internshipSuccessPointInr",
         )
       : undefined;
+  const successPointRedemptionInr =
+    body.successPointRedemptionInr !== undefined
+      ? parseNonNegNumber(
+          body.successPointRedemptionInr,
+          "successPointRedemptionInr",
+        )
+      : undefined;
 
-  if (successPointInr === undefined && internshipSuccessPointInr === undefined) {
+  if (
+    internshipSuccessPointInr === undefined &&
+    successPointRedemptionInr === undefined
+  ) {
     throw new AppError(
-      "Provide at least one of successPointInr, internshipSuccessPointInr",
+      "Provide at least one of internshipSuccessPointInr, successPointRedemptionInr",
       400,
     );
   }
 
   const current = await getPointsSettings();
   const next: PointsSettingsPayload = {
-    successPointInr: successPointInr ?? current.successPointInr,
     internshipSuccessPointInr:
       internshipSuccessPointInr ?? current.internshipSuccessPointInr,
+    successPointRedemptionInr:
+      successPointRedemptionInr ?? current.successPointRedemptionInr,
   };
 
   await PointsSettingsModel.findOneAndUpdate(
     { key: GLOBAL_KEY },
     {
-      $set: {
-        successPointInr: next.successPointInr,
-        internshipSuccessPointInr: next.internshipSuccessPointInr,
-      },
+      $set: next,
       $setOnInsert: { key: GLOBAL_KEY },
     },
     { upsert: true, new: true, runValidators: true },

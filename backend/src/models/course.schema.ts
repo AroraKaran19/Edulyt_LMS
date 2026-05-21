@@ -94,9 +94,10 @@ const courseSchema = new mongoose.Schema<Course>(
     previewVideoUrl: { type: String, required: false, default: "" },
     isFeatured: { type: Boolean, default: false, required: true },
     isCertified: { type: Boolean, default: false, required: true },
-    successPoints: {
+    /** Points granted to the user when their certificate for this course is generated. */
+    completionSuccessPoints: {
       type: Number,
-      default: 100,
+      default: 0,
       min: 0,
       max: 1_000_000,
     },

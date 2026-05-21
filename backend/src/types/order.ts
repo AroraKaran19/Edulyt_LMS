@@ -58,6 +58,14 @@ export interface PaymentOrder {
   partnershipImportConfigId?: string;
   /** Referral code used at checkout — snapshot only; does NOT alter `amount`. */
   referralCode?: string;
+  /** Idempotency flag: per-plan `purchaseSuccessPoints` already credited. */
+  successPointsPurchaseGranted?: boolean;
+  /** Number of success points the buyer chose to redeem at checkout. */
+  successPointsApplied?: number;
+  /** ₹ discount produced by `successPointsApplied × redemption rate`. */
+  successPointsDiscount?: number;
+  /** Idempotency flag: redeemed points already deducted from buyer's wallet. */
+  successPointsRedeemed?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 }

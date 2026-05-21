@@ -146,6 +146,10 @@ export interface Plan {
   discount?: Discount;
   isPopular?: boolean;
   isActive?: boolean;
+  /** Success points granted to the buyer when this plan is purchased. 0 = none. */
+  purchaseSuccessPoints?: number;
+  /** Max success points a buyer may redeem as a checkout discount for this plan. 0 = none. */
+  maxSuccessPointsUsage?: number;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -191,8 +195,8 @@ export interface Course {
 
   isFeatured?: boolean;
   isCertified?: boolean;
-  /** Points for completing the course; set in admin course wizard (Screen 2). */
-  successPoints?: number;
+  /** Points granted to the user when their certificate for this course is generated. */
+  completionSuccessPoints?: number;
 
   // Course Content
   whatYouWillLearn: string;

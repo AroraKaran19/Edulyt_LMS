@@ -5,10 +5,15 @@ const pointsSettingsSchema = new mongoose.Schema(
   {
     /** Fixed id so we only ever have one row */
     key: { type: String, required: true, unique: true, default: "global" },
-    /** Rupees per 1 course / user success point */
-    successPointInr: { type: Number, required: true, default: 0, min: 0 },
     /** Rupees per 1 internship success point (enrollment) */
     internshipSuccessPointInr: {
+      type: Number,
+      required: true,
+      default: 0,
+      min: 0,
+    },
+    /** Rupees discount per 1 user success point when redeemed at checkout */
+    successPointRedemptionInr: {
       type: Number,
       required: true,
       default: 0,

@@ -4,6 +4,7 @@ import GoalsSection from "./components/dashboard/GoalsSection";
 import NewCoursesSection from "./components/dashboard/NewCoursesSection";
 import LiveClassesSection from "./components/dashboard/LiveClassesSection";
 import AnnouncementSection from "./components/dashboard/AnnouncementSection";
+import SuccessPointsSection from "./components/dashboard/SuccessPointsSection";
 
 const UserDashboard = async () => {
   return (
@@ -14,6 +15,7 @@ const UserDashboard = async () => {
         <NewCoursesSection />
       </div>
       <div className="flex w-full lg:w-2/8 flex-col gap-6">
+        <SuccessPointsSection />
         <AvgTimeSection />
         <GoalsSection />
         <AnnouncementSection />

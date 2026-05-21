@@ -193,6 +193,35 @@ const CartForm = ({
     useState<CollaborationCheckoutResolve | null>(null);
   const [collabLoading, setCollabLoading] = useState(false);
 
+  // Success-points redemption at checkout (per-plan cap × admin redemption rate).
+  const [useSuccessPoints, setUseSuccessPoints] = useState(false);
+  const [successPointsBalance, setSuccessPointsBalance] = useState<number>(0);
+  const [redemptionRate, setRedemptionRate] = useState<number>(0);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [balanceRes, rateRes] = await Promise.all([
+          apiClient.get("/success-points/me"),
+          apiClient.get("/success-points/redemption-rate"),
+        ]);
+        if (cancelled) return;
+        setSuccessPointsBalance(Number(balanceRes.data?.data?.balance ?? 0));
+        setRedemptionRate(
+          Number(rateRes.data?.data?.successPointRedemptionInr ?? 0),
+        );
+      } catch {
+        if (!cancelled) {
+          setSuccessPointsBalance(0);
+          setRedemptionRate(0);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const checkoutPricing = useMemo(() => {
     const planPrice =
       planType === "elite"
@@ -1061,6 +1090,56 @@ const CartForm = ({
                           )}
                         </div>
 
+                        {/* Use Success Points */}
+                        {(() => {
+                          const planMax =
+                            (planType === "elite"
+                              ? course.plans?.elite?.maxSuccessPointsUsage
+                              : course.plans?.essential
+                                  ?.maxSuccessPointsUsage) ?? 0;
+                          const canUsePoints =
+                            planMax > 0 &&
+                            redemptionRate > 0 &&
+                            successPointsBalance > 0;
+                          if (!canUsePoints) return null;
+                          const wantedPoints = Math.min(
+                            successPointsBalance,
+                            planMax,
+                          );
+                          const previewDiscount =
+                            Math.round(wantedPoints * redemptionRate * 100) /
+                            100;
+                          return (
+                            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
+                              <label className="flex items-start gap-3 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={useSuccessPoints}
+                                  onChange={(e) =>
+                                    setUseSuccessPoints(e.target.checked)
+                                  }
+                                  className="mt-1 w-4 h-4 accent-[#F77124] cursor-pointer"
+                                />
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-sm font-semibold text-gray-900">
+                                    Use my success points
+                                  </p>
+                                  <p className="text-xs text-gray-600 mt-0.5">
+                                    You have{" "}
+                                    <span className="font-bold text-[#F77124]">
+                                      {successPointsBalance}
+                                    </span>{" "}
+                                    points. Up to {wantedPoints} can be
+                                    redeemed on this plan (₹
+                                    {previewDiscount.toFixed(2)} off, capped at
+                                    the order amount).
+                                  </p>
+                                </div>
+                              </label>
+                            </div>
+                          );
+                        })()}
+
                         {/* Order Summary */}
                         <div className="bg-gray-50 rounded-lg p-4">
                           <h3 className="font-semibold text-text-primary mb-3">
@@ -1077,9 +1156,56 @@ const CartForm = ({
                               partnershipTitle,
                             } = checkoutPricing;
 
-                            const finalAmount = appliedCoupon
+                            const finalAmountBeforePoints = appliedCoupon
                               ? appliedCoupon.finalAmount
                               : afterCollaboration;
+
+                            // Success-points discount preview (server re-computes
+                            // for safety; this is just for display).
+                            const planMaxPts =
+                              (planType === "elite"
+                                ? course.plans?.elite?.maxSuccessPointsUsage
+                                : course.plans?.essential
+                                    ?.maxSuccessPointsUsage) ?? 0;
+                            const wantedPts = Math.min(
+                              successPointsBalance,
+                              planMaxPts,
+                            );
+                            let pointsApplied = 0;
+                            let pointsDiscount = 0;
+                            if (
+                              useSuccessPoints &&
+                              wantedPts > 0 &&
+                              redemptionRate > 0
+                            ) {
+                              const wantedDisc =
+                                Math.round(wantedPts * redemptionRate * 100) /
+                                100;
+                              pointsDiscount =
+                                Math.round(
+                                  Math.min(
+                                    wantedDisc,
+                                    finalAmountBeforePoints,
+                                  ) * 100,
+                                ) / 100;
+                              pointsApplied =
+                                wantedDisc > finalAmountBeforePoints
+                                  ? Math.min(
+                                      wantedPts,
+                                      Math.ceil(
+                                        finalAmountBeforePoints /
+                                          redemptionRate,
+                                      ),
+                                    )
+                                  : wantedPts;
+                            }
+                            const finalAmount = Math.max(
+                              0,
+                              Math.round(
+                                (finalAmountBeforePoints - pointsDiscount) *
+                                  100,
+                              ) / 100,
+                            );
 
                             // Round to 2 decimal places for display to avoid floating-point precision issues (e.g. 0.34999999999999964 → 0.35)
                             const formatPrice = (n: number) =>
@@ -1145,6 +1271,17 @@ const CartForm = ({
                                       {formatPrice(
                                         appliedCoupon.discountAmount,
                                       )}
+                                    </span>
+                                  </div>
+                                )}
+
+                                {pointsDiscount > 0 && (
+                                  <div className="flex justify-between items-center text-[#F77124]">
+                                    <span className="text-sm font-medium">
+                                      Success Points ({pointsApplied} pts)
+                                    </span>
+                                    <span className="text-sm font-bold">
+                                      -₹{formatPrice(pointsDiscount)}
                                     </span>
                                   </div>
                                 )}
@@ -1231,6 +1368,9 @@ const CartForm = ({
                               }
                               if (appliedReferral) {
                                 orderData.referralCode = appliedReferral.code;
+                              }
+                              if (useSuccessPoints) {
+                                orderData.useSuccessPoints = true;
                               }
 
                               const response = await apiClient.post(

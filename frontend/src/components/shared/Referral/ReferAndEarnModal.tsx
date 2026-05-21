@@ -201,7 +201,6 @@ function OverviewTab({
         }}
       />
       <TiersBlock overview={overview} />
-      <RecentSalesBlock sales={overview.recentSales} />
     </div>
   );
 }
@@ -527,46 +526,6 @@ function TiersBlock({ overview }: { overview: ReferralOverview }) {
           );
         })}
       </div>
-    </div>
-  );
-}
-
-function RecentSalesBlock({ sales }: { sales: ReferralRecentSaleRow[] }) {
-  if (sales.length === 0) {
-    return (
-      <div className="rounded-2xl border border-dashed border-stone-200 bg-stone-50 p-6 text-center">
-        <Receipt className="mx-auto mb-2 w-6 h-6 text-stone-300" />
-        <p className="text-xs text-stone-500">
-          No referral sales yet — share your code to start earning.
-        </p>
-      </div>
-    );
-  }
-  return (
-    <div className="rounded-2xl border border-stone-200 bg-white p-4">
-      <p className="text-sm font-semibold text-stone-900 mb-2">
-        Recent earnings
-      </p>
-      <ul className="divide-y divide-stone-100">
-        {sales.map((s) => (
-          <li key={s._id} className="py-2 flex items-center gap-2 text-xs">
-            <div className="min-w-0 flex-1">
-              <p className="font-medium text-stone-800 truncate">
-                {s.courseName || "Course"}
-              </p>
-              <p className="text-stone-500 truncate">
-                {s.buyerName || "Buyer"} · {formatDateTime(s.createdAt)}
-              </p>
-            </div>
-            <div className="shrink-0 text-right">
-              <p className="font-semibold text-emerald-700">
-                +{formatRupees(s.commission)}
-              </p>
-              <p className="text-stone-400">on {formatRupees(s.amount)}</p>
-            </div>
-          </li>
-        ))}
-      </ul>
     </div>
   );
 }

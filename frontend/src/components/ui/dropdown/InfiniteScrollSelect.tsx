@@ -33,6 +33,15 @@ export interface InfiniteScrollSelectProps<T = unknown> {
   multi?: boolean;
   getOptionLabel?: (item: T | { _id?: string; name?: string }) => string;
   getOptionValue?: (item: T | { _id?: string; name?: string }) => string;
+  /**
+   * Custom per-row renderer for the dropdown list. Receives the raw item and
+   * whether the row is currently selected. Falls back to the plain label
+   * (from `getOptionLabel`) when not provided.
+   */
+  renderOption?: (
+    item: T | { _id?: string; name?: string },
+    opts: { selected: boolean },
+  ) => React.ReactNode;
   className?: string;
   dropdownClassName?: string;
   disabled?: boolean;
@@ -76,6 +85,7 @@ export function InfiniteScrollSelect<T = unknown>({
   multi = false,
   getOptionLabel,
   getOptionValue,
+  renderOption,
   className,
   dropdownClassName,
   disabled,
@@ -275,20 +285,26 @@ export function InfiniteScrollSelect<T = unknown>({
             {emptyMessage}
           </div>
         ) : (
-          options.map((opt, index) => (
-            <button
-              key={index}
-              type="button"
-              onClick={() => toggleOption(opt)}
-              className={cn(
-                "w-full px-3 py-2.5 text-left text-sm hover:bg-orange-50 transition-colors",
-                selectedValues.includes(opt.value) &&
-                  "bg-orange-100 text-orange-800 font-medium",
-              )}
-            >
-              {opt.label}
-            </button>
-          ))
+          options.map((opt, index) => {
+            const isSelected = selectedValues.includes(opt.value);
+            return (
+              <button
+                key={index}
+                type="button"
+                onClick={() => toggleOption(opt)}
+                className={cn(
+                  "w-full px-3 py-2.5 text-left text-sm hover:bg-orange-50 transition-colors",
+                  isSelected &&
+                    !renderOption &&
+                    "bg-orange-100 text-orange-800 font-medium",
+                )}
+              >
+                {renderOption && opt.raw
+                  ? renderOption(opt.raw, { selected: isSelected })
+                  : opt.label}
+              </button>
+            );
+          })
         )}
         {loading && options.length > 0 && (
           <div className="py-2 text-center text-xs text-gray-400">

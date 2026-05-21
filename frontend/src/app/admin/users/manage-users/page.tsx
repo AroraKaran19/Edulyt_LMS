@@ -13,6 +13,7 @@ import {
   Clock,
   UserX,
   UserCheck,
+  Star,
 } from "lucide-react";
 import Image from "next/image";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
@@ -27,6 +28,7 @@ import TrialCourseModal from "./components/TrialCourseModal";
 import EditUserModal from "./components/EditUserModal";
 import UserDetailsModal from "./components/UserDetailsModal";
 import AddPartnerModal from "./components/AddPartnerModal";
+import SuccessPointsModal from "./components/SuccessPointsModal";
 import { formatUserTypeLabel } from "./components/UserDetailsModalShared";
 import {
   validatePassword,
@@ -66,6 +68,7 @@ const ManageUsersPage = () => {
   const [showUserDetails, setShowUserDetails] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+  const [showSuccessPointsModal, setShowSuccessPointsModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -823,6 +826,20 @@ const ManageUsersPage = () => {
                         >
                           <Key className="w-4 h-4" />
                         </Button>
+                        {user.userType === "student" && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedUser(user);
+                              setShowSuccessPointsModal(true);
+                            }}
+                            className="cursor-pointer text-[#F77124] hover:text-[#e66013]"
+                            title="Success Points"
+                          >
+                            <Star className="w-4 h-4" />
+                          </Button>
+                        )}
                         <Button
                           variant="outline"
                           size="sm"
@@ -967,6 +984,22 @@ const ManageUsersPage = () => {
       />
 
       {/* Change Password Modal */}
+      {/* Success Points Modal */}
+      <SuccessPointsModal
+        isOpen={showSuccessPointsModal}
+        user={selectedUser}
+        onClose={() => setShowSuccessPointsModal(false)}
+        onAdjusted={(userId, newBalance) => {
+          setUsers((prev) =>
+            prev.map((u) =>
+              u._id === userId
+                ? ({ ...u, successPoints: newBalance } as User)
+                : u,
+            ),
+          );
+        }}
+      />
+
       {showChangePasswordModal && selectedUser && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg p-6 w-full max-w-md">

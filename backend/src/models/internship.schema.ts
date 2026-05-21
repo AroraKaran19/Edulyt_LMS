@@ -137,11 +137,18 @@ const internshipSchema = new mongoose.Schema<Internship>(
       default: true,
       required: true,
     },
-    /** Minimum `internshipSuccessPoints` on enrollment required before attempting the certification exam. */
+    /**
+     * Percentage (0–100) of the total achievable success points a learner
+     * must earn within their enrolled window (tasks + live meetings +
+     * certification exam scheduled inside that window) to **receive the
+     * certificate**. The learner may always attempt the exam — the gate is
+     * on issuance, not attempt. 0 = no gate (every passer gets a cert).
+     */
     certificationThreshold: {
       type: Number,
       default: 0,
       min: [0, "certificationThreshold must be >= 0"],
+      max: [100, "certificationThreshold must be <= 100"],
     },
     brochure: {
       type: String,

@@ -44,7 +44,7 @@ export const getSelfOrders = asyncHandler(
 );
 
 export const createOrder = asyncHandler(async (req: Request, res: Response) => {
-  const { courseId, planType, userId, couponCode, referralCode } = req.body;
+  const { courseId, planType, userId, couponCode, referralCode, useSuccessPoints } = req.body;
 
   const user = await UserModel.findById(userId);
   if (!user) {
@@ -70,6 +70,7 @@ export const createOrder = asyncHandler(async (req: Request, res: Response) => {
     planType,
     couponCode,
     typeof referralCode === "string" ? referralCode : undefined,
+    useSuccessPoints === true,
   );
 
   if (!order) {

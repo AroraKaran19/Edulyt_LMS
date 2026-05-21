@@ -42,7 +42,7 @@ const RightSidebar = () => {
           signal: controller.signal,
         });
         setInternships(
-          (res.data?.data?.internships ?? []) as InternshipPublicListing[]
+          (res.data?.data?.internships ?? []) as InternshipPublicListing[],
         );
       } catch {
         setInternships([]);
@@ -67,7 +67,9 @@ const RightSidebar = () => {
             <Loader2 className="w-5 h-5 animate-spin" />
           </div>
         ) : courses.length === 0 ? (
-          <p className="text-sm text-gray-500 py-2">No courses available yet.</p>
+          <p className="text-sm text-gray-500 py-2">
+            No courses available yet.
+          </p>
         ) : (
           <div className="flex flex-col gap-4">
             {courses.slice(0, TOP_COUNT).map((course) => (

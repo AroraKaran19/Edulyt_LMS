@@ -670,7 +670,7 @@ export const getInitialFormData = (
     isActive: true,
     isFeatured: false,
     isCertified: false,
-    successPoints: 100,
+    completionSuccessPoints: 0,
     whatYouWillLearn: "",
     skills: [],
     highlights: [],

@@ -22,20 +22,6 @@ import {
   getLatestCertificateService,
 } from "./certificate.services";
 import { createCertificateJobService } from "./certificateJob.services";
-import { tryAwardSuccessPointsOnCourseCompletion } from "./successPoints.services";
-
-async function runSuccessPointsOnCourseCompletion(
-  enrollmentId: string,
-  isCompleted: boolean,
-  completedAt: Date | undefined,
-): Promise<void> {
-  if (!isCompleted || !completedAt) return;
-  try {
-    await tryAwardSuccessPointsOnCourseCompletion(enrollmentId);
-  } catch (e) {
-    console.error("Success points (course completion):", e);
-  }
-}
 
 /**
  * Check if an enrollment is still valid (not expired)
@@ -693,12 +679,6 @@ export const RecalculateEnrollmentProgressService = async (
         console.error("Error auto-generating certificate:", certError);
         // Certificate generation failure shouldn't prevent enrollment completion
       }
-
-      await runSuccessPointsOnCourseCompletion(
-        enrollmentId.toString(),
-        isCompleted,
-        completedAt,
-      );
     }
 
     return updatedEnrollment as Enrollment;
@@ -1283,12 +1263,6 @@ export const UpdateEnrollmentProgressService = async (
         }
         // Certificate generation failure shouldn't prevent enrollment completion
       }
-
-      await runSuccessPointsOnCourseCompletion(
-        enrollmentId.toString(),
-        isCompleted,
-        completedAt,
-      );
     }
 
     return updatedEnrollment as Enrollment;
@@ -1321,14 +1295,6 @@ export const UpdateEnrollmentStatusService = async (
       "courseId",
       "title thumbnail description category slug duration instructor plans analytics isFeatured isCertified",
     );
-
-    if (status === "completed" && updatedEnrollment) {
-      await runSuccessPointsOnCourseCompletion(
-        enrollmentId,
-        true,
-        updateData.completedAt as Date,
-      );
-    }
 
     return updatedEnrollment as Enrollment;
   } catch (error) {

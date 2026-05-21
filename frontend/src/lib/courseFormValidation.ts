@@ -467,22 +467,22 @@ export const validateScreen2 = (
     missingFields.push("whoShouldJoin");
   }
 
-  // Success points (Screen 2) — whole number, 0 = none
-  const sp = data.successPoints;
+  // Completion success points (Screen 2) — whole number, 0 = none
+  const sp = data.completionSuccessPoints;
   if (sp === undefined || sp === null) {
     errors.push("Success points is required");
-    missingFields.push("successPoints");
+    missingFields.push("completionSuccessPoints");
   } else {
     const n = Number(sp);
     if (!Number.isFinite(n) || !Number.isInteger(n)) {
       errors.push("Success points must be a whole number");
-      missingFields.push("successPoints");
+      missingFields.push("completionSuccessPoints");
     } else if (n < 0) {
       errors.push("Success points cannot be negative");
-      missingFields.push("successPoints");
+      missingFields.push("completionSuccessPoints");
     } else if (n > 1_000_000) {
       errors.push("Success points cannot exceed 1,000,000");
-      missingFields.push("successPoints");
+      missingFields.push("completionSuccessPoints");
     }
   }
 

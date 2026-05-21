@@ -36,14 +36,14 @@ const DashboardBanner = () => {
           </h2>
           <p className="text-sm font-semibold">Welcome to Airkrit!</p>
         </div>
-        <div className="ml-auto w-max flex items-center gap-2 sm:gap-4 lg:gap-6 flex-wrap">
-          <div className="flex py-2 px-2.5 w-[138px] items-center gap-2 rounded-lg border border-gray-200 overflow-hidden">
+        <div className="w-full lg:w-max lg:ml-auto flex items-center gap-2 sm:gap-4 lg:gap-6 overflow-x-auto">
+          <div className="flex py-2 px-2.5 w-[138px] shrink-0 items-center gap-2 rounded-lg border border-gray-200 overflow-hidden">
             <Loader size="sm" variant="spinner" />
           </div>
-          <div className="flex py-2 px-2.5 w-[138px] items-center gap-2 rounded-lg border border-gray-200 overflow-hidden">
+          <div className="flex py-2 px-2.5 w-[138px] shrink-0 items-center gap-2 rounded-lg border border-gray-200 overflow-hidden">
             <Loader size="sm" variant="spinner" />
           </div>
-          <div className="flex py-2 px-2.5 w-[138px] items-center gap-2 rounded-lg border border-gray-200 overflow-hidden">
+          <div className="flex py-2 px-2.5 w-[138px] shrink-0 items-center gap-2 rounded-lg border border-gray-200 overflow-hidden">
             <Loader size="sm" variant="spinner" />
           </div>
         </div>
@@ -59,50 +59,55 @@ const DashboardBanner = () => {
         </h2>
         <p className="text-sm font-semibold">Welcome to Airkrit!</p>
       </div>
-      <div className="ml-auto w-max flex items-center gap-2 sm:gap-4 lg:gap-6 flex-wrap">
-        <Card
-          title="Courses"
-          count={stats.totalCourses}
-          icon={
-            <Image
-              src="/dashboard/CourseBannerIcon.svg"
-              width={24}
-              height={24}
-              alt="courses"
-              draggable={false}
-            />
-          }
-        />
-        <Card
-          title="Certificates"
-          count={stats.totalCertificates}
-          icon={
-            <Image
-              src="/dashboard/CertificateBannerIcon.svg"
-              width={24}
-              height={24}
-              alt="certificates"
-              draggable={false}
-            />
-          }
-        />
-        <Card
-          title="Internships"
-          count={stats.totalInternships}
-          icon={
-            <Image
-              src="/dashboard/CourseBannerIcon.svg"
-              width={24}
-              height={24}
-              alt="internships"
-              draggable={false}
-            />
-          }
-        />
+      <div className="w-full lg:w-max lg:ml-auto flex flex-col lg:flex-row lg:items-center gap-3 lg:gap-6">
+        <div className="flex items-center gap-2 sm:gap-4 lg:gap-6 overflow-x-auto">
+          <Card
+            title="Courses"
+            className="shrink-0"
+            count={stats.totalCourses}
+            icon={
+              <Image
+                src="/dashboard/CourseBannerIcon.svg"
+                width={24}
+                height={24}
+                alt="courses"
+                draggable={false}
+              />
+            }
+          />
+          <Card
+            title="Certificates"
+            className="shrink-0"
+            count={stats.totalCertificates}
+            icon={
+              <Image
+                src="/dashboard/CertificateBannerIcon.svg"
+                width={24}
+                height={24}
+                alt="certificates"
+                draggable={false}
+              />
+            }
+          />
+          <Card
+            title="Internships"
+            className="shrink-0"
+            count={stats.totalInternships}
+            icon={
+              <Image
+                src="/dashboard/CourseBannerIcon.svg"
+                width={24}
+                height={24}
+                alt="internships"
+                draggable={false}
+              />
+            }
+          />
+        </div>
         <button
           type="button"
           onClick={() => setReferModalOpen(true)}
-          className="flex items-center gap-2 rounded-lg bg-linear-to-r from-orange-500 to-amber-500 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:from-orange-600 hover:to-amber-600 transition"
+          className="w-full lg:w-auto flex shrink-0 items-center justify-center gap-2 rounded-lg bg-linear-to-r from-orange-500 to-amber-500 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:from-orange-600 hover:to-amber-600 transition"
         >
           <Sparkles className="w-4 h-4" />
           Refer &amp; Earn

@@ -3,6 +3,7 @@ import apiClient from "@/configs/apiConfig";
 import { User } from "@/types/user";
 import { Course } from "@/types/course";
 import { Enrollment, PartialAccessControl } from "@/types/enrollment";
+import type { InternshipEnrollmentListRow } from "@/types";
 
 export interface GetUsersParams {
   page?: number;
@@ -357,6 +358,7 @@ const useUserManagement = () => {
       certificates: any[];
       totalSpend: number;
       averageTimeToCompleteSeconds: number | null;
+      internshipEnrollments: InternshipEnrollmentListRow[];
     } | null> => {
       return handleRequest(
         async () => {
@@ -370,6 +372,7 @@ const useUserManagement = () => {
             certificates: d.certificates ?? [],
             totalSpend: d.totalSpend ?? 0,
             averageTimeToCompleteSeconds: d.averageTimeToCompleteSeconds ?? null,
+            internshipEnrollments: d.internshipEnrollments ?? [],
           };
         },
         "Failed to fetch user details"

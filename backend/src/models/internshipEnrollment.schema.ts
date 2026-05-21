@@ -124,6 +124,15 @@ const internshipEnrollmentSchema = new mongoose.Schema(
     },
 
     /**
+     * Materialized end of the learner's program window
+     * (`enrolledAt + programDurationMonths`). Stored so queries that need
+     * "tasks / meetings / exam scheduled in this learner's window" don't
+     * have to recompute the boundary each time. Set by the same code path
+     * that sets `programDurationMonths`.
+     */
+    endDate: { type: Date, required: false },
+
+    /**
      * Snapshot of the public internship enroll form at submission time (JSON).
      * Used by admins via the enrollment detail → registration modal.
      */
@@ -173,6 +182,25 @@ internshipEnrollmentSchema.index(
 );
 internshipEnrollmentSchema.index({ internship: 1, status: 1 });
 internshipEnrollmentSchema.index({ user: 1, status: 1 });
+
+// Keep `endDate` derived from `enrolledAt + programDurationMonths`. Centralized
+// here so every `.save()` / `.create()` path stays correct; pre-enrollment
+// docs (no enrolledAt yet) leave endDate undefined naturally.
+internshipEnrollmentSchema.pre("save", function (next) {
+  const enrolledAt = this.enrolledAt instanceof Date ? this.enrolledAt : null;
+  const months =
+    typeof this.programDurationMonths === "number"
+      ? this.programDurationMonths
+      : null;
+  if (enrolledAt && months && months > 0) {
+    const d = new Date(enrolledAt);
+    d.setMonth(d.getMonth() + months);
+    this.endDate = d;
+  } else {
+    this.endDate = undefined;
+  }
+  next();
+});
 
 export const InternshipEnrollmentModel = mongoose.model(
   "InternshipEnrollment",
