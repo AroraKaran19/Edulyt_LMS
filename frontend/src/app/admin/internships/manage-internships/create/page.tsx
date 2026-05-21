@@ -80,7 +80,7 @@ const CreateInternshipPageContent = () => {
   };
 
   return (
-    <div className="flex w-full h-full flex-col px-8 relative">
+    <div className="flex w-full flex-col px-8 relative pb-8">
       <div className="flex items-center justify-between mb-8">
         <Container
           title="Create Internship"
@@ -100,7 +100,7 @@ const CreateInternshipPageContent = () => {
           </WhiteButton>
         )}
       </div>
-      <div className="flex-1 min-h-0 max-h-full">
+      <div className="w-full">
         {currentScreen === 1 && <Screen1 />}
         {currentScreen === 2 && <Screen2 />}
         {currentScreen === 3 && <Screen3 />}

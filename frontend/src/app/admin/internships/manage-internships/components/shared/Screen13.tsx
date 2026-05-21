@@ -26,7 +26,7 @@ const Screen13 = () => {
       <Container
         title="Task templates (Screen 13) — optional"
         description="Link task templates to each batch, or skip and configure later"
-        className="h-full w-full max-h-full overflow-hidden flex flex-col"
+        className="w-full"
         classNameBody="flex flex-col gap-4"
       >
         <div className="flex items-center justify-center h-64">
@@ -43,8 +43,8 @@ const Screen13 = () => {
     <Container
       title="Task templates (Screen 13) — optional"
       description="Choose which reusable task templates belong to each batch. You can change this later when editing the internship."
-      className="h-full w-full max-h-full overflow-hidden flex flex-col"
-      classNameBody="flex flex-col gap-4 min-h-0"
+      className="w-full"
+      classNameBody="flex flex-col gap-4"
     >
       <div className="bg-linear-to-r from-violet-50 to-indigo-50 rounded-2xl p-6 border border-violet-100 shrink-0">
         <div className="flex items-start gap-3">
@@ -72,10 +72,7 @@ const Screen13 = () => {
         </div>
       </div>
 
-      <div
-        className="flex-1 min-h-0 overflow-y-auto space-y-6 pr-2"
-        style={{ scrollbarWidth: "thin" }}
-      >
+      <div className="space-y-6">
         {fields.map((field, index) => {
           const batch = batches?.[index];
           const name = batch?.name?.trim() || `Batch ${index + 1}`;

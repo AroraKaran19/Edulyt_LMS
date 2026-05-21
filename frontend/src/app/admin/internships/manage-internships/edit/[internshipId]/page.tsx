@@ -92,7 +92,7 @@ const EditInternshipPageContent = ({
   };
 
   return (
-    <div className="flex w-full h-full flex-col px-8 relative">
+    <div className="flex w-full flex-col px-8 relative pb-8">
       <div className="flex items-center justify-between mb-4">
         <Container
           title="Edit Internship"
@@ -144,7 +144,7 @@ const EditInternshipPageContent = ({
           )}
         </OrangeButton>
       </div>
-      <div className="flex-1 min-h-0 max-h-full">
+      <div className="w-full">
         {isInternshipDataLoading ? (
           <div className="flex flex-col items-center justify-center min-h-[300px] gap-4">
             <div className="w-10 h-10 border-4 border-orange-300 border-t-orange-600 rounded-full animate-spin" />
