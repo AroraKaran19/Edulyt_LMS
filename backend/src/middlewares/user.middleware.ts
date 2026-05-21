@@ -48,6 +48,39 @@ export const verifyPartner = (
   next();
 };
 
+/**
+ * Best-effort auth: if a valid Bearer token is present, attaches `req.user`;
+ * otherwise just calls `next()` with no error. Use on public endpoints that
+ * need to *enrich* their response when the caller happens to be logged in
+ * (e.g. "did this user already like this post?").
+ */
+export const optionalVerifyUser = async (
+  req: Request,
+  _res: Response,
+  next: NextFunction
+) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return next();
+  }
+  const accessToken = authHeader.substring(7);
+  if (!process.env.JWT_SECRET) return next();
+  try {
+    const decoded = jwt.verify(accessToken, process.env.JWT_SECRET) as {
+      userId: string;
+    };
+    const user = await UserModel.findById(decoded.userId).select(
+      "-password -successPointsHistory"
+    );
+    if (user && user.status === "active") {
+      req.user = user;
+    }
+  } catch {
+    // ignore — fall through as anonymous
+  }
+  next();
+};
+
 export const verifyUser = async (
   req: Request,
   res: Response,

@@ -22,7 +22,7 @@ const manrope = Manrope({
 
 const Navbar = () => {
   const router = useRouter();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
   const [coursesCount, setCoursesCount] = useState<number | undefined>(
     undefined,
   );
@@ -109,10 +109,6 @@ const Navbar = () => {
       label: "community",
       href: "/community",
     },
-    {
-      label: "contact",
-      href: "/contact",
-    },
   ];
   const [hoveredNavLink, setHoveredNavLink] = useState<NavItem | null>(null);
   const [isHoverContainerVisible, setIsHoverContainerVisible] = useState(false);
@@ -198,7 +194,11 @@ const Navbar = () => {
           manrope.className,
         )}
       >
-        <Link href="/" className="h-full flex items-center shrink-0">
+        <Link
+          href="/"
+          className="h-full flex items-center shrink-0 select-none"
+          draggable={false}
+        >
           <ImageComponent
             src="/logo.svg"
             alt="Logo"
@@ -253,7 +253,15 @@ const Navbar = () => {
           ))}
         </nav>
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          {isAuthenticated ? (
+          {isLoading ? (
+            <div className="flex items-center gap-2 animate-pulse" aria-hidden>
+              <div className="size-9 rounded-lg bg-gray-200" />
+              <div className="hidden lg:flex flex-col gap-1.5">
+                <div className="h-3 w-24 rounded bg-gray-200" />
+                <div className="h-2.5 w-32 rounded bg-gray-200" />
+              </div>
+            </div>
+          ) : isAuthenticated ? (
             // Role-specific links (e.g. partner college portal vs learner dashboard).
             <UserMenu />
           ) : (

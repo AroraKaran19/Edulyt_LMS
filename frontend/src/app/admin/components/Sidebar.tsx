@@ -3,6 +3,7 @@ import {
   ChevronLeft,
   ChevronRight,
   HelpCircle,
+  MessageSquare,
   Settings,
   ShoppingCart,
   Tag,
@@ -132,6 +133,17 @@ const AdminSidebar = ({
         {
           label: "Create Instructor",
           href: "/admin/users/create-instructor",
+        },
+      ],
+    },
+    {
+      icon: <MessageSquare className="size-6" />,
+      label: "Community",
+      href: "/admin/community/moderation",
+      submenu: [
+        {
+          label: "Moderation",
+          href: "/admin/community/moderation",
         },
       ],
     },

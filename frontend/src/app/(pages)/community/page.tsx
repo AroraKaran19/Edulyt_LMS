@@ -1,40 +1,39 @@
 "use client";
 
-import React from "react";
+import { useState } from "react";
 import HeroSection from "./components/HeroSection";
 import WritePostCard from "./components/WritePostCard";
 import CommunitySidebar from "./components/CommunitySidebar";
 import CommunityFeed from "./components/CommunityFeed";
 import RightSidebar from "./components/RightSidebar";
-// import FAQSection from "../internships/components/FAQSection";
-import ComingSoon from "@/components/ui/ComingSoon";
+import type { CommunityReviewTag } from "@/hooks/useCommunityReview";
 
 const CommunityPage = () => {
+  const [activeTag, setActiveTag] = useState<CommunityReviewTag | null>(null);
+
   return (
-    // <ComingSoon title="Work in Progress | Community" />
     <div className=" mx-auto w-full md:px-6 lg:px-8 py-4">
-      {/* Top Section */}
       <HeroSection />
       <WritePostCard />
 
-      {/* Main Content Grid */}
-      <div className="mt-12 flex flex-col flex-wrap  lg:flex-row gap-8">
-        {/* Left Sidebar */}
-        <div className="hidden lg:block w-fit">
-          <CommunitySidebar activeCategory="All" />
-        </div>
+      <div className="mt-12 flex flex-col gap-8 lg:flex-row lg:items-start">
+        <aside className="hidden lg:block lg:w-60 shrink-0">
+          <CommunitySidebar
+            activeTag={activeTag}
+            onTagChange={setActiveTag}
+          />
+        </aside>
 
-        {/* Center Feed */}
-        <div className="flex-1 min-w-0">
-          <CommunityFeed />
-        </div>
+        <div className="flex-1 min-w-0 flex flex-col gap-8 xl:flex-row xl:items-start">
+          <div className="flex-1 min-w-0">
+            <CommunityFeed selectedTag={activeTag} />
+          </div>
 
-        {/* Right Sidebar */}
-        <div className="w-full lg:w-[650px]">
-          <RightSidebar courses={[]} internships={[]} />
+          <aside className="w-full xl:w-[360px] xl:shrink-0">
+            <RightSidebar />
+          </aside>
         </div>
       </div>
-      {/* <FAQSection /> */}
     </div>
   );
 };

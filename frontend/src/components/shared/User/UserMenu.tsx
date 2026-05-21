@@ -177,9 +177,9 @@ const UserMenu = () => {
   }, [isUserOpen]);
 
   const displayName =
-    user?.firstName && user?.lastName
-      ? `${user.firstName} ${user.lastName}`
-      : user?.email?.split("@")[0] ?? "User";
+    [user?.firstName, user?.lastName].filter(Boolean).join(" ").trim() ||
+    user?.email?.split("@")[0] ||
+    "User";
 
   const menuItemClass =
     "w-full flex items-center gap-2.5 px-3 py-2 text-left rounded-lg transition-colors duration-150 cursor-pointer group";

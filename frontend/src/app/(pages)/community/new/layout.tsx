@@ -1,5 +1,6 @@
 import { Metadata } from "next";
 import React from "react";
+import AuthGuard from "@/app/providers/AuthGuard";
 
 export const metadata: Metadata = {
   title: "Contact | Airkrit India",
@@ -42,7 +43,15 @@ export const metadata: Metadata = {
 };
 
 const ContactLayout = ({ children }: { children: React.ReactNode }) => {
-  return children;
+  return (
+    <AuthGuard
+      requiredUserType={["student", "admin", "super-admin"]}
+      fallbackPath="/login"
+      wrongRoleShowsNotFound
+    >
+      {children}
+    </AuthGuard>
+  );
 };
 
 export default ContactLayout;

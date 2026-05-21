@@ -35,6 +35,7 @@ import internshipLiveMeetingRoutes from "./liveMeeting.routes";
 import homePageSettingsRoutes from "./homePageSettings.routes";
 import announcementRoutes from "./announcement.routes";
 import referralRoutes from "./referral.routes";
+import communityReviewRoutes from "./community-review.routes";
 
 export {
   authRoutes,
@@ -74,4 +75,5 @@ export {
   homePageSettingsRoutes,
   announcementRoutes,
   referralRoutes,
+  communityReviewRoutes,
 };

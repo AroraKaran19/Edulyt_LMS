@@ -21,45 +21,30 @@ import usePartner, {
   type PartnerInternshipDetailResponse,
 } from "@/hooks/usePartner";
 
-/** Cumulative funnel-stage badges for one student. */
+/** Single badge for the furthest funnel stage the student has reached. */
 function StatusBadges({ student }: { student: PartnerInternshipBatchStudent }) {
-  const badges: { label: string; className: string }[] = [];
-  if (student.appearedInExam) {
-    badges.push({
-      label: "Exam Appeared",
-      className: "bg-amber-50 text-amber-700",
-    });
-  }
-  if (student.selected) {
-    badges.push({
-      label: "Selected",
-      className: "bg-violet-50 text-violet-700",
-    });
-  }
+  let label = "Enrolled";
+  let className = "bg-gray-100 text-gray-600";
   if (student.certified) {
-    badges.push({
-      label: "Certified",
-      className: "bg-emerald-50 text-emerald-700",
-    });
-  }
-  if (badges.length === 0) {
-    badges.push({ label: "Enrolled", className: "bg-gray-100 text-gray-600" });
+    label = "Certified";
+    className = "bg-emerald-50 text-emerald-700";
+  } else if (student.selected) {
+    label = "Selected";
+    className = "bg-violet-50 text-violet-700";
+  } else if (student.appearedInExam) {
+    label = "Exam Appeared";
+    className = "bg-amber-50 text-amber-700";
   }
 
   return (
-    <div className="flex flex-wrap gap-1.5">
-      {badges.map((b) => (
-        <span
-          key={b.label}
-          className={cn(
-            "inline-flex rounded-full px-2 py-0.5 text-xs font-medium",
-            b.className,
-          )}
-        >
-          {b.label}
-        </span>
-      ))}
-    </div>
+    <span
+      className={cn(
+        "inline-flex rounded-full px-2 py-0.5 text-xs font-medium",
+        className,
+      )}
+    >
+      {label}
+    </span>
   );
 }
 
@@ -331,7 +316,7 @@ export default function PartnerInternshipAnalyticsPage() {
               />
             </div>
             <div className="mt-3 overflow-x-auto">
-              <table className="w-full min-w-[640px] text-sm">
+              <table className="w-full min-w-[760px] text-sm">
                 <thead>
                   <tr className="border-b border-[#F2F4F7] text-left">
                     <th className="pb-3 font-semibold text-black">
@@ -340,13 +325,16 @@ export default function PartnerInternshipAnalyticsPage() {
                     <th className="pb-3 font-semibold text-black">Email</th>
                     <th className="pb-3 font-semibold text-black">Batch</th>
                     <th className="pb-3 font-semibold text-black">Status</th>
+                    <th className="pb-3 font-semibold text-black">
+                      Offer Letter
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredStudents.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={4}
+                        colSpan={5}
                         className="py-10 text-center text-gray-500"
                       >
                         {selectedBatchIds.size === 0
@@ -371,6 +359,18 @@ export default function PartnerInternshipAnalyticsPage() {
                         <td className="py-3 text-[#475467]">{s.batchName}</td>
                         <td className="py-3">
                           <StatusBadges student={s} />
+                        </td>
+                        <td className="py-3">
+                          <span
+                            className={cn(
+                              "inline-flex rounded-full px-2 py-0.5 text-xs font-medium",
+                              s.selected
+                                ? "bg-emerald-50 text-emerald-700"
+                                : "bg-gray-100 text-gray-600",
+                            )}
+                          >
+                            {s.selected ? "Received" : "Not received"}
+                          </span>
                         </td>
                       </tr>
                     ))

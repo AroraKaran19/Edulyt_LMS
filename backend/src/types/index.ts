@@ -27,6 +27,7 @@ export * from "./enrollment";
 export * from "./affiliate";
 export * from "./order";
 export * from "./qna";
+export * from "./community-review";
 export * from "./notes";
 export * from "./category";
 export * from "./live-classes";

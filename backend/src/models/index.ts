@@ -18,6 +18,7 @@ import { DocumentContentModel } from "./course-module.schema";
 import { VideoContentModel } from "./course-module.schema";
 import { QuizContentModel } from "./course-module.schema";
 import { QnAModel } from "./qna.schema";
+import { CommunityReviewModel } from "./community-review.schema";
 import { OrderModel } from "./order.schema";
 import TestimonialModel from "./testimonial.schema";
 import { FAQModel } from "./faq.schema";
@@ -52,6 +53,7 @@ export {
   VideoContentModel,
   QuizContentModel,
   QnAModel,
+  CommunityReviewModel,
   OrderModel,
   TestimonialModel,
   FAQModel,
