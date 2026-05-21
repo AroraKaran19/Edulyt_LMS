@@ -240,19 +240,7 @@ export default function usePartner() {
     return res.data.data;
   }, []);
 
-  const getMe = useCallback(async (): Promise<PartnerMeResponse> => {
-    const res = await apiClient.get<ApiSuccessBody<PartnerMeResponse>>(
-      "/partner/me",
-    );
-    return res.data.data;
-  }, []);
-
   const getDashboard = useCallback(
-    async (opts?: {
-      trendMonths?: number;
-      from?: string;
-      to?: string;
-    }): Promise<PartnerDashboardResponse> => {
     async (opts?: {
       trendMonths?: number;
       from?: string;
@@ -398,11 +386,7 @@ export default function usePartner() {
 
   const getInternshipDetail = useCallback(
     async (slug: string): Promise<PartnerInternshipDetailResponse> => {
-  const getInternshipDetail = useCallback(
-    async (slug: string): Promise<PartnerInternshipDetailResponse> => {
       const res = await apiClient.get<
-        ApiSuccessBody<PartnerInternshipDetailResponse>
-      >(`/partner/internships/${encodeURIComponent(slug)}/analytics`);
         ApiSuccessBody<PartnerInternshipDetailResponse>
       >(`/partner/internships/${encodeURIComponent(slug)}/analytics`);
       return res.data.data;

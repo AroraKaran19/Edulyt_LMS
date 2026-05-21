@@ -92,34 +92,6 @@ const requirePartnerAnalyticsAccess = (
   }
 };
 
-/**
- * Throws 403 unless the authenticated partner has the given analytics gate
- * enabled. Treats a missing flag as enabled (legacy docs / lean reads).
- */
-const requirePartnerAnalyticsAccess = (
-  req: Request,
-  kind: "course" | "internship",
-): void => {
-  const user = req.user as unknown as
-    | {
-        courseAnalyticsEnabled?: boolean;
-        internshipAnalyticsEnabled?: boolean;
-      }
-    | undefined;
-  const enabled =
-    kind === "course"
-      ? user?.courseAnalyticsEnabled !== false
-      : user?.internshipAnalyticsEnabled !== false;
-  if (!enabled) {
-    throw new AppError(
-      `${
-        kind === "course" ? "Course" : "Internship"
-      } analytics is not enabled for your account.`,
-      403,
-    );
-  }
-};
-
 export const getPartnerMe = asyncHandler(
   async (req: Request, res: Response) => {
     const collegeId = requirePartnerCollegeId(req);
@@ -130,21 +102,6 @@ export const getPartnerMe = asyncHandler(
         404,
       );
     }
-    const user = req.user as unknown as {
-      courseAnalyticsEnabled?: boolean;
-      internshipAnalyticsEnabled?: boolean;
-    };
-    sendSuccessResponse(
-      res,
-      {
-        college,
-        access: {
-          courseAnalytics: user?.courseAnalyticsEnabled !== false,
-          internshipAnalytics: user?.internshipAnalyticsEnabled !== false,
-        },
-      },
-      "Partner context fetched",
-    );
     const user = req.user as unknown as {
       courseAnalyticsEnabled?: boolean;
       internshipAnalyticsEnabled?: boolean;
