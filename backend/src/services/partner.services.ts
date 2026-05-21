@@ -7,6 +7,10 @@ import { CourseModel } from "../models/course.schema";
 import { CategoryModel } from "../models/category.schema";
 import { CertificateModel } from "../models/certificate.schema";
 import { InternshipModel } from "../models/internship.schema";
+import { CourseModel } from "../models/course.schema";
+import { CategoryModel } from "../models/category.schema";
+import { CertificateModel } from "../models/certificate.schema";
+import { InternshipModel } from "../models/internship.schema";
 
 const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 

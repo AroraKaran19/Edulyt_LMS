@@ -18,6 +18,7 @@ const router = Router();
 router.use(verifyUser, verifyPartner);
 
 /** Partner's own context (linked college + analytics access flags). */
+/** Partner's own context (linked college + analytics access flags). */
 router.get("/me", getPartnerMe);
 
 /** Dashboard stats scoped to the partner's college. */
