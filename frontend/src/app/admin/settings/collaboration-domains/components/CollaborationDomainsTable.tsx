@@ -80,7 +80,7 @@ export default function CollaborationDomainsTable({
                 Domain
               </th>
               <th className="text-left py-4 px-4 font-semibold text-gray-700">
-                Title
+                College
               </th>
               <th className="text-left py-4 px-4 font-semibold text-gray-700">
                 Status

@@ -64,6 +64,11 @@ const MentorCoursesSection = ({
     }
   };
 
+  // Hide the section entirely when this instructor has no courses.
+  if ((items?.length ?? 0) === 0 && (totalCourses ?? 0) === 0) {
+    return null;
+  }
+
   return (
     <section
       className={cn(

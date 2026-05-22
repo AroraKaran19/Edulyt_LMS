@@ -7,10 +7,10 @@ import { verifyAdmin } from "../middlewares/admin.middleware";
 import {
   addReplyToCommunityReview,
   adminApproveCommunityReview,
+  adminDeleteCommunityReview,
   adminListCommunityReviews,
   adminRejectCommunityReview,
   createCommunityReview,
-  deleteOwnCommunityReview,
   listCommunityReviewReplies,
   listPublicCommunityReviews,
   toggleLikeCommunityReview,
@@ -35,15 +35,6 @@ router.get("/", optionalVerifyUser, listPublicCommunityReviews);
  * @access  Authenticated (student)
  */
 router.post("/", verifyUser, createCommunityReview);
-
-/**
- * @route   DELETE /api/community-reviews/:id
- * @desc    Delete a community review the requester authored. Anonymous posts
- *          can't be deleted via this endpoint (no user id stored to verify
- *          ownership). 404s if the review doesn't exist or isn't theirs.
- * @access  Authenticated (owner only)
- */
-router.delete("/:id", verifyUser, deleteOwnCommunityReview);
 
 /**
  * @route   POST /api/community-reviews/:id/like
@@ -101,6 +92,19 @@ router.patch(
   verifyUser,
   verifyAdmin,
   adminRejectCommunityReview
+);
+
+/**
+ * @route   DELETE /api/community-reviews/admin/:id
+ * @desc    Hard-delete a community review (any status). Learners can't
+ *          delete their own posts — removal is an admin/moderation action.
+ * @access  Admin
+ */
+router.delete(
+  "/admin/:id",
+  verifyUser,
+  verifyAdmin,
+  adminDeleteCommunityReview
 );
 
 export default router;

@@ -10,6 +10,7 @@ import {
   getInstructorsByIdsService,
   getPublicInstructorBySlugService,
   getPublicInstructorCoursesBySlugService,
+  getPublicInstructorInternshipsBySlugService,
 } from "../services/instructor.services";
 
 export const getAllInstructors = asyncHandler(
@@ -136,6 +137,30 @@ export const getPublicInstructorCoursesBySlug = asyncHandler(
       res,
       result,
       "Instructor courses fetched successfully",
+      200
+    );
+    return;
+  }
+);
+
+export const getPublicInstructorInternshipsBySlug = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { slug } = req.params;
+
+    if (!slug) {
+      throw new AppError("Instructor slug is required", 400);
+    }
+
+    const result = await getPublicInstructorInternshipsBySlugService(slug);
+
+    if (!result) {
+      throw new AppError("Instructor not found", 404);
+    }
+
+    sendSuccessResponse(
+      res,
+      result,
+      "Instructor internships fetched successfully",
       200
     );
     return;

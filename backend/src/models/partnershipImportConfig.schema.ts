@@ -90,6 +90,17 @@ const enrollmentAccessSchema = new Schema(
 const partnershipImportConfigSchema = new Schema<PartnershipImportConfig>(
   {
     title: { type: String, required: true, trim: true, maxlength: 200 },
+    /**
+     * Bound college. Optional at the schema level so legacy configs created
+     * before this field remain valid; the create/update service requires it
+     * for all new and edited configs.
+     */
+    college: {
+      type: Schema.Types.ObjectId,
+      ref: "College",
+      required: false,
+      index: true,
+    },
     isActive: { type: Boolean, default: true, index: true },
     kind: {
       type: String,

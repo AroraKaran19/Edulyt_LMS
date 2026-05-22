@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { AppError } from "../middlewares/error.middleware";
 import { PartnershipImportConfigModel } from "../models/partnershipImportConfig.schema";
+import { CollegeModel } from "../models/college.schema";
 import type {
   PartnershipImportConfig,
   PartnershipImportKind,
@@ -10,6 +11,33 @@ import type {
   CollaborationCheckoutResolve,
 } from "../types/collaborationDomain";
 import { CollaborationWhitelistModel } from "../models/collaborationWhitelist.schema";
+
+/**
+ * Validates the bound college and returns its id + current name. The config's
+ * `title` (display name) is always a snapshot of this name.
+ */
+async function resolveCollegeForConfig(
+  collegeId: unknown
+): Promise<{ id: mongoose.Types.ObjectId; name: string }> {
+  const s = String(collegeId ?? "");
+  if (!mongoose.Types.ObjectId.isValid(s)) {
+    throw new AppError("A valid college must be selected", 400);
+  }
+  const college = await CollegeModel.findById(s)
+    .select("name isActive")
+    .lean();
+  if (!college) {
+    throw new AppError("Selected college not found", 404);
+  }
+  if (college.isActive === false) {
+    throw new AppError("Selected college is inactive", 400);
+  }
+  const name = String(college.name ?? "").trim();
+  if (!name) {
+    throw new AppError("Selected college has no name", 400);
+  }
+  return { id: new mongoose.Types.ObjectId(s), name };
+}
 
 function toCourseObjectIds(ids: unknown): mongoose.Types.ObjectId[] {
   if (!Array.isArray(ids)) return [];
@@ -69,6 +97,7 @@ export async function listPartnershipImportConfigsService(
       .sort({ updatedAt: -1 })
       .skip(skip)
       .limit(limit)
+      .populate(COLLEGE_POPULATE)
       .lean(),
   ]);
 
@@ -89,6 +118,11 @@ const COURSE_POPULATE = {
   select: "title audience",
 };
 
+const COLLEGE_POPULATE = {
+  path: "college" as const,
+  select: "name location",
+};
+
 export async function getPartnershipImportConfigByIdService(
   id: string
 ): Promise<PartnershipImportConfig | null> {
@@ -97,6 +131,7 @@ export async function getPartnershipImportConfigByIdService(
   }
   const doc = await PartnershipImportConfigModel.findById(id)
     .populate(COURSE_POPULATE)
+    .populate(COLLEGE_POPULATE)
     .lean();
   return sanitizeConfigForApi(doc as PartnershipImportConfig | null);
 }
@@ -105,15 +140,16 @@ export async function createPartnershipImportConfigService(
   data: Partial<PartnershipImportConfig>,
   createdBy?: string
 ): Promise<PartnershipImportConfig> {
-  if (!data.title?.trim()) {
-    throw new AppError("title is required", 400);
-  }
   if (!data.kind || (data.kind !== "course_allot" && data.kind !== "discount")) {
     throw new AppError("kind must be course_allot or discount", 400);
   }
 
+  // The bound college is required and supplies the display name (`title`).
+  const college = await resolveCollegeForConfig(data.college);
+
   const doc = new PartnershipImportConfigModel({
-    title: data.title.trim(),
+    title: college.name,
+    college: college.id,
     kind: data.kind as PartnershipImportKind,
     isActive: data.isActive !== false,
     courses: toCourseObjectIds(data.courses),
@@ -126,6 +162,7 @@ export async function createPartnershipImportConfigService(
   const saved = await doc.save();
   const populated = await PartnershipImportConfigModel.findById(saved._id)
     .populate(COURSE_POPULATE)
+    .populate(COLLEGE_POPULATE)
     .lean();
   return sanitizeConfigForApi(
     populated as PartnershipImportConfig | null
@@ -149,7 +186,15 @@ export async function updatePartnershipImportConfigService(
 
   const updatePayload: Record<string, unknown> = {};
 
-  if (data.title !== undefined) updatePayload.title = data.title.trim();
+  // College drives the display name — re-resolve it whenever the bound
+  // college changes so `title` stays an accurate snapshot.
+  if (data.college !== undefined) {
+    const college = await resolveCollegeForConfig(data.college);
+    updatePayload.college = college.id;
+    updatePayload.title = college.name;
+  } else if (data.title !== undefined) {
+    updatePayload.title = data.title.trim();
+  }
   if (data.isActive !== undefined) updatePayload.isActive = data.isActive;
   if (data.kind !== undefined) updatePayload.kind = data.kind;
 
@@ -175,6 +220,7 @@ export async function updatePartnershipImportConfigService(
     { new: true, runValidators: true }
   )
     .populate(COURSE_POPULATE)
+    .populate(COLLEGE_POPULATE)
     .lean();
 
   return sanitizeConfigForApi(updated as PartnershipImportConfig | null);

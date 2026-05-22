@@ -50,6 +50,14 @@ export type SuccessPointTransaction =
       orderId?: string;
       courseId?: string;
       courseSnapshot?: { title: string; slug?: string };
+    }
+  | {
+      transactionId: string;
+      earnedAt: string;
+      type: "reward";
+      /** Magnitude (positive). */
+      points: number;
+      rewardSource?: "login" | "community_review" | "internship_registration";
     };
 
 export interface SuccessPointsHistoryResponse {

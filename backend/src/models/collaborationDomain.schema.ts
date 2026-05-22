@@ -92,6 +92,17 @@ const enrollmentAccessSchema = new Schema(
 const collaborationDomainSchema = new Schema<CollaborationDomain>(
   {
     title: { type: String, required: true, trim: true, maxlength: 200 },
+    /**
+     * Bound college. Optional at the schema level so legacy collaboration
+     * domains created before this field remain valid; the create/update
+     * service requires it for all new and edited rows.
+     */
+    college: {
+      type: Schema.Types.ObjectId,
+      ref: "College",
+      required: false,
+      index: true,
+    },
     domain: {
       type: String,
       required: true,

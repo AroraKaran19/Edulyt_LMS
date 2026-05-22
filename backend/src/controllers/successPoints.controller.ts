@@ -24,6 +24,23 @@ export const getPublicRedemptionRate = asyncHandler(
   },
 );
 
+export const getPublicRewardRates = asyncHandler(
+  async (_req: Request, res: Response) => {
+    const settings = await getPointsSettings();
+    sendSuccessResponse(
+      res,
+      {
+        loginSuccessPoints: settings.loginSuccessPoints,
+        communityReviewSuccessPoints: settings.communityReviewSuccessPoints,
+        internshipRegistrationSuccessPoints:
+          settings.internshipRegistrationSuccessPoints,
+      },
+      "Reward rates fetched",
+      200,
+    );
+  },
+);
+
 export const getMySuccessPoints = asyncHandler(
   async (req: Request, res: Response) => {
     const user = req.user;

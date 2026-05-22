@@ -170,8 +170,8 @@ export default function useCommunityReview() {
     []
   );
 
-  const deleteOwnReview = useCallback(async (id: string): Promise<void> => {
-    await apiClient.delete(`/community-reviews/${id}`);
+  const adminDeleteReview = useCallback(async (id: string): Promise<void> => {
+    await apiClient.delete(`/community-reviews/admin/${id}`);
   }, []);
 
   const toggleLike = useCallback(
@@ -213,12 +213,12 @@ export default function useCommunityReview() {
   return {
     createReview,
     listPublicReviews,
-    deleteOwnReview,
     toggleLike,
     listReplies,
     addReply,
     adminListReviews,
     adminApproveReview,
     adminRejectReview,
+    adminDeleteReview,
   };
 }

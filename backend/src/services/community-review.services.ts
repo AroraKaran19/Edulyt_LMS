@@ -8,6 +8,8 @@ import {
   COMMUNITY_REVIEW_TAGS,
 } from "../types";
 import { AppError } from "../middlewares/error.middleware";
+import { getPointsSettings } from "./pointsSettings.services";
+import { awardWalletSuccessPoints } from "./successPoints.services";
 
 const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -37,13 +39,46 @@ export async function createCommunityReviewService(
     );
   }
 
+  // One non-anonymous review per user. Anonymous posts carry no userId, so
+  // they're neither limited nor counted here.
+  const isIdentified =
+    !!input.userId && mongoose.Types.ObjectId.isValid(input.userId);
+  if (isIdentified) {
+    const already = await CommunityReviewModel.exists({
+      userId: new mongoose.Types.ObjectId(String(input.userId)),
+    });
+    if (already) {
+      throw new AppError(
+        "You've already posted a community review",
+        409
+      );
+    }
+  }
+
   const doc = await CommunityReviewModel.create({
-    userId: input.userId ?? undefined,
+    userId: isIdentified ? input.userId : undefined,
     title,
     review,
     tag,
     // status defaults to "pending_approval" via the schema
   });
+
+  // Reward only identified authors. The 1/user lock above is the idempotency
+  // guard — a second submit throws before reaching here.
+  if (isIdentified) {
+    try {
+      const { communityReviewSuccessPoints } = await getPointsSettings();
+      await awardWalletSuccessPoints(
+        String(input.userId),
+        communityReviewSuccessPoints,
+        "community_review"
+      );
+    } catch (e) {
+      // The review is the primary artifact — never fail the post over a
+      // reward credit. Logged for manual reconciliation.
+      console.error("Community review reward failed:", e);
+    }
+  }
 
   return doc.toObject();
 }
@@ -217,27 +252,20 @@ export async function listPublicCommunityReviewsService(
 }
 
 /**
- * Hard-deletes a community review iff the requester is its author.
- * Anonymous posts (no `userId`) can't be deleted here because there's no way
- * to verify ownership — they'd need an admin endpoint, which isn't part of
- * this change.
+ * Hard-deletes any community review by id. Admin / moderation only.
+ *
+ * Learners deliberately cannot delete their own posts: posting a
+ * non-anonymous review credits wallet success points, so a self-delete +
+ * repost would be a way to farm the reward. Removing unwanted posts is an
+ * admin action.
  */
-export async function deleteOwnCommunityReviewService(
-  reviewId: string,
-  userId: string
-) {
+export async function adminDeleteCommunityReviewService(reviewId: string) {
   if (!mongoose.Types.ObjectId.isValid(reviewId)) {
     throw new AppError("Invalid review id", 400);
   }
-  const result = await CommunityReviewModel.findOneAndDelete({
-    _id: reviewId,
-    userId: new mongoose.Types.ObjectId(String(userId)),
-  });
+  const result = await CommunityReviewModel.findByIdAndDelete(reviewId);
   if (!result) {
-    throw new AppError(
-      "Community review not found or you are not its author",
-      404
-    );
+    throw new AppError("Community review not found", 404);
   }
   return { deleted: true };
 }

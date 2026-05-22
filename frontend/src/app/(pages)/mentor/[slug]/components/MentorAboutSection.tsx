@@ -15,12 +15,21 @@ export type MentorAboutSectionProps = {
   className?: string;
 };
 
+const GRID_COLS: Record<number, string> = {
+  1: "sm:grid-cols-1",
+  2: "sm:grid-cols-2",
+  3: "sm:grid-cols-3",
+  4: "sm:grid-cols-4",
+};
+
 const MentorAboutSection = ({
   title = "About The Mentor",
   stats,
   description,
   className,
 }: MentorAboutSectionProps) => {
+  const gridColsClass = GRID_COLS[stats.length] ?? "sm:grid-cols-3";
+
   return (
     <section
       className={cn(
@@ -32,7 +41,7 @@ const MentorAboutSection = ({
         {title}
       </p>
 
-      <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className={cn("mt-4 grid grid-cols-1 gap-3", gridColsClass)}>
         {stats.map((s, idx) => (
           <div
             key={`${s.label}-${idx}`}

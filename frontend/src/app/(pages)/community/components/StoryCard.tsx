@@ -2,18 +2,16 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { Heart, Loader2, MessageCircle, Trash2 } from "lucide-react";
+import { Heart, MessageCircle } from "lucide-react";
 import { toast } from "react-toastify";
 import useAuth from "@/hooks/useAuth";
 import useCommunityReview, {
   type PublicCommunityReview,
 } from "@/hooks/useCommunityReview";
-import Modal from "@/components/ui/Modal";
 import CommentThread from "./CommentThread";
 
 interface StoryCardProps {
   story: PublicCommunityReview;
-  onDeleted?: (id: string) => void;
 }
 
 const isPopulatedUser = (
@@ -64,9 +62,9 @@ const initials = (firstName?: string, lastName?: string) => {
   return (a + b).toUpperCase() || "?";
 };
 
-const StoryCard = ({ story, onDeleted }: StoryCardProps) => {
-  const { isAuthenticated, user: currentUser } = useAuth();
-  const { toggleLike, deleteOwnReview } = useCommunityReview();
+const StoryCard = ({ story }: StoryCardProps) => {
+  const { isAuthenticated } = useAuth();
+  const { toggleLike } = useCommunityReview();
 
   const user = isPopulatedUser(story.userId) ? story.userId : null;
   const isAnonymous = !user;
@@ -86,38 +84,9 @@ const StoryCard = ({ story, onDeleted }: StoryCardProps) => {
 
   const [commentsCount, setCommentsCount] = useState(story.repliesCount);
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
   const isPreview = story._id === "preview";
   const timeAgo = formatTimeAgo(story.createdAt);
-
-  // Only non-anonymous posts have a populated user object; we compare that
-  // user's id against the current session id to decide whether to show the
-  // delete affordance. Anonymous posts can't be deleted because the schema
-  // doesn't store an author for them.
-  const authorId =
-    user && "_id" in user ? (user._id as string | undefined) : undefined;
-  const isOwner =
-    !isPreview &&
-    !!authorId &&
-    !!currentUser?._id &&
-    String(authorId) === String(currentUser._id);
-
-  const confirmDelete = async () => {
-    if (!isOwner || isDeleting) return;
-    setIsDeleting(true);
-    try {
-      await deleteOwnReview(story._id);
-      setIsConfirmOpen(false);
-      toast.success("Post deleted.");
-      onDeleted?.(story._id);
-    } catch (err) {
-      console.error("Failed to delete community review:", err);
-      toast.error("Couldn't delete the post.");
-      setIsDeleting(false);
-    }
-  };
 
   const handleLike = async () => {
     if (isPreview) return;
@@ -240,27 +209,9 @@ const StoryCard = ({ story, onDeleted }: StoryCardProps) => {
             </span>
           </button>
         </div>
-        <div className="flex items-center gap-3">
-          {isOwner && (
-            <button
-              type="button"
-              onClick={() => setIsConfirmOpen(true)}
-              disabled={isDeleting}
-              aria-label="Delete post"
-              title="Delete post"
-              className="text-gray-400 hover:text-red-500 transition-colors disabled:cursor-not-allowed"
-            >
-              {isDeleting ? (
-                <Loader2 size={16} className="animate-spin" />
-              ) : (
-                <Trash2 size={16} />
-              )}
-            </button>
-          )}
-          {timeAgo && (
-            <span className="text-xs font-bold text-gray-400">{timeAgo}</span>
-          )}
-        </div>
+        {timeAgo && (
+          <span className="text-xs font-bold text-gray-400">{timeAgo}</span>
+        )}
       </div>
 
       {isCommentsOpen && !isPreview && (
@@ -269,48 +220,6 @@ const StoryCard = ({ story, onDeleted }: StoryCardProps) => {
           onCountChange={setCommentsCount}
         />
       )}
-
-      <Modal
-        isOpen={isConfirmOpen}
-        onClose={() => {
-          if (!isDeleting) setIsConfirmOpen(false);
-        }}
-        showCloseButton={false}
-        className="max-w-sm rounded-3xl shadow-[0_10px_40px_rgba(0,0,0,0.12)]"
-      >
-        <div className="flex flex-col items-center text-center py-2">
-          <div className="w-14 h-14 rounded-full bg-orange-50 flex items-center justify-center mb-5 shadow-[0_4px_12px_rgba(247,113,36,0.18)]">
-            <Trash2 className="w-6 h-6 text-[#F77124]" />
-          </div>
-          <h3 className="text-lg font-extrabold text-gray-900">
-            Delete this post?
-          </h3>
-          <p className="text-sm text-gray-500 mt-2 leading-relaxed">
-            This can&apos;t be undone. Your story and all of its replies will
-            be removed.
-          </p>
-
-          <div className="mt-6 flex w-full gap-3">
-            <button
-              type="button"
-              onClick={() => setIsConfirmOpen(false)}
-              disabled={isDeleting}
-              className="flex-1 px-6 py-2.5 rounded-full border border-gray-200 bg-white text-gray-700 text-sm font-bold hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={confirmDelete}
-              disabled={isDeleting}
-              className="flex-1 px-6 py-2.5 rounded-full bg-[#F77124] hover:bg-[#e66013] text-white text-sm font-bold flex items-center justify-center gap-2 shadow-[0_4px_12px_rgba(247,113,36,0.3)] disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
-            >
-              {isDeleting && <Loader2 className="w-4 h-4 animate-spin" />}
-              {isDeleting ? "Deleting…" : "Delete"}
-            </button>
-          </div>
-        </div>
-      </Modal>
     </div>
   );
 };

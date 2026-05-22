@@ -8,6 +8,7 @@ import { InternshipModel } from "../models/internship.schema";
 import { AppError } from "../middlewares/error.middleware";
 import { isApplicationWindowOpenIst } from "../utils/applicationWindow";
 import { sanitizeApplicationAnswers } from "./internshipEnrollment.services";
+import { tryAwardInternshipRegistrationPoints } from "./successPoints.services";
 import { parseProgramDurationMonthsFromAnswers } from "../lib/certificationExamSchedule";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -330,6 +331,13 @@ export async function redeemInternshipVoucher(params: {
     redeemedAt: new Date(),
     redeemedInternshipEnrollmentId: enrollment._id,
   });
+
+  try {
+    await tryAwardInternshipRegistrationPoints(String(enrollment._id));
+  } catch (e) {
+    // A reward failure must never break voucher redemption.
+    console.error("Internship registration reward failed:", e);
+  }
 
   return {
     internshipEnrollmentId: String(enrollment._id),

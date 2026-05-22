@@ -5,6 +5,7 @@ import {
   PartnershipImportConfigModel,
   UserModel,
 } from "../models";
+import { CollegeModel } from "../models/college.schema";
 import { CollaborationEnrollmentAccess } from "../types/collaborationDomain";
 import { collaborationAccessToEnrollmentFields } from "../services/collaborationAllotment.helpers";
 import { CreateEnrollmentService } from "../services/enrollment.services";
@@ -72,6 +73,10 @@ async function processCollaborationAllotmentJob(job: {
     let courseList: unknown[] = [];
     let accessPayload: ReturnType<typeof collaborationAccessToEnrollmentFields>;
     let promotionCode: string;
+    // When the source (partnership-import config or collaboration domain) is
+    // bound to a college, every enrolled student is stamped with that college
+    // below.
+    let boundCollegeId: mongoose.Types.ObjectId | undefined;
 
     if (job.partnershipImportConfigId) {
       const configId = String(job.partnershipImportConfigId);
@@ -91,6 +96,12 @@ async function processCollaborationAllotmentJob(job: {
 
       accessPayload = collaborationAccessToEnrollmentFields(ea);
       courseList = cfg.courses ?? [];
+
+      if (cfg.college && mongoose.Types.ObjectId.isValid(String(cfg.college))) {
+        boundCollegeId = new mongoose.Types.ObjectId(
+          String(cfg.college)
+        );
+      }
 
       if (!Array.isArray(courseList) || courseList.length === 0) {
         throw new Error("Partnership import config has no linked courses");
@@ -129,6 +140,17 @@ async function processCollaborationAllotmentJob(job: {
         throw new Error("Course allot domain has no linked courses");
       }
 
+      // Collaboration domains can be bound to a college the same way
+      // partnership-import configs are — stamp it on the student below.
+      if (
+        domain.college &&
+        mongoose.Types.ObjectId.isValid(String(domain.college))
+      ) {
+        boundCollegeId = new mongoose.Types.ObjectId(
+          String(domain.college)
+        );
+      }
+
       promotionCode = `collaboration:${collaborationDomainId}`;
     }
 
@@ -160,6 +182,30 @@ async function processCollaborationAllotmentJob(job: {
       },
       { $set: { joinSource: "promotion" } }
     );
+
+    // The bound college (from partnership-import or collaboration-domain) is
+    // stamped onto the student (ref + name snapshot), overwriting any
+    // college they set themselves — the binding is authoritative about
+    // which college they're from.
+    if (boundCollegeId) {
+      const college = await CollegeModel.findById(boundCollegeId)
+        .select("name")
+        .lean();
+      if (college) {
+        await UserModel.updateOne(
+          {
+            _id: new mongoose.Types.ObjectId(userId),
+            userType: "student",
+          },
+          {
+            $set: {
+              college: college._id,
+              collegeName: String(college.name ?? "").trim(),
+            },
+          }
+        );
+      }
+    }
 
     await updateCollaborationJobStatusService(jobId, { status: "completed" });
     await syncCollaborationWhitelistWithJobStatus(jobId, "completed");

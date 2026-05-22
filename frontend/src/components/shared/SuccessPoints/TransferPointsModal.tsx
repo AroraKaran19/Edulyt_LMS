@@ -9,6 +9,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
+  Gift,
   Loader2,
   Mail,
   Send,
@@ -148,6 +149,32 @@ function HistoryRow({ tx }: { tx: SuccessPointTransaction }) {
           )}
         >
           {credited ? `+${tx.points}` : tx.points}
+        </span>
+      </div>
+    );
+  }
+  if (tx.type === "reward") {
+    const REWARD_LABELS: Record<string, string> = {
+      login: "Welcome bonus",
+      community_review: "Community review reward",
+      internship_registration: "Internship registration reward",
+    };
+    const label = REWARD_LABELS[tx.rewardSource ?? ""] ?? "Reward";
+    return (
+      <div className="flex items-center gap-3 py-3">
+        <div className="w-9 h-9 rounded-full bg-amber-50 flex items-center justify-center shrink-0">
+          <Gift className="w-4 h-4 text-amber-500" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-gray-900 truncate">
+            {label}
+          </p>
+          <p className="text-[11px] text-gray-400">
+            {formatDateTime(tx.earnedAt)}
+          </p>
+        </div>
+        <span className="text-sm font-bold text-emerald-600 shrink-0">
+          +{tx.points}
         </span>
       </div>
     );

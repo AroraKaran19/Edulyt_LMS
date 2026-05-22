@@ -2,12 +2,17 @@ import MentorPage from "./components/MentorPage";
 import { API_BASE_URL } from "@/constants/endpoints";
 import { notFound } from "next/navigation";
 import { Course, Instructor } from "@/types";
+import type { InternshipPublicListing } from "@/types/internship";
 import { fetcher } from "@/lib/utils";
 
 async function fetchInstructorProfile(slug: string): Promise<{
   status: number;
   instructor: Instructor | null;
-  stats: { totalCourses?: number; totalStudents?: number } | null;
+  stats: {
+    totalCourses?: number;
+    totalInternships?: number;
+    totalStudents?: number;
+  } | null;
 }> {
   try {
     if (!API_BASE_URL) {
@@ -73,6 +78,35 @@ async function fetchInstructorCoursesPage(
     };
   } catch {
     return { status: 500, courses: [] };
+  }
+}
+
+async function fetchInstructorInternships(slug: string): Promise<{
+  status: number;
+  internships: InternshipPublicListing[];
+}> {
+  try {
+    if (!API_BASE_URL) {
+      return { status: 500, internships: [] };
+    }
+
+    const encoded = encodeURIComponent(slug);
+    const response = await fetcher(`/instructor/${encoded}/internships`);
+
+    if (!response?.status || response.status >= 400) {
+      return { status: response?.status || 500, internships: [] };
+    }
+
+    const json = response?.data as {
+      data?: { internships?: InternshipPublicListing[] };
+    } | null;
+
+    return {
+      status: response.status,
+      internships: json?.data?.internships ?? [],
+    };
+  } catch {
+    return { status: 500, internships: [] };
   }
 }
 
@@ -150,12 +184,15 @@ const MentorSlugPage = async ({
     return notFound();
   }
 
-  const [{ instructor, stats }, coursesPage] = await Promise.all([
-    fetchInstructorProfile(slug),
-    fetchInstructorCoursesPage(slug, 1, 4),
-  ]);
+  const [{ instructor, stats }, coursesPage, internshipsResult] =
+    await Promise.all([
+      fetchInstructorProfile(slug),
+      fetchInstructorCoursesPage(slug, 1, 4),
+      fetchInstructorInternships(slug),
+    ]);
 
   const initialCourses = coursesPage.courses;
+  const initialInternships = internshipsResult.internships;
   const totalCourses =
     typeof stats?.totalCourses === "number"
       ? stats.totalCourses
@@ -164,6 +201,10 @@ const MentorSlugPage = async ({
         : initialCourses.length;
   const totalStudents =
     typeof stats?.totalStudents === "number" ? stats.totalStudents : 0;
+  const totalInternships =
+    typeof stats?.totalInternships === "number"
+      ? stats.totalInternships
+      : initialInternships.length;
 
   if (!instructor) {
     return notFound();
@@ -174,6 +215,8 @@ const MentorSlugPage = async ({
       slug={slug}
       instructor={instructor}
       initialCourses={initialCourses}
+      initialInternships={initialInternships}
+      totalInternships={totalInternships}
       totalCourses={totalCourses}
       totalStudents={totalStudents}
     />

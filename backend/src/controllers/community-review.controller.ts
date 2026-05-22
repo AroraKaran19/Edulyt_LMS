@@ -6,10 +6,10 @@ import {
 } from "../middlewares/error.middleware";
 import {
   addReplyToCommunityReviewService,
+  adminDeleteCommunityReviewService,
   adminListCommunityReviewsService,
   approveCommunityReviewService,
   createCommunityReviewService,
-  deleteOwnCommunityReviewService,
   listCommunityReviewRepliesService,
   listPublicCommunityReviewsService,
   rejectCommunityReviewService,
@@ -74,14 +74,12 @@ export const listPublicCommunityReviews = asyncHandler(
   }
 );
 
-export const deleteOwnCommunityReview = asyncHandler(
+export const adminDeleteCommunityReview = asyncHandler(
   async (req: Request, res: Response) => {
-    const user = req.user;
-    if (!user?._id) throw new AppError("Unauthorized", 401);
     const { id } = req.params;
     if (!id) throw new AppError("Community review id is required", 400);
 
-    await deleteOwnCommunityReviewService(id, String(user._id));
+    await adminDeleteCommunityReviewService(id);
     sendSuccessResponse(res, { deleted: true }, "Community review deleted", 200);
   }
 );

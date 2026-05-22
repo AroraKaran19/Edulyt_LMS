@@ -1,6 +1,11 @@
 import { AppError } from "../middlewares/error.middleware";
 import { CourseModel, InstructorModel } from "../models";
 import { Course, Instructor } from "../types";
+import { InternshipPublicListing } from "../types/internship";
+import {
+  getMentorInternshipStatsService,
+  listInternshipsByMentorService,
+} from "./internship.services";
 import mongoose from "mongoose";
 
 export interface GetInstructorsParams {
@@ -118,6 +123,7 @@ export type PublicInstructorBySlugResult = {
   instructor: Instructor;
   stats: {
     totalCourses: number;
+    totalInternships: number;
     totalStudents: number;
   };
 };
@@ -329,29 +335,40 @@ export const getPublicInstructorBySlugService = async (
     if (!instructor) return null;
 
     const courseFilter = buildInstructorCourseFilter(instructor);
-    const totalCourses = await CourseModel.countDocuments(courseFilter);
+    const instructorId = (instructor as any)?._id?.toString?.();
 
-    const studentsAgg = await CourseModel.aggregate([
-      { $match: courseFilter },
-      {
-        $group: {
-          _id: null,
-          totalStudents: {
-            $sum: { $ifNull: ["$analytics.totalEnrollments", 0] },
+    const [totalCourses, studentsAgg, internshipStats] = await Promise.all([
+      CourseModel.countDocuments(courseFilter),
+      CourseModel.aggregate([
+        { $match: courseFilter },
+        {
+          $group: {
+            _id: null,
+            totalStudents: {
+              $sum: { $ifNull: ["$analytics.totalEnrollments", 0] },
+            },
           },
         },
-      },
+      ]),
+      instructorId
+        ? getMentorInternshipStatsService(instructorId)
+        : Promise.resolve({ totalInternships: 0, enrolledStudents: 0 }),
     ]);
 
-    const totalStudents =
+    const courseStudents =
       typeof studentsAgg?.[0]?.totalStudents === "number"
         ? studentsAgg[0].totalStudents
-        : (instructor as any)?.totalStudents || 0;
+        : 0;
+
+    // Students = course enrollments + learners currently enrolled in the
+    // internships this instructor mentors.
+    const totalStudents = courseStudents + internshipStats.enrolledStudents;
 
     return {
       instructor,
       stats: {
         totalCourses,
+        totalInternships: internshipStats.totalInternships,
         totalStudents,
       },
     };
@@ -412,6 +429,37 @@ export const getPublicInstructorCoursesBySlugService = async (
     );
     throw new AppError(
       `Failed to fetch instructor courses: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`,
+      500
+    );
+  }
+};
+
+/**
+ * Internships where this instructor is listed as a mentor. Powers the
+ * "Internships They Mentor" block on the public instructor profile.
+ * Returns `null` only when the instructor slug doesn't resolve.
+ */
+export const getPublicInstructorInternshipsBySlugService = async (
+  slug: string
+): Promise<{ internships: InternshipPublicListing[] } | null> => {
+  try {
+    const instructor = await resolvePublicInstructorBySlug(slug);
+    if (!instructor) return null;
+
+    const instructorId = (instructor as any)?._id?.toString?.();
+    if (!instructorId) return { internships: [] };
+
+    const internships = await listInternshipsByMentorService(instructorId);
+    return { internships };
+  } catch (error) {
+    console.error(
+      "Database error in getPublicInstructorInternshipsBySlugService:",
+      error
+    );
+    throw new AppError(
+      `Failed to fetch instructor internships: ${
         error instanceof Error ? error.message : "Unknown error"
       }`,
       500

@@ -69,14 +69,7 @@ const CommunityFeed = ({ selectedTag = null }: CommunityFeedProps) => {
       ) : (
         <div className="flex flex-col gap-2">
           {stories.map((story) => (
-            <StoryCard
-              key={story._id}
-              story={story}
-              onDeleted={(id) => {
-                setStories((prev) => prev.filter((s) => s._id !== id));
-                setTotal((t) => Math.max(0, t - 1));
-              }}
-            />
+            <StoryCard key={story._id} story={story} />
           ))}
         </div>
       )}

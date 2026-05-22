@@ -171,6 +171,19 @@ const internshipEnrollmentSchema = new mongoose.Schema(
     offerLetterGeneratedAt: { type: Date },
     internId: { type: String, trim: true, sparse: true },
     offerLetterUrl: { type: String, trim: true },
+
+    /**
+     * One-shot guard for the wallet "internship registration" reward.
+     * Set true once the registration success-points reward has been
+     * processed for this enrollment (whether or not points were actually
+     * credited — a sibling enrollment of the same internship may have
+     * already claimed the once-per-internship reward).
+     */
+    registrationSuccessPointsAwarded: {
+      type: Boolean,
+      required: false,
+      default: false,
+    },
   },
   { timestamps: true },
 );

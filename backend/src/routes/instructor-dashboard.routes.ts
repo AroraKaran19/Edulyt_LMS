@@ -10,6 +10,7 @@ import {
 import {
   getPublicInstructorBySlug,
   getPublicInstructorCoursesBySlug,
+  getPublicInstructorInternshipsBySlug,
 } from "../controllers/instructor.controller";
 
 const router = Router();
@@ -54,6 +55,13 @@ router.get("/reviews", ...requireInstructor, getInstructorReviews);
  * @access  Public
  */
 router.get("/:slug/courses", getPublicInstructorCoursesBySlug);
+
+/**
+ * @route   GET /api/instructor/:slug/internships
+ * @desc    Active internships this instructor mentors (public profile)
+ * @access  Public
+ */
+router.get("/:slug/internships", getPublicInstructorInternshipsBySlug);
 
 /**
  * @route   GET /api/instructor/:slug

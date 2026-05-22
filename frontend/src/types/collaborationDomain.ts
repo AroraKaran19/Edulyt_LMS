@@ -29,9 +29,19 @@ export interface CollaborationBenefit {
 
 export type CollaborationKind = "course_allot" | "discount";
 
+/** Minimal college shape returned when `college` is populated on the API. */
+export interface CollaborationDomainCollege {
+  _id: string;
+  name: string;
+  location?: string;
+}
+
 export interface CollaborationDomain {
   _id?: string;
+  /** Display name — a snapshot of the bound college's name. */
   title: string;
+  /** Bound college (populated on read APIs). */
+  college?: string | CollaborationDomainCollege;
   domain: string;
   isActive: boolean;
   collaborationKind: CollaborationKind;
@@ -47,7 +57,8 @@ export interface CollaborationDomain {
 }
 
 export interface CreateCollaborationDomainData {
-  title: string;
+  /** College id this collaboration is bound to. Drives the display name. */
+  college: string;
   domain: string;
   isActive: boolean;
   collaborationKind: CollaborationKind;

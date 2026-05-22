@@ -11,6 +11,7 @@ import {
   isPaidUpgradeWindowOpen,
 } from "../utils/applicationWindow";
 import { getPointsSettings } from "./pointsSettings.services";
+import { tryAwardInternshipRegistrationPoints } from "./successPoints.services";
 import { computeInternshipEligibility } from "./internshipEligibility.services";
 import {
   computeCertificationExamWindowUtc,
@@ -804,6 +805,13 @@ export async function registerForExam(
           }
         : {}),
     });
+
+    try {
+      await tryAwardInternshipRegistrationPoints(String(enrollment._id));
+    } catch (e) {
+      // A reward failure must never break registration.
+      console.error("Internship registration reward failed:", e);
+    }
 
     return { enrollmentId: String(enrollment._id) };
   } catch (err: unknown) {

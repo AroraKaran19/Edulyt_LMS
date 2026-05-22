@@ -67,7 +67,7 @@ export default function PartnershipImportConfigsTable({
         <thead>
           <tr className="border-b border-gray-200 text-left">
             <th className="sticky top-0 z-10 bg-gray-50 px-4 py-3 font-semibold text-gray-900 shadow-[0_1px_0_0_rgb(229,231,235)]">
-              Name
+              College
             </th>
             <th className="sticky top-0 z-10 bg-gray-50 px-4 py-3 font-semibold text-gray-900 shadow-[0_1px_0_0_rgb(229,231,235)]">
               Type

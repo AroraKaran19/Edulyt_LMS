@@ -3,7 +3,7 @@
 import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import { toast } from "react-toastify";
-import { Eye, Pencil } from "lucide-react";
+import { Eye, Pencil, Sparkles } from "lucide-react";
 import DropDown from "@/components/ui/dropdown/DropDown";
 import Input from "@/components/ui/inputs/Input";
 import StoryCard from "@/app/(pages)/community/components/StoryCard";
@@ -26,6 +26,8 @@ interface ExperienceFormProps {
     onSubmit: () => void;
     isSubmitting: boolean;
     tagOptions: string[];
+    /** Success points credited for a non-anonymous post (0 = reward disabled). */
+    rewardPoints: number;
 }
 
 const ExperienceForm = ({
@@ -39,6 +41,7 @@ const ExperienceForm = ({
     onSubmit,
     isSubmitting,
     tagOptions,
+    rewardPoints,
 }: ExperienceFormProps) => {
     const { user } = useAuth();
     const [isPreview, setIsPreview] = useState(false);
@@ -142,6 +145,45 @@ const ExperienceForm = ({
                             </div>
                         </div>
                     </>
+                )}
+
+                {rewardPoints > 0 && (
+                    <div
+                        className={`flex items-start gap-2.5 rounded-2xl border p-3.5 text-sm ${
+                            anonymous
+                                ? "border-gray-200 bg-gray-50 text-gray-500"
+                                : "border-orange-200 bg-orange-50 text-orange-700"
+                        }`}
+                    >
+                        <Sparkles
+                            className={`w-5 h-5 shrink-0 ${
+                                anonymous
+                                    ? "text-gray-400"
+                                    : "text-orange-500"
+                            }`}
+                        />
+                        <span>
+                            {anonymous ? (
+                                <>
+                                    Posting anonymously won&apos;t earn success
+                                    points. Post with your identity to earn{" "}
+                                    <span className="font-bold">
+                                        {rewardPoints} success points
+                                    </span>
+                                    .
+                                </>
+                            ) : (
+                                <>
+                                    You&apos;ll earn{" "}
+                                    <span className="font-bold">
+                                        {rewardPoints} success points
+                                    </span>{" "}
+                                    for posting this story (one reward per
+                                    user).
+                                </>
+                            )}
+                        </span>
+                    </div>
                 )}
 
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-8">

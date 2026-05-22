@@ -58,7 +58,21 @@ export type SuccessPointTransaction =
       orderId?: string;
       courseId?: string;
       courseSnapshot?: SuccessPointCourseSnapshot;
+    }
+  | {
+      transactionId: string;
+      earnedAt: Date;
+      type: "reward";
+      /** Magnitude (positive). */
+      points: number;
+      rewardSource: SuccessPointRewardSource;
     };
+
+/** Milestone events that grant wallet success points (admin-configured). */
+export type SuccessPointRewardSource =
+  | "login"
+  | "community_review"
+  | "internship_registration";
 
 export interface Collaborator extends User {
   totalReferrals: number;
@@ -155,6 +169,8 @@ export interface Student extends User {
 
   successPoints?: number;
   successPointsHistory?: SuccessPointTransaction[];
+  /** One-shot idempotency flag for the first-login wallet bonus. */
+  firstLoginBonusAwarded?: boolean;
 }
 
 export interface SocialProfiles {

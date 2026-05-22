@@ -21,9 +21,19 @@ export interface PartnershipImportBenefit {
   value: number;
 }
 
+/** Minimal college shape returned when `college` is populated on the API. */
+export interface PartnershipImportCollege {
+  _id: string;
+  name: string;
+  location?: string;
+}
+
 export interface PartnershipImportConfig {
   _id?: string;
+  /** Display name — a snapshot of the bound college's name. */
   title: string;
+  /** Bound college (populated on read APIs). */
+  college?: string | PartnershipImportCollege;
   isActive: boolean;
   kind: PartnershipImportKind;
   courses: string[] | Course[];
@@ -34,7 +44,8 @@ export interface PartnershipImportConfig {
 }
 
 export interface CreatePartnershipImportConfigData {
-  title: string;
+  /** College id this partnership is bound to. Drives the display name. */
+  college: string;
   isActive: boolean;
   kind: PartnershipImportKind;
   courses: string[];

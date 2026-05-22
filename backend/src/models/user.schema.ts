@@ -87,7 +87,7 @@ const successPointTransactionSchema = new mongoose.Schema(
   {
     transactionId: { type: String, required: true }, // uuid generated at award time
     earnedAt:  { type: Date,   required: true },
-    type:      { type: String, required: true, enum: ["earned", "transferred_in", "transferred_out", "admin_adjustment", "redeemed"] },
+    type:      { type: String, required: true, enum: ["earned", "transferred_in", "transferred_out", "admin_adjustment", "redeemed", "reward"] },
     // Signed for "admin_adjustment" (negative = deduction); a positive
     // magnitude for every other type.
     points:    { type: Number, required: true },
@@ -109,6 +109,8 @@ const successPointTransactionSchema = new mongoose.Schema(
     adjustedByName:   { type: String, required: false },
     // "redeemed" field — orderId is what links a redemption to its purchase
     orderId: { type: mongoose.Schema.Types.ObjectId, ref: "Order", required: false },
+    // "reward" field — which milestone event granted the points
+    rewardSource: { type: String, required: false },
   },
   { _id: false } // transactionId is the explicit identifier; no auto _id needed
 );
@@ -396,6 +398,8 @@ const studentSchema = new mongoose.Schema<Student>({
     type: [successPointTransactionSchema],
     default: [],
   },
+  /** One-shot idempotency flag for the first-login wallet bonus. */
+  firstLoginBonusAwarded: { type: Boolean, required: false, default: false },
 });
 
 // Collaborator discriminator schema

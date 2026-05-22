@@ -19,6 +19,29 @@ const pointsSettingsSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    /** Wallet success points granted once, on a user's first-ever login. */
+    loginSuccessPoints: {
+      type: Number,
+      required: true,
+      default: 0,
+      min: 0,
+    },
+    /** Wallet success points granted for submitting a community review
+     *  (non-anonymous only; one per user). */
+    communityReviewSuccessPoints: {
+      type: Number,
+      required: true,
+      default: 0,
+      min: 0,
+    },
+    /** Wallet success points granted on registering for an internship
+     *  (any path; once per internship). */
+    internshipRegistrationSuccessPoints: {
+      type: Number,
+      required: true,
+      default: 0,
+      min: 0,
+    },
   },
   { timestamps: true },
 );

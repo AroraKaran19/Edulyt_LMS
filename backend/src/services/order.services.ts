@@ -19,6 +19,7 @@ import { generatePaytmChecksum } from "../utils/lib/generatePaytmChecksum";
 import axios from "axios";
 import { validateCouponService } from "./coupon.services";
 import {
+  tryAwardInternshipRegistrationPoints,
   tryAwardPurchaseSuccessPoints,
   tryRedeemSuccessPointsForOrder,
 } from "./successPoints.services";
@@ -136,6 +137,13 @@ export const createInternshipSeatEnrollmentAfterPayment = async (
       $inc: { "analytics.totalEnrollments": 1 },
     },
   );
+
+  try {
+    await tryAwardInternshipRegistrationPoints(String(enrollment._id));
+  } catch (e) {
+    // A reward failure must never break paid-seat confirmation.
+    console.error("Internship registration reward failed:", e);
+  }
 
   return enrollment;
 };

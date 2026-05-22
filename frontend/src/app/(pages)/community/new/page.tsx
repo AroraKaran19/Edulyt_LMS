@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import CommunityHeader from "./components/CommunityHeader";
 import ExperienceForm from "./components/ExperienceForm";
 import ProfileSidebar from "./components/ProfileSidebar";
+import apiClient from "@/configs/apiConfig";
 import useCommunityReview, {
   COMMUNITY_REVIEW_TAGS,
   type CommunityReviewTag,
@@ -20,6 +21,24 @@ const NewCommunityPostPage = () => {
   const [content, setContent] = useState("");
   const [anonymous, setAnonymous] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [rewardPoints, setRewardPoints] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    apiClient
+      .get("/success-points/reward-rates")
+      .then((res) => {
+        if (!active) return;
+        const n = Number(res?.data?.data?.communityReviewSuccessPoints);
+        setRewardPoints(Number.isFinite(n) && n > 0 ? n : 0);
+      })
+      .catch(() => {
+        /* non-blocking — the label just won't show */
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const handleSubmit = async () => {
     if (isSubmitting) return;
@@ -76,6 +95,7 @@ const NewCommunityPostPage = () => {
             onSubmit={handleSubmit}
             isSubmitting={isSubmitting}
             tagOptions={[...COMMUNITY_REVIEW_TAGS]}
+            rewardPoints={rewardPoints}
           />
         </div>
 

@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { InternshipModel } from "../models/internship.schema";
 import { InternshipExamModel } from "../models/internshipExam.schema";
+import { InternshipEnrollmentModel } from "../models/internshipEnrollment.schema";
 import {
   Internship,
   InternshipAnalytics,
@@ -463,6 +464,75 @@ export const listFeaturedInternshipsPublicService = async (
     page,
     totalPages: totalPages(total, limit),
   };
+};
+
+/**
+ * Public list: active internships where the given user is a mentor.
+ * Backs the "Internships They Mentor" block on the public instructor /
+ * mentor profile page. Unpaginated (capped) — an instructor only ever
+ * mentors a handful of internships.
+ */
+export const listInternshipsByMentorService = async (
+  mentorId: string,
+): Promise<InternshipPublicListing[]> => {
+  if (!mongoose.Types.ObjectId.isValid(mentorId)) return [];
+
+  const docs = await InternshipModel.find({
+    isActive: true,
+    mentors: new mongoose.Types.ObjectId(mentorId),
+  })
+    .select({
+      title: 1,
+      slug: 1,
+      thumbnail: 1,
+      analytics: 1,
+      batches: 1,
+      plan: 1,
+      discount: 1,
+      mentors: 1,
+    })
+    .sort({ createdAt: -1 })
+    .limit(24)
+    .populate(
+      "mentors",
+      "-password -refreshTokens -permissions -accounts -phone -whatsappNumber -address -dob -reviews -ownedCourses -previousExperience",
+    )
+    .lean();
+
+  return (docs as unknown as Record<string, unknown>[]).map(
+    mapLeanDocToPublicListing,
+  );
+};
+
+/**
+ * Stats for a mentor's public profile: how many active internships they
+ * mentor, and how many learners are currently `enrolled` across them.
+ */
+export const getMentorInternshipStatsService = async (
+  mentorId: string,
+): Promise<{ totalInternships: number; enrolledStudents: number }> => {
+  if (!mongoose.Types.ObjectId.isValid(mentorId)) {
+    return { totalInternships: 0, enrolledStudents: 0 };
+  }
+
+  const internshipDocs = await InternshipModel.find({
+    isActive: true,
+    mentors: new mongoose.Types.ObjectId(mentorId),
+  })
+    .select("_id")
+    .lean();
+
+  const totalInternships = internshipDocs.length;
+  if (totalInternships === 0) {
+    return { totalInternships: 0, enrolledStudents: 0 };
+  }
+
+  const enrolledStudents = await InternshipEnrollmentModel.countDocuments({
+    internship: { $in: internshipDocs.map((d) => d._id) },
+    status: "enrolled",
+  });
+
+  return { totalInternships, enrolledStudents };
 };
 
 /**

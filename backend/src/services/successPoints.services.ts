@@ -5,15 +5,19 @@ import {
   EnrollmentModel,
   OrderModel,
   StudentModel,
+  UserModel,
 } from "../models";
+import { InternshipEnrollmentModel } from "../models/internshipEnrollment.schema";
 import { calculateFinalDiscountedPrice } from "../utils/lib/calculateDiscount";
 import { AppError } from "../middlewares/error.middleware";
+import { getPointsSettings } from "./pointsSettings.services";
 import type { PaymentOrder } from "../types/order";
 import type { Course } from "../types/course";
 import type { Enrollment } from "../types/enrollment";
 import type {
   SuccessPointCourseSnapshot,
   SuccessPointEarnSource,
+  SuccessPointRewardSource,
   SuccessPointTransaction,
 } from "../types/user";
 
@@ -350,6 +354,156 @@ export async function tryRedeemSuccessPointsForOrder(input: {
     // Roll back the claim so a later retry can re-attempt.
     await OrderModel.findByIdAndUpdate(input.orderId, {
       $set: { successPointsRedeemed: false },
+    });
+    throw e;
+  }
+}
+
+/**
+ * Credit a milestone reward (login / community review / internship
+ * registration) to a user's wallet `successPoints` and record a "reward"
+ * history entry. No-op when `points <= 0`.
+ *
+ * Idempotency is the **caller's** responsibility — each reward type has its
+ * own one-shot guard (a user flag, a per-enrollment flag, or the 1/user
+ * review limit). This helper just does the credit + history push.
+ */
+export async function awardWalletSuccessPoints(
+  userId: string,
+  points: number,
+  rewardSource: SuccessPointRewardSource,
+): Promise<void> {
+  const amount = Math.max(0, Math.floor(Number(points)));
+  if (amount <= 0) return;
+
+  const tx: SuccessPointTransaction = {
+    transactionId: uuidv4(),
+    earnedAt: new Date(),
+    type: "reward",
+    points: amount,
+    rewardSource,
+  };
+
+  await StudentModel.findByIdAndUpdate(userId, {
+    $inc: { successPoints: amount },
+    $push: { successPointsHistory: tx },
+  });
+}
+
+/**
+ * One-time welcome bonus, credited the first time a user logs in.
+ * Idempotent: atomically claims `firstLoginBonusAwarded` (false→true) so
+ * concurrent logins and repeat logins can't double-credit.
+ *
+ * No-op for non-student accounts or when `loginSuccessPoints` is 0.
+ * Safe to call on every login — failures are swallowed by the caller so a
+ * bonus problem can never block sign-in.
+ */
+export async function tryAwardFirstLoginBonus(
+  userId: string,
+  userType: string | undefined,
+): Promise<void> {
+  if (userType !== "student") return;
+  if (!mongoose.Types.ObjectId.isValid(userId)) return;
+
+  // Atomic claim — flips the flag exactly once across concurrent logins.
+  const claimed = await UserModel.findOneAndUpdate(
+    {
+      _id: new mongoose.Types.ObjectId(userId),
+      firstLoginBonusAwarded: { $ne: true },
+    },
+    { $set: { firstLoginBonusAwarded: true } },
+    { new: true },
+  );
+  if (!claimed) return;
+
+  const { loginSuccessPoints } = await getPointsSettings();
+  const points = Math.max(0, Math.floor(Number(loginSuccessPoints)));
+  if (points <= 0) return;
+
+  try {
+    await awardWalletSuccessPoints(userId, points, "login");
+  } catch (e) {
+    // Roll back the claim so a later login can re-attempt the credit.
+    await UserModel.findByIdAndUpdate(userId, {
+      $set: { firstLoginBonusAwarded: false },
+    });
+    throw e;
+  }
+}
+
+/**
+ * Wallet reward for registering for an internship, granted **once per
+ * internship** (not per batch) regardless of the registration path —
+ * entrance-exam registration, paid seat, or voucher redemption.
+ *
+ * Idempotency has two layers:
+ *  - a per-enrollment `registrationSuccessPointsAwarded` flag, claimed
+ *    atomically so repeat calls on the same enrollment (e.g. a merit
+ *    registration later upgraded to a paid seat) never double-credit;
+ *  - a sibling check across the user's other enrollments of the same
+ *    internship, so registering for a second batch doesn't re-award.
+ *
+ * No-op when `internshipRegistrationSuccessPoints` is 0. Safe to call from
+ * any registration path — failures are swallowed by the caller.
+ */
+export async function tryAwardInternshipRegistrationPoints(
+  enrollmentId: string,
+): Promise<void> {
+  if (!mongoose.Types.ObjectId.isValid(enrollmentId)) return;
+
+  const enrollment = await InternshipEnrollmentModel.findById(enrollmentId)
+    .select("user internship registrationSuccessPointsAwarded")
+    .lean<{
+      _id: mongoose.Types.ObjectId;
+      user?: mongoose.Types.ObjectId;
+      internship?: mongoose.Types.ObjectId;
+      registrationSuccessPointsAwarded?: boolean;
+    } | null>();
+  if (!enrollment || !enrollment.user || !enrollment.internship) return;
+  if (enrollment.registrationSuccessPointsAwarded) return;
+
+  // "Once per internship": skip the credit if another enrollment of the
+  // same internship (any batch) was already processed for this reward.
+  const siblingAwarded = await InternshipEnrollmentModel.exists({
+    _id: { $ne: enrollment._id },
+    user: enrollment.user,
+    internship: enrollment.internship,
+    registrationSuccessPointsAwarded: true,
+  });
+
+  // Atomic per-enrollment claim — marks this enrollment processed so repeat
+  // calls on it (merit registration → paid upgrade) become no-ops.
+  const claimed = await InternshipEnrollmentModel.findOneAndUpdate(
+    {
+      _id: enrollment._id,
+      registrationSuccessPointsAwarded: { $ne: true },
+    },
+    { $set: { registrationSuccessPointsAwarded: true } },
+    { new: true },
+  );
+  if (!claimed) return;
+
+  // Already credited for this internship via a sibling enrollment.
+  if (siblingAwarded) return;
+
+  const { internshipRegistrationSuccessPoints } = await getPointsSettings();
+  const points = Math.max(
+    0,
+    Math.floor(Number(internshipRegistrationSuccessPoints)),
+  );
+  if (points <= 0) return;
+
+  try {
+    await awardWalletSuccessPoints(
+      String(enrollment.user),
+      points,
+      "internship_registration",
+    );
+  } catch (e) {
+    // Roll back the claim so a later registration path can re-attempt.
+    await InternshipEnrollmentModel.findByIdAndUpdate(enrollment._id, {
+      $set: { registrationSuccessPointsAwarded: false },
     });
     throw e;
   }

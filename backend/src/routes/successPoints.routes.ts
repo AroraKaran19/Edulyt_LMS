@@ -6,6 +6,7 @@ import {
   getMySuccessPoints,
   getMySuccessPointsHistory,
   getPublicRedemptionRate,
+  getPublicRewardRates,
   transferSuccessPoints,
 } from "../controllers/successPoints.controller";
 
@@ -18,6 +19,15 @@ const router = Router();
  * @access  Public
  */
 router.get("/redemption-rate", getPublicRedemptionRate);
+
+/**
+ * @route   GET /api/success-points/reward-rates
+ * @desc    Public read of the milestone reward point values (login,
+ *          community review, internship registration) — read by reward-
+ *          earning forms to preview how many points the action grants.
+ * @access  Public
+ */
+router.get("/reward-rates", getPublicRewardRates);
 
 /**
  * @route   GET /api/success-points/me

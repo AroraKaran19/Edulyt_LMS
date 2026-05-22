@@ -2,9 +2,18 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { flushSync } from "react-dom";
-import { X, Search, Check, Loader2, Info, BookOpen } from "lucide-react";
+import {
+  X,
+  Search,
+  Check,
+  Loader2,
+  Info,
+  BookOpen,
+  Building2,
+} from "lucide-react";
 import { usePartnershipImportConfig } from "@/hooks/usePartnershipImportConfig";
 import { useCourse } from "@/hooks/useCourse";
+import apiClient from "@/configs/apiConfig";
 import type {
   CreatePartnershipImportConfigData,
   PartnershipImportConfig,
@@ -30,6 +39,12 @@ import {
 type AccessType = "full" | "partial" | "topN";
 type OfferKind = "course_allot" | "discount";
 
+interface CollegeOption {
+  _id: string;
+  name: string;
+  location?: string;
+}
+
 interface PartnershipImportConfigModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -50,7 +65,16 @@ export default function PartnershipImportConfigModal({
   const { getAdminCourses, getAdminCourseOptions, getAdminCourseById } =
     useCourse();
 
-  const [title, setTitle] = useState("");
+  const [selectedCollege, setSelectedCollege] = useState<CollegeOption | null>(
+    null,
+  );
+  const [collegeSearch, setCollegeSearch] = useState("");
+  const [collegeResults, setCollegeResults] = useState<CollegeOption[]>([]);
+  const [collegePage, setCollegePage] = useState(1);
+  const [hasMoreColleges, setHasMoreColleges] = useState(true);
+  const [loadingColleges, setLoadingColleges] = useState(false);
+  const [showCollegeDropdown, setShowCollegeDropdown] = useState(false);
+
   const [isActive, setIsActive] = useState(true);
   const [kind, setKind] = useState<OfferKind>("course_allot");
   const [benefitType, setBenefitType] = useState<"percentage" | "fixed">(
@@ -92,6 +116,50 @@ export default function PartnershipImportConfigModal({
   );
   const dropdownRef = useRef<HTMLDivElement>(null);
   const coursesScrollRef = useRef<HTMLDivElement>(null);
+
+  const collegeSearchDebounceRef = useRef<ReturnType<
+    typeof setTimeout
+  > | null>(null);
+  const collegeDropdownRef = useRef<HTMLDivElement>(null);
+  const collegesScrollRef = useRef<HTMLDivElement>(null);
+
+  const loadColleges = useCallback(
+    async (page: number, search: string, append: boolean) => {
+      setLoadingColleges(true);
+      try {
+        const res = await apiClient.get("/colleges", {
+          params: {
+            page,
+            limit: 20,
+            ...(search.trim() ? { search: search.trim() } : {}),
+          },
+        });
+        const data = res.data?.data;
+        const list: CollegeOption[] = Array.isArray(data?.colleges)
+          ? data.colleges
+          : [];
+        setCollegeResults((prev) => (append ? [...prev, ...list] : list));
+        setHasMoreColleges(page < (data?.totalPages ?? 0));
+      } catch {
+        if (!append) setCollegeResults([]);
+        setHasMoreColleges(false);
+      } finally {
+        setLoadingColleges(false);
+      }
+    },
+    [],
+  );
+
+  const handleCollegesScroll = useCallback(() => {
+    const el = collegesScrollRef.current;
+    if (!el || loadingColleges || !hasMoreColleges) return;
+    const { scrollTop, scrollHeight, clientHeight } = el;
+    if (scrollHeight - scrollTop <= clientHeight + 50) {
+      const nextPage = collegePage + 1;
+      setCollegePage(nextPage);
+      void loadColleges(nextPage, collegeSearch, true);
+    }
+  }, [collegePage, collegeSearch, loadingColleges, hasMoreColleges, loadColleges]);
 
   const loadCourses = useCallback(
     async (
@@ -381,7 +449,17 @@ export default function PartnershipImportConfigModal({
     setPartialLessons({});
     setPartialContents({});
     setCourseDetailForPartial(null);
-    setTitle(editing.title);
+    const col = editing.college;
+    if (col && typeof col === "object") {
+      setSelectedCollege({
+        _id: col._id,
+        name: col.name,
+        location: col.location,
+      });
+    } else {
+      setSelectedCollege(null);
+    }
+    setCollegeSearch("");
     setIsActive(editing.isActive);
     setKind(editing.kind);
     if (editing.kind === "discount" && editing.benefit) {
@@ -437,7 +515,9 @@ export default function PartnershipImportConfigModal({
 
   useEffect(() => {
     if (!isOpen || mode !== "create") return;
-    setTitle("");
+    setSelectedCollege(null);
+    setCollegeSearch("");
+    setShowCollegeDropdown(false);
     setIsActive(true);
     setKind("course_allot");
     setBenefitType("percentage");
@@ -499,10 +579,35 @@ export default function PartnershipImportConfigModal({
       ) {
         setShowCourseDropdown(false);
       }
+      if (
+        collegeDropdownRef.current &&
+        !collegeDropdownRef.current.contains(e.target as Node)
+      ) {
+        setShowCollegeDropdown(false);
+      }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
+
+  // Load colleges on open and on (debounced) search change.
+  useEffect(() => {
+    if (!isOpen) return;
+    if (collegeSearchDebounceRef.current) {
+      clearTimeout(collegeSearchDebounceRef.current);
+    }
+    collegeSearchDebounceRef.current = setTimeout(() => {
+      setCollegeResults([]);
+      setCollegePage(1);
+      setHasMoreColleges(true);
+      void loadColleges(1, collegeSearch, false);
+    }, 350);
+    return () => {
+      if (collegeSearchDebounceRef.current) {
+        clearTimeout(collegeSearchDebounceRef.current);
+      }
+    };
+  }, [collegeSearch, isOpen, loadColleges]);
 
   const handleSelectAllActiveCourses = useCallback(async () => {
     if (kind === "course_allot" && accessType === "partial") return;
@@ -591,8 +696,8 @@ export default function PartnershipImportConfigModal({
   };
 
   const buildPayload = (): CreatePartnershipImportConfigData | null => {
-    if (!title.trim()) {
-      toast.error("Title is required");
+    if (!selectedCollege) {
+      toast.error("Select a partner college");
       return null;
     }
     if (kind === "discount") {
@@ -609,7 +714,7 @@ export default function PartnershipImportConfigModal({
         return null;
       }
       return {
-        title: title.trim(),
+        college: selectedCollege._id,
         isActive,
         kind: "discount",
         courses: selectedCourses.map((c) => c._id!).filter(Boolean),
@@ -691,7 +796,7 @@ export default function PartnershipImportConfigModal({
     }
 
     return {
-      title: title.trim(),
+      college: selectedCollege._id,
       isActive,
       kind: "course_allot",
       courses: selectedCourses.map((c) => c._id!).filter(Boolean),
@@ -751,7 +856,7 @@ export default function PartnershipImportConfigModal({
                 Not tied to email domains
               </p>
               <p className="text-amber-900/90">
-                Name this partnership, choose course access or checkout
+                Pick the partner college, choose course access or checkout
                 discount, then add student emails on the next screen.
               </p>
             </div>
@@ -759,15 +864,126 @@ export default function PartnershipImportConfigModal({
 
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1">
-              Display name <span className="text-red-500">*</span>
+              Partner college <span className="text-red-500">*</span>
             </label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. MVC Uni partnership"
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
-            />
+            <p className="text-xs text-gray-500 mb-2 leading-snug">
+              The partnership&apos;s display name is the college&apos;s name.
+              Students allotted courses through this partnership are set to
+              this college.
+            </p>
+
+            {selectedCollege && (
+              <div className="flex flex-wrap gap-2 mb-2">
+                <div className="flex items-center gap-1.5 bg-orange-50 border border-orange-200 rounded-lg px-3 py-1.5 text-sm">
+                  <Building2 className="w-3.5 h-3.5 text-orange-600 shrink-0" />
+                  <span className="text-orange-800 font-medium max-w-[260px] truncate">
+                    {selectedCollege.name}
+                  </span>
+                  {selectedCollege.location && (
+                    <span className="text-orange-500/80 text-xs max-w-[160px] truncate">
+                      · {selectedCollege.location}
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedCollege(null)}
+                    className="text-orange-400 hover:text-orange-700 cursor-pointer ml-0.5"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="relative" ref={collegeDropdownRef}>
+              <div className="relative">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  value={collegeSearch}
+                  onChange={(e) => {
+                    setCollegeSearch(e.target.value);
+                    setShowCollegeDropdown(true);
+                  }}
+                  onFocus={() => setShowCollegeDropdown(true)}
+                  placeholder={
+                    selectedCollege
+                      ? "Change college…"
+                      : "Search and select a college…"
+                  }
+                  className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
+                />
+                {loadingColleges && collegeResults.length === 0 && (
+                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 animate-spin" />
+                )}
+              </div>
+
+              {showCollegeDropdown && (
+                <div
+                  ref={collegesScrollRef}
+                  onScroll={handleCollegesScroll}
+                  className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 max-h-52 overflow-y-auto"
+                >
+                  {!loadingColleges && collegeResults.length === 0 ? (
+                    <div className="px-4 py-6 text-sm text-center text-gray-500">
+                      No colleges found
+                    </div>
+                  ) : (
+                    <>
+                      {collegeResults.map((college) => {
+                        const selected = selectedCollege?._id === college._id;
+                        return (
+                          <button
+                            key={college._id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedCollege(college);
+                              setCollegeSearch("");
+                              setShowCollegeDropdown(false);
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-3 text-sm text-left hover:bg-orange-50 transition-colors border-b border-gray-100 last:border-0 cursor-pointer"
+                          >
+                            <div
+                              className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                                selected
+                                  ? "bg-orange-500 border-orange-500"
+                                  : "border-gray-300"
+                              }`}
+                            >
+                              {selected && (
+                                <Check className="w-3 h-3 text-white" />
+                              )}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-gray-800 font-medium truncate">
+                                {college.name}
+                              </div>
+                              {college.location && (
+                                <div className="text-xs text-gray-500 truncate">
+                                  {college.location}
+                                </div>
+                              )}
+                            </div>
+                          </button>
+                        );
+                      })}
+                      {loadingColleges && collegeResults.length > 0 && (
+                        <div className="py-2 text-center text-xs text-gray-400">
+                          Loading more…
+                        </div>
+                      )}
+                      {!loadingColleges &&
+                        collegeResults.length > 0 &&
+                        !hasMoreColleges && (
+                          <div className="py-2 text-center text-[10px] text-gray-400 border-t border-gray-100">
+                            End of list
+                          </div>
+                        )}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="flex flex-wrap gap-4 items-center">

@@ -1,5 +1,6 @@
 import { AppError } from "../middlewares/error.middleware";
 import { CollaborationDomainModel } from "../models";
+import { CollegeModel } from "../models/college.schema";
 import { enqueueCollaborationAllotmentForExistingUsersMatchingDomain } from "./collaborationAllotmentExistingUsers.services";
 import {
   CollaborationBenefit,
@@ -11,6 +12,38 @@ import {
 import mongoose from "mongoose";
 import { hostMatchesCollaborationDomain } from "../utils/collaborationDomainMatching";
 import { resolvePartnershipImportDiscountForCheckoutService } from "./partnershipImportConfig.services";
+
+/**
+ * Validates the bound college and returns its id + current name. The
+ * domain's `title` (display name) is always a snapshot of this name.
+ */
+async function resolveCollegeForDomain(
+  collegeId: unknown
+): Promise<{ id: mongoose.Types.ObjectId; name: string }> {
+  const s = String(collegeId ?? "");
+  if (!mongoose.Types.ObjectId.isValid(s)) {
+    throw new AppError("A valid college must be selected", 400);
+  }
+  const college = await CollegeModel.findById(s)
+    .select("name isActive")
+    .lean();
+  if (!college) {
+    throw new AppError("Selected college not found", 404);
+  }
+  if (college.isActive === false) {
+    throw new AppError("Selected college is inactive", 400);
+  }
+  const name = String(college.name ?? "").trim();
+  if (!name) {
+    throw new AppError("Selected college has no name", 400);
+  }
+  return { id: new mongoose.Types.ObjectId(s), name };
+}
+
+const COLLEGE_POPULATE = {
+  path: "college" as const,
+  select: "name location",
+};
 
 /**
  * API shape: discount rows expose linked courses + benefit; course allot never exposes benefit.
@@ -179,6 +212,7 @@ export const listCollaborationDomainsService = async (
   const raw = await CollaborationDomainModel.find(filters)
     .populate("courses", "title slug thumbnail")
     .populate("createdBy", "firstName lastName email")
+    .populate(COLLEGE_POPULATE)
     .sort({ updatedAt: -1 })
     .skip(skip)
     .limit(limit)
@@ -208,6 +242,7 @@ export const getCollaborationDomainByIdService = async (
   )
     .populate("courses", "title slug thumbnail")
     .populate("createdBy", "firstName lastName email")
+    .populate(COLLEGE_POPULATE)
     .lean();
 
   const raw = collaborationDomain as CollaborationDomain | null;
@@ -249,9 +284,6 @@ export const createCollaborationDomainService = async (
   collaborationData: Partial<CollaborationDomain>,
   createdBy: mongoose.Types.ObjectId | string
 ): Promise<CollaborationDomain> => {
-  if (!collaborationData.title?.trim()) {
-    throw new AppError("Title is required", 400);
-  }
   if (!collaborationData.domain?.trim()) {
     throw new AppError("Domain is required", 400);
   }
@@ -263,6 +295,9 @@ export const createCollaborationDomainService = async (
       400
     );
   }
+
+  // The bound college is required and supplies the display name (`title`).
+  const college = await resolveCollegeForDomain(collaborationData.college);
 
   const rawCourses = collaborationData.courses ?? [];
   const courses = parseCourseObjectIds(rawCourses, true);
@@ -284,7 +319,8 @@ export const createCollaborationDomainService = async (
   }
 
   const collaborationDomain = new CollaborationDomainModel({
-    title: collaborationData.title.trim(),
+    title: college.name,
+    college: college.id,
     domain: collaborationData.domain.trim(),
     isActive: collaborationData.isActive !== false,
     collaborationKind: kind,
@@ -306,6 +342,7 @@ export const createCollaborationDomainService = async (
     const populated = (await saved.populate([
       { path: "courses", select: "title slug thumbnail" },
       { path: "createdBy", select: "firstName lastName email" },
+      { path: "college", select: "name location" },
     ])) as unknown as CollaborationDomain;
 
     if (
@@ -452,7 +489,13 @@ export const updateCollaborationDomainService = async (
 
   const update: Record<string, unknown> = {};
 
-  if (collaborationData.title !== undefined) {
+  // College drives the display name — re-resolve it whenever the bound
+  // college changes so `title` stays an accurate snapshot.
+  if (collaborationData.college !== undefined) {
+    const college = await resolveCollegeForDomain(collaborationData.college);
+    update.college = college.id;
+    update.title = college.name;
+  } else if (collaborationData.title !== undefined) {
     update.title = collaborationData.title.trim();
   }
   if (collaborationData.domain !== undefined) {
@@ -491,6 +534,7 @@ export const updateCollaborationDomainService = async (
       )
         .populate("courses", "title slug thumbnail")
         .populate("createdBy", "firstName lastName email")
+        .populate(COLLEGE_POPULATE)
         .lean();
 
     return sanitizeCollaborationDomainForApi(

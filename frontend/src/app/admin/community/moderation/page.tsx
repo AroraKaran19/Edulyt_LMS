@@ -11,6 +11,7 @@ import {
   Loader2,
   Search,
   Tag as TagIcon,
+  Trash2,
   User as UserIcon,
   XCircle,
 } from "lucide-react";
@@ -21,6 +22,7 @@ import useCommunityReview, {
   type CommunityReviewTag,
   type CommunityReviewUser,
 } from "@/hooks/useCommunityReview";
+import Modal from "@/components/ui/Modal";
 
 type StatusFilter = CommunityReviewStatus | "all";
 
@@ -98,8 +100,12 @@ const avatarColor = (seed: string) => {
 };
 
 const CommunityModerationPage = () => {
-  const { adminListReviews, adminApproveReview, adminRejectReview } =
-    useCommunityReview();
+  const {
+    adminListReviews,
+    adminApproveReview,
+    adminRejectReview,
+    adminDeleteReview,
+  } = useCommunityReview();
 
   const [statusFilter, setStatusFilter] = useState<StatusFilter>(
     "pending_approval"
@@ -115,6 +121,10 @@ const CommunityModerationPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
+  const [deleteTarget, setDeleteTarget] = useState<CommunityReviewItem | null>(
+    null
+  );
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Debounce search
   useEffect(() => {
@@ -190,6 +200,22 @@ const CommunityModerationPage = () => {
       toast.error("Failed to reject community review");
     } finally {
       setProcessingId(null);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    try {
+      await adminDeleteReview(deleteTarget._id);
+      toast.success("Community review deleted");
+      setDeleteTarget(null);
+      await Promise.all([fetchReviews(), fetchPendingCount()]);
+    } catch (err) {
+      console.error("Failed to delete community review:", err);
+      toast.error("Failed to delete community review");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -414,6 +440,15 @@ const CommunityModerationPage = () => {
                             Reject
                           </button>
                         )}
+                        <button
+                          type="button"
+                          onClick={() => setDeleteTarget(r)}
+                          disabled={processingId === r._id}
+                          className="flex items-center justify-center gap-2 px-4 py-2.5 sm:ml-auto bg-white text-red-600 border border-red-200 hover:bg-red-50 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          Delete
+                        </button>
                       </div>
                     </div>
                   );
@@ -430,6 +465,51 @@ const CommunityModerationPage = () => {
           )}
         </div>
       </div>
+
+      <Modal
+        isOpen={!!deleteTarget}
+        onClose={() => {
+          if (!isDeleting) setDeleteTarget(null);
+        }}
+        showCloseButton={false}
+        className="max-w-sm rounded-3xl shadow-[0_10px_40px_rgba(0,0,0,0.12)]"
+      >
+        <div className="flex flex-col items-center text-center py-2">
+          <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mb-5">
+            <Trash2 className="w-6 h-6 text-red-500" />
+          </div>
+          <h3 className="text-lg font-extrabold text-gray-900">
+            Delete this community review?
+          </h3>
+          <p className="text-sm text-gray-500 mt-2 leading-relaxed">
+            This permanently removes{" "}
+            <span className="font-semibold text-gray-700">
+              “{deleteTarget?.title}”
+            </span>{" "}
+            and all of its replies. This can&apos;t be undone.
+          </p>
+
+          <div className="mt-6 flex w-full gap-3">
+            <button
+              type="button"
+              onClick={() => setDeleteTarget(null)}
+              disabled={isDeleting}
+              className="flex-1 px-6 py-2.5 rounded-full border border-gray-200 bg-white text-gray-700 text-sm font-bold hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="flex-1 px-6 py-2.5 rounded-full bg-red-600 hover:bg-red-700 text-white text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+            >
+              {isDeleting && <Loader2 className="w-4 h-4 animate-spin" />}
+              {isDeleting ? "Deleting…" : "Delete"}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

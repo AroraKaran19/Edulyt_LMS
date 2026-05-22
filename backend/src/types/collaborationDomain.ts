@@ -33,9 +33,26 @@ export interface CollaborationBenefit {
 /** Exactly one partnership model per domain document. */
 export type CollaborationKind = "course_allot" | "discount";
 
+/** Minimal college shape returned when `college` is populated on the API. */
+export interface CollaborationDomainCollegeRef {
+  _id?: string;
+  name?: string;
+  location?: string;
+}
+
 export interface CollaborationDomain {
   _id?: string;
+  /**
+   * Display name — a snapshot of the bound college's name. Auto-derived from
+   * `college` by the service; not entered by hand.
+   */
   title: string;
+  /**
+   * College this collaboration is bound to. Course-allot jobs stamp this
+   * college onto every student they enroll. Stored as an ObjectId; populated
+   * to a `CollaborationDomainCollegeRef` on read APIs.
+   */
+  college?: string | CollaborationDomainCollegeRef;
   domain: string;
   isActive: boolean;
   collaborationKind: CollaborationKind;
