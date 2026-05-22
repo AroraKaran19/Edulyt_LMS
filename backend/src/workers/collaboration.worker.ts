@@ -235,6 +235,21 @@ async function processCollaborationAllotmentJob(job: {
 }
 
 export function startCollaborationWorker(): void {
+  // Default: run only in production. On local / dev machines we don't want
+  // the queue picking up real jobs from a shared database. Set
+  // COLLABORATION_WORKER_ENABLED=true to force it on, or =false to disable
+  // it in production. Applies to every entry point that calls this fn
+  // (server.ts, worker.ts, collaboration-worker.ts).
+  const override = process.env.COLLABORATION_WORKER_ENABLED;
+  const isProd = process.env.NODE_ENV === "production";
+  const enabled = override === "true" || (override == null && isProd);
+  if (!enabled) {
+    console.log(
+      `[Collaboration Worker] Disabled (NODE_ENV=${process.env.NODE_ENV ?? "<unset>"}, COLLABORATION_WORKER_ENABLED=${override ?? "<unset>"}). Set COLLABORATION_WORKER_ENABLED=true to force on.`
+    );
+    return;
+  }
+
   console.log(
     "[Collaboration Worker] Starting collaboration allotment worker..."
   );
