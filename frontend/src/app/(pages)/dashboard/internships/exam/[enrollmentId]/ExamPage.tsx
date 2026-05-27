@@ -152,7 +152,7 @@ function QuestionCard({
                 rel="noreferrer"
                 className="text-amber-700 underline underline-offset-2 font-medium"
               >
-                Reference file
+                Project Input Files
               </a>
             ) : null}
           </p>

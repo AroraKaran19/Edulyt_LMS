@@ -427,7 +427,7 @@ export default function QuestionUpsertModal({
           ) : (
             <UploadMediaContainer
               type="document"
-              title="Reference file (optional)"
+              title="Project Input Files (optional)"
               description="Upload instructions, a template, or a starter ZIP (PDF, Word, text, ZIP), or paste a direct file URL."
               folderName={REFERENCE_FOLDER}
               mediaUrl={referenceFile || undefined}

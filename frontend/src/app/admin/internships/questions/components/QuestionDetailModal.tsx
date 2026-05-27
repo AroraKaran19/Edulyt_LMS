@@ -245,7 +245,7 @@ export default function QuestionDetailModal({
           {detail.type === "file_upload" ? (
             <div>
               <p className="text-xs font-semibold text-gray-500 uppercase mb-1">
-                Reference file
+                Project Input Files
               </p>
               <p className="text-sm text-gray-800 break-all">
                 {detail.referenceFile?.trim()

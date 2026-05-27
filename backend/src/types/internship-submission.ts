@@ -78,7 +78,13 @@ export interface SnapshotQuestion {
     /** Stored server-side only — never sent to the learner before submission. */
     isCorrect: boolean;
   }[];
-  /** Optional reference file URL for file-upload questions. */
+  /**
+   * Optional reference file URL for file-upload questions.
+   * NOT persisted in the snapshot — resolved live from the question at read
+   * time so admin replacements (better template, fixed PDF, etc.) propagate to
+   * learners with existing submissions. Reference files are helper material,
+   * not grading inputs.
+   */
   referenceFile?: string;
 }
 

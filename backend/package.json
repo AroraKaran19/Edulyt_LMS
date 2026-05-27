@@ -25,6 +25,8 @@
     "scripts:import-colleges": "ts-node src/scripts/import-colleges-json.ts",
     "scripts:college-students": "ts-node src/scripts/college-student-counts.ts",
     "scripts:export-students-by-college": "ts-node src/scripts/export-students-with-college.ts",
+    "scripts:export-user-profiles": "ts-node src/scripts/export-user-profiles.ts",
+    "scripts:export-internship-applications": "ts-node src/scripts/export-internship-applications.ts",
     "scripts:remove-enrollments-window": "ts-node src/scripts/remove-enrollments-by-enrolledAt-window.ts",
     "scripts:seed-home-page": "ts-node src/scripts/seed-home-page-settings.ts",
     "scripts:wipe-questions": "ts-node src/scripts/wipe-internship-questions.ts",

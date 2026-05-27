@@ -52,6 +52,9 @@ async function buildSnapshotQuestion(
     );
   }
   const rawNeg = (q as { negativeScore?: unknown }).negativeScore;
+  // `referenceFile` is intentionally omitted — it's resolved live in
+  // serializeSubmission so admin replacements propagate to existing
+  // submissions. See snapshotQuestionSchema comment.
   const base: SnapshotQuestion = {
     questionId: String(q._id),
     questionText: String(q.questionText ?? ""),
@@ -62,8 +65,6 @@ async function buildSnapshotQuestion(
       q.type === "mcq" && typeof rawNeg === "number" && rawNeg > 0
         ? rawNeg
         : 0,
-    referenceFile:
-      typeof q.referenceFile === "string" ? q.referenceFile : undefined,
   };
   if (q.type === "mcq" && Array.isArray(q.options)) {
     base.options = (
@@ -452,7 +453,7 @@ export async function createInternshipSubmission(
     status: "draft",
   });
 
-  return serializeSubmission(doc.toObject());
+  return await serializeSubmission(doc.toObject());
 }
 
 // ─── Save answers (draft) ─────────────────────────────────────────────────────
@@ -521,7 +522,7 @@ export async function saveMCQAnswer(
   }
 
   await sub.save();
-  return serializeSubmission(sub.toObject());
+  return await serializeSubmission(sub.toObject());
 }
 
 export async function saveFileAnswer(
@@ -662,7 +663,7 @@ export async function saveFileAnswer(
   }
 
   await sub.save();
-  return serializeSubmission(sub.toObject());
+  return await serializeSubmission(sub.toObject());
 }
 
 // ─── Submit (finalize + auto-grade MCQ) ──────────────────────────────────────
@@ -827,7 +828,7 @@ export async function submitSubmission(
     });
   }
 
-  return serializeSubmission(sub.toObject());
+  return await serializeSubmission(sub.toObject());
 }
 
 // ─── Review a file response (admin / instructor) ──────────────────────────────
@@ -943,7 +944,7 @@ export async function reviewFileResponse(
     });
   }
 
-  return serializeSubmission(sub.toObject());
+  return await serializeSubmission(sub.toObject());
 }
 
 /**
@@ -1045,7 +1046,7 @@ export async function finalizeCertificationExamReview(
     console.error("[Certificate] Failed to queue internship certificate job:", certErr);
   }
 
-  return serializeSubmission(sub.toObject());
+  return await serializeSubmission(sub.toObject());
 }
 
 // ─── Get submission ───────────────────────────────────────────────────────────
@@ -1063,7 +1064,7 @@ export async function getSubmissionById(
     .lean();
   if (!sub) throw new AppError("Submission not found", 404);
 
-  const plain = serializeSubmission(sub as Record<string, unknown>);
+  const plain = await serializeSubmission(sub as Record<string, unknown>);
 
   if (redactAnswers) {
     const snap = plain.templateSnapshot as
@@ -1141,8 +1142,8 @@ export async function listSubmissionsAdmin(
     .lean();
 
   return {
-    submissions: rows.map((r) =>
-      serializeSubmission(r as Record<string, unknown>),
+    submissions: await Promise.all(
+      rows.map((r) => serializeSubmission(r as Record<string, unknown>)),
     ),
     total,
     page: p,
@@ -1200,9 +1201,55 @@ async function accrueSuccessPointsIfPassed(sub: {
 
 // ─── Serializer ───────────────────────────────────────────────────────────────
 
-function serializeSubmission(
+/**
+ * Attach the LIVE `referenceFile` from each question to the snapshot questions
+ * in place. Snapshots intentionally don't persist reference files (admins may
+ * replace them after a submission exists), so the read path joins to the live
+ * question by `questionId` and overlays the current URL.
+ */
+async function attachLiveReferenceFiles(
   doc: Record<string, unknown>,
-): Record<string, unknown> {
+): Promise<void> {
+  const snap = doc.templateSnapshot as
+    | { questions?: { questionId?: string; referenceFile?: string }[] }
+    | undefined;
+  const questions = snap?.questions;
+  if (!questions?.length) return;
+
+  const ids = questions
+    .map((q) => q.questionId)
+    .filter(
+      (id): id is string =>
+        typeof id === "string" && mongoose.Types.ObjectId.isValid(id),
+    );
+  if (!ids.length) return;
+
+  const liveDocs = await InternshipQuestionModel.find({ _id: { $in: ids } })
+    .select("referenceFile")
+    .lean();
+
+  const refByQuestionId = new Map<string, string>();
+  for (const d of liveDocs) {
+    const r = (d as { referenceFile?: unknown }).referenceFile;
+    if (typeof r === "string" && r.trim()) {
+      refByQuestionId.set(
+        String((d as { _id: unknown })._id),
+        r.trim(),
+      );
+    }
+  }
+
+  for (const q of questions) {
+    const live = q.questionId ? refByQuestionId.get(q.questionId) : undefined;
+    if (live) q.referenceFile = live;
+    else delete q.referenceFile;
+  }
+}
+
+async function serializeSubmission(
+  doc: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  await attachLiveReferenceFiles(doc);
   return {
     ...doc,
     _id: String(doc._id),

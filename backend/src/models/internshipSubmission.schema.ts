@@ -12,6 +12,9 @@ const snapshotOptionSchema = new mongoose.Schema(
   { _id: false },
 );
 
+// `referenceFile` is intentionally NOT stored here — it's helper material
+// (template / starter ZIP) that admins may update after submissions exist.
+// Resolved live from InternshipQuestion at read time; see serializeSubmission.
 const snapshotQuestionSchema = new mongoose.Schema(
   {
     questionId: { type: String, required: true },
@@ -20,7 +23,6 @@ const snapshotQuestionSchema = new mongoose.Schema(
     score: { type: Number, required: true, min: 0 },
     negativeScore: { type: Number, default: 0, min: 0 },
     options: { type: [snapshotOptionSchema], default: undefined },
-    referenceFile: { type: String, default: "" },
   },
   { _id: false },
 );

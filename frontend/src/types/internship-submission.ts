@@ -64,6 +64,10 @@ export interface SnapshotQuestion {
     text: string;
     isCorrect?: boolean;
   }[];
+  /**
+   * Reference file URL. Resolved live from the question on read — not stored
+   * in the snapshot — so admin replacements propagate to existing submissions.
+   */
   referenceFile?: string;
 }
 

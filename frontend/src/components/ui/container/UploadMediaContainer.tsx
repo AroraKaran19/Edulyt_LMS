@@ -5,6 +5,7 @@ import {
   Image,
   Video,
   FileText,
+  FileArchive,
   AlertCircle,
   Link,
   File,
@@ -20,8 +21,14 @@ function inferMediaPreviewKind(
   const path = url.split("?")[0]?.split("#")[0]?.toLowerCase() ?? "";
   if (/\.(jpe?g|png|gif|webp)$/i.test(path)) return "image";
   if (/\.(mp4|webm|mov|avi|mkv)$/i.test(path)) return "video";
-  if (/\.(pdf|docx?|txt)$/i.test(path)) return "document";
+  if (/\.(pdf|docx?|txt|zip)$/i.test(path)) return "document";
   return fallback;
+}
+
+function isArchiveUrl(url: string | undefined): boolean {
+  if (!url) return false;
+  const path = url.split("?")[0]?.split("#")[0]?.toLowerCase() ?? "";
+  return /\.zip$/i.test(path);
 }
 
 interface UploadMediaContainerProps {
@@ -123,7 +130,7 @@ const UploadMediaContainer: React.FC<UploadMediaContainerProps> = ({
   const defaultFormats = {
     image: [".jpg", ".jpeg", ".png", ".gif", ".webp"],
     video: [".mp4", ".mov", ".avi", ".mkv", ".webm"],
-    document: [".pdf", ".doc", ".docx", ".txt"],
+    document: [".pdf", ".doc", ".docx", ".txt", ".zip"],
   };
 
   const formats = acceptedFormats || defaultFormats[type];
@@ -444,6 +451,8 @@ const UploadMediaContainer: React.FC<UploadMediaContainerProps> = ({
       ? inferMediaPreviewKind(mediaUrl, type)
       : type;
 
+  const isArchive = isArchiveUrl(mediaUrl);
+
   // Get icon based on type (or inferred kind when a file URL is present)
   const getIcon = () => {
     switch (previewKind) {
@@ -452,7 +461,11 @@ const UploadMediaContainer: React.FC<UploadMediaContainerProps> = ({
       case "video":
         return <Video className="w-8 h-8 text-gray-400" />;
       case "document":
-        return <FileText className="w-8 h-8 text-gray-400" />;
+        return isArchive ? (
+          <FileArchive className="w-8 h-8 text-gray-400" />
+        ) : (
+          <FileText className="w-8 h-8 text-gray-400" />
+        );
       default:
         return <Upload className="w-8 h-8 text-gray-400" />;
     }
@@ -549,23 +562,38 @@ const UploadMediaContainer: React.FC<UploadMediaContainerProps> = ({
               {/* Preview for documents */}
               {previewKind === "document" && (
                 <div className="flex flex-col items-center gap-3 p-4 bg-white border border-gray-200 rounded-lg">
-                  <FileText className="w-12 h-12 text-blue-600" />
+                  {isArchive ? (
+                    <FileArchive className="w-12 h-12 text-amber-600" />
+                  ) : (
+                    <FileText className="w-12 h-12 text-blue-600" />
+                  )}
                   <div className="text-center">
                     <p className="text-sm font-medium text-gray-900">
-                      Document uploaded successfully
+                      {isArchive
+                        ? "Archive uploaded successfully"
+                        : "Document uploaded successfully"}
                     </p>
                     <p className="text-xs text-gray-500 mt-1">
-                      {mediaUrl.split('/').pop() || 'Document'}
+                      {mediaUrl.split('/').pop() || (isArchive ? 'Archive' : 'Document')}
                     </p>
                   </div>
                   <a
                     href={mediaUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors"
+                    className={cn(
+                      "inline-flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-md transition-colors",
+                      isArchive
+                        ? "text-amber-700 bg-amber-50 hover:bg-amber-100"
+                        : "text-blue-600 bg-blue-50 hover:bg-blue-100",
+                    )}
                   >
-                    <FileText className="w-3 h-3" />
-                    View Document
+                    {isArchive ? (
+                      <FileArchive className="w-3 h-3" />
+                    ) : (
+                      <FileText className="w-3 h-3" />
+                    )}
+                    {isArchive ? "Download Archive" : "View Document"}
                   </a>
                 </div>
               )}
@@ -713,23 +741,38 @@ const UploadMediaContainer: React.FC<UploadMediaContainerProps> = ({
               {/* Preview for documents */}
               {previewKind === "document" && (
                 <div className="flex flex-col items-center gap-3 p-4 bg-white border border-gray-200 rounded-lg">
-                  <FileText className="w-12 h-12 text-blue-600" />
+                  {isArchive ? (
+                    <FileArchive className="w-12 h-12 text-amber-600" />
+                  ) : (
+                    <FileText className="w-12 h-12 text-blue-600" />
+                  )}
                   <div className="text-center">
                     <p className="text-sm font-medium text-gray-900">
-                      Document uploaded successfully
+                      {isArchive
+                        ? "Archive uploaded successfully"
+                        : "Document uploaded successfully"}
                     </p>
                     <p className="text-xs text-gray-500 mt-1">
-                      {mediaUrl.split('/').pop() || 'Document'}
+                      {mediaUrl.split('/').pop() || (isArchive ? 'Archive' : 'Document')}
                     </p>
                   </div>
                   <a
                     href={mediaUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors"
+                    className={cn(
+                      "inline-flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-md transition-colors",
+                      isArchive
+                        ? "text-amber-700 bg-amber-50 hover:bg-amber-100"
+                        : "text-blue-600 bg-blue-50 hover:bg-blue-100",
+                    )}
                   >
-                    <FileText className="w-3 h-3" />
-                    View Document
+                    {isArchive ? (
+                      <FileArchive className="w-3 h-3" />
+                    ) : (
+                      <FileText className="w-3 h-3" />
+                    )}
+                    {isArchive ? "Download Archive" : "View Document"}
                   </a>
                 </div>
               )}

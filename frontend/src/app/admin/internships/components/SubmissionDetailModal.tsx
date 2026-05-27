@@ -274,7 +274,7 @@ function FileBlock({
           rel="noreferrer"
           className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
         >
-          <ExternalLink className="size-3" /> Reference file
+          <ExternalLink className="size-3" /> Project Input Files
         </a>
       )}
 
