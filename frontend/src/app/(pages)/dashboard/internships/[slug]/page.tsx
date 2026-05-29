@@ -71,6 +71,15 @@ function taskStatusConfig(row: LearnerTaskRow): {
       canOpen: true,
     };
   }
+  if (sub.needsResubmission) {
+    return {
+      label: "Resubmit requested",
+      badgeClass: "bg-orange-100 text-orange-900 border-orange-200",
+      icon: <FilePen className="w-3.5 h-3.5" />,
+      actionLabel: "Re-upload",
+      canOpen: true,
+    };
+  }
   if (sub.status === "draft") {
     return {
       label: "In progress",

@@ -339,6 +339,8 @@ export interface LearnerTaskRow {
     _id: string;
     status: string;
     totalAwardedScore: number;
+    /** True when a reviewer sent a file answer back for re-upload. */
+    needsResubmission: boolean;
   };
 }
 

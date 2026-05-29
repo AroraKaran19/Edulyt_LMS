@@ -538,14 +538,26 @@ export async function saveFileAnswer(
   if (String(sub.userId) !== String(userId)) {
     throw new AppError("Forbidden", 403);
   }
-  if (sub.status !== "draft") {
+
+  const isDraft = sub.status === "draft";
+  // After submission, the only file edit allowed is re-uploading a specific
+  // answer the reviewer sent back (status `re_upload_requested`). Everything
+  // else stays locked.
+  const targetResp = (
+    sub.fileResponses as { question: string; status?: string }[]
+  ).find((r) => r.question === body.question);
+  const isResubmitOfRejected =
+    !isDraft && targetResp?.status === "re_upload_requested";
+  if (!isDraft && !isResubmitOfRejected) {
     throw new AppError("Cannot update answers on a submitted submission", 400);
   }
 
   const snapFor = String(
     (sub as { submissionFor?: unknown }).submissionFor ?? "",
   );
-  if (snapFor === "exam") {
+  // The snapshot window gates first-time answering; a reviewer-requested
+  // re-upload may legitimately land after the window closed.
+  if (snapFor === "exam" && isDraft) {
     assertWithinExamSnapshotWindow(
       sub.toObject().templateSnapshot as ExamTemplateSnapshot,
     );
@@ -902,9 +914,10 @@ export async function reviewFileResponse(
 
   // Update overall status
   const fileResps = sub.fileResponses as { status: string }[];
-  const allReviewed = fileResps.every(
-    (r) => r.status === "reviewed" || r.status === "re_upload_requested",
-  );
+  // A re-upload request is NOT a completed review — the learner still owes work.
+  // The submission only counts as fully reviewed (and accrues points) once every
+  // file answer is actually `reviewed`.
+  const allReviewed = fileResps.every((r) => r.status === "reviewed");
   const wasAlreadyFullyReviewed = sub.status === "fully_reviewed";
 
   const subFor = String(

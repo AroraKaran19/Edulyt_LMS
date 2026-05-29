@@ -249,10 +249,68 @@ function MCQBlock({
 function FileBlock({
   question,
   response,
+  submissionId,
+  reviewable,
+  onReviewed,
 }: {
   question: SnapshotQuestion;
   response: FileResponse | undefined;
+  submissionId: string;
+  reviewable: boolean;
+  onReviewed: (updated: FullSubmission) => void;
 }) {
+  const [score, setScore] = useState<string>(
+    typeof response?.awardedScore === "number"
+      ? String(response.awardedScore)
+      : "",
+  );
+  const [note, setNote] = useState<string>(response?.reviewNote ?? "");
+  const [busy, setBusy] = useState<null | "accept" | "reject">(null);
+
+  async function review(status: "reviewed" | "re_upload_requested") {
+    const parsed = Number(score);
+    if (status === "reviewed") {
+      if (score.trim() === "" || Number.isNaN(parsed) || parsed < 0) {
+        toast.error("Enter a valid score before accepting.");
+        return;
+      }
+      if (parsed > question.score) {
+        toast.error(`Score cannot exceed ${question.score}.`);
+        return;
+      }
+    }
+    if (status === "re_upload_requested" && !note.trim()) {
+      toast.error("Add a note telling the learner what to fix.");
+      return;
+    }
+    setBusy(status === "reviewed" ? "accept" : "reject");
+    try {
+      const res = await apiClient.patch(
+        ENDPOINTS.internshipSubmissions.adminReviewFile(
+          submissionId,
+          question.questionId,
+        ),
+        {
+          awardedScore:
+            status === "reviewed" ? parsed : Number.isNaN(parsed) ? 0 : parsed,
+          reviewNote: note.trim(),
+          status,
+        },
+      );
+      onReviewed(res.data?.data as FullSubmission);
+      toast.success(
+        status === "reviewed" ? "Answer accepted." : "Resubmission requested.",
+      );
+    } catch (e: unknown) {
+      const msg =
+        (e as { response?: { data?: { error?: { message?: string } } } })
+          ?.response?.data?.error?.message ?? "Could not save review.";
+      toast.error(msg);
+    } finally {
+      setBusy(null);
+    }
+  }
+
   return (
     <div className="border border-gray-200 rounded-lg p-3 space-y-2">
       <div className="flex items-start justify-between gap-2">
@@ -338,6 +396,49 @@ function FileBlock({
         </div>
       ) : (
         <p className="text-xs text-gray-400 italic">No answer recorded</p>
+      )}
+
+      {reviewable && (
+        <div className="mt-1 space-y-2 border-t border-gray-100 pt-2">
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-medium text-gray-700">Score</label>
+            <input
+              type="number"
+              min={0}
+              max={question.score}
+              value={score}
+              onChange={(e) => setScore(e.target.value)}
+              className="w-20 rounded border border-gray-300 px-2 py-1 text-sm tabular-nums focus:border-orange-400 focus:outline-none"
+              placeholder="0"
+            />
+            <span className="text-xs text-gray-400">/ {question.score}</span>
+          </div>
+          <textarea
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            rows={2}
+            placeholder="Note to learner (required when requesting a re-upload)"
+            className="w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-orange-400 focus:outline-none"
+          />
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={busy !== null}
+              onClick={() => void review("reviewed")}
+              className="rounded-md bg-green-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-700 disabled:opacity-50"
+            >
+              {busy === "accept" ? "Saving…" : "Accept"}
+            </button>
+            <button
+              type="button"
+              disabled={busy !== null}
+              onClick={() => void review("re_upload_requested")}
+              className="rounded-md border border-red-300 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100 disabled:opacity-50"
+            >
+              {busy === "reject" ? "Saving…" : "Request resubmission"}
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -515,6 +616,9 @@ export default function SubmissionDetailModal({ isOpen, submissionId, onClose }:
                       <FileBlock
                         question={q}
                         response={fileMap.get(q.questionId)}
+                        submissionId={sub._id}
+                        reviewable={sub.status !== "draft"}
+                        onReviewed={(updated) => setSub(updated)}
                       />
                     )}
                   </div>

@@ -91,6 +91,7 @@ function QuestionCard({
   fileComments,
   onFileUploaded,
   onLearnerCommentSaved,
+  reviewNote,
 }: {
   q: SnapshotQuestion;
   index: number;
@@ -102,6 +103,7 @@ function QuestionCard({
   fileComments: Record<string, string>;
   onFileUploaded: (qId: string, url: string) => void;
   onLearnerCommentSaved: (qId: string, comment: string) => void;
+  reviewNote?: string;
 }) {
   const selected = answers[q.questionId] ?? [];
   const toggle = (optId: string) => {
@@ -135,6 +137,12 @@ function QuestionCard({
         </div>
       ) : (
         <div className="ml-6 space-y-2">
+          {reviewNote && reviewNote.trim() && (
+            <div className="rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 text-sm text-orange-900">
+              <span className="font-semibold">Reviewer asked for a re-upload:</span>{" "}
+              {reviewNote.trim()}
+            </div>
+          )}
           <p className="text-sm text-stone-600">
             Upload a file and/or write your answer in the note below.{" "}
             {q.referenceFile ? (
@@ -179,6 +187,8 @@ type SubmissionShape = {
     question: string;
     currentFile: string;
     learnerComment?: string;
+    status?: string;
+    reviewNote?: string;
   }[];
   templateSnapshot?: {
     questions?: SnapshotQuestion[];
@@ -242,22 +252,29 @@ export default function InternshipTaskPage() {
         setSubmissionId(sub._id);
         setQuestions(sub.templateSnapshot?.questions ?? []);
 
-        if (sub.status === "draft") {
-          const init: Record<string, string[]> = {};
-          for (const r of sub.mcqResponses ?? []) {
-            init[r.question] = r.selectedOptions;
-          }
-          setAnswers(init);
-          const fu: Record<string, string> = {};
-          const fc: Record<string, string> = {};
-          for (const fr of sub.fileResponses ?? []) {
-            if (fr.currentFile) fu[fr.question] = fr.currentFile;
-            if (fr.learnerComment) fc[fr.question] = fr.learnerComment;
-          }
-          setFileUrls(fu);
-          setFileComments(fc);
+        // Populate prior answers regardless of status so a re-upload flow can
+        // show the learner's existing work (read-only) alongside the rejected
+        // question(s) they need to redo.
+        const init: Record<string, string[]> = {};
+        for (const r of sub.mcqResponses ?? []) {
+          init[r.question] = r.selectedOptions;
         }
-        if (sub.status !== "draft") {
+        setAnswers(init);
+        const fu: Record<string, string> = {};
+        const fc: Record<string, string> = {};
+        for (const fr of sub.fileResponses ?? []) {
+          if (fr.currentFile) fu[fr.question] = fr.currentFile;
+          if (fr.learnerComment) fc[fr.question] = fr.learnerComment;
+        }
+        setFileUrls(fu);
+        setFileComments(fc);
+
+        const needsResubmission = (sub.fileResponses ?? []).some(
+          (fr) => fr.status === "re_upload_requested",
+        );
+        // A non-draft submission is locked into the summary screen UNLESS the
+        // reviewer sent a file back — then we reopen the editor for that file.
+        if (sub.status !== "draft" && !needsResubmission) {
           setSubmitStatus("submitted");
         }
       }
@@ -344,6 +361,28 @@ export default function InternshipTaskPage() {
   const answeredCount = questions.filter(
     (q) => q.type === "mcq" && (answers[q.questionId]?.length ?? 0) > 0,
   ).length;
+
+  // Re-upload flow: a submitted submission with file answers the reviewer sent
+  // back. Only those file questions are editable; everything else is read-only.
+  const fileStatusByQ: Record<string, string> = {};
+  const reviewNoteByQ: Record<string, string> = {};
+  for (const fr of submission?.fileResponses ?? []) {
+    if (fr.status) fileStatusByQ[fr.question] = fr.status;
+    if (fr.reviewNote) reviewNoteByQ[fr.question] = fr.reviewNote;
+  }
+  const resubmitMode =
+    !!submission &&
+    submission.status !== "draft" &&
+    submitStatus !== "submitted";
+
+  const isQuestionLocked = (q: SnapshotQuestion): boolean => {
+    if (!resubmitMode) return false;
+    // Only file questions the reviewer flagged stay editable.
+    return !(
+      q.type === "file_upload" &&
+      fileStatusByQ[q.questionId] === "re_upload_requested"
+    );
+  };
 
   if (loading) {
     return (
@@ -479,6 +518,20 @@ export default function InternshipTaskPage() {
         </div>
       )}
 
+      {/* Re-upload banner */}
+      {resubmitMode && (
+        <div className="mb-6 rounded-2xl border border-orange-200 bg-orange-50 p-5">
+          <p className="font-semibold text-orange-950">
+            A reviewer asked you to re-upload some answers.
+          </p>
+          <p className="text-sm text-orange-900/80 mt-0.5">
+            Only the highlighted question(s) below can be changed. Uploading a new
+            file sends it straight back for review — there’s no separate submit
+            step.
+          </p>
+        </div>
+      )}
+
       {/* Questions */}
       {questions.length > 0 && (
         <div className="flex flex-col gap-4">
@@ -489,13 +542,16 @@ export default function InternshipTaskPage() {
               index={i}
               answers={answers}
               onChange={(qId, opts) => void handleAnswerChange(qId, opts)}
-              disabled={disabled || !submissionId}
+              disabled={disabled || !submissionId || isQuestionLocked(q)}
               submissionId={submissionId}
               fileUrls={fileUrls}
               fileComments={fileComments}
-              onFileUploaded={(qId, url) =>
-                setFileUrls((prev) => ({ ...prev, [qId]: url }))
-              }
+              reviewNote={resubmitMode ? reviewNoteByQ[q.questionId] : undefined}
+              onFileUploaded={(qId, url) => {
+                setFileUrls((prev) => ({ ...prev, [qId]: url }));
+                // Re-upload is final — refresh to reflect the new review state.
+                if (resubmitMode) void loadProgram();
+              }}
               onLearnerCommentSaved={(qId, comment) =>
                 setFileComments((prev) => ({ ...prev, [qId]: comment }))
               }
@@ -505,7 +561,7 @@ export default function InternshipTaskPage() {
       )}
 
       {/* Submit */}
-      {submissionId && (
+      {submissionId && !resubmitMode && (
         <div className="mt-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
           <div>
             <p className="text-sm font-medium text-stone-800">

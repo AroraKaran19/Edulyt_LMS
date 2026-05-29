@@ -138,6 +138,9 @@ export const ENDPOINTS = {
       `/internship-submissions/admin/${encodeURIComponent(id)}`,
     adminFinalizeCertification: (id: string) =>
       `/internship-submissions/admin/${encodeURIComponent(id)}/finalize-certification`,
+    /** PATCH — reviewer scores / accepts / requests re-upload of one file answer. */
+    adminReviewFile: (id: string, questionId: string) =>
+      `/internship-submissions/admin/${encodeURIComponent(id)}/review/${encodeURIComponent(questionId)}`,
     byId: (id: string) => `/internship-submissions/${id}`,
     saveMcq: (id: string) => `/internship-submissions/${id}/answers/mcq`,
     saveFile: (id: string) => `/internship-submissions/${id}/answers/file`,

@@ -2305,6 +2305,8 @@ export type LearnerTaskRow = {
     _id: string;
     status: string;
     totalAwardedScore: number;
+    /** True when a reviewer sent a file answer back for re-upload. */
+    needsResubmission: boolean;
   };
 };
 
@@ -2585,8 +2587,14 @@ export async function getLearnerProgramBySlug(
       taskId: String(task._id),
       batchId,
     })
-      .select("_id status totalAwardedScore")
+      .select("_id status totalAwardedScore fileResponses.status")
       .lean();
+
+    const needsResubmission =
+      Array.isArray((sub as { fileResponses?: unknown })?.fileResponses) &&
+      (sub as { fileResponses: { status?: string }[] }).fileResponses.some(
+        (r) => r.status === "re_upload_requested",
+      );
 
     unlockedTasks.push({
       _id: String(task._id),
@@ -2603,7 +2611,10 @@ export async function getLearnerProgramBySlug(
       dueDays,
       questionCount: Array.isArray(task.questions) ? task.questions.length : 0,
       isUnlocked: true,
-      isDue: now >= dueAt.getTime(),
+      // `dueAt` lands at the start of the due calendar day, but the learner has
+      // the whole of that day to submit. The task is only "missed" once the day
+      // after `dueAt` has begun — otherwise it shows missed on the due date.
+      isDue: now >= dueAt.getTime() + MS_PER_DAY,
       visibleFrom: visibleFrom.toISOString(),
       dueAt: dueAt.toISOString(),
       submission: sub
@@ -2614,6 +2625,7 @@ export async function getLearnerProgramBySlug(
               typeof sub.totalAwardedScore === "number"
                 ? sub.totalAwardedScore
                 : 0,
+            needsResubmission,
           }
         : undefined,
     });
