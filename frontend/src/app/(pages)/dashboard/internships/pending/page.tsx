@@ -10,6 +10,7 @@ import {
   entranceAttentionSummary,
 } from "@/lib/internshipEntranceFlow";
 import type { InternshipEnrollmentListRow } from "@/types";
+import ExamCountdownButton from "../components/ExamCountdownButton";
 
 const LIMIT = 50;
 
@@ -96,6 +97,22 @@ export default function InternshipEntrancePendingPage() {
             const href = slug
               ? `/internships/${encodeURIComponent(slug)}`
               : "/internships";
+
+            // Show the entrance-exam countdown + "Take entrance exam" button
+            // (instead of a plain "Open program" link) while the learner is
+            // registered and the exam window hasn't already ended. Mirrors the
+            // gating in DashboardInternshipCard: a no-show (window ended while
+            // still `exam_registered`) falls back to "Open program".
+            const examEndTime = row.examEndAt
+              ? new Date(row.examEndAt).getTime()
+              : null;
+            const isExamNoShow =
+              row.status === "exam_registered" &&
+              examEndTime !== null &&
+              Date.now() > examEndTime;
+            const showExamAction =
+              row.status === "exam_registered" && !isExamNoShow;
+
             return (
               <li key={row._id}>
                 <div className="rounded-2xl border border-amber-200/80 bg-linear-to-r from-amber-50/90 to-white p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 shadow-sm">
@@ -118,13 +135,23 @@ export default function InternshipEntrancePendingPage() {
                       {entranceAttentionSummary(row.status)}
                     </p>
                   </div>
-                  <Link
-                    href={href}
-                    className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-amber-900 text-white text-sm font-semibold px-4 py-2.5 hover:bg-amber-950 transition shrink-0"
-                  >
-                    Open program
-                    <ChevronRight className="w-4 h-4" />
-                  </Link>
+                  {showExamAction ? (
+                    <ExamCountdownButton
+                      enrollmentId={row._id}
+                      examStartAt={row.examStartAt}
+                      examEndAt={row.examEndAt}
+                      examResultAt={row.examResultAt}
+                      size="banner"
+                    />
+                  ) : (
+                    <Link
+                      href={href}
+                      className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-amber-900 text-white text-sm font-semibold px-4 py-2.5 hover:bg-amber-950 transition shrink-0"
+                    >
+                      Open program
+                      <ChevronRight className="w-4 h-4" />
+                    </Link>
+                  )}
                 </div>
               </li>
             );

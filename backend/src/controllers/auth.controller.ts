@@ -19,7 +19,7 @@ import {
 import { enqueueCollaborationAllotmentAfterRegister } from "../services/collaborationAllotment.services";
 import { tryPartnershipImportWhitelistAfterRegister } from "../services/collaborationWhitelist.services";
 import { downloadImageAndUploadToS3 } from "../services/upload.services";
-import { tryAwardFirstLoginBonus } from "../services/successPoints.services";
+import { tryAwardRegistrationBonus } from "../services/successPoints.services";
 import bcrypt from "bcryptjs";
 import { Student, User } from "../types";
 
@@ -81,12 +81,7 @@ async function finalizeCredentialLogin(
     isActive: true,
     expiresAt: new Date(Date.now() + 1 * 60 * 60 * 1000), // 1 hour from now
   });
-  try {
-    await tryAwardFirstLoginBonus(userId, user.userType);
-  } catch (e) {
-    // A bonus failure must never block sign-in.
-    console.error("First-login bonus failed:", e);
-  }
+  // No welcome bonus here — it's granted once at registration, not on login.
   sendSuccessResponse(
     res,
     { user: protectedLoggedInUser, accessToken },
@@ -156,6 +151,14 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
     expiresAt: new Date(Date.now() + 1 * 60 * 60 * 1000), // 1 hour from now
   });
   await newUser.save();
+
+  // One-time welcome bonus is granted at registration (never on login).
+  try {
+    await tryAwardRegistrationBonus(String(newUser._id), newUser.userType);
+  } catch (e) {
+    // A bonus failure must never block account creation.
+    console.error("Registration bonus failed:", e);
+  }
 
   sendSuccessResponse(
     res,
@@ -280,6 +283,13 @@ export const oauthSignin = asyncHandler(async (req: Request, res: Response) => {
       email,
       "student",
     );
+    // OAuth sign-up is a registration → grant the one-time welcome bonus.
+    try {
+      await tryAwardRegistrationBonus(String(newUser._id), newUser.userType);
+    } catch (e) {
+      // A bonus failure must never block account creation.
+      console.error("Registration bonus failed:", e);
+    }
   } else {
     if (user.userType === "partner") {
       throw new AppError(PARTNER_USE_PORTAL_LOGIN_MESSAGE, 403);
@@ -319,12 +329,8 @@ export const oauthSignin = asyncHandler(async (req: Request, res: Response) => {
       },
     },
   });
-  try {
-    await tryAwardFirstLoginBonus(String(user._id), user.userType);
-  } catch (e) {
-    // A bonus failure must never block sign-in.
-    console.error("First-login bonus failed:", e);
-  }
+  // The welcome bonus is granted only when a new account is created above —
+  // existing users signing in via OAuth get nothing here.
   sendSuccessResponse(
     res,
     { user: protectedOAuthUser, accessToken },

@@ -99,6 +99,11 @@ export default function InternshipEnrollmentDetailModal({
   const [savingRevoke, setSavingRevoke] = useState(false);
   const [revokeError, setRevokeError] = useState<string | null>(null);
 
+  // Delete state (hard delete — removes the enrollment + its task submissions)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
   // Documentation verify state (docs_under_review)
   const [verifyingDocs, setVerifyingDocs] = useState(false);
   const [showRejectForm, setShowRejectForm] = useState(false);
@@ -168,6 +173,8 @@ export default function InternshipEnrollmentDetailModal({
     setVerifyError(null);
     setShowRevokeConfirm(false);
     setRevokeError(null);
+    setShowDeleteConfirm(false);
+    setDeleteError(null);
   }, [isOpen, enrollmentId]);
 
   useEffect(() => {
@@ -292,6 +299,38 @@ export default function InternshipEnrollmentDetailModal({
       setRevokeError(msg);
     } finally {
       setSavingRevoke(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!enrollmentId || !detail || deleting) return;
+    setDeleteError(null);
+    setDeleting(true);
+    try {
+      await apiClient.delete(
+        ENDPOINTS.internshipEnrollments.adminDelete(enrollmentId),
+      );
+      toast.success("Enrollment deleted");
+      setShowDeleteConfirm(false);
+      // The row is gone — refresh the list and close the modal.
+      onUpdated?.();
+      onClose();
+    } catch (e: unknown) {
+      const msg =
+        e &&
+        typeof e === "object" &&
+        "response" in e &&
+        e.response &&
+        typeof e.response === "object" &&
+        "data" in e.response &&
+        e.response.data &&
+        typeof e.response.data === "object" &&
+        "message" in e.response.data
+          ? String((e.response.data as { message?: string }).message)
+          : "Could not delete enrollment";
+      setDeleteError(msg);
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -1008,6 +1047,60 @@ export default function InternshipEnrollmentDetailModal({
               )}
             </div>
           ) : null}
+
+          <div className="rounded-lg border border-red-300 bg-red-50 px-3 py-3 space-y-2">
+            <p className="text-xs font-semibold text-red-900 uppercase">
+              Danger zone — delete enrollment
+            </p>
+            <p className="text-xs text-red-900/90 leading-snug">
+              Permanently deletes this enrollment and its task submissions. This
+              is irreversible and frees the learner&apos;s seat in this cohort.
+              For most cases prefer <span className="font-medium">Revoke</span>{" "}
+              instead.
+            </p>
+            {deleteError && (
+              <p className="text-xs text-red-700 bg-red-100 border border-red-300 rounded px-2 py-1">
+                {deleteError}
+              </p>
+            )}
+            {showDeleteConfirm ? (
+              <div className="flex gap-2">
+                <WhiteButton
+                  type="button"
+                  glow={false}
+                  className="flex-1"
+                  onClick={() => {
+                    setShowDeleteConfirm(false);
+                    setDeleteError(null);
+                  }}
+                  disabled={deleting}
+                >
+                  Cancel
+                </WhiteButton>
+                <OrangeButton
+                  type="button"
+                  glow={false}
+                  className="flex-1 bg-red-700 hover:bg-red-800 border-red-800"
+                  disabled={deleting}
+                  onClick={() => void handleDelete()}
+                >
+                  {deleting ? "Deleting…" : "Confirm delete"}
+                </OrangeButton>
+              </div>
+            ) : (
+              <WhiteButton
+                type="button"
+                glow={false}
+                className="w-full text-red-800 border-red-300 hover:bg-red-100"
+                onClick={() => {
+                  setShowDeleteConfirm(true);
+                  setDeleteError(null);
+                }}
+              >
+                Delete enrollment
+              </WhiteButton>
+            )}
+          </div>
 
           <div>
             <p className="text-xs font-semibold text-gray-500 uppercase mb-1">

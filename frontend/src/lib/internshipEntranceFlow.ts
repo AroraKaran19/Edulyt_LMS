@@ -15,7 +15,7 @@ export type EntranceExamAttentionStatus =
 
 const STATUS_USER_SUMMARY: Record<string, string> = {
   exam_registered:
-    "You’re registered for the entrance exam. Open the program page for date and details.",
+    "You’re registered for the entrance exam. The timer shows when it opens; use the button to start it during the window.",
   exam_attempted:
     "Your exam has been submitted. We’ll update your status when scoring or selection is complete.",
   in_merit_pool:

@@ -34,6 +34,10 @@ import {
   validatePassword,
   getPasswordRequirementsText,
 } from "@/lib/passwordValidation";
+import {
+  DEGREE_OPTIONS,
+  EXPERIENCE_LEVELS,
+} from "@/lib/constants/profileOptions";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -2368,32 +2372,27 @@ const StudentFields = ({
   handleAccountsChange: (field: string, value: string) => void;
   errors: Record<string, string>;
 }) => {
-  const experienceLevels = [
-    {
-      value: "College Student - 1st Year",
-      label: "College Student - 1st Year",
-    },
-    {
-      value: "College Student - 2nd Year",
-      label: "College Student - 2nd Year",
-    },
-    {
-      value: "College Student - 3rd Year",
-      label: "College Student - 3rd Year",
-    },
-    {
-      value: "College Student - 4th Year",
-      label: "College Student - 4th Year",
-    },
-    {
-      value: "Working Professional - Tech Domain",
-      label: "Working Professional - Tech Domain",
-    },
-    {
-      value: "Working Professional - Non Tech Domain",
-      label: "Working Professional - Non Tech Domain",
-    },
-  ];
+  const experienceLevels = EXPERIENCE_LEVELS;
+
+  // Degree dropdown selection. "Other" reveals a free-text field; a stored
+  // value that isn't a preset opens as "Other" with the text prefilled
+  // (mirrors the checkout flow).
+  const [selectedDegree, setSelectedDegree] = useState<string>(() => {
+    const degree = formData.degreeName || "";
+    if (!degree) return "";
+    return DEGREE_OPTIONS.some((o) => o.value === degree) ? degree : "Other";
+  });
+
+  useEffect(() => {
+    const degree = formData.degreeName || "";
+    if (!degree) {
+      setSelectedDegree("");
+      return;
+    }
+    setSelectedDegree(
+      DEGREE_OPTIONS.some((o) => o.value === degree) ? degree : "Other",
+    );
+  }, [formData.degreeName]);
 
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 15 }, (_, i) => ({
@@ -2424,12 +2423,30 @@ const StudentFields = ({
           }}
           error={errors.collegeName}
         />
-        <Input
-          label="Degree Name"
-          placeholder="Enter your degree"
-          value={formData.degreeName || ""}
-          onChange={(e) => handleInputChange("degreeName", e.target.value)}
-        />
+        <div className="flex flex-col gap-2">
+          <Select
+            label="Course / Degree Name"
+            placeholder="Select your course / degree"
+            options={DEGREE_OPTIONS}
+            searchable
+            searchPlaceholder="Search degrees..."
+            value={selectedDegree}
+            onChange={(value) => {
+              setSelectedDegree(value);
+              // Preset value flows to degreeName; "Other" clears it so the
+              // free-text field below becomes the source.
+              handleInputChange("degreeName", value !== "Other" ? value : "");
+            }}
+          />
+          {selectedDegree === "Other" && (
+            <Input
+              label="Specify Course / Degree"
+              placeholder="Enter your course / degree name"
+              value={formData.degreeName || ""}
+              onChange={(e) => handleInputChange("degreeName", e.target.value)}
+            />
+          )}
+        </div>
         <div>
           <Select
             label="Passing Year"

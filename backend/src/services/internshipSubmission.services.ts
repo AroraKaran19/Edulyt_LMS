@@ -128,22 +128,122 @@ function coerceDate(raw: unknown): Date | undefined {
   return d;
 }
 
-function assertWithinExamSnapshotWindow(snap: ExamTemplateSnapshot): void {
-  const start = coerceDate(snap.examStartAt);
-  const end = coerceDate(snap.examEndAt);
+/**
+ * Live exam timing. Timing is NEVER read from the submission snapshot because
+ * admins can change it after attempts have started — extending an entrance
+ * window, shifting a template's result date, etc. The snapshot froze these at
+ * creation time, which strands in-progress learners. So we always resolve:
+ *   - entrance window     → from the live internship batch
+ *   - certification window → recomputed per-learner from the enrollment
+ *   - examResultAt         → live from the exam template
+ */
+async function resolveLiveExamTiming(sub: {
+  internshipId?: unknown;
+  batchId?: unknown;
+  examId?: unknown;
+  enrollmentId?: unknown;
+  templateSnapshot?: { examType?: string } | null;
+}): Promise<{ examStartAt?: Date; examEndAt?: Date; examResultAt?: Date }> {
+  const out: { examStartAt?: Date; examEndAt?: Date; examResultAt?: Date } = {};
+  const examType =
+    (sub.templateSnapshot as { examType?: string } | null)?.examType ===
+    "certification"
+      ? "certification"
+      : "entrance";
+
+  // examResultAt — live from the exam template (admins can reschedule it).
+  const examId = sub.examId ? String(sub.examId) : "";
+  if (mongoose.Types.ObjectId.isValid(examId)) {
+    const ex = await InternshipExamModel.findById(examId)
+      .select("examResultAt")
+      .lean();
+    out.examResultAt = coerceDate(
+      (ex as { examResultAt?: unknown } | null)?.examResultAt,
+    );
+  }
+
+  if (examType === "certification") {
+    // Per-learner window recomputed from the enrollment, never stored mutable.
+    const enr = await InternshipEnrollmentModel.findById(
+      String(sub.enrollmentId ?? ""),
+    ).lean();
+    if (enr) {
+      const monthsStored = (enr as { programDurationMonths?: number })
+        .programDurationMonths;
+      const answers = (enr as { applicationAnswers?: unknown })
+        .applicationAnswers;
+      const months =
+        typeof monthsStored === "number" && monthsStored >= 1
+          ? monthsStored
+          : parseProgramDurationMonthsFromAnswers(
+              answers && typeof answers === "object" && !Array.isArray(answers)
+                ? (answers as Record<string, unknown>)
+                : null,
+            );
+      const startRaw = (
+        enr as { batchSnapshot?: { internshipStartDate?: unknown } }
+      ).batchSnapshot?.internshipStartDate;
+      const progStart =
+        startRaw instanceof Date
+          ? startRaw
+          : startRaw
+            ? new Date(startRaw as string | number)
+            : null;
+      if (months && progStart && !Number.isNaN(progStart.getTime())) {
+        const w = computeCertificationExamWindowUtc(progStart, months);
+        out.examStartAt = w.examStartAt;
+        out.examEndAt = w.examEndAt;
+      }
+    }
+  } else {
+    // Entrance window comes from the live batch (the admin-editable source).
+    const ins = await InternshipModel.findById(String(sub.internshipId ?? ""))
+      .select(
+        "batches._id batches.entranceExamStartAt batches.entranceExamEndAt",
+      )
+      .lean();
+    const batches =
+      (
+        ins as {
+          batches?: {
+            _id?: unknown;
+            entranceExamStartAt?: Date;
+            entranceExamEndAt?: Date;
+          }[];
+        } | null
+      )?.batches ?? [];
+    const batch = batches.find((b) => String(b._id) === String(sub.batchId ?? ""));
+    out.examStartAt = coerceDate(batch?.entranceExamStartAt);
+    out.examEndAt = coerceDate(batch?.entranceExamEndAt);
+  }
+
+  return out;
+}
+
+/**
+ * Gate an in-progress exam action (save answer / submit) against the LIVE
+ * window, so admin window changes apply to already-started attempts.
+ */
+async function assertWithinExamWindow(sub: {
+  internshipId?: unknown;
+  batchId?: unknown;
+  examId?: unknown;
+  enrollmentId?: unknown;
+  templateSnapshot?: { examType?: string } | null;
+}): Promise<void> {
+  const { examStartAt, examEndAt } = await resolveLiveExamTiming(sub);
   const now = Date.now();
-  if (isInstantWithinWindowUtc(now, start, end)) return;
-  if (start && now < start.getTime()) {
+  if (isInstantWithinWindowUtc(now, examStartAt, examEndAt)) return;
+  if (examStartAt && now < examStartAt.getTime()) {
     throw new AppError("The exam window has not opened yet", 403);
   }
-  if (end && now > end.getTime()) {
+  if (examEndAt && now > examEndAt.getTime()) {
     throw new AppError("The exam window has closed", 403);
   }
 }
 
 async function buildExamSnapshot(
   examId: string,
-  window: { examStartAt?: Date; examEndAt?: Date },
 ): Promise<ExamTemplateSnapshot> {
   if (!mongoose.Types.ObjectId.isValid(examId)) {
     throw new AppError("Invalid exam template id", 400);
@@ -169,9 +269,10 @@ async function buildExamSnapshot(
     examType?: string;
   };
 
-  const examResultAt = coerceDate(e.examResultAt);
-
-  if (!examResultAt) {
+  // Sanity-check the template is schedulable, but DO NOT freeze the date into
+  // the snapshot — timing (window + result date) is resolved live at read /
+  // gate time so later admin edits apply to in-progress attempts.
+  if (!coerceDate(e.examResultAt)) {
     throw new AppError(
       "Exam template is missing examResultAt — cannot create submission snapshot",
       400,
@@ -190,9 +291,6 @@ async function buildExamSnapshot(
     totalScore: typeof exam.totalScore === "number" ? exam.totalScore : 0,
     thresholdScore:
       typeof e.thresholdScore === "number" ? e.thresholdScore : undefined,
-    examStartAt: window.examStartAt,
-    examEndAt: window.examEndAt,
-    examResultAt,
     snapshotAt: new Date(),
   };
 }
@@ -433,7 +531,7 @@ export async function createInternshipSubmission(
       }
     }
 
-    snapshot = await buildExamSnapshot(body.examId, window);
+    snapshot = await buildExamSnapshot(body.examId);
     templateRef = { examId: body.examId };
   } else {
     throw new AppError("submissionFor must be exam or task", 400);
@@ -486,9 +584,7 @@ export async function saveMCQAnswer(
     (sub as { submissionFor?: unknown }).submissionFor ?? "",
   );
   if (snapFor === "exam") {
-    assertWithinExamSnapshotWindow(
-      sub.toObject().templateSnapshot as ExamTemplateSnapshot,
-    );
+    await assertWithinExamWindow(sub.toObject());
   }
 
   const snapshot = sub.toObject().templateSnapshot as
@@ -555,12 +651,10 @@ export async function saveFileAnswer(
   const snapFor = String(
     (sub as { submissionFor?: unknown }).submissionFor ?? "",
   );
-  // The snapshot window gates first-time answering; a reviewer-requested
+  // The live window gates first-time answering; a reviewer-requested
   // re-upload may legitimately land after the window closed.
   if (snapFor === "exam" && isDraft) {
-    assertWithinExamSnapshotWindow(
-      sub.toObject().templateSnapshot as ExamTemplateSnapshot,
-    );
+    await assertWithinExamWindow(sub.toObject());
   }
 
   const snapshot = sub.toObject().templateSnapshot as
@@ -696,9 +790,7 @@ export async function submitSubmission(
     (sub as { submissionFor?: unknown }).submissionFor ?? "",
   );
   if (submitFor === "exam") {
-    assertWithinExamSnapshotWindow(
-      sub.toObject().templateSnapshot as ExamTemplateSnapshot,
-    );
+    await assertWithinExamWindow(sub.toObject());
   }
 
   const snapshot = sub.toObject().templateSnapshot as
@@ -1263,6 +1355,23 @@ async function serializeSubmission(
   doc: Record<string, unknown>,
 ): Promise<Record<string, unknown>> {
   await attachLiveReferenceFiles(doc);
+  // Timing isn't persisted in the snapshot — overlay the live values so the
+  // exam UI (countdown) and result reveal stay correct after admin edits.
+  if (String(doc.submissionFor) === "exam") {
+    const timing = await resolveLiveExamTiming(
+      doc as {
+        internshipId?: unknown;
+        batchId?: unknown;
+        examId?: unknown;
+        enrollmentId?: unknown;
+        templateSnapshot?: { examType?: string } | null;
+      },
+    );
+    doc.templateSnapshot = {
+      ...((doc.templateSnapshot as Record<string, unknown>) ?? {}),
+      ...timing,
+    };
+  }
   return {
     ...doc,
     _id: String(doc._id),

@@ -1,0 +1,110 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import apiClient from "@/configs/apiConfig";
+import useAuth from "@/hooks/useAuth";
+import { Student } from "@/types";
+import { FullScreenLoader } from "@/components/ui/Loader";
+
+/**
+ * Global guard that forces students with an incomplete profile to finish
+ * onboarding before using the app. A student is "complete" once `phone`,
+ * `experienceLevel`, and `degreeName` are all set.
+ *
+ * Mounted inside <SessionProvider> in LayoutWrapper. To make onboarding appear
+ * immediately on login — rather than flashing the landing page and then
+ * redirecting — the gate BLOCKS rendering (full-screen loader) for an
+ * authenticated student until the first completeness check resolves. The
+ * verdict is cached per user so later navigations don't block again.
+ */
+
+// Path prefixes the gate never acts on: auth flows, other-role areas, the
+// OAuth handoff, payment status, and the onboarding page itself.
+const EXCLUDED_PREFIXES = [
+  "/onboarding",
+  "/login",
+  "/register",
+  "/forgot-password",
+  "/admin",
+  "/instructor",
+  "/partner",
+  "/auth-redirect",
+  "/payment/status",
+];
+
+const isExcluded = (pathname: string) =>
+  EXCLUDED_PREFIXES.some(
+    (p) => pathname === p || pathname.startsWith(`${p}/`) || pathname.startsWith(`${p}?`),
+  );
+
+const OnboardingGate = ({ children }: { children: React.ReactNode }) => {
+  const { user, isAuthenticated } = useAuth();
+  const pathname = usePathname() || "/";
+  const router = useRouter();
+
+  // Caches keyed by userId so we only block/redirect-decide once per session.
+  const verifiedUserId = useRef<string | null>(null); // confirmed complete
+  const failedOpenUserId = useRef<string | null>(null); // API failed → let through
+  const inFlight = useRef(false);
+  // Bump to force a re-render after a ref-cached verdict changes.
+  const [, setTick] = useState(0);
+
+  const userId = user?._id ?? (isAuthenticated ? "self" : null);
+  const gateApplies =
+    isAuthenticated && user?.userType === "student" && !isExcluded(pathname);
+  const decided =
+    userId != null &&
+    (verifiedUserId.current === userId || failedOpenUserId.current === userId);
+  const needsCheck = gateApplies && !decided;
+
+  useEffect(() => {
+    if (!needsCheck || inFlight.current) return;
+    inFlight.current = true;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await apiClient.get("/users/me");
+        const profile = res.data?.data as Student | undefined;
+        if (cancelled) return;
+
+        const complete =
+          Boolean(profile?.phone?.trim()) &&
+          Boolean(profile?.experienceLevel?.trim()) &&
+          Boolean(profile?.degreeName?.trim());
+
+        if (complete) {
+          if (userId) verifiedUserId.current = userId;
+          setTick((t) => t + 1); // re-render → unblock children
+        } else {
+          // Keep the loader up while we navigate to onboarding (the loader
+          // bridges the redirect so the destination page never shows).
+          router.replace(`/onboarding?next=${encodeURIComponent(pathname)}`);
+        }
+      } catch {
+        // Fail open — a transient API error must not lock students out of the
+        // whole app, and must not leave them stuck on the loader.
+        if (!cancelled && userId) {
+          failedOpenUserId.current = userId;
+          setTick((t) => t + 1);
+        }
+      } finally {
+        inFlight.current = false;
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [needsCheck, userId, pathname, router]);
+
+  // Block the underlying page until we know the verdict (or while bouncing to
+  // /onboarding), so an incomplete student never sees the destination page.
+  if (needsCheck) {
+    return <FullScreenLoader text="Loading..." size="lg" variant="spinner" />;
+  }
+
+  return <>{children}</>;
+};
+
+export default OnboardingGate;

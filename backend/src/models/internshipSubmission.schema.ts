@@ -55,9 +55,9 @@ const examTemplateSnapshotSchema = new mongoose.Schema(
     questions: { type: [snapshotQuestionSchema], required: true },
     totalScore: { type: Number, required: true, min: 0 },
     thresholdScore: { type: Number, min: 0 },
-    examStartAt: { type: Date },
-    examEndAt: { type: Date },
-    examResultAt: { type: Date, required: true },
+    // Timing (entrance window, certification window, result date) is NOT stored
+    // here — it can change after attempts start, so it's resolved live at read
+    // and gate time. See resolveLiveExamTiming in internshipSubmission.services.
     snapshotAt: { type: Date, required: true },
   },
   { _id: false },

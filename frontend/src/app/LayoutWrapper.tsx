@@ -6,6 +6,7 @@ import Footer from "@/components/shared/Footer/Footer";
 import { useEffect, useState } from "react";
 import { FullScreenLoader } from "@/components/ui/Loader";
 import { SessionProvider } from "next-auth/react";
+import OnboardingGate from "@/components/shared/OnboardingGate";
 
 export default function LayoutWrapper({
   children,
@@ -24,6 +25,7 @@ export default function LayoutWrapper({
     !pathname.startsWith("/login") &&
     !pathname.startsWith("/register") &&
     !pathname.startsWith("/payment/status") &&
+    !pathname.startsWith("/onboarding") &&
     !pathname.startsWith("/forgot-password");
 
   useEffect(() => {
@@ -54,7 +56,7 @@ export default function LayoutWrapper({
             "h-dvh min-h-0 max-h-dvh overflow-hidden pt-0"
         )}
       >
-        {children}
+        <OnboardingGate>{children}</OnboardingGate>
       </main>
       {visibleLayout && <Footer />}
     </SessionProvider>

@@ -391,15 +391,20 @@ export async function awardWalletSuccessPoints(
 }
 
 /**
- * One-time welcome bonus, credited the first time a user logs in.
- * Idempotent: atomically claims `firstLoginBonusAwarded` (false→true) so
- * concurrent logins and repeat logins can't double-credit.
+ * One-time welcome bonus, credited when a student account is created
+ * (registration), NOT on login. Call it from the registration paths only.
+ * Idempotent: atomically claims `firstLoginBonusAwarded` (false→true) so a
+ * retried registration can't double-credit.
  *
  * No-op for non-student accounts or when `loginSuccessPoints` is 0.
- * Safe to call on every login — failures are swallowed by the caller so a
- * bonus problem can never block sign-in.
+ * Failures are swallowed by the caller so a bonus problem can never block
+ * account creation.
+ *
+ * NOTE: the persisted flag (`firstLoginBonusAwarded`), reward source
+ * (`"login"`) and settings key (`loginSuccessPoints`) keep their legacy names
+ * to avoid a data/admin-UI migration — only the *trigger* moved to registration.
  */
-export async function tryAwardFirstLoginBonus(
+export async function tryAwardRegistrationBonus(
   userId: string,
   userType: string | undefined,
 ): Promise<void> {

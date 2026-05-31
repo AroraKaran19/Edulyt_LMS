@@ -112,11 +112,16 @@ export interface ExamTemplateSnapshot {
   questions: SnapshotQuestion[];
   totalScore: number;
   thresholdScore?: number;
-  /** Wall-clock window from the exam template, frozen at submission creation. */
+  /**
+   * Timing is NOT persisted in the snapshot — it can change after attempts
+   * start (admins extend an entrance window, reschedule a result date). These
+   * are resolved live (batch window / per-learner cert window / template
+   * result date) and overlaid at read time in serializeSubmission. Optional
+   * here only because the overlay populates them on the wire.
+   */
   examStartAt?: Date;
   examEndAt?: Date;
-  /** Required — when results are published, frozen at submission creation. */
-  examResultAt: Date;
+  examResultAt?: Date;
   /** When this snapshot was captured. */
   snapshotAt: Date;
 }
