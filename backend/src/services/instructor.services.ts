@@ -7,6 +7,7 @@ import {
   listInternshipsByMentorService,
 } from "./internship.services";
 import mongoose from "mongoose";
+import { cached, PUBLIC_CACHE_TTL_MS } from "../utils/ttlCache";
 
 export interface GetInstructorsParams {
   page?: number;
@@ -329,7 +330,10 @@ const buildInstructorCourseFilter = (instructor: Instructor) => {
 
 export const getPublicInstructorBySlugService = async (
   slug: string
-): Promise<PublicInstructorBySlugResult | null> => {
+): Promise<PublicInstructorBySlugResult | null> =>
+  // Cached: hot public profile read (resolve + count + aggregate + internship
+  // stats). Short TTL keeps a traffic burst from hammering the cluster.
+  cached(`instr:profile:${slug}`, PUBLIC_CACHE_TTL_MS, async () => {
   try {
     const instructor = await resolvePublicInstructorBySlug(slug);
     if (!instructor) return null;
@@ -381,7 +385,7 @@ export const getPublicInstructorBySlugService = async (
       500
     );
   }
-};
+  });
 
 export const getPublicInstructorCoursesBySlugService = async (
   slug: string,
@@ -395,7 +399,11 @@ export const getPublicInstructorCoursesBySlugService = async (
       totalPages: number;
     }
   | null
-> => {
+> =>
+  cached(
+    `instr:courses:${slug}:${page}:${limit}`,
+    PUBLIC_CACHE_TTL_MS,
+    async () => {
   try {
     const instructor = await resolvePublicInstructorBySlug(slug);
     if (!instructor) return null;
@@ -434,7 +442,7 @@ export const getPublicInstructorCoursesBySlugService = async (
       500
     );
   }
-};
+  });
 
 /**
  * Internships where this instructor is listed as a mentor. Powers the
@@ -443,7 +451,8 @@ export const getPublicInstructorCoursesBySlugService = async (
  */
 export const getPublicInstructorInternshipsBySlugService = async (
   slug: string
-): Promise<{ internships: InternshipPublicListing[] } | null> => {
+): Promise<{ internships: InternshipPublicListing[] } | null> =>
+  cached(`instr:internships:${slug}`, PUBLIC_CACHE_TTL_MS, async () => {
   try {
     const instructor = await resolvePublicInstructorBySlug(slug);
     if (!instructor) return null;
@@ -465,4 +474,4 @@ export const getPublicInstructorInternshipsBySlugService = async (
       500
     );
   }
-};
+  });

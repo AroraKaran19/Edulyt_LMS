@@ -11,16 +11,29 @@ const connectDB = async (): Promise<void> => {
     }
 
     console.log("🔄 Connecting to MongoDB...");
+    // Pool sizing matters because EVERY Node process keeps its own pool. Total
+    // open connections to the cluster ≈
+    //     (PM2 api instances + worker processes) × maxPoolSize × app servers
+    // and must stay under the cluster's connection cap (Atlas M0/Flex ≈ 500,
+    // M10 ≈ 1500). With 4 api + 2 workers, maxPoolSize=10 ⇒ ~60 conns/server.
+    // Override per environment via DB_MAX_POOL_SIZE / DB_MIN_POOL_SIZE.
+    const maxPoolSize = Math.max(1, Number(process.env.DB_MAX_POOL_SIZE) || 10);
+    const minPoolSize = Math.min(
+      maxPoolSize,
+      Math.max(0, Number(process.env.DB_MIN_POOL_SIZE ?? 1)),
+    );
     const conn = await mongoose.connect(mongoUri, {
-      // Connection pool settings for better performance
-      maxPoolSize: 20, // Maximum number of connections in the pool
-      minPoolSize: 5,  // Minimum number of connections in the pool
-      maxIdleTimeMS: 30000, // Close connections after 30 seconds of inactivity
+      maxPoolSize,
+      minPoolSize,
+      maxIdleTimeMS: 30000, // Reclaim idle connections after 30s
       serverSelectionTimeoutMS: 10000, // How long to try selecting a server
       socketTimeoutMS: 600000, // 10 minutes socket timeout for large operations
       connectTimeoutMS: 10000, // 10 seconds connection timeout
       bufferCommands: false, // Disable mongoose buffering
     });
+    console.log(
+      `⚙️  Mongo pool: max=${maxPoolSize} min=${minPoolSize} per process`,
+    );
 
     console.log(`🔗 MongoDB Connected: ${conn.connection.host}`);
     console.log(`📊 Database Name: ${conn.connection.name}`);
