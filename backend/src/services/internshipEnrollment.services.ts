@@ -18,6 +18,7 @@ import {
   isInstantWithinWindowUtc,
   parseProgramDurationMonthsFromAnswers,
 } from "../lib/certificationExamSchedule";
+import { cached, PUBLIC_CACHE_TTL_MS } from "../utils/ttlCache";
 
 function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -1610,6 +1611,108 @@ export type LearnerEntranceExam = {
   existingSubmissionId?: string;
 };
 
+/** Static, learner-safe exam content (title + questions, isCorrect scrubbed).
+ *  Identical for every student taking the same exam, so it's cached by examId
+ *  to spare the cluster the template + N-question fetch on every page load
+ *  during a live exam. Timing (window) is NOT cached here — it's resolved live
+ *  by the caller. Returns null when the exam is missing/inactive. */
+type CachedEntranceExamContent = {
+  title: string;
+  description: string;
+  totalScore: number;
+  thresholdScore?: number;
+  examResultAt?: string;
+  questions: LearnerEntranceExamQuestion[];
+};
+
+async function getEntranceExamContentCached(
+  examId: string,
+): Promise<CachedEntranceExamContent | null> {
+  return cached(
+    `entrance-exam:content:${examId}`,
+    PUBLIC_CACHE_TTL_MS,
+    async () => {
+      const exam = await InternshipExamModel.findById(examId).lean();
+      if (!exam || !(exam as { isActive?: boolean }).isActive) return null;
+
+      const eAny = exam as {
+        title?: string;
+        description?: string;
+        totalScore?: number;
+        thresholdScore?: number;
+        examResultAt?: Date;
+        questions?: unknown[];
+      };
+
+      const qIds = Array.isArray(eAny.questions)
+        ? eAny.questions.map((q) => new mongoose.Types.ObjectId(String(q)))
+        : [];
+      const qDocs = await (
+        await import("../models/internshipQuestion.schema")
+      ).InternshipQuestionModel.find({ _id: { $in: qIds } })
+        .select("questionText type score negativeScore options referenceFile")
+        .lean();
+
+      const questions: LearnerEntranceExamQuestion[] = qIds
+        .map((oid) =>
+          qDocs.find((d) => String((d as { _id: unknown })._id) === String(oid)),
+        )
+        .filter((q): q is NonNullable<typeof q> => q != null)
+        .map((q) => {
+          const qAny = q as {
+            _id: unknown;
+            questionText?: string;
+            type?: string;
+            score?: number;
+            negativeScore?: number;
+            options?: { _id?: unknown; text?: unknown; isCorrect?: unknown }[];
+            referenceFile?: string;
+          };
+          const isMcq = qAny.type !== "file_upload";
+          const out: LearnerEntranceExamQuestion = {
+            questionId: String(qAny._id),
+            questionText: String(qAny.questionText ?? ""),
+            type: (isMcq ? "mcq" : "file_upload") as "mcq" | "file_upload",
+            score: typeof qAny.score === "number" ? qAny.score : 0,
+            negativeScore:
+              isMcq &&
+              typeof qAny.negativeScore === "number" &&
+              qAny.negativeScore > 0
+                ? qAny.negativeScore
+                : 0,
+          };
+          const ref = qAny.referenceFile;
+          if (typeof ref === "string" && ref.trim()) {
+            out.referenceFile = ref.trim();
+          }
+          if (qAny.type === "mcq" && Array.isArray(qAny.options)) {
+            out.options = qAny.options.map((o) => ({
+              optionId: String(o._id ?? ""),
+              text: String(o.text ?? ""),
+              // isCorrect intentionally excluded for learners
+            }));
+          }
+          return out;
+        });
+
+      return {
+        title: String(eAny.title ?? "Entrance Exam"),
+        description: String(eAny.description ?? ""),
+        totalScore: typeof eAny.totalScore === "number" ? eAny.totalScore : 0,
+        thresholdScore:
+          typeof eAny.thresholdScore === "number"
+            ? eAny.thresholdScore
+            : undefined,
+        examResultAt:
+          eAny.examResultAt instanceof Date
+            ? eAny.examResultAt.toISOString()
+            : undefined,
+        questions,
+      };
+    },
+  );
+}
+
 export async function getLearnerEntranceExam(
   enrollmentId: string,
   userId: mongoose.Types.ObjectId,
@@ -1668,11 +1771,8 @@ export async function getLearnerEntranceExam(
   }
 
   const examId = String(batch.entranceExamTemplateId);
-  const exam = await InternshipExamModel.findById(examId).lean();
-  if (!exam || !(exam as { isActive?: boolean }).isActive) {
-    throw new AppError("Entrance exam not found or inactive", 404);
-  }
 
+  // Live window check (timing is never cached — admins can extend it mid-exam).
   const entranceStart = batch.entranceExamStartAt;
   const entranceEnd = batch.entranceExamEndAt;
   const now = new Date();
@@ -1683,69 +1783,14 @@ export async function getLearnerEntranceExam(
     throw new AppError("The exam window has closed", 403);
   }
 
-  const eAny = exam as {
-    title?: string;
-    description?: string;
-    totalScore?: number;
-    thresholdScore?: number;
-    examResultAt?: Date;
-    questions?: unknown[];
-    isActive?: boolean;
-  };
+  // Static exam content (title + scrubbed questions) — cached by examId so a
+  // batch of concurrent learners doesn't refetch the template + every question.
+  const content = await getEntranceExamContentCached(examId);
+  if (!content) {
+    throw new AppError("Entrance exam not found or inactive", 404);
+  }
 
-  // Fetch questions (scrub isCorrect)
-  const qIds = Array.isArray(eAny.questions)
-    ? eAny.questions.map((q) => new mongoose.Types.ObjectId(String(q)))
-    : [];
-  const qDocs = await (
-    await import("../models/internshipQuestion.schema")
-  ).InternshipQuestionModel.find({ _id: { $in: qIds } })
-    .select("questionText type score negativeScore options referenceFile")
-    .lean();
-
-  const questions: LearnerEntranceExamQuestion[] = qIds
-    .map((oid) =>
-      qDocs.find((d) => String((d as { _id: unknown })._id) === String(oid)),
-    )
-    .filter((q): q is NonNullable<typeof q> => q != null)
-    .map((q) => {
-      const qAny = q as {
-        _id: unknown;
-        questionText?: string;
-        type?: string;
-        score?: number;
-        negativeScore?: number;
-        options?: { _id?: unknown; text?: unknown; isCorrect?: unknown }[];
-        referenceFile?: string;
-      };
-      const isMcq = qAny.type !== "file_upload";
-      const out: LearnerEntranceExamQuestion = {
-        questionId: String(qAny._id),
-        questionText: String(qAny.questionText ?? ""),
-        type: (isMcq ? "mcq" : "file_upload") as "mcq" | "file_upload",
-        score: typeof qAny.score === "number" ? qAny.score : 0,
-        negativeScore:
-          isMcq &&
-          typeof qAny.negativeScore === "number" &&
-          qAny.negativeScore > 0
-            ? qAny.negativeScore
-            : 0,
-      };
-      const ref = qAny.referenceFile;
-      if (typeof ref === "string" && ref.trim()) {
-        out.referenceFile = ref.trim();
-      }
-      if (qAny.type === "mcq" && Array.isArray(qAny.options)) {
-        out.options = qAny.options.map((o) => ({
-          optionId: String(o._id ?? ""),
-          text: String(o.text ?? ""),
-          // isCorrect intentionally excluded for learners
-        }));
-      }
-      return out;
-    });
-
-  // Check for existing draft submission
+  // Per-learner draft lookup stays live (changes as they answer).
   const { InternshipSubmissionModel } =
     await import("../models/internshipSubmission.schema");
   const existingSub = await InternshipSubmissionModel.findOne({
@@ -1762,22 +1807,18 @@ export async function getLearnerEntranceExam(
     enrollmentId,
     internshipId,
     batchId,
-    title: String(eAny.title ?? "Entrance Exam"),
-    description: String(eAny.description ?? ""),
-    totalScore: typeof eAny.totalScore === "number" ? eAny.totalScore : 0,
-    thresholdScore:
-      typeof eAny.thresholdScore === "number" ? eAny.thresholdScore : undefined,
+    title: content.title,
+    description: content.description,
+    totalScore: content.totalScore,
+    thresholdScore: content.thresholdScore,
     examStartAt:
       entranceStart instanceof Date
         ? entranceStart.toISOString()
         : undefined,
     examEndAt:
       entranceEnd instanceof Date ? entranceEnd.toISOString() : undefined,
-    examResultAt:
-      eAny.examResultAt instanceof Date
-        ? eAny.examResultAt.toISOString()
-        : undefined,
-    questions,
+    examResultAt: content.examResultAt,
+    questions: content.questions,
     existingSubmissionId: existingSub
       ? String((existingSub as { _id: unknown })._id)
       : undefined,
