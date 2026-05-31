@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { CheckCircle2, CircleDot, Loader2, Lock, Send } from "lucide-react";
@@ -242,17 +242,65 @@ export default function ExamPage() {
     void loadExam();
   }, [loadExam]);
 
-  const handleAnswerChange = async (qId: string, opts: string[]) => {
-    setAnswers((prev) => ({ ...prev, [qId]: opts }));
-    if (!submissionId) return;
-    try {
-      await apiClient.patch(
-        ENDPOINTS.internshipSubmissions.saveMcq(submissionId),
-        { question: qId, selectedOptions: opts },
-      );
-    } catch {
-      // Silent — local state is still updated; final submit is the gate
+  // ── Debounced answer saving ──────────────────────────────────────────────
+  // Saving a PATCH on every option click produced a write storm that an
+  // entry-tier DB can't keep up with during a live exam. Instead we keep the
+  // latest answer per question in a buffer and flush it ~1.5s after the last
+  // change (and always before submit / on tab hide). Local state updates
+  // instantly so the UI is unaffected.
+  const SAVE_DEBOUNCE_MS = 1500;
+  const submissionIdRef = useRef<string | null>(null);
+  const pendingSaves = useRef<Map<string, string[]>>(new Map());
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    submissionIdRef.current = submissionId;
+  }, [submissionId]);
+
+  // Persist every buffered answer. Stable identity (reads refs, no deps).
+  const flushPendingSaves = useCallback(async () => {
+    if (saveTimer.current) {
+      clearTimeout(saveTimer.current);
+      saveTimer.current = null;
     }
+    const sid = submissionIdRef.current;
+    if (!sid || pendingSaves.current.size === 0) return;
+    const entries = Array.from(pendingSaves.current.entries());
+    pendingSaves.current.clear();
+    for (const [qId, opts] of entries) {
+      try {
+        await apiClient.patch(
+          ENDPOINTS.internshipSubmissions.saveMcq(sid),
+          { question: qId, selectedOptions: opts },
+        );
+      } catch {
+        // Re-buffer so the next flush (e.g. on submit) retries it.
+        pendingSaves.current.set(qId, opts);
+      }
+    }
+  }, []);
+
+  // Flush on unmount and when the tab is hidden (closing/switching away).
+  useEffect(() => {
+    const onHide = () => {
+      if (document.visibilityState === "hidden") void flushPendingSaves();
+    };
+    document.addEventListener("visibilitychange", onHide);
+    return () => {
+      document.removeEventListener("visibilitychange", onHide);
+      void flushPendingSaves();
+    };
+  }, [flushPendingSaves]);
+
+  const handleAnswerChange = (qId: string, opts: string[]) => {
+    setAnswers((prev) => ({ ...prev, [qId]: opts }));
+    if (!submissionIdRef.current) return;
+    // Buffer the latest answer for this question and (re)arm the debounce.
+    pendingSaves.current.set(qId, opts);
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      void flushPendingSaves();
+    }, SAVE_DEBOUNCE_MS);
   };
 
   const handleStart = async () => {
@@ -288,6 +336,9 @@ export default function ExamPage() {
       return;
     setSubmitStatus("submitting");
     try {
+      // Persist any buffered answers BEFORE finalizing — submit grades the
+      // server-stored draft, so unflushed answers would otherwise be lost.
+      await flushPendingSaves();
       await apiClient.post(
         ENDPOINTS.internshipSubmissions.submit(submissionId),
       );
