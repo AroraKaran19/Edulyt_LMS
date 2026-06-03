@@ -6,7 +6,7 @@ import {
 import { InternshipEnrollmentModel } from "../models/internshipEnrollment.schema";
 import { InternshipModel } from "../models/internship.schema";
 import { AppError } from "../middlewares/error.middleware";
-import { isApplicationWindowOpenIst } from "../utils/applicationWindow";
+import { isVoucherRedemptionWindowOpen } from "../utils/applicationWindow";
 import { sanitizeApplicationAnswers } from "./internshipEnrollment.services";
 import { tryAwardInternshipRegistrationPoints } from "./successPoints.services";
 import { parseProgramDurationMonthsFromAnswers } from "../lib/certificationExamSchedule";
@@ -211,12 +211,18 @@ export async function redeemInternshipVoucher(params: {
   if (batch.isActive === false || batch.status !== "active")
     throw new AppError("This batch is no longer accepting enrollments", 400);
 
-  // 4. Voucher redemption requires the batch application to still be open.
-  // Vouchers don't get the post-result paid-grace window — they expire at
-  // application close.
-  if (!isApplicationWindowOpenIst(batch.applicationLastDate)) {
+  // 4. Voucher redemption stays open while the batch application is open, and
+  // for a grace window of VOUCHER_POST_START_GRACE_DAYS after the batch's
+  // internship start date — mirroring the paid-seat grace so a free-seat
+  // holder isn't shut out the instant applications close.
+  if (
+    !isVoucherRedemptionWindowOpen(
+      batch.applicationLastDate,
+      batch.internshipStartDate,
+    )
+  ) {
     throw new AppError(
-      "Voucher can only be redeemed while the batch application is open",
+      "Voucher can only be redeemed up to 15 days after the batch start date",
       400,
     );
   }
