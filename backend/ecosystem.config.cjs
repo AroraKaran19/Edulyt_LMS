@@ -24,6 +24,7 @@ module.exports = {
       script: "dist/server.js",
       instances: 4,
       exec_mode: "cluster",
+      time: true,
       env: {
         RUN_BACKGROUND_JOBS: "false",
       },
@@ -34,6 +35,7 @@ module.exports = {
       script: "dist/certificate-worker.js",
       instances: 1,
       exec_mode: "fork",
+      time: true,
       env: {
         RUN_BACKGROUND_JOBS: "true",
         CERTIFICATE_WORKER_POLL_MS: "300000",
@@ -45,6 +47,7 @@ module.exports = {
       script: "dist/collaboration-worker.js",
       instances: 1,
       exec_mode: "fork",
+      time: true,
       env: {
         RUN_BACKGROUND_JOBS: "true",
         COLLABORATION_WORKER_POLL_MS: "10000",

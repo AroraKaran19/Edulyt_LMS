@@ -25,11 +25,15 @@ const connectDB = async (): Promise<void> => {
     const conn = await mongoose.connect(mongoUri, {
       maxPoolSize,
       minPoolSize,
-      maxIdleTimeMS: 30000, // Reclaim idle connections after 30s
-      serverSelectionTimeoutMS: 10000, // How long to try selecting a server
-      socketTimeoutMS: 600000, // 10 minutes socket timeout for large operations
-      connectTimeoutMS: 10000, // 10 seconds connection timeout
-      bufferCommands: false, // Disable mongoose buffering
+      maxIdleTimeMS: 30000,      // Reclaim idle connections after 30s
+      serverSelectionTimeoutMS: 10000,
+      // Keep well below the ~60s silent-drop window most VPS NAT/firewalls use.
+      // 45s heartbeat means the driver pings the server before the firewall
+      // kills the idle TCP connection, preventing "beforeHandshake: false" errors.
+      heartbeatFrequencyMS: 45000,
+      socketTimeoutMS: 120000,   // 2 min is enough for large ops; 10 min was masking drops
+      connectTimeoutMS: 10000,
+      bufferCommands: false,
     });
     console.log(
       `⚙️  Mongo pool: max=${maxPoolSize} min=${minPoolSize} per process`,
