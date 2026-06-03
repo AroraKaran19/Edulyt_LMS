@@ -79,7 +79,10 @@ const internshipEnrollmentSchema = new mongoose.Schema(
     },
 
     // ── Merit path ────────────────────────────────────────────────────────────
-    examScore: { type: Number, min: 0 },
+    // No `min` — entrance exams support negative marking, so a net-negative
+    // total is a legitimate score. A `min: 0` here also broke unrelated saves
+    // (e.g. admin rejection) because `.save()` re-validates the existing field.
+    examScore: { type: Number },
     examAttemptedAt: { type: Date },
     adminActionBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     adminActionAt: { type: Date },
