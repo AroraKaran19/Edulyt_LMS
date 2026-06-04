@@ -241,9 +241,9 @@ export function InfiniteScrollSelect<T = unknown>({
       ref={dropdownPanelRef}
       className={cn(
         "min-w-[200px] bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden",
-        !dropdownPortal && "absolute z-[200] mt-1 w-full",
+        !dropdownPortal && "absolute z-200 mt-1 w-full",
         /* Above app modals (e.g. z-9999) so portaled lists are visible inside dialogs */
-        dropdownPortal && "z-[11000] shadow-xl",
+        dropdownPortal && "z-11000 shadow-xl",
         dropdownClassName,
       )}
       style={
