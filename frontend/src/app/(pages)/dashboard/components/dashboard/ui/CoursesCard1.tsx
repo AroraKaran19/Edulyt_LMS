@@ -4,12 +4,12 @@ import ProgressChart from "@/components/ui/charts/ProgressChart";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import { Course, Instructor } from "@/types";
 import { Enrollment } from "@/types/enrollment";
-import { Plus } from "lucide-react";
+import { Plus, BookOpen, AlertCircle } from "lucide-react";
 import Image from "next/image";
 import { useCallback } from "react";
 
 interface CoursesCard1Props {
-  course: Course;
+  course?: Course | null;
   enrollment?: Enrollment;
 }
 
@@ -37,6 +37,36 @@ const CoursesCard1 = ({ course, enrollment }: CoursesCard1Props) => {
 
   const progress = enrollment ? calculateProgress(enrollment) : 0;
   const currentPosition = enrollment ? getCurrentLesson(enrollment) : { lesson: 1, module: 1 };
+
+  // Course was deleted/unlinked — render a disabled "no longer available"
+  // container (after hooks, so they're never conditionally skipped) instead of
+  // crashing on course.thumbnail / course.title.
+  if (!course) {
+    const name = enrollment?.courseName || "Course no longer available";
+    return (
+      <div className="flex flex-col sm:flex-row w-full p-2 sm:p-1 border border-gray-200 rounded-lg items-stretch gap-3 opacity-80">
+        <div className="flex items-center justify-center bg-gray-100 rounded-lg select-none w-full sm:w-[150px] h-[100px] shrink-0">
+          <BookOpen className="w-8 h-8 text-gray-300" />
+        </div>
+        <div className="flex w-full flex-col gap-1.5 justify-center items-start min-w-0 flex-1">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-700/90 px-2 py-0.5 text-[10px] font-semibold text-white">
+            <AlertCircle className="w-3 h-3" /> Course no longer available
+          </span>
+          <h2 className="text-sm sm:text-base font-bold line-clamp-2 sm:line-clamp-1 text-ellipsis w-full text-gray-700">
+            {name}
+          </h2>
+          <p className="text-[11px] text-gray-400">
+            This course has been removed. Your enrollment is kept for records.
+          </p>
+        </div>
+        <div className="flex items-center justify-end sm:pr-2">
+          <span className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-gray-100 px-3 py-2 text-xs font-semibold text-gray-400 cursor-not-allowed select-none">
+            Unavailable
+          </span>
+        </div>
+      </div>
+    );
+  }
 
   const handleContinue = () => {
     if (course.slug) {

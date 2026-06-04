@@ -106,8 +106,17 @@ const enrollmentSchema = new mongoose.Schema<Enrollment>(
     courseId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Course",
-      required: true,
+      // Not required: when a course is deleted, courseId is unlinked (set to null)
+      // while the enrollment is kept for history (see courseName snapshot below).
+      required: false,
+      default: null,
       index: true,
+    },
+    // Snapshot of the course title at enrollment time. Preserves history if the
+    // course is later deleted and courseId is unlinked.
+    courseName: {
+      type: String,
+      default: null,
     },
     enrolledAt: {
       type: Date,

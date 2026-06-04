@@ -1575,6 +1575,16 @@ export async function listMyInternshipEnrollments(
       ...(typeof (doc as Record<string, unknown>).documentationRejectionNote === "string"
         ? { documentationRejectionNote: (doc as Record<string, unknown>).documentationRejectionNote as string }
         : {}),
+      // Offer letter (+ intern ID) so the dashboard card can show the download
+      // button in any stage once generated. The doc carries these (the list
+      // projection only omits application answers); the learner mapping just
+      // wasn't forwarding them.
+      ...(typeof (doc as Record<string, unknown>).offerLetterUrl === "string"
+        ? { offerLetterUrl: (doc as Record<string, unknown>).offerLetterUrl as string }
+        : {}),
+      ...(typeof (doc as Record<string, unknown>).internId === "string"
+        ? { internId: (doc as Record<string, unknown>).internId as string }
+        : {}),
     };
   });
 
@@ -2330,8 +2340,11 @@ export type LearnerTaskRow = {
   _id: string;
   title: string;
   description: string;
+  /** Total marks (grade max) for this task. */
   totalScore: number;
   scoreThreshold: number;
+  /** Internship success points this task awards on pass (marks >= scoreThreshold). */
+  successPoints: number;
   unlockAfterDays: number;
   dueDays: number;
   questionCount: number;
@@ -2367,8 +2380,14 @@ export type LearnerProgramDetail = {
     certificationTotalAchievable?: number;
     /** `ceil(totalAchievable × certificationThreshold / 100)` — absolute points required. */
     certificationRequiredPoints?: number;
-    /** True if learner has met the threshold. */
+    /** Gate 1 — true if learner has met the work-points threshold. */
     certificationMeetsThreshold?: boolean;
+    /** Gate 2 — true if the learner has passed the certification exam. */
+    certificationExamPassed?: boolean;
+    /** Both gates cleared — learner qualifies for the certificate. */
+    certificateEligible?: boolean;
+    /** Where the achievable work points come from (tasks vs attendance). */
+    certificationBreakdown?: { tasksTotal: number; attendanceTotal: number };
     /**
      * Points still needed to reach `certificationRequiredPoints` (0 if already met or no gate).
      */
@@ -2565,6 +2584,15 @@ export async function getLearnerProgramBySlug(
     );
   }
 
+  // Cohort hasn't started yet — tasks/live classes aren't accessible before the
+  // internship start date. Mirrors the dashboard hiding the "View tasks" link
+  // (hideDashboardProgramLink); without this the page is reachable by direct URL.
+  const startRaw = doc.batchSnapshot?.internshipStartDate;
+  const startTime = startRaw ? new Date(startRaw).getTime() : null;
+  if (startTime !== null && !Number.isNaN(startTime) && Date.now() < startTime) {
+    throw new AppError("This internship hasn't started yet", 403);
+  }
+
   // 3. Get the batch's task template IDs
   const batchId = doc.batchSnapshot?.batchId ?? "";
   type BatchLike = { _id?: unknown; taskTemplateIds?: unknown[]; certificationExamTemplateId?: unknown };
@@ -2604,7 +2632,7 @@ export async function getLearnerProgramBySlug(
     taskOids.length > 0
       ? await InternshipTaskModel.find({ _id: { $in: taskOids }, isActive: true })
           .select(
-            "title description taskType totalScore scoreThreshold unlockAfterDays dueDays questions",
+            "title description taskType totalScore scoreThreshold successPoints unlockAfterDays dueDays questions",
           )
           .lean()
       : [];
@@ -2647,6 +2675,10 @@ export async function getLearnerProgramBySlug(
       scoreThreshold:
         typeof (task as { scoreThreshold?: number }).scoreThreshold === "number"
           ? (task as { scoreThreshold: number }).scoreThreshold
+          : 0,
+      successPoints:
+        typeof (task as { successPoints?: number }).successPoints === "number"
+          ? (task as { successPoints: number }).successPoints
           : 0,
       unlockAfterDays,
       dueDays,
@@ -2740,6 +2772,12 @@ export async function getLearnerProgramBySlug(
       certificationTotalAchievable,
       certificationRequiredPoints,
       certificationMeetsThreshold,
+      certificationExamPassed: eligibility.examPassed,
+      certificateEligible: eligibility.certificateEligible,
+      certificationBreakdown: {
+        tasksTotal: eligibility.breakdown.tasksTotal,
+        attendanceTotal: eligibility.breakdown.meetingsTotal,
+      },
       ...(certificationPointsShortfall != null
         ? { certificationPointsShortfall }
         : {}),

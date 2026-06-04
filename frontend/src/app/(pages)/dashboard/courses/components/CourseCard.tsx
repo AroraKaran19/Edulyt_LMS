@@ -8,11 +8,14 @@ import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 
 interface CourseCardProps {
-  course: Course;
+  course?: Course | null;
   enrollment: Enrollment;
   progress: number;
   showCertificate: boolean;
 }
+
+// Circumference of the progress ring (r = 18).
+const RING = 2 * Math.PI * 18;
 
 const CourseCard = ({
   course,
@@ -21,6 +24,100 @@ const CourseCard = ({
   showCertificate,
 }: CourseCardProps) => {
   const router = useRouter();
+
+  // Course was deleted/unlinked: render a disabled history card from the
+  // courseName snapshot. Not clickable, no links — just preserved history.
+  if (!course) {
+    const snapshotName = enrollment.courseName || "Course no longer available";
+    return (
+      <div className="bg-white border border-gray-200 rounded-xl flex flex-col h-full shadow-sm overflow-hidden opacity-80 cursor-default">
+        {/* Placeholder image */}
+        <div className="relative w-full aspect-video overflow-hidden bg-gray-100 flex items-center justify-center">
+          <BookOpen className="w-8 h-8 text-gray-300" />
+          <div className="absolute top-3 left-3">
+            <div className="px-3 py-1.5 w-fit rounded-full text-xs font-semibold bg-gray-700/90 text-white border border-gray-800 flex items-center gap-1.5 backdrop-blur-sm">
+              <AlertCircle className="w-3 h-3" />
+              <span>Course no longer available</span>
+            </div>
+          </div>
+          {progress > 0 && (
+            <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-gray-200/50">
+              <div
+                className="h-full bg-gray-400"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Content */}
+        <div className="flex flex-col flex-1 p-4 sm:p-5">
+          <h3 className="font-bold text-sm sm:text-base text-gray-700 mb-2 line-clamp-2 min-h-10">
+            {snapshotName}
+          </h3>
+          <p className="text-[11px] text-gray-400 mb-4">
+            This course has been removed. Your enrollment is kept for records.
+          </p>
+
+          <div className="mt-auto flex items-center gap-3 pt-3 border-t border-gray-100">
+            {/* Progress Circle */}
+            <div className="relative w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center shrink-0">
+              <svg
+                className="w-10 h-10 sm:w-12 sm:h-12 -rotate-90"
+                viewBox="0 0 40 40"
+              >
+                <circle
+                  cx="20"
+                  cy="20"
+                  r="18"
+                  fill="none"
+                  stroke="#F3F4F6"
+                  strokeWidth="3"
+                />
+                <circle
+                  cx="20"
+                  cy="20"
+                  r="18"
+                  fill="none"
+                  stroke="#9CA3AF"
+                  strokeWidth="3"
+                  strokeDasharray={RING}
+                  strokeDashoffset={RING * (1 - progress / 100)}
+                  strokeLinecap="round"
+                />
+              </svg>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-[10px] sm:text-xs font-bold text-gray-700">
+                  {progress}%
+                </span>
+              </div>
+            </div>
+
+            <div className="flex flex-col min-w-0">
+              <span className="text-xs font-bold text-gray-700">
+                {progress}% Complete
+              </span>
+              <span className="text-[10px] text-gray-400 truncate">
+                {progress === 100
+                  ? "Course completed"
+                  : progress > 0
+                    ? "In progress"
+                    : "Not started"}
+              </span>
+            </div>
+
+            <div className="ml-auto shrink-0">
+              <div className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 border border-gray-200 text-gray-500 rounded-lg cursor-not-allowed">
+                <AlertCircle className="w-4 h-4" />
+                <span className="text-xs font-semibold">Unavailable</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const isTrial = enrollment.isTrial;
   const expiryDate = isTrial && enrollment.trialExpiresAt
     ? new Date(enrollment.trialExpiresAt)

@@ -54,6 +54,7 @@ export default function TaskUpsertModal({
   const [unlockAfterDays, setUnlockAfterDays] = useState("0");
   const [dueDays, setDueDays] = useState("7");
   const [scoreThreshold, setScoreThreshold] = useState("0");
+  const [successPoints, setSuccessPoints] = useState("0");
   const [isActive, setIsActive] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [loadingDetail, setLoadingDetail] = useState(false);
@@ -65,6 +66,7 @@ export default function TaskUpsertModal({
     setUnlockAfterDays("0");
     setDueDays("7");
     setScoreThreshold("0");
+    setSuccessPoints("0");
     setIsActive(true);
     setSubmitting(false);
     setLoadingDetail(false);
@@ -106,6 +108,7 @@ export default function TaskUpsertModal({
         setUnlockAfterDays(String(d.unlockAfterDays ?? 0));
         setDueDays(String(d.dueDays ?? 0));
         setScoreThreshold(String(d.scoreThreshold ?? 0));
+        setSuccessPoints(String(d.successPoints ?? 0));
         setIsActive(d.isActive !== false);
       } catch {
         if (!cancelled) {
@@ -149,6 +152,12 @@ export default function TaskUpsertModal({
       return;
     }
 
+    const successPointsNum = parseInt(successPoints, 10);
+    if (Number.isNaN(successPointsNum) || successPointsNum < 0) {
+      toast.error("Success points must be a non-negative integer");
+      return;
+    }
+
     const payload = {
       title: trimmedTitle,
       description: description.trim(),
@@ -156,6 +165,7 @@ export default function TaskUpsertModal({
       unlockAfterDays: unlock,
       dueDays: due,
       scoreThreshold: thresholdRaw,
+      successPoints: successPointsNum,
       isActive,
     };
 
@@ -302,23 +312,42 @@ export default function TaskUpsertModal({
           </div>
 
           <p className="text-xs text-gray-500 -mt-2">
-            Total score is computed from the selected questions when you save.
-            Score threshold cannot exceed that total.
+            Total marks are computed from the selected questions when you save.
+            The score threshold cannot exceed that total.
           </p>
 
-          <Input
-            label="Score threshold"
-            type="number"
-            min={0}
-            step="any"
-            required
-            placeholder="0"
-            value={scoreThreshold}
-            onChange={(e) => setScoreThreshold(e.target.value)}
-          />
-          <p className="text-xs text-gray-500 -mt-2">
-            Minimum total points a learner must score to pass this task.
-          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="flex flex-col gap-1">
+              <Input
+                label="Score threshold (marks)"
+                type="number"
+                min={0}
+                step="any"
+                required
+                placeholder="0"
+                value={scoreThreshold}
+                onChange={(e) => setScoreThreshold(e.target.value)}
+              />
+              <p className="text-xs text-gray-500">
+                Minimum marks a learner must score to pass this task.
+              </p>
+            </div>
+            <div className="flex flex-col gap-1">
+              <Input
+                label="Success points"
+                type="number"
+                min={0}
+                required
+                placeholder="0"
+                value={successPoints}
+                onChange={(e) => setSuccessPoints(e.target.value)}
+              />
+              <p className="text-xs text-gray-500">
+                Internship success points credited once the learner passes —
+                these count toward the certificate.
+              </p>
+            </div>
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input

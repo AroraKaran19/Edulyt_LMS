@@ -22,8 +22,12 @@ const NewCoursesSection = () => {
       });
 
       if (result) {
-        // Get the most recent enrollments (newly enrolled)
-        setNewCourses(result.enrollments.slice(0, 8));
+        // Deleted/unlinked courses belong only under My Courses, not on Home —
+        // filter them out here (the card keeps a null-guard as a safety net).
+        const withCourse = result.enrollments.filter(
+          (e) => e.courseId && typeof e.courseId === "object",
+        );
+        setNewCourses(withCourse.slice(0, 8));
       }
     };
 

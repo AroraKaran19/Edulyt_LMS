@@ -59,7 +59,7 @@ const SuccessPointsSection = () => {
           className="w-full text-xs sm:text-sm font-bold py-2.5"
         >
           <Send className="size-4" />
-          Transfer Points
+          Wallet
         </OrangeButton>
       </div>
 

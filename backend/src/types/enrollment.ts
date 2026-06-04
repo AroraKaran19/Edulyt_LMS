@@ -83,6 +83,9 @@ export interface Enrollment {
   _id?: string;
   userId: User["_id"];
   courseId: Course["_id"];
+  /** Snapshot of the course title at enrollment time. Preserves enrollment history
+   *  if the course is later deleted and courseId is unlinked (set to null). */
+  courseName?: string;
   enrolledAt: Date;
   status: "active" | "completed" | "dropped" | "revoked" | "paused";
   progress: EnrollmentProgressSummary; // Simplified progress summary

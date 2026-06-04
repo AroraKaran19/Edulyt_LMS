@@ -326,8 +326,11 @@ export interface LearnerTaskRow {
   _id: string;
   title: string;
   description: string;
+  /** Total marks (grade max). */
   totalScore: number;
   scoreThreshold: number;
+  /** Internship success points this task awards on pass. */
+  successPoints: number;
   unlockAfterDays: number;
   dueDays: number;
   questionCount: number;
@@ -350,8 +353,20 @@ export interface LearnerProgramEnrollment {
   enrollmentType?: string;
   enrolledAt?: string;
   internshipSuccessPoints: number;
-  /** Minimum internship success points required for issuing the certificate (from internship doc). */
+  /** Percentage (0–100) of achievable work points required for the certificate. */
   certificationThreshold: number;
+  /** Total achievable work points (tasks + attendance; exam excluded). */
+  certificationTotalAchievable?: number;
+  /** Absolute work points required = ceil(totalAchievable × threshold / 100). */
+  certificationRequiredPoints?: number;
+  /** Gate 1 — work-points threshold met. */
+  certificationMeetsThreshold?: boolean;
+  /** Gate 2 — certification exam passed. */
+  certificationExamPassed?: boolean;
+  /** Both gates cleared — qualifies for the certificate. */
+  certificateEligible?: boolean;
+  /** Where achievable work points come from. */
+  certificationBreakdown?: { tasksTotal: number; attendanceTotal: number };
   /** When certificationThreshold > 0 — points still needed (0 = met). */
   certificationPointsShortfall?: number;
   /** When purchase enabled: shortfall × INR per point (rough Paytm total). */

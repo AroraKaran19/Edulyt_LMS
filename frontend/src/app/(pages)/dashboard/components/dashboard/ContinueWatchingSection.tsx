@@ -30,6 +30,11 @@ const ContinueWatchingSection = () => {
         // 1. Progress is < 100 (not completed), AND
         // 2. (Has completed contents OR has lastActivityAt OR progress > 0)
         const inProgressCourses = result.enrollments.filter((enrollment) => {
+          // Skip deleted/unlinked courses — these belong only under My Courses,
+          // not on the Home dashboard.
+          if (!enrollment.courseId || typeof enrollment.courseId !== "object")
+            return false;
+
           // Check if enrollment has progress data
           const progress = calculateProgress(enrollment);
           

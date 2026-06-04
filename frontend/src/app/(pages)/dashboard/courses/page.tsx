@@ -96,10 +96,20 @@ const CoursesPage = () => {
     });
 
     if (result) {
+      // A deleted/unlinked course resolves to a null/non-object courseId after
+      // populate. Such enrollments are history: show them only under "All", never
+      // under In Progress / Completed / Newly bought.
+      const hasLiveCourse = (enrollment: Enrollment) =>
+        !!enrollment.courseId && typeof enrollment.courseId === "object";
+
+      let filteredEnrollments =
+        activeTab === "All"
+          ? result.enrollments
+          : result.enrollments.filter(hasLiveCourse);
+
       // Filter for "Newly bought" tab - only show direct enrollments (not trial, gift, or promotion)
-      let filteredEnrollments = result.enrollments;
       if (activeTab === "Newly bought") {
-        filteredEnrollments = result.enrollments.filter(
+        filteredEnrollments = filteredEnrollments.filter(
           (enrollment) => enrollment.enrollmentSource === "direct",
         );
 
@@ -113,7 +123,9 @@ const CoursesPage = () => {
       // Recalculate pagination for filtered results
       if (activeTab === "Newly bought") {
         const allDirectEnrollments = result.enrollments.filter(
-          (enrollment) => enrollment.enrollmentSource === "direct",
+          (enrollment) =>
+            enrollment.enrollmentSource === "direct" &&
+            hasLiveCourse(enrollment),
         );
         const filteredTotal = allDirectEnrollments.length;
         const filteredTotalPages = Math.ceil(filteredTotal / 12);
@@ -403,13 +415,19 @@ const CoursesPage = () => {
               {/* Courses Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 lg:gap-6">
                 {enrollments.map((enrollment, idx) => {
-                  const course = enrollment.courseId as Course; // Backend populates courseId as Course object
+                  // courseId is null when the course was deleted/unlinked; the card
+                  // then renders a disabled "course no longer available" state.
+                  const course =
+                    enrollment.courseId &&
+                    typeof enrollment.courseId === "object"
+                      ? (enrollment.courseId as Course)
+                      : null;
                   const progress = calculateProgress(enrollment);
                   const showCertificate = shouldShowCertificate(enrollment);
 
                   return (
                     <CourseCard
-                      key={`${course._id}-${idx}`}
+                      key={`${enrollment._id ?? course?._id ?? idx}-${idx}`}
                       course={course}
                       enrollment={enrollment}
                       progress={progress}

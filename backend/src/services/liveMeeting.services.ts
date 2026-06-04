@@ -864,6 +864,16 @@ export async function getStudentLiveMeetingsBySlugPaginated(
     );
   }
 
+  // Cohort hasn't started yet — no live-class access before the start date
+  // (mirrors the program-detail gate in getLearnerProgramBySlug).
+  const startRaw = (
+    enrollment as { batchSnapshot?: { internshipStartDate?: Date | string } }
+  ).batchSnapshot?.internshipStartDate;
+  const startTime = startRaw ? new Date(startRaw).getTime() : null;
+  if (startTime !== null && !Number.isNaN(startTime) && Date.now() < startTime) {
+    throw new AppError("This internship hasn't started yet", 403);
+  }
+
   const batchId = (
     enrollment as { batchSnapshot?: { batchId?: string } }
   ).batchSnapshot?.batchId;

@@ -51,8 +51,10 @@ export type UpsertInternshipTaskBody = {
   questions: string[];
   unlockAfterDays: number;
   dueDays: number;
-  /** Minimum total points to pass; must be <= computed totalScore. Default 0. */
+  /** Minimum total points (marks) to pass; must be <= computed totalScore. Default 0. */
   scoreThreshold?: number;
+  /** Internship success points awarded once the learner passes. Default 0. */
+  successPoints?: number;
   isActive?: boolean;
 };
 
@@ -73,6 +75,7 @@ export type InternshipTaskDetailAdmin = {
   questions: InternshipTaskQuestionSummary[];
   totalScore: number;
   scoreThreshold: number;
+  successPoints: number;
   unlockAfterDays: number;
   dueDays: number;
   isActive: boolean;
@@ -185,6 +188,7 @@ async function computeTaskFields(body: UpsertInternshipTaskBody): Promise<{
   questions: mongoose.Types.ObjectId[];
   totalScore: number;
   scoreThreshold: number;
+  successPoints: number;
   unlockAfterDays: number;
   dueDays: number;
   isActive: boolean;
@@ -210,12 +214,17 @@ async function computeTaskFields(body: UpsertInternshipTaskBody): Promise<{
     body.scoreThreshold ?? 0,
     totalScore,
   );
+  const successPoints = parseNonNegInt(
+    body.successPoints ?? 0,
+    "successPoints",
+  );
   return {
     title,
     description,
     questions: questionOids,
     totalScore,
     scoreThreshold,
+    successPoints,
     unlockAfterDays,
     dueDays,
     isActive: body.isActive !== false,
@@ -428,6 +437,10 @@ export async function getInternshipTaskByIdAdmin(
     totalScore: typeof doc.totalScore === "number" ? doc.totalScore : 0,
     scoreThreshold:
       typeof doc.scoreThreshold === "number" ? doc.scoreThreshold : 0,
+    successPoints:
+      typeof (doc as { successPoints?: number }).successPoints === "number"
+        ? (doc as { successPoints: number }).successPoints
+        : 0,
     unlockAfterDays:
       typeof doc.unlockAfterDays === "number" ? doc.unlockAfterDays : 0,
     dueDays: typeof doc.dueDays === "number" ? doc.dueDays : 0,

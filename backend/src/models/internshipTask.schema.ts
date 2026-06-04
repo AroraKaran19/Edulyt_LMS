@@ -8,8 +8,10 @@ const internshipTaskSchema = new mongoose.Schema(
       { type: mongoose.Schema.Types.ObjectId, ref: "InternshipQuestion" },
     ],
     totalScore: { type: Number, required: true, default: 0, min: 0 },
-    /** Minimum aggregate score required to pass (must be <= totalScore). */
+    /** Minimum aggregate score (marks) required to pass (must be <= totalScore). */
     scoreThreshold: { type: Number, required: true, default: 0, min: 0 },
+    /** Internship success points awarded once the learner passes (marks >= scoreThreshold). */
+    successPoints: { type: Number, required: true, default: 0, min: 0 },
     unlockAfterDays: { type: Number, required: true, default: 0, min: 0 },
     dueDays: { type: Number, required: true, default: 0, min: 0 },
     isActive: { type: Boolean, default: true },

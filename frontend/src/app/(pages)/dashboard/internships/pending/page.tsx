@@ -120,7 +120,7 @@ export default function InternshipEntrancePendingPage() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <Sparkles className="w-4 h-4 text-amber-700 shrink-0" />
                       <span className="text-xs font-semibold uppercase tracking-wide text-amber-800/90">
-                        {entranceAttentionLabel(row.status)}
+                        {entranceAttentionLabel(row.status, row.examEndAt)}
                       </span>
                     </div>
                     <p className="text-base font-bold text-stone-900 mt-1 line-clamp-2">
@@ -132,7 +132,7 @@ export default function InternshipEntrancePendingPage() {
                       </p>
                     )}
                     <p className="text-sm text-stone-600 mt-2">
-                      {entranceAttentionSummary(row.status)}
+                      {entranceAttentionSummary(row.status, row.examEndAt)}
                     </p>
                   </div>
                   {showExamAction ? (

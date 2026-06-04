@@ -319,6 +319,8 @@ export const createEnrollmentAfterPayment = async (order: any) => {
     const enrollment = new EnrollmentModel({
       userId: order.userId,
       courseId: order.courseId,
+      // Snapshot the course title so enrollment history survives course deletion/unlink.
+      courseName: course.title,
       planType: order.planType, // Include planType from order
       enrolledAt: new Date(),
       status: "active",

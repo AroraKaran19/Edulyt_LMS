@@ -82,7 +82,10 @@ export interface LastContentAccessed {
 export interface Enrollment {
   _id?: string;
   userId: User | string;
-  courseId: Course | string;
+  courseId: Course | string | null;
+  /** Snapshot of the course title at enrollment time. Shown when the course was
+   *  deleted/unlinked (courseId === null) so enrollment history is preserved. */
+  courseName?: string;
   enrolledAt: Date;
   status: "active" | "completed" | "dropped" | "revoked" | "paused";
   progress: EnrollmentProgressSummary; // Simplified progress summary

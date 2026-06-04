@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   CheckCircle2,
@@ -202,6 +202,7 @@ type SubmissionShape = {
 
 export default function InternshipTaskPage() {
   const params = useParams<{ slug: string; taskId: string }>();
+  const router = useRouter();
   const slug = decodeURIComponent(params.slug ?? "");
   const taskId = decodeURIComponent(params.taskId ?? "");
 
@@ -279,6 +280,14 @@ export default function InternshipTaskPage() {
         }
       }
     } catch (e: unknown) {
+      const status = (e as { response?: { status?: number } })?.response
+        ?.status;
+      // Not enrolled / no access / cohort hasn't started yet — bounce to the
+      // list, matching the program page's behaviour.
+      if (status === 403 || status === 404) {
+        router.replace("/dashboard/internships");
+        return;
+      }
       const msg =
         (e as { response?: { data?: { error?: { message?: string } } } })
           ?.response?.data?.error?.message ?? "Failed to load task.";
@@ -286,7 +295,7 @@ export default function InternshipTaskPage() {
     } finally {
       setLoading(false);
     }
-  }, [slug, taskId]);
+  }, [slug, taskId, router]);
 
   useEffect(() => {
     void loadProgram();

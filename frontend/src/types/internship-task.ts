@@ -28,8 +28,11 @@ export interface InternshipTask {
   /** Computed sum of all question scores — stored for fast reads. */
   totalScore: number;
 
-  /** Minimum aggregate score required to pass (≤ totalScore). */
+  /** Minimum aggregate marks required to pass (≤ totalScore). */
   scoreThreshold: number;
+
+  /** Internship success points awarded once the learner passes (marks ≥ scoreThreshold). */
+  successPoints: number;
 
   /**
    * Days after a user's enrollmentDate when this task becomes visible.
@@ -84,6 +87,7 @@ export type InternshipTaskTemplateDetail = {
   questions: InternshipTaskQuestionSummary[];
   totalScore: number;
   scoreThreshold: number;
+  successPoints: number;
   unlockAfterDays: number;
   dueDays: number;
   isActive: boolean;

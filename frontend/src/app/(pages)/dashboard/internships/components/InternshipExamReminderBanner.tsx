@@ -27,7 +27,7 @@ export default function InternshipExamReminderBanner({ enrollment }: Props) {
           </div>
           <div className="min-w-0">
             <p className="text-sm font-bold text-amber-950">
-              Entrance exam — {entranceAttentionLabel(enrollment.status)}
+              Entrance exam — {entranceAttentionLabel(enrollment.status, enrollment.examEndAt)}
             </p>
             <p className="text-sm text-amber-950/90 mt-0.5 line-clamp-2 font-medium">
               {title}

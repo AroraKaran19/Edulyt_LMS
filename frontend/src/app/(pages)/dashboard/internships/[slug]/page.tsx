@@ -246,6 +246,14 @@ function TaskCard({ task, slug }: { task: LearnerTaskRow; slug: string }) {
     taskStatusConfig(task);
   const href = `/dashboard/internships/${encodeURIComponent(slug)}/${encodeURIComponent(task._id)}`;
 
+  // Marks (grade) shown as x/y; success points are awarded all-or-nothing once
+  // the learner is reviewed AND their marks clear the task's threshold.
+  const marks = task.submission ? task.submission.totalAwardedScore : 0;
+  const passed =
+    !!task.submission &&
+    task.submission.status === "fully_reviewed" &&
+    marks >= task.scoreThreshold;
+
   return (
     <div className="flex items-start gap-4 rounded-2xl border border-stone-200/80 bg-white p-4 shadow-sm hover:shadow-md transition-shadow">
       {/* Index indicator */}
@@ -279,19 +287,35 @@ function TaskCard({ task, slug }: { task: LearnerTaskRow; slug: string }) {
             </span>{" "}
             question{task.questionCount !== 1 ? "s" : ""}
           </span>
+
+          {/* Marks (grade) as x/y */}
           {task.totalScore > 0 && (
             <span>
-              <span className="font-medium text-stone-700">
-                {task.totalScore}
+              <span className="font-medium text-stone-700 tabular-nums">
+                {marks}
+              </span>
+              <span className="text-stone-400 tabular-nums">
+                /{task.totalScore}
               </span>{" "}
-              pts total
+              marks
             </span>
           )}
-          {task.submission && (
-            <span className="text-emerald-700 font-medium">
-              +{task.submission.totalAwardedScore} pts earned
-            </span>
-          )}
+
+          {/* Success points this task awards on pass */}
+          {task.successPoints > 0 &&
+            (passed ? (
+              <span className="font-medium text-emerald-700">
+                +{task.successPoints} success pts
+              </span>
+            ) : (
+              <span className="text-amber-700">
+                <span className="font-medium tabular-nums">
+                  {task.successPoints}
+                </span>{" "}
+                success pts on pass
+              </span>
+            ))}
+
           <span className="text-stone-400">Due {formatDate(task.dueAt)}</span>
         </div>
       </div>
@@ -586,27 +610,32 @@ export default function InternshipProgramPage() {
   const certShortfall = enrollment.certificationPointsShortfall;
   const approxInr = enrollment.approxInrToReachCertificationThreshold;
 
-  /**
-   * Show "buy points" / certificate shortfall banners only when:
-   *   - learner has submitted the cohort's certification exam (cohort has one), OR
-   *   - internship has reached `completed` — they can still purchase points to
-   *     upgrade to a certificate even after the program ends.
-   * Otherwise (e.g. enrolled but exam not yet taken, or cohort has no cert
-   * exam and program is still running), keep these hidden so users aren't
-   * pushed to buy before it's relevant.
-   */
-  const certificationExamConfigured =
-    enrollment.certificationExamConfigured === true;
-  const certificationExamSubmitted =
-    enrollment.certificationExamSubmitted === true;
-  const isCompleted = String(enrollment.status) === "completed";
-  const pointsPurchaseUnlocked =
-    (certificationExamConfigured && certificationExamSubmitted) || isCompleted;
-  const awaitingCertificateBelowPoints =
+  // Show Buy-points UI only when:
+  // 1. There is a shortfall and purchases are enabled
+  // 2. Certification exam is configured AND result has been released (exam submitted)
+  const canBuyNow =
     typeof certShortfall === "number" &&
     certShortfall > 0 &&
     enrollment.certificationThreshold > 0 &&
-    pointsPurchaseUnlocked;
+    !!pointsPurchase &&
+    enrollment.certificationExamConfigured === true &&
+    enrollment.certificationExamSubmitted === true;
+
+  // ── Certification eligibility (progress bar + two gates) ──
+  const certThreshold = enrollment.certificationThreshold;
+  const showEligibility = certThreshold > 0;
+  const requiredPts = enrollment.certificationRequiredPoints ?? 0;
+  const achievablePts = enrollment.certificationTotalAchievable ?? 0;
+  const earnedPts = enrollment.internshipSuccessPoints;
+  const pointsMet = enrollment.certificationMeetsThreshold === true;
+  const eligible = enrollment.certificateEligible === true;
+  const certBreakdown = enrollment.certificationBreakdown;
+  const pctToTarget =
+    requiredPts > 0
+      ? Math.min(100, Math.round((earnedPts / requiredPts) * 100))
+      : pointsMet
+        ? 100
+        : 0;
 
   return (
     <div className="max-w-4xl lg:max-w-7xl mx-auto py-6 space-y-6">
@@ -619,7 +648,7 @@ export default function InternshipProgramPage() {
         My Internships
       </Link>
 
-      {/* Program title + optional purchase */}
+      {/* Program title */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0 flex-1">
           <h1 className="text-2xl sm:text-3xl font-bold text-stone-900">
@@ -642,19 +671,6 @@ export default function InternshipProgramPage() {
             )}
           </div>
         </div>
-        {pointsPurchase && awaitingCertificateBelowPoints ? (
-          <div
-            id="buy-success-points"
-            className="w-full lg:w-auto lg:max-w-md shrink-0"
-          >
-            <BuyInternshipSuccessPointsPanel
-              enrollmentId={enrollment._id}
-              inrPerPoint={pointsPurchase.inrPerPoint}
-              currentPoints={enrollment.internshipSuccessPoints}
-              certificationThreshold={enrollment.certificationThreshold}
-            />
-          </div>
-        ) : null}
       </div>
 
       {enrollment.offerLetterUrl ? (
@@ -689,40 +705,75 @@ export default function InternshipProgramPage() {
         </div>
       ) : null}
 
-      {awaitingCertificateBelowPoints ? (
-        <div className="rounded-2xl border border-amber-300/80 bg-amber-100/40 px-4 py-3 text-sm text-amber-950">
-          <p className="font-semibold">Certificate — success points</p>
-          <p className="mt-1 text-amber-950/90 text-xs sm:text-sm leading-relaxed">
-            You need{" "}
-            <span className="font-mono font-semibold">
-              {enrollment.certificationThreshold}
-            </span>{" "}
-            internship success points total to qualify for your certificate.
-            You have{" "}
-            <span className="font-mono font-semibold">
-              {enrollment.internshipSuccessPoints}
-            </span>{" "}
-            ({certShortfall} more needed
-            {typeof approxInr === "number" && pointsPurchase
-              ? ` — about ₹${approxInr.toLocaleString("en-IN")} to buy the gap at ₹${pointsPurchase.inrPerPoint.toLocaleString("en-IN")} per point`
-              : ""}
-            ).
-          </p>
-          {pointsPurchase ? (
-            <Link
-              href="#buy-success-points"
-              className="mt-2 inline-block text-xs font-bold text-amber-900 underline underline-offset-2"
+      {showEligibility && (
+        <div className="rounded-2xl border border-stone-200 bg-white p-4 sm:p-5 shadow-sm">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <BadgeCheck className="size-5 text-amber-600" />
+              <h2 className="text-base font-bold text-stone-900">
+                Certification progress
+              </h2>
+            </div>
+            <span
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold",
+                eligible
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                  : "border-amber-200 bg-amber-50 text-amber-800",
+              )}
             >
-              Buy points →
-            </Link>
-          ) : (
-            <p className="mt-2 text-xs text-amber-900/80">
-              Complete tasks for points, or ask your admin to enable purchases (Settings →
-              Points and certification threshold on the internship).
+              <span
+                className={cn(
+                  "size-1.5 rounded-full",
+                  eligible ? "bg-emerald-500" : "bg-amber-500",
+                )}
+              />
+              {eligible ? "Eligible" : "In progress"}
+            </span>
+          </div>
+
+          {/* Progress bar — earned vs required */}
+          <div className="space-y-1.5">
+            <div className="flex items-baseline justify-between">
+              <span className="text-sm text-stone-600">Success points earned</span>
+              <span className="text-sm font-bold tabular-nums text-stone-900">
+                {earnedPts}{" "}
+                <span className="font-medium text-stone-400">
+                  / {requiredPts} needed
+                </span>
+              </span>
+            </div>
+            <div className="h-2.5 w-full overflow-hidden rounded-full bg-stone-100">
+              <div
+                className={cn(
+                  "h-full rounded-full transition-all duration-500",
+                  pointsMet ? "bg-emerald-500" : "bg-amber-500",
+                )}
+                style={{ width: `${pctToTarget}%` }}
+              />
+            </div>
+            <p className="text-[11px] text-stone-400">
+              Need {certThreshold}% of {achievablePts} achievable points (tasks +
+              attendance).
+              {certBreakdown
+                ? ` Tasks ${certBreakdown.tasksTotal} · Attendance ${certBreakdown.attendanceTotal}.`
+                : ""}
             </p>
+          </div>
+
+          {/* Buy points — shown when short + purchase enabled + certification exam configured and submitted. */}
+          {canBuyNow && pointsPurchase && (
+            <div id="buy-success-points" className="mt-3">
+              <BuyInternshipSuccessPointsPanel
+                enrollmentId={enrollment._id}
+                inrPerPoint={pointsPurchase.inrPerPoint}
+                currentPoints={enrollment.internshipSuccessPoints}
+                certificationThreshold={enrollment.certificationThreshold}
+              />
+            </div>
           )}
         </div>
-      ) : null}
+      )}
 
       {/* Tab switch: Tasks (default) | Live Classes */}
       <div className="inline-flex items-center gap-1 rounded-full border border-stone-200 bg-stone-100/80 p-1">

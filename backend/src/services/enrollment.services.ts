@@ -94,9 +94,15 @@ export const CreateEnrollmentService = async (enrollmentData: {
       throw new AppError("User is already enrolled in this course", 400);
     }
 
+    // Fetch the course once: used for the courseName snapshot here AND the
+    // instructor analytics update below.
+    const course = await CourseModel.findById(enrollmentData.courseId);
+
     const enrollment = new EnrollmentModel({
       ...enrollmentData,
       ...(giftFromSnapshot ? { giftFromSnapshot } : {}),
+      // Snapshot the course title so enrollment history survives course deletion/unlink.
+      courseName: course?.title || undefined,
       enrolledAt: new Date(),
       status: "active",
       progress: {
@@ -136,9 +142,7 @@ export const CreateEnrollmentService = async (enrollmentData: {
       { new: true },
     );
 
-    // Get course to access instructors
-    const course = await CourseModel.findById(enrollmentData.courseId);
-
+    // Update instructor totals using the course fetched above.
     if (course && course.instructor) {
       // Extract instructor IDs
       const instructorIds: string[] = [];
@@ -325,9 +329,13 @@ export const GetUserEnrollmentsService = async (
       .limit(limit)
       .lean();
 
-    const filteredEnrollments = enrollments.filter(
-      (enrollment) => enrollment.courseId,
-    );
+    // Keep ALL enrollments — including those whose course was deleted/unlinked
+    // (courseId === null). The frontend renders these as a disabled "course no
+    // longer available" card from the courseName snapshot. Dropping them here is
+    // what previously made the stat count (which includes them) disagree with the
+    // visible list. The lessonCount/moduleCount enrichment below already guards
+    // against a null course.
+    const filteredEnrollments = enrollments;
 
     // Add lightweight counts for dashboard cards without populating full modules tree.
     const courseIds = Array.from(

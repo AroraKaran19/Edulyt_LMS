@@ -3,13 +3,13 @@ import InstructorCard from "@/components/ui/course/InstructorCard";
 import ProgressChart from "@/components/ui/charts/ProgressChart";
 import { Course, CourseModule, Instructor } from "@/types";
 import { Enrollment } from "@/types/enrollment";
-import { Plus } from "lucide-react";
+import { Plus, BookOpen, AlertCircle } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCallback } from "react";
 
 interface CourseCard2Props {
-  course: Course;
+  course?: Course | null;
   enrollment?: Enrollment;
 }
 
@@ -20,6 +20,33 @@ const CourseCard2 = ({ course, enrollment }: CourseCard2Props) => {
     if (!enrollment?.progress) return 0;
     return Math.round(enrollment.progress.overallCompletion || 0);
   }, []);
+
+  // Course was deleted/unlinked — render a disabled "no longer available"
+  // container (after hooks, so they're never conditionally skipped) instead of
+  // crashing on course.thumbnail / course.title.
+  if (!course) {
+    const name = enrollment?.courseName || "Course no longer available";
+    return (
+      <div className="flex course-card-2 w-full h-full flex-col gap-4 rounded-lg border border-gray-200 p-3 opacity-80 cursor-default">
+        <div className="image-container relative w-full">
+          <div className="flex aspect-video max-h-[132px] w-full items-center justify-center rounded-lg bg-gray-100">
+            <BookOpen className="h-8 w-8 text-gray-300" />
+          </div>
+          <div className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-md bg-gray-700/90 px-2 py-0.5 text-[10px] font-semibold text-white">
+            <AlertCircle className="h-3 w-3" /> Unavailable
+          </div>
+        </div>
+        <div className="flex h-full w-full flex-col gap-1">
+          <h2 className="line-clamp-1 text-ellipsis text-base font-bold text-gray-700">
+            {name}
+          </h2>
+          <p className="text-[11px] text-gray-400">
+            Course no longer available — enrollment kept for records.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const lessonCountFromApi = (course as unknown as { lessonCount?: number })
     ?.lessonCount;

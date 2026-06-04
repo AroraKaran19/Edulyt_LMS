@@ -22,12 +22,51 @@ const STATUS_USER_SUMMARY: Record<string, string> = {
     "You’re in the merit pool. Seat confirmation is pending from the program team.",
 };
 
-export function entranceAttentionSummary(status: string): string {
+export type ExamWindowState = "not_yet" | "open" | "closed";
+
+/**
+ * Where "now" falls relative to the entrance-exam window. Shared with
+ * ExamCountdownButton so the banner label and the button can't disagree about
+ * whether the window has closed.
+ */
+export function getExamWindowState(
+  examStartAt?: string,
+  examEndAt?: string,
+): ExamWindowState {
+  const now = Date.now();
+  const start = examStartAt ? new Date(examStartAt).getTime() : null;
+  const end = examEndAt ? new Date(examEndAt).getTime() : null;
+  if (start && now < start) return "not_yet";
+  if (end && now > end) return "closed";
+  return "open";
+}
+
+export function entranceAttentionSummary(
+  status: string,
+  examEndAt?: string,
+): string {
+  // Once the window has passed, a still-`exam_registered` learner is awaiting
+  // results — not "registered, exam ahead".
+  if (
+    status === "exam_registered" &&
+    getExamWindowState(undefined, examEndAt) === "closed"
+  ) {
+    return "The entrance exam window has closed. We’ll update your status once results are announced.";
+  }
   return STATUS_USER_SUMMARY[status] ?? "Next steps for this program are in progress.";
 }
 
-export function entranceAttentionLabel(status: string): string {
-  if (status === "exam_registered") return "Entrance exam scheduled / pending";
+export function entranceAttentionLabel(
+  status: string,
+  examEndAt?: string,
+): string {
+  if (status === "exam_registered") {
+    // "scheduled / pending" implies the exam is still to be taken. Once the
+    // window has closed, the learner is waiting on results instead.
+    return getExamWindowState(undefined, examEndAt) === "closed"
+      ? "Awaiting results"
+      : "Entrance exam scheduled / pending";
+  }
   if (status === "exam_attempted") return "Exam submitted — pending outcome";
   if (status === "in_merit_pool") return "In merit pool — selection pending";
   return "Pending";

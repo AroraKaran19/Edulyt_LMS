@@ -109,6 +109,10 @@ async function buildTaskSnapshot(
       typeof (task as { scoreThreshold?: number }).scoreThreshold === "number"
         ? (task as { scoreThreshold: number }).scoreThreshold
         : 0,
+    successPoints:
+      typeof (task as { successPoints?: number }).successPoints === "number"
+        ? (task as { successPoints: number }).successPoints
+        : 0,
     unlockAfterDays:
       typeof task.unlockAfterDays === "number" ? task.unlockAfterDays : 0,
     dueDays: typeof task.dueDays === "number" ? task.dueDays : 0,
@@ -958,6 +962,11 @@ export async function reviewFileResponse(
     throw new AppError("Submission has not been submitted yet", 400);
   }
 
+  // Pre-review state — used to seed/reconcile the success-points ledger below.
+  const prevStatus = String(sub.status);
+  const prevTotal =
+    typeof sub.totalAwardedScore === "number" ? sub.totalAwardedScore : 0;
+
   const snapshot = sub.toObject().templateSnapshot as
     | TaskTemplateSnapshot
     | ExamTemplateSnapshot;
@@ -1010,7 +1019,6 @@ export async function reviewFileResponse(
   // The submission only counts as fully reviewed (and accrues points) once every
   // file answer is actually `reviewed`.
   const allReviewed = fileResps.every((r) => r.status === "reviewed");
-  const wasAlreadyFullyReviewed = sub.status === "fully_reviewed";
 
   const subFor = String(
     (sub as { submissionFor?: unknown }).submissionFor ?? "",
@@ -1030,23 +1038,67 @@ export async function reviewFileResponse(
     sub.status = allReviewed ? "fully_reviewed" : "partially_reviewed";
   }
 
+  // Reconcile the success-points ledger for TASK submissions so the learner's
+  // points always track the current review state: approving credits them,
+  // requesting a resubmission (which resets the question's awarded score) claws
+  // them back, and re-approving never double-credits. The delta is what we
+  // add/subtract; the ledger field records what's currently credited.
+  // Exam paths keep their own accrual (entrance = gate-only; certification
+  // accrues on finalize), so they're untouched here.
+  let pointsDelta = 0;
+  if (subFor === "task") {
+    const taskSnap = snapshot as TaskTemplateSnapshot;
+    // Read successPoints/scoreThreshold LIVE from the task — admins set/adjust
+    // these after submissions exist (the snapshot is frozen at submit time and
+    // may predate the field). This matches what eligibility's achievable uses.
+    const liveTask = await InternshipTaskModel.findById(
+      (sub as { taskId?: unknown }).taskId,
+    )
+      .select("successPoints scoreThreshold")
+      .lean<{ successPoints?: number; scoreThreshold?: number } | null>();
+    const scoreThreshold =
+      typeof liveTask?.scoreThreshold === "number"
+        ? liveTask.scoreThreshold
+        : typeof taskSnap.scoreThreshold === "number"
+          ? taskSnap.scoreThreshold
+          : 0;
+    // Certificate "credits" = the task's configured successPoints, awarded
+    // all-or-nothing once the learner's MARKS reach the threshold. This is
+    // independent of the grading marks (totalAwardedScore).
+    const successPoints =
+      typeof liveTask?.successPoints === "number"
+        ? liveTask.successPoints
+        : typeof taskSnap.successPoints === "number"
+          ? taskSnap.successPoints
+          : 0;
+
+    // Seed the ledger for submissions created before it existed.
+    let credited = (sub as { creditedSuccessPoints?: number })
+      .creditedSuccessPoints;
+    if (credited === undefined || credited === null) {
+      credited =
+        prevStatus === "fully_reviewed" && prevTotal >= scoreThreshold
+          ? successPoints
+          : 0;
+    }
+
+    const creditable =
+      sub.status === "fully_reviewed" && sub.totalAwardedScore >= scoreThreshold
+        ? successPoints
+        : 0;
+
+    pointsDelta = creditable - credited;
+    (sub as { creditedSuccessPoints?: number }).creditedSuccessPoints =
+      creditable;
+  }
+
   await sub.save();
 
-  // Accrue success points the first time this task submission reaches
-  // fully_reviewed (guard against double-increment on re-reviews).
-  if (
-    allReviewed &&
-    !wasAlreadyFullyReviewed &&
-    sub.status === "fully_reviewed"
-  ) {
-    await accrueSuccessPointsIfPassed({
-      submissionFor: String(
-        (sub as { submissionFor?: unknown }).submissionFor ?? "",
-      ),
-      enrollmentId: (sub as { enrollmentId?: unknown }).enrollmentId,
-      totalAwardedScore: sub.totalAwardedScore,
-      templateSnapshot: sub.toObject().templateSnapshot,
-    });
+  if (pointsDelta !== 0) {
+    await InternshipEnrollmentModel.findByIdAndUpdate(
+      (sub as { enrollmentId?: unknown }).enrollmentId,
+      { $inc: { internshipSuccessPoints: pointsDelta } },
+    );
   }
 
   return await serializeSubmission(sub.toObject());

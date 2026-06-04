@@ -217,6 +217,19 @@ async function processCertificateJob(job: any): Promise<void> {
  * This function polls for pending jobs and processes them
  */
 export function startCertificateWorker(): void {
+  // Never run in development: certificate generation builds QR/verification URLs
+  // from FRONTEND_URL and uploads real PDFs to S3 — a dev FRONTEND_URL would
+  // bake wrong links into live certificates. Force on with
+  // CERTIFICATE_WORKER_ENABLED=true only if you explicitly need it locally.
+  if (
+    process.env.NODE_ENV === "development" &&
+    process.env.CERTIFICATE_WORKER_ENABLED !== "true"
+  ) {
+    console.log(
+      "[Certificate Worker] Disabled in development (set CERTIFICATE_WORKER_ENABLED=true to force on).",
+    );
+    return;
+  }
   console.log("[Certificate Worker] Starting certificate generation worker...");
 
   let tickRunning = false;

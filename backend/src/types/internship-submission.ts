@@ -96,6 +96,8 @@ export interface TaskTemplateSnapshot {
   questions: SnapshotQuestion[];
   totalScore: number;
   scoreThreshold: number;
+  /** Internship success points awarded on pass (marks >= scoreThreshold). */
+  successPoints: number;
   unlockAfterDays: number;
   dueDays: number;
   /** When this snapshot was captured. */

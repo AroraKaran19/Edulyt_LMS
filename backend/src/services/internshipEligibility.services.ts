@@ -4,27 +4,42 @@ import { InternshipModel } from "../models/internship.schema";
 import { InternshipTaskModel } from "../models/internshipTask.schema";
 import { InternshipExamModel } from "../models/internshipExam.schema";
 import { InternshipLiveMeetingModel } from "../models/liveMeeting.schema";
+import { InternshipSubmissionModel } from "../models/internshipSubmission.schema";
 import { AppError } from "../middlewares/error.middleware";
 
 export interface InternshipEligibility {
-  /** Sum of points a learner could earn within their enrollment window. */
+  /** Work points a learner can earn: tasks + live-meeting attendance.
+   *  The certification exam is a SEPARATE gate and is NOT included here. */
   totalAchievable: number;
-  /** Per-enrollment `internshipSuccessPoints` (snapshot). */
+  /** Work points earned toward the %: tasks + attendance + purchased points.
+   *  Excludes any certification-exam points folded into the accumulator. */
   earned: number;
   /** Configured percentage threshold (0–100). 0 = no gate. */
   thresholdPct: number;
   /** Points the learner needs to earn to meet the threshold. */
   requiredPoints: number;
-  /** True if the learner has met the threshold (always true when thresholdPct = 0). */
+  /** Gate 1 — true when work points meet the threshold (always true at 0%). */
   meetsThreshold: boolean;
   /** Points still needed; 0 if already met or no gate. */
   shortfall: number;
-  /** Breakdown of where total achievable came from. */
+  /** Breakdown of where points came from (certExamTotal is informational only). */
   breakdown: {
     tasksTotal: number;
     meetingsTotal: number;
     certExamTotal: number;
   };
+  /** Whether an active certification exam is configured for this internship. */
+  examConfigured: boolean;
+  /** Whether the learner has a certification-exam submission. */
+  examSubmitted: boolean;
+  /** The learner's certification-exam score (0 if not taken). */
+  examScore: number;
+  /** Passing threshold for the certification exam. */
+  examThreshold: number;
+  /** Gate 2 — true when the learner has cleared the certification exam. */
+  examPassed: boolean;
+  /** Both gates cleared — the learner qualifies for the certificate. */
+  certificateEligible: boolean;
 }
 
 /**
@@ -62,15 +77,27 @@ export async function computeInternshipEligibility(
   if (!enrollment) throw new AppError("Enrollment not found", 404);
 
   const internship = await InternshipModel.findById(enrollment.internship)
-    .select(
-      "certificationThreshold certificationExamTemplateId taskTemplateIds",
-    )
+    .select("certificationThreshold batches")
     .lean<{
       certificationThreshold?: number;
-      certificationExamTemplateId?: mongoose.Types.ObjectId | null;
-      taskTemplateIds?: mongoose.Types.ObjectId[];
+      batches?: {
+        _id?: unknown;
+        taskTemplateIds?: mongoose.Types.ObjectId[];
+        certificationExamTemplateId?: mongoose.Types.ObjectId | null;
+      }[];
     } | null>();
   if (!internship) throw new AppError("Internship not found", 404);
+
+  // Tasks and the certification exam are configured PER BATCH (not at the
+  // internship level). Resolve the learner's batch config — reading the
+  // internship-level fields returns undefined, which is why tasks/exam were
+  // silently counting as 0 in the achievable pool.
+  const batchCfg = (internship.batches ?? []).find(
+    (b) => String(b._id) === String(enrollment.batchSnapshot?.batchId),
+  );
+  const taskTemplateIds = (batchCfg?.taskTemplateIds ?? []).filter(Boolean);
+  const certificationExamTemplateId =
+    batchCfg?.certificationExamTemplateId ?? null;
 
   // Resolve the window. Prefer stored endDate; fall back to derivation.
   const enrolledAt = enrollment.enrolledAt
@@ -91,14 +118,14 @@ export async function computeInternshipEligibility(
   if (enrolledAt && endDate) {
     // Tasks: count any task whose due date (enrolledAt + dueDays) lands at
     // or before the learner's window end. Inactive templates are skipped.
-    const taskIds = (internship.taskTemplateIds ?? []).filter(Boolean);
+    const taskIds = taskTemplateIds;
     if (taskIds.length > 0) {
       const tasks = await InternshipTaskModel.find({
         _id: { $in: taskIds },
       })
-        .select("totalScore dueDays isActive")
+        .select("successPoints dueDays isActive")
         .lean<
-          { totalScore?: number; dueDays?: number; isActive?: boolean }[]
+          { successPoints?: number; dueDays?: number; isActive?: boolean }[]
         >();
       for (const t of tasks) {
         if (t.isActive === false) continue;
@@ -106,7 +133,9 @@ export async function computeInternshipEligibility(
         const dueAt = new Date(enrolledAt);
         dueAt.setDate(dueAt.getDate() + dueDays);
         if (dueAt <= endDate) {
-          tasksTotal += Math.max(0, Number(t.totalScore ?? 0));
+          // A task contributes its configured success points (the certificate
+          // "credits"), not its grading totalScore.
+          tasksTotal += Math.max(0, Number(t.successPoints ?? 0));
         }
       }
     }
@@ -127,20 +156,56 @@ export async function computeInternshipEligibility(
     }
   }
 
-  // Certification exam: counted regardless of date (it sits on the last day
-  // of the window by definition). Skipped when no template / inactive.
-  if (internship.certificationExamTemplateId) {
+  // Certification exam is a SEPARATE pass/fail gate — intentionally EXCLUDED
+  // from the success-points pool. We still load it for the breakdown (totalScore)
+  // and to evaluate the pass gate (thresholdScore).
+  let examConfigured = false;
+  let examThreshold = 0;
+  if (certificationExamTemplateId) {
     const exam = await InternshipExamModel.findById(
-      internship.certificationExamTemplateId,
+      certificationExamTemplateId,
     )
-      .select("totalScore isActive")
-      .lean<{ totalScore?: number; isActive?: boolean } | null>();
+      .select("totalScore thresholdScore isActive")
+      .lean<{
+        totalScore?: number;
+        thresholdScore?: number;
+        isActive?: boolean;
+      } | null>();
     if (exam && exam.isActive !== false) {
+      examConfigured = true;
       certExamTotal = Math.max(0, Number(exam.totalScore ?? 0));
+      examThreshold = Math.max(0, Number(exam.thresholdScore ?? 0));
     }
   }
 
-  const totalAchievable = tasksTotal + meetingsTotal + certExamTotal;
+  // The learner's certification-exam submission, used to (a) report the pass
+  // gate and (b) subtract any exam points already folded into
+  // internshipSuccessPoints so the % reflects WORK points only.
+  let examSubmitted = false;
+  let examScore = 0;
+  let examFinalized = false;
+  if (examConfigured) {
+    const certSub = await InternshipSubmissionModel.findOne({
+      enrollmentId: new mongoose.Types.ObjectId(enrollmentId),
+      submissionFor: "exam",
+      examId: String(certificationExamTemplateId),
+    })
+      .select("totalAwardedScore status")
+      .lean<{ totalAwardedScore?: number; status?: string } | null>();
+    if (certSub) {
+      examSubmitted = true;
+      examScore = Math.max(0, Number(certSub.totalAwardedScore ?? 0));
+      examFinalized = String(certSub.status) === "fully_reviewed";
+    }
+  }
+  // Exam points are credited into the accumulator only once the exam is
+  // finalized AND passed (mirrors accrueSuccessPointsIfPassed) — subtract
+  // exactly that so it never counts toward the work-points %.
+  const examPassed = examSubmitted && examScore >= examThreshold;
+  const examContribution = examFinalized && examPassed ? examScore : 0;
+
+  // Pool the learner is measured against: tasks + live-meeting attendance only.
+  const totalAchievable = tasksTotal + meetingsTotal;
 
   const rawPct = internship.certificationThreshold;
   const thresholdPct =
@@ -148,15 +213,22 @@ export async function computeInternshipEligibility(
       ? Math.max(0, Math.min(100, rawPct))
       : 0;
 
+  // Work points only — strip out any exam points folded into the accumulator.
   const earned = Math.max(
     0,
-    Math.floor(Number(enrollment.internshipSuccessPoints ?? 0)),
+    Math.floor(Number(enrollment.internshipSuccessPoints ?? 0)) -
+      examContribution,
   );
   const requiredPoints = Math.ceil((totalAchievable * thresholdPct) / 100);
   const meetsThreshold = thresholdPct === 0 || earned >= requiredPoints;
   const shortfall = meetsThreshold
     ? 0
     : Math.max(0, requiredPoints - earned);
+
+  // Certificate requires BOTH gates: work-points threshold AND a passed exam.
+  // When no exam is configured, the exam gate is not applicable.
+  const certificateEligible =
+    meetsThreshold && (!examConfigured || examPassed);
 
   return {
     totalAchievable,
@@ -166,5 +238,11 @@ export async function computeInternshipEligibility(
     meetsThreshold,
     shortfall,
     breakdown: { tasksTotal, meetingsTotal, certExamTotal },
+    examConfigured,
+    examSubmitted,
+    examScore,
+    examThreshold,
+    examPassed,
+    certificateEligible,
   };
 }

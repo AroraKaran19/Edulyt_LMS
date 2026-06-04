@@ -155,6 +155,14 @@ const internshipSubmissionSchema = new mongoose.Schema(
     // Can be negative when negative marking pulls the MCQ total below zero.
     totalAwardedScore: { type: Number, default: 0 },
 
+    // Ledger: how many internship success points THIS submission has currently
+    // credited to the learner's enrollment. Reconciled on every review so
+    // re-scoring / resubmission adjusts the learner's points by the delta
+    // (clawing back on resubmit, never double-crediting on re-approval).
+    // Intentionally has NO default so pre-ledger documents read as `undefined`
+    // and can be seeded from their existing state on first reconcile.
+    creditedSuccessPoints: { type: Number },
+
     status: {
       type: String,
       enum: ["draft", "submitted", "partially_reviewed", "fully_reviewed"],

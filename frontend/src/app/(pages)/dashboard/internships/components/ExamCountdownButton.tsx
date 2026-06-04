@@ -3,17 +3,10 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowUpRight, CalendarCheck, Clock } from "lucide-react";
-
-type WindowState = "not_yet" | "open" | "closed";
-
-function getWindowState(examStartAt?: string, examEndAt?: string): WindowState {
-  const now = Date.now();
-  const start = examStartAt ? new Date(examStartAt).getTime() : null;
-  const end = examEndAt ? new Date(examEndAt).getTime() : null;
-  if (start && now < start) return "not_yet";
-  if (end && now > end) return "closed";
-  return "open";
-}
+import {
+  getExamWindowState,
+  type ExamWindowState,
+} from "@/lib/internshipEntranceFlow";
 
 function formatCountdown(ms: number): string {
   if (ms <= 0) return "00:00:00";
@@ -57,14 +50,14 @@ export default function ExamCountdownButton({
   examResultAt,
   size = "card",
 }: Props) {
-  const [windowState, setWindowState] = useState<WindowState>(() =>
-    getWindowState(examStartAt, examEndAt),
+  const [windowState, setWindowState] = useState<ExamWindowState>(() =>
+    getExamWindowState(examStartAt, examEndAt),
   );
   const [countdown, setCountdown] = useState<string>("");
 
   useEffect(() => {
     const tick = () => {
-      const state = getWindowState(examStartAt, examEndAt);
+      const state = getExamWindowState(examStartAt, examEndAt);
       setWindowState(state);
       if (state === "not_yet" && examStartAt) {
         const ms = new Date(examStartAt).getTime() - Date.now();
