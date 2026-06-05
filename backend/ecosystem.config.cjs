@@ -38,7 +38,7 @@ module.exports = {
       time: true,
       env: {
         RUN_BACKGROUND_JOBS: "true",
-        CERTIFICATE_WORKER_POLL_MS: "300000",
+        CERTIFICATE_WORKER_POLL_MS: "10000",
       },
       max_memory_restart: "500M",
     },

@@ -272,7 +272,7 @@ const CertificateJobsPage = () => {
       ) : (
         <div className="rounded-xl border border-gray-200 overflow-hidden bg-white shadow-sm">
           <div className="overflow-x-auto overflow-y-hidden">
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[1024px] text-sm">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
                   <th className="text-left py-4 px-4 font-semibold text-gray-700">
