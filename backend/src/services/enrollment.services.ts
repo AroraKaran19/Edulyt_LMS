@@ -496,72 +496,160 @@ export const GetEnrollmentsByUserIdsService = async (
   }
 };
 
-// Helper function to calculate course structure totals
-const calculateCourseStructureTotals = async (
-  courseId: string,
-): Promise<{
+// Active (visible) view of a course's structure.
+//
+// IMPORTANT: A module/lesson/content can be hidden PER COURSE via the arrays
+// course.deactivatedModules / deactivatedLessons / deactivatedContents (lessons
+// and contents have no isActive flag of their own). Progress MUST be computed
+// against this filtered structure — the frontend already hides deactivated items
+// from students, so counting them in the denominator would make 100% impossible.
+export type ActiveCourseStructure = {
   totalModules: number;
   totalLessons: number;
   totalContents: number;
-}> => {
-  let totalContents = 0;
-  let totalModules = 0;
-  let totalLessons = 0;
+  activeContentIds: Set<string>;
+  // module -> lesson -> active content ids, used for lesson/module roll-up
+  modules: { lessons: string[][] }[];
+};
+
+export const getActiveCourseStructure = async (
+  courseId: string,
+): Promise<ActiveCourseStructure> => {
+  const structure: ActiveCourseStructure = {
+    totalModules: 0,
+    totalLessons: 0,
+    totalContents: 0,
+    activeContentIds: new Set<string>(),
+    modules: [],
+  };
 
   try {
     const course = await CourseModel.findById(courseId)
-      .select("modules")
+      .select(
+        "modules deactivatedModules deactivatedLessons deactivatedContents",
+      )
       .populate({
         path: "modules",
         select: "lessons isActive",
         populate: {
           path: "lessons",
-          select: "contents isActive",
+          select: "contents",
           populate: {
             path: "contents",
-            select: "_id isActive",
+            select: "_id",
           },
         },
       })
       .lean();
 
-    if (course && course.modules && Array.isArray(course.modules)) {
-      // Filter out null modules and only count active ones
-      const activeModules = course.modules.filter(
-        (m: any) => m !== null && m !== undefined && m.isActive !== false,
+    if (!course || !Array.isArray(course.modules)) {
+      return structure;
+    }
+
+    const toIdSet = (arr: unknown): Set<string> =>
+      new Set(
+        (Array.isArray(arr) ? arr : []).map((x: unknown) => String(x)),
       );
-      totalModules = activeModules.length;
+    const deactivatedModules = toIdSet((course as any).deactivatedModules);
+    const deactivatedLessons = toIdSet((course as any).deactivatedLessons);
+    const deactivatedContents = toIdSet((course as any).deactivatedContents);
 
-      activeModules.forEach((module: any) => {
-        if (module.lessons && Array.isArray(module.lessons)) {
-          // Filter out null lessons and only count active ones
-          const activeLessons = module.lessons.filter(
-            (l: any) => l !== null && l !== undefined && l.isActive !== false,
-          );
-          totalLessons += activeLessons.length;
+    for (const module of course.modules as any[]) {
+      // Skip globally inactive modules AND per-course deactivated modules.
+      if (!module || module.isActive === false) continue;
+      if (deactivatedModules.has(String(module._id))) continue;
 
-          activeLessons.forEach((lesson: any) => {
-            if (lesson.contents && Array.isArray(lesson.contents)) {
-              // Filter out null contents and only count active ones
-              const activeContents = lesson.contents.filter(
-                (c: any) =>
-                  c !== null && c !== undefined && c.isActive !== false,
-              );
-              totalContents += activeContents.length;
-            }
-          });
+      const moduleLessons: string[][] = [];
+      const lessons = Array.isArray(module.lessons) ? module.lessons : [];
+
+      for (const lesson of lessons) {
+        if (!lesson) continue;
+        // Skip per-course deactivated (hidden) lessons.
+        if (deactivatedLessons.has(String(lesson._id))) continue;
+
+        const contents = Array.isArray(lesson.contents) ? lesson.contents : [];
+        const activeContentIds: string[] = [];
+
+        for (const content of contents) {
+          if (!content || !content._id) continue;
+          const cid = String(content._id);
+          // Skip per-course deactivated (hidden) contents.
+          if (deactivatedContents.has(cid)) continue;
+          activeContentIds.push(cid);
+          structure.activeContentIds.add(cid);
         }
-      });
+
+        moduleLessons.push(activeContentIds);
+        structure.totalLessons += 1;
+        structure.totalContents += activeContentIds.length;
+      }
+
+      structure.modules.push({ lessons: moduleLessons });
+      structure.totalModules += 1;
     }
   } catch (error) {
     console.error(
-      `[calculateCourseStructureTotals] Error for course ${courseId}:`,
+      `[getActiveCourseStructure] Error for course ${courseId}:`,
       error,
     );
     throw error;
   }
 
-  return { totalModules, totalLessons, totalContents };
+  return structure;
+};
+
+// Roll a completed-content set up against the active course structure.
+// A lesson is complete only when ALL its active contents are complete; a module
+// is complete only when ALL its active lessons are complete. The numerator counts
+// ONLY currently-active contents, so a content the student finished before it was
+// hidden cannot leave progress stuck below 100%.
+export const computeProgressFromStructure = (
+  structure: ActiveCourseStructure,
+  completedContentIds: Set<string>,
+): EnrollmentProgressSummary => {
+  let completedContents = 0;
+  let completedLessons = 0;
+  let completedModules = 0;
+
+  for (const module of structure.modules) {
+    let lessonsCompletedInModule = 0;
+
+    for (const lessonContentIds of module.lessons) {
+      const done = lessonContentIds.filter((id) =>
+        completedContentIds.has(id),
+      ).length;
+      completedContents += done;
+
+      if (lessonContentIds.length > 0 && done === lessonContentIds.length) {
+        completedLessons += 1;
+        lessonsCompletedInModule += 1;
+      }
+    }
+
+    if (
+      module.lessons.length > 0 &&
+      lessonsCompletedInModule === module.lessons.length
+    ) {
+      completedModules += 1;
+    }
+  }
+
+  const overallCompletion =
+    structure.totalContents > 0
+      ? Math.min(
+          100,
+          Math.round((completedContents / structure.totalContents) * 100),
+        )
+      : 0;
+
+  return {
+    overallCompletion,
+    totalModules: structure.totalModules,
+    completedModules,
+    totalLessons: structure.totalLessons,
+    completedLessons,
+    lastActivityAt: new Date(),
+  };
 };
 
 // Recalculate progress for an enrollment (useful for fixing existing enrollments)
@@ -574,39 +662,23 @@ export const RecalculateEnrollmentProgressService = async (
       return null;
     }
 
-    const { totalModules, totalLessons, totalContents } =
-      await calculateCourseStructureTotals(enrollment.courseId.toString());
-
-    const completedContents = enrollment.completedContents || [];
-    const completedContentsCount = completedContents.length;
-
-    // Calculate overall completion
-    let overallCompletion = 0;
-    if (totalContents > 0) {
-      overallCompletion = Math.round(
-        (completedContentsCount / totalContents) * 100,
-      );
-      if (overallCompletion > 100) {
-        overallCompletion = 100;
-      }
-    }
-
-    // Calculate completed modules and lessons
-    const completedModuleIds = new Set(
-      completedContents.map((c) => c.moduleId).filter(Boolean),
-    );
-    const completedLessonIds = new Set(
-      completedContents.map((c) => c.lessonId).filter(Boolean),
+    const completedContentIds = new Set<string>(
+      (enrollment.completedContents || [])
+        .map((c) => c.contentId)
+        .filter((id): id is string => typeof id === "string" && id.length > 0),
     );
 
-    const updatedProgress: EnrollmentProgressSummary = {
-      overallCompletion,
-      totalModules,
-      completedModules: completedModuleIds.size,
-      totalLessons,
-      completedLessons: completedLessonIds.size,
-      lastActivityAt: enrollment.progress?.lastActivityAt || new Date(),
-    };
+    const structure = await getActiveCourseStructure(
+      enrollment.courseId.toString(),
+    );
+    const updatedProgress = computeProgressFromStructure(
+      structure,
+      completedContentIds,
+    );
+    updatedProgress.lastActivityAt =
+      enrollment.progress?.lastActivityAt || new Date();
+
+    const overallCompletion = updatedProgress.overallCompletion;
 
     // Check if course should be marked as completed
     let finalStatus = enrollment.status;
@@ -831,12 +903,9 @@ export const UpdateEnrollmentProgressService = async (
       }
     }
 
-    // ALWAYS recalculate progress from course structure and completed contents
-    // This ensures progress is accurate even if it wasn't calculated before
-    let totalContents = 0;
-    let totalModules = 0;
-    let totalLessons = 0;
-
+    // ALWAYS recalculate progress from the ACTIVE (visible) course structure.
+    // Hidden modules/lessons/contents (course.deactivated*) are excluded so they
+    // do not inflate the denominator and block students from reaching 100%.
     try {
       if (!enrollment.courseId) {
         throw new Error("Course ID is missing from enrollment");
@@ -854,234 +923,36 @@ export const UpdateEnrollmentProgressService = async (
         courseIdString = enrollment.courseId.toString();
       }
 
-      const structureTotals =
-        await calculateCourseStructureTotals(courseIdString);
-      totalModules = structureTotals.totalModules;
-      totalLessons = structureTotals.totalLessons;
-      totalContents = structureTotals.totalContents;
+      const completedContentIds = new Set<string>(
+        updatedCompletedContents
+          .map((c) => c.contentId)
+          .filter(
+            (id): id is string => typeof id === "string" && id.length > 0,
+          ),
+      );
 
-      // If totals are 0 or less than completed contents, something went wrong - use fallback
-      if (
-        (totalContents === 0 ||
-          totalContents < updatedCompletedContents.length) &&
-        updatedCompletedContents.length > 0
-      ) {
-        // Fallback: conservative estimate - must be > completedContents to avoid false 100%
-        const uniqueModules = new Set(
-          updatedCompletedContents.map((c) => c.moduleId).filter(Boolean),
-        );
-        const uniqueLessons = new Set(
-          updatedCompletedContents.map((c) => c.lessonId).filter(Boolean),
-        );
+      const structure = await getActiveCourseStructure(courseIdString);
+      const summary = computeProgressFromStructure(
+        structure,
+        completedContentIds,
+      );
 
-        totalContents = Math.max(
-          updatedCompletedContents.length + 1,
-          uniqueLessons.size * 2,
-          1,
-        );
-        totalModules = Math.max(uniqueModules.size || totalModules, 1);
-        totalLessons = Math.max(uniqueLessons.size || totalLessons, 1);
-      }
+      updatedProgress.overallCompletion = summary.overallCompletion;
+      updatedProgress.totalModules = summary.totalModules;
+      updatedProgress.completedModules = summary.completedModules;
+      updatedProgress.totalLessons = summary.totalLessons;
+      updatedProgress.completedLessons = summary.completedLessons;
     } catch (error) {
-      console.error("Error calculating total contents:", error);
-      // If calculation fails, use fallback based on completed contents
-      const uniqueModules = new Set(
-        updatedCompletedContents.map((c) => c.moduleId).filter(Boolean),
-      );
-      const uniqueLessons = new Set(
-        updatedCompletedContents.map((c) => c.lessonId).filter(Boolean),
-      );
-
-      // Use existing values if available, otherwise estimate from completed contents
-      totalModules =
-        updatedProgress.totalModules > 0
-          ? updatedProgress.totalModules
-          : Math.max(uniqueModules.size, 1);
-      totalLessons =
-        updatedProgress.totalLessons > 0
-          ? updatedProgress.totalLessons
-          : Math.max(uniqueLessons.size, 1);
-      totalContents =
-        updatedProgress.totalModules > 0 && updatedProgress.totalLessons > 0
-          ? Math.max(
-              updatedCompletedContents.length + 1,
-              updatedProgress.totalLessons * 2,
-            )
-          : Math.max(updatedCompletedContents.length + 1, 1);
-    }
-
-    // CRITICAL: Ensure we ALWAYS have valid totals if there are completed contents
-    const completedContentsCount = updatedCompletedContents.length;
-
-    // If totals are still 0 but we have completed contents, use conservative fallback
-    // Never set totalContents = completedContentsCount — that would wrongly show 100%
-    if (totalContents === 0 && completedContentsCount > 0) {
-      const uniqueModules = new Set(
-        updatedCompletedContents.map((c) => c.moduleId).filter(Boolean),
-      );
-      const uniqueLessons = new Set(
-        updatedCompletedContents.map((c) => c.lessonId).filter(Boolean),
-      );
-
-      // Use conservative minimum so we never falsely mark course complete
-      // (totalContents must be > completedContentsCount)
-      totalContents = Math.max(
-        completedContentsCount + 1,
-        uniqueLessons.size || 1,
-      );
-      totalModules = Math.max(uniqueModules.size || totalModules, 1);
-      totalLessons = Math.max(uniqueLessons.size || totalLessons, 1);
-    }
-
-    // Update progress summary with calculated totals (ALWAYS update, even if 0)
-    updatedProgress.totalModules = totalModules;
-    updatedProgress.totalLessons = totalLessons;
-
-    // Calculate overall completion - this should NEVER be 0 if we have completed contents
-    if (totalContents > 0) {
-      updatedProgress.overallCompletion = Math.round(
-        (completedContentsCount / totalContents) * 100,
-      );
-      // Cap at 100%
-      if (updatedProgress.overallCompletion > 100) {
-        updatedProgress.overallCompletion = 100;
-      }
-    } else if (completedContentsCount > 0) {
-      // totalContents is 0 but we have completed contents — use conservative estimate
-      // Never set 100% when we don't know the real total
-      totalContents = Math.max(completedContentsCount + 1, 1);
-      updatedProgress.overallCompletion = Math.round(
-        (completedContentsCount / totalContents) * 100,
-      );
-    } else {
-      // No completed contents and no total contents - set to 0
-      updatedProgress.overallCompletion = 0;
-    }
-
-    // Calculate completed modules and lessons
-    // A lesson is completed ONLY when ALL contents in that lesson are completed
-    // A module is completed ONLY when ALL lessons in that module are completed
-    let completedLessonsCount = 0;
-    let completedModulesCount = 0;
-
-    try {
-      if (!enrollment.courseId) {
-        throw new Error("Course ID is missing from enrollment");
-      }
-
-      // Handle both ObjectId and string formats
-      let courseIdString: string;
-      if (
-        typeof enrollment.courseId === "object" &&
-        enrollment.courseId !== null &&
-        "_id" in enrollment.courseId
-      ) {
-        courseIdString = (enrollment.courseId as any)._id.toString();
-      } else {
-        courseIdString = enrollment.courseId.toString();
-      }
-
-      // Get course structure to check lesson/module completion
-      const course = await CourseModel.findById(courseIdString)
-        .select("modules")
-        .populate({
-          path: "modules",
-          select: "lessons isActive",
-          populate: {
-            path: "lessons",
-            select: "contents isActive",
-            populate: {
-              path: "contents",
-              select: "_id isActive",
-            },
-          },
-        })
-        .lean();
-
-      if (course && course.modules && Array.isArray(course.modules)) {
-        const activeModules = course.modules.filter(
-          (m: any) => m !== null && m !== undefined && m.isActive !== false,
-        );
-
-        // Create a Set of completed content IDs for quick lookup
-        const completedContentIds = new Set(
-          updatedCompletedContents.map((c) => c.contentId),
-        );
-
-        activeModules.forEach((module: any) => {
-          if (module.lessons && Array.isArray(module.lessons)) {
-            const activeLessons = module.lessons.filter(
-              (l: any) => l !== null && l !== undefined && l.isActive !== false,
-            );
-
-            let moduleLessonsCompleted = 0;
-
-            activeLessons.forEach((lesson: any) => {
-              if (lesson.contents && Array.isArray(lesson.contents)) {
-                const activeContents = lesson.contents.filter(
-                  (c: any) =>
-                    c !== null && c !== undefined && c.isActive !== false,
-                );
-
-                // Check if ALL contents in this lesson are completed
-                const allContentsCompleted =
-                  activeContents.length > 0 &&
-                  activeContents.every((content: any) =>
-                    completedContentIds.has(content._id.toString()),
-                  );
-
-                if (allContentsCompleted) {
-                  completedLessonsCount++;
-                  moduleLessonsCompleted++;
-                }
-              }
-            });
-
-            // A module is completed if ALL its lessons are completed
-            if (
-              activeLessons.length > 0 &&
-              moduleLessonsCompleted === activeLessons.length
-            ) {
-              completedModulesCount++;
-            }
-          }
-        });
-      }
-    } catch (error) {
-      console.error("Error calculating completed lessons/modules:", error);
-      // Fallback: use simple count (any content = lesson completed)
-      const completedModuleIds = new Set(
-        updatedCompletedContents.map((c) => c.moduleId).filter(Boolean),
-      );
-      const completedLessonIds = new Set(
-        updatedCompletedContents.map((c) => c.lessonId).filter(Boolean),
-      );
-      completedLessonsCount = completedLessonIds.size;
-      completedModulesCount = completedModuleIds.size;
-    }
-
-    updatedProgress.completedModules = completedModulesCount;
-    updatedProgress.completedLessons = completedLessonsCount;
-
-    // Recalculate if we have completed contents but progress is still 0
-    // (e.g. due to rounding). Never use totalContents = completedContentsCount — that wrongly yields 100%
-    if (completedContentsCount > 0 && updatedProgress.overallCompletion === 0) {
-      if (totalContents === 0) {
-        totalContents = Math.max(completedContentsCount + 1, 1);
-        updatedProgress.totalModules = Math.max(
-          updatedProgress.totalModules,
-          completedModulesCount || 1,
-        );
-        updatedProgress.totalLessons = Math.max(
-          updatedProgress.totalLessons,
-          completedLessonsCount || 1,
-        );
-      }
-      updatedProgress.overallCompletion = Math.round(
-        (completedContentsCount / totalContents) * 100,
-      );
-      if (updatedProgress.overallCompletion > 100)
-        updatedProgress.overallCompletion = 100;
+      console.error("Error recalculating enrollment progress:", error);
+      // Preserve existing progress numbers on failure rather than zeroing them.
+      updatedProgress.overallCompletion =
+        enrollment.progress?.overallCompletion ?? 0;
+      updatedProgress.totalModules = enrollment.progress?.totalModules ?? 0;
+      updatedProgress.completedModules =
+        enrollment.progress?.completedModules ?? 0;
+      updatedProgress.totalLessons = enrollment.progress?.totalLessons ?? 0;
+      updatedProgress.completedLessons =
+        enrollment.progress?.completedLessons ?? 0;
     }
 
     // Automatically mark course as completed when overallCompletion reaches 100%
@@ -1103,23 +974,6 @@ export const UpdateEnrollmentProgressService = async (
       0,
     );
     const newTotalTimeSpent = totalTimeSpentMinutes * 60; // Convert minutes to seconds
-
-    // Ensure module/lesson counts are set when we have completed contents
-    // (Do NOT force overallCompletion to 100% — that was a bug)
-    if (updatedCompletedContents.length > 0) {
-      if (updatedProgress.totalModules === 0) {
-        const uniqueModules = new Set(
-          updatedCompletedContents.map((c) => c.moduleId).filter(Boolean),
-        );
-        updatedProgress.totalModules = Math.max(uniqueModules.size, 1);
-      }
-      if (updatedProgress.totalLessons === 0) {
-        const uniqueLessons = new Set(
-          updatedCompletedContents.map((c) => c.lessonId).filter(Boolean),
-        );
-        updatedProgress.totalLessons = Math.max(uniqueLessons.size, 1);
-      }
-    }
 
     // Use dot notation to ensure Mongoose properly updates nested progress object
     const updateData: any = {
