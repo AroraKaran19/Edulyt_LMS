@@ -8,7 +8,7 @@ import Modal from "@/components/ui/Modal";
 
 // Admin WhatsApp number shown when a learner can't find their college in the
 // directory. Keep in sync if the support contact rotates.
-const COLLEGE_SUPPORT_WHATSAPP_NUMBER = "89292252575";
+const COLLEGE_SUPPORT_WHATSAPP_NUMBER = "+918929252575";
 const COLLEGE_SUPPORT_WHATSAPP_URL = `https://wa.me/${COLLEGE_SUPPORT_WHATSAPP_NUMBER}`;
 
 const plusJakartaSans = Plus_Jakarta_Sans({
