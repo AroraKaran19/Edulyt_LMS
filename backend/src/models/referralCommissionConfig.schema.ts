@@ -20,6 +20,14 @@ const referralCommissionConfigSchema =
   new mongoose.Schema<ReferralCommissionConfig>(
     {
       tiers: { type: [referralCommissionTierSchema], default: [] },
+      // Buyer-side discount (%) when checking out with another student's code.
+      buyerDiscountPercent: {
+        type: Number,
+        required: true,
+        min: 0,
+        max: 100,
+        default: 0,
+      },
       updatedBy: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",

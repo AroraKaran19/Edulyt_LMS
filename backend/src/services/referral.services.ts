@@ -234,6 +234,18 @@ export interface ValidateReferralCodeResult {
   valid: boolean;
   referrerName?: string;
   reason?: "not-found" | "self" | "empty";
+  /** Buyer discount % to apply at checkout when this code is valid. */
+  buyerDiscountPercent?: number;
+}
+
+/** Configured buyer-side discount %, clamped to [0, 100]. 0 when unset. */
+export async function getReferralBuyerDiscountPercent(): Promise<number> {
+  const cfg = await ReferralCommissionConfigModel.findOne({})
+    .select("buyerDiscountPercent")
+    .lean();
+  const pct = Number(cfg?.buyerDiscountPercent ?? 0);
+  if (!Number.isFinite(pct)) return 0;
+  return Math.min(100, Math.max(0, pct));
 }
 
 export async function validateReferralCode(
@@ -261,7 +273,8 @@ export async function validateReferralCode(
       (user as { lastName?: string } | null)?.lastName ?? ""
     }`.trim() ||
     String((user as { email?: string } | null)?.email ?? "Referrer");
-  return { valid: true, referrerName: name };
+  const buyerDiscountPercent = await getReferralBuyerDiscountPercent();
+  return { valid: true, referrerName: name, buyerDiscountPercent };
 }
 
 // ─── Sales (created from order-success hook) ─────────────────────────────────
@@ -481,6 +494,7 @@ export async function listWithdrawalsForUser(
 
 export async function getReferralCommissionConfigAdmin(): Promise<{
   tiers: ReferralCommissionTier[];
+  buyerDiscountPercent: number;
   updatedAt: string | null;
 }> {
   const cfg = await ReferralCommissionConfigModel.findOne({}).lean();
@@ -489,19 +503,34 @@ export async function getReferralCommissionConfigAdmin(): Promise<{
       thresholdSales: t.thresholdSales,
       commissionPercent: t.commissionPercent,
     })),
+    buyerDiscountPercent: Number(cfg?.buyerDiscountPercent ?? 0),
     updatedAt: cfg?.updatedAt ? new Date(cfg.updatedAt).toISOString() : null,
   };
 }
 
 export async function updateReferralCommissionConfigAdmin(
   rawTiers: unknown,
+  rawBuyerDiscountPercent: unknown,
   updatedBy: mongoose.Types.ObjectId,
 ): Promise<{
   tiers: ReferralCommissionTier[];
+  buyerDiscountPercent: number;
   updatedAt: string | null;
 }> {
   if (!Array.isArray(rawTiers)) {
     throw new AppError("tiers must be an array", 400);
+  }
+
+  const buyerDiscountPercent = Number(rawBuyerDiscountPercent ?? 0);
+  if (
+    !Number.isFinite(buyerDiscountPercent) ||
+    buyerDiscountPercent < 0 ||
+    buyerDiscountPercent > 100
+  ) {
+    throw new AppError(
+      "buyerDiscountPercent must be between 0 and 100",
+      400,
+    );
   }
   const cleaned: ReferralCommissionTier[] = rawTiers.map((row, i) => {
     const threshold = Math.floor(
@@ -537,7 +566,7 @@ export async function updateReferralCommissionConfigAdmin(
 
   const updated = await ReferralCommissionConfigModel.findOneAndUpdate(
     {},
-    { $set: { tiers: cleaned, updatedBy } },
+    { $set: { tiers: cleaned, buyerDiscountPercent, updatedBy } },
     { new: true, upsert: true },
   ).lean();
 
@@ -546,6 +575,7 @@ export async function updateReferralCommissionConfigAdmin(
       thresholdSales: t.thresholdSales,
       commissionPercent: t.commissionPercent,
     })),
+    buyerDiscountPercent: Number(updated?.buyerDiscountPercent ?? 0),
     updatedAt: updated?.updatedAt
       ? new Date(updated.updatedAt).toISOString()
       : null,

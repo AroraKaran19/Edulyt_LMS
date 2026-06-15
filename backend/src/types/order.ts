@@ -56,8 +56,10 @@ export interface PaymentOrder {
   collaborationDomainId?: string;
   /** CSV / manual partnership import discount (not email-domain collaboration). */
   partnershipImportConfigId?: string;
-  /** Referral code used at checkout — snapshot only; does NOT alter `amount`. */
+  /** Referral code used at checkout — drives both the referrer payout and the buyer discount. */
   referralCode?: string;
+  /** ₹ discount applied to the buyer from the configured referral buyer-discount %. */
+  referralDiscount?: number;
   /** Idempotency flag: per-plan `purchaseSuccessPoints` already credited. */
   successPointsPurchaseGranted?: boolean;
   /** Number of success points the buyer chose to redeem at checkout. */

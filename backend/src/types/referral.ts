@@ -9,6 +9,12 @@ export interface ReferralCommissionTier {
 export interface ReferralCommissionConfig {
   _id?: string;
   tiers: ReferralCommissionTier[];
+  /**
+   * Discount (0–100 %) granted to a buyer who checks out using another
+   * student's referral code. 0 = no buyer discount (default). Mutually
+   * exclusive with coupons at checkout.
+   */
+  buyerDiscountPercent: number;
   updatedAt?: Date;
   updatedBy?: mongoose.Types.ObjectId | string | null;
 }

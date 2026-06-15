@@ -102,6 +102,7 @@ export const updateReferralCommissionConfigController = asyncHandler(
     const userId = asObjectId(req);
     const result = await updateReferralCommissionConfigAdmin(
       req.body?.tiers,
+      req.body?.buyerDiscountPercent,
       userId,
     );
     sendSuccessResponse(res, result, "Referral commission config updated");

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { notFound, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { toast } from "react-toastify";
 import apiClient from "@/configs/apiConfig";
@@ -38,7 +38,8 @@ const OnboardingPage = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { update: updateSession } = useSession();
-  const { isLoading: authLoading, isAuthenticated } = useAuth();
+  const { isLoading: authLoading, isAuthenticated, isUnauthenticated } =
+    useAuth();
 
   const nextPath = useMemo(
     () => safeNext(searchParams.get("next")) ?? "/dashboard",
@@ -91,8 +92,8 @@ const OnboardingPage = () => {
       next.experienceLevel = "Please select your experience level";
     }
     const digits = phone.replace(/\D/g, "");
-    if (digits.length < 10) {
-      next.phone = "Phone number must be at least 10 digits";
+    if (digits.length !== 10) {
+      next.phone = "Phone number must be exactly 10 digits";
     }
     if (!degreeName.trim()) {
       next.degreeName = "Please select or enter your course / degree";
@@ -131,6 +132,11 @@ const OnboardingPage = () => {
     }
   };
 
+  // The OnboardingGate excludes /onboarding, so it never guards this route.
+  // An unauthenticated visitor has no business here — render a real 404 rather
+  // than the blank screen that `return null` produced.
+  if (isUnauthenticated) notFound();
+
   if (authLoading || loading) {
     return (
       <div className="w-full min-h-[100dvh] flex items-center justify-center bg-[#f3f3f3]">
@@ -139,7 +145,7 @@ const OnboardingPage = () => {
     );
   }
 
-  // The gate handles unauthenticated users; render nothing as a safeguard.
+  // Auth status still resolving past the loader — render nothing as a safeguard.
   if (!isAuthenticated) return null;
 
   return (
@@ -185,10 +191,11 @@ const OnboardingPage = () => {
             type="tel"
             required
             inputMode="numeric"
+            maxLength={10}
             value={phone}
             onChange={(e) => {
-              // Digits only, mirroring the checkout phone field.
-              setPhone(e.target.value.replace(/\D/g, ""));
+              // Digits only, hard-capped at 10 (guards paste too).
+              setPhone(e.target.value.replace(/\D/g, "").slice(0, 10));
               setErrors((p) => ({ ...p, phone: "" }));
             }}
             onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {

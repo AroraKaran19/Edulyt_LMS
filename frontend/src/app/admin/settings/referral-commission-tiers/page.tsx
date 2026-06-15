@@ -24,6 +24,7 @@ export default function AdminReferralCommissionTiersPage() {
   const { adminGetConfig, adminPutConfig } = useReferral();
 
   const [tiers, setTiers] = useState<EditableTier[]>([]);
+  const [buyerDiscountPercent, setBuyerDiscountPercent] = useState("0");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
@@ -33,6 +34,7 @@ export default function AdminReferralCommissionTiersPage() {
     try {
       const cfg = await adminGetConfig();
       setTiers(cfg.tiers.map(toEditable));
+      setBuyerDiscountPercent(String(cfg.buyerDiscountPercent ?? 0));
       setUpdatedAt(cfg.updatedAt);
     } catch (err: any) {
       toast.error(
@@ -94,10 +96,16 @@ export default function AdminReferralCommissionTiersPage() {
       seen.add(t.thresholdSales);
     }
 
+    const buyerPct = Number(buyerDiscountPercent);
+    if (!Number.isFinite(buyerPct) || buyerPct < 0 || buyerPct > 100) {
+      toast.error("Buyer discount % must be between 0 and 100");
+      return;
+    }
+
     setSaving(true);
     try {
-      await adminPutConfig(cleaned);
-      toast.success("Commission tiers saved.");
+      await adminPutConfig(cleaned, buyerPct);
+      toast.success("Referral settings saved.");
       await load();
     } catch (err: any) {
       toast.error(
@@ -133,6 +141,37 @@ export default function AdminReferralCommissionTiersPage() {
             Last updated {new Date(updatedAt).toLocaleString("en-IN")}
           </p>
         ) : null}
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-2">
+        <label
+          htmlFor="buyerDiscountPercent"
+          className="block text-sm font-semibold text-black"
+        >
+          Buyer discount %
+        </label>
+        <p className="text-xs text-gray-500">
+          Discount a student gets when checking out with another student&apos;s
+          referral code. Applies to every code. Set <strong>0</strong> to
+          disable. Cannot be combined with a coupon at checkout — the buyer uses
+          one or the other.
+        </p>
+        <div className="relative w-40">
+          <input
+            id="buyerDiscountPercent"
+            type="number"
+            min={0}
+            max={100}
+            step="0.01"
+            value={buyerDiscountPercent}
+            onChange={(e) => setBuyerDiscountPercent(e.target.value)}
+            placeholder="e.g. 20"
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 pr-7 text-sm"
+          />
+          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
+            %
+          </span>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -220,7 +259,7 @@ export default function AdminReferralCommissionTiersPage() {
           disabled={saving}
         >
           <Save className="w-3.5 h-3.5" />
-          {saving ? "Saving…" : "Save tiers"}
+          {saving ? "Saving…" : "Save settings"}
         </OrangeButton>
       </div>
     </div>

@@ -84,17 +84,28 @@ export default function useReferral() {
 
   const adminGetConfig = useCallback(async (): Promise<{
     tiers: ReferralCommissionTier[];
+    buyerDiscountPercent: number;
     updatedAt: string | null;
   }> => {
     const res = await apiClient.get<
-      ApiSuccessBody<{ tiers: ReferralCommissionTier[]; updatedAt: string | null }>
+      ApiSuccessBody<{
+        tiers: ReferralCommissionTier[];
+        buyerDiscountPercent: number;
+        updatedAt: string | null;
+      }>
     >(ENDPOINTS.referral.adminConfig);
     return res.data.data;
   }, []);
 
   const adminPutConfig = useCallback(
-    async (tiers: ReferralCommissionTier[]): Promise<void> => {
-      await apiClient.put(ENDPOINTS.referral.adminConfig, { tiers });
+    async (
+      tiers: ReferralCommissionTier[],
+      buyerDiscountPercent: number,
+    ): Promise<void> => {
+      await apiClient.put(ENDPOINTS.referral.adminConfig, {
+        tiers,
+        buyerDiscountPercent,
+      });
     },
     [],
   );

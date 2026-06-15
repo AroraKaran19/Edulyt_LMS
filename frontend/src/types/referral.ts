@@ -31,6 +31,8 @@ export interface ReferralCodeValidationResult {
   valid: boolean;
   referrerName?: string;
   reason?: "not-found" | "self" | "empty";
+  /** Buyer discount % to apply at checkout when this code is valid. */
+  buyerDiscountPercent?: number;
 }
 
 export type ReferralWithdrawalStatus =

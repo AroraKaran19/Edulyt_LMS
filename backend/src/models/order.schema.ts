@@ -66,8 +66,10 @@ const orderSchema = new Schema<PaymentOrder>(
       ref: "PartnershipImportConfig",
       required: false,
     },
-    /** Referral code snapshot — payout to referrer, doesn't alter order amount. */
+    /** Referral code snapshot — drives both the referrer payout and the buyer discount below. */
     referralCode: { type: String, required: false, uppercase: true, trim: true },
+    /** ₹ discount the buyer received from the configured referral buyer-discount %. */
+    referralDiscount: { type: Number, required: false, default: 0, min: 0 },
     /** Idempotency flag: per-plan `purchaseSuccessPoints` already credited. */
     successPointsPurchaseGranted: {
       type: Boolean,

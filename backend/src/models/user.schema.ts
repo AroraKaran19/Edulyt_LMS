@@ -130,17 +130,28 @@ const userSchema = new mongoose.Schema<User>(
       type: String,
       required: true,
       unique: true,
-      validate: validateEmail,
+      validate: {
+        validator: validateEmail,
+        message: "Please enter a valid email address.",
+      },
     },
     phone: {
       type: String,
       required: false,
-      validate: validatePhoneNumber,
+      validate: {
+        validator: validatePhoneNumber,
+        message:
+          "Please enter a valid phone number — 10 digits, or +91 followed by your number.",
+      },
     },
     whatsappNumber: {
       type: String,
       required: false,
-      validate: validatePhoneNumber,
+      validate: {
+        validator: validatePhoneNumber,
+        message:
+          "Please enter a valid WhatsApp number — 10 digits, or +91 followed by your number.",
+      },
     },
     password: { type: String, required: true, select: false },
     userType: {

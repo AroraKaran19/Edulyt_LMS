@@ -801,6 +801,15 @@ export const createOrderService = async (
     throw new AppError("PAYTM_MID or PAYTM_WEBSITE is not set", 500);
   }
 
+  // A coupon and a referral code can't both apply — the referral buyer
+  // discount takes the slot a coupon would occupy. Fail fast and clearly.
+  if (couponCode?.trim() && referralCode?.trim()) {
+    throw new AppError(
+      "A coupon and a referral code can't be used together. Remove one to continue.",
+      400,
+    );
+  }
+
   const [course, user] = await Promise.all([
     CourseModel.findById(courseId),
     UserModel.findById(userId).select("firstName lastName email").lean(),
@@ -849,10 +858,45 @@ export const createOrderService = async (
     couponCode,
   });
 
+  // Referral buyer discount: validate the code and (mutually exclusive with
+  // coupons, enforced above) take the configured % off the post-collaboration
+  // subtotal. The code is also snapshotted on the order so the post-payment
+  // hook still credits the referrer their commission (on the discounted amount).
+  let referralCodeSnapshot: string | undefined;
+  let referralDiscount = 0;
+  const refRaw =
+    typeof referralCode === "string" ? referralCode.trim().toUpperCase() : "";
+  if (refRaw) {
+    const { validateReferralCode, getReferralBuyerDiscountPercent } =
+      await import("./referral.services");
+    const res = await validateReferralCode(
+      refRaw,
+      new mongoose.Types.ObjectId(userId),
+    );
+    if (!res.valid) {
+      if (res.reason === "self") {
+        throw new AppError("You can't use your own referral code.", 400);
+      }
+      if (res.reason === "not-found") {
+        throw new AppError("Referral code not found.", 400);
+      }
+      throw new AppError("Invalid referral code.", 400);
+    }
+    referralCodeSnapshot = refRaw;
+
+    const pct = await getReferralBuyerDiscountPercent();
+    if (pct > 0) {
+      referralDiscount = Math.round(subtotal * (pct / 100) * 100) / 100;
+    }
+  }
+
+  const baseAfterReferral =
+    Math.round((subtotal - referralDiscount) * 100) / 100;
+
   // Apply success-points discount last in the stack, capped at amount due.
   // The buyer's balance check + actual deduction happens at payment success;
   // here we only price the order and snapshot the intended redemption.
-  let amount = subtotal;
+  let amount = baseAfterReferral;
   let successPointsApplied = 0;
   let successPointsDiscount = 0;
 
@@ -876,15 +920,15 @@ export const createOrderService = async (
         if (wantedPoints > 0) {
           const wantedDiscount = Math.round(wantedPoints * rate * 100) / 100;
           const actualDiscount =
-            Math.round(Math.min(wantedDiscount, subtotal) * 100) / 100;
+            Math.round(Math.min(wantedDiscount, baseAfterReferral) * 100) / 100;
           // Cap-aware: only spend the points needed for the granted discount.
           const actualPoints =
-            wantedDiscount > subtotal
-              ? Math.min(wantedPoints, Math.ceil(subtotal / rate))
+            wantedDiscount > baseAfterReferral
+              ? Math.min(wantedPoints, Math.ceil(baseAfterReferral / rate))
               : wantedPoints;
           successPointsApplied = actualPoints;
           successPointsDiscount = actualDiscount;
-          amount = Math.round((subtotal - actualDiscount) * 100) / 100;
+          amount = Math.round((baseAfterReferral - actualDiscount) * 100) / 100;
         }
       }
     }
@@ -895,29 +939,6 @@ export const createOrderService = async (
     user && ((user as any).firstName || (user as any).lastName)
       ? `${((user as any).firstName ?? "").trim()} ${((user as any).lastName ?? "").trim()}`.trim()
       : "";
-
-  // Referral: pure payout to the referrer — does NOT alter `amount`. Code is
-  // attached to the order so the post-payment hook can credit the referrer.
-  let referralCodeSnapshot: string | undefined;
-  const refRaw =
-    typeof referralCode === "string" ? referralCode.trim().toUpperCase() : "";
-  if (refRaw) {
-    const { validateReferralCode } = await import("./referral.services");
-    const res = await validateReferralCode(
-      refRaw,
-      new mongoose.Types.ObjectId(userId),
-    );
-    if (!res.valid) {
-      if (res.reason === "self") {
-        throw new AppError("You can't use your own referral code.", 400);
-      }
-      if (res.reason === "not-found") {
-        throw new AppError("Referral code not found.", 400);
-      }
-      throw new AppError("Invalid referral code.", 400);
-    }
-    referralCodeSnapshot = refRaw;
-  }
 
   const order = new OrderModel({
     txnId: Math.random().toString(36).substring(2, 15),
@@ -943,6 +964,7 @@ export const createOrderService = async (
       ? new mongoose.Types.ObjectId(partnershipImportConfigId)
       : undefined,
     referralCode: referralCodeSnapshot,
+    referralDiscount,
     successPointsApplied,
     successPointsDiscount,
   });
