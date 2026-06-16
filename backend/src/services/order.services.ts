@@ -801,15 +801,6 @@ export const createOrderService = async (
     throw new AppError("PAYTM_MID or PAYTM_WEBSITE is not set", 500);
   }
 
-  // A coupon and a referral code can't both apply — the referral buyer
-  // discount takes the slot a coupon would occupy. Fail fast and clearly.
-  if (couponCode?.trim() && referralCode?.trim()) {
-    throw new AppError(
-      "A coupon and a referral code can't be used together. Remove one to continue.",
-      400,
-    );
-  }
-
   const [course, user] = await Promise.all([
     CourseModel.findById(courseId),
     UserModel.findById(userId).select("firstName lastName email").lean(),
@@ -858,10 +849,10 @@ export const createOrderService = async (
     couponCode,
   });
 
-  // Referral buyer discount: validate the code and (mutually exclusive with
-  // coupons, enforced above) take the configured % off the post-collaboration
-  // subtotal. The code is also snapshotted on the order so the post-payment
-  // hook still credits the referrer their commission (on the discounted amount).
+  // Referral buyer discount: validate the code and take the configured % off
+  // the current subtotal (after collaboration AND any coupon — referral stacks
+  // last before success points). The code is also snapshotted on the order so
+  // the post-payment hook credits the referrer on the discounted amount.
   let referralCodeSnapshot: string | undefined;
   let referralDiscount = 0;
   const refRaw =

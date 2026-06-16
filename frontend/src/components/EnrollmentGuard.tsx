@@ -272,7 +272,7 @@ const EnrollmentGuard = ({ course, children }: EnrollmentGuardProps) => {
           <div className="flex gap-4 justify-center">
             <Button
               variant="outline"
-              onClick={() => router.push(`/courses/${course.slug}`)}
+              onClick={() => router.push(`/programs/${course.slug}`)}
             >
               View Course Details
             </Button>
@@ -319,7 +319,7 @@ const EnrollmentGuard = ({ course, children }: EnrollmentGuardProps) => {
           <div className="flex gap-4 justify-center">
             <Button
               variant="outline"
-              onClick={() => router.push(`/courses/${course.slug}`)}
+              onClick={() => router.push(`/programs/${course.slug}`)}
             >
               View Course Details
             </Button>

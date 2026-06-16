@@ -294,7 +294,7 @@ const ManageCoursesPage = () => {
   const handleViewCourse = (slug: string) => {
     if (slug) {
       setOpenMenuId(null);
-      window.open(`/courses/${slug}`, "_blank");
+      window.open(`/programs/${slug}`, "_blank");
     }
   };
 

@@ -169,7 +169,7 @@ const CoursePage = ({ course }: { course: Course }) => {
         course={filteredCourse}
         onEnrollClick={() => setIsEnrollmentModalOpen(true)}
         isEnrolled={isEnrolled}
-        onAccessCourse={() => router.push(`/courses/${course.slug}/watch`)}
+        onAccessCourse={() => router.push(`/programs/${course.slug}/watch`)}
       />
       <VerticalCarouselSection />
       <CurriculumSection course={filteredCourse} />

@@ -410,7 +410,7 @@ const NavbarContent = ({
           </button>
           <div className="text-center">
             <p className="text-gray-500 text-lg">
-              No courses found in {selectedCategory?.name} for {audienceLabel}
+              No programs found in {selectedCategory?.name} for {audienceLabel}
             </p>
           </div>
         </div>
@@ -430,11 +430,11 @@ const NavbarContent = ({
             </button>
             <div className="h-6 w-px bg-gray-300"></div>
             <h2 className="text-xl font-bold text-gray-800">
-              {selectedCategory?.name || "Courses"}
+              {selectedCategory?.name || "Programs"}
             </h2>
           </div>
           <p className="text-sm text-gray-500">
-            {allCourses.length} {allCourses.length === 1 ? "course" : "courses"}
+            {allCourses.length} {allCourses.length === 1 ? "program" : "programs"}
           </p>
         </div>
         <div className="w-full h-full">
@@ -443,7 +443,7 @@ const NavbarContent = ({
               return (
                 <Link
                   key={index}
-                  href={`/courses/${course.slug}`}
+                  href={`/programs/${course.slug}`}
                   onClick={() => {
                     // Close dropdown after a short delay to allow navigation
                     setTimeout(() => {
@@ -495,7 +495,7 @@ const NavbarContent = ({
               <Loader
                 size="md"
                 variant="spinner"
-                text="Loading more courses..."
+                text="Loading more programs..."
                 showText={true}
               />
             </div>

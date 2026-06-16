@@ -16,7 +16,7 @@ const HomeCoursePath = ({
   const audienceText =
     resolvedAudience === "college-students" ? "Students" : "Working Professionals";
   const coursesPrefix = settings?.coursesHeadingPrefix?.trim() || "Our";
-  const coursesHighlight = settings?.coursesHeadingHighlight?.trim() || "Courses";
+  const coursesHighlight = settings?.coursesHeadingHighlight?.trim() || "Programs";
   return (
     <section
       id="home-course"

@@ -12,7 +12,7 @@ import {
   SkipForward,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useVideoProgressTracking } from "@/app/(pages)/courses/[slug]/watch/hooks/useVideoProgressTracking";
+import { useVideoProgressTracking } from "@/app/(pages)/programs/[slug]/watch/hooks/useVideoProgressTracking";
 
 // Types
 interface VideoSource {

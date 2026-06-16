@@ -46,7 +46,10 @@ export interface CourseDiscount {
 }
 
 export interface NavItem {
+  /** Functional key (drives dropdown logic, e.g. "courses"). */
   label: string;
+  /** Optional text shown to the user; falls back to a capitalized `label`. */
+  displayLabel?: string;
   href: string;
   count?: number;
   active?: boolean;

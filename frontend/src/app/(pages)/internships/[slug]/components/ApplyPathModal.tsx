@@ -81,7 +81,7 @@ export function ApplyPathModal({
 
         {/* 3 — Unique: course bundle (visually separate from the primary block) */}
         <Link
-          href="/courses"
+          href="/programs"
           onClick={onClose}
           className={cn(
             "group relative block overflow-hidden rounded-2xl border-2 border-dashed border-primary/25",

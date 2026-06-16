@@ -205,7 +205,7 @@ function BuyConfirmedSeatCta({
           </p>
           <div className="flex justify-end pt-0.5">
             <Link
-              href="/courses"
+              href="/programs"
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-semibold transition shrink-0",
                 "bg-orange-500 text-white hover:bg-orange-600 shadow-sm",

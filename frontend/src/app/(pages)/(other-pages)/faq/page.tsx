@@ -47,12 +47,12 @@ const FAQPage = () => {
             "You can enroll in any course by visiting our course catalog, selecting your desired course, and following the enrollment process. Simply click on the course you want to take, review the details, and proceed with payment. Once payment is confirmed, you'll receive immediate access to the course content.",
         },
         {
-          question: "How long do I have access to my courses?",
+          question: "How long do I have access to my programs?",
           answer:
             "Most courses provide lifetime access, meaning you can revisit the content anytime. However, some specialized courses may have specific time limits. Check individual course details for specific access duration information.",
         },
         {
-          question: "Can I access courses on mobile devices?",
+          question: "Can I access programs on mobile devices?",
           answer:
             "Yes! Our platform is fully responsive and works on all devices including smartphones, tablets, and computers. You can learn on the go with our mobile-friendly interface.",
         },

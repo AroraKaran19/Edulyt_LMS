@@ -18,7 +18,7 @@ import InstitutionSection from "./sections/InstitutionSection";
 import HomeProfessionalSection from "./sections/HomeProfessionalSection";
 import HomeDreamJobSection from "./sections/HomeDreamJobSection";
 import HomePathSelectionSection from "./sections/HomePathSelectionSection";
-import FAQSection from "../../courses/[slug]/components/FAQSection";
+import FAQSection from "../../programs/[slug]/components/FAQSection";
 
 function parseSettings(payload: unknown): HomePageSettings {
   if (!payload || typeof payload !== "object") return {};

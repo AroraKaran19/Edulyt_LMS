@@ -247,7 +247,7 @@ const CourseCard = ({
   return (
     <div
       className="group bg-white border border-gray-200 rounded-xl flex flex-col h-full shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden cursor-pointer"
-      onClick={() => router.push(`/courses/${course.slug}/watch`)}
+      onClick={() => router.push(`/programs/${course.slug}/watch`)}
     >
       {/* Image Section */}
       <div className="relative w-full aspect-video overflow-hidden bg-gray-100">
@@ -445,7 +445,7 @@ const CourseCard = ({
               </Link>
             ) : progress > 0 ? (
               <Link
-                href={`/courses/${course.slug}/watch`}
+                href={`/programs/${course.slug}/watch`}
                 onClick={(e) => e.stopPropagation()}
                 className="flex items-center gap-1.5 sm:gap-2 bg-white border border-gray-300 text-gray-700 rounded-lg px-3 sm:px-4 py-2 text-xs font-semibold hover:bg-gray-50 hover:border-gray-400 transition-all shadow-sm hover:shadow"
               >
@@ -453,7 +453,7 @@ const CourseCard = ({
               </Link>
             ) : (
               <Link
-                href={`/courses/${course.slug}/watch`}
+                href={`/programs/${course.slug}/watch`}
                 onClick={(e) => e.stopPropagation()}
                 className="flex items-center gap-1.5 sm:gap-2 bg-white border border-gray-300 text-gray-700 rounded-lg px-3 sm:px-4 py-2 text-xs font-semibold hover:bg-gray-50 hover:border-gray-400 transition-all shadow-sm hover:shadow"
               >

@@ -13,6 +13,18 @@ const nextConfig: NextConfig = {
         destination: "/settings",
         permanent: false,
       },
+      // Courses → Programs route migration. Keeps old URLs/bookmarks working
+      // and catches any internal link still pointing at /courses.
+      {
+        source: "/courses",
+        destination: "/programs",
+        permanent: true,
+      },
+      {
+        source: "/courses/:path*",
+        destination: "/programs/:path*",
+        permanent: true,
+      },
     ];
   },
   images: {

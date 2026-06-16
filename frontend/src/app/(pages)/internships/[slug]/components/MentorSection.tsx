@@ -1,4 +1,4 @@
-import InstructorCarousel from "@/app/(pages)/courses/[slug]/components/InstructorCarousel";
+import InstructorCarousel from "@/app/(pages)/programs/[slug]/components/InstructorCarousel";
 import { Instructor } from "@/types";
 
 const MentorSection = ({ instructors }: { instructors: Instructor[] }) => {

@@ -46,7 +46,7 @@ const MobileMenu = ({ isOpen, navItems, onClose }: MobileMenuProps) => {
               )}
               onClick={onClose}
             >
-              <span>{item.label}</span>
+              <span>{item.displayLabel ?? item.label}</span>
               {displayCount !== undefined && (
                 <span
                   className={cn(

@@ -70,7 +70,7 @@ const CoursesCard1 = ({ course, enrollment }: CoursesCard1Props) => {
 
   const handleContinue = () => {
     if (course.slug) {
-      window.open(`/courses/${course.slug}/watch`, '_blank');
+      window.open(`/programs/${course.slug}/watch`, '_blank');
     }
   };
 

@@ -88,7 +88,7 @@ const VideoCard = ({
               <OrangeButton
                 className="w-full"
                 glow={false}
-                onClick={() => router.push(`/courses/${courseSlug}/watch`)}
+                onClick={() => router.push(`/programs/${courseSlug}/watch`)}
               >
                 <span className="flex items-center justify-center gap-2">
                   <Play className="size-5" />

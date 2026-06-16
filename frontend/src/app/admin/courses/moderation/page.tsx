@@ -622,7 +622,7 @@ const ModerationPage = () => {
                                     </span>
                                     {reviewableInfo.slug && (
                                       <a
-                                        href={`/courses/${reviewableInfo.slug}`}
+                                        href={`/programs/${reviewableInfo.slug}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="text-orange-600 hover:text-orange-700 hover:underline ml-1"
@@ -800,7 +800,7 @@ const ModerationPage = () => {
                                       </span>
                                       {courseInfo.slug && (
                                         <a
-                                          href={`/courses/${courseInfo.slug}`}
+                                          href={`/programs/${courseInfo.slug}`}
                                           target="_blank"
                                           rel="noopener noreferrer"
                                           className="text-orange-600 hover:text-orange-700 hover:underline ml-1"

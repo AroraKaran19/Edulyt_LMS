@@ -97,7 +97,7 @@ const CartForm = ({
 
   // Referral code state — credits the referrer AND (when an admin has
   // configured a buyer discount %) takes that % off the buyer's price.
-  // Mutually exclusive with the coupon field.
+  // Stacks on top of any coupon.
   const [referralCodeInput, setReferralCodeInput] = useState("");
   const [appliedReferral, setAppliedReferral] = useState<{
     code: string;
@@ -256,12 +256,6 @@ const CartForm = ({
       toast.error("Please enter a coupon code");
       return;
     }
-    if (appliedReferral) {
-      toast.error(
-        "Remove the referral code first — a coupon and a referral code can't be used together.",
-      );
-      return;
-    }
 
     setIsValidatingCoupon(true);
     try {
@@ -305,18 +299,12 @@ const CartForm = ({
   };
 
   // Referral code apply/remove. The code credits the referrer and applies the
-  // admin-configured buyer discount %. Mutually exclusive with the coupon.
+  // admin-configured buyer discount %, stacking on top of any coupon.
   const { validateCode: validateReferralCode } = useReferral();
   const handleApplyReferral = async () => {
     const code = referralCodeInput.trim().toUpperCase();
     if (!code) {
       toast.error("Please enter a referral code");
-      return;
-    }
-    if (appliedCoupon) {
-      toast.error(
-        "Remove the coupon first — a coupon and a referral code can't be used together.",
-      );
       return;
     }
     setIsValidatingReferral(true);
@@ -332,8 +320,8 @@ const CartForm = ({
         });
         toast.success(
           pct > 0
-            ? `Referral applied — ${pct}% off and credit to ${result.referrerName}`
-            : `Referral code applied — credit to ${result.referrerName}`,
+            ? `Referral applied — ${pct}% off · Courtesy ${result.referrerName}`
+            : `Referral code applied — Courtesy ${result.referrerName}`,
         );
       } else if (result.reason === "self") {
         toast.error("You can't use your own referral code.");
@@ -918,12 +906,7 @@ const CartForm = ({
                             <Tag className="w-4 h-4 text-orange-600" />
                             Have a coupon code?
                           </label>
-                          {appliedReferral ? (
-                            <p className="text-xs text-gray-500">
-                              Remove the referral code to use a coupon — only one
-                              can be applied per order.
-                            </p>
-                          ) : !appliedCoupon ? (
+                          {!appliedCoupon ? (
                             <div className="flex gap-2">
                               <input
                                 type="text"
@@ -980,14 +963,9 @@ const CartForm = ({
                           </label>
                           <p className="text-xs text-violet-700/80 mb-3">
                             Credits the person who referred you and may give you a
-                            discount. Can&apos;t be combined with a coupon.
+                            discount. Can be used together with a coupon.
                           </p>
-                          {appliedCoupon ? (
-                            <p className="text-xs text-gray-500">
-                              Remove the coupon to use a referral code — only one
-                              can be applied per order.
-                            </p>
-                          ) : !appliedReferral ? (
+                          {!appliedReferral ? (
                             <div className="flex gap-2">
                               <input
                                 type="text"
@@ -1024,8 +1002,8 @@ const CartForm = ({
                                 </span>
                                 <span className="text-sm text-violet-700 font-medium truncate">
                                   {appliedReferral.buyerDiscountPercent > 0
-                                    ? `· ${appliedReferral.buyerDiscountPercent}% off · credits ${appliedReferral.referrerName}`
-                                    : `· credits ${appliedReferral.referrerName}`}
+                                    ? `· ${appliedReferral.buyerDiscountPercent}% off · Courtesy ${appliedReferral.referrerName}`
+                                    : `· Courtesy ${appliedReferral.referrerName}`}
                                 </span>
                               </div>
                               <button
@@ -1105,26 +1083,29 @@ const CartForm = ({
                               partnershipTitle,
                             } = checkoutPricing;
 
-                            // Referral buyer discount (mutually exclusive with
-                            // the coupon). Server re-computes for safety.
+                            // Coupon applies first; the referral buyer discount
+                            // then stacks on the post-coupon amount (mirrors the
+                            // backend, which re-computes for safety).
+                            const baseAfterCoupon = appliedCoupon
+                              ? appliedCoupon.finalAmount
+                              : afterCollaboration;
+
                             const referralDiscountAmount =
                               appliedReferral &&
                               appliedReferral.buyerDiscountPercent > 0
                                 ? Math.round(
-                                    afterCollaboration *
+                                    baseAfterCoupon *
                                       (appliedReferral.buyerDiscountPercent /
                                         100) *
                                       100,
                                   ) / 100
                                 : 0;
 
-                            const finalAmountBeforePoints = appliedCoupon
-                              ? appliedCoupon.finalAmount
-                              : Math.round(
-                                  (afterCollaboration -
-                                    referralDiscountAmount) *
-                                    100,
-                                ) / 100;
+                            const finalAmountBeforePoints =
+                              Math.round(
+                                (baseAfterCoupon - referralDiscountAmount) *
+                                  100,
+                              ) / 100;
 
                             // Success-points discount preview (server re-computes
                             // for safety; this is just for display).

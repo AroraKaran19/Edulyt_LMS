@@ -159,7 +159,7 @@ const AboutPage = () => {
                 internship opportunities.
               </p>
               <Link
-                href="/courses"
+                href="/programs"
                 className="inline-flex items-center gap-2 bg-[#F77124] text-white px-6 py-3 rounded-2xl font-semibold hover:bg-[#E65A1A] transition-colors"
               >
                 Explore Our Courses
@@ -273,7 +273,7 @@ const AboutPage = () => {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
-              href="/courses"
+              href="/programs"
               className="inline-flex items-center gap-2 bg-white text-[#F77124] px-8 py-4 rounded-2xl font-semibold hover:bg-gray-100 transition-colors"
             >
               <BookOpen className="w-5 h-5" />

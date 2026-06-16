@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import apiClient from "@/configs/apiConfig";
 import { ENDPOINTS } from "@/constants/endpoints";
-import CourseCard from "../../courses/components/CourseCard";
+import CourseCard from "../../programs/components/CourseCard";
 import InternshipCard from "../../internships/components/InternshipCard";
 import type { Course } from "@/types";
 import type { InternshipPublicListing } from "@/types/internship";
@@ -83,7 +83,7 @@ const RightSidebar = () => {
         )}
 
         <Link
-          href="/courses"
+          href="/programs"
           className="block w-full text-right text-sm font-bold text-[#F77124] mt-4 hover:underline"
         >
           Show all

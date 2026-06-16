@@ -248,7 +248,7 @@ const CoursesPage = () => {
               title: "Courses",
               description: "No courses found! Buy courses to get courses.",
               buttonText: "Explore for Courses!",
-              href: "/courses",
+              href: "/programs",
             };
         }
       })()
@@ -276,7 +276,7 @@ const CoursesPage = () => {
           <div className="flex flex-col mb-4 sm:mb-6">
             <div>
               <h1 className="text-xl sm:text-2xl font-bold text-text-primary mb-3 sm:mb-4">
-                My Courses
+                My Programs
               </h1>
               <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 sm:gap-4">
                 <div className="flex gap-1 sm:gap-2 rounded-lg border border-[#F66F221F] bg-white p-1 overflow-x-auto">

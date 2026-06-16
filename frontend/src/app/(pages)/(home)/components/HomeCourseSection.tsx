@@ -12,8 +12,8 @@ import { ENDPOINTS } from "@/constants/endpoints";
 import { fetcher } from "@/lib/utils";
 import { useCategory } from "@/hooks/useCategory";
 import { Category } from "@/types/category";
-import CourseCard from "../../courses/components/CourseCard";
-import FilterContainer from "../../courses/components/FilterContainer";
+import CourseCard from "../../programs/components/CourseCard";
+import FilterContainer from "../../programs/components/FilterContainer";
 
 const HomeCourseSection = ({
   audience,
@@ -158,10 +158,10 @@ const HomeCourseSection = ({
       return (
         <div className="col-span-full flex flex-col items-center justify-center py-12">
           <p className="text-2xl font-bold text-text-primary font-coolvetica mb-2">
-            No courses found
+            No programs found
           </p>
           <p className="text-lg text-text-primary/70 text-center wrap-break-words overflow-wrap-anywhere max-w-full">
-            No courses match the selected filters
+            No programs match the selected filters
           </p>
           <p className="text-sm text-text-primary/50 text-center mt-2">
             Try a different category
@@ -185,14 +185,14 @@ const HomeCourseSection = ({
         {hasMore && allCourses.length > 0 && (
           <div className="w-full flex justify-center pt-8">
             <Link
-              href="/courses"
+              href="/programs"
               className={cn(
                 "inline-flex items-center justify-center bg-white text-black rounded-2xl border border-gray-200 shadow-[inset_0_-2px_2px_0_rgba(0,0,0,0.1)]",
                 "px-8 py-2.5 text-sm font-semibold cursor-pointer",
                 "lg:px-4 lg:py-2.5",
               )}
             >
-              View all courses
+              View all programs
             </Link>
           </div>
         )}
