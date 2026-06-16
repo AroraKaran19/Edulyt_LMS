@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
-import CourseCard from "@/app/(pages)/courses/components/CourseCard";
+import CourseCard from "@/app/(pages)/programs/components/CourseCard";
 import { Course } from "@/types";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import { API_BASE_URL } from "@/constants/endpoints";

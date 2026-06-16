@@ -15,7 +15,6 @@ import {
   MapPin,
   Instagram,
   Facebook,
-  ExternalLink,
   Heart,
   Youtube,
 } from "lucide-react";
@@ -52,12 +51,8 @@ const Footer = () => {
 
   const footerLinks = {
     platform: [
-      { label: "Courses", href: "/courses" },
-      {
-        label: "Internships",
-        href: "https://edulyt.com/internships.php",
-        external: true,
-      },
+      { label: "Programs", href: "/programs" },
+      { label: "Internships", href: "/internships" },
       { label: "Contact Us", href: "/contact" },
     ],
     support: [
@@ -193,24 +188,9 @@ const Footer = () => {
             <ul className="space-y-3">
               {footerLinks.platform.map((link, index) => (
                 <li key={index}>
-                  {link.external ? (
-                    <Link
-                      href={link.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={cn(
-                        linkClass,
-                        "inline-flex items-center gap-1.5",
-                      )}
-                    >
-                      {link.label}
-                      <ExternalLink className="w-3.5 h-3.5 shrink-0 opacity-70" />
-                    </Link>
-                  ) : (
-                    <Link href={link.href} className={linkClass}>
-                      {link.label}
-                    </Link>
-                  )}
+                  <Link href={link.href} className={linkClass}>
+                    {link.label}
+                  </Link>
                 </li>
               ))}
             </ul>

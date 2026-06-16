@@ -16,7 +16,7 @@ const VerticalCarouselSection = () => {
         </h2>
         <OrangeButton className="mt-5 px-8 w-fit">
           <Link
-            href="/courses"
+            href="/programs"
             className="text-white font-bold text-sm md:text-base"
           >
             Explore courses

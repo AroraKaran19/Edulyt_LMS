@@ -1,4 +1,4 @@
-import InstructorCarousel from "@/app/(pages)/courses/[slug]/components/InstructorCarousel";
+import InstructorCarousel from "@/app/(pages)/programs/[slug]/components/InstructorCarousel";
 import { Instructor } from "@/types";
 import { Icon } from "@iconify/react";
 import type { HomeFutureManagerSectionSettings } from "@/types/home-page-settings";

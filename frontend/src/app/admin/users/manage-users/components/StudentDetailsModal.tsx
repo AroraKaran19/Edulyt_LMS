@@ -851,7 +851,7 @@ function CoursesSection({
                 </div>
                 {slug && (
                   <Link
-                    href={`/courses/${slug}/watch`}
+                    href={`/programs/${slug}/watch`}
                     className="text-sm text-orange-600 hover:underline flex items-center gap-1"
                   >
                     View <ExternalLink className="w-3 h-3" />

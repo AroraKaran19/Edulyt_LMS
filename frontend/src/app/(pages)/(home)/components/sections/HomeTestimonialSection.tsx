@@ -1,4 +1,4 @@
-import TestimonialCarousel from "@/app/(pages)/courses/[slug]/components/TestimonialCarousel";
+import TestimonialCarousel from "@/app/(pages)/programs/[slug]/components/TestimonialCarousel";
 import { Testimonial } from "@/types";
 import { Icon } from "@iconify/react";
 import type { HomeTestimonialSectionSettings } from "@/types/home-page-settings";

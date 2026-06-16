@@ -58,14 +58,14 @@ export async function generateMetadata({
       title: course.metaTitle || `${course.title} | Airkrit`,
       description:
         course.metaDescription || `Learn ${course.title} with Airkrit.`,
-      url: `https://airkrit.com/courses/${slug}/watch`,
+      url: `https://airkrit.com/programs/${slug}/watch`,
       type: "website",
       siteName: "Airkrit",
       images: [
         {
           url:
             course.thumbnail ||
-            `https://airkrit.com/courses/${slug}/watch/thumbnail.png`,
+            `https://airkrit.com/programs/${slug}/watch/thumbnail.png`,
           alt: `${course.title} course image`,
         },
       ],

@@ -222,7 +222,7 @@ export default function InstructorReviewsPage() {
                       </p>
                       {slug ? (
                         <Link
-                          href={`/courses/${slug}`}
+                          href={`/programs/${slug}`}
                           className="inline-block mt-3 text-xs font-medium text-orange-600 hover:text-orange-700"
                         >
                           View course →

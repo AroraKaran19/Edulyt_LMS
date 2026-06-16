@@ -546,7 +546,7 @@ export default function InstructorDashboardPage() {
                                   {c.slug ? (
                                     <>
                                       <Link
-                                        href={`/courses/${c.slug}/watch`}
+                                        href={`/programs/${c.slug}/watch`}
                                         className="inline-flex items-center gap-1 text-xs font-medium text-violet-700 hover:text-violet-900"
                                         onClick={(e) => e.stopPropagation()}
                                       >
@@ -554,7 +554,7 @@ export default function InstructorDashboardPage() {
                                         Watch / preview
                                       </Link>
                                       <Link
-                                        href={`/courses/${c.slug}`}
+                                        href={`/programs/${c.slug}`}
                                         className="inline-flex items-center gap-1 text-xs font-medium text-gray-600 hover:text-gray-900"
                                         onClick={(e) => e.stopPropagation()}
                                       >

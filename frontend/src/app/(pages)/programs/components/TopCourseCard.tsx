@@ -118,7 +118,7 @@ const TopCourseCard = ({
           className="sm:ml-auto font-bold text-sm px-8 py-4"
           onClick={(e) => {
             e.stopPropagation();
-            router.push(`/courses/${course.slug}`);
+            router.push(`/programs/${course.slug}`);
           }}
         >
           View Details

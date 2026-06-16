@@ -63,7 +63,7 @@ const CourseCard2 = ({ course, enrollment }: CourseCard2Props) => {
 
   const handleClick = () => {
     if (course.slug) {
-      router.push(`/courses/${course.slug}/watch`);
+      router.push(`/programs/${course.slug}/watch`);
     }
   };
 

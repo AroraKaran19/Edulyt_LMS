@@ -383,7 +383,7 @@ const Screen8 = () => {
               )}
 
             <div className="flex justify-between items-center text-xs text-gray-500">
-              <span>URL: https://airkrit.com/courses/</span>
+              <span>URL: https://airkrit.com/programs/</span>
               <span
                 className={`font-mono ${
                   slugValidation.isAvailable === true
@@ -550,7 +550,7 @@ const Screen8 = () => {
                 {metaTitle || "Your course title will appear here"}
               </div>
               <div className="text-green-600 text-sm">
-                https://airkrit.com/courses/
+                https://airkrit.com/programs/
                 {slug || "your-course-slug"}
               </div>
               <div className="text-gray-600 text-sm">

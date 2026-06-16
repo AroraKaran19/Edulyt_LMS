@@ -152,7 +152,7 @@ export default function HeroSectionPage() {
             onChange={(exploreOfferingsHref) =>
               update({ exploreOfferingsHref })
             }
-            placeholder="/courses"
+            placeholder="/programs"
           />
         </div>
       </FieldGroup>

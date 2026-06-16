@@ -83,7 +83,7 @@ const CertificatesPage = () => {
             title="Certificates"
             description="No certificates found! Complete courses to get certificates."
             buttonText="Explore for Courses!"
-            href="/courses"
+            href="/programs"
           />
         ) : (
           <>

@@ -2,20 +2,20 @@ import { Metadata } from "next";
 import React from "react";
 
 export const metadata: Metadata = {
-  title: "Courses | Airkrit India",
+  title: "Programs | Airkrit India",
   description:
     "Explore our wide range of courses and find the perfect one for you.",
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_APP_URL || process.env.NODE_ENV === "production"
-      ? "https://www.airkrit.com/courses"
-      : "http://localhost:3000/courses"
+      ? "https://www.airkrit.com/programs"
+      : "http://localhost:3000/programs"
   ),
   keywords: ["Courses", "Airkrit India", "Online Courses", "Learn Online"],
   openGraph: {
-    title: "Courses | Airkrit India",
+    title: "Programs | Airkrit India",
     description:
       "Explore our wide range of courses and find the perfect one for you.",
-    url: "https://www.airkrit.com/courses",
+    url: "https://www.airkrit.com/programs",
     siteName: "Airkrit India",
     type: "website",
     images: [
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Courses | Airkrit India",
+    title: "Programs | Airkrit India",
     description:
       "Explore our wide range of courses and find the perfect one for you.",
     images: [

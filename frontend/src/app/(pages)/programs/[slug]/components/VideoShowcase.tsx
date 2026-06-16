@@ -1,4 +1,4 @@
-import VideoCard from "@/app/(pages)/courses/components/VideoCard";
+import VideoCard from "@/app/(pages)/programs/components/VideoCard";
 import { CourseLesson, CourseModule } from "@/types";
 import { BookOpen } from "lucide-react";
 

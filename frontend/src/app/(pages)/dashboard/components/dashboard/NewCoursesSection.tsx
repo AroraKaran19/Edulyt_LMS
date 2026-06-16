@@ -22,7 +22,7 @@ const NewCoursesSection = () => {
       });
 
       if (result) {
-        // Deleted/unlinked courses belong only under My Courses, not on Home —
+        // Deleted/unlinked courses belong only under My Programs, not on Home —
         // filter them out here (the card keeps a null-guard as a safety net).
         const withCourse = result.enrollments.filter(
           (e) => e.courseId && typeof e.courseId === "object",

@@ -611,7 +611,7 @@ const Analytics = () => {
                 ) => (
                   <Link
                     key={index}
-                    href={`/courses/${course.slug}`}
+                    href={`/programs/${course.slug}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center gap-3 sm:gap-4 p-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors min-w-0"

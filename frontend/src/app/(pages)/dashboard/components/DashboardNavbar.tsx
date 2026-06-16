@@ -139,7 +139,7 @@ const DashboardNavbar = () => {
   const navItems = [
     { label: "Home", href: "/dashboard" },
     {
-      label: "My Courses",
+      label: "My Programs",
       href: "/dashboard/courses",
       count: stats.totalCourses,
     },
@@ -249,7 +249,7 @@ const DashboardNavbar = () => {
                       {hits.map((h) => (
                         <li key={h.enrollmentId}>
                           <Link
-                            href={`/courses/${h.slug}/watch`}
+                            href={`/programs/${h.slug}/watch`}
                             className="flex items-center gap-3 px-3 py-2 hover:bg-gray-50 transition-colors"
                             onClick={() => setDropdownOpen(false)}
                           >

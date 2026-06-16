@@ -302,7 +302,7 @@ const PaymentFailed = ({
       <div className="flex flex-col w-full gap-3">
         <OrangeButton
           className="w-full"
-          onClick={() => router.push("/courses")}
+          onClick={() => router.push("/programs")}
         >
           Browse Courses
         </OrangeButton>

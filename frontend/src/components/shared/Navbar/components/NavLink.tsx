@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 const NavLink = ({
   href,
   label,
+  displayLabel,
   count,
   className,
   active,
@@ -37,7 +38,7 @@ const NavLink = ({
       {...props}
     >
       <span className="text-sm font-semibold">
-        {label.charAt(0).toUpperCase() + label.slice(1)}
+        {displayLabel ?? label.charAt(0).toUpperCase() + label.slice(1)}
       </span>
       {displayCount !== undefined && (
         <span

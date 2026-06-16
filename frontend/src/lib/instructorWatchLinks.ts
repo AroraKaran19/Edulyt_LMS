@@ -32,7 +32,7 @@ export function getCourseSlugFromQna(q: QnA): string | undefined {
   return undefined;
 }
 
-/** Build `/courses/[slug]/watch?...` for instructor navigation from dashboard lists. */
+/** Build `/programs/[slug]/watch?...` for instructor navigation from dashboard lists. */
 export function buildInstructorWatchDeepLink(opts: {
   courseSlug: string;
   qnaId: string;
@@ -43,7 +43,7 @@ export function buildInstructorWatchDeepLink(opts: {
   params.set("qna", opts.qnaId);
   if (opts.contentId) params.set("content", opts.contentId);
   else if (opts.lessonId) params.set("lesson", opts.lessonId);
-  return `/courses/${encodeURIComponent(opts.courseSlug)}/watch?${params.toString()}`;
+  return `/programs/${encodeURIComponent(opts.courseSlug)}/watch?${params.toString()}`;
 }
 
 /** Deep link to the watch page: right lesson/content + Q&A tab + scroll target. */

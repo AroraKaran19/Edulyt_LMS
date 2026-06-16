@@ -153,8 +153,8 @@ export default function AdminReferralCommissionTiersPage() {
         <p className="text-xs text-gray-500">
           Discount a student gets when checking out with another student&apos;s
           referral code. Applies to every code. Set <strong>0</strong> to
-          disable. Cannot be combined with a coupon at checkout — the buyer uses
-          one or the other.
+          disable. Stacks on top of any coupon (coupon first, then this % off
+          the remaining amount).
         </p>
         <div className="relative w-40">
           <input

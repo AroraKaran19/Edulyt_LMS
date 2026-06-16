@@ -13,7 +13,7 @@ const RatingContainer = ({
   reviewCount: number;
   totalRating: number;
   className?: string;
-  /** When set, links to `/courses/{slug}#ratings` */
+  /** When set, links to `/programs/{slug}#ratings` */
   courseSlug?: string;
   /** When set (and `courseSlug` is not), links to `/internships/{slug}#ratings` */
   internshipSlug?: string;
@@ -23,7 +23,7 @@ const RatingContainer = ({
 
   const ratingsHref =
     courseSlug != null && courseSlug !== ""
-      ? `/courses/${courseSlug}#ratings`
+      ? `/programs/${courseSlug}#ratings`
       : internshipSlug != null && internshipSlug !== ""
         ? `/internships/${internshipSlug}#ratings`
         : null;

@@ -117,7 +117,7 @@ const ComingSoon = ({
 
         {showHomeButton ? (
           <Link
-            href={pathname == "/" ? "/courses" : "/"}
+            href={pathname == "/" ? "/programs" : "/"}
             className="inline-flex"
           >
             <OrangeButton className="px-8 py-3 text-sm font-semibold" blinkIcon>

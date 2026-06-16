@@ -145,7 +145,7 @@ const CourseHeader = ({
                 ) : (
                   <OrangeButton
                     className="font-bold text-sm md:text-base"
-                    onClick={() => router.push(`/courses/${course.slug}/watch`)}
+                    onClick={() => router.push(`/programs/${course.slug}/watch`)}
                   >
                     Continue Learning
                   </OrangeButton>

@@ -92,12 +92,10 @@ const Navbar = () => {
 
   const navItems: NavItem[] = [
     {
-      label: "Home",
-      href: "/",
-    },
-    {
+      // `label` stays "courses" — it keys the mega-menu dropdown logic.
       label: "courses",
-      href: "/courses",
+      displayLabel: "Program",
+      href: "/programs",
       count: coursesCount,
     },
     {
@@ -219,6 +217,7 @@ const Navbar = () => {
               href={item.href}
               key={index}
               label={item.label}
+              displayLabel={item.displayLabel}
               count={item.count}
               onMouseEnter={() => {
                 if (hoverTimeout) {
