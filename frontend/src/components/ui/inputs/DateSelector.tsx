@@ -101,6 +101,7 @@ const DateSelector: React.FC<DateSelectorProps> = ({
 
   const formatDate = (date: Date) => {
     return date.toLocaleDateString("en-US", {
+      timeZone: "Asia/Kolkata",
       year: "numeric",
       month: "short",
       day: "numeric",

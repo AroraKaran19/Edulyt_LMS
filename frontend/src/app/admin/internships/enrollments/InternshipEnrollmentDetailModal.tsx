@@ -22,6 +22,7 @@ function formatDate(iso?: string) {
   if (!iso) return "—";
   try {
     return new Date(iso).toLocaleDateString("en-IN", {
+      timeZone: "Asia/Kolkata",
       day: "numeric",
       month: "short",
       year: "numeric",
@@ -38,6 +39,7 @@ function formatShortDate(iso?: string | Date) {
   try {
     const d = iso instanceof Date ? iso : new Date(iso);
     return d.toLocaleDateString("en-IN", {
+      timeZone: "Asia/Kolkata",
       day: "numeric",
       month: "short",
       year: "numeric",

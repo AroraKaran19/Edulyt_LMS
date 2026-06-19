@@ -548,9 +548,9 @@ const EditUserModal: React.FC<EditUserModalProps> = ({
                                           exp.duration?.to
                                             ? `${new Date(
                                                 exp.duration.from
-                                              ).toLocaleDateString()} - ${new Date(
+                                              ).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })} - ${new Date(
                                                 exp.duration.to
-                                              ).toLocaleDateString()}`
+                                              ).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}`
                                             : "Duration not specified"}
                                         </p>
                                       </div>

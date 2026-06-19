@@ -39,7 +39,7 @@ export function getCertificationExamListReminder(
   return { show: true, phase, examStartAt, examEndAt };
 }
 
-export function formatCertExamUtcRange(start: Date, end: Date): string {
+export function formatCertExamIstRange(start: Date, end: Date): string {
   const opts: Intl.DateTimeFormatOptions = {
     weekday: "short",
     day: "numeric",
@@ -47,7 +47,7 @@ export function formatCertExamUtcRange(start: Date, end: Date): string {
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
-    timeZone: "UTC",
+    timeZone: "Asia/Kolkata",
     timeZoneName: "short",
   };
   return `${start.toLocaleString("en-IN", opts)} – ${end.toLocaleString("en-IN", opts)}`;

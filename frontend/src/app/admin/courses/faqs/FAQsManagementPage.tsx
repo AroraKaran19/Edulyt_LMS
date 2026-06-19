@@ -333,13 +333,13 @@ const FAQsManagementPage = () => {
                             {faq.createdAt ? (
                               <span>
                                 Created:{" "}
-                                {new Date(faq.createdAt).toLocaleDateString()}
+                                {new Date(faq.createdAt).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}
                               </span>
                             ) : null}
                             {faq.updatedAt ? (
                               <span>
                                 Updated:{" "}
-                                {new Date(faq.updatedAt).toLocaleDateString()}
+                                {new Date(faq.updatedAt).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}
                               </span>
                             ) : null}
                           </div>

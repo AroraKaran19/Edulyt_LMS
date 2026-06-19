@@ -957,14 +957,26 @@ const CartForm = ({
 
                         {/* Referral Code Section — credits the referrer and applies the configured buyer discount. */}
                         <div className="bg-linear-to-r from-violet-50 to-purple-50 border border-violet-200 rounded-lg p-4">
-                          <label className="text-sm font-semibold text-text-primary flex items-center gap-2 mb-1">
+                          <label className="text-sm font-semibold text-text-primary flex items-center gap-2 mb-2">
                             <Tag className="w-4 h-4 text-violet-600" />
-                            Got a referral code?
+                            Have a referral code?
                           </label>
-                          <p className="text-xs text-violet-700/80 mb-3">
-                            Credits the person who referred you and may give you a
-                            discount. Can be used together with a coupon.
-                          </p>
+                          <div className="flex flex-col gap-1.5 mb-3">
+                            <p className="text-xs text-violet-700/80 flex items-start gap-2">
+                              <Check className="w-3.5 h-3.5 text-green-600 shrink-0 mt-0.5" />
+                              <span>
+                                Enter it at checkout to instantly get your
+                                discount.
+                              </span>
+                            </p>
+                            <p className="text-xs text-violet-700/80 flex items-start gap-2">
+                              <X className="w-3.5 h-3.5 text-red-500 shrink-0 mt-0.5" />
+                              <span>
+                                Don&apos;t have one? Contact the person who
+                                referred you to receive your unique code.
+                              </span>
+                            </p>
+                          </div>
                           {!appliedReferral ? (
                             <div className="flex gap-2">
                               <input

@@ -103,7 +103,7 @@ export function ProfileSection({ user }: { user: User | null }) {
             <InfoRow
               icon={Calendar}
               label="Date of Birth"
-              value={u.dob ? new Date(u.dob).toLocaleDateString() : "N/A"}
+              value={u.dob ? new Date(u.dob).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" }) : "N/A"}
             />
             <InfoRow label="Provider" value={(u.provider || "N/A").toString()} />
           </div>
@@ -253,10 +253,10 @@ function InstructorProfileSection({ user }: { user: Instructor }) {
                 </div>
                 <div className="text-xs text-gray-500 mt-1">
                   {exp.duration?.from &&
-                    new Date(exp.duration.from).toLocaleDateString()}{" "}
+                    new Date(exp.duration.from).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}{" "}
                   –{" "}
                   {exp.duration?.to &&
-                    new Date(exp.duration.to).toLocaleDateString()}
+                    new Date(exp.duration.to).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}
                 </div>
                 {exp.description && (
                   <p className="text-sm text-gray-600 mt-1">{exp.description}</p>
@@ -314,13 +314,13 @@ export function AccountSection({ user }: { user: User | null }) {
         <InfoRow
           label="Joined"
           value={
-            u.createdAt ? new Date(u.createdAt).toLocaleString() : "N/A"
+            u.createdAt ? new Date(u.createdAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }) : "N/A"
           }
         />
         <InfoRow
           label="Last Updated"
           value={
-            u.updatedAt ? new Date(u.updatedAt).toLocaleString() : "N/A"
+            u.updatedAt ? new Date(u.updatedAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }) : "N/A"
           }
         />
       </div>

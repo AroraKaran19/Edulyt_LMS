@@ -72,7 +72,7 @@ function parseErrorReason(err: unknown): ErrorReason {
 
 function formatTime(d: Date): string {
   return d
-    .toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })
+    .toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" })
     .toLowerCase();
 }
 

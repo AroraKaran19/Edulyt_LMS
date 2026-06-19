@@ -191,6 +191,7 @@ const InternshipHeader = ({ internship }: { internship: Internship }) => {
       month: "long",
       day: "numeric",
       year: "numeric",
+      timeZone: "Asia/Kolkata",
     });
   };
 

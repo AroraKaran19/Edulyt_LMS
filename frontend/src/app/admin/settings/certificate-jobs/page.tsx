@@ -386,6 +386,7 @@ const CertificateJobsPage = () => {
                           ? new Date(job.createdAt).toLocaleDateString(
                               undefined,
                               {
+                                timeZone: "Asia/Kolkata",
                                 day: "numeric",
                                 month: "short",
                                 year: "numeric",

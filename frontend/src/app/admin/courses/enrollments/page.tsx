@@ -157,6 +157,7 @@ const EnrollmentsPage = () => {
 
   const formatDate = (date: string) =>
     new Date(date).toLocaleDateString("en-IN", {
+      timeZone: "Asia/Kolkata",
       day: "numeric",
       month: "short",
       year: "numeric",

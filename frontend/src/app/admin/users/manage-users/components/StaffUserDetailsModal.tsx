@@ -263,7 +263,7 @@ function StaffOverviewSection({ user }: { user: User | null }) {
             icon={Calendar}
             label="Joined"
             value={
-              u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "N/A"
+              u.createdAt ? new Date(u.createdAt).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" }) : "N/A"
             }
           />
         </div>

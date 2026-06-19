@@ -65,6 +65,7 @@ const AVATAR_PALETTE = [
 const formatDate = (date?: string) =>
   date
     ? new Date(date).toLocaleDateString("en-US", {
+        timeZone: "Asia/Kolkata",
         year: "numeric",
         month: "short",
         day: "numeric",

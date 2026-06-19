@@ -401,6 +401,7 @@ export default function ExamPage() {
                   day: "numeric",
                   month: "long",
                   year: "numeric",
+                  timeZone: "Asia/Kolkata",
                 })
               : "the scheduled date"}
             .
@@ -442,9 +443,9 @@ export default function ExamPage() {
             )}
             {exam.examEndAt && (
               <span>
-                Window closes (UTC):{" "}
+                Window closes (IST):{" "}
                 {new Date(exam.examEndAt).toLocaleString("en-GB", {
-                  timeZone: "UTC",
+                  timeZone: "Asia/Kolkata",
                   day: "numeric",
                   month: "short",
                   year: "numeric",

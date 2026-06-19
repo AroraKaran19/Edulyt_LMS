@@ -211,6 +211,7 @@ export default function InstructorReviewsPage() {
                             dateTime={String(r.createdAt)}
                           >
                             {new Date(r.createdAt).toLocaleString("en-IN", {
+                              timeZone: "Asia/Kolkata",
                               dateStyle: "medium",
                               timeStyle: "short",
                             })}

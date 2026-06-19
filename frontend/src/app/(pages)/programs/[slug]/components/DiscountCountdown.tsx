@@ -1,6 +1,7 @@
 "use client";
 import { cn } from "@/lib/utils";
 import { CourseDiscount } from "@/types";
+import { istNowParts } from "@/lib/ist";
 import React, { useEffect, useState } from "react";
 
 const DiscountCountdown = ({
@@ -123,12 +124,10 @@ const DiscountCountdown = ({
       {/* Line 2: Status Text */}
       <p className="font-medium text-text-primary text-center md:text-left">
         {(() => {
-          // Determine if we're before start time or during discount period
-          const now = new Date();
+          // Determine if we're before start time or during discount period (IST).
+          const ist = istNowParts();
           const [startHour, startMin] = discount!.startTime!.split(':').map(Number);
-          const currentHour = now.getHours();
-          const currentMin = now.getMinutes();
-          const currentTimeInMinutes = currentHour * 60 + currentMin;
+          const currentTimeInMinutes = ist.hh * 60 + ist.mm;
           const startTimeInMinutes = startHour * 60 + startMin;
           
           // Check if we're before start time

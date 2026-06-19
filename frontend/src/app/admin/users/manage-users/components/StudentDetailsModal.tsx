@@ -367,10 +367,12 @@ function formatSelectedRange(from: string, to: string): string {
   const fromD = new Date(from);
   const toD = new Date(to);
   return `${fromD.toLocaleDateString("en-IN", {
+    timeZone: "Asia/Kolkata",
     day: "numeric",
     month: "short",
     year: "numeric",
   })} to ${toD.toLocaleDateString("en-IN", {
+    timeZone: "Asia/Kolkata",
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -391,7 +393,7 @@ function fillMissingDays(
     const key = toLocalDateStr(d);
     result.push({
       date: key,
-      label: d.toLocaleDateString("en-IN", { day: "numeric", month: "short" }),
+      label: d.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short" }),
       minutes: map.get(key) ?? 0,
     });
   }
@@ -730,7 +732,7 @@ function OverviewSection({
             label="Joined"
             value={
               (user as any).createdAt
-                ? new Date((user as any).createdAt).toLocaleDateString()
+                ? new Date((user as any).createdAt).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })
                 : "N/A"
             }
           />
@@ -888,6 +890,7 @@ function formatInternshipDate(iso?: string): string {
   if (!iso) return "—";
   try {
     return new Date(iso).toLocaleDateString("en-IN", {
+      timeZone: "Asia/Kolkata",
       day: "numeric",
       month: "short",
       year: "numeric",
@@ -1001,7 +1004,7 @@ function CertificatesSection({ certificates }: { certificates: any[] }) {
                   <p className="text-xs text-gray-500">
                     ID: {cert.certificateId} •{" "}
                     {cert.issuedAt
-                      ? new Date(cert.issuedAt).toLocaleDateString()
+                      ? new Date(cert.issuedAt).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })
                       : "N/A"}
                   </p>
                 </div>

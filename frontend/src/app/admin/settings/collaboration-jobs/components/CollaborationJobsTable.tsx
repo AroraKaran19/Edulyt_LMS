@@ -181,6 +181,7 @@ export function CollaborationJobsTable({
                 <td className="py-3 px-4 text-gray-600">
                   {job.createdAt
                     ? new Date(job.createdAt).toLocaleDateString(undefined, {
+                        timeZone: "Asia/Kolkata",
                         day: "numeric",
                         month: "short",
                         year: "numeric",

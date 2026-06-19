@@ -130,7 +130,9 @@ const PaymentDetails: React.FC<PaymentDetailsProps> = ({
       <div className="flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-0">
         <span className="text-gray-600 text-sm font-medium">Date:</span>
         <span className="font-medium text-sm">
-          {new Date(createdAt).toLocaleDateString()}
+          {new Date(createdAt).toLocaleDateString("en-IN", {
+            timeZone: "Asia/Kolkata",
+          })}
         </span>
       </div>
     </div>

@@ -174,14 +174,21 @@ const internshipSubmissionSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-// Unique constraint: one submission per (user × template × batch)
+// Unique constraint: one submission per (user × template × batch).
+//
+// These MUST use partialFilterExpression, NOT `sparse`. A compound *sparse*
+// index indexes a document that has AT LEAST ONE of its keys — so a task
+// submission (no `examId`) would still be indexed by the examId index with
+// `examId: null`, making every user's 2nd task in a batch collide on
+// (userId, null, batchId). The partial filter scopes each index to its own
+// submission type so tasks and exams never cross-contaminate.
 internshipSubmissionSchema.index(
   { userId: 1, examId: 1, batchId: 1 },
-  { unique: true, sparse: true },
+  { unique: true, partialFilterExpression: { examId: { $exists: true } } },
 );
 internshipSubmissionSchema.index(
   { userId: 1, taskId: 1, batchId: 1 },
-  { unique: true, sparse: true },
+  { unique: true, partialFilterExpression: { taskId: { $exists: true } } },
 );
 internshipSubmissionSchema.index({ userId: 1, internshipId: 1 });
 internshipSubmissionSchema.index({ taskId: 1, updatedAt: -1 }, { sparse: true });

@@ -78,6 +78,7 @@ const OrderDetailsModal = ({
 
   const formatDate = (date: string) =>
     new Date(date).toLocaleDateString("en-IN", {
+      timeZone: "Asia/Kolkata",
       weekday: "short",
       day: "numeric",
       month: "short",

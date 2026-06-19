@@ -197,7 +197,10 @@ const CertificatesPage = () => {
                         </div>
                         <div className="text-xs text-gray-600 mb-2">
                           Issued:{" "}
-                          {new Date(certificate.issuedAt).toLocaleDateString()}
+                          {new Date(certificate.issuedAt).toLocaleDateString(
+                            "en-IN",
+                            { timeZone: "Asia/Kolkata" },
+                          )}
                         </div>
                       </div>
 

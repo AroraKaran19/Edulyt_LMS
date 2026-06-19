@@ -1225,14 +1225,14 @@ const Screen7 = () => {
                           Created:{" "}
                           {new Date(
                             testimonial.createdAt!,
-                          ).toLocaleDateString()}
+                          ).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}
                         </span>
                         {testimonial.updatedAt && (
                           <span>
                             Updated:{" "}
                             {new Date(
                               testimonial.updatedAt,
-                            ).toLocaleDateString()}
+                            ).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}
                           </span>
                         )}
                       </div>

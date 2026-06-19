@@ -379,6 +379,7 @@ function formatBatchLabel(
         month: "short",
         year: "numeric",
         day: "numeric",
+        timeZone: "Asia/Kolkata",
       })
     : "";
   const applyBy = b.applicationLastDate
@@ -386,6 +387,7 @@ function formatBatchLabel(
         day: "numeric",
         month: "short",
         year: "numeric",
+        timeZone: "Asia/Kolkata",
       })
     : "";
   const base = `${b.name}${start ? ` — starts ${start}` : ""}`;
@@ -997,6 +999,7 @@ const EnrollForm = ({ preview }: { preview: InternshipEnrollPreview }) => {
                                 ? new Date(row.d).toLocaleString("en-IN", {
                                     dateStyle: "medium",
                                     timeStyle: "short",
+                                    timeZone: "Asia/Kolkata",
                                   })
                                 : "To be announced"}
                             </span>

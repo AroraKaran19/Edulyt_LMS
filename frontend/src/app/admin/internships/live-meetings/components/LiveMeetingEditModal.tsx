@@ -126,7 +126,7 @@ export default function LiveMeetingEditModal({ meeting, onClose, onSaved }: Prop
         {meeting?.finalizedAt && (
           <p className="text-xs text-amber-700 -mt-3">
             Locked — attendance was finalized on{" "}
-            {new Date(meeting.finalizedAt).toLocaleString()}. Present learners
+            {new Date(meeting.finalizedAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}. Present learners
             have already been credited at the current value. Use Admin → All
             Users → ★ to adjust an individual learner&apos;s success points if
             needed.

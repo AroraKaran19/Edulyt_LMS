@@ -18,6 +18,7 @@ import type {
 import type { CourseDiscount, InternshipAnalytics } from "@/types";
 import apiClient from "@/configs/apiConfig";
 import { ENDPOINTS } from "@/constants/endpoints";
+import { utcToIstDateValue } from "@/lib/ist";
 import {
   getInternshipScreenTriggerFields,
 } from "@/lib/internshipScreenValidation";
@@ -450,10 +451,10 @@ const transformInternshipToFormData = (
         _id: b._id ? String(b._id) : undefined,
         name: b.name ?? "",
         applicationLastDate: b.applicationLastDate
-          ? new Date(b.applicationLastDate).toISOString().split("T")[0]
+          ? utcToIstDateValue(b.applicationLastDate)
           : "",
         internshipStartDate: b.internshipStartDate
-          ? new Date(b.internshipStartDate).toISOString().split("T")[0]
+          ? utcToIstDateValue(b.internshipStartDate)
           : "",
         status: b.status,
         isActive: b.isActive,

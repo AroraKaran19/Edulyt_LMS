@@ -9,6 +9,10 @@ import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import CheckBoxContainer from "@/components/ui/inputs/CheckBoxContainer";
 import { useCoupon } from "@/hooks/useCoupon";
+import {
+  utcToIstDatetimeLocalValue,
+  istDatetimeLocalToUtcIso,
+} from "@/lib/ist";
 import { CreateCouponData, UpdateCouponData, Coupon } from "@/types/coupon";
 import { toast } from "react-toastify";
 import { useCourse } from "@/hooks/useCourse";
@@ -266,10 +270,8 @@ const CouponModal = ({
         maxDiscountAmount: editingCoupon.maxDiscountAmount,
         usageLimit: editingCoupon.usageLimit,
         userUsageLimit: editingCoupon.userUsageLimit || 1,
-        validFrom: new Date(editingCoupon.validFrom).toISOString().slice(0, 16),
-        validUntil: new Date(editingCoupon.validUntil)
-          .toISOString()
-          .slice(0, 16),
+        validFrom: utcToIstDatetimeLocalValue(editingCoupon.validFrom),
+        validUntil: utcToIstDatetimeLocalValue(editingCoupon.validUntil),
         isActive: editingCoupon.isActive,
       });
     } else {
@@ -324,17 +326,25 @@ const CouponModal = ({
       return;
     }
 
+    // validFrom/validUntil are entered as IST wall-clock; store UTC instants.
+    const payload = {
+      ...formData,
+      validFrom: istDatetimeLocalToUtcIso(formData.validFrom) ?? formData.validFrom,
+      validUntil:
+        istDatetimeLocalToUtcIso(formData.validUntil) ?? formData.validUntil,
+    };
+
     try {
       let result;
       if (mode === "edit" && editingCoupon?._id) {
-        result = await updateCoupon(editingCoupon._id, formData);
+        result = await updateCoupon(editingCoupon._id, payload);
         if (result) {
           toast.success("Coupon updated successfully!");
           onSuccess?.(result);
           onClose();
         }
       } else {
-        result = await createCoupon(formData as CreateCouponData);
+        result = await createCoupon(payload as CreateCouponData);
         if (result) {
           toast.success("Coupon created successfully!");
           onSuccess?.(result);

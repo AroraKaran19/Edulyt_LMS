@@ -48,6 +48,7 @@ function formatDateTime(iso: string | null): string {
   if (!iso) return "—";
   try {
     return new Date(iso).toLocaleString("en-IN", {
+      timeZone: "Asia/Kolkata",
       day: "numeric",
       month: "short",
       year: "numeric",

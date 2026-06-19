@@ -299,6 +299,7 @@ export default function InstructorDashboardPage() {
                             ? new Date(latest.createdAt).toLocaleString(
                                 "en-IN",
                                 {
+                                  timeZone: "Asia/Kolkata",
                                   dateStyle: "medium",
                                   timeStyle: "short",
                                 }

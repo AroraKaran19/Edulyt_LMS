@@ -8,6 +8,7 @@ import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import apiClient from "@/configs/apiConfig";
 import { ENDPOINTS } from "@/constants/endpoints";
+import { istDatetimeLocalToUtcIso } from "@/lib/ist";
 
 type Props = {
   isOpen: boolean;
@@ -18,10 +19,8 @@ type Props = {
 };
 
 function toIsoFromLocalInput(localValue: string): string {
-  // Browser datetime-local input gives "YYYY-MM-DDTHH:mm" in local time.
-  if (!localValue) return "";
-  const d = new Date(localValue);
-  return Number.isNaN(d.getTime()) ? "" : d.toISOString();
+  // The datetime-local input is entered as IST wall-clock; store the UTC instant.
+  return istDatetimeLocalToUtcIso(localValue) ?? "";
 }
 
 export default function LiveMeetingCreateModal({

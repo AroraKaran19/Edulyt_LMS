@@ -16,6 +16,7 @@ const LiveClassCard: React.FC<LiveClassCardProps> = ({ liveClass, onEdit, onDele
     const [hours, minutes] = time.split(":");
     dateObj.setHours(parseInt(hours), parseInt(minutes), 0, 0);
     return dateObj.toLocaleString("en-US", {
+      timeZone: "Asia/Kolkata",
       year: "numeric",
       month: "short",
       day: "numeric",

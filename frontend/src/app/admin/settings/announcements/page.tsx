@@ -21,6 +21,7 @@ const AUDIENCE_LABEL: Record<AnnouncementAudience, string> = {
 const formatDate = (iso: string) => {
   try {
     return new Date(iso).toLocaleDateString(undefined, {
+      timeZone: "Asia/Kolkata",
       year: "numeric",
       month: "short",
       day: "2-digit",

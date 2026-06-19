@@ -25,6 +25,7 @@ const SORT_OPTIONS: SelectOption[] = [
 function formatDate(iso: string) {
   try {
     return new Date(iso).toLocaleDateString("en-IN", {
+      timeZone: "Asia/Kolkata",
       day: "numeric",
       month: "short",
       year: "numeric",

@@ -90,6 +90,7 @@ function formatAnswerDisplay(key: string, raw: unknown): string {
       const d = new Date(s);
       if (!Number.isNaN(d.getTime())) {
         return d.toLocaleDateString("en-IN", {
+          timeZone: "Asia/Kolkata",
           day: "numeric",
           month: "short",
           year: "numeric",
@@ -148,6 +149,7 @@ export default function InternshipEnrollmentApplicationModal({
                 <p>
                   <span className="font-semibold text-stone-900">Submitted: </span>
                   {new Date(submittedAtIso).toLocaleString("en-IN", {
+                    timeZone: "Asia/Kolkata",
                     dateStyle: "medium",
                     timeStyle: "short",
                   })}

@@ -52,6 +52,7 @@ function formatRupees(n: number): string {
 function formatDateTime(iso: string): string {
   try {
     return new Date(iso).toLocaleString("en-IN", {
+      timeZone: "Asia/Kolkata",
       day: "numeric",
       month: "short",
       year: "numeric",

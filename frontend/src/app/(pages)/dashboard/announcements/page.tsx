@@ -11,6 +11,7 @@ const formatDate = (iso: string) => {
       year: "numeric",
       month: "short",
       day: "2-digit",
+      timeZone: "Asia/Kolkata",
     });
   } catch {
     return iso;

@@ -125,6 +125,7 @@ const CertificateDetailPage = () => {
                     year: "numeric",
                     month: "long",
                     day: "numeric",
+                    timeZone: "Asia/Kolkata",
                   }
                 )}
               </span>
@@ -172,6 +173,7 @@ const CertificateDetailPage = () => {
                         year: "numeric",
                         month: "long",
                         day: "numeric",
+                        timeZone: "Asia/Kolkata",
                       }
                     )}
                   </span>

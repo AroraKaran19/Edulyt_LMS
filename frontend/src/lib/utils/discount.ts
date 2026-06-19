@@ -1,5 +1,6 @@
 import { Discount, CourseDiscount } from "@/types";
 import type { CollaborationBenefit } from "@/types/collaborationDomain";
+import { ymdIst, istNowParts } from "@/lib/ist";
 
 /** Apply partnership checkout benefit on top of plan/course-discounted price (mirrors backend). */
 export function applyCollaborationBenefitToPrice(
@@ -51,15 +52,12 @@ export const calculateDiscountDisplay = (
     // Check if discount should be displayed based on startDate and endDate
     let isPlanDiscountActive = true;
     if (planDiscount.startDate && planDiscount.endDate) {
-      const now = new Date();
-      const startDate = new Date(planDiscount.startDate);
-      const endDate = new Date(planDiscount.endDate);
-      
-      // Set time to start of day for date comparison
-      startDate.setHours(0, 0, 0, 0);
-      endDate.setHours(23, 59, 59, 999);
-      
-      isPlanDiscountActive = now >= startDate && now <= endDate;
+      // Inclusive date range compared on IST calendar days (not the viewer's TZ).
+      const today = ymdIst(new Date());
+      const start = ymdIst(planDiscount.startDate);
+      const end = ymdIst(planDiscount.endDate);
+      isPlanDiscountActive =
+        !!today && !!start && !!end && today >= start && today <= end;
     }
     
     if (isPlanDiscountActive) {
@@ -93,13 +91,12 @@ export const calculateDiscountDisplay = (
     ) {
       isCourseDiscountActive = false;
     } else if (courseDiscount.startTime && courseDiscount.endTime) {
-      const now = new Date();
+      // startTime/endTime are IST times-of-day; compare against IST "now".
+      const ist = istNowParts();
       const [startHour, startMin] = courseDiscount.startTime.split(':').map(Number);
       const [endHour, endMin] = courseDiscount.endTime.split(':').map(Number);
-      
-      const currentHour = now.getHours();
-      const currentMin = now.getMinutes();
-      const currentTimeInMinutes = currentHour * 60 + currentMin;
+
+      const currentTimeInMinutes = ist.hh * 60 + ist.mm;
       const startTimeInMinutes = startHour * 60 + startMin;
       const endTimeInMinutes = endHour * 60 + endMin;
       

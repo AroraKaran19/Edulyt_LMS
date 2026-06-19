@@ -31,7 +31,7 @@ const formatWhen = (iso?: string) => {
     if (diff < minute) return "just now";
     if (diff < hour) return `${Math.floor(diff / minute)}m`;
     if (diff < day) return `${Math.floor(diff / hour)}h`;
-    return d.toLocaleDateString();
+    return d.toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" });
 };
 
 const replyInitials = (reply: CommunityReviewReply) => {

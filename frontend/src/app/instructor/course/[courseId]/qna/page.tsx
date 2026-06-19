@@ -125,6 +125,7 @@ export default function InstructorCourseQnaPage() {
                   <time dateTime={q.createdAt ? String(q.createdAt) : undefined}>
                     {q.createdAt
                       ? new Date(q.createdAt).toLocaleString("en-IN", {
+                          timeZone: "Asia/Kolkata",
                           dateStyle: "medium",
                           timeStyle: "short",
                         })

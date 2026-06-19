@@ -769,7 +769,7 @@ const ManageUsersPage = () => {
                     </td>
                     <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {user.createdAt
-                        ? new Date(user.createdAt).toLocaleDateString()
+                        ? new Date(user.createdAt).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })
                         : "N/A"}
                     </td>
                     <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm font-medium">

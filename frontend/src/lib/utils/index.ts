@@ -4,6 +4,7 @@ import axios, { AxiosError } from "axios";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import apiClient from "@/configs/apiConfig";
+import { istNowParts } from "@/lib/ist";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -19,15 +20,16 @@ export const calculateDiscountTime = (course: Course) => {
   )
     return null;
 
-  const now = new Date();
+  // startTime/endTime are IST times-of-day; run the countdown on IST "now".
+  const ist = istNowParts();
   const [startHour, startMin] = course.discount.startTime
     .split(":")
     .map(Number);
   const [endHour, endMin] = course.discount.endTime.split(":").map(Number);
 
-  const currentHour = now.getHours();
-  const currentMin = now.getMinutes();
-  const currentSec = now.getSeconds();
+  const currentHour = ist.hh;
+  const currentMin = ist.mm;
+  const currentSec = ist.ss;
   const currentTimeInMinutes = currentHour * 60 + currentMin;
   const currentTimeInSeconds = currentTimeInMinutes * 60 + currentSec;
   const startTimeInMinutes = startHour * 60 + startMin;

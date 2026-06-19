@@ -23,6 +23,11 @@ import {
   AlertCircleIcon,
   Percent,
 } from "lucide-react";
+import {
+  utcToIstDatetimeLocalValue,
+  istDatetimeLocalToUtcIso,
+  formatIst,
+} from "@/lib/ist";
 
 const defaultBatch = () => ({
   name: "",
@@ -40,37 +45,29 @@ const defaultBatch = () => ({
   documentationEndAt: "",
 });
 
-/** Form stores ISO strings; `datetime-local` shows the same instant as UTC clock components. */
-function isoUtcToDatetimeLocal(iso: string): string {
-  if (!iso?.trim()) return "";
-  const t = new Date(iso.trim());
-  if (Number.isNaN(t.getTime())) return "";
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `${t.getUTCFullYear()}-${p(t.getUTCMonth() + 1)}-${p(t.getUTCDate())}T${p(t.getUTCHours())}:${p(t.getUTCMinutes())}`;
+/**
+ * The form stores UTC ISO strings; the `datetime-local` input shows and accepts
+ * IST wall-clock. The admin always works in IST.
+ */
+function isoToIstDatetimeLocal(iso: string): string {
+  return utcToIstDatetimeLocalValue(iso?.trim() || "");
 }
 
-function datetimeLocalUtcToIso(localValue: string): string {
-  if (!localValue?.trim()) return "";
-  const [dPart, tPart] = localValue.split("T");
-  if (!dPart || !tPart) return "";
-  const [y, mo, da] = dPart.split("-").map(Number);
-  const [h, mi] = tPart.split(":").map(Number);
-  if ([y, mo, da, h, mi].some((n) => Number.isNaN(n))) return "";
-  return new Date(Date.UTC(y, mo - 1, da, h, mi, 0, 0)).toISOString();
+function istDatetimeLocalToIso(localValue: string): string {
+  return istDatetimeLocalToUtcIso(localValue?.trim() || "") ?? "";
 }
 
-function formatShortUtc(iso: string): string {
+function formatShortIst(iso: string): string {
   if (!iso?.trim()) return "";
-  const t = new Date(iso.trim());
-  if (Number.isNaN(t.getTime())) return iso;
-  return t.toLocaleString("en-GB", {
-    timeZone: "UTC",
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return (
+    formatIst(iso.trim(), {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }) || iso
+  );
 }
 
 const discountTypeOptions = ["Percentage", "Fixed Amount"];
@@ -141,6 +138,7 @@ const Screen2 = () => {
     if (!dateStr) return "Not set";
     try {
       return new Date(dateStr).toLocaleDateString("en-US", {
+        timeZone: "Asia/Kolkata",
         month: "short",
         day: "numeric",
         year: "numeric",
@@ -327,9 +325,9 @@ const Screen2 = () => {
                                 {batchData.entranceExamStartAt?.trim() &&
                                 batchData.entranceExamEndAt?.trim() ? (
                                   <>
-                                    <span className="text-gray-500">UTC:</span>{" "}
-                                    {formatShortUtc(batchData.entranceExamStartAt)}{" "}
-                                    → {formatShortUtc(batchData.entranceExamEndAt)}
+                                    <span className="text-gray-500">IST:</span>{" "}
+                                    {formatShortIst(batchData.entranceExamStartAt)}{" "}
+                                    → {formatShortIst(batchData.entranceExamEndAt)}
                                   </>
                                 ) : (
                                   <>
@@ -337,7 +335,7 @@ const Screen2 = () => {
                                       Not scheduled yet.
                                     </span>{" "}
                                     Expand this batch and set window opens/closes
-                                    (UTC) under the entrance template.
+                                    (IST) under the entrance template.
                                   </>
                                 )}
                               </p>
@@ -345,7 +343,7 @@ const Screen2 = () => {
                               <p className="text-xs text-gray-600 mt-1">
                                 No entrance template linked. Expand the batch to
                                 choose a template, then set when the exam opens
-                                and closes (UTC).
+                                and closes (IST).
                               </p>
                             )}
                           </div>
@@ -547,19 +545,19 @@ const Screen2 = () => {
                             </p>
                             <p className="text-xs text-gray-500">
                               Times are stored and enforced in{" "}
-                              <span className="font-medium">UTC</span> (server
-                              clock). Pick date and time below as UTC.
+                              <span className="font-medium">IST</span> (server
+                              clock). Pick date and time below as IST.
                             </p>
                             <Controller
                               name={`batches.${index}.entranceExamStartAt`}
                               control={control}
                               render={({ field: f }) => (
                                 <Input
-                                  label="Window opens (UTC)"
+                                  label="Window opens (IST)"
                                   type="datetime-local"
-                                  value={isoUtcToDatetimeLocal(f.value ?? "")}
+                                  value={isoToIstDatetimeLocal(f.value ?? "")}
                                   onChange={(e) => {
-                                    const iso = datetimeLocalUtcToIso(
+                                    const iso = istDatetimeLocalToIso(
                                       e.target.value,
                                     );
                                     f.onChange(iso || "");
@@ -574,11 +572,11 @@ const Screen2 = () => {
                               control={control}
                               render={({ field: f }) => (
                                 <Input
-                                  label="Window closes (UTC)"
+                                  label="Window closes (IST)"
                                   type="datetime-local"
-                                  value={isoUtcToDatetimeLocal(f.value ?? "")}
+                                  value={isoToIstDatetimeLocal(f.value ?? "")}
                                   onChange={(e) => {
-                                    const iso = datetimeLocalUtcToIso(
+                                    const iso = istDatetimeLocalToIso(
                                       e.target.value,
                                     );
                                     f.onChange(iso || "");
@@ -607,8 +605,8 @@ const Screen2 = () => {
                             Certification timing is per learner.
                           </span>{" "}
                           The certification template is shared; each learner&apos;s exam day is the
-                          last UTC calendar day of their selected program length from cohort start.
-                          Entrance timing is the batch window above (UTC).
+                          last IST calendar day of their selected program length from cohort start.
+                          Entrance timing is the batch window above (IST).
                         </p>
                       </div>
 
@@ -623,7 +621,7 @@ const Screen2 = () => {
                           they do, tasks and the certification exam stay locked.
                           Late submissions are accepted and flagged. Times are
                           stored and enforced in{" "}
-                          <span className="font-medium">UTC</span> and are
+                          <span className="font-medium">IST</span> and are
                           required for every batch.
                         </p>
                         <Controller
@@ -647,11 +645,11 @@ const Screen2 = () => {
                           }}
                           render={({ field: f }) => (
                             <Input
-                              label="Documentation opens (UTC)"
+                              label="Documentation opens (IST)"
                               type="datetime-local"
-                              value={isoUtcToDatetimeLocal(f.value ?? "")}
+                              value={isoToIstDatetimeLocal(f.value ?? "")}
                               onChange={(e) => {
-                                const iso = datetimeLocalUtcToIso(
+                                const iso = istDatetimeLocalToIso(
                                   e.target.value,
                                 );
                                 f.onChange(iso || "");
@@ -687,11 +685,11 @@ const Screen2 = () => {
                           }}
                           render={({ field: f }) => (
                             <Input
-                              label="Documentation closes (UTC)"
+                              label="Documentation closes (IST)"
                               type="datetime-local"
-                              value={isoUtcToDatetimeLocal(f.value ?? "")}
+                              value={isoToIstDatetimeLocal(f.value ?? "")}
                               onChange={(e) => {
-                                const iso = datetimeLocalUtcToIso(
+                                const iso = istDatetimeLocalToIso(
                                   e.target.value,
                                 );
                                 f.onChange(iso || "");

@@ -330,7 +330,10 @@ const Reviews = memo(
                         </h3>
                         <p className="text-xs font-normal font-plus-jakarta text-[#575757]">
                           {review.createdAt
-                            ? new Date(review.createdAt).toLocaleDateString()
+                            ? new Date(review.createdAt).toLocaleDateString(
+                                "en-IN",
+                                { timeZone: "Asia/Kolkata" },
+                              )
                             : ""}
                         </p>
                       </div>

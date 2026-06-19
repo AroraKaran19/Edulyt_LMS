@@ -1343,9 +1343,9 @@ const ExperienceSection = ({
                           {experience.duration?.from && experience.duration?.to
                             ? `${new Date(
                                 experience.duration.from,
-                              ).toLocaleDateString()} - ${new Date(
+                              ).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })} - ${new Date(
                                 experience.duration.to,
-                              ).toLocaleDateString()}`
+                              ).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}`
                             : "Duration not specified"}
                         </p>
                       </div>

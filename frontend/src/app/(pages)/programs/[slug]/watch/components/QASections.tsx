@@ -450,7 +450,10 @@ const QASections = memo(
                         </h3>
                         <p className="text-xs font-normal font-plus-jakarta text-[#575757]">
                           {qna.createdAt
-                            ? new Date(qna.createdAt).toLocaleDateString()
+                            ? new Date(qna.createdAt).toLocaleDateString(
+                                "en-IN",
+                                { timeZone: "Asia/Kolkata" },
+                              )
                             : ""}
                         </p>
                       </div>
@@ -566,7 +569,9 @@ const QASections = memo(
                                     {reply.createdAt
                                       ? new Date(
                                           reply.createdAt,
-                                        ).toLocaleDateString()
+                                        ).toLocaleDateString("en-IN", {
+                                          timeZone: "Asia/Kolkata",
+                                        })
                                       : ""}
                                   </p>
                                 </div>

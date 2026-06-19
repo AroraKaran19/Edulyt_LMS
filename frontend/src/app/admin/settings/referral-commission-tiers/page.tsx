@@ -138,7 +138,7 @@ export default function AdminReferralCommissionTiersPage() {
         </p>
         {updatedAt ? (
           <p className="text-xs text-gray-400 mt-1">
-            Last updated {new Date(updatedAt).toLocaleString("en-IN")}
+            Last updated {new Date(updatedAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}
           </p>
         ) : null}
       </div>

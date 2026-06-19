@@ -344,7 +344,7 @@ const SuperAdminDashboard = ({
                 <ButtonLoader />
               ) : (
                 <span className="text-xl font-extrabold text-[#1D2939]">
-                  {totalCertificates.toLocaleString()}
+                  {totalCertificates.toLocaleString("en-IN")}
                 </span>
               )}
               <p className="text-xs text-[#6B7280] mt-0.5">

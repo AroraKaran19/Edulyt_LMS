@@ -106,6 +106,7 @@ export default function LiveMeetingAttendanceModal({ meetingId, onClose }: Props
               <span className="font-semibold text-gray-900">{data.meeting.name}</span>
               <span className="text-gray-500 ml-2">
                 {new Date(data.meeting.startDateTime).toLocaleString("en-IN", {
+                  timeZone: "Asia/Kolkata",
                   day: "numeric",
                   month: "short",
                   year: "numeric",

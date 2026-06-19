@@ -607,12 +607,12 @@ const Screen6 = () => {
                       <div className="flex items-center gap-4 text-xs text-gray-500">
                         <span>
                           Created:{" "}
-                          {new Date(faq.createdAt!).toLocaleDateString()}
+                          {new Date(faq.createdAt!).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}
                         </span>
                         {faq.updatedAt && (
                           <span>
                             Updated:{" "}
-                            {new Date(faq.updatedAt).toLocaleDateString()}
+                            {new Date(faq.updatedAt).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}
                           </span>
                         )}
                       </div>

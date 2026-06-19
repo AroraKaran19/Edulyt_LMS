@@ -123,6 +123,7 @@ const CouponsPage = () => {
 
   const formatDate = (date: Date | string) => {
     return new Date(date).toLocaleDateString("en-US", {
+      timeZone: "Asia/Kolkata",
       year: "numeric",
       month: "short",
       day: "numeric",

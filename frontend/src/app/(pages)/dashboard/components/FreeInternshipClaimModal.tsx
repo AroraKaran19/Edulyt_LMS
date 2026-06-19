@@ -53,6 +53,7 @@ function formatDate(iso: string | null | undefined) {
     day: "numeric",
     month: "short",
     year: "numeric",
+    timeZone: "Asia/Kolkata",
   });
 }
 

@@ -39,6 +39,7 @@ function formatDate(iso?: string) {
       day: "numeric",
       month: "short",
       year: "numeric",
+      timeZone: "Asia/Kolkata",
     });
   } catch {
     return "—";
@@ -346,6 +347,7 @@ function formatMeetingDateTime(iso: string): string {
       month: "short",
       hour: "2-digit",
       minute: "2-digit",
+      timeZone: "Asia/Kolkata",
     });
   } catch {
     return "—";

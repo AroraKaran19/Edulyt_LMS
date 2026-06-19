@@ -99,10 +99,12 @@ function formatSelectedRange(from: string, to: string): string {
   const fromD = new Date(from);
   const toD = new Date(to);
   return `${fromD.toLocaleDateString("en-IN", {
+    timeZone: "Asia/Kolkata",
     day: "numeric",
     month: "short",
     year: "numeric",
   })} to ${toD.toLocaleDateString("en-IN", {
+    timeZone: "Asia/Kolkata",
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -123,7 +125,11 @@ function fillMissingDays(
     const key = toLocalDateStr(d);
     result.push({
       date: key,
-      label: d.toLocaleDateString("en-IN", { day: "numeric", month: "short" }),
+      label: d.toLocaleDateString("en-IN", {
+        timeZone: "Asia/Kolkata",
+        day: "numeric",
+        month: "short",
+      }),
       count: map.get(key) ?? 0,
     });
   }

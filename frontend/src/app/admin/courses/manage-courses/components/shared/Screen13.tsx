@@ -434,7 +434,7 @@ const Screen13 = () => {
                         <Calendar className="w-3 h-3" />
                         <span>
                           Joined:{" "}
-                          {new Date(instructor.createdAt!).toLocaleDateString()}
+                          {new Date(instructor.createdAt!).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}
                         </span>
                       </div>
                     </div>

@@ -36,10 +36,12 @@ const batchSchema = new mongoose.Schema<InternshipBatches>(
       required: [true, "Batch name is required"],
       trim: true,
     },
+    // IST calendar day (inclusive "apply by"); compare via ymdIst, not raw UTC.
     applicationLastDate: {
       type: Date,
       required: [true, "Application last date is required"],
     },
+    // IST calendar day the cohort begins; anchors per-learner task/cert windows.
     internshipStartDate: {
       type: Date,
       required: [true, "Internship start date is required"],
@@ -90,6 +92,7 @@ const batchSchema = new mongoose.Schema<InternshipBatches>(
      * Entrance exam wall-clock window for this cohort (UTC). Evaluated on the server only.
      * Required when `entranceExamTemplateId` is set (validated in admin/services layer).
      */
+    // IST instants (admin picks IST wall-clock). Window gating is instant-based.
     entranceExamStartAt: { type: Date, default: undefined },
     entranceExamEndAt: { type: Date, default: undefined },
     /** Single certification exam template for this cohort (examType = "certification"). */
@@ -108,6 +111,7 @@ const batchSchema = new mongoose.Schema<InternshipBatches>(
      * or paid enrollees pass through `pending_documentation` before reaching
      * `enrolled`. Validated in the admin/services layer.
      */
+    // IST instants (admin picks IST wall-clock). Window gating is instant-based.
     documentationStartAt: { type: Date, default: undefined },
     documentationEndAt: { type: Date, default: undefined },
   },

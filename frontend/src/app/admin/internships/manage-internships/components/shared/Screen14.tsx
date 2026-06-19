@@ -332,7 +332,7 @@ const Screen14 = () => {
                       <p className="font-medium">
                         {new Date(
                           batch.applicationLastDate,
-                        ).toLocaleDateString()}
+                        ).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}
                       </p>
                     </div>
                     <div>
@@ -340,7 +340,7 @@ const Screen14 = () => {
                       <p className="font-medium">
                         {new Date(
                           batch.internshipStartDate,
-                        ).toLocaleDateString()}
+                        ).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}
                       </p>
                     </div>
                   </div>
@@ -349,7 +349,7 @@ const Screen14 = () => {
                     <div className="mt-3 pt-3 border-t border-gray-200">
                       <div className="flex items-center gap-2 text-lg font-bold text-gray-900">
                         <DollarSign className="w-5 h-5" />₹
-                        {batch.plan.price.toLocaleString()}
+                        {batch.plan.price.toLocaleString("en-IN")}
                       </div>
                     </div>
                   )}

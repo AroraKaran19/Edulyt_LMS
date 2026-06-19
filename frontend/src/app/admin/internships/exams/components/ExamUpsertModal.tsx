@@ -15,6 +15,10 @@ import QuestionPickerModal, {
 } from "@/components/admin/internships/QuestionPickerModal";
 import apiClient from "@/configs/apiConfig";
 import { ENDPOINTS } from "@/constants/endpoints";
+import {
+  utcToIstDatetimeLocalValue,
+  istDatetimeLocalToUtcIso,
+} from "@/lib/ist";
 import type {
   InternshipExamTemplateDetail,
   ExamType,
@@ -29,11 +33,8 @@ type Props = {
 };
 
 function toDatetimeLocalValue(iso: string | undefined): string {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  // Show the stored instant as IST wall-clock in the datetime-local input.
+  return utcToIstDatetimeLocalValue(iso ?? "");
 }
 
 const EXAM_TYPE_LABELS: Record<ExamType, string> = {
@@ -233,12 +234,13 @@ export default function ExamUpsertModal({
       toast.error("Results published date-time is required");
       return;
     }
-    const r = new Date(resStr);
-    if (Number.isNaN(r.getTime())) {
+    // The datetime-local value is entered as IST; store the UTC instant.
+    const resIso = istDatetimeLocalToUtcIso(resStr);
+    if (!resIso) {
       toast.error("Invalid results publication date-time");
       return;
     }
-    payload.examResultAt = r.toISOString();
+    payload.examResultAt = resIso;
 
     setSubmitting(true);
     try {

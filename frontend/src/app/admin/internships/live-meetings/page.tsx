@@ -33,6 +33,7 @@ function formatDateTime(iso?: string | null) {
   if (!iso) return "—";
   try {
     return new Date(iso).toLocaleString("en-IN", {
+      timeZone: "Asia/Kolkata",
       day: "numeric",
       month: "short",
       year: "numeric",
@@ -92,7 +93,7 @@ function AttendanceRow({
 }) {
   const active = activatedAt != null;
   const closesAtLabel = active
-    ? `Closes ${new Date(new Date(activatedAt).getTime() + expiryMins * 60_000).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}`
+    ? `Closes ${new Date(new Date(activatedAt).getTime() + expiryMins * 60_000).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" })}`
     : `${expiryMins}m window`;
 
   return (

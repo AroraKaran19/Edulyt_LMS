@@ -135,6 +135,7 @@ const VerifyCertificatePage = () => {
                   year: "numeric",
                   month: "long",
                   day: "numeric",
+                  timeZone: "Asia/Kolkata",
                 })}
               </p>
             </div>
@@ -155,6 +156,7 @@ const VerifyCertificatePage = () => {
                     year: "numeric",
                     month: "long",
                     day: "numeric",
+                    timeZone: "Asia/Kolkata",
                   }
                 )}
               </p>

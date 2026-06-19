@@ -21,7 +21,7 @@ import Modal from "@/components/ui/Modal";
 import DocumentationSubmissionModal from "./DocumentationSubmissionModal";
 import ExamCountdownButton from "./ExamCountdownButton";
 import {
-  formatCertExamUtcRange,
+  formatCertExamIstRange,
   getCertificationExamListReminder,
 } from "@/lib/internshipCertificationReminder";
 import { useEffect, useState } from "react";
@@ -67,6 +67,7 @@ function formatCohortDate(iso?: string) {
       day: "numeric",
       month: "short",
       year: "numeric",
+      timeZone: "Asia/Kolkata",
     });
   } catch {
     return "—";
@@ -573,7 +574,7 @@ export default function DashboardInternshipCard({ row, onWithdrawn }: Props) {
                           Your certification window starts in two days or less
                           (UTC). Schedule:{" "}
                           <span className="font-mono text-violet-900">
-                            {formatCertExamUtcRange(
+                            {formatCertExamIstRange(
                               certReminder.examStartAt,
                               certReminder.examEndAt,
                             )}
@@ -585,7 +586,7 @@ export default function DashboardInternshipCard({ row, onWithdrawn }: Props) {
                           Complete your certification today before the window
                           closes:{" "}
                           <span className="font-mono text-violet-900">
-                            {formatCertExamUtcRange(
+                            {formatCertExamIstRange(
                               certReminder.examStartAt,
                               certReminder.examEndAt,
                             )}

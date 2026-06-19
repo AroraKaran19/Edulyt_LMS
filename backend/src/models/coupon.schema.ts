@@ -65,6 +65,7 @@ const couponSchema = new mongoose.Schema<Coupon>(
       default: 1,
       min: [1, "User usage limit must be at least 1"],
     },
+    // IST instants (admin picks IST wall-clock). Validity is instant-based.
     validFrom: {
       type: Date,
       required: true,

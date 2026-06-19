@@ -16,6 +16,7 @@ import Loader from "@/components/ui/Loader";
 import Link from "next/link";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
+import { ymdIst, istWallClockToUtc, formatIst } from "@/lib/ist";
 
 // Function to detect and highlight links in text
 const renderTextWithLinks = (text: string) => {
@@ -68,71 +69,51 @@ const LiveClassesPage = () => {
     fetchLiveClasses();
   }, [getStudentLiveClasses, currentPage]);
 
-  // Format date and time (matching admin display - time is already in IST)
-  // The admin stores time as HH:mm in IST, so we display it directly
+  // A class is on IST calendar day `date` at IST time `time` (HH:mm). Resolve to
+  // the true UTC instant so comparisons/display are correct in any timezone.
+  const liveClassInstant = (
+    date: Date | string,
+    time: string,
+  ): Date | null => {
+    const ymd = ymdIst(date);
+    if (!ymd) return null;
+    const [y, m, d] = ymd.split("-").map(Number);
+    const [hh, mm] = (time ?? "").split(":").map(Number);
+    if (Number.isNaN(hh) || Number.isNaN(mm)) return null;
+    return istWallClockToUtc(y, m, d, hh, mm);
+  };
+
   const convertToUserTimezone = (
     date: Date | string,
     time: string,
   ): { dateTime: Date; formatted: string } => {
-    const dateObj = typeof date === "string" ? new Date(date) : date;
-    const [hours, minutes] = time.split(":").map(Number);
-
-    // Create date object and set hours/minutes directly (treating as IST/local time)
-    const localDateTime = new Date(dateObj);
-    localDateTime.setHours(hours, minutes, 0, 0);
-
-    // Format for display with IST timezone
-    let formatted = localDateTime.toLocaleString("en-US", {
+    const dt = liveClassInstant(date, time);
+    if (!dt) return { dateTime: new Date(NaN), formatted: "" };
+    const formatted = formatIst(dt, {
       month: "short",
       day: "numeric",
       hour: "2-digit",
       minute: "2-digit",
       hour12: true,
-      timeZone: "Asia/Kolkata",
       timeZoneName: "short",
-    });
-
-    // Replace GMT+5:30 or any GMT variant with IST
-    formatted = formatted.replace(/GMT[+-]\d{1,2}:\d{2}/g, "IST");
-    formatted = formatted.replace(/GMT/g, "IST");
-
-    return {
-      dateTime: localDateTime,
-      formatted,
-    };
+    })
+      .replace(/GMT[+-]\d{1,2}:\d{2}/g, "IST")
+      .replace(/GMT/g, "IST");
+    return { dateTime: dt, formatted };
   };
 
-  // Get live class status (matching admin logic - time is in IST)
   const getLiveClassStatus = (liveClass: LiveClass) => {
-    const now = new Date();
+    const now = Date.now();
+    const start = liveClassInstant(liveClass.startDate, liveClass.startTime);
+    const end = liveClassInstant(liveClass.endDate, liveClass.endTime);
 
-    // Create datetime from start date and time (treating as local/IST)
-    const startDateObj =
-      typeof liveClass.startDate === "string"
-        ? new Date(liveClass.startDate)
-        : liveClass.startDate;
-    const [startHours, startMinutes] = liveClass.startTime
-      .split(":")
-      .map(Number);
-    const startDateTime = new Date(startDateObj);
-    startDateTime.setHours(startHours, startMinutes, 0, 0);
-
-    // Create datetime from end date and time (treating as local/IST)
-    const endDateObj =
-      typeof liveClass.endDate === "string"
-        ? new Date(liveClass.endDate)
-        : liveClass.endDate;
-    const [endHours, endMinutes] = liveClass.endTime.split(":").map(Number);
-    const endDateTime = new Date(endDateObj);
-    endDateTime.setHours(endHours, endMinutes, 0, 0);
-
-    if (startDateTime <= now && endDateTime >= now) {
+    if (start && end && start.getTime() <= now && end.getTime() >= now) {
       return {
         status: "ongoing",
         label: "Live Now",
         color: "bg-green-100 text-green-800",
       };
-    } else if (startDateTime > now) {
+    } else if (start && start.getTime() > now) {
       return {
         status: "scheduled",
         label: "Scheduled",

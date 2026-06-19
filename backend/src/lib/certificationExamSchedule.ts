@@ -1,7 +1,10 @@
 /**
  * Per-learner certification exam window: cohort start + chosen duration (months).
- * All instants are UTC; compare with `new Date()` on the server only.
+ * The window is the learner's last IST calendar day of the program; we return
+ * the UTC instants for IST midnight → IST end-of-day, so server-side
+ * `new Date()` instant comparison stays correct.
  */
+import { ymdIst, istWallClockToUtc } from "../utils/ist";
 
 export function parseProgramDurationMonthsFromAnswers(
   answers: Record<string, unknown> | undefined | null,
@@ -19,8 +22,9 @@ export function parseProgramDurationMonthsFromAnswers(
 }
 
 /**
- * Last calendar day of the program (inclusive), in UTC.
- * Example: start May 1, duration 1 month → window is all of May 31 UTC.
+ * Last calendar day of the program (inclusive), in IST.
+ * Example: start May 1 (IST), duration 1 month → window is all of May 31 IST,
+ * returned as the UTC instants for IST 00:00:00.000 → 23:59:59.999.
  */
 export function computeCertificationExamWindowUtc(
   internshipStartDate: Date,
@@ -35,17 +39,18 @@ export function computeCertificationExamWindowUtc(
   ) {
     throw new Error("Invalid internshipStartDate");
   }
-  const y = internshipStartDate.getUTCFullYear();
-  const m = internshipStartDate.getUTCMonth();
-  const d = internshipStartDate.getUTCDate();
-  const periodEndExclusiveUtc = Date.UTC(y, m + durationMonths, d);
-  const lastDayStartUtcMs = periodEndExclusiveUtc - 24 * 60 * 60 * 1000;
-  const last = new Date(lastDayStartUtcMs);
-  const ldY = last.getUTCFullYear();
-  const ldM = last.getUTCMonth();
-  const ldD = last.getUTCDate();
-  const examStartAt = new Date(Date.UTC(ldY, ldM, ldD, 0, 0, 0, 0));
-  const examEndAt = new Date(Date.UTC(ldY, ldM, ldD, 23, 59, 59, 999));
+  // Read the cohort start as an IST calendar day, then do the month arithmetic
+  // on those IST date parts (a UTC Date is used purely as a calendar calculator).
+  const startYmd = ymdIst(internshipStartDate);
+  if (!startYmd) throw new Error("Invalid internshipStartDate");
+  const [y, m, d] = startYmd.split("-").map(Number); // m is 1-based
+  const periodEndExclusive = new Date(Date.UTC(y, m - 1 + durationMonths, d));
+  const lastDay = new Date(periodEndExclusive.getTime() - 24 * 60 * 60 * 1000);
+  const ldY = lastDay.getUTCFullYear();
+  const ldM = lastDay.getUTCMonth() + 1; // 1-based
+  const ldD = lastDay.getUTCDate();
+  const examStartAt = istWallClockToUtc(ldY, ldM, ldD, 0, 0, 0, 0);
+  const examEndAt = istWallClockToUtc(ldY, ldM, ldD, 23, 59, 59, 999);
   return { examStartAt, examEndAt };
 }
 
