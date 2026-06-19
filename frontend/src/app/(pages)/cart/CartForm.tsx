@@ -98,7 +98,6 @@ const CartForm = ({
   // Referral code state — credits the referrer AND (when an admin has
   // configured a buyer discount %) takes that % off the buyer's price.
   // Stacks on top of any coupon.
-  // Stacks on top of any coupon.
   const [referralCodeInput, setReferralCodeInput] = useState("");
   const [appliedReferral, setAppliedReferral] = useState<{
     code: string;
@@ -300,7 +299,6 @@ const CartForm = ({
   };
 
   // Referral code apply/remove. The code credits the referrer and applies the
-  // admin-configured buyer discount %, stacking on top of any coupon.
   // admin-configured buyer discount %, stacking on top of any coupon.
   const { validateCode: validateReferralCode } = useReferral();
   const handleApplyReferral = async () => {
@@ -909,7 +907,6 @@ const CartForm = ({
                             Have a coupon code?
                           </label>
                           {!appliedCoupon ? (
-                          {!appliedCoupon ? (
                             <div className="flex gap-2">
                               <input
                                 type="text"
@@ -1019,8 +1016,6 @@ const CartForm = ({
                                   {appliedReferral.buyerDiscountPercent > 0
                                     ? `· ${appliedReferral.buyerDiscountPercent}% off · Courtesy ${appliedReferral.referrerName}`
                                     : `· Courtesy ${appliedReferral.referrerName}`}
-                                    ? `· ${appliedReferral.buyerDiscountPercent}% off · Courtesy ${appliedReferral.referrerName}`
-                                    : `· Courtesy ${appliedReferral.referrerName}`}
                                 </span>
                               </div>
                               <button
@@ -1107,18 +1102,10 @@ const CartForm = ({
                               ? appliedCoupon.finalAmount
                               : afterCollaboration;
 
-                            // Coupon applies first; the referral buyer discount
-                            // then stacks on the post-coupon amount (mirrors the
-                            // backend, which re-computes for safety).
-                            const baseAfterCoupon = appliedCoupon
-                              ? appliedCoupon.finalAmount
-                              : afterCollaboration;
-
                             const referralDiscountAmount =
                               appliedReferral &&
                               appliedReferral.buyerDiscountPercent > 0
                                 ? Math.round(
-                                    baseAfterCoupon *
                                     baseAfterCoupon *
                                       (appliedReferral.buyerDiscountPercent /
                                         100) *
@@ -1126,11 +1113,6 @@ const CartForm = ({
                                   ) / 100
                                 : 0;
 
-                            const finalAmountBeforePoints =
-                              Math.round(
-                                (baseAfterCoupon - referralDiscountAmount) *
-                                  100,
-                              ) / 100;
                             const finalAmountBeforePoints =
                               Math.round(
                                 (baseAfterCoupon - referralDiscountAmount) *
