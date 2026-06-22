@@ -17,6 +17,8 @@ import {
   getPartnerCourseDetailService,
   getPartnerInternshipsService,
   getPartnerInternshipDetailService,
+  getPartnerInternshipStudentsService,
+  type PartnerInternshipStudentStatusFilter,
 } from "../services/partner.services";
 
 const parsePartnerTrendMonths = (raw: unknown): number => {
@@ -286,5 +288,52 @@ export const getPartnerInternshipDetail = asyncHandler(
     const result = await getPartnerInternshipDetailService(collegeId, slug);
     if (!result) throw new AppError("Internship not found", 404);
     sendSuccessResponse(res, result, "Partner internship analytics fetched");
+  },
+);
+
+const INTERNSHIP_STATUS_FILTERS: PartnerInternshipStudentStatusFilter[] = [
+  "all",
+  "enrolled",
+  "exam",
+  "selected",
+  "certified",
+];
+
+export const getPartnerInternshipStudents = asyncHandler(
+  async (req: Request, res: Response) => {
+    requirePartnerAnalyticsAccess(req, "internship");
+    const collegeId = requirePartnerCollegeId(req);
+    const slug = String(req.params.slug ?? "").trim();
+    if (!slug) throw new AppError("Internship slug is required", 400);
+
+    const page = Math.max(1, parseInt(String(req.query.page ?? "1"), 10) || 1);
+    const pageSize = Math.min(
+      100,
+      Math.max(1, parseInt(String(req.query.pageSize ?? "10"), 10) || 10),
+    );
+    const q = typeof req.query.q === "string" ? req.query.q : "";
+    const statusRaw =
+      typeof req.query.status === "string" ? req.query.status : "all";
+    const status = (
+      INTERNSHIP_STATUS_FILTERS as string[]
+    ).includes(statusRaw)
+      ? (statusRaw as PartnerInternshipStudentStatusFilter)
+      : "all";
+    const batchIdsRaw =
+      typeof req.query.batchIds === "string" ? req.query.batchIds : "";
+    const batchIds = batchIdsRaw
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    const result = await getPartnerInternshipStudentsService(collegeId, slug, {
+      page,
+      pageSize,
+      q,
+      status,
+      batchIds,
+    });
+    if (!result) throw new AppError("Internship not found", 404);
+    sendSuccessResponse(res, result, "Partner internship students fetched");
   },
 );

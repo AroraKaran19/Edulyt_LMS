@@ -20,6 +20,10 @@ import {
   patchHomePageSettingsController,
 } from "../controllers/homePageSettings.controller";
 import {
+  getLegalSettingsController,
+  patchLegalSettingsController,
+} from "../controllers/legalSettings.controller";
+import {
   getAllCertificateJobs,
   retryCertificateJob,
   getCertificatesByUserId,
@@ -85,5 +89,10 @@ router.patch("/points-settings", patchPointsSettingsController);
 // Marketing home page CMS singleton (admin editor under /admin/settings/home-page)
 router.get("/home-page-settings", getHomePageSettingsController);
 router.patch("/home-page-settings", patchHomePageSettingsController);
+
+// Legal documents singleton (course + internship T&C) — admin editor under
+// /admin/settings/terms-and-conditions
+router.get("/legal-settings", getLegalSettingsController);
+router.patch("/legal-settings", patchLegalSettingsController);
 
 export default router;

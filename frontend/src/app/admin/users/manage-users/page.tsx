@@ -18,6 +18,7 @@ import {
 import Image from "next/image";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import { Button } from "@/components/ui/buttons/button";
+import Pagination from "@/components/admin/Pagination";
 import Input from "@/components/ui/inputs/Input";
 import Select from "@/components/ui/inputs/Select";
 import useUserManagement from "@/hooks/useUserManagement";
@@ -34,7 +35,6 @@ import {
   validatePassword,
   getPasswordRequirementsText,
 } from "@/lib/passwordValidation";
-import WhiteButton from "@/components/ui/buttons/WhiteButton";
 
 const ManageUsersPage = () => {
   const { data: session } = useSession();
@@ -863,63 +863,12 @@ const ManageUsersPage = () => {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
-            <div className="flex-1 flex justify-between items-center gap- sm:hidden">
-              <Button
-                variant="outline"
-                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
-                className={
-                  currentPage === 1 ? "cursor-not-allowed" : "cursor-pointer"
-                }
-              >
-                Previous
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() =>
-                  setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-                }
-                disabled={currentPage === totalPages}
-                className={
-                  currentPage === totalPages
-                    ? "cursor-not-allowed"
-                    : "cursor-pointer"
-                }
-              >
-                Next
-              </Button>
-            </div>
-            <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-              <div>
-                <p className="text-sm text-gray-700">
-                  Showing page{" "}
-                  <span className="font-medium">{currentPage}</span> of{" "}
-                  <span className="font-medium">{totalPages}</span>
-                </p>
-              </div>
-              <div>
-                <nav className="relative z-0 inline-flex -space-x-px items-center gap-4">
-                  <WhiteButton
-                    onClick={() =>
-                      setCurrentPage((prev) => Math.max(prev - 1, 1))
-                    }
-                    disabled={currentPage === 1}
-                  >
-                    Previous
-                  </WhiteButton>
-                  <OrangeButton
-                    glow={false}
-                    onClick={() =>
-                      setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-                    }
-                    disabled={currentPage === totalPages}
-                  >
-                    Next
-                  </OrangeButton>
-                </nav>
-              </div>
-            </div>
+          <div className="bg-white px-4 py-3 border-t border-gray-200 sm:px-6">
+            <Pagination
+              page={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
           </div>
         )}
       </div>

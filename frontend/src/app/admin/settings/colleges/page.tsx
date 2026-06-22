@@ -5,6 +5,7 @@ import { Plus, Pencil, Trash2, Search, X } from "lucide-react";
 import useColleges, { College } from "@/hooks/useColleges";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
+import Pagination from "@/components/admin/Pagination";
 import Input from "@/components/ui/inputs/Input";
 import Select from "@/components/ui/inputs/Select";
 import { toast } from "react-toastify";
@@ -276,25 +277,14 @@ export default function AdminCollegesSettingsPage() {
             </tbody>
           </table>
         </div>
-        <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 bg-gray-50 text-sm text-gray-600">
-          <span>
-            Total: {total} · Page {page} of {Math.max(1, totalPages)}
-          </span>
-          <div className="flex gap-2">
-            <WhiteButton
-              disabled={page <= 1 || isLoading}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-            >
-              Previous
-            </WhiteButton>
-            <OrangeButton
-              glow={false}
-              disabled={page >= totalPages || isLoading}
-              onClick={() => setPage((p) => p + 1)}
-            >
-              Next
-            </OrangeButton>
-          </div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-4 py-3 border-t border-gray-200 bg-gray-50 text-sm text-gray-600">
+          <span>Total: {total}</span>
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
+            disabled={isLoading}
+          />
         </div>
       </div>
 

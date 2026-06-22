@@ -2,16 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
-import {
-  ChevronLeft,
-  ChevronRight,
-  Filter,
-  Loader2,
-  Search,
-  X,
-} from "lucide-react";
+import { Filter, Loader2, Search, X } from "lucide-react";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
+import Pagination from "@/components/admin/Pagination";
 import Modal from "@/components/ui/Modal";
 import useReferral from "@/hooks/useReferral";
 import type {
@@ -350,27 +344,12 @@ export default function AdminReferralWithdrawalsPage() {
             ))}
           </select>
         </label>
-        <div className="flex items-center gap-1 text-xs">
-          <button
-            type="button"
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page <= 1 || loading}
-            className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-2.5 py-1.5 font-medium text-[#344054] hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <ChevronLeft className="size-3.5" /> Prev
-          </button>
-          <span className="px-2 font-medium text-[#475467]">
-            Page {page} of {pageCount}
-          </span>
-          <button
-            type="button"
-            onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
-            disabled={page >= pageCount || loading}
-            className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-2.5 py-1.5 font-medium text-[#344054] hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Next <ChevronRight className="size-3.5" />
-          </button>
-        </div>
+        <Pagination
+          page={page}
+          totalPages={pageCount}
+          onPageChange={setPage}
+          disabled={loading}
+        />
       </div>
 
       {/* Transition modal */}

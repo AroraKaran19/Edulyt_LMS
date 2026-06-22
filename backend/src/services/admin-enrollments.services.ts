@@ -134,95 +134,140 @@ export const getAdminEnrollmentsService = async (
     return match;
   };
 
+  // Reusable join stages — defined once so the search and no-search paths share
+  // exactly the same lookups/projection.
+  const userLookup: any = {
+    $lookup: {
+      from: "users",
+      localField: "userId",
+      foreignField: "_id",
+      as: "user",
+      pipeline: [{ $project: { firstName: 1, lastName: 1, email: 1 } }],
+    },
+  };
+  const unwindUser: any = {
+    $unwind: { path: "$user", preserveNullAndEmptyArrays: true },
+  };
+  const courseLookup: any = {
+    $lookup: {
+      from: "courses",
+      localField: "courseId",
+      foreignField: "_id",
+      as: "course",
+      pipeline: [{ $project: { title: 1, slug: 1, thumbnail: 1 } }],
+    },
+  };
+  const unwindCourse: any = {
+    $unwind: { path: "$course", preserveNullAndEmptyArrays: true },
+  };
+  const buildSearchMatch = (raw: string): any => {
+    const searchRegex = new RegExp(
+      String(raw).trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+      "i"
+    );
+    return {
+      $match: {
+        $or: [
+          { "user.firstName": searchRegex },
+          { "user.lastName": searchRegex },
+          { "user.email": searchRegex },
+          { "course.title": searchRegex },
+        ],
+      },
+    };
+  };
+
   if (enrollmentType === "paid") {
     const match = buildEnrollmentMatch("paid");
-    const pipeline: any[] = [
-      { $match: match },
-      {
-        $lookup: {
-          from: "users",
-          localField: "userId",
-          foreignField: "_id",
-          as: "user",
-          pipeline: [{ $project: { firstName: 1, lastName: 1, email: 1 } }],
-        },
-      },
-      { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
-      {
-        $lookup: {
-          from: "courses",
-          localField: "courseId",
-          foreignField: "_id",
-          as: "course",
-          pipeline: [{ $project: { title: 1, slug: 1, thumbnail: 1 } }],
-        },
-      },
-      { $unwind: { path: "$course", preserveNullAndEmptyArrays: true } },
-      {
-        $lookup: {
-          from: "orders",
-          let: { uid: "$userId", cid: "$courseId" },
-          pipeline: [
-            {
-              $match: {
-                $expr: {
-                  $and: [
-                    { $eq: ["$userId", "$$uid"] },
-                    { $eq: ["$courseId", "$$cid"] },
-                    { $eq: ["$paymentStatus", "success"] },
-                  ],
-                },
+    const hasSearch = !!(search && search.trim());
+
+    // Correlated lookup for the latest successful order — only needed for the
+    // rows actually returned, so it runs after $skip/$limit on both paths.
+    const orderLookup: any = {
+      $lookup: {
+        from: "orders",
+        let: { uid: "$userId", cid: "$courseId" },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ["$userId", "$$uid"] },
+                  { $eq: ["$courseId", "$$cid"] },
+                  { $eq: ["$paymentStatus", "success"] },
+                ],
               },
             },
-            { $sort: { createdAt: -1 } },
-            { $limit: 1 },
-            { $project: { _id: 1, txnId: 1 } },
-          ],
-          as: "order",
-        },
+          },
+          { $sort: { createdAt: -1 } },
+          { $limit: 1 },
+          { $project: { _id: 1, txnId: 1 } },
+        ],
+        as: "order",
       },
-    ];
+    };
+    const finalProject: any = {
+      $project: {
+        _id: 1,
+        userId: "$user",
+        courseId: "$course",
+        planType: 1,
+        status: 1,
+        date: "$enrolledAt",
+        orderId: { $arrayElemAt: ["$order._id", 0] },
+        txnId: { $arrayElemAt: ["$order.txnId", 0] },
+      },
+    };
 
-    if (search && search.trim()) {
-      const searchRegex = new RegExp(
-        String(search).trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-        "i"
-      );
-      pipeline.push({
-        $match: {
-          $or: [
-            { "user.firstName": searchRegex },
-            { "user.lastName": searchRegex },
-            { "user.email": searchRegex },
-            { "course.title": searchRegex },
-          ],
-        },
-      });
+    let enrollments: any[];
+    let total: number;
+
+    if (!hasSearch) {
+      // Fast path: sort + paginate on the base collection (backed by the
+      // { enrolledAt: -1 } index) BEFORE joining, so the user/course/order
+      // lookups only run for the `limit` rows on the page instead of the whole
+      // collection. The count is a plain countDocuments — no joins needed.
+      [enrollments, total] = await Promise.all([
+        EnrollmentModel.aggregate([
+          { $match: match },
+          { $sort: { enrolledAt: -1 } },
+          { $skip: skip },
+          { $limit: limit },
+          userLookup,
+          unwindUser,
+          courseLookup,
+          unwindCourse,
+          orderLookup,
+          finalProject,
+        ]),
+        EnrollmentModel.countDocuments(match),
+      ]);
+    } else {
+      // Search filters on joined user/course fields, so the join must precede
+      // the filter. The (heavier) order lookup still only runs for the page.
+      const filtered: any[] = [
+        { $match: match },
+        userLookup,
+        unwindUser,
+        courseLookup,
+        unwindCourse,
+        buildSearchMatch(search as string),
+      ];
+      const [pageRows, countResult] = await Promise.all([
+        EnrollmentModel.aggregate([
+          ...filtered,
+          { $sort: { enrolledAt: -1 } },
+          { $skip: skip },
+          { $limit: limit },
+          orderLookup,
+          finalProject,
+        ]),
+        EnrollmentModel.aggregate([...filtered, { $count: "total" }]),
+      ]);
+      enrollments = pageRows;
+      total = countResult[0]?.total ?? 0;
     }
 
-    const [enrollments, countResult] = await Promise.all([
-      EnrollmentModel.aggregate([
-        ...pipeline,
-        { $sort: { enrolledAt: -1 } },
-        { $skip: skip },
-        { $limit: limit },
-        {
-          $project: {
-            _id: 1,
-            userId: "$user",
-            courseId: "$course",
-            planType: 1,
-            status: 1,
-            date: "$enrolledAt",
-            orderId: { $arrayElemAt: ["$order._id", 0] },
-            txnId: { $arrayElemAt: ["$order.txnId", 0] },
-          },
-        },
-      ]),
-      EnrollmentModel.aggregate([...pipeline, { $count: "total" }]),
-    ]);
-
-    const total = countResult[0]?.total ?? 0;
     const totalPages = Math.ceil(total / limit);
 
     return {
@@ -248,10 +293,7 @@ export const getAdminEnrollmentsService = async (
     if (enrollmentType === "gift") {
       match.enrollmentSource = "gift";
     } else {
-      match.$or = [
-        { enrollmentSource: "trial" },
-        { isTrial: true },
-      ];
+      match.$or = [{ enrollmentSource: "trial" }, { isTrial: true }];
     }
     if (enrollmentStatus === "active") {
       match.status = { $nin: ["dropped", "revoked"] };
@@ -259,76 +301,72 @@ export const getAdminEnrollmentsService = async (
       match.status = { $in: ["dropped", "revoked"] };
     }
 
-    const pipeline: any[] = [
-      { $match: match },
-      {
-        $lookup: {
-          from: "users",
-          localField: "userId",
-          foreignField: "_id",
-          as: "user",
-          pipeline: [{ $project: { firstName: 1, lastName: 1, email: 1 } }],
-        },
+    const hasSearch = !!(search && search.trim());
+    // giftFrom display resolution is only needed for the rows actually
+    // returned, so it runs after $skip/$limit (it isn't a search field).
+    const giftStages =
+      enrollmentType === "gift" ? giftFromLookupAndNameStages : [];
+    const finalProject: any = {
+      $project: {
+        _id: 1,
+        type: { $literal: enrollmentType },
+        userId: "$user",
+        courseId: "$course",
+        planType: 1,
+        status: 1,
+        date: "$enrolledAt",
+        trialExpiresAt: 1,
+        giftFrom: enrollmentType === "gift" ? "$giftFromName" : "$giftFrom",
       },
-      { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
-      ...(enrollmentType === "gift" ? giftFromLookupAndNameStages : []),
-      {
-        $lookup: {
-          from: "courses",
-          localField: "courseId",
-          foreignField: "_id",
-          as: "course",
-          pipeline: [{ $project: { title: 1, slug: 1, thumbnail: 1 } }],
-        },
-      },
-      { $unwind: { path: "$course", preserveNullAndEmptyArrays: true } },
-    ];
+    };
 
-    if (search && search.trim()) {
-      const searchRegex = new RegExp(
-        String(search).trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-        "i"
-      );
-      pipeline.push({
-        $match: {
-          $or: [
-            { "user.firstName": searchRegex },
-            { "user.lastName": searchRegex },
-            { "user.email": searchRegex },
-            { "course.title": searchRegex },
-          ],
-        },
-      });
+    let enrollments: any[];
+    let total: number;
+
+    if (!hasSearch) {
+      [enrollments, total] = await Promise.all([
+        EnrollmentModel.aggregate([
+          { $match: match },
+          { $sort: { enrolledAt: -1 } },
+          { $skip: skip },
+          { $limit: limit },
+          userLookup,
+          unwindUser,
+          courseLookup,
+          unwindCourse,
+          ...giftStages,
+          finalProject,
+        ]),
+        EnrollmentModel.countDocuments(match),
+      ]);
+    } else {
+      const filtered: any[] = [
+        { $match: match },
+        userLookup,
+        unwindUser,
+        courseLookup,
+        unwindCourse,
+        buildSearchMatch(search as string),
+      ];
+      const [pageRows, countResult] = await Promise.all([
+        EnrollmentModel.aggregate([
+          ...filtered,
+          { $sort: { enrolledAt: -1 } },
+          { $skip: skip },
+          { $limit: limit },
+          ...giftStages,
+          finalProject,
+        ]),
+        EnrollmentModel.aggregate([...filtered, { $count: "total" }]),
+      ]);
+      enrollments = pageRows;
+      total = countResult[0]?.total ?? 0;
     }
 
-    const [enrollments, countResult] = await Promise.all([
-      EnrollmentModel.aggregate([
-        ...pipeline,
-        { $sort: { enrolledAt: -1 } },
-        { $skip: skip },
-        { $limit: limit },
-        {
-          $project: {
-            _id: 1,
-            type: { $literal: enrollmentType },
-            userId: "$user",
-            courseId: "$course",
-            planType: 1,
-            status: 1,
-            date: "$enrolledAt",
-            trialExpiresAt: 1,
-            giftFrom: enrollmentType === "gift" ? "$giftFromName" : "$giftFrom",
-          },
-        },
-      ]),
-      EnrollmentModel.aggregate([...pipeline, { $count: "total" }]),
-    ]);
-
-    const total = countResult[0]?.total ?? 0;
     const totalPages = Math.ceil(total / limit);
 
     return {
-      enrollments: enrollments.map((e) => ({
+      enrollments: enrollments.map((e: any) => ({
         _id: e._id.toString(),
         type: enrollmentType,
         userId: e.userId,
@@ -345,273 +383,148 @@ export const getAdminEnrollmentsService = async (
     };
   }
 
-  // enrollmentType === "all" - merge paid (from enrollments), gift, trial
-  const paidMatch = buildEnrollmentMatch("paid");
-  const paidPipeline: any[] = [
-    { $match: paidMatch },
-    {
-      $lookup: {
-        from: "users",
-        localField: "userId",
-        foreignField: "_id",
-        as: "user",
-        pipeline: [{ $project: { firstName: 1, lastName: 1, email: 1 } }],
-      },
-    },
-    { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
-    {
-      $lookup: {
-        from: "courses",
-        localField: "courseId",
-        foreignField: "_id",
-        as: "course",
-        pipeline: [{ $project: { title: 1, slug: 1, thumbnail: 1 } }],
-      },
-    },
-    { $unwind: { path: "$course", preserveNullAndEmptyArrays: true } },
-    {
-      $lookup: {
-        from: "orders",
-        let: { uid: "$userId", cid: "$courseId" },
-        pipeline: [
-          {
-            $match: {
-              $expr: {
-                $and: [
-                  { $eq: ["$userId", "$$uid"] },
-                  { $eq: ["$courseId", "$$cid"] },
-                  { $eq: ["$paymentStatus", "success"] },
-                ],
-              },
-            },
-          },
-          { $sort: { createdAt: -1 } },
-          { $limit: 1 },
-          { $project: { _id: 1, txnId: 1 } },
-        ],
-        as: "order",
-      },
-    },
-  ];
-  if (search && search.trim()) {
-    const searchRegex = new RegExp(
-      String(search).trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-      "i"
-    );
-    paidPipeline.push({
-      $match: {
-        $or: [
-          { "user.firstName": searchRegex },
-          { "user.lastName": searchRegex },
-          { "user.email": searchRegex },
-          { "course.title": searchRegex },
-        ],
-      },
-    });
+  // enrollmentType === "all" — every enrollment, typed per row. Uses the same
+  // fast pattern as the single-type paths: paginate on the base collection,
+  // join only the page, and get the true total from a plain countDocuments
+  // (the old version capped each type at 500 and reported the merged length,
+  // so "All" could read *lower* than a single type).
+  const allMatch: Record<string, unknown> = {};
+  if (enrollmentStatus === "active") {
+    allMatch.status = { $nin: ["dropped", "revoked"] };
+  } else if (enrollmentStatus === "revoked") {
+    allMatch.status = { $in: ["dropped", "revoked"] };
   }
 
-  const [paidEnrollments, giftEnrollments, trialEnrollments] = await Promise.all([
-    EnrollmentModel.aggregate([
-      ...paidPipeline,
-      { $sort: { enrolledAt: -1 } },
-      { $limit: 500 },
-      {
-        $project: {
-          _id: 1,
-          userId: "$user",
-          courseId: "$course",
-          planType: 1,
-          status: 1,
-          enrolledAt: 1,
-          orderId: { $arrayElemAt: ["$order._id", 0] },
-          txnId: { $arrayElemAt: ["$order.txnId", 0] },
-        },
+  const hasSearch = !!(search && search.trim());
+
+  // Classify each enrollment by its own fields so it appears exactly once.
+  const typeField: any = {
+    $addFields: {
+      type: {
+        $cond: [
+          { $eq: ["$enrollmentSource", "gift"] },
+          "gift",
+          {
+            $cond: [
+              {
+                $or: [
+                  { $eq: ["$enrollmentSource", "trial"] },
+                  { $eq: ["$isTrial", true] },
+                ],
+              },
+              "trial",
+              "paid",
+            ],
+          },
+        ],
       },
-    ]),
-    enrollmentType === "all"
-      ? EnrollmentModel.aggregate([
-          {
-            $match: {
-              enrollmentSource: "gift",
-              ...(enrollmentStatus === "active" && { status: { $nin: ["dropped", "revoked"] } }),
-              ...(enrollmentStatus === "revoked" && { status: { $in: ["dropped", "revoked"] } }),
+    },
+  };
+  const orderLookup: any = {
+    $lookup: {
+      from: "orders",
+      let: { uid: "$userId", cid: "$courseId" },
+      pipeline: [
+        {
+          $match: {
+            $expr: {
+              $and: [
+                { $eq: ["$userId", "$$uid"] },
+                { $eq: ["$courseId", "$$cid"] },
+                { $eq: ["$paymentStatus", "success"] },
+              ],
             },
           },
-          {
-            $lookup: {
-              from: "users",
-              localField: "userId",
-              foreignField: "_id",
-              as: "user",
-              pipeline: [{ $project: { firstName: 1, lastName: 1, email: 1 } }],
-            },
-          },
-          { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
-          {
-            $lookup: {
-              from: "courses",
-              localField: "courseId",
-              foreignField: "_id",
-              as: "course",
-              pipeline: [{ $project: { title: 1, slug: 1, thumbnail: 1 } }],
-            },
-          },
-          { $unwind: { path: "$course", preserveNullAndEmptyArrays: true } },
-          ...giftFromLookupAndNameStages,
-          ...(search && search.trim()
-            ? [
-                {
-                  $match: {
-                    $or: [
-                      {
-                        "user.firstName": new RegExp(
-                          String(search).trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-                          "i"
-                        ),
-                      },
-                      {
-                        "user.lastName": new RegExp(
-                          String(search).trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-                          "i"
-                        ),
-                      },
-                      {
-                        "user.email": new RegExp(
-                          String(search).trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-                          "i"
-                        ),
-                      },
-                      {
-                        "course.title": new RegExp(
-                          String(search).trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-                          "i"
-                        ),
-                      },
-                    ],
-                  },
-                },
-              ]
-            : []),
-          { $sort: { enrolledAt: -1 } },
-          { $limit: 500 },
-        ])
-      : [],
-    enrollmentType === "all"
-      ? EnrollmentModel.aggregate([
-          {
-            $match: {
-              $or: [{ enrollmentSource: "trial" }, { isTrial: true }],
-              ...(enrollmentStatus === "active" && { status: { $nin: ["dropped", "revoked"] } }),
-              ...(enrollmentStatus === "revoked" && { status: { $in: ["dropped", "revoked"] } }),
-            },
-          },
-          {
-            $lookup: {
-              from: "users",
-              localField: "userId",
-              foreignField: "_id",
-              as: "user",
-              pipeline: [{ $project: { firstName: 1, lastName: 1, email: 1 } }],
-            },
-          },
-          { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
-          {
-            $lookup: {
-              from: "courses",
-              localField: "courseId",
-              foreignField: "_id",
-              as: "course",
-              pipeline: [{ $project: { title: 1, slug: 1, thumbnail: 1 } }],
-            },
-          },
-          { $unwind: { path: "$course", preserveNullAndEmptyArrays: true } },
-          ...(search && search.trim()
-            ? [
-                {
-                  $match: {
-                    $or: [
-                      {
-                        "user.firstName": new RegExp(
-                          String(search).trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-                          "i"
-                        ),
-                      },
-                      {
-                        "user.lastName": new RegExp(
-                          String(search).trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-                          "i"
-                        ),
-                      },
-                      {
-                        "user.email": new RegExp(
-                          String(search).trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-                          "i"
-                        ),
-                      },
-                      {
-                        "course.title": new RegExp(
-                          String(search).trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-                          "i"
-                        ),
-                      },
-                    ],
-                  },
-                },
-              ]
-            : []),
-          { $sort: { enrolledAt: -1 } },
-          { $limit: 500 },
-        ])
-      : [],
-  ]);
+        },
+        { $sort: { createdAt: -1 } },
+        { $limit: 1 },
+        { $project: { _id: 1, txnId: 1 } },
+      ],
+      as: "order",
+    },
+  };
+  const allProject: any = {
+    $project: {
+      _id: 1,
+      type: 1,
+      userId: "$user",
+      courseId: "$course",
+      planType: 1,
+      status: 1,
+      date: "$enrolledAt",
+      trialExpiresAt: 1,
+      giftFrom: "$giftFromName",
+      orderId: { $arrayElemAt: ["$order._id", 0] },
+      txnId: { $arrayElemAt: ["$order.txnId", 0] },
+    },
+  };
 
-  const paidItems = (paidEnrollments as any[]).map((e) => ({
-    _id: e._id.toString(),
-    type: "paid" as const,
-    userId: e.userId,
-    courseId: e.courseId,
-    planType: e.planType || "essential",
-    status: ["dropped", "revoked"].includes(e.status) ? "revoked" : e.status,
-    date: e.enrolledAt,
-    orderId: e.orderId?.toString(),
-    txnId: e.txnId,
-  }));
+  let allRows: any[];
+  let allTotal: number;
 
-  const giftItems = giftEnrollments.map((e: any) => ({
-    _id: e._id.toString(),
-    type: "gift" as const,
-    userId: e.user,
-    courseId: e.course,
-    planType: e.planType || "essential",
-    status: ["dropped", "revoked"].includes(e.status) ? "revoked" : e.status,
-    date: e.enrolledAt,
-    giftFrom: e.giftFromName ?? e.giftFrom,
-  }));
+  if (!hasSearch) {
+    [allRows, allTotal] = await Promise.all([
+      EnrollmentModel.aggregate([
+        { $match: allMatch },
+        { $sort: { enrolledAt: -1 } },
+        { $skip: skip },
+        { $limit: limit },
+        userLookup,
+        unwindUser,
+        courseLookup,
+        unwindCourse,
+        typeField,
+        ...giftFromLookupAndNameStages,
+        orderLookup,
+        allProject,
+      ]),
+      EnrollmentModel.countDocuments(allMatch),
+    ]);
+  } else {
+    const filtered: any[] = [
+      { $match: allMatch },
+      userLookup,
+      unwindUser,
+      courseLookup,
+      unwindCourse,
+      buildSearchMatch(search as string),
+    ];
+    const [pageRows, countResult] = await Promise.all([
+      EnrollmentModel.aggregate([
+        ...filtered,
+        { $sort: { enrolledAt: -1 } },
+        { $skip: skip },
+        { $limit: limit },
+        typeField,
+        ...giftFromLookupAndNameStages,
+        orderLookup,
+        allProject,
+      ]),
+      EnrollmentModel.aggregate([...filtered, { $count: "total" }]),
+    ]);
+    allRows = pageRows;
+    allTotal = countResult[0]?.total ?? 0;
+  }
 
-  const trialItems = trialEnrollments.map((e: any) => ({
-    _id: e._id.toString(),
-    type: "trial" as const,
-    userId: e.user,
-    courseId: e.course,
-    planType: e.planType || "essential",
-    status: ["dropped", "revoked"].includes(e.status) ? "revoked" : e.status,
-    date: e.enrolledAt,
-    trialExpiresAt: e.trialExpiresAt,
-  }));
-
-  const merged = [
-    ...paidItems.map((x) => ({ ...x, _sortDate: new Date(x.date).getTime() })),
-    ...giftItems.map((x) => ({ ...x, _sortDate: new Date(x.date).getTime() })),
-    ...trialItems.map((x) => ({ ...x, _sortDate: new Date(x.date).getTime() })),
-  ].sort((a, b) => (b._sortDate ?? 0) - (a._sortDate ?? 0));
-
-  const total = merged.length;
-  const totalPages = Math.ceil(total / limit);
-  const paged = merged.slice(skip, skip + limit).map(({ _sortDate, ...rest }) => rest);
+  const totalPages = Math.ceil(allTotal / limit);
 
   return {
-    enrollments: paged,
-    total,
+    enrollments: allRows.map((e: any) => {
+      const base = {
+        _id: e._id.toString(),
+        type: e.type as "paid" | "gift" | "trial",
+        userId: e.userId,
+        courseId: e.courseId,
+        planType: e.planType || "essential",
+        status: ["dropped", "revoked"].includes(e.status) ? "revoked" : e.status,
+        date: e.date,
+      };
+      if (e.type === "gift") return { ...base, giftFrom: e.giftFrom };
+      if (e.type === "trial")
+        return { ...base, trialExpiresAt: e.trialExpiresAt };
+      return { ...base, orderId: e.orderId?.toString(), txnId: e.txnId };
+    }),
+    total: allTotal,
     totalPages,
     page,
   };

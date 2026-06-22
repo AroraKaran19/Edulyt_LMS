@@ -41,6 +41,7 @@ import {
   internshipVoucherRoutes,
   internshipLiveMeetingRoutes,
   homePageSettingsRoutes,
+  legalSettingsRoutes,
   announcementRoutes,
   referralRoutes,
   communityReviewRoutes,
@@ -105,6 +106,7 @@ app.use("/api/question-categories", questionCategoryRoutes);
 app.use("/api/internship-vouchers", internshipVoucherRoutes);
 app.use("/api/internship-live-meetings", internshipLiveMeetingRoutes);
 app.use("/api/home-page-settings", homePageSettingsRoutes);
+app.use("/api/legal-settings", legalSettingsRoutes);
 app.use("/api/announcements", announcementRoutes);
 app.use("/api/referral", referralRoutes);
 app.use("/api/community-reviews", communityReviewRoutes);

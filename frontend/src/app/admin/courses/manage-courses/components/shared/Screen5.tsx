@@ -909,8 +909,9 @@ const Screen5 = () => {
                       Success Points
                     </h5>
                     <p className="text-xs text-gray-500 mt-0.5">
-                      Per-plan settings for points earned and points
-                      redeemable as a checkout discount.
+                      Points granted to the buyer on purchase of this plan.
+                      Redemption at checkout is configured globally in Settings →
+                      Points.
                     </p>
                   </div>
                   <div className="flex gap-4 flex-col md:flex-row">
@@ -936,31 +937,6 @@ const Screen5 = () => {
                       />
                       <p className="text-xs text-gray-500 mt-1.5">
                         Credited to the buyer&apos;s wallet on purchase. 0 = none.
-                      </p>
-                    </div>
-                    <div className="flex-1">
-                      <Input
-                        label="Max points usable at checkout"
-                        type="number"
-                        value={
-                          state.plans.essential.maxSuccessPointsUsage?.toString() ??
-                          "0"
-                        }
-                        onChange={(e) =>
-                          updatePlan(
-                            "essential",
-                            "maxSuccessPointsUsage",
-                            Math.max(0, parseInt(e.target.value, 10) || 0),
-                          )
-                        }
-                        min={0}
-                        max={1_000_000}
-                        step={1}
-                        placeholder="0"
-                      />
-                      <p className="text-xs text-gray-500 mt-1.5">
-                        Cap on points a buyer can redeem as a discount on this
-                        plan. 0 = disabled.
                       </p>
                     </div>
                   </div>
@@ -1349,8 +1325,9 @@ const Screen5 = () => {
                       Success Points
                     </h5>
                     <p className="text-xs text-gray-500 mt-0.5">
-                      Per-plan settings for points earned and points
-                      redeemable as a checkout discount.
+                      Points granted to the buyer on purchase of this plan.
+                      Redemption at checkout is configured globally in Settings →
+                      Points.
                     </p>
                   </div>
                   <div className="flex gap-4 flex-col md:flex-row">
@@ -1376,31 +1353,6 @@ const Screen5 = () => {
                       />
                       <p className="text-xs text-gray-500 mt-1.5">
                         Credited to the buyer&apos;s wallet on purchase. 0 = none.
-                      </p>
-                    </div>
-                    <div className="flex-1">
-                      <Input
-                        label="Max points usable at checkout"
-                        type="number"
-                        value={
-                          state.plans.elite.maxSuccessPointsUsage?.toString() ??
-                          "0"
-                        }
-                        onChange={(e) =>
-                          updatePlan(
-                            "elite",
-                            "maxSuccessPointsUsage",
-                            Math.max(0, parseInt(e.target.value, 10) || 0),
-                          )
-                        }
-                        min={0}
-                        max={1_000_000}
-                        step={1}
-                        placeholder="0"
-                      />
-                      <p className="text-xs text-gray-500 mt-1.5">
-                        Cap on points a buyer can redeem as a discount on this
-                        plan. 0 = disabled.
                       </p>
                     </div>
                   </div>

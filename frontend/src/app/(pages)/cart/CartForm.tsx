@@ -28,9 +28,6 @@ import { useCoupon } from "@/hooks/useCoupon";
 import useReferral from "@/hooks/useReferral";
 import { DEGREE_OPTIONS } from "@/lib/constants/profileOptions";
 
-// PDF from public/assets (served at /assets/...)
-const TERMS_PDF_PATH = "/assets/Terms and Conditions - Courses.pdf";
-
 const FATHER_OCCUPATION_OPTIONS = [
   {
     value: "Professional",
@@ -114,6 +111,7 @@ const CartForm = ({
   const [useSuccessPoints, setUseSuccessPoints] = useState(false);
   const [successPointsBalance, setSuccessPointsBalance] = useState<number>(0);
   const [redemptionRate, setRedemptionRate] = useState<number>(0);
+  const [maxUtilizationPercent, setMaxUtilizationPercent] = useState<number>(0);
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -127,11 +125,40 @@ const CartForm = ({
         setRedemptionRate(
           Number(rateRes.data?.data?.successPointRedemptionInr ?? 0),
         );
+        setMaxUtilizationPercent(
+          Number(
+            rateRes.data?.data?.successPointsMaxUtilizationPercent ?? 0,
+          ),
+        );
       } catch {
         if (!cancelled) {
           setSuccessPointsBalance(0);
           setRedemptionRate(0);
+          setMaxUtilizationPercent(0);
         }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Admin-managed Terms & Conditions document. When none is configured the
+  // T&C step is skipped entirely (see effect below).
+  const [courseTermsUrl, setCourseTermsUrl] = useState<string>("");
+  const [termsLoaded, setTermsLoaded] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await apiClient.get("/legal-settings");
+        if (!cancelled) {
+          setCourseTermsUrl(String(res.data?.data?.courseTermsUrl ?? ""));
+        }
+      } catch {
+        if (!cancelled) setCourseTermsUrl("");
+      } finally {
+        if (!cancelled) setTermsLoaded(true);
       }
     })();
     return () => {
@@ -181,6 +208,70 @@ const CartForm = ({
       partnershipTitle: collabResolve?.title,
     };
   }, [planType, course, collabResolve]);
+
+  // Success-points preview — the single source of truth for both the opt-in
+  // tick and the order summary. Points stack AFTER coupon + referral and are
+  // capped at the admin `maxUtilizationPercent` of the amount due (and never
+  // exceed it). Server re-computes authoritatively at order creation.
+  const successPointsPreview = useMemo(() => {
+    const afterCollaboration = checkoutPricing.afterCollaboration;
+    const baseAfterCoupon = appliedCoupon
+      ? appliedCoupon.finalAmount
+      : afterCollaboration;
+    const referralDiscountAmount =
+      appliedReferral && appliedReferral.buyerDiscountPercent > 0
+        ? Math.round(
+            baseAfterCoupon * (appliedReferral.buyerDiscountPercent / 100) *
+              100,
+          ) / 100
+        : 0;
+    const finalAmountBeforePoints =
+      Math.round((baseAfterCoupon - referralDiscountAmount) * 100) / 100;
+
+    const maxPct = Math.min(100, Math.max(0, maxUtilizationPercent));
+    const balance = Math.max(0, Math.floor(successPointsBalance));
+
+    let pointsApplied = 0;
+    let discount = 0;
+    if (
+      maxPct > 0 &&
+      redemptionRate > 0 &&
+      balance > 0 &&
+      finalAmountBeforePoints > 0
+    ) {
+      const maxDiscountByPct =
+        Math.round(finalAmountBeforePoints * (maxPct / 100) * 100) / 100;
+      const maxPointsByPct = Math.floor(maxDiscountByPct / redemptionRate);
+      const maxPointsByDue = Math.floor(
+        finalAmountBeforePoints / redemptionRate,
+      );
+      pointsApplied = Math.max(
+        0,
+        Math.min(balance, maxPointsByPct, maxPointsByDue),
+      );
+      discount =
+        Math.round(
+          Math.min(pointsApplied * redemptionRate, finalAmountBeforePoints) *
+            100,
+        ) / 100;
+    }
+
+    return {
+      // Redemption is offered only when the user could actually spend ≥1 point.
+      canUse: pointsApplied > 0,
+      maxPct,
+      finalAmountBeforePoints,
+      pointsApplied,
+      discount,
+    };
+  }, [
+    checkoutPricing,
+    appliedCoupon,
+    appliedReferral,
+    maxUtilizationPercent,
+    redemptionRate,
+    successPointsBalance,
+  ]);
 
   useEffect(() => {
     if (!user?._id || !course._id) return;
@@ -527,6 +618,22 @@ const CartForm = ({
     };
   }, [user?._id, setValue]);
 
+  // No admin-configured T&C document → skip the T&C step entirely: drop it
+  // from the stepper and auto-satisfy the acceptance so the order can proceed.
+  useEffect(() => {
+    if (!termsLoaded || courseTermsUrl) return;
+    setValue("termsAndConditions", true);
+    setCartSteps((prev) => {
+      if (!prev.some((s) => s.title === "T&C")) return prev;
+      const tcWasActive = prev.find((s) => s.title === "T&C")?.isActive;
+      const filtered = prev.filter((s) => s.title !== "T&C");
+      // If the user had already advanced onto T&C, move them on to Enroll.
+      return tcWasActive
+        ? filtered.map((s) => ({ ...s, isActive: s.title === "Enroll" }))
+        : filtered;
+    });
+  }, [termsLoaded, courseTermsUrl, setValue]);
+
   const handleStepClick = (index: number) => {
     const currentActiveIndex = cartSteps.findIndex((step) => step.isActive);
 
@@ -835,7 +942,7 @@ const CartForm = ({
                       </div>
                       <div className="w-full h-96 flex flex-col gap-2">
                         <iframe
-                          src={encodeURI(TERMS_PDF_PATH)}
+                          src={encodeURI(courseTermsUrl)}
                           title="Terms & Conditions"
                           className="w-full h-full"
                           loading="lazy"
@@ -1030,54 +1137,35 @@ const CartForm = ({
                         </div>
 
                         {/* Use Success Points */}
-                        {(() => {
-                          const planMax =
-                            (planType === "elite"
-                              ? course.plans?.elite?.maxSuccessPointsUsage
-                              : course.plans?.essential
-                                  ?.maxSuccessPointsUsage) ?? 0;
-                          const canUsePoints =
-                            planMax > 0 &&
-                            redemptionRate > 0 &&
-                            successPointsBalance > 0;
-                          if (!canUsePoints) return null;
-                          const wantedPoints = Math.min(
-                            successPointsBalance,
-                            planMax,
-                          );
-                          const previewDiscount =
-                            Math.round(wantedPoints * redemptionRate * 100) /
-                            100;
-                          return (
-                            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
-                              <label className="flex items-start gap-3 cursor-pointer">
-                                <input
-                                  type="checkbox"
-                                  checked={useSuccessPoints}
-                                  onChange={(e) =>
-                                    setUseSuccessPoints(e.target.checked)
-                                  }
-                                  className="mt-1 w-4 h-4 accent-[#F77124] cursor-pointer"
-                                />
-                                <div className="min-w-0 flex-1">
-                                  <p className="text-sm font-semibold text-gray-900">
-                                    Use my success points
-                                  </p>
-                                  <p className="text-xs text-gray-600 mt-0.5">
-                                    You have{" "}
-                                    <span className="font-bold text-[#F77124]">
-                                      {successPointsBalance}
-                                    </span>{" "}
-                                    points. Up to {wantedPoints} can be
-                                    redeemed on this plan (₹
-                                    {previewDiscount.toFixed(2)} off, capped at
-                                    the order amount).
-                                  </p>
-                                </div>
-                              </label>
-                            </div>
-                          );
-                        })()}
+                        {successPointsPreview.canUse && (
+                          <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
+                            <label className="flex items-start gap-3 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={useSuccessPoints}
+                                onChange={(e) =>
+                                  setUseSuccessPoints(e.target.checked)
+                                }
+                                className="mt-1 w-4 h-4 accent-[#F77124] cursor-pointer"
+                              />
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-semibold text-gray-900">
+                                  Use my success points
+                                </p>
+                                <p className="text-xs text-gray-600 mt-0.5">
+                                  You have{" "}
+                                  <span className="font-bold text-[#F77124]">
+                                    {successPointsBalance}
+                                  </span>{" "}
+                                  points. Up to {successPointsPreview.maxPct}% of
+                                  this order can be paid with points {" "}
+                                  {successPointsPreview.pointsApplied} pts (₹
+                                  {successPointsPreview.discount.toFixed(2)} off).
+                                </p>
+                              </div>
+                            </label>
+                          </div>
+                        )}
 
                         {/* Order Summary */}
                         <div className="bg-gray-50 rounded-lg p-4">
@@ -1119,45 +1207,15 @@ const CartForm = ({
                                   100,
                               ) / 100;
 
-                            // Success-points discount preview (server re-computes
-                            // for safety; this is just for display).
-                            const planMaxPts =
-                              (planType === "elite"
-                                ? course.plans?.elite?.maxSuccessPointsUsage
-                                : course.plans?.essential
-                                    ?.maxSuccessPointsUsage) ?? 0;
-                            const wantedPts = Math.min(
-                              successPointsBalance,
-                              planMaxPts,
-                            );
-                            let pointsApplied = 0;
-                            let pointsDiscount = 0;
-                            if (
-                              useSuccessPoints &&
-                              wantedPts > 0 &&
-                              redemptionRate > 0
-                            ) {
-                              const wantedDisc =
-                                Math.round(wantedPts * redemptionRate * 100) /
-                                100;
-                              pointsDiscount =
-                                Math.round(
-                                  Math.min(
-                                    wantedDisc,
-                                    finalAmountBeforePoints,
-                                  ) * 100,
-                                ) / 100;
-                              pointsApplied =
-                                wantedDisc > finalAmountBeforePoints
-                                  ? Math.min(
-                                      wantedPts,
-                                      Math.ceil(
-                                        finalAmountBeforePoints /
-                                          redemptionRate,
-                                      ),
-                                    )
-                                  : wantedPts;
-                            }
+                            // Success-points discount (shared with the opt-in
+                            // tick; server re-computes authoritatively). Only
+                            // counts when the buyer has ticked the box.
+                            const pointsApplied = useSuccessPoints
+                              ? successPointsPreview.pointsApplied
+                              : 0;
+                            const pointsDiscount = useSuccessPoints
+                              ? successPointsPreview.discount
+                              : 0;
                             const finalAmount = Math.max(
                               0,
                               Math.round(

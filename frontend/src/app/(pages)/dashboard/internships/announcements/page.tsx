@@ -18,7 +18,7 @@ const formatDate = (iso: string) => {
   }
 };
 
-export default function StudentAnnouncementsPage() {
+export default function InternshipAnnouncementsPage() {
   const { getFeed } = useAnnouncements();
   const [items, setItems] = useState<Announcement[] | null>(null);
 
@@ -26,7 +26,7 @@ export default function StudentAnnouncementsPage() {
     let cancelled = false;
     (async () => {
       try {
-        const feed = await getFeed("course");
+        const feed = await getFeed("internship");
         if (!cancelled) setItems(feed);
       } catch {
         if (!cancelled) setItems([]);
@@ -42,7 +42,7 @@ export default function StudentAnnouncementsPage() {
       <div className="mb-6 flex items-center gap-2">
         <Megaphone className="size-6 text-[#F77124]" />
         <h1 className="text-xl font-bold text-black sm:text-2xl">
-          Announcements
+          Internship Announcements
         </h1>
       </div>
 

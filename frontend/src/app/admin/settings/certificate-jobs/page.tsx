@@ -2,10 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import {
-  FileCheck,
   RefreshCw,
-  ChevronLeft,
-  ChevronRight,
   CheckCircle2,
   Clock,
   Loader2,
@@ -19,6 +16,7 @@ import {
 import Container from "@/app/admin/components/ui/Container";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
+import Pagination from "@/components/admin/Pagination";
 import apiClient from "@/configs/apiConfig";
 import { toast } from "react-toastify";
 
@@ -161,10 +159,10 @@ const CertificateJobsPage = () => {
       title="Certificate Jobs"
       description="View and manage certificate generation jobs"
       className="h-full"
-      classNameBody="flex flex-col gap-6 overflow-visible"
+      classNameBody="flex flex-col gap-6"
     >
       {/* Filters & Summary */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
+      <div className="shrink-0 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative flex items-center gap-2">
             <Search className="absolute left-3 size-4 text-gray-400 pointer-events-none" />
@@ -270,10 +268,10 @@ const CertificateJobsPage = () => {
           )}
         </div>
       ) : (
-        <div className="rounded-xl border border-gray-200 overflow-hidden bg-white shadow-sm">
-          <div className="overflow-x-auto overflow-y-hidden">
+        <div className="flex min-h-0 flex-1 flex-col rounded-xl border border-gray-200 overflow-hidden bg-white shadow-sm">
+          <div className="flex-1 overflow-auto">
             <table className="w-full min-w-[1024px] text-sm">
-              <thead>
+              <thead className="sticky top-0 z-10 bg-gray-50">
                 <tr className="bg-gray-50 border-b border-gray-200">
                   <th className="text-left py-4 px-4 font-semibold text-gray-700">
                     Job ID
@@ -456,35 +454,20 @@ const CertificateJobsPage = () => {
       )}
 
       {/* Pagination */}
-      {totalPages > 1 && !isLoading && (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
-          <p className="text-sm text-gray-600">
-            Showing <span className="font-semibold">{startItem}</span>–
-            <span className="font-semibold">{endItem}</span> of{" "}
-            <span className="font-semibold">{total}</span>
-          </p>
-          <div className="flex items-center gap-2">
-            <WhiteButton
-              glow={false}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page <= 1}
-            >
-              <ChevronLeft className="size-4" />
-              Previous
-            </WhiteButton>
-            <span className="text-sm text-gray-600 px-2">
-              Page {page} of {totalPages}
-            </span>
-            <OrangeButton
-              glow={false}
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page >= totalPages}
-            >
-              Next
-              <ChevronRight className="size-4" />
-            </OrangeButton>
-          </div>
-        </div>
+      {!isLoading && (
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          className="shrink-0 pt-2"
+          summary={
+            <>
+              Showing <span className="font-semibold">{startItem}</span>–
+              <span className="font-semibold">{endItem}</span> of{" "}
+              <span className="font-semibold">{total}</span>
+            </>
+          }
+        />
       )}
     </Container>
   );

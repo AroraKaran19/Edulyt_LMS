@@ -19,6 +19,15 @@ const pointsSettingsSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    /** Max % of a course order's payable amount that may be settled with
+     *  success points at checkout. 0 disables redemption globally. */
+    successPointsMaxUtilizationPercent: {
+      type: Number,
+      required: true,
+      default: 0,
+      min: 0,
+      max: 100,
+    },
     /** Wallet success points granted once, on a user's first-ever login. */
     loginSuccessPoints: {
       type: Number,

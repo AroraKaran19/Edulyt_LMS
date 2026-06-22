@@ -12,6 +12,7 @@ import Container from "@/app/admin/components/ui/Container";
 type PointsSettings = {
   internshipSuccessPointInr: number;
   successPointRedemptionInr: number;
+  successPointsMaxUtilizationPercent: number;
   loginSuccessPoints: number;
   communityReviewSuccessPoints: number;
   internshipRegistrationSuccessPoints: number;
@@ -30,6 +31,9 @@ function parsePointsPayload(axiosData: unknown): PointsSettings | null {
   return {
     internshipSuccessPointInr: num(p.internshipSuccessPointInr),
     successPointRedemptionInr: num(p.successPointRedemptionInr),
+    successPointsMaxUtilizationPercent: num(
+      p.successPointsMaxUtilizationPercent,
+    ),
     loginSuccessPoints: num(p.loginSuccessPoints),
     communityReviewSuccessPoints: num(p.communityReviewSuccessPoints),
     internshipRegistrationSuccessPoints: num(
@@ -46,6 +50,10 @@ export default function AdminPointsSettingsPage() {
     useState("");
   const [successPointRedemptionInr, setSuccessPointRedemptionInr] =
     useState("");
+  const [
+    successPointsMaxUtilizationPercent,
+    setSuccessPointsMaxUtilizationPercent,
+  ] = useState("");
   const [loginSuccessPoints, setLoginSuccessPoints] = useState("");
   const [communityReviewSuccessPoints, setCommunityReviewSuccessPoints] =
     useState("");
@@ -62,6 +70,9 @@ export default function AdminPointsSettingsPage() {
       if (d) {
         setInternshipSuccessPointInr(String(d.internshipSuccessPointInr));
         setSuccessPointRedemptionInr(String(d.successPointRedemptionInr));
+        setSuccessPointsMaxUtilizationPercent(
+          String(d.successPointsMaxUtilizationPercent),
+        );
         setLoginSuccessPoints(String(d.loginSuccessPoints));
         setCommunityReviewSuccessPoints(
           String(d.communityReviewSuccessPoints),
@@ -85,6 +96,9 @@ export default function AdminPointsSettingsPage() {
     const values = {
       internshipSuccessPointInr: parseFloat(internshipSuccessPointInr),
       successPointRedemptionInr: parseFloat(successPointRedemptionInr),
+      successPointsMaxUtilizationPercent: parseFloat(
+        successPointsMaxUtilizationPercent,
+      ),
       loginSuccessPoints: parseFloat(loginSuccessPoints),
       communityReviewSuccessPoints: parseFloat(communityReviewSuccessPoints),
       internshipRegistrationSuccessPoints: parseFloat(
@@ -95,6 +109,10 @@ export default function AdminPointsSettingsPage() {
       Object.values(values).some((v) => Number.isNaN(v) || v < 0)
     ) {
       toast.error("Enter valid non-negative numbers for every field");
+      return;
+    }
+    if (values.successPointsMaxUtilizationPercent > 100) {
+      toast.error("Max success-points utilisation can't exceed 100%");
       return;
     }
     setSaving(true);
@@ -127,7 +145,7 @@ export default function AdminPointsSettingsPage() {
         icon={IndianRupee}
         title="Points values (INR)"
         description="Configure the internship success-points purchase rate and the user success-points redemption rate (used when buyers tick 'Use my success points' at course checkout)."
-        className="w-full border-stone-200 shadow-sm"
+        className="w-full h-fit border-stone-200 shadow-sm"
         classNameBody="flex flex-col gap-6"
       >
         <div className="grid gap-6 sm:grid-cols-1">
@@ -156,8 +174,7 @@ export default function AdminPointsSettingsPage() {
             </label>
             <p className="text-xs text-stone-500">
               How much each user success point is worth as a discount when redeemed at course
-              checkout. Per-plan `maxSuccessPointsUsage` caps how many points a buyer can apply.
-              Set to 0 to disable redemption globally.
+              checkout. Set to 0 to disable redemption globally.
             </p>
             <Input
               type="number"
@@ -168,6 +185,30 @@ export default function AdminPointsSettingsPage() {
               placeholder="0"
             />
           </div>
+
+          <div className="rounded-xl border border-stone-100 bg-stone-50/80 p-4 space-y-2">
+            <label className="block text-sm font-semibold text-stone-800">
+              Max success-points utilisation (% of order)
+            </label>
+            <p className="text-xs text-stone-500">
+              The most of a course order&apos;s payable amount (after any coupon &amp;
+              referral discount) a buyer may settle with success points when they tick
+              &quot;Use my success points&quot; at checkout. E.g. 20 = up to 20% off via
+              points. Set to 0 to disable redemption globally. Success points apply only to
+              course purchases.
+            </p>
+            <Input
+              type="number"
+              min={0}
+              max={100}
+              step="1"
+              value={successPointsMaxUtilizationPercent}
+              onChange={(e) =>
+                setSuccessPointsMaxUtilizationPercent(e.target.value)
+              }
+              placeholder="0"
+            />
+          </div>
         </div>
       </Container>
 
@@ -175,7 +216,7 @@ export default function AdminPointsSettingsPage() {
         icon={Star}
         title="Reward points"
         description="Success points credited to a user's wallet when they reach these milestones. Set any value to 0 to disable that reward."
-        className="w-full border-stone-200 shadow-sm"
+        className="w-full h-fit border-stone-200 shadow-sm"
         classNameBody="flex flex-col gap-6"
       >
         <div className="grid gap-6 sm:grid-cols-1">

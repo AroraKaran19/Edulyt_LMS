@@ -14,7 +14,7 @@ import {
   User,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import ReferAndEarnModal from "@/components/shared/Referral/ReferAndEarnModal";
 
@@ -23,6 +23,39 @@ const UserMenu = () => {
   const { data: session } = useSession();
   const [isUserOpen, setIsUserOpen] = useState(false);
   const [referModalOpen, setReferModalOpen] = useState(false);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [canHover, setCanHover] = useState(false);
+
+  // Only wire hover up on devices that actually hover, so a tap on a touch
+  // screen (which emulates mouseenter then click) doesn't open the menu and
+  // immediately toggle it shut.
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    setCanHover(window.matchMedia("(hover: hover)").matches);
+  }, []);
+
+  // Clean up any pending close timer on unmount.
+  useEffect(() => {
+    return () => {
+      if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+    };
+  }, []);
+
+  // Open at once on hover; close on leave after a short grace period so the
+  // cursor can cross the gap between the trigger and the menu without it
+  // snapping shut. The menu is a child of the wrapper, so moving onto it fires
+  // the wrapper's mouseenter again and cancels the pending close.
+  const openMenu = () => {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+    setIsUserOpen(true);
+  };
+  const scheduleClose = () => {
+    if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+    closeTimerRef.current = setTimeout(() => setIsUserOpen(false), 150);
+  };
 
   // Use session user data directly to ensure reactivity to session updates
   // This ensures that when updateSession() is called elsewhere, this component updates
@@ -201,6 +234,8 @@ const UserMenu = () => {
       <div
         className="flex items-center gap-3 cursor-pointer relative user-icon select-none"
         onClick={() => setIsUserOpen(!isUserOpen)}
+        onMouseEnter={canHover ? openMenu : undefined}
+        onMouseLeave={canHover ? scheduleClose : undefined}
         role="button"
         aria-haspopup="menu"
         aria-expanded={isUserOpen}
@@ -323,6 +358,8 @@ const UserMenu = () => {
     <div
       className="user flex gap-2 items-center cursor-pointer relative select-none"
       onClick={() => setIsUserOpen(!isUserOpen)}
+      onMouseEnter={canHover ? openMenu : undefined}
+      onMouseLeave={canHover ? scheduleClose : undefined}
       role="button"
       aria-haspopup="menu"
       aria-expanded={isUserOpen}

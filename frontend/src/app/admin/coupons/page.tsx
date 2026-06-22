@@ -19,7 +19,7 @@ import { useCoupon } from "@/hooks/useCoupon";
 import { Coupon } from "@/types/coupon";
 import CouponModal from "@/components/ui/modals/CouponModal";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
-import WhiteButton from "@/components/ui/buttons/WhiteButton";
+import Pagination from "@/components/admin/Pagination";
 import { toast } from "react-toastify";
 
 const CouponsPage = () => {
@@ -485,58 +485,11 @@ const CouponsPage = () => {
         {/* Pagination */}
         {totalPages > 1 && (
           <div className="mt-8 bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              <p className="text-sm text-gray-600">
-                Showing page{" "}
-                <span className="font-semibold text-gray-900">{page}</span> of{" "}
-                <span className="font-semibold text-gray-900">
-                  {totalPages}
-                </span>
-              </p>
-              <div className="flex items-center gap-2">
-                <WhiteButton
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                  glow={false}
-                >
-                  Previous
-                </WhiteButton>
-
-                {/* Page Numbers */}
-                <div className="hidden sm:flex items-center gap-1">
-                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                    let pageNum;
-                    if (totalPages <= 5) {
-                      pageNum = i + 1;
-                    } else if (page <= 3) {
-                      pageNum = i + 1;
-                    } else if (page >= totalPages - 2) {
-                      pageNum = totalPages - 4 + i;
-                    } else {
-                      pageNum = page - 2 + i;
-                    }
-
-                    return (
-                      <WhiteButton
-                        key={pageNum}
-                        onClick={() => setPage(pageNum)}
-                        glow={false}
-                      >
-                        {pageNum}
-                      </WhiteButton>
-                    );
-                  })}
-                </div>
-
-                <OrangeButton
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages}
-                  glow={false}
-                >
-                  Next
-                </OrangeButton>
-              </div>
-            </div>
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              onPageChange={setPage}
+            />
           </div>
         )}
 

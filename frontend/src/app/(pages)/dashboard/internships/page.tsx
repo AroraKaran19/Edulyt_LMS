@@ -13,6 +13,7 @@ import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import DashboardInternshipCard from "./components/DashboardInternshipCard";
 import InternshipExamReminderBanner from "./components/InternshipExamReminderBanner";
+import AnnouncementSection from "../components/dashboard/AnnouncementSection";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 
@@ -134,6 +135,12 @@ function DashboardInternshipsContent() {
 
   return (
     <div className="py-4">
+      <AnnouncementSection
+        audience="internship"
+        viewAllHref="/dashboard/internships/announcements"
+        className="mb-6"
+      />
+
       {entrancePendingTotal === 1 && singleEntrancePending && (
         <InternshipExamReminderBanner enrollment={singleEntrancePending} />
       )}

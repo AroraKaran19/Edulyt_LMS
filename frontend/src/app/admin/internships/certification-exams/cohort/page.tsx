@@ -21,7 +21,7 @@ import apiClient from "@/configs/apiConfig";
 import { ENDPOINTS } from "@/constants/endpoints";
 import type { InternshipEnrollmentListRow } from "@/types";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
-import OrangeButton from "@/components/ui/buttons/OrangeButton";
+import Pagination from "@/components/admin/Pagination";
 import Input from "@/components/ui/inputs/Input";
 import EntranceExamSubmissionModal from "../../entrance-exams/components/EntranceExamSubmissionModal";
 
@@ -306,28 +306,14 @@ function CohortContent() {
           </div>
 
           {totalPages > 1 && (
-            <div className="px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
-              <p className="text-sm text-gray-700">
-                Showing page {page} of {totalPages} ({total} total)
-              </p>
-              <div className="flex gap-2">
-                <WhiteButton
-                  type="button"
-                  glow={false}
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page <= 1 || loading}
-                >
-                  Previous
-                </WhiteButton>
-                <OrangeButton
-                  type="button"
-                  glow={false}
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={page >= totalPages || loading}
-                >
-                  Next
-                </OrangeButton>
-              </div>
+            <div className="px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-t border-gray-200 sm:px-6">
+              <p className="text-sm text-gray-700">{total} total</p>
+              <Pagination
+                page={page}
+                totalPages={totalPages}
+                onPageChange={setPage}
+                disabled={loading}
+              />
             </div>
           )}
         </div>

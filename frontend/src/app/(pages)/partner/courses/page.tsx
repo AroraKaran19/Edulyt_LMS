@@ -5,12 +5,15 @@ import {
   BookOpen,
   ChevronLeft,
   ChevronRight,
+  Download,
   GraduationCap,
   Layers,
+  Percent,
   Search,
   Users,
 } from "lucide-react";
 import { toast } from "react-toastify";
+import { cn } from "@/lib/utils";
 import PartnerCard from "@/components/ui/partner/PartnerCard";
 import PartnerStatCard from "@/components/ui/partner/PartnerStatCard";
 import PartnerCategoryPie from "@/components/ui/partner/PartnerCategoryPie";
@@ -31,10 +34,33 @@ const AUDIENCE_LABEL: Record<PartnerAudience, string> = {
   professionals: "Professionals",
 };
 
-const AUDIENCE_OPTIONS = [
+const AUDIENCE_OPTIONS: { value: PartnerAudience; label: string }[] = [
   { value: "college-students", label: AUDIENCE_LABEL["college-students"] },
   { value: "professionals", label: AUDIENCE_LABEL.professionals },
 ];
+
+const ALL_AUDIENCES: PartnerAudience[] = [
+  "college-students",
+  "professionals",
+];
+
+/** Per-audience tints: the filter chip and the row share a colour so the
+ *  chips double as a legend when both audiences are shown together. */
+const AUDIENCE_TONE: Record<
+  PartnerAudience,
+  { row: string; dot: string; chipActive: string }
+> = {
+  "college-students": {
+    row: "bg-sky-50/70",
+    dot: "bg-sky-500",
+    chipActive: "border-sky-300 bg-sky-50 text-sky-700",
+  },
+  professionals: {
+    row: "bg-violet-50/60",
+    dot: "bg-violet-500",
+    chipActive: "border-violet-300 bg-violet-50 text-violet-700",
+  },
+};
 
 export default function PartnerCoursesPage() {
   const {
@@ -54,11 +80,26 @@ export default function PartnerCoursesPage() {
   const [pageSize, setPageSize] = useState(10);
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
-  const [audience, setAudience] = useState<"" | PartnerAudience>("");
+  const [selectedAudiences, setSelectedAudiences] =
+    useState<PartnerAudience[]>(ALL_AUDIENCES);
   const [categoryId, setCategoryId] = useState("");
   const [categoryLabel, setCategoryLabel] = useState("");
   const [courseId, setCourseId] = useState("");
   const [courseLabel, setCourseLabel] = useState("");
+
+  // Backend filters on a single audience; only constrain when exactly one is
+  // picked (both / none means "show all"). When more than one audience is
+  // visible we tint rows by audience so they're easy to tell apart.
+  const audienceFilter =
+    selectedAudiences.length === 1 ? selectedAudiences[0] : undefined;
+  const coloriseByAudience = selectedAudiences.length !== 1;
+
+  const toggleAudience = (a: PartnerAudience) => {
+    setPage(1);
+    setSelectedAudiences((prev) =>
+      prev.includes(a) ? prev.filter((x) => x !== a) : [...prev, a],
+    );
+  };
 
   const loadCourses = useCallback(
     async (p: number, q: string): Promise<InfiniteScrollLoadResult> => {
@@ -77,14 +118,14 @@ export default function PartnerCoursesPage() {
         page: p,
         pageSize: 25,
         q,
-        audience: audience || undefined,
+        audience: audienceFilter,
       });
       return {
         items: res.items.map((d) => ({ value: d.categoryId, label: d.name })),
         hasMore: res.hasMore,
       };
     },
-    [getCourseFilterDomains, audience],
+    [getCourseFilterDomains, audienceFilter],
   );
 
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -127,7 +168,7 @@ export default function PartnerCoursesPage() {
           page,
           pageSize,
           q: search,
-          audience: audience || undefined,
+          audience: audienceFilter,
           categoryId: categoryId || undefined,
           courseId: courseId || undefined,
         });
@@ -142,7 +183,15 @@ export default function PartnerCoursesPage() {
     return () => {
       cancelled = true;
     };
-  }, [getCoursesEnrollments, page, pageSize, search, audience, categoryId, courseId]);
+  }, [
+    getCoursesEnrollments,
+    page,
+    pageSize,
+    search,
+    audienceFilter,
+    categoryId,
+    courseId,
+  ]);
 
   const pageCount = useMemo(() => {
     if (!enrollmentsData) return 1;
@@ -155,14 +204,14 @@ export default function PartnerCoursesPage() {
   // When the user picks an audience, the current domain may not be compatible.
   // We re-derive that from the first page of domain options.
   useEffect(() => {
-    if (!categoryId || !audience) return;
+    if (!categoryId || !audienceFilter) return;
     let cancelled = false;
     (async () => {
       try {
         const res = await getCourseFilterDomains({
           page: 1,
           pageSize: 100,
-          audience,
+          audience: audienceFilter,
         });
         if (cancelled) return;
         const stillValid = res.items.some((d) => d.categoryId === categoryId);
@@ -178,12 +227,12 @@ export default function PartnerCoursesPage() {
     return () => {
       cancelled = true;
     };
-  }, [audience, categoryId, getCourseFilterDomains]);
+  }, [audienceFilter, categoryId, getCourseFilterDomains]);
 
   const resetFilters = () => {
     setSearchInput("");
     setSearch("");
-    setAudience("");
+    setSelectedAudiences(ALL_AUDIENCES);
     setCategoryId("");
     setCategoryLabel("");
     setCourseId("");
@@ -192,7 +241,7 @@ export default function PartnerCoursesPage() {
   };
 
   const hasActiveFilters = Boolean(
-    search || audience || categoryId || courseId,
+    search || audienceFilter || categoryId || courseId,
   );
 
   if (isLoading && !data) {
@@ -244,6 +293,12 @@ export default function PartnerCoursesPage() {
       value: stats.certificatesIssued,
       icon: <GraduationCap className="size-5" />,
     },
+    {
+      key: "avgCompletion",
+      label: "Avg. Students Completed",
+      value: `${stats.avgCompletion}%`,
+      icon: <Percent className="size-5" />,
+    },
   ];
 
   const items = enrollmentsData?.items ?? [];
@@ -255,7 +310,7 @@ export default function PartnerCoursesPage() {
     <div className="space-y-4 p-2 py-6 sm:p-4">
       <h1 className="text-lg font-semibold text-black sm:text-2xl">Courses</h1>
 
-      <div className="grid grid-cols-2 gap-2 sm:gap-4 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 sm:gap-4 sm:grid-cols-3 xl:grid-cols-5">
         {statCards.map((s) => (
           <PartnerStatCard
             key={s.key}
@@ -274,19 +329,37 @@ export default function PartnerCoursesPage() {
         </h2>
 
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <label className="flex flex-col gap-1 text-xs font-medium text-[#344054]">
-            Audience
-            <InfiniteScrollSelect
-              value={audience}
-              onChange={(v) => {
-                setAudience(v as "" | PartnerAudience);
-                setPage(1);
-              }}
-              options={AUDIENCE_OPTIONS}
-              allLabel="All audiences"
-              placeholder="All audiences"
-            />
-          </label>
+          <div className="flex flex-col gap-1 text-xs font-medium text-[#344054]">
+            <span>Audience</span>
+            <div className="flex flex-wrap gap-2">
+              {AUDIENCE_OPTIONS.map((o) => {
+                const active = selectedAudiences.includes(o.value);
+                const tone = AUDIENCE_TONE[o.value];
+                return (
+                  <button
+                    type="button"
+                    key={o.value}
+                    onClick={() => toggleAudience(o.value)}
+                    aria-pressed={active}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-normal transition-colors",
+                      active
+                        ? tone.chipActive
+                        : "border-gray-300 bg-white text-[#667085] hover:border-gray-400",
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "size-2 rounded-full",
+                        active ? tone.dot : "bg-gray-300",
+                      )}
+                    />
+                    {o.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
           <label className="flex flex-col gap-1 text-xs font-medium text-[#344054]">
             Domain
@@ -351,25 +424,23 @@ export default function PartnerCoursesPage() {
           <table className="w-full min-w-[860px] text-sm">
             <thead>
               <tr className="border-b border-[#F2F4F7] text-left">
-                <th className="pb-3 font-semibold text-black">Student Name</th>
-                <th className="pb-3 font-semibold text-black">Email</th>
-                <th className="pb-3 font-semibold text-black">Audience</th>
+                <th className="pb-3 font-semibold text-black">Student</th>
                 <th className="pb-3 font-semibold text-black">Domain</th>
                 <th className="pb-3 font-semibold text-black">Course Name</th>
-                <th className="pb-3 font-semibold text-black">Status</th>
+                <th className="pb-3 font-semibold text-black">Completion</th>
               </tr>
             </thead>
             <tbody>
               {enrollmentsLoading ? (
                 <tr>
-                  <td colSpan={6} className="py-10 text-center">
+                  <td colSpan={4} className="py-10 text-center">
                     <Loader size="md" />
                   </td>
                 </tr>
               ) : items.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={6}
+                    colSpan={4}
                     className="py-10 text-center text-gray-500"
                   >
                     {hasActiveFilters
@@ -378,46 +449,82 @@ export default function PartnerCoursesPage() {
                   </td>
                 </tr>
               ) : (
-                items.map((r) => (
-                  <tr
-                    key={r.enrollmentId}
-                    className="border-b border-[#F2F4F7] last:border-0 align-top"
-                  >
-                    <td className="py-3 font-medium text-[#1D2939]">
-                      {r.studentName}
-                    </td>
-                    <td className="py-3 text-[#344054]">{r.email}</td>
-                    <td className="py-3 text-[#475467]">
-                      {r.audiences.length === 0
-                        ? "—"
-                        : r.audiences
-                            .map((a) => AUDIENCE_LABEL[a])
-                            .join(", ")}
-                    </td>
-                    <td className="py-3 text-[#475467]">
-                      {r.domains.length === 0 ? "—" : r.domains.join(", ")}
-                    </td>
+                items.map((r) => {
+                  const rowTone = coloriseByAudience
+                    ? r.audiences.includes("college-students")
+                      ? AUDIENCE_TONE["college-students"].row
+                      : r.audiences.includes("professionals")
+                        ? AUDIENCE_TONE.professionals.row
+                        : ""
+                    : "";
+                  return (
+                    <tr
+                      key={r.enrollmentId}
+                      className={cn(
+                        "border-b border-[#F2F4F7] last:border-0 align-top",
+                        rowTone,
+                      )}
+                    >
+                      <td className="py-3">
+                        <div className="font-medium text-[#1D2939]">
+                          {r.studentName}
+                        </div>
+                        <div className="text-xs text-[#667085]">
+                          {r.email}
+                        </div>
+                      </td>
+                      <td className="py-3 text-[#475467]">
+                        {r.domains.length === 0 ? "—" : r.domains.join(", ")}
+                      </td>
                     <td className="py-3 text-[#1D2939]">{r.courseTitle}</td>
                     <td className="py-3">
-                      <div className="flex flex-wrap gap-1">
-                        <span
-                          className={
-                            r.status === "completed"
-                              ? "inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700"
-                              : "inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700"
-                          }
-                        >
-                          {r.status === "completed" ? "Completed" : "Active"}
-                        </span>
-                        {r.certified && (
-                          <span className="inline-flex rounded-full bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-700">
-                            Certified
+                      <div className="flex flex-wrap items-center gap-2">
+                        <div className="flex items-center gap-2">
+                          <div className="h-1.5 w-20 overflow-hidden rounded-full bg-gray-200">
+                            <div
+                              className={cn(
+                                "h-full rounded-full",
+                                r.completion >= 100
+                                  ? "bg-emerald-500"
+                                  : "bg-[#F77124]",
+                              )}
+                              style={{
+                                width: `${Math.min(100, Math.max(0, r.completion))}%`,
+                              }}
+                            />
+                          </div>
+                          <span
+                            className={cn(
+                              "text-xs font-semibold tabular-nums",
+                              r.completion >= 100
+                                ? "text-emerald-700"
+                                : "text-[#475467]",
+                            )}
+                          >
+                            {r.completion}%
                           </span>
-                        )}
+                        </div>
+                        {r.certified &&
+                          (r.certificateUrl ? (
+                            <a
+                              href={r.certificateUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 rounded-md bg-[#F77124] px-2.5 py-1 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-[#e0631a]"
+                            >
+                              <Download className="size-3.5" />
+                              Certificate
+                            </a>
+                          ) : (
+                            <span className="inline-flex rounded-full bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-700">
+                              Certified
+                            </span>
+                          ))}
                       </div>
                     </td>
                   </tr>
-                ))
+                  );
+                })
               )}
             </tbody>
           </table>

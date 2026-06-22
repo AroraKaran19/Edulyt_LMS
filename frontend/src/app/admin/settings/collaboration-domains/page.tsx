@@ -1,16 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import Container from "@/app/admin/components/ui/Container";
-import WhiteButton from "@/components/ui/buttons/WhiteButton";
+import Pagination from "@/components/admin/Pagination";
 import { useCollaborationDomain } from "@/hooks/useCollaborationDomain";
 import { CollaborationDomain } from "@/types/collaborationDomain";
 import CollaborationDomainModal from "@/components/ui/modals/CollaborationDomainModal";
 import { toast } from "react-toastify";
 import CollaborationDomainsToolbar from "./components/CollaborationDomainsToolbar";
 import CollaborationDomainsTable from "./components/CollaborationDomainsTable";
-import OrangeButton from "@/components/ui/buttons/OrangeButton";
 
 const LIMIT = 20;
 
@@ -161,36 +159,20 @@ const CollaborationDomainsPage = () => {
         onDelete={handleDelete}
       />
 
-      {totalPages > 1 && !isLoading && collaborationDomains.length > 0 && (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
-          <p className="text-sm text-gray-600">
-            Showing <span className="font-semibold">{startItem}</span>–
-            <span className="font-semibold">{endItem}</span> of{" "}
-            <span className="font-semibold">{totalDomains}</span>
-          </p>
-          <div className="flex items-center gap-2">
-            <WhiteButton
-              glow={false}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page <= 1}
-              className="flex items-center gap-2"
-            >
-              <ChevronLeft className="size-4" />
-              Previous
-            </WhiteButton>
-            <span className="text-sm text-gray-600 px-2">
-              Page {page} of {totalPages}
-            </span>
-            <OrangeButton
-              glow={false}
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page >= totalPages}
-            >
-              Next
-              <ChevronRight className="size-4" />
-            </OrangeButton>
-          </div>
-        </div>
+      {!isLoading && collaborationDomains.length > 0 && (
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          className="pt-2"
+          summary={
+            <>
+              Showing <span className="font-semibold">{startItem}</span>–
+              <span className="font-semibold">{endItem}</span> of{" "}
+              <span className="font-semibold">{totalDomains}</span>
+            </>
+          }
+        />
       )}
 
       <CollaborationDomainModal

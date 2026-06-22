@@ -14,9 +14,22 @@ import useAnnouncements, {
 } from "@/hooks/useAnnouncements";
 
 const AUDIENCE_LABEL: Record<AnnouncementAudience, string> = {
-  student: "Students",
+  course: "Courses (Students)",
+  internship: "Internships (Students)",
   partner: "Partners",
 };
+
+const AUDIENCE_BADGE: Record<AnnouncementAudience, string> = {
+  course: "bg-orange-100 text-orange-800",
+  internship: "bg-indigo-100 text-indigo-800",
+  partner: "bg-violet-100 text-violet-800",
+};
+
+const AUDIENCE_OPTIONS = [
+  { value: "course", label: "Courses (Students)" },
+  { value: "internship", label: "Internships (Students)" },
+  { value: "partner", label: "Partners" },
+];
 
 const formatDate = (iso: string) => {
   try {
@@ -44,7 +57,7 @@ export default function AdminAnnouncementsSettingsPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
-  const [audience, setAudience] = useState<AnnouncementAudience>("student");
+  const [audience, setAudience] = useState<AnnouncementAudience>("course");
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -72,7 +85,7 @@ export default function AdminAnnouncementsSettingsPage() {
   const openCreate = () => {
     setTitle("");
     setMessage("");
-    setAudience("student");
+    setAudience("course");
     setModalOpen(true);
   };
 
@@ -122,9 +135,9 @@ export default function AdminAnnouncementsSettingsPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Announcements</h1>
           <p className="text-sm text-gray-600">
-            Publish dashboard announcements for students and partners. Each
-            dashboard shows only the latest — older ones move to its
-            announcements page.
+            Publish dashboard announcements for course learners, internship
+            learners, and partners. Each dashboard shows only the latest —
+            older ones move to its announcements page.
           </p>
         </div>
         <OrangeButton glow={false} onClick={openCreate} className="shrink-0">
@@ -135,11 +148,7 @@ export default function AdminAnnouncementsSettingsPage() {
 
       <div className="w-full md:w-56">
         <Select
-          options={[
-            { value: "all", label: "All audiences" },
-            { value: "student", label: "Students" },
-            { value: "partner", label: "Partners" },
-          ]}
+          options={[{ value: "all", label: "All audiences" }, ...AUDIENCE_OPTIONS]}
           value={audienceFilter}
           onChange={(v) =>
             setAudienceFilter(v as "all" | AnnouncementAudience)
@@ -198,11 +207,7 @@ export default function AdminAnnouncementsSettingsPage() {
                   >
                     <td className="px-4 py-3">
                       <span
-                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                          a.audience === "partner"
-                            ? "bg-violet-100 text-violet-800"
-                            : "bg-orange-100 text-orange-800"
-                        }`}
+                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${AUDIENCE_BADGE[a.audience]}`}
                       >
                         {AUDIENCE_LABEL[a.audience]}
                       </span>
@@ -280,10 +285,7 @@ export default function AdminAnnouncementsSettingsPage() {
 
             <Select
               label="Audience"
-              options={[
-                { value: "student", label: "Students" },
-                { value: "partner", label: "Partners" },
-              ]}
+              options={AUDIENCE_OPTIONS}
               value={audience}
               onChange={(v) => setAudience(v as AnnouncementAudience)}
             />

@@ -532,6 +532,8 @@ export interface PartnerCoursesResult {
     totalEnrollments: number;
     distinctLearners: number;
     certificatesIssued: number;
+    /** % of enrollments that have reached `completed` status (0–100). */
+    avgCompletion: number;
   };
   categoryBreakdown: PartnerCourseCategorySlice[];
   courses: PartnerCourseListItem[];
@@ -543,6 +545,7 @@ const EMPTY_COURSES_RESULT: PartnerCoursesResult = {
     totalEnrollments: 0,
     distinctLearners: 0,
     certificatesIssued: 0,
+    avgCompletion: 0,
   },
   categoryBreakdown: [],
   courses: [],
@@ -703,12 +706,20 @@ export const getPartnerCoursesService = async (
     isActive: true,
   });
 
+  const completedCount = enrollments.filter(
+    (e) => (e as { status?: string }).status === "completed",
+  ).length;
+  const avgCompletion = enrollments.length
+    ? Math.round((completedCount / enrollments.length) * 100)
+    : 0;
+
   return {
     stats: {
       totalCourses: courseList.length,
       totalEnrollments: enrollments.length,
       distinctLearners: distinctLearners.size,
       certificatesIssued,
+      avgCompletion,
     },
     categoryBreakdown,
     courses: courseList,
@@ -836,7 +847,11 @@ export interface PartnerEnrollmentRow {
   domains: string[];
   audiences: PartnerAudience[];
   status: "active" | "completed";
+  /** Overall course completion, 0–100. */
+  completion: number;
   certified: boolean;
+  /** Direct download URL for the course certificate, when issued. */
+  certificateUrl?: string;
 }
 
 export interface PartnerEnrollmentFilterOptions {
@@ -891,7 +906,7 @@ export const getPartnerCoursesEnrollmentsService = async (
     userId: { $in: roster },
     status: { $in: ["active", "completed"] },
   })
-    .select("_id userId courseId status")
+    .select("_id userId courseId status progress.overallCompletion")
     .lean();
   if (enrollments.length === 0) return emptyResult;
 
@@ -916,7 +931,7 @@ export const getPartnerCoursesEnrollmentsService = async (
       isLatest: true,
       isActive: true,
     })
-      .select("userId courseId")
+      .select("userId courseId fileUrl")
       .lean(),
   ]);
 
@@ -969,6 +984,14 @@ export const getPartnerCoursesEnrollmentsService = async (
     ]),
   );
 
+  const certUrlByPair = new Map<string, string>();
+  for (const c of certs) {
+    const key = `${String((c as { userId?: unknown }).userId)}:${String(
+      (c as { courseId?: unknown }).courseId,
+    )}`;
+    const url = (c as { fileUrl?: unknown }).fileUrl;
+    if (typeof url === "string" && url) certUrlByPair.set(key, url);
+  }
   const certPairs = new Set(
     certs.map(
       (c) =>
@@ -1005,7 +1028,14 @@ export const getPartnerCoursesEnrollmentsService = async (
         (e as { status?: string }).status === "completed"
           ? "completed"
           : "active",
+      completion: Math.round(
+        Number(
+          (e as { progress?: { overallCompletion?: number } }).progress
+            ?.overallCompletion ?? 0,
+        ),
+      ),
       certified: certPairs.has(`${uid}:${cid}`),
+      certificateUrl: certUrlByPair.get(`${uid}:${cid}`),
     };
   });
 
@@ -1363,6 +1393,8 @@ export interface PartnerInternshipsResult {
     appearedInExam: number;
     offerLettersReceived: number;
     certificatesIssued: number;
+    /** % of enrollments that have reached `completed` status (0–100). */
+    avgCompletion: number;
   };
   internships: PartnerInternshipListItem[];
 }
@@ -1374,6 +1406,7 @@ const EMPTY_INTERNSHIPS_RESULT: PartnerInternshipsResult = {
     appearedInExam: 0,
     offerLettersReceived: 0,
     certificatesIssued: 0,
+    avgCompletion: 0,
   },
   internships: [],
 };
@@ -1389,13 +1422,14 @@ export const getPartnerInternshipsService = async (
     user: { $in: roster },
     status: { $ne: "revoked" },
   })
-    .select("internship user examAttemptedAt offerLetterGeneratedAt")
+    .select("internship user examAttemptedAt offerLetterGeneratedAt status")
     .lean();
   if (enrollments.length === 0) return EMPTY_INTERNSHIPS_RESULT;
 
   const perInternshipLearners = new Map<string, Set<string>>();
   let appearedInExam = 0;
   let offerLettersReceived = 0;
+  let completedCount = 0;
   for (const e of enrollments) {
     const internshipId = String((e as { internship?: unknown }).internship);
     if (!perInternshipLearners.has(internshipId)) {
@@ -1408,7 +1442,11 @@ export const getPartnerInternshipsService = async (
     if ((e as { offerLetterGeneratedAt?: unknown }).offerLetterGeneratedAt) {
       offerLettersReceived++;
     }
+    if ((e as { status?: string }).status === "completed") completedCount++;
   }
+  const avgCompletion = enrollments.length
+    ? Math.round((completedCount / enrollments.length) * 100)
+    : 0;
 
   const internshipIds = [...perInternshipLearners.keys()].map(
     (id) => new mongoose.Types.ObjectId(id),
@@ -1443,6 +1481,7 @@ export const getPartnerInternshipsService = async (
       appearedInExam,
       offerLettersReceived,
       certificatesIssued,
+      avgCompletion,
     },
     internships: list,
   };
@@ -1462,13 +1501,18 @@ export interface PartnerInternshipBatchStudent {
   appearedInExam: boolean;
   selected: boolean;
   certified: boolean;
+  /** Direct download URL for the offer letter, when generated. */
+  offerLetterUrl?: string;
+  /** Direct download URL for the internship certificate, when issued. */
+  certificateUrl?: string;
 }
 
+/** Batch summary for the analytics header — counts only, no student rows.
+ *  Student rows are served separately and paginated. */
 export interface PartnerInternshipBatchBreakdown {
   batchId: string;
   name: string;
   counts: PartnerInternshipFunnel;
-  students: PartnerInternshipBatchStudent[];
 }
 
 export interface PartnerInternshipDetailResult {
@@ -1482,16 +1526,37 @@ export interface PartnerInternshipDetailResult {
   batches: PartnerInternshipBatchBreakdown[];
 }
 
+/** A flat student row tagged with the batch it belongs to. */
+export interface PartnerInternshipStudentRow extends PartnerInternshipBatchStudent {
+  batchId: string;
+  batchName: string;
+}
+
+const UNBATCHED_BATCH_ID = "__unbatched__";
+
+const zeroFunnel = (): PartnerInternshipFunnel => ({
+  enrolled: 0,
+  appearedInExam: 0,
+  selected: 0,
+  certified: 0,
+});
+
+interface PartnerInternshipFlat {
+  internship: PartnerInternshipDetailResult["internship"];
+  students: PartnerInternshipStudentRow[];
+}
+
 /**
- * Per-internship funnel (enrolled → appeared in exam → selected → certified)
- * for the partner's roster, with totals across all batches plus a per-batch
- * breakdown that carries the student name/email lists. Returns `null` if the
- * slug matches no internship.
+ * Loads every (non-revoked) internship enrollment for the partner's roster and
+ * flattens it into per-student rows carrying funnel flags, batch info, and the
+ * offer-letter / certificate download URLs. Shared by the detail (counts) and
+ * students (paginated list) services. Returns `null` if the slug matches no
+ * internship.
  */
-export const getPartnerInternshipDetailService = async (
+const buildPartnerInternshipFlatStudents = async (
   partnerCollegeId: mongoose.Types.ObjectId,
   slug: string,
-): Promise<PartnerInternshipDetailResult | null> => {
+): Promise<PartnerInternshipFlat | null> => {
   const internship = await InternshipModel.findOne({ slug })
     .select("_id title slug thumbnail")
     .lean();
@@ -1503,16 +1568,10 @@ export const getPartnerInternshipDetailService = async (
     slug: String((internship as { slug?: string }).slug ?? ""),
     thumbnail: String((internship as { thumbnail?: string }).thumbnail ?? ""),
   };
-  const zeroFunnel = (): PartnerInternshipFunnel => ({
-    enrolled: 0,
-    appearedInExam: 0,
-    selected: 0,
-    certified: 0,
-  });
 
   const roster = await getPartnerScopedStudentIds(partnerCollegeId);
   if (roster.length === 0) {
-    return { internship: internshipInfo, totals: zeroFunnel(), batches: [] };
+    return { internship: internshipInfo, students: [] };
   }
 
   const enrollments = await InternshipEnrollmentModel.find({
@@ -1520,10 +1579,12 @@ export const getPartnerInternshipDetailService = async (
     user: { $in: roster },
     status: { $ne: "revoked" },
   })
-    .select("_id user examAttemptedAt offerLetterGeneratedAt batchSnapshot")
+    .select(
+      "_id user examAttemptedAt offerLetterGeneratedAt offerLetterUrl batchSnapshot",
+    )
     .lean();
   if (enrollments.length === 0) {
-    return { internship: internshipInfo, totals: zeroFunnel(), batches: [] };
+    return { internship: internshipInfo, students: [] };
   }
 
   const userIds = enrollments.map((e) => (e as { user: unknown }).user);
@@ -1549,43 +1610,28 @@ export const getPartnerInternshipDetailService = async (
     isLatest: true,
     isActive: true,
   })
-    .select("enrollmentId")
+    .select("enrollmentId fileUrl")
     .lean();
+  const certUrlByEnrollmentId = new Map<string, string>();
+  for (const c of certs) {
+    const eid = String((c as { enrollmentId?: unknown }).enrollmentId);
+    const url = (c as { fileUrl?: unknown }).fileUrl;
+    if (typeof url === "string" && url) certUrlByEnrollmentId.set(eid, url);
+  }
   const certifiedEnrollmentIds = new Set(
     certs.map((c) => String((c as { enrollmentId?: unknown }).enrollmentId)),
   );
 
-  const UNBATCHED_ID = "__unbatched__";
-  const batchMap = new Map<string, PartnerInternshipBatchBreakdown>();
-  const ensureBatch = (batchId: string, name: string) => {
-    let batch = batchMap.get(batchId);
-    if (!batch) {
-      batch = {
-        batchId,
-        name,
-        counts: zeroFunnel(),
-        students: [],
-      };
-      batchMap.set(batchId, batch);
-    }
-    return batch;
-  };
-
-  const totals = zeroFunnel();
-
-  for (const e of enrollments) {
+  const students: PartnerInternshipStudentRow[] = enrollments.map((e) => {
     const snap = (e as {
       batchSnapshot?: { batchId?: string; name?: string };
     }).batchSnapshot;
-    const batchId = snap?.batchId ? String(snap.batchId) : UNBATCHED_ID;
+    const batchId = snap?.batchId ? String(snap.batchId) : UNBATCHED_BATCH_ID;
     const batchName = snap?.name ? String(snap.name) : "Unassigned batch";
-    const batch = ensureBatch(batchId, batchName);
-    const student =
-      studentById.get(String((e as { user: unknown }).user)) ?? {
-        name: "—",
-        email: "",
-      };
-
+    const student = studentById.get(String((e as { user: unknown }).user)) ?? {
+      name: "—",
+      email: "",
+    };
     const appearedInExam = Boolean(
       (e as { examAttemptedAt?: unknown }).examAttemptedAt,
     );
@@ -1593,26 +1639,63 @@ export const getPartnerInternshipDetailService = async (
       (e as { offerLetterGeneratedAt?: unknown }).offerLetterGeneratedAt,
     );
     const certified = certifiedEnrollmentIds.has(String(e._id));
-
-    batch.students.push({
+    const offerLetterUrl = (e as { offerLetterUrl?: unknown }).offerLetterUrl;
+    return {
+      batchId,
+      batchName,
       name: student.name,
       email: student.email,
       appearedInExam,
       selected,
       certified,
-    });
+      offerLetterUrl:
+        typeof offerLetterUrl === "string" && offerLetterUrl
+          ? offerLetterUrl
+          : undefined,
+      certificateUrl: certUrlByEnrollmentId.get(String(e._id)),
+    };
+  });
 
+  return { internship: internshipInfo, students };
+};
+
+/**
+ * Per-internship funnel (enrolled → appeared in exam → selected → certified)
+ * for the partner's roster: totals across all batches plus a per-batch count
+ * breakdown for the chips/filters. Student rows are paginated separately via
+ * `getPartnerInternshipStudentsService`. Returns `null` for an unknown slug.
+ */
+export const getPartnerInternshipDetailService = async (
+  partnerCollegeId: mongoose.Types.ObjectId,
+  slug: string,
+): Promise<PartnerInternshipDetailResult | null> => {
+  const flat = await buildPartnerInternshipFlatStudents(partnerCollegeId, slug);
+  if (!flat) return null;
+
+  const totals = zeroFunnel();
+  const batchMap = new Map<string, PartnerInternshipBatchBreakdown>();
+  const ensureBatch = (batchId: string, name: string) => {
+    let batch = batchMap.get(batchId);
+    if (!batch) {
+      batch = { batchId, name, counts: zeroFunnel() };
+      batchMap.set(batchId, batch);
+    }
+    return batch;
+  };
+
+  for (const s of flat.students) {
+    const batch = ensureBatch(s.batchId, s.batchName);
     batch.counts.enrolled++;
     totals.enrolled++;
-    if (appearedInExam) {
+    if (s.appearedInExam) {
       batch.counts.appearedInExam++;
       totals.appearedInExam++;
     }
-    if (selected) {
+    if (s.selected) {
       batch.counts.selected++;
       totals.selected++;
     }
-    if (certified) {
+    if (s.certified) {
       batch.counts.certified++;
       totals.certified++;
     }
@@ -1621,5 +1704,76 @@ export const getPartnerInternshipDetailService = async (
   const batches = [...batchMap.values()].sort((a, b) =>
     a.name.localeCompare(b.name),
   );
-  return { internship: internshipInfo, totals, batches };
+  return { internship: flat.internship, totals, batches };
+};
+
+export type PartnerInternshipStudentStatusFilter =
+  | "all"
+  | "enrolled"
+  | "exam"
+  | "selected"
+  | "certified";
+
+export interface PartnerInternshipStudentsResult {
+  items: PartnerInternshipStudentRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+/**
+ * Paginated, filterable student list for a single internship's partner-roster
+ * enrollments. Filters by batch (subset of batch ids; omit for all), funnel
+ * status, and a name/email search. Returns `null` for an unknown slug.
+ */
+export const getPartnerInternshipStudentsService = async (
+  partnerCollegeId: mongoose.Types.ObjectId,
+  slug: string,
+  opts: {
+    page: number;
+    pageSize: number;
+    q?: string;
+    status?: PartnerInternshipStudentStatusFilter;
+    batchIds?: string[];
+  },
+): Promise<PartnerInternshipStudentsResult | null> => {
+  const flat = await buildPartnerInternshipFlatStudents(partnerCollegeId, slug);
+  if (!flat) return null;
+
+  const page = Math.max(1, Math.floor(opts.page) || 1);
+  const pageSize = Math.min(100, Math.max(1, Math.floor(opts.pageSize) || 10));
+  const status = opts.status ?? "all";
+  const q = (opts.q ?? "").trim().toLowerCase();
+  const batchIdSet =
+    opts.batchIds && opts.batchIds.length ? new Set(opts.batchIds) : null;
+
+  let rows = flat.students;
+  if (batchIdSet) rows = rows.filter((s) => batchIdSet.has(s.batchId));
+  if (status === "exam") {
+    rows = rows.filter((s) => s.appearedInExam);
+  } else if (status === "selected") {
+    rows = rows.filter((s) => s.selected);
+  } else if (status === "certified") {
+    rows = rows.filter((s) => s.certified);
+  } else if (status === "enrolled") {
+    rows = rows.filter(
+      (s) => !s.appearedInExam && !s.selected && !s.certified,
+    );
+  }
+  if (q) {
+    rows = rows.filter(
+      (s) =>
+        s.name.toLowerCase().includes(q) || s.email.toLowerCase().includes(q),
+    );
+  }
+
+  // Stable order so page boundaries don't shift between requests.
+  const sorted = [...rows].sort(
+    (a, b) => a.name.localeCompare(b.name) || a.email.localeCompare(b.email),
+  );
+
+  const total = sorted.length;
+  const start = (page - 1) * pageSize;
+  const items = sorted.slice(start, start + pageSize);
+  return { items, total, page, pageSize };
 };

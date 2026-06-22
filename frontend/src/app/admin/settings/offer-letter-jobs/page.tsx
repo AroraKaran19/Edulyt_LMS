@@ -3,8 +3,6 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   RefreshCw,
-  ChevronLeft,
-  ChevronRight,
   CheckCircle2,
   Clock,
   Loader2,
@@ -18,6 +16,7 @@ import {
 import Container from "@/app/admin/components/ui/Container";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
+import Pagination from "@/components/admin/Pagination";
 import apiClient from "@/configs/apiConfig";
 import { toast } from "react-toastify";
 
@@ -443,35 +442,20 @@ const OfferLetterJobsPage = () => {
       )}
 
       {/* Pagination */}
-      {totalPages > 1 && !isLoading && (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
-          <p className="text-sm text-gray-600">
-            Showing <span className="font-semibold">{startItem}</span>–
-            <span className="font-semibold">{endItem}</span> of{" "}
-            <span className="font-semibold">{total}</span>
-          </p>
-          <div className="flex items-center gap-2">
-            <WhiteButton
-              glow={false}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page <= 1}
-            >
-              <ChevronLeft className="size-4" />
-              Previous
-            </WhiteButton>
-            <span className="text-sm text-gray-600 px-2">
-              Page {page} of {totalPages}
-            </span>
-            <OrangeButton
-              glow={false}
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page >= totalPages}
-            >
-              Next
-              <ChevronRight className="size-4" />
-            </OrangeButton>
-          </div>
-        </div>
+      {!isLoading && (
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          className="pt-2"
+          summary={
+            <>
+              Showing <span className="font-semibold">{startItem}</span>–
+              <span className="font-semibold">{endItem}</span> of{" "}
+              <span className="font-semibold">{total}</span>
+            </>
+          }
+        />
       )}
     </Container>
   );

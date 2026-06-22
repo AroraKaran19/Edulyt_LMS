@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "react-toastify";
 import { Loader2 } from "lucide-react";
 import StoryCard from "./StoryCard";
@@ -13,36 +13,82 @@ interface CommunityFeedProps {
   selectedTag?: CommunityReviewTag | null;
 }
 
+const PAGE_SIZE = 10;
+
 const CommunityFeed = ({ selectedTag = null }: CommunityFeedProps) => {
   const { listPublicReviews } = useCommunityReview();
 
   const [stories, setStories] = useState<PublicCommunityReview[]>([]);
   const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
-  const fetchStories = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const result = await listPublicReviews({
-        page: 1,
-        limit: 50,
-        tag: selectedTag ?? undefined,
-      });
-      setStories(result.reviews);
-      setTotal(result.total);
-    } catch (err) {
-      console.error("Failed to load community feed:", err);
-      toast.error("Couldn't load community stories.");
-      setStories([]);
-      setTotal(0);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [listPublicReviews, selectedTag]);
+  // Guards against overlapping fetches (scroll can fire repeatedly).
+  const loadingRef = useRef(false);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
+  const hasMore = page < totalPages;
+
+  const loadPage = useCallback(
+    async (pageToLoad: number) => {
+      if (loadingRef.current) return;
+      loadingRef.current = true;
+      if (pageToLoad === 1) setIsLoading(true);
+      else setIsLoadingMore(true);
+      try {
+        const result = await listPublicReviews({
+          page: pageToLoad,
+          limit: PAGE_SIZE,
+          tag: selectedTag ?? undefined,
+        });
+        setTotal(result.total);
+        setTotalPages(Math.max(1, result.totalPages));
+        setPage(result.page);
+        setStories((prev) =>
+          pageToLoad === 1 ? result.reviews : [...prev, ...result.reviews],
+        );
+      } catch (err) {
+        console.error("Failed to load community feed:", err);
+        toast.error("Couldn't load community stories.");
+        if (pageToLoad === 1) {
+          setStories([]);
+          setTotal(0);
+          setTotalPages(1);
+        }
+      } finally {
+        loadingRef.current = false;
+        setIsLoading(false);
+        setIsLoadingMore(false);
+      }
+    },
+    [listPublicReviews, selectedTag],
+  );
+
+  // Reset to the first page whenever the tag filter changes (and on mount).
   useEffect(() => {
-    fetchStories();
-  }, [fetchStories]);
+    setStories([]);
+    setPage(1);
+    setTotalPages(1);
+    void loadPage(1);
+  }, [loadPage]);
+
+  // Auto-load the next page as the sentinel scrolls into view.
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || !hasMore) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting && !loadingRef.current) {
+          void loadPage(page + 1);
+        }
+      },
+      { rootMargin: "300px" },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasMore, page, loadPage]);
 
   return (
     <div>
@@ -71,6 +117,21 @@ const CommunityFeed = ({ selectedTag = null }: CommunityFeedProps) => {
           {stories.map((story) => (
             <StoryCard key={story._id} story={story} />
           ))}
+
+          {/* Infinite-scroll sentinel + loaders */}
+          {hasMore && <div ref={sentinelRef} className="h-px w-full" />}
+
+          {isLoadingMore && (
+            <div className="flex items-center justify-center py-6 text-gray-500">
+              <Loader2 className="w-6 h-6 animate-spin text-[#F77124]" />
+            </div>
+          )}
+
+          {!hasMore && stories.length > 0 && (
+            <p className="py-6 text-center text-xs text-gray-400">
+              You&apos;ve reached the end.
+            </p>
+          )}
         </div>
       )}
     </div>

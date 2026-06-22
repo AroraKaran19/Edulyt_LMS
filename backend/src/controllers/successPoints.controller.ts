@@ -17,7 +17,11 @@ export const getPublicRedemptionRate = asyncHandler(
     const settings = await getPointsSettings();
     sendSuccessResponse(
       res,
-      { successPointRedemptionInr: settings.successPointRedemptionInr },
+      {
+        successPointRedemptionInr: settings.successPointRedemptionInr,
+        successPointsMaxUtilizationPercent:
+          settings.successPointsMaxUtilizationPercent,
+      },
       "Redemption rate fetched",
       200,
     );

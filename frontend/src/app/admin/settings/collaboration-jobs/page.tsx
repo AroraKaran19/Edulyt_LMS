@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { ChevronLeft, ChevronRight, Loader2, AlertCircle } from "lucide-react";
+import { Loader2, AlertCircle } from "lucide-react";
 import Container from "@/app/admin/components/ui/Container";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import apiClient from "@/configs/apiConfig";
@@ -14,7 +14,7 @@ import type {
 import { CollaborationJobsFilters } from "./components/CollaborationJobsFilters";
 import { CollaborationJobsTable } from "./components/CollaborationJobsTable";
 import { CollaborationJobDetailModal } from "./components/CollaborationJobDetailModal";
-import OrangeButton from "@/components/ui/buttons/OrangeButton";
+import Pagination from "@/components/admin/Pagination";
 
 const CollaborationJobsPage = () => {
   const [jobs, setJobs] = useState<CollaborationJobRow[]>([]);
@@ -191,36 +191,20 @@ const CollaborationJobsPage = () => {
         onCopyLabel={copyLabel}
       />
 
-      {totalPages > 1 && !isLoading && (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
-          <p className="text-sm text-gray-600">
-            Showing <span className="font-semibold">{startItem}</span>–
-            <span className="font-semibold">{endItem}</span> of{" "}
-            <span className="font-semibold">{total}</span>
-          </p>
-          <div className="flex items-center gap-2">
-            <WhiteButton
-              glow={false}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page <= 1}
-              className="flex items-center gap-2"
-            >
-              <ChevronLeft className="size-4" />
-              Previous
-            </WhiteButton>
-            <span className="text-sm text-gray-600 px-2">
-              Page {page} of {totalPages}
-            </span>
-            <OrangeButton
-              glow={false}
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page >= totalPages}
-            >
-              Next
-              <ChevronRight className="size-4" />
-            </OrangeButton>
-          </div>
-        </div>
+      {!isLoading && (
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          className="pt-2"
+          summary={
+            <>
+              Showing <span className="font-semibold">{startItem}</span>–
+              <span className="font-semibold">{endItem}</span> of{" "}
+              <span className="font-semibold">{total}</span>
+            </>
+          }
+        />
       )}
     </Container>
   );

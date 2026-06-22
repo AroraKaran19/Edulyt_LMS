@@ -3,7 +3,7 @@ import { LiveClass } from "@/types";
 import { Video, Plus } from "lucide-react";
 import LiveClassCard from "./LiveClassCard";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
-import WhiteButton from "@/components/ui/buttons/WhiteButton";
+import Pagination from "@/components/admin/Pagination";
 
 interface LiveClassesListProps {
   liveClasses: LiveClass[];
@@ -75,27 +75,12 @@ const LiveClassesList: React.FC<LiveClassesListProps> = ({
       </div>
 
       {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2 mt-8">
-          <WhiteButton
-            onClick={() => onPageChange(currentPage - 1)}
-            disabled={currentPage === 1}
-            glow={false}
-          >
-            Previous
-          </WhiteButton>
-          <span className="px-4 py-2 text-gray-700">
-            Page {currentPage} of {totalPages}
-          </span>
-          <OrangeButton
-            onClick={() => onPageChange(currentPage + 1)}
-            disabled={currentPage === totalPages}
-            glow={false}
-          >
-            Next
-          </OrangeButton>
-        </div>
-      )}
+      <Pagination
+        page={currentPage}
+        totalPages={totalPages}
+        onPageChange={onPageChange}
+        className="mt-8 sm:justify-center"
+      />
     </>
   );
 };

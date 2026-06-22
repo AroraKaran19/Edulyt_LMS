@@ -144,7 +144,7 @@ export default function PartnerLoginPage() {
             <header className="mb-3 sm:mb-4">
               <Image
                 src="/logo.svg"
-                alt="Edulyt"
+                alt="Airkrit"
                 width={160}
                 height={160}
                 className="h-auto w-[120px] sm:w-[140px] md:w-[200px]"

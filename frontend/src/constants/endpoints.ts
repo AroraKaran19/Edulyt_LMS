@@ -343,9 +343,13 @@ export const ENDPOINTS = {
   /** Public marketing home page CMS — read-only. */
   homePageSettings: "/home-page-settings",
 
+  /** Public legal documents (course + internship T&C) — read-only. */
+  legalSettings: "/legal-settings",
+
   /** `/api/admin/*` — dashboard & global admin config */
   admin: {
     pointsSettings: "/admin/points-settings",
     homePageSettings: "/admin/home-page-settings",
+    legalSettings: "/admin/legal-settings",
   },
 };

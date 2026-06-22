@@ -133,6 +133,16 @@ button:disabled {
     }
   }
 
+  @keyframes announcementSheen {
+    0% {
+      transform: translateX(-160%) skewX(-12deg);
+    }
+    55%,
+    100% {
+      transform: translateX(280%) skewX(-12deg);
+    }
+  }
+
   --animate-fade-from-top: fadeFromTop 0.3s ease-in-out;
   --animate-fade-in: fadeIn 0.8s ease-out;
   --animate-reverse: reverseSpinSlow 1.5s linear infinite;
@@ -148,6 +158,7 @@ button:disabled {
   --animate-fade-from-left: fadeFromLeft 0.3s ease-in-out forwards;
   --animate-partner-top-header-name-shimmer: partnerTopHeaderNameShimmer 1.35s
     ease-in-out infinite;
+  --animate-announcement-sheen: announcementSheen 4s ease-in-out infinite;
 }
 
 /* Internship Features Carousel Pagination */

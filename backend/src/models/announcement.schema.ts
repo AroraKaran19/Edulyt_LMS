@@ -8,7 +8,7 @@ const announcementSchema = new mongoose.Schema<Announcement>(
     audience: {
       type: String,
       required: true,
-      enum: ["student", "partner"],
+      enum: ["course", "internship", "partner"],
     },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,

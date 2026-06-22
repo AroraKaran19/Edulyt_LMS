@@ -11,7 +11,7 @@ import {
 } from "../services/announcement.services";
 import { AnnouncementAudience } from "../types";
 
-const AUDIENCES: AnnouncementAudience[] = ["student", "partner"];
+const AUDIENCES: AnnouncementAudience[] = ["course", "internship", "partner"];
 
 const parseAudience = (raw: unknown): AnnouncementAudience | null =>
   AUDIENCES.includes(raw as AnnouncementAudience)
@@ -30,7 +30,10 @@ export const createAnnouncement = asyncHandler(
     if (!message?.trim()) throw new AppError("Message is required", 400);
     const aud = parseAudience(audience);
     if (!aud) {
-      throw new AppError("Audience must be 'student' or 'partner'", 400);
+      throw new AppError(
+        "Audience must be 'course', 'internship', or 'partner'",
+        400,
+      );
     }
     const created = await createAnnouncementService(
       { title, message, audience: aud },
@@ -56,13 +59,19 @@ export const listAnnouncementsAdmin = asyncHandler(
 );
 
 /**
- * Announcements for the caller's own dashboard, newest first. Partners get
- * `partner` announcements; everyone else gets `student` announcements.
+ * Announcements for the caller's own dashboard, newest first. Partners always
+ * get `partner` announcements. Learners get their course dashboard feed by
+ * default, or the internships feed when `?audience=internship` is requested.
  */
 export const getAnnouncementFeed = asyncHandler(
   async (req: Request, res: Response) => {
-    const audience: AnnouncementAudience =
-      req.user?.userType === "partner" ? "partner" : "student";
+    let audience: AnnouncementAudience;
+    if (req.user?.userType === "partner") {
+      audience = "partner";
+    } else {
+      audience =
+        req.query.audience === "internship" ? "internship" : "course";
+    }
     const announcements = await listAnnouncementsService(audience);
     sendSuccessResponse(
       res,

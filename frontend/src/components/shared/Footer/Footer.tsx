@@ -271,7 +271,7 @@ const Footer = () => {
         <div className="max-w-7xl 2xl:max-w-[1600px] mx-auto px-6 pl-8 lg:px-12 py-4">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-sm text-text-secondary text-center md:text-left">
-              <span>© {currentYear} Edulyt. All rights reserved.</span>
+              <span>© {currentYear} Airkrit. All rights reserved.</span>
               <Heart
                 className="inline w-4 h-4 text-primary shrink-0"
                 aria-hidden

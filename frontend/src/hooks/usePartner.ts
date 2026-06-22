@@ -82,6 +82,8 @@ export interface PartnerCoursesResponse {
     totalEnrollments: number;
     distinctLearners: number;
     certificatesIssued: number;
+    /** % of enrollments that have reached `completed` status (0–100). */
+    avgCompletion: number;
   };
   categoryBreakdown: PartnerCourseCategorySlice[];
   courses: PartnerCourseListItem[];
@@ -115,7 +117,11 @@ export interface PartnerEnrollmentRow {
   domains: string[];
   audiences: PartnerAudience[];
   status: "active" | "completed";
+  /** Overall course completion, 0–100. */
+  completion: number;
   certified: boolean;
+  /** Direct download URL for the course certificate, when issued. */
+  certificateUrl?: string;
 }
 
 export interface PartnerEnrollmentFilterOptions {
@@ -186,6 +192,8 @@ export interface PartnerInternshipsResponse {
     appearedInExam: number;
     offerLettersReceived: number;
     certificatesIssued: number;
+    /** % of enrollments that have reached `completed` status (0–100). */
+    avgCompletion: number;
   };
   internships: PartnerInternshipListItem[];
 }
@@ -204,13 +212,16 @@ export interface PartnerInternshipBatchStudent {
   appearedInExam: boolean;
   selected: boolean;
   certified: boolean;
+  /** Direct download URL for the offer letter, when generated. */
+  offerLetterUrl?: string;
+  /** Direct download URL for the internship certificate, when issued. */
+  certificateUrl?: string;
 }
 
 export interface PartnerInternshipBatchBreakdown {
   batchId: string;
   name: string;
   counts: PartnerInternshipFunnel;
-  students: PartnerInternshipBatchStudent[];
 }
 
 export interface PartnerInternshipDetailResponse {
@@ -222,6 +233,27 @@ export interface PartnerInternshipDetailResponse {
   };
   totals: PartnerInternshipFunnel;
   batches: PartnerInternshipBatchBreakdown[];
+}
+
+export type PartnerInternshipStudentStatusFilter =
+  | "all"
+  | "enrolled"
+  | "exam"
+  | "selected"
+  | "certified";
+
+/** One row in the paginated internship student list, tagged with its batch. */
+export interface PartnerInternshipStudentRow
+  extends PartnerInternshipBatchStudent {
+  batchId: string;
+  batchName: string;
+}
+
+export interface PartnerInternshipStudentsResponse {
+  items: PartnerInternshipStudentRow[];
+  total: number;
+  page: number;
+  pageSize: number;
 }
 
 interface ApiSuccessBody<T> {
@@ -394,6 +426,35 @@ export default function usePartner() {
     [],
   );
 
+  const getInternshipStudents = useCallback(
+    async (
+      slug: string,
+      opts: {
+        page: number;
+        pageSize: number;
+        q?: string;
+        status?: PartnerInternshipStudentStatusFilter;
+        batchIds?: string[];
+      },
+    ): Promise<PartnerInternshipStudentsResponse> => {
+      const qs = new URLSearchParams({
+        page: String(opts.page),
+        pageSize: String(opts.pageSize),
+      });
+      const search = opts.q?.trim() ?? "";
+      if (search) qs.set("q", search);
+      if (opts.status && opts.status !== "all") qs.set("status", opts.status);
+      if (opts.batchIds && opts.batchIds.length) {
+        qs.set("batchIds", opts.batchIds.join(","));
+      }
+      const res = await apiClient.get<
+        ApiSuccessBody<PartnerInternshipStudentsResponse>
+      >(`/partner/internships/${encodeURIComponent(slug)}/students?${qs}`);
+      return res.data.data;
+    },
+    [],
+  );
+
   return {
     getMe,
     getDashboard,
@@ -405,5 +466,6 @@ export default function usePartner() {
     getCourseDetail,
     getInternships,
     getInternshipDetail,
+    getInternshipStudents,
   };
 }

@@ -1,10 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import Container from "@/app/admin/components/ui/Container";
-import WhiteButton from "@/components/ui/buttons/WhiteButton";
-import OrangeButton from "@/components/ui/buttons/OrangeButton";
+import Pagination from "@/components/admin/Pagination";
 import { usePartnershipImportConfig } from "@/hooks/usePartnershipImportConfig";
 import type { PartnershipImportConfig } from "@/types/partnershipImportConfig";
 import { toast } from "react-toastify";
@@ -170,35 +168,20 @@ export default function PartnershipImportPage() {
         onToggleActive={handleToggleActive}
       />
 
-      {totalPages > 1 && !isLoading && configs.length > 0 && (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
-          <p className="text-sm text-gray-600">
-            Showing <span className="font-semibold">{startItem}</span>–
-            <span className="font-semibold">{endItem}</span> of{" "}
-            <span className="font-semibold">{total}</span>
-          </p>
-          <div className="flex items-center gap-2">
-            <WhiteButton
-              glow={false}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page <= 1}
-            >
-              <ChevronLeft className="size-4" />
-              Previous
-            </WhiteButton>
-            <span className="text-sm text-gray-600 px-2">
-              Page {page} of {totalPages}
-            </span>
-            <OrangeButton
-              glow={false}
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page >= totalPages}
-            >
-              Next
-              <ChevronRight className="size-4" />
-            </OrangeButton>
-          </div>
-        </div>
+      {!isLoading && configs.length > 0 && (
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          className="pt-2"
+          summary={
+            <>
+              Showing <span className="font-semibold">{startItem}</span>–
+              <span className="font-semibold">{endItem}</span> of{" "}
+              <span className="font-semibold">{total}</span>
+            </>
+          }
+        />
       )}
 
       <PartnershipImportConfigModal

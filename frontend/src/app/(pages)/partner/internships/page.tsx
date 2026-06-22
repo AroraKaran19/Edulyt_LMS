@@ -5,6 +5,7 @@ import {
   Briefcase,
   FileCheck,
   GraduationCap,
+  Percent,
   Stamp,
   Users,
 } from "lucide-react";
@@ -96,6 +97,12 @@ export default function PartnerInternshipsPage() {
       value: stats.certificatesIssued,
       icon: <GraduationCap className="size-5" />,
     },
+    {
+      key: "avgCompletion",
+      label: "Avg. Students Completed",
+      value: `${stats.avgCompletion}%`,
+      icon: <Percent className="size-5" />,
+    },
   ];
 
   return (
@@ -104,7 +111,7 @@ export default function PartnerInternshipsPage() {
         Internships
       </h1>
 
-      <div className="grid grid-cols-2 gap-2 sm:gap-4 sm:grid-cols-3 xl:grid-cols-5">
+      <div className="grid grid-cols-2 gap-2 sm:gap-4 sm:grid-cols-3 xl:grid-cols-6">
         {statCards.map((s) => (
           <PartnerStatCard
             key={s.key}

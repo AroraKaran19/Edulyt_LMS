@@ -9,11 +9,10 @@ import {
   getAdminOrderProductLabel,
   getAdminOrderTypeLabel,
 } from "./orderDisplay";
-import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import Input from "@/components/ui/inputs/Input";
 import Select from "@/components/ui/inputs/Select";
 import { toast } from "react-toastify";
-import OrangeButton from "@/components/ui/buttons/OrangeButton";
+import Pagination from "@/components/admin/Pagination";
 
 interface OrderUser {
   firstName?: string;
@@ -364,26 +363,13 @@ const OrdersPage = () => {
         </div>
 
         {totalPages > 1 && (
-          <div className="px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
-            <p className="text-sm text-gray-700">
-              Showing page {page} of {totalPages} ({total} total)
-            </p>
-            <div className="flex gap-2">
-              <WhiteButton
-                glow={false}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page <= 1}
-              >
-                Previous
-              </WhiteButton>
-              <OrangeButton
-                glow={false}
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page >= totalPages}
-              >
-                Next
-              </OrangeButton>
-            </div>
+          <div className="px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-t border-gray-200 sm:px-6">
+            <p className="text-sm text-gray-700">{total} total</p>
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              onPageChange={setPage}
+            />
           </div>
         )}
       </div>

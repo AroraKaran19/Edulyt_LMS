@@ -185,6 +185,10 @@ const AdminSidebar = ({
           href: "/admin/settings/home-page",
         },
         {
+          label: "Terms & Conditions",
+          href: "/admin/settings/terms-and-conditions",
+        },
+        {
           label: "Colleges List",
           href: "/admin/settings/colleges",
         },

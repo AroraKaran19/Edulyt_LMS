@@ -120,8 +120,8 @@ export default function SuccessPointsInfoModal({ isOpen, onClose }: Props) {
           <div className="flex items-start gap-3 rounded-2xl bg-linear-to-br from-orange-50 to-white p-4 ring-1 ring-orange-100">
             <Star className="h-6 w-6 shrink-0 fill-[#F77124] text-[#F77124]" />
             <p className="text-sm leading-relaxed text-gray-700">
-              Success Points are Edulyt&apos;s reward currency. Earn them as
-              you learn and stay active — then spend them to cut the price of
+              Success Points are Airkrit&apos;s reward currency. Earn them as
+              you learn and stay active then spend them to cut the price of
               your next course, or send them to a friend.
             </p>
           </div>

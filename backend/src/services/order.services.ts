@@ -891,36 +891,41 @@ export const createOrderService = async (
   let successPointsApplied = 0;
   let successPointsDiscount = 0;
 
-  if (useSuccessPoints) {
-    const planMax = Math.max(
-      0,
-      Math.floor(Number(plan.maxSuccessPointsUsage ?? 0)),
+  if (useSuccessPoints && baseAfterReferral > 0) {
+    const settings = await getPointsSettings();
+    const rate = Number(settings.successPointRedemptionInr ?? 0);
+    const maxPct = Math.min(
+      100,
+      Math.max(0, Number(settings.successPointsMaxUtilizationPercent ?? 0)),
     );
-    if (planMax > 0) {
-      const settings = await getPointsSettings();
-      const rate = Number(settings.successPointRedemptionInr ?? 0);
-      if (rate > 0) {
-        const student = await StudentModel.findById(userId)
-          .select("successPoints")
-          .lean<{ successPoints?: number } | null>();
-        const balance = Math.max(
-          0,
-          Math.floor(Number(student?.successPoints ?? 0)),
-        );
-        const wantedPoints = Math.min(balance, planMax);
-        if (wantedPoints > 0) {
-          const wantedDiscount = Math.round(wantedPoints * rate * 100) / 100;
-          const actualDiscount =
-            Math.round(Math.min(wantedDiscount, baseAfterReferral) * 100) / 100;
-          // Cap-aware: only spend the points needed for the granted discount.
-          const actualPoints =
-            wantedDiscount > baseAfterReferral
-              ? Math.min(wantedPoints, Math.ceil(baseAfterReferral / rate))
-              : wantedPoints;
-          successPointsApplied = actualPoints;
-          successPointsDiscount = actualDiscount;
-          amount = Math.round((baseAfterReferral - actualDiscount) * 100) / 100;
-        }
+    if (rate > 0 && maxPct > 0) {
+      const student = await StudentModel.findById(userId)
+        .select("successPoints")
+        .lean<{ successPoints?: number } | null>();
+      const balance = Math.max(
+        0,
+        Math.floor(Number(student?.successPoints ?? 0)),
+      );
+      // Cap by the admin %-of-amount-due (success points stack AFTER coupon +
+      // referral), and never discount more than the amount actually due.
+      const maxDiscountByPct =
+        Math.round(baseAfterReferral * (maxPct / 100) * 100) / 100;
+      // Work in whole points so discount = points × rate stays exact and
+      // inside every cap.
+      const maxPointsByPct = Math.floor(maxDiscountByPct / rate);
+      const maxPointsByDue = Math.floor(baseAfterReferral / rate);
+      const pointsToSpend = Math.max(
+        0,
+        Math.min(balance, maxPointsByPct, maxPointsByDue),
+      );
+      if (pointsToSpend > 0) {
+        const discount =
+          Math.round(
+            Math.min(pointsToSpend * rate, baseAfterReferral) * 100,
+          ) / 100;
+        successPointsApplied = pointsToSpend;
+        successPointsDiscount = discount;
+        amount = Math.round((baseAfterReferral - discount) * 100) / 100;
       }
     }
   }

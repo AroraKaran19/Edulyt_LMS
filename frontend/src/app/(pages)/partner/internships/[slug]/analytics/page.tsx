@@ -6,6 +6,8 @@ import Link from "next/link";
 import {
   Award,
   ChevronLeft,
+  ChevronRight,
+  Download,
   FileCheck,
   Search,
   Stamp,
@@ -17,12 +19,13 @@ import PartnerCard from "@/components/ui/partner/PartnerCard";
 import PartnerStatCard from "@/components/ui/partner/PartnerStatCard";
 import Loader from "@/components/ui/Loader";
 import usePartner, {
-  type PartnerInternshipBatchStudent,
   type PartnerInternshipDetailResponse,
+  type PartnerInternshipStudentRow,
+  type PartnerInternshipStudentsResponse,
 } from "@/hooks/usePartner";
 
 /** Single badge for the furthest funnel stage the student has reached. */
-function StatusBadges({ student }: { student: PartnerInternshipBatchStudent }) {
+function StatusBadges({ student }: { student: PartnerInternshipStudentRow }) {
   let label = "Enrolled";
   let className = "bg-gray-100 text-gray-600";
   if (student.certified) {
@@ -58,10 +61,12 @@ const STATUS_FILTER_OPTIONS: { value: StatusFilter; label: string }[] = [
   { value: "certified", label: "Certified" },
 ];
 
+const PAGE_SIZE_OPTIONS = [10, 25, 50];
+
 export default function PartnerInternshipAnalyticsPage() {
   const params = useParams<{ slug: string }>();
   const slug = String(params?.slug ?? "");
-  const { getInternshipDetail } = usePartner();
+  const { getInternshipDetail, getInternshipStudents } = usePartner();
   const [data, setData] = useState<PartnerInternshipDetailResponse | null>(
     null,
   );
@@ -70,8 +75,15 @@ export default function PartnerInternshipAnalyticsPage() {
     () => new Set(),
   );
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [studentsData, setStudentsData] =
+    useState<PartnerInternshipStudentsResponse | null>(null);
+  const [studentsLoading, setStudentsLoading] = useState(false);
 
+  // Load the analytics header (totals + per-batch counts).
   useEffect(() => {
     if (!slug) return;
     let cancelled = false;
@@ -94,6 +106,57 @@ export default function PartnerInternshipAnalyticsPage() {
     };
   }, [slug, getInternshipDetail]);
 
+  // Debounce the search box; committing a new term resets to the first page.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setSearch(searchInput);
+      setPage(1);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [searchInput]);
+
+  // Fetch the paginated student list whenever a query input changes.
+  useEffect(() => {
+    if (!slug || !data) return;
+    // No batch selected → nothing to show; skip the request.
+    if (selectedBatchIds.size === 0) {
+      setStudentsData({ items: [], total: 0, page: 1, pageSize });
+      return;
+    }
+    let cancelled = false;
+    setStudentsLoading(true);
+    (async () => {
+      try {
+        const allSelected = selectedBatchIds.size === data.batches.length;
+        const res = await getInternshipStudents(slug, {
+          page,
+          pageSize,
+          q: search,
+          status: statusFilter,
+          batchIds: allSelected ? undefined : [...selectedBatchIds],
+        });
+        if (!cancelled) setStudentsData(res);
+      } catch (e) {
+        console.error("Internship students load failed:", e);
+        if (!cancelled) toast.error("Could not load students.");
+      } finally {
+        if (!cancelled) setStudentsLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    slug,
+    data,
+    page,
+    pageSize,
+    search,
+    statusFilter,
+    selectedBatchIds,
+    getInternshipStudents,
+  ]);
+
   const selectedBatches = useMemo(() => {
     if (!data) return [];
     return data.batches.filter((b) => selectedBatchIds.has(b.batchId));
@@ -112,6 +175,7 @@ export default function PartnerInternshipAnalyticsPage() {
   }, [selectedBatches]);
 
   const toggleBatch = (batchId: string) => {
+    setPage(1);
     setSelectedBatchIds((prev) => {
       const next = new Set(prev);
       if (next.has(batchId)) next.delete(batchId);
@@ -119,31 +183,6 @@ export default function PartnerInternshipAnalyticsPage() {
       return next;
     });
   };
-
-  const filteredStudents = useMemo(() => {
-    const all = selectedBatches.flatMap((b) =>
-      b.students.map((s) => ({ ...s, batchName: b.name })),
-    );
-    let byStatus = all;
-    if (statusFilter === "exam") {
-      byStatus = all.filter((s) => s.appearedInExam);
-    } else if (statusFilter === "selected") {
-      byStatus = all.filter((s) => s.selected);
-    } else if (statusFilter === "certified") {
-      byStatus = all.filter((s) => s.certified);
-    } else if (statusFilter === "enrolled") {
-      byStatus = all.filter(
-        (s) => !s.appearedInExam && !s.selected && !s.certified,
-      );
-    }
-    const q = search.trim().toLowerCase();
-    if (!q) return byStatus;
-    return byStatus.filter(
-      (s) =>
-        s.name.toLowerCase().includes(q) ||
-        s.email.toLowerCase().includes(q),
-    );
-  }, [selectedBatches, statusFilter, search]);
 
   if (isLoading && !data) {
     return (
@@ -174,6 +213,12 @@ export default function PartnerInternshipAnalyticsPage() {
   const { internship, batches } = data;
   const allBatchesSelected =
     batches.length > 0 && selectedBatchIds.size === batches.length;
+
+  const students = studentsData?.items ?? [];
+  const total = studentsData?.total ?? 0;
+  const pageCount = Math.max(1, Math.ceil(total / pageSize));
+  const rangeStart = total === 0 ? 0 : (page - 1) * pageSize + 1;
+  const rangeEnd = Math.min(total, page * pageSize);
 
   return (
     <div className="space-y-4 p-2 py-6 sm:p-4">
@@ -234,9 +279,10 @@ export default function PartnerInternshipAnalyticsPage() {
                 <span className="font-medium text-[#344054]">Status</span>
                 <select
                   value={statusFilter}
-                  onChange={(e) =>
-                    setStatusFilter(e.target.value as StatusFilter)
-                  }
+                  onChange={(e) => {
+                    setStatusFilter(e.target.value as StatusFilter);
+                    setPage(1);
+                  }}
                   className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#F77124] focus:ring-2 focus:ring-[#F77124]/20"
                 >
                   {STATUS_FILTER_OPTIONS.map((o) => (
@@ -256,18 +302,22 @@ export default function PartnerInternshipAnalyticsPage() {
                 <div className="flex items-center gap-3 text-xs font-semibold">
                   <button
                     type="button"
-                    onClick={() =>
+                    onClick={() => {
+                      setPage(1);
                       setSelectedBatchIds(
                         new Set(batches.map((b) => b.batchId)),
-                      )
-                    }
+                      );
+                    }}
                     className="text-[#F77124] hover:underline"
                   >
                     Select all
                   </button>
                   <button
                     type="button"
-                    onClick={() => setSelectedBatchIds(new Set())}
+                    onClick={() => {
+                      setPage(1);
+                      setSelectedBatchIds(new Set());
+                    }}
                     className="text-[#475467] hover:underline"
                   >
                     Clear
@@ -310,13 +360,13 @@ export default function PartnerInternshipAnalyticsPage() {
               <input
                 type="search"
                 placeholder="Search by name or email"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
                 className="w-full rounded-lg border border-gray-300 bg-white py-2 pl-9 pr-3 text-sm outline-none focus:border-[#F77124] focus:ring-2 focus:ring-[#F77124]/20"
               />
             </div>
             <div className="mt-3 overflow-x-auto">
-              <table className="w-full min-w-[760px] text-sm">
+              <table className="w-full min-w-[860px] text-sm">
                 <thead>
                   <tr className="border-b border-[#F2F4F7] text-left">
                     <th className="pb-3 font-semibold text-black">
@@ -328,28 +378,33 @@ export default function PartnerInternshipAnalyticsPage() {
                     <th className="pb-3 font-semibold text-black">
                       Offer Letter
                     </th>
+                    <th className="pb-3 font-semibold text-black">
+                      Certificate
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredStudents.length === 0 ? (
+                  {students.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={5}
+                        colSpan={6}
                         className="py-10 text-center text-gray-500"
                       >
-                        {selectedBatchIds.size === 0
-                          ? "Select at least one batch to view students."
-                          : search.trim()
-                            ? "No students matched your search."
-                            : statusFilter === "all"
-                              ? "No students in the selected batches."
-                              : "No students match this status filter."}
+                        {studentsLoading
+                          ? "Loading students…"
+                          : selectedBatchIds.size === 0
+                            ? "Select at least one batch to view students."
+                            : search.trim()
+                              ? "No students matched your search."
+                              : statusFilter === "all"
+                                ? "No students in the selected batches."
+                                : "No students match this status filter."}
                       </td>
                     </tr>
                   ) : (
-                    filteredStudents.map((s, i) => (
+                    students.map((s, i) => (
                       <tr
-                        key={`${s.email}-${s.batchName}-${i}`}
+                        key={`${s.email}-${s.batchId}-${i}`}
                         className="border-b border-[#F2F4F7] last:border-0"
                       >
                         <td className="py-3 font-medium text-[#1D2939]">
@@ -361,22 +416,108 @@ export default function PartnerInternshipAnalyticsPage() {
                           <StatusBadges student={s} />
                         </td>
                         <td className="py-3">
-                          <span
-                            className={cn(
-                              "inline-flex rounded-full px-2 py-0.5 text-xs font-medium",
-                              s.selected
-                                ? "bg-emerald-50 text-emerald-700"
-                                : "bg-gray-100 text-gray-600",
-                            )}
-                          >
-                            {s.selected ? "Received" : "Not received"}
-                          </span>
+                          {s.offerLetterUrl ? (
+                            <a
+                              href={s.offerLetterUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 rounded-md bg-[#F77124] px-2.5 py-1 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-[#e0631a]"
+                            >
+                              <Download className="size-3.5" />
+                              Download
+                            </a>
+                          ) : (
+                            <span
+                              className={cn(
+                                "inline-flex rounded-full px-2 py-0.5 text-xs font-medium",
+                                s.selected
+                                  ? "bg-emerald-50 text-emerald-700"
+                                  : "bg-gray-100 text-gray-600",
+                              )}
+                            >
+                              {s.selected ? "Received" : "Not received"}
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3">
+                          {s.certificateUrl ? (
+                            <a
+                              href={s.certificateUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 rounded-md bg-[#F77124] px-2.5 py-1 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-[#e0631a]"
+                            >
+                              <Download className="size-3.5" />
+                              Download
+                            </a>
+                          ) : (
+                            <span
+                              className={cn(
+                                "inline-flex rounded-full px-2 py-0.5 text-xs font-medium",
+                                s.certified
+                                  ? "bg-emerald-50 text-emerald-700"
+                                  : "bg-gray-100 text-gray-500",
+                              )}
+                            >
+                              {s.certified ? "Issued" : "Not issued"}
+                            </span>
+                          )}
                         </td>
                       </tr>
                     ))
                   )}
                 </tbody>
               </table>
+            </div>
+
+            <div className="mt-4 flex flex-col gap-3 border-t border-[#F2F4F7] pt-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-3 text-xs text-[#475467]">
+                <label className="flex items-center gap-2">
+                  <span>Rows per page</span>
+                  <select
+                    value={pageSize}
+                    onChange={(e) => {
+                      setPageSize(Number(e.target.value));
+                      setPage(1);
+                    }}
+                    className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs outline-none focus:border-[#F77124] focus:ring-2 focus:ring-[#F77124]/20"
+                  >
+                    {PAGE_SIZE_OPTIONS.map((n) => (
+                      <option key={n} value={n}>
+                        {n}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <span>
+                  {total === 0
+                    ? "0 students"
+                    : `Showing ${rangeStart}–${rangeEnd} of ${total}`}
+                </span>
+              </div>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page <= 1 || studentsLoading}
+                  className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-2.5 py-1.5 text-xs font-medium text-[#344054] hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <ChevronLeft className="size-4" />
+                  Prev
+                </button>
+                <span className="px-2 text-xs font-medium text-[#475467]">
+                  Page {page} of {pageCount}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+                  disabled={page >= pageCount || studentsLoading}
+                  className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-2.5 py-1.5 text-xs font-medium text-[#344054] hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Next
+                  <ChevronRight className="size-4" />
+                </button>
+              </div>
             </div>
           </>
         )}

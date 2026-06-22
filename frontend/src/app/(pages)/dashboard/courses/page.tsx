@@ -10,6 +10,7 @@ import { Enrollment } from "@/types/enrollment";
 import CourseCard from "./components/CourseCard";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
+import AnnouncementSection from "../components/dashboard/AnnouncementSection";
 
 const tabs = [
   { label: "All" },
@@ -256,6 +257,8 @@ const CoursesPage = () => {
 
   return (
     <div className="py-4">
+      <AnnouncementSection audience="course" className="mb-6" />
+
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>

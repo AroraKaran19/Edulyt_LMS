@@ -4,8 +4,7 @@ import type { ReactNode } from "react";
 import { useCallback, useEffect, useState } from "react";
 import { Search } from "lucide-react";
 import Container from "@/app/admin/components/ui/Container";
-import WhiteButton from "@/components/ui/buttons/WhiteButton";
-import OrangeButton from "@/components/ui/buttons/OrangeButton";
+import Pagination from "@/components/admin/Pagination";
 
 export type LibraryColumn<T> = {
   header: string;
@@ -137,31 +136,12 @@ export default function InternshipLibraryListPage<T extends { _id: string }>({
           </table>
         </div>
 
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between gap-4 flex-wrap">
-            <p className="text-sm text-gray-600">
-              Page {page} of {totalPages}
-            </p>
-            <div className="flex gap-2">
-              <WhiteButton
-                type="button"
-                glow={false}
-                disabled={page <= 1 || loading}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-              >
-                Previous
-              </WhiteButton>
-              <OrangeButton
-                type="button"
-                glow={false}
-                disabled={page >= totalPages || loading}
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              >
-                Next
-              </OrangeButton>
-            </div>
-          </div>
-        )}
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          disabled={loading}
+        />
       </Container>
     </div>
   );

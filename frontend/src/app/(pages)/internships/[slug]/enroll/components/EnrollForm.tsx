@@ -19,7 +19,7 @@ import {
   Youtube,
   Clock,
 } from "lucide-react";
-import { useForm, useWatch } from "react-hook-form";
+import { useForm, useWatch, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import z from "zod";
 import { toast } from "react-toastify";
@@ -32,6 +32,7 @@ import {
   readEnrollDraft,
   writeEnrollDraftDoc,
 } from "./enrollDraftStorage";
+import { EXPERIENCE_LEVELS } from "@/lib/constants/profileOptions";
 
 // Custom WhatsApp SVG Icon
 const WhatsAppIcon = ({ className }: { className?: string }) => (
@@ -296,15 +297,10 @@ const genderOptions: SelectOption[] = [
   { value: "other", label: "Other" },
 ];
 
-const experienceOptions: SelectOption[] = [
-  { value: "school-student", label: "School Student" },
-  { value: "college-student", label: "College Student" },
-  { value: "passed-out-unemployed", label: "Passed Out & Unemployed" },
-  { value: "0-2-years", label: "0-2 Years" },
-  { value: "2-5-years", label: "2-5 Years" },
-  { value: "5-10-years", label: "5-10 Years" },
-  { value: "10-plus-years", label: "10+ Years" },
-];
+// Experience options are the shared profile experience levels, so the field
+// matches the Profile page and course checkout — and the autofill from /users/me
+// (`experienceLevel`) and the write-back on submit stay consistent.
+const experienceOptions: SelectOption[] = EXPERIENCE_LEVELS;
 
 const countryOptions: SelectOption[] = [
   { value: "india", label: "India" },
@@ -714,10 +710,30 @@ const EnrollForm = ({ preview }: { preview: InternshipEnrollPreview }) => {
         router.replace("/dashboard");
       }
     } catch (error: unknown) {
-      const msg =
-        (error as { response?: { data?: { message?: string } } })?.response
-          ?.data?.message ?? "Failed to submit. Please try again.";
-      toast.error(msg);
+      // Distinguish "our side" failures from the learner's input so the message
+      // tells them whether to retry / contact support vs. fix a field. Field
+      // validation is handled separately by onFormInvalid (amber warning).
+      const axiosErr = error as {
+        response?: { data?: { message?: string } };
+        request?: unknown;
+      };
+      if (axiosErr.response) {
+        // Server responded with an error status — surface its reason, framed as
+        // a submission problem (not an input mistake).
+        const serverMsg = axiosErr.response.data?.message;
+        toast.error(
+          serverMsg
+            ? `Couldn't submit your application: ${serverMsg}`
+            : "Couldn't submit your application — a server error occurred. Please try again, or contact support if it keeps happening.",
+        );
+      } else if (axiosErr.request) {
+        // Request sent but no response — network / connectivity.
+        toast.error(
+          "Couldn't reach the server — check your internet connection and try again.",
+        );
+      } else {
+        toast.error("Something went wrong while submitting. Please try again.");
+      }
     }
   };
 
@@ -733,6 +749,24 @@ const EnrollForm = ({ preview }: { preview: InternshipEnrollPreview }) => {
     }
     setPendingFormData(data);
     setPathModalOpen(true);
+  };
+
+  // Validation failure — clearly a "your input" problem (amber), distinct from
+  // the red "couldn't submit" server errors in finalizeRegistration. Also pulls
+  // the first invalid field into view since the form is long.
+  const onFormInvalid = (formErrors: FieldErrors<EnrollFormData>) => {
+    const count = Object.keys(formErrors).length;
+    toast.warn(
+      count > 1
+        ? `Please review the ${count} highlighted fields below — some details are missing or invalid.`
+        : "Please review the highlighted field below — a detail is missing or invalid.",
+    );
+    const firstKey = Object.keys(formErrors)[0];
+    if (firstKey) {
+      document
+        .querySelector(`[name="${firstKey}"]`)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
   };
 
   const handlePathModalConfirm = () => {
@@ -858,7 +892,7 @@ const EnrollForm = ({ preview }: { preview: InternshipEnrollPreview }) => {
 
       <div className="rounded-sm border border-stone-200 bg-white shadow-[3px_4px_0_0_rgba(15,23,42,0.06)]">
         <form
-          onSubmit={handleSubmit(onFormValid)}
+          onSubmit={handleSubmit(onFormValid, onFormInvalid)}
           className="space-y-8 md:space-y-10 p-5 sm:p-8 md:p-10"
         >
           {/* Cohort, entrance exam preference, program duration */}

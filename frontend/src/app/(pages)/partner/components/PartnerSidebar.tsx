@@ -78,7 +78,7 @@ export default function PartnerSidebar({
     >
       <Image
         src="/logo.svg"
-        alt="Edulyt"
+        alt="Airkrit"
         width={168}
         height={48}
         className="h-11 w-auto max-h-11 max-w-[156px] object-contain object-left"

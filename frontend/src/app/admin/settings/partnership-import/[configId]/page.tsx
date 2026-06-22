@@ -15,7 +15,7 @@ import {
 import * as XLSX from "xlsx";
 import Container from "@/app/admin/components/ui/Container";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
-import OrangeButton from "@/components/ui/buttons/OrangeButton";
+import Pagination from "@/components/admin/Pagination";
 import Input from "@/components/ui/inputs/Input";
 import Select from "@/components/ui/inputs/Select";
 import { usePartnershipImportConfig } from "@/hooks/usePartnershipImportConfig";
@@ -27,28 +27,6 @@ import type {
 import { toast } from "react-toastify";
 
 const LIMIT = 25;
-const PAGE_BUTTON_WINDOW = 5;
-
-/** Page indices to show as direct buttons (sliding window around current). */
-function visiblePageNumbers(
-  current: number,
-  total: number,
-  windowSize: number,
-): number[] {
-  if (total < 1) return [1];
-  if (total <= windowSize) {
-    return Array.from({ length: total }, (_, i) => i + 1);
-  }
-  const half = Math.floor(windowSize / 2);
-  let start = Math.max(1, current - half);
-  let end = start + windowSize - 1;
-  if (end > total) {
-    end = total;
-    start = Math.max(1, end - windowSize + 1);
-  }
-  return Array.from({ length: end - start + 1 }, (_, i) => start + i);
-}
-
 function parseEmailsFromFile(file: File): Promise<{ email: string }[]> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -508,75 +486,12 @@ export default function PartnershipImportDetailPage() {
           </table>
       </div>
 
-      {totalPages > 1 && (
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-          <p className="text-sm text-gray-600 order-2 sm:order-1">
-            {total} rows total
-          </p>
-          <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-end sm:flex-wrap sm:gap-2 order-1 sm:order-2">
-            <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2">
-              <WhiteButton
-                glow={false}
-                type="button"
-                className="px-3! py-1.5! text-orange-600 border-orange-200 hover:bg-orange-50"
-                disabled={page <= 1}
-                title="First page"
-                onClick={() => setPage(1)}
-              >
-                First
-              </WhiteButton>
-              <OrangeButton
-                glow={false}
-                type="button"
-                className="px-3! py-1.5!"
-                disabled={page <= 1}
-                title="Previous page"
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-              >
-                Previous
-              </OrangeButton>
-              {visiblePageNumbers(page, totalPages, PAGE_BUTTON_WINDOW).map(
-                (n) => (
-                  <button
-                    key={n}
-                    type="button"
-                    onClick={() => setPage(n)}
-                    className={`min-w-9 px-2.5 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
-                      n === page
-                        ? "bg-orange-500 text-white border-orange-500 shadow-sm"
-                        : "bg-white text-gray-800 border-gray-300 hover:bg-orange-50/80 hover:border-orange-200"
-                    }`}
-                  >
-                    {n}
-                  </button>
-                ),
-              )}
-              <span className="text-sm text-gray-600 px-1 sm:px-2 whitespace-nowrap tabular-nums">
-                Page {page} of {totalPages}
-              </span>
-              <OrangeButton
-                glow={false}
-                type="button"
-                className="px-3! py-1.5!"
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              >
-                Next
-              </OrangeButton>
-              <WhiteButton
-                glow={false}
-                type="button"
-                className="px-3! py-1.5! text-orange-600 border-orange-200 hover:bg-orange-50"
-                disabled={page >= totalPages}
-                title="Last page"
-                onClick={() => setPage(totalPages)}
-              >
-                Last
-              </WhiteButton>
-            </div>
-          </div>
-        </div>
-      )}
+      <Pagination
+        page={page}
+        totalPages={totalPages}
+        onPageChange={setPage}
+        summary={`${total} rows total`}
+      />
     </Container>
   );
 }

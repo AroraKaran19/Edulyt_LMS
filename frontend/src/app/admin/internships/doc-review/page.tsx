@@ -16,6 +16,7 @@ import apiClient from "@/configs/apiConfig";
 import { ENDPOINTS } from "@/constants/endpoints";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
+import Pagination from "@/components/admin/Pagination";
 import Modal from "@/components/ui/Modal";
 import {
   InfiniteScrollSelect,
@@ -441,30 +442,16 @@ export default function DocReviewQueuePage() {
             </div>
 
             {/* Pagination */}
-            <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-3 border-t border-gray-100 text-xs text-gray-600">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-4 sm:px-6 py-3 border-t border-gray-100 text-xs text-gray-600">
               <div>
-                Page <span className="font-semibold">{page}</span> of{" "}
-                <span className="font-semibold">{totalPages}</span> ·{" "}
                 <span className="font-semibold">{total}</span> total
               </div>
-              <div className="flex gap-2">
-                <WhiteButton
-                  type="button"
-                  glow={false}
-                  disabled={page <= 1 || loadingRows}
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                >
-                  Previous
-                </WhiteButton>
-                <WhiteButton
-                  type="button"
-                  glow={false}
-                  disabled={page >= totalPages || loadingRows}
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                >
-                  Next
-                </WhiteButton>
-              </div>
+              <Pagination
+                page={page}
+                totalPages={totalPages}
+                onPageChange={setPage}
+                disabled={loadingRows}
+              />
             </div>
           </>
         )}

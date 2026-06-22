@@ -18,6 +18,7 @@ import {
   Sparkles,
   BadgeCheck,
   Download,
+  Info,
   Video,
   ExternalLink,
   Check,
@@ -760,6 +761,13 @@ export default function InternshipProgramPage() {
               {certBreakdown
                 ? ` Tasks ${certBreakdown.tasksTotal} · Attendance ${certBreakdown.attendanceTotal}.`
                 : ""}
+            </p>
+            <p className="flex items-start gap-1.5 text-[11px] font-medium text-amber-700">
+              <Info className="mt-px size-3 shrink-0" />
+              <span>
+                Only success points earned via attendance and tasks count
+                toward your certificate.
+              </span>
             </p>
           </div>
 

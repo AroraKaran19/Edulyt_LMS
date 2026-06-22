@@ -1,9 +1,10 @@
-export type AnnouncementAudience = "student" | "partner";
+export type AnnouncementAudience = "course" | "internship" | "partner";
 
 /**
  * Dashboard announcement. Each announcement targets a single audience —
- * `student` ones surface on the learner dashboard, `partner` ones on the
- * partner portal dashboard. Admins create these from Settings → Announcements.
+ * `course` ones surface on the learner course dashboard, `internship` ones on
+ * the learner internships dashboard, and `partner` ones on the partner portal
+ * dashboard. Admins create these from Settings → Announcements.
  */
 export interface Announcement {
   _id?: string;

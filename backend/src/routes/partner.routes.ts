@@ -11,6 +11,7 @@ import {
   getPartnerCourseDetail,
   getPartnerInternships,
   getPartnerInternshipDetail,
+  getPartnerInternshipStudents,
 } from "../controllers/partner.controller";
 
 const router = Router();
@@ -45,5 +46,8 @@ router.get("/internships", getPartnerInternships);
 
 /** Single-internship analytics (gated by internshipAnalyticsEnabled). */
 router.get("/internships/:slug/analytics", getPartnerInternshipDetail);
+
+/** Paginated student list for a single internship (batch/status/search filters). */
+router.get("/internships/:slug/students", getPartnerInternshipStudents);
 
 export default router;
