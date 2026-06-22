@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { Heart, MessageCircle } from "lucide-react";
 import { toast } from "react-toastify";
@@ -62,6 +62,20 @@ const initials = (firstName?: string, lastName?: string) => {
   return (a + b).toUpperCase() || "?";
 };
 
+// Render review text with #hashtags tinted in the brand orange. Splitting on a
+// capture group keeps the delimiters, so surrounding text + newlines are
+// preserved for `whitespace-pre-line`.
+const renderReview = (text: string) =>
+  text.split(/(#[\p{L}\p{N}_]+)/gu).map((part, i) =>
+    /^#[\p{L}\p{N}_]+$/u.test(part) ? (
+      <span key={i} className="font-semibold text-[#F77124]">
+        {part}
+      </span>
+    ) : (
+      part
+    ),
+  );
+
 const StoryCard = ({ story }: StoryCardProps) => {
   const { isAuthenticated } = useAuth();
   const { toggleLike } = useCommunityReview();
@@ -87,6 +101,20 @@ const StoryCard = ({ story }: StoryCardProps) => {
 
   const isPreview = story._id === "preview";
   const timeAgo = formatTimeAgo(story.createdAt);
+
+  // "Read more" toggle — only surfaced when the review overflows the 3-line clamp.
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isClampable, setIsClampable] = useState(false);
+  const reviewRef = useRef<HTMLParagraphElement | null>(null);
+
+  useEffect(() => {
+    const el = reviewRef.current;
+    if (!el) return;
+    // Measured while collapsed (clamped): hidden overflow ⇒ a toggle is needed.
+    if (!isExpanded) {
+      setIsClampable(el.scrollHeight > el.clientHeight + 1);
+    }
+  }, [story.review, isExpanded]);
 
   const handleLike = async () => {
     if (isPreview) return;
@@ -164,9 +192,25 @@ const StoryCard = ({ story }: StoryCardProps) => {
       <h3 className="text-lg font-extrabold text-gray-900 mb-2 leading-tight">
         {story.title}
       </h3>
-      <p className="text-gray-600 text-sm leading-relaxed line-clamp-3 mb-6 whitespace-pre-line">
-        {story.review}
-      </p>
+      <div className="mb-6">
+        <p
+          ref={reviewRef}
+          className={`text-gray-600 text-sm leading-relaxed whitespace-pre-line ${
+            isExpanded ? "" : "line-clamp-3"
+          }`}
+        >
+          {renderReview(story.review)}
+        </p>
+        {(isClampable || isExpanded) && (
+          <button
+            type="button"
+            onClick={() => setIsExpanded((v) => !v)}
+            className="mt-1.5 text-xs font-bold text-[#F77124] hover:underline"
+          >
+            {isExpanded ? "Read less" : "Read more"}
+          </button>
+        )}
+      </div>
 
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-6">

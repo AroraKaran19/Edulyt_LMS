@@ -14,6 +14,7 @@ import {
   adminUpdateEnrollmentStatus,
   adminChangeEnrollmentBatch,
   adminUpdateEnrollmentDuration,
+  adminSetCertificateOverride,
   deleteInternshipEnrollmentAdmin,
   listEntranceExamCohortsAdmin,
   listCertificationExamCohortsAdmin,
@@ -303,6 +304,36 @@ export const adminUpdateEnrollmentDurationController = asyncHandler(
       new mongoose.Types.ObjectId(String(adminUserId)),
     );
     sendSuccessResponse(res, row, "Enrollment duration updated", 200);
+  },
+);
+
+/**
+ * @route   PATCH /api/internship-enrollments/admin/:enrollmentId/certificate-override
+ * @desc    Admin passes/fails a learner's certificate, or clears the override.
+ * @body    { verdict: "pass" | "fail" | "clear" }
+ * @access  Admin
+ */
+export const adminSetCertificateOverrideController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const adminUserId = req.user?._id;
+    if (!adminUserId) throw new AppError("Unauthorized", 401);
+
+    const { enrollmentId } = req.params;
+    const { verdict } = req.body as { verdict?: "pass" | "fail" | "clear" };
+    if (!verdict) throw new AppError("verdict is required", 400);
+
+    const row = await adminSetCertificateOverride(
+      String(enrollmentId),
+      verdict,
+      new mongoose.Types.ObjectId(String(adminUserId)),
+    );
+    const msg =
+      verdict === "clear"
+        ? "Certificate override cleared"
+        : verdict === "pass"
+          ? "Learner passed — certificate issued"
+          : "Learner marked failed";
+    sendSuccessResponse(res, row, msg, 200);
   },
 );
 

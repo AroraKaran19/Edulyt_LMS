@@ -11,16 +11,25 @@ import type { CommunityReviewTag } from "@/hooks/useCommunityReview";
 const CommunityPage = () => {
   const [activeTag, setActiveTag] = useState<CommunityReviewTag | null>(null);
 
+  const handleTagChange = (next: CommunityReviewTag | null) => {
+    setActiveTag(next);
+    // Switching category reloads the feed from page 1 — bring the user back to
+    // the top so they start reading the filtered stories from the beginning.
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+
   return (
     <div className=" mx-auto w-full md:px-6 lg:px-8 py-4">
       <HeroSection />
       <WritePostCard />
 
       <div className="mt-12 flex flex-col gap-8 lg:flex-row lg:items-start">
-        <aside className="hidden lg:block lg:w-60 shrink-0">
+        <aside className="hidden lg:block lg:w-60 shrink-0 lg:sticky lg:top-24 lg:self-start">
           <CommunitySidebar
             activeTag={activeTag}
-            onTagChange={setActiveTag}
+            onTagChange={handleTagChange}
           />
         </aside>
 

@@ -190,6 +190,9 @@ export const ENDPOINTS = {
     /** PATCH body `{ months: number }` — admin changes the learner's program duration. */
     adminUpdateDuration: (enrollmentId: string) =>
       `/internship-enrollments/admin/${encodeURIComponent(enrollmentId)}/duration`,
+    /** PATCH body `{ verdict: "pass" | "fail" | "clear" }` — admin overrides the certificate verdict. */
+    adminCertificateOverride: (enrollmentId: string) =>
+      `/internship-enrollments/admin/${encodeURIComponent(enrollmentId)}/certificate-override`,
     /** PATCH — admin edits Aadhar number / learner photo on an enrollment. */
     adminUpdateDocumentation: (enrollmentId: string) =>
       `/internship-enrollments/admin/${encodeURIComponent(enrollmentId)}/documentation`,

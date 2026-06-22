@@ -13,6 +13,7 @@ import {
   adminUpdateEnrollmentStatusController,
   adminChangeEnrollmentBatchController,
   adminUpdateEnrollmentDurationController,
+  adminSetCertificateOverrideController,
   deleteInternshipEnrollmentAdminController,
   listEntranceExamCohortsController,
   listCertificationExamCohortsController,
@@ -143,6 +144,13 @@ router.patch(
   "/admin/:enrollmentId/duration",
   verifyAdmin,
   adminUpdateEnrollmentDurationController,
+);
+
+/** PATCH /api/internship-enrollments/admin/:enrollmentId/certificate-override */
+router.patch(
+  "/admin/:enrollmentId/certificate-override",
+  verifyAdmin,
+  adminSetCertificateOverrideController,
 );
 
 /** PATCH /api/internship-enrollments/admin/:enrollmentId/documentation */

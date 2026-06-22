@@ -40,6 +40,8 @@ export interface InternshipEligibility {
   examPassed: boolean;
   /** Both gates cleared — the learner qualifies for the certificate. */
   certificateEligible: boolean;
+  /** Admin verdict override in effect, if any ("pass" | "fail" | null). */
+  certificateOverride: "pass" | "fail" | null;
 }
 
 /**
@@ -64,7 +66,7 @@ export async function computeInternshipEligibility(
 
   const enrollment = await InternshipEnrollmentModel.findById(enrollmentId)
     .select(
-      "internship batchSnapshot enrolledAt endDate programDurationMonths internshipSuccessPoints",
+      "internship batchSnapshot enrolledAt endDate programDurationMonths internshipSuccessPoints certificateOverride",
     )
     .lean<{
       internship?: mongoose.Types.ObjectId;
@@ -73,6 +75,7 @@ export async function computeInternshipEligibility(
       endDate?: Date;
       programDurationMonths?: number;
       internshipSuccessPoints?: number;
+      certificateOverride?: "pass" | "fail" | null;
     } | null>();
   if (!enrollment) throw new AppError("Enrollment not found", 404);
 
@@ -227,22 +230,34 @@ export async function computeInternshipEligibility(
 
   // Certificate requires BOTH gates: work-points threshold AND a passed exam.
   // When no exam is configured, the exam gate is not applicable.
+  const computedEligible = meetsThreshold && (!examConfigured || examPassed);
+
+  // Admin override wins over the computed verdict. "pass" force-clears both
+  // gates (so the certificate-issuance path, which gates on `meetsThreshold`,
+  // also passes); "fail" force-blocks eligibility.
+  const override =
+    enrollment.certificateOverride === "pass" ||
+    enrollment.certificateOverride === "fail"
+      ? enrollment.certificateOverride
+      : null;
+
   const certificateEligible =
-    meetsThreshold && (!examConfigured || examPassed);
+    override === "pass" ? true : override === "fail" ? false : computedEligible;
 
   return {
     totalAchievable,
     earned,
     thresholdPct,
     requiredPoints,
-    meetsThreshold,
-    shortfall,
+    meetsThreshold: override === "pass" ? true : meetsThreshold,
+    shortfall: override === "pass" ? 0 : shortfall,
     breakdown: { tasksTotal, meetingsTotal, certExamTotal },
     examConfigured,
     examSubmitted,
     examScore,
     examThreshold,
-    examPassed,
+    examPassed: override === "pass" ? true : examPassed,
     certificateEligible,
+    certificateOverride: override,
   };
 }

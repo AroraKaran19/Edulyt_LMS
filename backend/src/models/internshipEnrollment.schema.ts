@@ -116,6 +116,20 @@ const internshipEnrollmentSchema = new mongoose.Schema(
     },
 
     /**
+     * Admin override of the computed certificate verdict.
+     *   "pass" → force-eligible (issues the certificate even if the learner
+     *            missed the work-points threshold or failed the exam).
+     *   "fail" → force-ineligible.
+     *   null   → use the computed eligibility (default).
+     * Applied centrally in {@link computeInternshipEligibility}.
+     */
+    certificateOverride: {
+      type: String,
+      enum: ["pass", "fail"],
+      default: null,
+    },
+
+    /**
      * Program length chosen at registration (`internshipDuration` in applicationAnswers), in months.
      * Drives per-learner certification exam day (last UTC day of the program).
      */

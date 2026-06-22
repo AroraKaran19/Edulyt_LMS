@@ -114,6 +114,8 @@ export type InternshipEnrollmentListRow = {
   programDurationMonths?: number;
   /** ISO — materialized program end (`enrolledAt + programDurationMonths`). */
   endDate?: string;
+  /** Admin certificate verdict override in effect ("pass" | "fail" | null). */
+  certificateOverride?: "pass" | "fail" | null;
   createdAt?: string;
   updatedAt?: string;
   /** ISO string — entrance exam window opens (cohort batch, UTC). */
@@ -570,6 +572,9 @@ export async function getInternshipEnrollmentByIdAdmin(
         ? (doc as { programDurationMonths: number }).programDurationMonths
         : undefined,
     endDate: toIso((doc as { endDate?: Date }).endDate),
+    certificateOverride:
+      (doc as { certificateOverride?: "pass" | "fail" | null })
+        .certificateOverride ?? null,
     createdAt: doc.createdAt
       ? new Date(doc.createdAt).toISOString()
       : undefined,
@@ -2116,6 +2121,74 @@ export async function adminUpdateEnrollmentDuration(
   doc.adminActionAt = new Date();
 
   await doc.save(); // pre-save hook recomputes endDate from enrolledAt + months
+
+  return getInternshipEnrollmentByIdAdmin(enrollmentId);
+}
+
+/**
+ * Admin: override a learner's certificate verdict.
+ *   "pass"  → force-eligible AND enqueue the internship certificate so the
+ *             learner actually receives it (idempotent; skipped if one already
+ *             exists). Reuses the same job pipeline as auto-passed learners.
+ *   "fail"  → force-ineligible. Does not delete an already-issued certificate.
+ *   "clear" → remove the override; eligibility reverts to computed.
+ */
+export async function adminSetCertificateOverride(
+  enrollmentId: string,
+  verdict: "pass" | "fail" | "clear",
+  adminUserId: mongoose.Types.ObjectId,
+): Promise<InternshipEnrollmentListRow> {
+  if (!mongoose.Types.ObjectId.isValid(enrollmentId)) {
+    throw new AppError("Invalid enrollment id", 400);
+  }
+  if (verdict !== "pass" && verdict !== "fail" && verdict !== "clear") {
+    throw new AppError("verdict must be pass, fail, or clear", 400);
+  }
+
+  const doc = await InternshipEnrollmentModel.findById(enrollmentId);
+  if (!doc) throw new AppError("Enrollment not found", 404);
+
+  (doc as unknown as { certificateOverride: "pass" | "fail" | null }).certificateOverride =
+    verdict === "clear" ? null : verdict;
+  doc.adminActionBy = adminUserId;
+  doc.adminActionAt = new Date();
+  await doc.save();
+
+  // Passing must actually produce the certificate. Enqueue only when no
+  // internship certificate has been issued for this enrollment yet — the job
+  // service itself dedupes pending/processing jobs.
+  if (verdict === "pass") {
+    try {
+      const { CertificateModel } = await import("../models/certificate.schema");
+      const existing = await CertificateModel.findOne({
+        enrollmentId: doc._id,
+        certificateType: "internship",
+        isActive: true,
+      })
+        .select("_id")
+        .lean();
+      if (!existing) {
+        const { createCertificateJobService } = await import(
+          "./certificateJob.services"
+        );
+        await createCertificateJobService({
+          enrollmentId: String(doc._id),
+          certificateType: "internship",
+          studentName: "",
+          courseName: "",
+          completionDate: new Date(),
+        });
+      }
+    } catch (e) {
+      // Don't fail the override if the queue hiccups — the verdict is saved and
+      // the cert can be re-queued by toggling pass again.
+      console.error(
+        "[Certificate] Failed to enqueue internship certificate after admin pass for enrollment",
+        String(doc._id),
+        e,
+      );
+    }
+  }
 
   return getInternshipEnrollmentByIdAdmin(enrollmentId);
 }

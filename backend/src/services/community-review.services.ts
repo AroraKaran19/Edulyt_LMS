@@ -231,9 +231,11 @@ export async function listPublicCommunityReviewsService(
             : false,
         },
       },
-      // Strip heavy / private fields before populate. `likes` is the dedup
-      // array (server-side only); `totalLikes` is the public counter.
-      { $project: { likes: 0, replies: 0 } },
+      // Strip heavy / private / internal fields before populate. `likes` is the
+      // dedup array (server-side only); `totalLikes` is the public counter.
+      // `status` is never exposed publicly — the list is already approved-only,
+      // and leaking it would advertise that posts are moderated.
+      { $project: { likes: 0, replies: 0, status: 0, __v: 0 } },
     ]),
     CommunityReviewModel.countDocuments(query),
   ]);

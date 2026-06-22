@@ -657,6 +657,10 @@ export default function SubmissionDetailModal({ isOpen, submissionId, onClose }:
   const [sub, setSub] = useState<FullSubmission | null>(null);
   const [loading, setLoading] = useState(false);
   const [finalizing, setFinalizing] = useState(false);
+  const [certOverride, setCertOverride] = useState<"pass" | "fail" | null>(null);
+  const [savingOverride, setSavingOverride] = useState<
+    "pass" | "fail" | "clear" | null
+  >(null);
 
   useEffect(() => {
     if (!isOpen || !submissionId) {
@@ -688,11 +692,75 @@ export default function SubmissionDetailModal({ isOpen, submissionId, onClose }:
   const snap = sub?.templateSnapshot;
   const isExam = sub?.submissionFor === "exam";
   const examSnap = isExam ? (snap as ExamSnapshot | undefined) : undefined;
+  const isCertification = isExam && examSnap?.examType === "certification";
 
   const showCertFinalize =
     isExam &&
     examSnap?.examType === "certification" &&
     (sub?.status === "submitted" || sub?.status === "partially_reviewed");
+
+  // Load the learner's current certificate override so the Pass/Fail/Clear
+  // control reflects state. Runs once per certification submission.
+  useEffect(() => {
+    const enrollmentId = sub?.enrollmentId;
+    if (!isOpen || !isCertification || !enrollmentId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await apiClient.get(
+          ENDPOINTS.internshipEnrollments.adminById(enrollmentId),
+        );
+        const row = res.data?.data as
+          | { certificateOverride?: "pass" | "fail" | null }
+          | undefined;
+        if (!cancelled) setCertOverride(row?.certificateOverride ?? null);
+      } catch {
+        /* non-fatal — leave the control in its default state */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, isCertification, sub?.enrollmentId]);
+
+  async function handleCertificateOverride(verdict: "pass" | "fail" | "clear") {
+    const enrollmentId = sub?.enrollmentId;
+    if (!enrollmentId || savingOverride) return;
+    setSavingOverride(verdict);
+    try {
+      const res = await apiClient.patch(
+        ENDPOINTS.internshipEnrollments.adminCertificateOverride(enrollmentId),
+        { verdict },
+      );
+      const row = res.data?.data as
+        | { certificateOverride?: "pass" | "fail" | null }
+        | undefined;
+      setCertOverride(row?.certificateOverride ?? null);
+      toast.success(
+        verdict === "pass"
+          ? "Passed — certificate issued"
+          : verdict === "fail"
+            ? "Marked as failed"
+            : "Reverted to computed result",
+      );
+    } catch (e: unknown) {
+      const msg =
+        e &&
+        typeof e === "object" &&
+        "response" in e &&
+        e.response &&
+        typeof e.response === "object" &&
+        "data" in e.response &&
+        e.response.data &&
+        typeof e.response.data === "object" &&
+        "message" in e.response.data
+          ? String((e.response.data as { message?: string }).message)
+          : "Could not update certificate result";
+      toast.error(msg);
+    } finally {
+      setSavingOverride(null);
+    }
+  }
 
   async function handleFinalizeCertification() {
     if (!submissionId) return;
@@ -883,6 +951,60 @@ export default function SubmissionDetailModal({ isOpen, submissionId, onClose }:
               </OrangeButton>
             </div>
           )}
+
+          {isCertification && sub.enrollmentId ? (
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50/80 p-4 space-y-2">
+              <p className="font-bold text-emerald-900 text-sm">
+                Certificate result
+              </p>
+              <p className="text-xs text-emerald-900/90 leading-relaxed">
+                {certOverride === "pass" ? (
+                  <>
+                    Manually <span className="font-semibold">passed</span> — the
+                    certificate has been issued to the learner.
+                  </>
+                ) : certOverride === "fail" ? (
+                  <>
+                    Manually <span className="font-semibold">failed</span> —
+                    certificate withheld.
+                  </>
+                ) : (
+                  <>
+                    Automatic — based on the exam score plus tasks &amp;
+                    attendance. Use <span className="font-semibold">Pass</span> to
+                    issue a certificate to a learner who fell short.
+                  </>
+                )}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  disabled={savingOverride !== null || certOverride === "pass"}
+                  onClick={() => void handleCertificateOverride("pass")}
+                  className="rounded-md border border-green-200 bg-green-50 px-3 py-1.5 text-xs font-semibold text-green-700 hover:bg-green-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  {savingOverride === "pass" ? "Passing…" : "Pass"}
+                </button>
+                <button
+                  type="button"
+                  disabled={savingOverride !== null || certOverride === "fail"}
+                  onClick={() => void handleCertificateOverride("fail")}
+                  className="rounded-md border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  {savingOverride === "fail" ? "Failing…" : "Fail"}
+                </button>
+                <button
+                  type="button"
+                  disabled={savingOverride !== null || !certOverride}
+                  onClick={() => void handleCertificateOverride("clear")}
+                  title="Revert to the computed result"
+                  className="rounded-md border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  {savingOverride === "clear" ? "Clearing…" : "Clear"}
+                </button>
+              </div>
+            </div>
+          ) : null}
 
           {/* ── Footer ── */}
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-stone-100 pt-3">

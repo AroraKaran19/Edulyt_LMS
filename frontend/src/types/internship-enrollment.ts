@@ -250,6 +250,8 @@ export interface InternshipEnrollmentListRow {
   programDurationMonths?: number;
   /** ISO — materialized program end (`enrolledAt + programDurationMonths`). */
   endDate?: string;
+  /** Admin certificate verdict override in effect ("pass" | "fail" | null). */
+  certificateOverride?: "pass" | "fail" | null;
   createdAt?: string;
   updatedAt?: string;
   /** ISO — when the entrance exam window opens (populated for merit-path `exam_registered`/`exam_attempted`). */

@@ -101,7 +101,6 @@ export default function InternshipEnrollmentDetailModal({
   const [savingBatch, setSavingBatch] = useState(false);
   const [selectedMonths, setSelectedMonths] = useState<string>("");
   const [savingDuration, setSavingDuration] = useState(false);
-  const [savingComplete, setSavingComplete] = useState(false);
   const [applicationModalOpen, setApplicationModalOpen] = useState(false);
 
   // Revoke state
@@ -242,9 +241,6 @@ export default function InternshipEnrollmentDetailModal({
     !DISQUALIFIED_BATCH_MOVE_STATUSES.has(detail.status) &&
     batchOptions.length > 0;
 
-  const canMarkComplete =
-    detail && (detail.status === "enrolled" || detail.status === "paused");
-
   const canRevoke = detail && REVOKABLE_STATUSES.has(detail.status);
 
   const currentBatchId = detail?.batchSnapshot?.batchId ?? "";
@@ -381,37 +377,6 @@ export default function InternshipEnrollmentDetailModal({
       setDeleteError(msg);
     } finally {
       setDeleting(false);
-    }
-  }
-
-  async function handleMarkCompleted() {
-    if (!enrollmentId || !detail || savingComplete) return;
-    setSavingComplete(true);
-    try {
-      const res = await apiClient.patch(
-        ENDPOINTS.internshipEnrollments.adminUpdateStatus(enrollmentId),
-        { status: "completed" },
-      );
-      const row = res.data?.data as InternshipEnrollmentListRow | undefined;
-      if (row) setDetail(row);
-      toast.success("Marked as completed");
-      onUpdated?.();
-    } catch (e: unknown) {
-      const msg =
-        e &&
-        typeof e === "object" &&
-        "response" in e &&
-        e.response &&
-        typeof e.response === "object" &&
-        "data" in e.response &&
-        e.response.data &&
-        typeof e.response.data === "object" &&
-        "message" in e.response.data
-          ? String((e.response.data as { message?: string }).message)
-          : "Could not update status";
-      toast.error(msg);
-    } finally {
-      setSavingComplete(false);
     }
   }
 
@@ -1066,28 +1031,6 @@ export default function InternshipEnrollmentDetailModal({
               </p>
             </div>
           </div>
-
-          {canMarkComplete ? (
-            <div className="rounded-lg border border-blue-100 bg-blue-50/70 px-3 py-3 space-y-2">
-              <p className="text-xs font-semibold text-blue-900 uppercase">
-                Complete enrollment
-              </p>
-              <p className="text-xs text-blue-900/90 leading-snug">
-                Sets status to <span className="font-medium">completed</span>{" "}
-                (learners who finished the program or when you need to close the
-                seat administratively).
-              </p>
-              <OrangeButton
-                type="button"
-                glow={false}
-                className="w-full sm:w-auto bg-blue-700 hover:bg-blue-800 border-blue-800"
-                disabled={savingComplete}
-                onClick={() => void handleMarkCompleted()}
-              >
-                {savingComplete ? "Updating…" : "Mark as completed"}
-              </OrangeButton>
-            </div>
-          ) : null}
 
           {canRevoke ? (
             <div className="rounded-lg border border-red-200 bg-red-50/70 px-3 py-3 space-y-2">
