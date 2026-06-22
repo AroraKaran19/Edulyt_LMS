@@ -35,6 +35,14 @@ export interface InternshipLiveMeeting {
   link2: InternshipLiveMeetingLink;
 
   /**
+   * Admin verdict overrides, keyed by user. An entry forces the student's
+   * attendance verdict regardless of their link clicks; no entry means the
+   * computed verdict applies ("clear"). Drives both the admin view and the
+   * finalize points/absent-doc logic.
+   */
+  manualOverrides?: InternshipLiveMeetingOverride[];
+
+  /**
    * Set on first admin attendance-view request after both link windows have
    * closed. Triggers the one-time finalize pass that materializes absent docs.
    */
@@ -43,6 +51,14 @@ export interface InternshipLiveMeeting {
   createdBy: User["_id"];
   createdAt?: Date;
   updatedAt?: Date;
+}
+
+/** A forced attendance verdict for one student, set by an admin. */
+export interface InternshipLiveMeetingOverride {
+  user: User["_id"];
+  verdict: "present" | "absent";
+  setBy: User["_id"];
+  setAt: Date;
 }
 
 export interface InternshipLiveMeetingLink {
@@ -135,12 +151,21 @@ export interface AdminLiveMeetingAttendanceRow {
   link1Clicked: boolean;
   /** True if the student clicked link2 inside its window. */
   link2Clicked: boolean;
+  /** Effective verdict, after applying any admin override. */
   verdict: "present" | "absent" | "pending";
+  /** True when an admin override is forcing this verdict (vs. computed). */
+  overridden: boolean;
 }
 
 export interface AdminLiveMeetingAttendanceResponse {
   meeting: AdminLiveMeetingListItem;
   rows: AdminLiveMeetingAttendanceRow[];
+}
+
+/** Body for POST .../attendance/override — `clear` removes any override. */
+export interface SetAttendanceOverrideBody {
+  userId: string;
+  verdict: "present" | "absent" | "clear";
 }
 
 // ─── Student-facing payloads ──────────────────────────────────────────────────

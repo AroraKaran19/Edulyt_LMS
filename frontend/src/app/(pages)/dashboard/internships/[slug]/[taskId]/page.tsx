@@ -487,7 +487,8 @@ export default function InternshipTaskPage() {
               href={`${programHref}#buy-success-points`}
               className="text-xs font-semibold text-amber-900 hover:text-amber-950 underline underline-offset-2"
             >
-              Buy internship success points
+              Not fully confident about the project, enrol yourself in a course
+              and get project assistance
             </Link>
           </div>
         ) : null}

@@ -24,6 +24,9 @@ import {
   Check,
   X,
   PlayCircle,
+  Rocket,
+  GraduationCap,
+  Phone,
 } from "lucide-react";
 import { ENDPOINTS } from "@/constants/endpoints";
 import type { LearnerProgramDetail, LearnerTaskRow } from "@/types";
@@ -632,6 +635,9 @@ export default function InternshipProgramPage() {
   const earnedPts = enrollment.internshipSuccessPoints;
   const pointsMet = enrollment.certificationMeetsThreshold === true;
   const eligible = enrollment.certificateEligible === true;
+  // Certification outcome decided (exam result released) but not eligible → failed.
+  const internshipFailed =
+    enrollment.certificationExamSubmitted === true && !eligible;
   const certBreakdown = enrollment.certificationBreakdown;
   const pctToTarget =
     requiredPts > 0
@@ -708,6 +714,31 @@ export default function InternshipProgramPage() {
         </div>
       ) : null}
 
+      {internshipFailed ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-rose-200 bg-rose-50/70 px-4 py-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="rounded-full bg-rose-100 p-2 shrink-0">
+              <AlertTriangle className="w-5 h-5 text-rose-600" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-rose-950">
+                You did not clear the internship certification
+              </p>
+              <p className="text-xs text-rose-900/80">
+                If you have any query, contact our admin for assistance.
+              </p>
+            </div>
+          </div>
+          <a
+            href="tel:+918929252575"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white px-3 py-1.5 text-sm font-semibold transition shrink-0"
+          >
+            <Phone className="w-4 h-4" />
+            8929252575
+          </a>
+        </div>
+      ) : null}
+
       {showEligibility && (
         <div className="rounded-2xl border border-stone-200 bg-white p-4 sm:p-5 shadow-sm">
           <div className="mb-3 flex items-center justify-between gap-3">
@@ -746,14 +777,79 @@ export default function InternshipProgramPage() {
                 </span>
               </span>
             </div>
-            <div className="h-2.5 w-full overflow-hidden rounded-full bg-stone-100">
+            {/* Journey: start → travelling SP marker → certificate */}
+            <div className="flex items-center gap-2.5 pt-9 pb-1">
+              {/* Start */}
               <div
                 className={cn(
-                  "h-full rounded-full transition-all duration-500",
-                  pointsMet ? "bg-emerald-500" : "bg-amber-500",
+                  "grid size-8 shrink-0 place-items-center rounded-full ring-2 transition-colors",
+                  pointsMet
+                    ? "bg-emerald-100 text-emerald-600 ring-emerald-200"
+                    : "bg-amber-100 text-amber-600 ring-amber-200",
                 )}
-                style={{ width: `${pctToTarget}%` }}
-              />
+                title="Start"
+              >
+                <Rocket className="size-4" />
+              </div>
+
+              {/* Track */}
+              <div className="relative h-2.5 flex-1">
+                <div className="absolute inset-0 rounded-full bg-stone-100" />
+                <div
+                  className={cn(
+                    "absolute inset-y-0 left-0 rounded-full transition-all duration-700",
+                    pointsMet
+                      ? "bg-linear-to-r from-emerald-400 to-emerald-500"
+                      : "bg-linear-to-r from-amber-400 to-amber-500",
+                  )}
+                  style={{ width: `${pctToTarget}%` }}
+                />
+                {/* Travelling SP marker */}
+                <div
+                  className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 transition-all duration-700"
+                  style={{ left: `${pctToTarget}%` }}
+                >
+                  <div className="relative flex flex-col items-center">
+                    {/* SP status pill */}
+                    <span
+                      className={cn(
+                        "absolute bottom-full mb-2 inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-bold tabular-nums text-white shadow-sm",
+                        pointsMet ? "bg-emerald-600" : "bg-amber-600",
+                      )}
+                    >
+                      <Sparkles className="size-3" />
+                      {earnedPts} SP
+                      {/* caret */}
+                      <span
+                        className={cn(
+                          "absolute left-1/2 top-full size-2 -translate-x-1/2 -translate-y-1/2 rotate-45",
+                          pointsMet ? "bg-emerald-600" : "bg-amber-600",
+                        )}
+                      />
+                    </span>
+                    {/* marker dot */}
+                    <span
+                      className={cn(
+                        "size-4 rounded-full border-2 bg-white shadow",
+                        pointsMet ? "border-emerald-500" : "border-amber-500",
+                      )}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Certificate */}
+              <div
+                className={cn(
+                  "grid size-8 shrink-0 place-items-center rounded-full ring-2 transition-colors",
+                  eligible
+                    ? "bg-emerald-100 text-emerald-600 ring-emerald-200"
+                    : "bg-stone-100 text-stone-400 ring-stone-200",
+                )}
+                title="Certificate"
+              >
+                <GraduationCap className="size-4" />
+              </div>
             </div>
             <p className="text-[11px] text-stone-400">
               Need {certThreshold}% of {achievablePts} achievable points (tasks +

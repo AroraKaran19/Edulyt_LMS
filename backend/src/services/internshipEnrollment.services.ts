@@ -110,6 +110,10 @@ export type InternshipEnrollmentListRow = {
   examAttemptedAt?: string;
   internshipSuccessPoints: number;
   enrolledAt?: string;
+  /** Program length the learner chose at registration, in months (1–120). */
+  programDurationMonths?: number;
+  /** ISO — materialized program end (`enrolledAt + programDurationMonths`). */
+  endDate?: string;
   createdAt?: string;
   updatedAt?: string;
   /** ISO string — entrance exam window opens (cohort batch, UTC). */
@@ -560,6 +564,12 @@ export async function getInternshipEnrollmentByIdAdmin(
         : doc.enrolledAt
           ? new Date(doc.enrolledAt).toISOString()
           : undefined,
+    programDurationMonths:
+      typeof (doc as { programDurationMonths?: number }).programDurationMonths ===
+      "number"
+        ? (doc as { programDurationMonths: number }).programDurationMonths
+        : undefined,
+    endDate: toIso((doc as { endDate?: Date }).endDate),
     createdAt: doc.createdAt
       ? new Date(doc.createdAt).toISOString()
       : undefined,
@@ -2061,6 +2071,51 @@ export async function adminChangeEnrollmentBatch(
     }
     throw e;
   }
+
+  return getInternshipEnrollmentByIdAdmin(enrollmentId);
+}
+
+/**
+ * Admin: change the learner's program duration (months) — the value they chose
+ * at registration. Persists `programDurationMonths`, keeps the registration
+ * snapshot (`applicationAnswers.internshipDuration`) consistent, and lets the
+ * pre-save hook recompute `endDate` (= `enrolledAt + months`). This shifts the
+ * learner's program end, certification-exam day, and task/meeting window.
+ */
+export async function adminUpdateEnrollmentDuration(
+  enrollmentId: string,
+  months: number,
+  adminUserId: mongoose.Types.ObjectId,
+): Promise<InternshipEnrollmentListRow> {
+  if (!mongoose.Types.ObjectId.isValid(enrollmentId)) {
+    throw new AppError("Invalid enrollment id", 400);
+  }
+  const m = Math.floor(Number(months));
+  if (!Number.isFinite(m) || m < 1 || m > 120) {
+    throw new AppError("Duration must be a whole number of months (1–120)", 400);
+  }
+
+  const doc = await InternshipEnrollmentModel.findById(enrollmentId);
+  if (!doc) throw new AppError("Enrollment not found", 404);
+
+  doc.programDurationMonths = m;
+
+  // Keep the registration snapshot in step with the effective duration so the
+  // admin "registration form" view and any re-derivation agree.
+  const ans =
+    doc.applicationAnswers &&
+    typeof doc.applicationAnswers === "object" &&
+    !Array.isArray(doc.applicationAnswers)
+      ? { ...(doc.applicationAnswers as Record<string, unknown>) }
+      : {};
+  ans.internshipDuration = String(m);
+  doc.applicationAnswers = ans;
+  doc.markModified("applicationAnswers");
+
+  doc.adminActionBy = adminUserId;
+  doc.adminActionAt = new Date();
+
+  await doc.save(); // pre-save hook recomputes endDate from enrolledAt + months
 
   return getInternshipEnrollmentByIdAdmin(enrollmentId);
 }

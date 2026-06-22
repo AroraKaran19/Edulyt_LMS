@@ -121,6 +121,9 @@ export const ENDPOINTS = {
       `/internship-live-meetings/admin/${encodeURIComponent(meetingId)}`,
     adminAttendance: (meetingId: string) =>
       `/internship-live-meetings/admin/${encodeURIComponent(meetingId)}/attendance`,
+    /** POST — admin forces/clears a student's attendance verdict. */
+    adminAttendanceOverride: (meetingId: string) =>
+      `/internship-live-meetings/admin/${encodeURIComponent(meetingId)}/attendance/override`,
     adminUpdate: (meetingId: string) =>
       `/internship-live-meetings/admin/${encodeURIComponent(meetingId)}`,
     adminActivate: (meetingId: string, slot: 1 | 2) =>
@@ -184,6 +187,9 @@ export const ENDPOINTS = {
       `/internship-enrollments/admin/${encodeURIComponent(enrollmentId)}/status`,
     adminChangeBatch: (enrollmentId: string) =>
       `/internship-enrollments/admin/${encodeURIComponent(enrollmentId)}/batch`,
+    /** PATCH body `{ months: number }` — admin changes the learner's program duration. */
+    adminUpdateDuration: (enrollmentId: string) =>
+      `/internship-enrollments/admin/${encodeURIComponent(enrollmentId)}/duration`,
     /** PATCH — admin edits Aadhar number / learner photo on an enrollment. */
     adminUpdateDocumentation: (enrollmentId: string) =>
       `/internship-enrollments/admin/${encodeURIComponent(enrollmentId)}/documentation`,

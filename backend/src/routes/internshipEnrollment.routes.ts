@@ -12,6 +12,7 @@ import {
   getInternshipEnrollmentByIdAdminController,
   adminUpdateEnrollmentStatusController,
   adminChangeEnrollmentBatchController,
+  adminUpdateEnrollmentDurationController,
   deleteInternshipEnrollmentAdminController,
   listEntranceExamCohortsController,
   listCertificationExamCohortsController,
@@ -135,6 +136,13 @@ router.patch(
   "/admin/:enrollmentId/batch",
   verifyAdmin,
   adminChangeEnrollmentBatchController,
+);
+
+/** PATCH /api/internship-enrollments/admin/:enrollmentId/duration */
+router.patch(
+  "/admin/:enrollmentId/duration",
+  verifyAdmin,
+  adminUpdateEnrollmentDurationController,
 );
 
 /** PATCH /api/internship-enrollments/admin/:enrollmentId/documentation */

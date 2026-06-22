@@ -37,16 +37,23 @@ const IconDropdown = ({
   });
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const selectedIcon = icons.find((icon) => icon.name === value) || icons[0];
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      // The menu is portaled to document.body, so it's outside dropdownRef —
+      // check it explicitly or mousedown would close the menu before an
+      // option's click fires, and the selection would never register.
       if (
         dropdownRef.current &&
-        !dropdownRef.current.contains(event.target as Node) &&
+        !dropdownRef.current.contains(target) &&
         buttonRef.current &&
-        !buttonRef.current.contains(event.target as Node)
+        !buttonRef.current.contains(target) &&
+        menuRef.current &&
+        !menuRef.current.contains(target)
       ) {
         setIsOpen(false);
       }
@@ -98,6 +105,7 @@ const IconDropdown = ({
       {isOpen &&
         createPortal(
           <div
+            ref={menuRef}
             style={{
               position: "absolute",
               top: `${dropdownPosition.top}px`,

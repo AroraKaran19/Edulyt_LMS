@@ -13,6 +13,7 @@ import {
   listMyInternshipEnrollments,
   adminUpdateEnrollmentStatus,
   adminChangeEnrollmentBatch,
+  adminUpdateEnrollmentDuration,
   deleteInternshipEnrollmentAdmin,
   listEntranceExamCohortsAdmin,
   listCertificationExamCohortsAdmin,
@@ -276,6 +277,32 @@ export const adminChangeEnrollmentBatchController = asyncHandler(
       new mongoose.Types.ObjectId(String(adminUserId)),
     );
     sendSuccessResponse(res, row, "Enrollment batch updated", 200);
+  },
+);
+
+/**
+ * @route   PATCH /api/internship-enrollments/admin/:enrollmentId/duration
+ * @desc    Change the learner's program duration (months).
+ * @body    { months: number }
+ * @access  Admin
+ */
+export const adminUpdateEnrollmentDurationController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const adminUserId = req.user?._id;
+    if (!adminUserId) throw new AppError("Unauthorized", 401);
+
+    const { enrollmentId } = req.params;
+    const { months } = req.body as { months?: number };
+    if (months === undefined || months === null) {
+      throw new AppError("months is required", 400);
+    }
+
+    const row = await adminUpdateEnrollmentDuration(
+      String(enrollmentId),
+      Number(months),
+      new mongoose.Types.ObjectId(String(adminUserId)),
+    );
+    sendSuccessResponse(res, row, "Enrollment duration updated", 200);
   },
 );
 

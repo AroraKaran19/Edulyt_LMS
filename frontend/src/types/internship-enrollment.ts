@@ -246,6 +246,10 @@ export interface InternshipEnrollmentListRow {
   examAttemptedAt?: string;
   internshipSuccessPoints: number;
   enrolledAt?: string;
+  /** Program length the learner chose at registration, in months (1–120). */
+  programDurationMonths?: number;
+  /** ISO — materialized program end (`enrolledAt + programDurationMonths`). */
+  endDate?: string;
   createdAt?: string;
   updatedAt?: string;
   /** ISO — when the entrance exam window opens (populated for merit-path `exam_registered`/`exam_attempted`). */

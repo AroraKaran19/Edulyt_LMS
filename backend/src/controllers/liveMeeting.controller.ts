@@ -13,9 +13,13 @@ import {
   getInternshipLiveMeetingAttendanceAdmin,
   listInternshipLiveMeetingsAdmin,
   recordAttendanceClick,
+  setAttendanceOverrideAdmin,
   updateInternshipLiveMeetingAdmin,
 } from "../services/liveMeeting.services";
-import type { CreateInternshipLiveMeetingBody } from "../types/internship-live-meeting";
+import type {
+  CreateInternshipLiveMeetingBody,
+  SetAttendanceOverrideBody,
+} from "../types/internship-live-meeting";
 
 /**
  * @route   POST /api/internship-live-meetings
@@ -112,6 +116,34 @@ export const getInternshipLiveMeetingAttendanceController = asyncHandler(
       String(meetingId),
     );
     sendSuccessResponse(res, result, "Attendance fetched", 200);
+  },
+);
+
+/**
+ * @route   POST /api/internship-live-meetings/admin/:meetingId/attendance/override
+ * @desc    Admin forces (present/absent) or clears a student's attendance verdict.
+ * @access  Admin
+ */
+export const setInternshipLiveMeetingAttendanceOverrideController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const adminId = req.user?._id;
+    if (!adminId) throw new AppError("Unauthorized", 401);
+    const { meetingId } = req.params;
+    const { userId, verdict } = (req.body ?? {}) as SetAttendanceOverrideBody;
+    if (typeof userId !== "string" || !userId) {
+      throw new AppError("userId is required", 400);
+    }
+    const result = await setAttendanceOverrideAdmin(
+      String(meetingId),
+      userId,
+      verdict,
+      new mongoose.Types.ObjectId(String(adminId)),
+    );
+    const msg =
+      verdict === "clear"
+        ? "Attendance override cleared"
+        : `Student marked ${verdict}`;
+    sendSuccessResponse(res, result, msg, 200);
   },
 );
 

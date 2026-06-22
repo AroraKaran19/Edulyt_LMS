@@ -72,12 +72,21 @@ export interface AdminLiveMeetingAttendanceRow {
   enrollmentId: string;
   link1Clicked: boolean;
   link2Clicked: boolean;
+  /** Effective verdict, after applying any admin override. */
   verdict: "present" | "absent" | "pending";
+  /** True when an admin override is forcing this verdict (vs. computed). */
+  overridden: boolean;
 }
 
 export interface AdminLiveMeetingAttendanceResponse {
   meeting: AdminLiveMeetingListItem;
   rows: AdminLiveMeetingAttendanceRow[];
+}
+
+/** Body for the admin attendance-override request. `clear` removes any override. */
+export interface SetAttendanceOverrideBody {
+  userId: string;
+  verdict: "present" | "absent" | "clear";
 }
 
 export type StudentAttendResult =

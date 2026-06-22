@@ -18,6 +18,32 @@ const liveMeetingLinkSchema = new mongoose.Schema(
   { _id: false },
 );
 
+/**
+ * An admin-forced attendance verdict for a single student. Presence of an
+ * entry overrides the computed verdict; absence means "use computed".
+ */
+const liveMeetingOverrideSchema = new mongoose.Schema(
+  {
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    verdict: {
+      type: String,
+      enum: ["present", "absent"],
+      required: true,
+    },
+    setBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    setAt: { type: Date, default: Date.now },
+  },
+  { _id: false },
+);
+
 const internshipLiveMeetingSchema = new mongoose.Schema(
   {
     internship: {
@@ -79,6 +105,12 @@ const internshipLiveMeetingSchema = new mongoose.Schema(
 
     link1: { type: liveMeetingLinkSchema, required: true },
     link2: { type: liveMeetingLinkSchema, required: true },
+
+    /** Admin verdict overrides, one entry per affected student. */
+    manualOverrides: {
+      type: [liveMeetingOverrideSchema],
+      default: [],
+    },
 
     finalizedAt: { type: Date, default: null },
 

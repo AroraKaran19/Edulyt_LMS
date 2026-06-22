@@ -71,6 +71,12 @@ const REVOKABLE_STATUSES = new Set([
   "paused",
 ]);
 
+/** Mirrors the public enroll form's duration options (1–6 months). */
+const DURATION_MONTH_OPTIONS = [1, 2, 3, 4, 5, 6].map((n) => ({
+  value: String(n),
+  label: `${n} month${n > 1 ? "s" : ""}`,
+}));
+
 type Props = {
   isOpen: boolean;
   enrollmentId: string | null;
@@ -93,6 +99,8 @@ export default function InternshipEnrollmentDetailModal({
   const [loadingBatches, setLoadingBatches] = useState(false);
   const [selectedBatchId, setSelectedBatchId] = useState<string>("");
   const [savingBatch, setSavingBatch] = useState(false);
+  const [selectedMonths, setSelectedMonths] = useState<string>("");
+  const [savingDuration, setSavingDuration] = useState(false);
   const [savingComplete, setSavingComplete] = useState(false);
   const [applicationModalOpen, setApplicationModalOpen] = useState(false);
 
@@ -224,6 +232,11 @@ export default function InternshipEnrollmentDetailModal({
     setSelectedBatchId(typeof bid === "string" ? bid : "");
   }, [detail?.batchSnapshot?.batchId]);
 
+  useEffect(() => {
+    const m = detail?.programDurationMonths;
+    setSelectedMonths(typeof m === "number" ? String(m) : "");
+  }, [detail?.programDurationMonths]);
+
   const canMoveBatch =
     detail &&
     !DISQUALIFIED_BATCH_MOVE_STATUSES.has(detail.status) &&
@@ -239,6 +252,10 @@ export default function InternshipEnrollmentDetailModal({
     selectedBatchId &&
     currentBatchId &&
     selectedBatchId !== currentBatchId;
+
+  const durationDirty =
+    selectedMonths !== "" &&
+    selectedMonths !== String(detail?.programDurationMonths ?? "");
 
   async function handleSaveBatch() {
     if (!enrollmentId || !batchDirty || savingBatch) return;
@@ -268,6 +285,37 @@ export default function InternshipEnrollmentDetailModal({
       toast.error(msg);
     } finally {
       setSavingBatch(false);
+    }
+  }
+
+  async function handleSaveDuration() {
+    if (!enrollmentId || !durationDirty || savingDuration) return;
+    setSavingDuration(true);
+    try {
+      const res = await apiClient.patch(
+        ENDPOINTS.internshipEnrollments.adminUpdateDuration(enrollmentId),
+        { months: Number(selectedMonths) },
+      );
+      const row = res.data?.data as InternshipEnrollmentListRow | undefined;
+      if (row) setDetail(row);
+      toast.success("Duration updated");
+      onUpdated?.();
+    } catch (e: unknown) {
+      const msg =
+        e &&
+        typeof e === "object" &&
+        "response" in e &&
+        e.response &&
+        typeof e.response === "object" &&
+        "data" in e.response &&
+        e.response.data &&
+        typeof e.response.data === "object" &&
+        "message" in e.response.data
+          ? String((e.response.data as { message?: string }).message)
+          : "Could not update duration";
+      toast.error(msg);
+    } finally {
+      setSavingDuration(false);
     }
   }
 
@@ -944,6 +992,46 @@ export default function InternshipEnrollmentDetailModal({
               No active cohorts on this internship — add or activate batches in the
               internship editor first.
             </p>
+          ) : null}
+
+          {detail ? (
+            <div className="rounded-lg border border-indigo-100 bg-indigo-50/70 px-3 py-3 space-y-2">
+              <p className="text-xs font-semibold text-indigo-900 uppercase">
+                Program duration
+              </p>
+              <p className="text-xs text-indigo-900/90 leading-snug">
+                The length the learner chose at registration. Changing it shifts
+                their program end date, certification-exam day, and task window.
+                {detail.endDate ? (
+                  <>
+                    {" "}
+                    Current end:{" "}
+                    <span className="font-medium">
+                      {formatShortDate(detail.endDate)}
+                    </span>
+                    .
+                  </>
+                ) : (
+                  <> End date is set once the learner is enrolled.</>
+                )}
+              </p>
+              <Select
+                placeholder="Select duration"
+                options={DURATION_MONTH_OPTIONS}
+                value={selectedMonths}
+                disabled={savingDuration}
+                onChange={(v) => setSelectedMonths(v)}
+              />
+              <OrangeButton
+                type="button"
+                glow={false}
+                className="w-full sm:w-auto"
+                disabled={!durationDirty || savingDuration || !selectedMonths}
+                onClick={() => void handleSaveDuration()}
+              >
+                {savingDuration ? "Saving…" : "Update duration"}
+              </OrangeButton>
+            </div>
           ) : null}
 
           <div className="grid grid-cols-2 gap-2">

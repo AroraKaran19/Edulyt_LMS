@@ -113,6 +113,55 @@ function computePhase(meeting: {
   return "not-activated";
 }
 
+type LiveMeetingVerdict = "present" | "absent" | "pending";
+
+/** True once both link windows have been activated and have expired. */
+function bothWindowsClosed(meeting: {
+  link1: { activatedAt?: Date | null; expiryMins: number };
+  link2: { activatedAt?: Date | null; expiryMins: number };
+}): boolean {
+  const now = Date.now();
+  const l1Closes = meeting.link1.activatedAt
+    ? new Date(meeting.link1.activatedAt).getTime() +
+      meeting.link1.expiryMins * 60_000
+    : Infinity;
+  const l2Closes = meeting.link2.activatedAt
+    ? new Date(meeting.link2.activatedAt).getTime() +
+      meeting.link2.expiryMins * 60_000
+    : Infinity;
+  return (
+    meeting.link1.activatedAt != null &&
+    meeting.link2.activatedAt != null &&
+    now >= l1Closes &&
+    now >= l2Closes
+  );
+}
+
+/**
+ * Single source of truth for a student's attendance verdict. An admin override
+ * wins; otherwise present iff both links were clicked; otherwise absent once
+ * both windows have closed; otherwise still pending.
+ */
+function resolveVerdict(opts: {
+  override?: "present" | "absent";
+  clickedBoth: boolean;
+  bothClosed: boolean;
+}): LiveMeetingVerdict {
+  if (opts.override) return opts.override;
+  if (opts.clickedBoth) return "present";
+  if (opts.bothClosed) return "absent";
+  return "pending";
+}
+
+/** Map of userId → forced verdict from a meeting's `manualOverrides`. */
+function overrideMapOf(
+  overrides: { user: unknown; verdict: "present" | "absent" }[] | undefined,
+): Map<string, "present" | "absent"> {
+  return new Map(
+    (overrides ?? []).map((o) => [String(o.user), o.verdict] as const),
+  );
+}
+
 function serializeListItem(doc: {
   _id: unknown;
   internship: unknown;
@@ -489,20 +538,7 @@ export async function getInternshipLiveMeetingAttendanceAdmin(
   const meeting = await InternshipLiveMeetingModel.findById(id).lean();
   if (!meeting) throw new AppError("Meeting not found", 404);
 
-  const now = Date.now();
-  const link1Closes = meeting.link1.activatedAt
-    ? new Date(meeting.link1.activatedAt).getTime() +
-      meeting.link1.expiryMins * 60_000
-    : Infinity;
-  const link2Closes = meeting.link2.activatedAt
-    ? new Date(meeting.link2.activatedAt).getTime() +
-      meeting.link2.expiryMins * 60_000
-    : Infinity;
-  const bothClosed =
-    meeting.link1.activatedAt != null &&
-    meeting.link2.activatedAt != null &&
-    now >= link1Closes &&
-    now >= link2Closes;
+  const bothClosed = bothWindowsClosed(meeting);
 
   // Lazy finalize: insert absent docs once both windows are closed.
   if (bothClosed && !meeting.finalizedAt) {
@@ -512,6 +548,12 @@ export async function getInternshipLiveMeetingAttendanceAdmin(
   // Refetch in case finalize ran.
   const fresh = await InternshipLiveMeetingModel.findById(id).lean();
   if (!fresh) throw new AppError("Meeting not found", 404);
+
+  const overrideMap = overrideMapOf(
+    fresh.manualOverrides as
+      | { user: unknown; verdict: "present" | "absent" }[]
+      | undefined,
+  );
 
   // Roster: enrolled users in this batch.
   const enrollments = await InternshipEnrollmentModel.find({
@@ -542,11 +584,13 @@ export async function getInternshipLiveMeetingAttendanceAdmin(
     const uid = String(u._id ?? "");
     const inL1 = link1Set.has(uid);
     const inL2 = link2Set.has(uid);
+    const override = overrideMap.get(uid);
 
-    let verdict: AdminLiveMeetingAttendanceRow["verdict"];
-    if (inL1 && inL2) verdict = "present";
-    else if (bothClosed) verdict = "absent";
-    else verdict = "pending";
+    const verdict = resolveVerdict({
+      override,
+      clickedBoth: inL1 && inL2,
+      bothClosed,
+    });
 
     return {
       user: {
@@ -560,6 +604,7 @@ export async function getInternshipLiveMeetingAttendanceAdmin(
       link1Clicked: inL1,
       link2Clicked: inL2,
       verdict,
+      overridden: override != null,
     };
   });
 
@@ -589,6 +634,11 @@ async function finalizeAttendance(
   const link2Set = new Set(
     (meeting.link2?.clickedBy ?? []).map((u: unknown) => String(u)),
   );
+  const overrideMap = overrideMapOf(
+    meeting.manualOverrides as
+      | { user: unknown; verdict: "present" | "absent" }[]
+      | undefined,
+  );
 
   const enrollments = await InternshipEnrollmentModel.find({
     internship: meeting.internship,
@@ -602,7 +652,13 @@ async function finalizeAttendance(
   const presentEnrollmentIds: mongoose.Types.ObjectId[] = [];
   for (const enr of enrollments) {
     const uid = String(enr.user);
-    const isPresent = link1Set.has(uid) && link2Set.has(uid);
+    // Both windows are closed at finalize time → effective present/absent.
+    const isPresent =
+      resolveVerdict({
+        override: overrideMap.get(uid),
+        clickedBoth: link1Set.has(uid) && link2Set.has(uid),
+        bothClosed: true,
+      }) === "present";
     if (isPresent) {
       presentEnrollmentIds.push(
         enr._id as unknown as mongoose.Types.ObjectId,
@@ -640,6 +696,166 @@ async function finalizeAttendance(
       { $inc: { internshipSuccessPoints: pointsToAward } },
     );
   }
+}
+
+// ───────── Admin: manually set a student's attendance verdict ─────────
+
+/**
+ * Force (or clear) a student's attendance verdict for one meeting.
+ *
+ * - `present` / `absent` upsert an override entry; `clear` removes it so the
+ *   computed verdict (link clicks) applies again.
+ * - Success points stay in lockstep with the present-state. Before finalize we
+ *   only record the override — the finalize pass (override-aware) credits
+ *   points and writes absent docs later. After finalize, we reconcile on the
+ *   spot: ±`successPoints` on a present↔not-present flip (counter floored at
+ *   0), and the absent doc is inserted/removed to match.
+ */
+export async function setAttendanceOverrideAdmin(
+  meetingId: string,
+  userId: string,
+  verdict: "present" | "absent" | "clear",
+  setBy: mongoose.Types.ObjectId,
+): Promise<AdminLiveMeetingAttendanceResponse> {
+  if (!mongoose.Types.ObjectId.isValid(meetingId)) {
+    throw new AppError("Invalid meeting id", 400);
+  }
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    throw new AppError("Invalid user id", 400);
+  }
+  if (verdict !== "present" && verdict !== "absent" && verdict !== "clear") {
+    throw new AppError("verdict must be present, absent, or clear", 400);
+  }
+
+  const mid = new mongoose.Types.ObjectId(meetingId);
+  const uid = new mongoose.Types.ObjectId(userId);
+
+  let meeting = await InternshipLiveMeetingModel.findById(mid).lean();
+  if (!meeting) throw new AppError("Meeting not found", 404);
+
+  // Roster gate: the user must be an enrolled learner in this batch.
+  const enrollment = await InternshipEnrollmentModel.findOne({
+    internship: meeting.internship,
+    user: uid,
+    "batchSnapshot.batchId": meeting.batchId,
+    status: { $in: ENROLLED_STATUSES },
+  })
+    .select("_id")
+    .lean();
+  if (!enrollment) {
+    throw new AppError("Student is not enrolled in this batch", 404);
+  }
+
+  // Settle finalize first if the windows have closed, so `finalizedAt` and the
+  // already-credited points reflect pre-override clicks before we reconcile.
+  if (bothWindowsClosed(meeting) && !meeting.finalizedAt) {
+    await finalizeAttendance(mid);
+    const refetched = await InternshipLiveMeetingModel.findById(mid).lean();
+    if (!refetched) throw new AppError("Meeting not found", 404);
+    meeting = refetched;
+  }
+
+  const isFinalized = meeting.finalizedAt != null;
+  const clickedBoth =
+    new Set((meeting.link1.clickedBy ?? []).map((u: unknown) => String(u))).has(
+      userId,
+    ) &&
+    new Set((meeting.link2.clickedBy ?? []).map((u: unknown) => String(u))).has(
+      userId,
+    );
+
+  const prevOverride = overrideMapOf(
+    meeting.manualOverrides as
+      | { user: unknown; verdict: "present" | "absent" }[]
+      | undefined,
+  ).get(userId);
+  const newOverride = verdict === "clear" ? undefined : verdict;
+
+  // Points only ever land in the counter at/after finalize, so present-state
+  // for the points math is evaluated with `bothClosed = isFinalized`.
+  const wasPresent =
+    resolveVerdict({ override: prevOverride, clickedBoth, bothClosed: isFinalized }) ===
+    "present";
+  const willBePresent =
+    resolveVerdict({ override: newOverride, clickedBoth, bothClosed: isFinalized }) ===
+    "present";
+
+  const points = Math.max(0, Math.floor(Number(meeting.successPoints ?? 0)));
+
+  const session = await mongoose.startSession();
+  try {
+    await session.withTransaction(async () => {
+      // 1) Upsert/remove the override entry (pull-then-push = upsert).
+      await InternshipLiveMeetingModel.updateOne(
+        { _id: mid },
+        { $pull: { manualOverrides: { user: uid } } },
+        { session },
+      );
+      if (newOverride) {
+        await InternshipLiveMeetingModel.updateOne(
+          { _id: mid },
+          {
+            $push: {
+              manualOverrides: {
+                user: uid,
+                verdict: newOverride,
+                setBy,
+                setAt: new Date(),
+              },
+            },
+          },
+          { session },
+        );
+      }
+
+      // 2) Post-finalize: reconcile points + absent doc to the new state.
+      if (isFinalized) {
+        if (points > 0 && willBePresent && !wasPresent) {
+          await InternshipEnrollmentModel.updateOne(
+            { _id: enrollment._id },
+            { $inc: { internshipSuccessPoints: points } },
+            { session },
+          );
+        } else if (points > 0 && wasPresent && !willBePresent) {
+          // Clamp at zero — never drive the counter negative.
+          const enr = await InternshipEnrollmentModel.findById(enrollment._id)
+            .select("internshipSuccessPoints")
+            .session(session)
+            .lean();
+          const current = Math.max(
+            0,
+            Math.floor(Number(enr?.internshipSuccessPoints ?? 0)),
+          );
+          const dec = Math.min(points, current);
+          if (dec > 0) {
+            await InternshipEnrollmentModel.updateOne(
+              { _id: enrollment._id },
+              { $inc: { internshipSuccessPoints: -dec } },
+              { session },
+            );
+          }
+        }
+
+        // Absent doc exists iff the learner is effectively absent.
+        if (willBePresent) {
+          await InternshipLiveMeetingAttendanceModel.deleteOne(
+            { meeting: mid, user: uid },
+            { session },
+          );
+        } else {
+          await InternshipLiveMeetingAttendanceModel.updateOne(
+            { meeting: mid, user: uid },
+            { $setOnInsert: { meeting: mid, user: uid } },
+            { upsert: true, session },
+          );
+        }
+      }
+    });
+  } finally {
+    await session.endSession();
+  }
+
+  return getInternshipLiveMeetingAttendanceAdmin(meetingId);
 }
 
 // ───────── Student: list meetings for their batch ─────────

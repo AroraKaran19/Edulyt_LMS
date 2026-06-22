@@ -9,6 +9,7 @@ import {
   getInternshipLiveMeetingAttendanceController,
   getInternshipLiveMeetingController,
   listInternshipLiveMeetingsController,
+  setInternshipLiveMeetingAttendanceOverrideController,
   updateInternshipLiveMeetingController,
 } from "../controllers/liveMeeting.controller";
 
@@ -43,6 +44,12 @@ router.patch("/admin/:meetingId", updateInternshipLiveMeetingController);
 router.get(
   "/admin/:meetingId/attendance",
   getInternshipLiveMeetingAttendanceController,
+);
+
+/** POST /api/internship-live-meetings/admin/:meetingId/attendance/override */
+router.post(
+  "/admin/:meetingId/attendance/override",
+  setInternshipLiveMeetingAttendanceOverrideController,
 );
 
 /** POST /api/internship-live-meetings/admin/:meetingId/activate/:slot */
