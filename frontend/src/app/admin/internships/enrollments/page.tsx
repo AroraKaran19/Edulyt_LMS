@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { HelpCircle, User, Briefcase } from "lucide-react";
+import { HelpCircle, User, Briefcase, Calendar } from "lucide-react";
 import { toast } from "react-toastify";
 import apiClient from "@/configs/apiConfig";
 import { ENDPOINTS } from "@/constants/endpoints";
@@ -27,6 +27,12 @@ const LIFECYCLE_FILTER_OPTIONS: { value: string; label: string }[] = [
   },
   { value: "pipeline", label: "Exam & selection only" },
   { value: "all", label: "Every status" },
+];
+
+const ENROLLMENT_TYPE_OPTIONS: { value: string; label: string }[] = [
+  { value: "all", label: "All paths" },
+  { value: "merit", label: "Merit" },
+  { value: "paid", label: "Paid" },
 ];
 
 function formatDate(iso?: string) {
@@ -89,9 +95,17 @@ export default function InternshipEnrollmentsAdminPage() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [lifecycleFilter, setLifecycleFilter] = useState("program");
+  const [enrollmentTypeFilter, setEnrollmentTypeFilter] = useState("all");
+  const [batchSearch, setBatchSearch] = useState("");
+  const [debouncedBatchSearch, setDebouncedBatchSearch] = useState("");
+  const [enrolledFrom, setEnrolledFrom] = useState("");
+  const [enrolledTo, setEnrolledTo] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const batchSearchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   useEffect(() => {
     if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
@@ -104,6 +118,19 @@ export default function InternshipEnrollmentsAdminPage() {
     };
   }, [search]);
 
+  useEffect(() => {
+    if (batchSearchTimeoutRef.current)
+      clearTimeout(batchSearchTimeoutRef.current);
+    batchSearchTimeoutRef.current = setTimeout(() => {
+      setDebouncedBatchSearch(batchSearch.trim());
+      setPage(1);
+    }, 400);
+    return () => {
+      if (batchSearchTimeoutRef.current)
+        clearTimeout(batchSearchTimeoutRef.current);
+    };
+  }, [batchSearch]);
+
   const fetchRows = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -114,6 +141,11 @@ export default function InternshipEnrollmentsAdminPage() {
       if (debouncedSearch) params.search = debouncedSearch;
       if (statusFilter !== "all") params.status = statusFilter;
       params.lifecycle = lifecycleFilter;
+      if (enrollmentTypeFilter !== "all")
+        params.enrollmentType = enrollmentTypeFilter;
+      if (debouncedBatchSearch) params.batchSearch = debouncedBatchSearch;
+      if (enrolledFrom) params.enrolledFrom = enrolledFrom;
+      if (enrolledTo) params.enrolledTo = enrolledTo;
 
       const res = await apiClient.get(
         ENDPOINTS.internshipEnrollments.adminList,
@@ -135,7 +167,16 @@ export default function InternshipEnrollmentsAdminPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [page, debouncedSearch, statusFilter, lifecycleFilter]);
+  }, [
+    page,
+    debouncedSearch,
+    statusFilter,
+    lifecycleFilter,
+    enrollmentTypeFilter,
+    debouncedBatchSearch,
+    enrolledFrom,
+    enrolledTo,
+  ]);
 
   useEffect(() => {
     void fetchRows();
@@ -144,7 +185,11 @@ export default function InternshipEnrollmentsAdminPage() {
   const hasActiveFilters =
     Boolean(debouncedSearch) ||
     statusFilter !== "all" ||
-    lifecycleFilter !== "program";
+    lifecycleFilter !== "program" ||
+    enrollmentTypeFilter !== "all" ||
+    Boolean(debouncedBatchSearch) ||
+    Boolean(enrolledFrom) ||
+    Boolean(enrolledTo);
 
   return (
     <>
@@ -179,6 +224,71 @@ export default function InternshipEnrollmentsAdminPage() {
               />
             </div>
           </div>
+        }
+        filterRow2={
+          <>
+            <div className="sm:w-44">
+              <Select
+                options={ENROLLMENT_TYPE_OPTIONS}
+                value={enrollmentTypeFilter}
+                onChange={(val) => {
+                  setEnrollmentTypeFilter(val);
+                  setPage(1);
+                }}
+                placeholder="Path"
+              />
+            </div>
+            <div className="relative sm:w-52">
+              <input
+                type="text"
+                placeholder="Filter by batch name…"
+                value={batchSearch}
+                onChange={(e) => setBatchSearch(e.target.value)}
+                className="w-full px-4 py-3.5 border border-gray-300 rounded-xl bg-white text-sm text-black placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-400 transition-all shadow-sm"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                <input
+                  type="date"
+                  title="Enrolled from"
+                  value={enrolledFrom}
+                  onChange={(e) => {
+                    setEnrolledFrom(e.target.value);
+                    setPage(1);
+                  }}
+                  className="pl-9 pr-3 py-3.5 border border-gray-300 rounded-xl bg-white text-sm text-black focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-400 transition-all shadow-sm w-[152px]"
+                />
+              </div>
+              <span className="text-gray-400 text-sm shrink-0">to</span>
+              <div className="relative">
+                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                <input
+                  type="date"
+                  title="Enrolled to"
+                  value={enrolledTo}
+                  onChange={(e) => {
+                    setEnrolledTo(e.target.value);
+                    setPage(1);
+                  }}
+                  className="pl-9 pr-3 py-3.5 border border-gray-300 rounded-xl bg-white text-sm text-black focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-400 transition-all shadow-sm w-[152px]"
+                />
+              </div>
+              {(enrolledFrom || enrolledTo) && (
+                <button
+                  onClick={() => {
+                    setEnrolledFrom("");
+                    setEnrolledTo("");
+                    setPage(1);
+                  }}
+                  className="text-xs text-gray-500 hover:text-gray-700 whitespace-nowrap underline"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+          </>
         }
       >
         <div className="overflow-x-auto">

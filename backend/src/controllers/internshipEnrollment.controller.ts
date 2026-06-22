@@ -166,8 +166,11 @@ export const listInternshipEnrollmentsAdminController = asyncHandler(
       status,
       internshipId,
       batchId,
+      batchSearch,
       lifecycle: lifecycleQ,
       enrollmentType: enrollmentTypeQ,
+      enrolledFrom,
+      enrolledTo,
       meritPoolFirst: meritPoolFirstQ,
     } = req.query;
     const p = Number(page);
@@ -193,8 +196,11 @@ export const listInternshipEnrollmentsAdminController = asyncHandler(
       status: typeof status === "string" ? status : undefined,
       internshipId: typeof internshipId === "string" ? internshipId : undefined,
       batchId: typeof batchId === "string" ? batchId : undefined,
+      batchSearch: typeof batchSearch === "string" ? batchSearch : undefined,
       lifecycle,
       enrollmentType,
+      enrolledFrom: typeof enrolledFrom === "string" ? enrolledFrom : undefined,
+      enrolledTo: typeof enrolledTo === "string" ? enrolledTo : undefined,
       meritPoolFirst,
     });
     sendSuccessResponse(

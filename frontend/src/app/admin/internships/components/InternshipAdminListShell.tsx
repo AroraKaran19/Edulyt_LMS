@@ -14,6 +14,8 @@ type Props = {
   onSearchChange: (value: string) => void;
   /** Extra controls in the filter row (e.g. Select), after search */
   filterExtras?: ReactNode;
+  /** Optional second row of filter controls rendered below the search row */
+  filterRow2?: ReactNode;
   /** Table + pagination, inside the lower white card */
   children: ReactNode;
   /** When false, hides the search / filter row (list-only pages). */
@@ -29,6 +31,7 @@ export default function InternshipAdminListShell({
   searchValue,
   onSearchChange,
   filterExtras,
+  filterRow2,
   children,
   showSearchRow = true,
 }: Props) {
@@ -50,17 +53,24 @@ export default function InternshipAdminListShell({
 
       {showSearchRow ? (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none z-10" />
-              <Input
-                placeholder={searchPlaceholder}
-                value={searchValue}
-                onChange={(e) => onSearchChange(e.target.value)}
-                className="pl-10"
-              />
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none z-10" />
+                <Input
+                  placeholder={searchPlaceholder}
+                  value={searchValue}
+                  onChange={(e) => onSearchChange(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              {filterExtras}
             </div>
-            {filterExtras}
+            {filterRow2 ? (
+              <div className="flex flex-col sm:flex-row gap-2 flex-wrap">
+                {filterRow2}
+              </div>
+            ) : null}
           </div>
         </div>
       ) : null}
