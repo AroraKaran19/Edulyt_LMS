@@ -535,8 +535,11 @@ export const updateUserProfileService = async (
   const { password, refreshTokens, _id, createdAt, ...allowedFields } =
     updateData;
 
-  // First get the user to determine their type
-  const existingUser = await UserModel.findById(userId).select("userType");
+  // First get the user to determine their type. We also read the current
+  // contact fields so we can skip re-writing them when they haven't changed.
+  const existingUser = await UserModel.findById(userId).select(
+    "userType email phone",
+  );
   if (!existingUser) {
     return null;
   }
@@ -546,6 +549,15 @@ export const updateUserProfileService = async (
   // valid ObjectId, so let mongoose strip the field via $unset instead of
   // trying to cast it.
   const fields = { ...allowedFields } as Record<string, unknown>;
+
+  // Skip re-writing contact fields that haven't actually changed.
+  if ("email" in fields && fields.email === existingUser.email) {
+    delete fields.email;
+  }
+  if ("phone" in fields && fields.phone === existingUser.phone) {
+    delete fields.phone;
+  }
+
   const unsetOps: Record<string, ""> = {};
   if ("college" in fields) {
     const v = fields.college;

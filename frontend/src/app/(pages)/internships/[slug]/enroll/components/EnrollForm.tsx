@@ -714,13 +714,17 @@ const EnrollForm = ({ preview }: { preview: InternshipEnrollPreview }) => {
       // tells them whether to retry / contact support vs. fix a field. Field
       // validation is handled separately by onFormInvalid (amber warning).
       const axiosErr = error as {
-        response?: { data?: { message?: string } };
+        response?: { data?: { error?: { message?: string }; message?: string } };
         request?: unknown;
       };
       if (axiosErr.response) {
         // Server responded with an error status — surface its reason, framed as
-        // a submission problem (not an input mistake).
-        const serverMsg = axiosErr.response.data?.message;
+        // a submission problem (not an input mistake). The global error handler
+        // nests the reason under `error.message`; fall back to a top-level
+        // `message` for any handler that doesn't use that envelope.
+        const serverMsg =
+          axiosErr.response.data?.error?.message ??
+          axiosErr.response.data?.message;
         toast.error(
           serverMsg
             ? `Couldn't submit your application: ${serverMsg}`
