@@ -3,6 +3,7 @@ import {
   generateAccessToken,
   generateResetPasswordToken,
   login,
+  logout,
   partnerLogin,
   oauthSignin,
   refreshToken,
@@ -49,6 +50,13 @@ router.post("/oauth-signin", oauthSignin);
  * @access  User
  */
 router.post("/refresh-token", verifyTokenForRefresh, refreshToken);
+
+/**
+ * @route   POST /api/auth/logout
+ * @desc    Revoke the current device's refresh-token family (server-side logout)
+ * @access  User (must present a valid refresh token)
+ */
+router.post("/logout", verifyTokenForRefresh, logout);
 
 /**
  * @route   POST /api/auth/generate-access-token

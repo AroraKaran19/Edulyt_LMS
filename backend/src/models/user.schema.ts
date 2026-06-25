@@ -195,7 +195,10 @@ const userSchema = new mongoose.Schema<User>(
     },
     refreshTokens: [
       {
-        token: { type: String, required: true },
+        // SHA-256 hash of the opaque refresh token (never store the plaintext).
+        tokenHash: { type: String, required: true },
+        // Rotation lineage: set once at login, copied on every rotation.
+        family: { type: String, required: true },
         deviceInfo: {
           userAgent: { type: String, required: false },
           ipAddress: { type: String, required: false },
@@ -203,12 +206,13 @@ const userSchema = new mongoose.Schema<User>(
         },
         createdAt: { type: Date, default: Date.now },
         lastUsed: { type: Date, default: Date.now },
+        // When this token was rotated out; within the grace window it still works.
+        rotatedAt: { type: Date, default: null },
         isActive: { type: Boolean, default: true },
-        expiresAt: {
-          type: Date,
-          default: () => new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
-          required: true,
-        },
+        // Sliding idle expiry — bumped on each rotation.
+        idleExpiresAt: { type: Date, required: true },
+        // Hard cap — fixed at first login, never moves.
+        absoluteExpiresAt: { type: Date, required: true },
       },
     ],
     createdAt: { type: Date, default: Date.now },

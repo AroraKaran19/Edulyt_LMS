@@ -11,6 +11,7 @@ import { initializeCronJobs } from "./services/cron.services";
 import { startCertificateWorker } from "./workers/certificate.worker";
 import { startOfferLetterWorker } from "./workers/offerLetter.worker";
 import { startCollaborationWorker } from "./workers/collaboration.worker";
+import { startTokenCleanupWorker } from "./workers/tokenCleanup.worker";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -25,9 +26,10 @@ const startWorker = async () => {
     startCertificateWorker();
     startOfferLetterWorker();
     startCollaborationWorker();
+    startTokenCleanupWorker();
 
     console.log(
-      "✅ Worker process running (cron + certificate + offer-letter + collaboration jobs)"
+      "✅ Worker process running (cron + certificate + offer-letter + collaboration + token-cleanup jobs)"
     );
 
     process.on("SIGTERM", () => {

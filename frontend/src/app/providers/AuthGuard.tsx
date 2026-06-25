@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { signOut } from "next-auth/react";
 import { User } from "@/types";
 import useAuth from "@/hooks/useAuth";
 import { getPostLoginRedirectPath } from "@/lib/postLoginRedirect";
@@ -37,9 +38,13 @@ const AuthGuard: React.FC<AuthGuardProps> = ({
   wrongRoleShowsNotFound = false,
   showLoading = true,
 }) => {
-  const { user, isAuthenticated, isLoading, isUnauthenticated } = useAuth();
+  const { user, session, isAuthenticated, isLoading, isUnauthenticated } =
+    useAuth();
   const router = useRouter();
   const [isClient, setIsClient] = useState(false);
+
+  const sessionExpired =
+    (session as { error?: string } | null)?.error === "RefreshAccessTokenError";
 
   useEffect(() => {
     setIsClient(true);
@@ -49,6 +54,12 @@ const AuthGuard: React.FC<AuthGuardProps> = ({
     if (!isClient) return;
 
     if (isLoading) return;
+
+    // Refresh failed server-side — sign out cleanly instead of white-screening.
+    if (sessionExpired) {
+      signOut({ callbackUrl: fallbackPath });
+      return;
+    }
 
     // User is not authenticated
     if (isUnauthenticated || !user) {
@@ -84,6 +95,8 @@ const AuthGuard: React.FC<AuthGuardProps> = ({
     }
   }, [
     user,
+    session,
+    sessionExpired,
     isAuthenticated,
     isLoading,
     isUnauthenticated,
@@ -105,8 +118,9 @@ const AuthGuard: React.FC<AuthGuardProps> = ({
     ) : null;
   }
 
-  // User is not authenticated
-  if (isUnauthenticated || !user) {
+  // Session refresh failed or user is not authenticated — render nothing while
+  // the effect above redirects / signs out.
+  if (sessionExpired || isUnauthenticated || !user) {
     return null;
   }
 

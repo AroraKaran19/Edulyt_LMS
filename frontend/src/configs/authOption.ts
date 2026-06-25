@@ -45,6 +45,7 @@ export const authOptions: NextAuthOptions = {
           return {
             ...response.data?.data?.user,
             accessToken: response.data?.data?.accessToken,
+            refreshToken: response.data?.data?.refreshToken,
           };
         } catch (error: unknown) {
           const message =

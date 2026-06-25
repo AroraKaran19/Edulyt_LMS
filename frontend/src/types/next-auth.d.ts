@@ -11,6 +11,17 @@ declare module "next-auth" {
   interface JWT {
     user: Partial<User>;
     accessToken?: string;
+    // Opaque refresh token — kept in the encrypted JWT, never sent to the client.
+    refreshToken?: string;
+    accessTokenExpires?: number;
+    error?: string;
+  }
+}
+
+declare module "next-auth/jwt" {
+  interface JWT {
+    accessToken?: string;
+    refreshToken?: string;
     accessTokenExpires?: number;
     error?: string;
   }

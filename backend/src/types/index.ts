@@ -18,6 +18,26 @@ export interface CourseDiscount {
   isActive: boolean;
 }
 
+// Device metadata captured alongside a refresh token.
+export interface DeviceInfo {
+  userAgent?: string;
+  ipAddress?: string;
+  deviceType?: string;
+}
+
+// A single refresh-token entry stored in user.refreshTokens[].
+export interface RefreshTokenEntry {
+  tokenHash: string;
+  family: string;
+  deviceInfo?: DeviceInfo;
+  createdAt: Date;
+  lastUsed: Date;
+  rotatedAt: Date | null;
+  isActive: boolean;
+  idleExpiresAt: Date;
+  absoluteExpiresAt: Date;
+}
+
 // Re-export all types
 export * from "./course";
 export * from "./user";

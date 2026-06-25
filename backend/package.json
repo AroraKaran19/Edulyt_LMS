@@ -10,6 +10,7 @@
     "start:worker": "node dist/worker.js",
     "start:worker:cert": "node dist/certificate-worker.js",
     "start:worker:collab": "node dist/collaboration-worker.js",
+    "start:worker:token-cleanup": "node dist/token-cleanup-worker.js",
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "dev:watch": "nodemon --exec ts-node src/server.ts",
     "scripts:list": "ts-node src/scripts/list-courses-and-categories.ts",

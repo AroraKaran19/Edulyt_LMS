@@ -126,21 +126,53 @@ export const logoutUser = async (userId: string) => {
 
 export const cleanupExpiredTokens = async () => {
   try {
-    // Remove expired tokens from all users without deleting the user documents
+    const now = new Date();
+    // Remove tokens past their absolute (hard) cap from all users without any further processing.
     await UserModel.updateMany(
-      {
-        "refreshTokens.expiresAt": { $lt: new Date() }
-      },
-      {
-        $pull: {
-          refreshTokens: {
-            expiresAt: { $lt: new Date() }
-          }
-        }
-      }
+      { "refreshTokens.absoluteExpiresAt": { $lt: now } },
+      { $pull: { refreshTokens: { absoluteExpiresAt: { $lt: now } } } },
     );
   } catch (error) {
     console.error("Error cleaning up expired tokens:", error);
+  }
+};
+
+/**
+ * Reuse detection response: when a rotated refresh token is replayed beyond its
+ * grace window, the whole lineage is assumed compromised and revoked.
+ */
+export const revokeRefreshTokenFamily = async (
+  userId: unknown,
+  family: string,
+) => {
+  try {
+    await UserModel.updateOne(
+      { _id: userId },
+      { $set: { "refreshTokens.$[elem].isActive": false } },
+      { arrayFilters: [{ "elem.family": family }] },
+    );
+  } catch (error) {
+    console.error("Error revoking refresh token family:", error);
+  }
+};
+
+/**
+ * On explicit logout, drop every refresh token in the current lineage. This
+ * kills the session server-side (not just the client cookie) and prevents the
+ * array from accumulating orphaned entries across login/logout cycles. Only the
+ * current device's family is removed — other sessions stay signed in.
+ */
+export const removeRefreshTokenFamily = async (
+  userId: unknown,
+  family: string,
+) => {
+  try {
+    await UserModel.updateOne(
+      { _id: userId },
+      { $pull: { refreshTokens: { family } } },
+    );
+  } catch (error) {
+    console.error("Error removing refresh token family:", error);
   }
 };
 

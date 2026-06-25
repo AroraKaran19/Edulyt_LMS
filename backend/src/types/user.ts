@@ -236,7 +236,8 @@ export interface User {
   permissions: string[];
 
   refreshTokens: {
-    token: string;
+    tokenHash: string;
+    family: string;
     deviceInfo?: {
       userAgent?: string;
       ipAddress?: string;
@@ -244,7 +245,10 @@ export interface User {
     };
     createdAt: Date;
     lastUsed: Date;
+    rotatedAt?: Date | null;
     isActive: boolean;
+    idleExpiresAt: Date;
+    absoluteExpiresAt: Date;
   }[];
 
   createdAt?: Date;

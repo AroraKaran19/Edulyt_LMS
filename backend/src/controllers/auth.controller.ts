@@ -10,8 +10,12 @@ import {
   changeUserPassword,
   loginUser,
   registerUser,
+  removeRefreshTokenFamily,
   resetUserPassword,
+  revokeRefreshTokenFamily,
 } from "../services/auth.services";
+import { createRefreshToken, rotateRefreshToken } from "../utils/refreshToken";
+import { ACCESS_TOKEN_TTL, REFRESH_GRACE_MS } from "../constants/tokens";
 import {
   ACCOUNT_DISABLED_MESSAGE,
   PARTNER_USE_PORTAL_LOGIN_MESSAGE,
@@ -21,7 +25,7 @@ import { tryPartnershipImportWhitelistAfterRegister } from "../services/collabor
 import { downloadImageAndUploadToS3 } from "../services/upload.services";
 import { tryAwardRegistrationBonus } from "../services/successPoints.services";
 import bcrypt from "bcryptjs";
-import { Student, User } from "../types";
+import { DeviceInfo, Student, User } from "../types";
 
 const detectDeviceType = (userAgent: string) => {
   if (userAgent.includes("Mobile")) {
@@ -34,6 +38,12 @@ const detectDeviceType = (userAgent: string) => {
     return "web";
   }
 };
+
+const buildDeviceInfo = (req: Request): DeviceInfo => ({
+  userAgent: req.headers["user-agent"],
+  ipAddress: req.ip,
+  deviceType: detectDeviceType(req.headers["user-agent"] || ""),
+});
 
 const protectedUser = (user: User) => {
   return {
@@ -65,26 +75,16 @@ async function finalizeCredentialLogin(
   }
   const protectedLoggedInUser = protectedUser(user);
   const accessToken = await generateAccessToken(userId);
+  const { plaintext: refreshToken, entry } = createRefreshToken(
+    buildDeviceInfo(req),
+  );
   await UserModel.findByIdAndUpdate(user._id, {
-    $push: {
-      refreshTokens: {
-        token: accessToken,
-        deviceInfo: {
-          userAgent: req.headers["user-agent"],
-          ipAddress: req.ip,
-          deviceType: detectDeviceType(req.headers["user-agent"] || ""),
-        },
-      },
-    },
-    createdAt: new Date(),
-    lastUsed: new Date(),
-    isActive: true,
-    expiresAt: new Date(Date.now() + 1 * 60 * 60 * 1000), // 1 hour from now
+    $push: { refreshTokens: entry },
   });
   // No welcome bonus here — it's granted once at registration, not on login.
   sendSuccessResponse(
     res,
-    { user: protectedLoggedInUser, accessToken },
+    { user: protectedLoggedInUser, accessToken, refreshToken },
     "User logged in successfully",
   );
 }
@@ -137,21 +137,6 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
   const protectedNewUser = protectedUser(newUser);
 
   const accessToken = await generateAccessToken(newUser._id);
-
-  newUser.refreshTokens.push({
-    token: accessToken,
-    deviceInfo: {
-      userAgent: req.headers["user-agent"],
-      ipAddress: req.ip,
-      deviceType: detectDeviceType(req.headers["user-agent"] || ""),
-    },
-    createdAt: new Date(),
-    lastUsed: new Date(),
-    isActive: true,
-    expiresAt: new Date(Date.now() + 1 * 60 * 60 * 1000), // 1 hour from now
-  });
-  await newUser.save();
-
   // One-time welcome bonus is granted at registration (never on login).
   try {
     await tryAwardRegistrationBonus(String(newUser._id), newUser.userType);
@@ -312,88 +297,118 @@ export const oauthSignin = asyncHandler(async (req: Request, res: Response) => {
   const protectedOAuthUser = protectedUser(user);
 
   const accessToken = await generateAccessToken(user._id);
+  const { plaintext: refreshToken, entry } = createRefreshToken(
+    buildDeviceInfo(req),
+  );
 
   await UserModel.findByIdAndUpdate(user._id, {
-    $push: {
-      refreshTokens: {
-        token: accessToken,
-        deviceInfo: {
-          userAgent: req.headers["user-agent"],
-          ipAddress: req.ip,
-          deviceType: detectDeviceType(req.headers["user-agent"] || ""),
-        },
-        createdAt: new Date(),
-        lastUsed: new Date(),
-        isActive: true,
-        expiresAt: new Date(Date.now() + 1 * 60 * 60 * 1000), // 1 hour from now
-      },
-    },
+    $push: { refreshTokens: entry },
   });
   // The welcome bonus is granted only when a new account is created above —
   // existing users signing in via OAuth get nothing here.
   sendSuccessResponse(
     res,
-    { user: protectedOAuthUser, accessToken },
+    { user: protectedOAuthUser, accessToken, refreshToken },
     "User logged in successfully",
   );
 });
 
+/**
+ * Rotating refresh endpoint.
+ */
 export const refreshToken = asyncHandler(
   async (req: Request, res: Response) => {
-    // User is already verified by middleware, get from req.user
     const user = req.user;
+    const tokenHash = (req as any).refreshTokenHash as string | undefined;
+    const entry = (req as any).refreshTokenEntry as
+      | User["refreshTokens"][number]
+      | undefined;
 
-    if (!user) {
-      throw new AppError("User not found", 401);
+    if (!user || !tokenHash || !entry) {
+      throw new AppError("Invalid refresh token", 401);
     }
 
-    // Generate new access token
-    const newAccessToken = await generateAccessToken(user._id!);
+    const now = new Date();
 
-    // Get the old access token from the request
-    const oldAccessToken = req.headers.authorization?.substring(7); // Remove 'Bearer ' prefix
-
-    if (oldAccessToken) {
-      // Deactivate the old token and add the new one
-      await UserModel.findByIdAndUpdate(
-        user._id,
-        {
-          $set: {
-            "refreshTokens.$[elem].isActive": false,
-            "refreshTokens.$[elem].lastUsed": new Date(),
-          },
-        },
-        {
-          arrayFilters: [{ "elem.token": oldAccessToken }],
-        },
-      );
-
-      // Add the new access token to the refreshTokens array
-      await UserModel.findByIdAndUpdate(user._id, {
-        $push: {
-          refreshTokens: {
-            token: newAccessToken,
-            deviceInfo: {
-              userAgent: req.headers["user-agent"],
-              ipAddress: req.ip,
-              deviceType: detectDeviceType(req.headers["user-agent"] || ""),
-            },
-            createdAt: new Date(),
-            lastUsed: new Date(),
-            isActive: true,
-            expiresAt: new Date(Date.now() + 1 * 60 * 60 * 1000), // 1 hour from now
-          },
-        },
-      });
+    // Expired by either clock → revoke the lineage and force re-login.
+    if (
+      now > new Date(entry.absoluteExpiresAt) ||
+      now > new Date(entry.idleExpiresAt)
+    ) {
+      await revokeRefreshTokenFamily(user._id, entry.family);
+      throw new AppError("Refresh token expired", 401);
     }
+
+    // Already rotated. Inside the grace window this is a concurrent/retry call
+    // and is allowed; beyond it, the token was replayed → assume theft.
+    if (!entry.isActive) {
+      const rotatedAt = entry.rotatedAt
+        ? new Date(entry.rotatedAt).getTime()
+        : 0;
+      if (now.getTime() - rotatedAt > REFRESH_GRACE_MS) {
+        await revokeRefreshTokenFamily(user._id, entry.family);
+        throw new AppError("Refresh token reuse detected", 401);
+      }
+    }
+
+    const newAccessToken = await generateAccessToken(String(user._id));
+    const { plaintext: newRefreshToken, entry: child } = rotateRefreshToken(
+      entry.family,
+      new Date(entry.absoluteExpiresAt),
+      buildDeviceInfo(req),
+    );
+
+    // Invalidate the presented token (keep it for the grace window) ...
+    await UserModel.updateOne(
+      { _id: user._id, "refreshTokens.tokenHash": tokenHash },
+      {
+        $set: {
+          "refreshTokens.$.isActive": false,
+          "refreshTokens.$.rotatedAt": now,
+          "refreshTokens.$.lastUsed": now,
+        },
+      },
+    );
+    // ... and add the rotated child.
+    await UserModel.updateOne(
+      { _id: user._id },
+      { $push: { refreshTokens: child } },
+    );
+    // Opportunistic hygiene: drop entries past their absolute cap so the array
+    // can't grow without bound (separate update — can't $push and $pull at once).
+    await UserModel.updateOne(
+      { _id: user._id },
+      { $pull: { refreshTokens: { absoluteExpiresAt: { $lt: now } } } },
+    );
 
     sendSuccessResponse(
       res,
-      { accessToken: newAccessToken },
+      { accessToken: newAccessToken, refreshToken: newRefreshToken },
       "Token refreshed successfully",
     );
   },
 );
+
+/**
+ * Logout. `verifyTokenForRefresh` has located the user and the matching token
+ * entry; we drop that token's whole family so the session is dead server-side
+ * (not just the client cookie). Only this device's lineage is removed — other
+ * sessions stay signed in.
+ */
+export const logout = asyncHandler(async (req: Request, res: Response) => {
+  const user = req.user;
+  const entry = (req as any).refreshTokenEntry as
+    | User["refreshTokens"][number]
+    | undefined;
+
+  if (!user || !entry) {
+    throw new AppError("Invalid refresh token", 401);
+  }
+
+  await removeRefreshTokenFamily(user._id, entry.family);
+
+  sendSuccessResponse(res, null, "Logged out successfully");
+});
 
 export const generateAccessToken = async (userId: string) => {
   if (!process.env.JWT_SECRET) {
@@ -401,7 +416,7 @@ export const generateAccessToken = async (userId: string) => {
   }
   try {
     return jwt.sign({ userId }, process.env.JWT_SECRET, {
-      expiresIn: "1h",
+      expiresIn: ACCESS_TOKEN_TTL,
     });
   } catch (error) {
     throw new AppError("Failed to generate access token", 500);

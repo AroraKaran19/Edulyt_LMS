@@ -4,31 +4,30 @@ import { ACCOUNT_DISABLED_MESSAGE } from "@/constants/authMessages";
 import { User } from "@/types";
 import NextAuth from "next-auth";
 
+// Access token lifetime — must match the backend's ACCESS_TOKEN_TTL.
+const ACCESS_TOKEN_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
 /**
- * Takes a token, and returns a new token with updated
- * `accessToken` and `accessTokenExpires`. If an error occurs,
- * returns the old token and an error property
+ * Exchanges the opaque refresh token for a fresh access token + rotated refresh
+ * token. On failure, flags the token so the session callback can surface the
+ * error and the client can sign out cleanly (instead of white-screening).
  */
 async function refreshAccessToken(token: any) {
   try {
-    const response = await apiClient.post(
-      "/auth/refresh-token",
-      {
-        accessToken: token.accessToken,
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${token.accessToken}`,
-        },
-      }
-    );
+    const response = await apiClient.post("/auth/refresh-token", {
+      refreshToken: token.refreshToken,
+    });
 
     const refreshedTokens = response.data.data;
 
     return {
       ...token,
       accessToken: refreshedTokens.accessToken,
-      accessTokenExpires: Date.now() + 60 * 60 * 1000, // 1 hour from now
+      // Rotation: store the new refresh token; fall back to the old one if the
+      // backend didn't rotate for some reason.
+      refreshToken: refreshedTokens.refreshToken ?? token.refreshToken,
+      accessTokenExpires: Date.now() + ACCESS_TOKEN_TTL_MS,
+      error: undefined,
     };
   } catch (error) {
     console.error("Error refreshing access token:", error);
@@ -67,12 +66,14 @@ const handler = NextAuth({
             });
 
             if (response.status === 200) {
-              const { user: userData, accessToken } = response.data.data;
+              const { user: userData, accessToken, refreshToken } =
+                response.data.data;
               return {
                 ...token,
                 ...userData,
                 accessToken,
-                accessTokenExpires: Date.now() + 60 * 60 * 1000, // 1 hour from now
+                refreshToken,
+                accessTokenExpires: Date.now() + ACCESS_TOKEN_TTL_MS,
               };
             }
           } catch (error: any) {
@@ -94,7 +95,8 @@ const handler = NextAuth({
             ...token,
             ...user,
             accessToken: (user as any).accessToken,
-            accessTokenExpires: Date.now() + 60 * 60 * 1000, // 1 hour from now
+            refreshToken: (user as any).refreshToken,
+            accessTokenExpires: Date.now() + ACCESS_TOKEN_TTL_MS,
           };
         }
       }
@@ -121,14 +123,16 @@ const handler = NextAuth({
       return refreshedToken;
     },
     async session({ session, token }) {
-      // If token refresh failed, return null session to force re-authentication
-      if (token.error === "RefreshAccessTokenError") {
-        return null as any;
-      }
+      // Never return null here — that corrupts the client session and renders a
+      // blank page.
+      const { refreshToken: _refreshToken, ...safeToken } = token as Record<
+        string,
+        unknown
+      >;
 
-      session.user = token as unknown as Partial<User>;
+      session.user = safeToken as unknown as Partial<User>;
       session.accessToken = token.accessToken as string;
-      session.error = token.error as string;
+      session.error = token.error as string | undefined;
       return session;
     },
     async signIn({ account }) {
@@ -141,6 +145,17 @@ const handler = NextAuth({
       throw new Error(
         "Only Google, LinkedIn OAuth and credentials are supported"
       );
+    },
+  },
+  events: {
+    async signOut({ token }) {
+      const refreshToken = (token as { refreshToken?: string })?.refreshToken;
+      if (!refreshToken) return;
+      try {
+        await apiClient.post("/auth/logout", { refreshToken });
+      } catch (error) {
+        console.error("Failed to revoke refresh token on logout:", error);
+      }
     },
   },
 });

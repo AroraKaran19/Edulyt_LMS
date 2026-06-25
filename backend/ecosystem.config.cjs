@@ -13,6 +13,8 @@
  *   email-domain allotments, partnership-import (CSV) whitelist batching, and
  *   course-allotment jobs for import configs. There is no separate PM2 app
  *   for partnership; see dist/collaboration.worker.js.
+ * - worker-token-cleanup: fork — prunes expired refresh tokens from user docs
+ *   on a slow poll (single instance). See dist/token-cleanup-worker.js.
  *
  * Scale API instances: pm2 scale api 8
  */
@@ -53,6 +55,18 @@ module.exports = {
         COLLABORATION_WORKER_POLL_MS: "10000",
       },
       max_memory_restart: "500M",
+    },
+    {
+      name: "worker-token-cleanup",
+      script: "dist/token-cleanup-worker.js",
+      instances: 1,
+      exec_mode: "fork",
+      time: true,
+      env: {
+        RUN_BACKGROUND_JOBS: "true",
+        TOKEN_CLEANUP_WORKER_POLL_MS: "3600000",
+      },
+      max_memory_restart: "300M",
     },
   ],
 };

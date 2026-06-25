@@ -3,7 +3,7 @@ import { AXIOS_ERROR_CODES, ERROR_TYPES } from "@/constants/error/statusCodes";
 import { ERROR_MESSAGES } from "@/constants/error/errorMessages";
 import { isServerDown } from "@/lib/utils";
 import axios from "axios";
-import { getSession } from "next-auth/react";
+import { getSession, signOut } from "next-auth/react";
 
 // Create axios instance
 const apiClient = axios.create({
@@ -64,44 +64,42 @@ apiClient.interceptors.response.use(
       const status = error.response.status;
       const data = error.response.data;
 
-      // Handle 401 Unauthorized - token might be expired
+      // Handle 401 Unauthorized - access token likely expired.
+      // The refresh token lives only in the NextAuth encrypted session, so we
+      // re-fetch the session (which triggers NextAuth's server-side rotation)
+      // and retry with the fresh access token. We never call /auth/refresh-token
+      // from the client — it has no refresh token to send.
       if (status === 401 && !originalRequest._retry) {
         originalRequest._retry = true;
 
         try {
-          // Clear session cache on 401 to force fresh session fetch
+          // Clear session cache so getSession() goes to the server and refreshes
           sessionCache = null;
-          
-          // Try to refresh the token using the same apiClient
+
           const session = await getSession();
-          // Update cache with fresh session
           sessionCache = {
             session,
             timestamp: Date.now(),
           };
-          
-          if (session?.accessToken) {
-            const refreshResponse = await apiClient.post(
-              "/auth/refresh-token",
-              {
-                accessToken: session.accessToken,
-              },
-              {
-                headers: {
-                  Authorization: `Bearer ${session.accessToken}`,
-                },
-              }
-            );
 
-            if (refreshResponse.status === 200) {
-              const newAccessToken = refreshResponse.data.data.accessToken;
-
-              // Update the original request with new token
-              originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-
-              // Retry the original request
-              return apiClient(originalRequest);
+          // Refresh failed server-side → session is unrecoverable, sign out.
+          if ((session as any)?.error === "RefreshAccessTokenError") {
+            if (typeof window !== "undefined") {
+              await signOut({ redirect: false });
+              window.location.href = "/login";
             }
+            return Promise.reject(error);
+          }
+
+          if (session?.accessToken) {
+            // getSession() already rotated the token if it was expired.
+            originalRequest.headers.Authorization = `Bearer ${session.accessToken}`;
+            return apiClient(originalRequest);
+          }
+
+          // No session at all → not authenticated.
+          if (typeof window !== "undefined") {
+            window.location.href = "/login";
           }
         } catch (refreshError) {
           console.error("Token refresh failed:", refreshError);
