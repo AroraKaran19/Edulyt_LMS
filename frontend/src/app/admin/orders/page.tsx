@@ -46,6 +46,11 @@ interface OrderItem {
   paymentErrorReason?: string;
   couponCode?: string;
   couponDiscount?: number;
+  collaborationDiscount?: number;
+  referralCode?: string;
+  referralDiscount?: number;
+  successPointsApplied?: number;
+  successPointsDiscount?: number;
   createdAt: string;
   updatedAt?: string;
 }

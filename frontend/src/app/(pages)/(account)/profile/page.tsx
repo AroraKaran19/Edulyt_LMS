@@ -2198,15 +2198,16 @@ const ProfilePage = () => {
       <Modal
         isOpen={showSetPasswordModal}
         onClose={() => {
-          if (!accountToUnlink) {
-            // Only allow closing if not in the process of unlinking
-            setShowSetPasswordModal(false);
-            setInitialPasswordData({
-              newPassword: "",
-              confirmPassword: "",
-            });
-            setInitialPasswordErrors({});
-          }
+          // Closing the modal cancels the pending unlink — the user opted not
+          // to set a password. Always allow it (otherwise the X is dead while
+          // unlinking, which is the only time this title shows).
+          setShowSetPasswordModal(false);
+          setAccountToUnlink(null);
+          setInitialPasswordData({
+            newPassword: "",
+            confirmPassword: "",
+          });
+          setInitialPasswordErrors({});
         }}
         title={
           accountToUnlink ? "Set Password to Unlink Account" : "Set Password"

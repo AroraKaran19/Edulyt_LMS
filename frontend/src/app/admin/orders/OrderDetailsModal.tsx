@@ -49,6 +49,11 @@ interface OrderItem {
   paymentErrorReason?: string;
   couponCode?: string;
   couponDiscount?: number;
+  collaborationDiscount?: number;
+  referralCode?: string;
+  referralDiscount?: number;
+  successPointsApplied?: number;
+  successPointsDiscount?: number;
   createdAt: string;
   updatedAt?: string;
 }
@@ -186,6 +191,27 @@ const OrderDetailsModal = ({
                     : ""}
                 </div>
               )}
+              {order.referralDiscount ? (
+                <div className="text-green-600 text-xs mt-1">
+                  Referral{order.referralCode ? `: ${order.referralCode}` : ""}{" "}
+                  (-₹{order.referralDiscount.toLocaleString("en-IN")})
+                </div>
+              ) : null}
+              {order.collaborationDiscount ? (
+                <div className="text-green-600 text-xs mt-1">
+                  Collaboration (-₹
+                  {order.collaborationDiscount.toLocaleString("en-IN")})
+                </div>
+              ) : null}
+              {order.successPointsDiscount ? (
+                <div className="text-green-600 text-xs mt-1">
+                  Success points
+                  {order.successPointsApplied
+                    ? `: ${order.successPointsApplied.toLocaleString("en-IN")} pts`
+                    : ""}{" "}
+                  (-₹{order.successPointsDiscount.toLocaleString("en-IN")})
+                </div>
+              ) : null}
             </div>
           }
           icon={CreditCard}
