@@ -281,7 +281,8 @@ const RegisterPage = () => {
             placeholder="Email"
             className="w-full bg-transparent outline-none font-semibold text-sm sm:text-base placeholder:font-normal"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => setEmail(e.target.value.toLowerCase())}
+            autoCapitalize="none"
             required
           />
         </div>
