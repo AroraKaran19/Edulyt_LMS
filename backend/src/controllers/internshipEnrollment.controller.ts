@@ -10,6 +10,7 @@ import {
   getInternshipEnrollmentByIdAdmin,
   registerForExam,
   registerForPaidSeat,
+  switchInternshipBatch,
   listMyInternshipEnrollments,
   adminUpdateEnrollmentStatus,
   adminChangeEnrollmentBatch,
@@ -150,6 +151,32 @@ export const registerForExamController = asyncHandler(
             opts,
           );
     sendSuccessResponse(res, result, "Registered for exam successfully", 201);
+  },
+);
+
+/**
+ * @route   POST /api/internship-enrollments/me/:enrollmentId/switch-batch
+ * @desc    Learner moves a pre-exam (`exam_registered`) registration to another
+ *          cohort of the same internship. Hard-deletes the old enrollment and
+ *          creates a fresh one for the target batch.
+ * @access  Authenticated user (non-partner)
+ */
+export const switchInternshipBatchController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const userId = req.user?._id;
+    if (!userId) throw new AppError("Unauthorized", 401);
+
+    const { enrollmentId } = req.params as { enrollmentId?: string };
+    const { batchId } = req.body as { batchId?: string };
+    if (!enrollmentId) throw new AppError("enrollmentId is required", 400);
+    if (!batchId) throw new AppError("batchId is required", 400);
+
+    const result = await switchInternshipBatch(
+      new mongoose.Types.ObjectId(String(userId)),
+      enrollmentId,
+      batchId,
+    );
+    sendSuccessResponse(res, result, "Moved to the selected cohort", 200);
   },
 );
 

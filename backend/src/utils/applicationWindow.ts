@@ -49,6 +49,31 @@ export function isVoucherRedemptionWindowOpen(
 }
 
 /**
+ * Days after a batch's internship start date during which a learner may still
+ * move a pre-exam registration to (or from) that batch.
+ */
+export const BATCH_SWITCH_GRACE_DAYS = 15;
+
+/**
+ * Whether a batch is still within its switch window: `now` is on or before
+ * `internshipStartDate + BATCH_SWITCH_GRACE_DAYS`. Missing/invalid start date
+ * → closed (we can't establish the window).
+ */
+export function isBatchSwitchWindowOpen(
+  internshipStartDate: Date | string | null | undefined,
+): boolean {
+  if (internshipStartDate == null) return false;
+  const start =
+    internshipStartDate instanceof Date
+      ? internshipStartDate
+      : new Date(String(internshipStartDate));
+  if (Number.isNaN(start.getTime())) return false;
+  const graceEnd =
+    start.getTime() + BATCH_SWITCH_GRACE_DAYS * 24 * 60 * 60 * 1000;
+  return Date.now() <= graceEnd;
+}
+
+/**
  * Paid-seat upgrade window for merit-track learners. Stays open from the
  * moment of registration through POST_RESULT_PAID_GRACE_DAYS after results
  * are announced — covering both early purchase ("unsure about result, lock

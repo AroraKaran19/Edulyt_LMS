@@ -168,6 +168,9 @@ export const ENDPOINTS = {
     /** POST — learner submits Aadhar + photo to leave `pending_documentation`. */
     meSubmitDocumentation: (enrollmentId: string) =>
       `/internship-enrollments/me/${encodeURIComponent(enrollmentId)}/documentation`,
+    /** POST body `{ batchId }` — learner moves a pre-exam (`exam_registered`) registration to another cohort. */
+    meSwitchBatch: (enrollmentId: string) =>
+      `/internship-enrollments/me/${encodeURIComponent(enrollmentId)}/switch-batch`,
     /** POST — learner registers (entrance exam or paid seat). Body: { internshipId, batchId, path? } */
     create: "/internship-enrollments",
     register: "/internship-enrollments",

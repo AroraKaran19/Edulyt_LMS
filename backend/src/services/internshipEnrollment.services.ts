@@ -8,6 +8,7 @@ import { UserModel } from "../models/user.schema";
 import { AppError } from "../middlewares/error.middleware";
 import {
   isApplicationWindowOpenIst,
+  isBatchSwitchWindowOpen,
   isPaidUpgradeWindowOpen,
 } from "../utils/applicationWindow";
 import { getPointsSettings } from "./pointsSettings.services";
@@ -869,6 +870,132 @@ export async function registerForExam(
     if (!raced) throw err;
     return completeMeritRegistrationForExistingRow(raced, answersDoc);
   }
+}
+
+// Move a user's "exam_registered" enrollment to a different active batch (same internship), before exam, if allowed. Old is deleted after new is created.
+export async function switchInternshipBatch(
+  userId: mongoose.Types.ObjectId,
+  enrollmentId: string,
+  targetBatchId: string,
+): Promise<{ enrollmentId: string }> {
+  if (!mongoose.Types.ObjectId.isValid(enrollmentId)) {
+    throw new AppError("Invalid enrollment id", 400);
+  }
+  if (!targetBatchId) throw new AppError("batchId is required", 400);
+
+  const current = await InternshipEnrollmentModel.findOne({
+    _id: new mongoose.Types.ObjectId(enrollmentId),
+    user: userId,
+  });
+  if (!current) throw new AppError("Enrollment not found", 404);
+
+  if (current.status !== "exam_registered") {
+    throw new AppError(
+      "This registration can no longer be moved to another cohort",
+      400,
+    );
+  }
+  if (current.offerLetterGeneratedAt) {
+    throw new AppError(
+      "An offer letter has been generated; the cohort can no longer be changed",
+      400,
+    );
+  }
+
+  const currentBatchId = current.batchSnapshot?.batchId;
+  if (currentBatchId && String(currentBatchId) === String(targetBatchId)) {
+    throw new AppError("You are already registered for that cohort", 400);
+  }
+
+  // The current batch's start date is snapshotted on the enrollment, so this
+  // check is self-contained even if the live batch was edited since signup.
+  if (!isBatchSwitchWindowOpen(current.batchSnapshot?.internshipStartDate)) {
+    throw new AppError(
+      "The window to change your cohort has closed for your current batch",
+      400,
+    );
+  }
+
+  const internshipId = current.internship as mongoose.Types.ObjectId;
+  const internship = await InternshipModel.findById(internshipId).lean();
+  if (!internship) throw new AppError("Internship not found", 404);
+  if (!internship.isActive) throw new AppError("Internship is not active", 400);
+
+  const targetBatch = (
+    internship.batches as {
+      _id: unknown;
+      name: string;
+      internshipStartDate: Date;
+      applicationLastDate?: Date;
+      isActive: boolean;
+      entranceExamTemplateId?: unknown;
+    }[]
+  )?.find((b) => String(b._id) === String(targetBatchId));
+  if (!targetBatch) throw new AppError("Target cohort not found", 404);
+  if (!targetBatch.isActive) {
+    throw new AppError("That cohort is not accepting registrations", 400);
+  }
+  if (!targetBatch.entranceExamTemplateId) {
+    throw new AppError("That cohort does not have an entrance exam", 400);
+  }
+  if (!isBatchSwitchWindowOpen(targetBatch.internshipStartDate)) {
+    throw new AppError(
+      "The window to join that cohort has closed",
+      400,
+    );
+  }
+
+  const clash = await InternshipEnrollmentModel.findOne({
+    user: userId,
+    internship: internshipId,
+    "batchSnapshot.batchId": String(targetBatch._id),
+  })
+    .select("_id")
+    .lean();
+  if (clash) {
+    throw new AppError("You are already registered for that cohort", 409);
+  }
+
+  // Create the replacement first; only delete the original once it exists.
+  const created = await InternshipEnrollmentModel.create({
+    internship: internshipId,
+    user: userId,
+    enrollmentType: "merit",
+    status: "exam_registered",
+    internshipSnapshot: current.internshipSnapshot,
+    batchSnapshot: {
+      batchId: String(targetBatch._id),
+      name: targetBatch.name,
+      internshipStartDate: targetBatch.internshipStartDate,
+      ...(targetBatch.applicationLastDate != null
+        ? { applicationLastDate: targetBatch.applicationLastDate }
+        : {}),
+    },
+    ...(current.applicationAnswers != null
+      ? {
+          applicationAnswers: current.applicationAnswers,
+          applicationSubmittedAt: current.applicationSubmittedAt ?? new Date(),
+        }
+      : {}),
+    ...(typeof current.programDurationMonths === "number"
+      ? { programDurationMonths: current.programDurationMonths }
+      : {}),
+    // Carry the reward guard so switching doesn't re-award registration points.
+    registrationSuccessPointsAwarded:
+      current.registrationSuccessPointsAwarded === true,
+  });
+
+  try {
+    await InternshipEnrollmentModel.deleteOne({ _id: current._id });
+  } catch (e) {
+    // Roll back the new row so the learner is never left with a duplicate.
+    await InternshipEnrollmentModel.deleteOne({ _id: created._id }).catch(
+      () => {},
+    );
+    throw e;
+  }
+
+  return { enrollmentId: String(created._id) };
 }
 
 /**

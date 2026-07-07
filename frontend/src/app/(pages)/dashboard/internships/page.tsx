@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, Suspense } from "react";
 import { Search, Loader2 } from "lucide-react";
-import { useRouter, useSearchParams } from "next/navigation";
 import { useMyInternshipEnrollments } from "@/hooks/useMyInternshipEnrollments";
 import { fetchMyInternshipEnrollmentsPage } from "@/hooks/useMyInternshipEnrollments";
 import { ENTRANCE_EXAM_ATTENTION_STATUSES } from "@/lib/internshipEntranceFlow";
@@ -12,19 +11,15 @@ import EmptyState from "../components/applications/EmptyState";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import DashboardInternshipCard from "./components/DashboardInternshipCard";
+import CertificationInfoCard from "./components/CertificationInfoCard";
 import InternshipExamReminderBanner from "./components/InternshipExamReminderBanner";
 import AnnouncementSection from "../components/dashboard/AnnouncementSection";
 import { cn } from "@/lib/utils";
-import Link from "next/link";
 
 const PAGE_SIZE = 12;
 const SEARCH_DEBOUNCE_MS = 400;
 
 function DashboardInternshipsContent() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const showAll = searchParams.get("all") === "1";
-
   const { loadPage, isLoading, error } = useMyInternshipEnrollments();
   const [rows, setRows] = useState<InternshipEnrollmentListRow[]>([]);
   const [page, setPage] = useState(1);
@@ -36,7 +31,7 @@ function DashboardInternshipsContent() {
   const [entranceGate, setEntranceGate] = useState<"checking" | "ready">(
     "checking",
   );
-  const [singleEntrancePending, setSingleEntrancePending] =
+  const [nextPendingExam, setNextPendingExam] =
     useState<InternshipEnrollmentListRow | null>(null);
   const [entrancePendingTotal, setEntrancePendingTotal] = useState(0);
 
@@ -53,39 +48,40 @@ function DashboardInternshipsContent() {
 
   useEffect(() => {
     let cancelled = false;
-    let redirected = false;
     (async () => {
       try {
         const snap = await fetchMyInternshipEnrollmentsPage({
           page: 1,
-          limit: 2,
+          limit: 20,
           statuses: [...ENTRANCE_EXAM_ATTENTION_STATUSES],
         });
         if (cancelled) return;
         setEntrancePendingTotal(snap.total);
-        if (!showAll && snap.total >= 2) {
-          router.replace("/dashboard/internships/pending");
-          redirected = true;
-          return;
-        }
-        if (snap.total === 1 && snap.enrollments[0]) {
-          setSingleEntrancePending(snap.enrollments[0]);
-        } else {
-          setSingleEntrancePending(null);
-        }
+        // Highlight the soonest upcoming exam; the rest are listed as cards
+        // in the grid below. Missing start dates sort last.
+        const soonest = [...snap.enrollments].sort((a, b) => {
+          const ta = a.examStartAt
+            ? new Date(a.examStartAt).getTime()
+            : Infinity;
+          const tb = b.examStartAt
+            ? new Date(b.examStartAt).getTime()
+            : Infinity;
+          return ta - tb;
+        })[0];
+        setNextPendingExam(soonest ?? null);
       } catch {
         if (!cancelled) {
-          setSingleEntrancePending(null);
+          setNextPendingExam(null);
           setEntrancePendingTotal(0);
         }
       } finally {
-        if (!cancelled && !redirected) setEntranceGate("ready");
+        if (!cancelled) setEntranceGate("ready");
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [router, showAll]);
+  }, []);
 
   const fetchRows = useCallback(async () => {
     const res = await loadPage({
@@ -141,28 +137,16 @@ function DashboardInternshipsContent() {
         className="mb-6"
       />
 
-      {entrancePendingTotal === 1 && singleEntrancePending && (
-        <InternshipExamReminderBanner enrollment={singleEntrancePending} />
-      )}
-
-      {entrancePendingTotal >= 2 && showAll && (
-        <div
-          className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50/90 px-4 py-3 sm:px-5"
-          role="status"
-        >
-          <p className="text-sm text-amber-950">
-            <span className="font-semibold">
-              {entrancePendingTotal} programs
-            </span>{" "}
-            are still in the entrance exam or selection step. Open the list to
-            review each one.
-          </p>
-          <Link
-            href="/dashboard/internships/pending"
-            className="shrink-0 text-sm font-semibold text-amber-950 underline underline-offset-2 hover:text-orange-800"
-          >
-            View pending list →
-          </Link>
+      {nextPendingExam && (
+        <div className="mb-6">
+          <InternshipExamReminderBanner enrollment={nextPendingExam} />
+          {entrancePendingTotal > 1 && (
+            <p className="mt-2 pl-1 text-xs text-stone-500">
+              +{entrancePendingTotal - 1} more entrance{" "}
+              {entrancePendingTotal - 1 === 1 ? "exam" : "exams"} further down
+              your list.
+            </p>
+          )}
         </div>
       )}
 
@@ -253,6 +237,7 @@ function DashboardInternshipsContent() {
         </div>
       ) : (
         <>
+          {!debouncedSearch && <CertificationInfoCard />}
           <div
             className={cn(
               "grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5 lg:gap-6",

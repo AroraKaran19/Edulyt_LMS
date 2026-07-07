@@ -3,6 +3,7 @@ import { verifyUser, denyPartners } from "../middlewares/user.middleware";
 import { verifyAdmin, requirePermission } from "../middlewares/admin.middleware";
 import {
   registerForExamController,
+  switchInternshipBatchController,
   listMyInternshipEnrollmentsController,
   withdrawPaymentPendingEnrollmentController,
   getLearnerEntranceExamController,
@@ -42,6 +43,13 @@ router.post("/", denyPartners, registerForExamController);
 
 /** GET /api/internship-enrollments/me — learner's enrollments (dashboard) */
 router.get("/me", listMyInternshipEnrollmentsController);
+
+/** POST /api/internship-enrollments/me/:enrollmentId/switch-batch — learner moves a pre-exam registration to another cohort */
+router.post(
+  "/me/:enrollmentId/switch-batch",
+  denyPartners,
+  switchInternshipBatchController,
+);
 
 /** DELETE /api/internship-enrollments/me/:enrollmentId — drop unpaid paid-path registration */
 router.delete("/me/:enrollmentId", withdrawPaymentPendingEnrollmentController);

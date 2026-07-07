@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import {
+  ArrowLeftRight,
   ArrowUpRight,
   BookOpen,
   Calendar,
@@ -19,6 +20,7 @@ import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import Modal from "@/components/ui/Modal";
 import DocumentationSubmissionModal from "./DocumentationSubmissionModal";
+import SwitchBatchModal from "./SwitchBatchModal";
 import ExamCountdownButton from "./ExamCountdownButton";
 import {
   formatCertExamIstRange,
@@ -270,10 +272,10 @@ function BuyConfirmedSeatCta({
 
   const body =
     variant === "awaiting"
-      ? "Lock in your seat now with a one-time fee — no need to wait on results."
+      ? "Lock in your seat now with a one-time fee no need to wait on results."
       : variant === "missed_exam"
         ? "You can still join this cohort with a one-time paid seat."
-        : "Paid seats stay open for 15 days after results — you can still join this cohort.";
+        : "Paid seats stay open for 15 days after results you can still join this cohort.";
 
   return (
     <div
@@ -324,6 +326,7 @@ export default function DashboardInternshipCard({ row, onWithdrawn }: Props) {
   const [resumingPayment, setResumingPayment] = useState(false);
   const [withdrawConfirmOpen, setWithdrawConfirmOpen] = useState(false);
   const [docsModalOpen, setDocsModalOpen] = useState(false);
+  const [switchModalOpen, setSwitchModalOpen] = useState(false);
   const title =
     row.internshipSnapshot?.title ||
     row.internship?.title ||
@@ -411,6 +414,13 @@ export default function DashboardInternshipCard({ row, onWithdrawn }: Props) {
 
   // No-show takes precedence over the exam-registered countdown branch.
   const showExamAction = EXAM_ACTION_STATUSES.has(row.status) && !isExamNoShow;
+
+  // Learner may move a pre-exam registration to another cohort within 15 days
+  // of the current batch's start. The server re-validates the target batch.
+  const switchWindowOpen =
+    showExamAction &&
+    batchStartTime !== null &&
+    now <= batchStartTime + 15 * 24 * 60 * 60 * 1000;
 
   // Failed (admin rejected) or missed (merit no-show) — wash the card red.
   const isFailedOrMissed = row.status === "admin_rejected" || isExamNoShow;
@@ -652,6 +662,16 @@ export default function DashboardInternshipCard({ row, onWithdrawn }: Props) {
                 {isPreExamPurchaseable && (
                   <BuyConfirmedSeatCta row={row} variant="pre_exam" />
                 )}
+                {switchWindowOpen && slug && (
+                  <button
+                    type="button"
+                    onClick={() => setSwitchModalOpen(true)}
+                    className="inline-flex items-center gap-1.5 self-start text-xs font-semibold text-stone-600 underline-offset-2 transition hover:text-orange-700 hover:underline"
+                  >
+                    <ArrowLeftRight className="size-3.5" />
+                    Register for another cohort
+                  </button>
+                )}
               </div>
             ) : isExamNoShow ? (
               /* Merit-track learner who didn't attempt the entrance exam — terminal */
@@ -883,6 +903,15 @@ export default function DashboardInternshipCard({ row, onWithdrawn }: Props) {
         documentationStartAt={row.documentationStartAt}
         documentationEndAt={row.documentationEndAt}
         onSubmitted={() => onWithdrawn?.()}
+      />
+
+      <SwitchBatchModal
+        isOpen={switchModalOpen}
+        onClose={() => setSwitchModalOpen(false)}
+        enrollmentId={row._id}
+        internshipSlug={slug}
+        currentBatchId={row.batchSnapshot?.batchId}
+        onSwitched={() => onWithdrawn?.()}
       />
     </>
   );

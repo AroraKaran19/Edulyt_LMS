@@ -53,7 +53,7 @@ export default function EnrollPathChoiceModal({
           <p className="text-sm text-stone-600 leading-relaxed">
             You&apos;re on the{" "}
             <strong className="text-stone-800">entrance exam</strong> path. Your
-            details are saved in this browser — you can switch paths without
+            details are saved in this browser you can switch paths without
             losing your answers.
           </p>
         </div>
@@ -72,7 +72,7 @@ export default function EnrollPathChoiceModal({
             <p className="text-sm text-stone-800 leading-relaxed">
               Skip the uncertainty of merit-only intake:{" "}
               <strong>secure your cohort seat with a one-time fee</strong>. You
-              can still take the entrance exam for practice — your paid seat
+              can still take the entrance exam for practice your paid seat
               stays locked after payment.
             </p>
             <div className="flex flex-wrap items-baseline gap-2">
