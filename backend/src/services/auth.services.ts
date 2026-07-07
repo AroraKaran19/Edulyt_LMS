@@ -51,7 +51,10 @@ export const registerUser = async (userData: Partial<User>) => {
 };
 
 export const loginUser = async (email: string, password: string) => {
-  const user = await UserModel.findOne({ email }).select("+password");
+  const normalizedEmail = email.trim().toLowerCase();
+  const user = await UserModel.findOne({ email: normalizedEmail }).select(
+    "+password",
+  );
   if (!user) {
     throw new AppError("User not found", 404);
   }
