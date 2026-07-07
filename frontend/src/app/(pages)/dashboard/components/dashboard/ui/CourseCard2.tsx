@@ -41,7 +41,7 @@ const CourseCard2 = ({ course, enrollment }: CourseCard2Props) => {
             {name}
           </h2>
           <p className="text-[11px] text-gray-400">
-            Course no longer available — enrollment kept for records.
+            Course no longer available, enrollment kept for records.
           </p>
         </div>
       </div>

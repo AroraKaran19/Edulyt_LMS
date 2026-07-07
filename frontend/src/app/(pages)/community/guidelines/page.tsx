@@ -4,7 +4,7 @@ import { ChevronLeft } from "lucide-react";
 const sections = [
     {
         title: "Be authentic",
-        body: "Share your own story in your own words. Real journeys — including the rough edges — help other learners more than polished, generic advice. Plagiarism, fabricated experiences, or AI-generated filler will be removed.",
+        body: "Share your own story in your own words. Real journeys, including the rough edges, help other learners more than polished, generic advice. Plagiarism, fabricated experiences, or AI-generated filler will be removed.",
     },
     {
         title: "Be respectful",
@@ -28,7 +28,7 @@ const sections = [
     },
     {
         title: "Replies and discussion",
-        body: "Reply to add value — ask a clarifying question, share a related experience, or offer a tip. One-word replies, low-effort jokes, and pile-ons are discouraged.",
+        body: "Reply to add value, ask a clarifying question, share a related experience, or offer a tip. One-word replies, low-effort jokes, and pile-ons are discouraged.",
     },
     {
         title: "Moderation",

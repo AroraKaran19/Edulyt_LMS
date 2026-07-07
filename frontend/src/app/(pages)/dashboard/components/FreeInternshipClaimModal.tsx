@@ -523,7 +523,7 @@ export default function FreeInternshipClaimModal({
               {selectedExisting ? (
                 <>
                   Your registration details are already on file from your exam
-                  signup — no form to fill again. Voucher{" "}
+                  signup no form to fill again. Voucher{" "}
                   <span className="font-mono font-bold text-orange-600">
                     {voucher?.code}
                   </span>{" "}

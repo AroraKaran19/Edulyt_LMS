@@ -55,7 +55,7 @@ const CertificationInfoCard = () => {
           <span className="font-semibold text-text-primary">
             80% Success Points
           </span>{" "}
-          from meetings and tasks — through active participation, timely task
+          from meetings and tasks through active participation, timely task
           completion, and consistent attendance.
         </p>
       </div>

@@ -212,9 +212,6 @@ export default function InternshipTaskPage() {
   const [enrollment, setEnrollment] = useState<
     LearnerProgramDetail["enrollment"] | null
   >(null);
-  const [pointsPurchase, setPointsPurchase] = useState<
-    LearnerProgramDetail["internshipSuccessPointPurchase"] | undefined
-  >(undefined);
   const [submission, setSubmission] = useState<SubmissionShape | null>(null);
   const [questions, setQuestions] = useState<SnapshotQuestion[]>([]);
   const [loading, setLoading] = useState(true);
@@ -241,7 +238,6 @@ export default function InternshipTaskPage() {
       }
       setTask(found);
       setEnrollment(detail.enrollment);
-      setPointsPurchase(detail.internshipSuccessPointPurchase);
 
       // Load existing submission if present
       if (found.submission) {
@@ -320,7 +316,7 @@ export default function InternshipTaskPage() {
       setQuestions(sub.templateSnapshot?.questions ?? []);
       setFileUrls({});
       setFileComments({});
-      toast.success("Task started — your answers save automatically.");
+      toast.success("Task started, your answers save automatically.");
     } catch (e: unknown) {
       const msg =
         (e as { response?: { data?: { error?: { message?: string } } } })
@@ -481,17 +477,6 @@ export default function InternshipTaskPage() {
             })}
           </span>
         </div>
-        {pointsPurchase && enrollment ? (
-          <div className="mt-3 pt-3 border-t border-amber-100">
-            <Link
-              href={`${programHref}#buy-success-points`}
-              className="text-xs font-semibold text-amber-900 hover:text-amber-950 underline underline-offset-2"
-            >
-              Not fully confident about the project, enrol yourself in a course
-              and get project assistance
-            </Link>
-          </div>
-        ) : null}
       </div>
 
       {/* Progress */}
@@ -537,7 +522,7 @@ export default function InternshipTaskPage() {
           </p>
           <p className="text-sm text-orange-900/80 mt-0.5">
             Only the highlighted question(s) below can be changed. Uploading a new
-            file sends it straight back for review — there’s no separate submit
+            file sends it straight back for review, there’s no separate submit
             step.
           </p>
         </div>

@@ -2,21 +2,23 @@ import { Metadata } from "next";
 import React from "react";
 import AuthGuard from "@/app/providers/AuthGuard";
 
+const description =
+  "Share your experience, insights, or doubts with the Airkrit community and help others on their journey.";
+
 export const metadata: Metadata = {
-  title: "Contact | Airkrit India",
-  description:
-    "Get in touch with Airkrit. We're updating this page — check back soon.",
+  title: "New Post | Airkrit India",
+  description,
   metadataBase: new URL(
-    process.env.NEXT_PUBLIC_APP_URL || process.env.NODE_ENV === "production"
-      ? "https://www.airkrit.com/contact"
-      : "http://localhost:3000/contact",
+    process.env.NEXT_PUBLIC_APP_URL ||
+      (process.env.NODE_ENV === "production"
+        ? "https://www.airkrit.com"
+        : "http://localhost:3000"),
   ),
-  keywords: ["Contact", "Airkrit", "Support", "Get in touch"],
+  keywords: ["Community", "Airkrit", "New Post", "Share Experience"],
   openGraph: {
-    title: "Contact | Airkrit India",
-    description:
-      "Get in touch with Airkrit. We're updating this page — check back soon.",
-    url: "https://www.airkrit.com/contact",
+    title: "New Post | Airkrit India",
+    description,
+    url: "https://www.airkrit.com/community/new",
     siteName: "Airkrit India",
     type: "website",
     images: [
@@ -29,9 +31,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Contact | Airkrit India",
-    description:
-      "Get in touch with Airkrit. We're updating this page — check back soon.",
+    title: "New Post | Airkrit India",
+    description,
     images: [
       {
         url: "https://www.airkrit.com/logo.png",
@@ -42,7 +43,7 @@ export const metadata: Metadata = {
   },
 };
 
-const ContactLayout = ({ children }: { children: React.ReactNode }) => {
+const CommunityNewLayout = ({ children }: { children: React.ReactNode }) => {
   return (
     <AuthGuard
       requiredUserType={["student", "admin", "super-admin"]}
@@ -54,4 +55,4 @@ const ContactLayout = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
-export default ContactLayout;
+export default CommunityNewLayout;

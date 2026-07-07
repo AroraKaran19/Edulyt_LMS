@@ -127,9 +127,9 @@ export default function SwitchBatchModal({
     >
       <div className="p-6 space-y-4">
         <p className="text-sm text-gray-600">
-          Move your registration to a different cohort of this internship. Your
-          current registration will be replaced. This is only possible before
-          the entrance exam and within 15 days of a cohort&apos;s start date.
+          Move your registration to a different cohort of this internship while
+          seats are still available. Your current registration will be replaced.
+          This is only possible before the entrance exam.
         </p>
 
         {loading ? (

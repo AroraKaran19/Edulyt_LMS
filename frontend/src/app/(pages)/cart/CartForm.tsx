@@ -394,8 +394,8 @@ const CartForm = ({
         });
         toast.success(
           pct > 0
-            ? `Referral applied — ${pct}% off · Courtesy ${result.referrerName}`
-            : `Referral code applied — Courtesy ${result.referrerName}`,
+            ? `Referral applied ${pct}% off · Courtesy ${result.referrerName}`
+            : `Referral code applied, Courtesy ${result.referrerName}`,
         );
       } else if (result.reason === "self") {
         toast.error("You can't use your own referral code.");

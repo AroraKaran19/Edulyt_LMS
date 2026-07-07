@@ -110,7 +110,7 @@ const CommentThread = ({ reviewId, onCountChange }: CommentThreadProps) => {
                 </div>
             ) : replies.length === 0 ? (
                 <p className="text-xs text-gray-400 py-2">
-                    No replies yet — be the first.
+                    No replies yet, be the first.
                 </p>
             ) : (
                 <ul className="flex flex-col gap-3">

@@ -25,7 +25,7 @@ export default function Error({
           Something went wrong
         </h1>
         <p className="text-sm text-gray-500">
-          We hit an unexpected error. Please try again — if it keeps happening,
+          We hit an unexpected error. Please try again if it keeps happening,
           sign in again.
         </p>
       </div>

@@ -415,8 +415,34 @@ const CourseContentSection = memo(
       return 0;
     }, []);
 
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
+    const activeContentRef = useRef<HTMLDivElement>(null);
+
+    // Keep the currently-playing item in view as it advances (autoplay moving to
+    // the next lesson/module, or first load resuming where the learner left off).
+    // Scrolls only the panel — never the page.
+    useEffect(() => {
+      const container = scrollContainerRef.current;
+      const el = activeContentRef.current;
+      if (!container || !el) return;
+      const raf = requestAnimationFrame(() => {
+        const cRect = container.getBoundingClientRect();
+        const eRect = el.getBoundingClientRect();
+        const offset =
+          eRect.top -
+          cRect.top -
+          container.clientHeight / 2 +
+          el.clientHeight / 2;
+        container.scrollBy({ top: offset, behavior: "smooth" });
+      });
+      return () => cancelAnimationFrame(raf);
+    }, [selectedContent?._id]);
+
     return (
-      <div className="w-full space-y-2 max-h-[calc(100vh-200px)] overflow-y-auto pr-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-400">
+      <div
+        ref={scrollContainerRef}
+        className="w-full space-y-2 max-h-[calc(100vh-200px)] overflow-y-auto pr-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-400"
+      >
         {(course.modules as CourseModule[])?.map((courseModule, moduleIndex) => {
           const moduleId = courseModule._id || "";
           const hasModuleAccess = canAccessModule(accessControl, moduleId);
@@ -431,12 +457,17 @@ const CourseContentSection = memo(
               } ${!hasModuleAccess ? "opacity-60" : ""}`}
               key={courseModule._id}
             >
-              {/* Module Header */}
+              {/* Module Header — sticks to the top of the panel while the
+                 current (expanded) module's lessons scroll underneath. */}
               <div
                 className={`w-full p-4 rounded-t-lg transition-colors ${
                   hasModuleAccess
                     ? "cursor-pointer hover:bg-gray-50/50"
                     : "cursor-not-allowed"
+                } ${
+                  isModuleSelected
+                    ? "sticky top-0 z-20 border-b border-orange-200 bg-orange-50/95 backdrop-blur-sm"
+                    : ""
                 }`}
                 onClick={() => hasModuleAccess && toggleModule(courseModule)}
               >
@@ -562,6 +593,11 @@ const CourseContentSection = memo(
                                   return (
                                     <div
                                       key={content._id}
+                                      ref={
+                                        isContentSelected
+                                          ? activeContentRef
+                                          : undefined
+                                      }
                                       onClick={() => {
                                         if (hasContentAccess) {
                                           navigateToContent(content._id!);

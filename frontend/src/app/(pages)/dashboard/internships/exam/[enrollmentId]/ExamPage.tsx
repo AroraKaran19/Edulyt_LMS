@@ -317,7 +317,7 @@ export default function ExamPage() {
       setSubmissionId(created._id);
       setFileUrls({});
       setFileComments({});
-      toast.success("Exam started — your answers save automatically.");
+      toast.success("Exam started your answers save automatically.");
     } catch (e: unknown) {
       const msg =
         (e as { response?: { data?: { error?: { message?: string } } } })

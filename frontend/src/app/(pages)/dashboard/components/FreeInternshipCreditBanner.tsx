@@ -38,7 +38,7 @@ export default function FreeInternshipCreditBanner() {
           </p>
           <p className="text-xs sm:text-sm text-white/85 mt-0.5">
             Earned by purchasing a course. Each voucher gives you one free
-            internship seat — single use only.
+            internship seat, single use only.
           </p>
           {nextVoucher && (
             <p className="text-xs text-white/70 mt-0.5 font-mono tracking-widest">

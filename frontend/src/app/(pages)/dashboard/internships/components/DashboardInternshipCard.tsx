@@ -6,13 +6,13 @@ import {
   ArrowUpRight,
   BookOpen,
   Calendar,
+  Clock,
   Download,
   FileText,
   GraduationCap,
   Hourglass,
   ShieldCheck,
   Sparkles,
-  Ticket,
 } from "lucide-react";
 import type { InternshipEnrollmentListRow } from "@/types";
 import { cn } from "@/lib/utils";
@@ -22,6 +22,7 @@ import Modal from "@/components/ui/Modal";
 import DocumentationSubmissionModal from "./DocumentationSubmissionModal";
 import SwitchBatchModal from "./SwitchBatchModal";
 import ExamCountdownButton from "./ExamCountdownButton";
+import InternshipFlowProgress from "./InternshipFlowProgress";
 import {
   formatCertExamIstRange,
   getCertificationExamListReminder,
@@ -40,7 +41,7 @@ function statusBadgeClass(status: string) {
   if (status === "exam_attempted")
     return "bg-amber-200/90 text-amber-950 border-amber-300";
   if (status === "exam_registered")
-    return "bg-sky-100 text-sky-900 border-sky-200";
+    return "bg-orange-100 text-orange-900 border-orange-200";
   if (status === "payment_pending")
     return "bg-orange-200 text-orange-950 border-orange-300";
   if (status === "pending_documentation")
@@ -54,6 +55,25 @@ function statusBadgeClass(status: string) {
   if (status === "paused")
     return "bg-violet-100 text-violet-900 border-violet-200";
   return "bg-stone-100 text-stone-800 border-stone-200";
+}
+
+/** Thin left accent that encodes the enrollment's stage at a glance — replaces
+ *  the old ticket rail with the same status language as the exam banner. */
+function statusAccentBar(status: string, failedOrMissed: boolean): string {
+  if (failedOrMissed) return "bg-linear-to-b from-rose-400 to-red-400";
+  if (status === "enrolled" || status === "completed")
+    return "bg-linear-to-b from-emerald-400 to-green-500";
+  if (status === "exam_registered")
+    return "bg-linear-to-b from-amber-400 to-orange-500";
+  if (status === "exam_attempted")
+    return "bg-linear-to-b from-amber-400 to-orange-400";
+  if (status === "payment_pending")
+    return "bg-linear-to-b from-orange-400 to-amber-500";
+  if (status === "pending_documentation")
+    return "bg-linear-to-b from-rose-400 to-pink-500";
+  if (status === "paused")
+    return "bg-linear-to-b from-violet-400 to-purple-500";
+  return "bg-linear-to-b from-stone-300 to-stone-400";
 }
 
 function formatStatusLabel(status: string) {
@@ -137,7 +157,7 @@ function BuyConfirmedSeatCta({
     const internshipId = row.internship?._id;
     const batchId = row.batchSnapshot?.batchId;
     if (!internshipId || !batchId) {
-      setError("Missing enrollment data — please refresh.");
+      setError("Missing enrollment data, please refresh the page.");
       return;
     }
     setLoading(true);
@@ -275,7 +295,7 @@ function BuyConfirmedSeatCta({
       ? "Lock in your seat now with a one-time fee no need to wait on results."
       : variant === "missed_exam"
         ? "You can still join this cohort with a one-time paid seat."
-        : "Paid seats stay open for 15 days after results you can still join this cohort.";
+        : "Only a few seats left in this cohort secure yours now before they're gone.";
 
   return (
     <div
@@ -447,7 +467,7 @@ export default function DashboardInternshipCard({ row, onWithdrawn }: Props) {
               row.batchSnapshot?.applicationLastDate
                 ? ` (${formatCohortDate(row.batchSnapshot.applicationLastDate)})`
                 : ""
-            } has passed. Checkout is closed — remove this registration or contact support.`
+            } has passed. Checkout is closed remove this registration or contact support.`
       : null;
 
   const handleResumePayment = async () => {
@@ -497,26 +517,21 @@ export default function DashboardInternshipCard({ row, onWithdrawn }: Props) {
     <>
       <div
         className={cn(
-          "group relative flex min-h-[168px] overflow-hidden rounded-2xl border",
+          "group relative min-h-[168px] overflow-hidden rounded-2xl border",
           isFailedOrMissed
             ? "border-rose-200 bg-linear-to-br from-rose-50 via-white to-red-100/70"
             : "border-stone-200 bg-white",
           "shadow-[0_1px_0_0_rgba(255,255,255,0.9)_inset,0_6px_20px_-12px_rgba(120,60,20,0.15)]",
         )}
       >
-        {/* Vertical ticket rail */}
-        <div
-          className="flex w-12 shrink-0 flex-col items-center justify-between border-r border-stone-200 bg-stone-900 py-4 text-center"
+        {/* Status accent — the stage, read at a glance. */}
+        <span
           aria-hidden
-        >
-          <Ticket className="h-4 w-4 text-amber-200" strokeWidth={2} />
-          <span
-            className="text-[0.6rem] font-bold uppercase leading-tight text-amber-100/90 [writing-mode:vertical-rl] rotate-180 tracking-[0.2em]"
-            style={{ textOrientation: "mixed" }}
-          >
-            Intake
-          </span>
-        </div>
+          className={cn(
+            "absolute inset-y-0 left-0 w-1.5",
+            statusAccentBar(row.status, isFailedOrMissed),
+          )}
+        />
 
         {/* Offer letter — corner button on the card, shown in ANY stage once generated. */}
         {row.offerLetterUrl && (
@@ -535,16 +550,13 @@ export default function DashboardInternshipCard({ row, onWithdrawn }: Props) {
           </a>
         )}
 
-        <div className="flex min-w-0 flex-1 flex-col justify-between p-4 sm:p-5">
+        <div className="flex min-w-0 flex-col justify-between p-4 pl-5 sm:p-5 sm:pl-6">
           {/* Top info */}
           <div className="min-w-0 space-y-2">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.25em] text-stone-500">
-                Internship
-              </span>
               <span
                 className={cn(
-                  "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium capitalize",
+                  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold capitalize",
                   statusBadgeClass(row.status),
                 )}
               >
@@ -554,15 +566,17 @@ export default function DashboardInternshipCard({ row, onWithdrawn }: Props) {
             <h2 className="line-clamp-2 text-base font-bold leading-snug text-stone-900 sm:text-lg">
               {title}
             </h2>
-            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-              <span className="font-mono text-sm text-stone-800">
-                {batchName}
-              </span>
-              <span className="inline-flex items-center gap-1.5 text-xs text-stone-600">
-                <Calendar className="h-3.5 w-3.5 shrink-0 text-stone-500" />
-                <span className="font-mono">Starts {start}</span>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-stone-500">
+              <span className="font-semibold text-stone-700">{batchName}</span>
+              <span className="inline-flex items-center gap-1.5">
+                <Calendar className="h-3.5 w-3.5 shrink-0 text-stone-400" />
+                Starts {start}
               </span>
             </div>
+            <InternshipFlowProgress
+              status={row.status}
+              failedOrMissed={isFailedOrMissed}
+            />
             {certReminder.show && (
               <div
                 className="mt-3 rounded-xl border border-violet-300/80 bg-linear-to-r from-violet-50 to-indigo-50/90 px-3 py-2.5"
@@ -631,42 +645,66 @@ export default function DashboardInternshipCard({ row, onWithdrawn }: Props) {
             )}
           >
             {showExamAction ? (
-              /* Exam registered but not yet submitted — countdown + take exam,
-                 plus optional pre-exam paid-seat CTA so the learner can skip
-                 the wait entirely. */
-              <div className="flex flex-col gap-2">
-                <div className="flex items-end justify-between gap-3">
-                  <p className="text-[11px] text-stone-500">
-                    {(() => {
-                      const now = Date.now();
-                      const start = row.examStartAt
-                        ? new Date(row.examStartAt).getTime()
-                        : null;
-                      const end = row.examEndAt
-                        ? new Date(row.examEndAt).getTime()
-                        : null;
-                      if (end && now > end) return "The exam window has closed";
-                      if (start && now < start)
-                        return "Exam window hasn't opened yet";
-                      return "Complete the entrance exam to confirm your seat";
-                    })()}
-                  </p>
-                  <ExamCountdownButton
-                    enrollmentId={row._id}
-                    examStartAt={row.examStartAt}
-                    examEndAt={row.examEndAt}
-                    examResultAt={row.examResultAt}
-                    size="card"
-                  />
+              /* Exam registered but not yet submitted. The exam is the main
+                 event (hero countdown); the paid paths are demoted under an
+                 "or skip the wait" divider, and switching cohort is tertiary. */
+              <div className="flex flex-col gap-3">
+                {/* Hero: the entrance exam is the main event — warm, branded
+                   panel that frames the live countdown + action. */}
+                <div className="rounded-xl border border-orange-200/70 bg-linear-to-br from-orange-50 to-amber-50/40 px-3.5 py-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-orange-700">
+                        <Clock className="size-3.5 shrink-0" />
+                        Entrance exam
+                      </p>
+                      <p className="mt-1 text-xs text-stone-600">
+                        {(() => {
+                          const now = Date.now();
+                          const start = row.examStartAt
+                            ? new Date(row.examStartAt).getTime()
+                            : null;
+                          const end = row.examEndAt
+                            ? new Date(row.examEndAt).getTime()
+                            : null;
+                          if (end && now > end)
+                            return "The exam window has closed";
+                          if (start && now < start)
+                            return "Sit tight, we'll open it on schedule";
+                          return "It's open, complete it to confirm your seat";
+                        })()}
+                      </p>
+                    </div>
+                    <ExamCountdownButton
+                      enrollmentId={row._id}
+                      examStartAt={row.examStartAt}
+                      examEndAt={row.examEndAt}
+                      examResultAt={row.examResultAt}
+                      size="card"
+                    />
+                  </div>
                 </div>
+
+                {/* Alternative path: skip the exam by securing a seat now */}
                 {isPreExamPurchaseable && (
-                  <BuyConfirmedSeatCta row={row} variant="pre_exam" />
+                  <>
+                    <div className="flex items-center gap-2">
+                      <span className="h-px flex-1 bg-stone-200" />
+                      <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-stone-400">
+                        or skip the wait
+                      </span>
+                      <span className="h-px flex-1 bg-stone-200" />
+                    </div>
+                    <BuyConfirmedSeatCta row={row} variant="pre_exam" />
+                  </>
                 )}
+
+                {/* Tertiary: move to a different cohort */}
                 {switchWindowOpen && slug && (
                   <button
                     type="button"
                     onClick={() => setSwitchModalOpen(true)}
-                    className="inline-flex items-center gap-1.5 self-start text-xs font-semibold text-stone-600 underline-offset-2 transition hover:text-orange-700 hover:underline"
+                    className="inline-flex items-center gap-1.5 self-start pt-1 text-xs font-medium text-stone-500 underline-offset-2 transition hover:text-orange-700 hover:underline"
                   >
                     <ArrowLeftRight className="size-3.5" />
                     Register for another cohort
@@ -712,7 +750,7 @@ export default function DashboardInternshipCard({ row, onWithdrawn }: Props) {
                 <p className="text-[11px] text-stone-500">
                   {isPostFailGrace
                     ? "You weren't selected from the merit pool this time."
-                    : "You weren't selected from the merit pool. The 15-day offer has expired."}
+                    : "You weren't selected from the merit pool, and seats for this cohort are no longer available."}
                 </p>
                 {showBuyConfirmedSeat && (
                   <BuyConfirmedSeatCta row={row} variant="post_fail" />
