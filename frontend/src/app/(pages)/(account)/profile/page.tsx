@@ -2692,6 +2692,13 @@ const StudentFields = ({
           onChange={(e) => handleInputChange("portfolio", e.target.value)}
           error={errors.portfolio}
         />
+        <Input
+          label="LinkedIn URL"
+          placeholder="https://linkedin.com/in/your-profile"
+          value={formData.linkedinUrl || ""}
+          onChange={(e) => handleInputChange("linkedinUrl", e.target.value)}
+          error={errors.linkedinUrl}
+        />
         <div className="md:col-span-2">
           <div className="w-full flex flex-col">
             <label className="font-medium text-black mb-2 flex items-center gap-2">

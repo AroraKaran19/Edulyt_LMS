@@ -98,6 +98,8 @@ export interface Student extends User {
   domain?: string;
 
   portfolio?: string;
+  /** Free-text LinkedIn profile URL the learner sets in profile settings. */
+  linkedinUrl?: string;
 
   accounts: SocialProfiles;
 

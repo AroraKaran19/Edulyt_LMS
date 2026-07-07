@@ -6,7 +6,7 @@ export const COMMUNITY_REVIEW_TAGS = [
   "Projects",
   "Campus Placements",
   "Freshers",
-  "On Job",
+  "Experience (10+ years)",
   "Internships",
   "Articles",
 ] as const;

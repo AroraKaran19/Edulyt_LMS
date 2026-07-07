@@ -4,7 +4,7 @@ import Modal from "@/components/ui/Modal";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import { cn } from "@/lib/utils";
-import { Sparkles, ArrowRight, ShieldCheck } from "lucide-react";
+import { Sparkles, ArrowRight, ShieldCheck, Check } from "lucide-react";
 
 type Props = {
   isOpen: boolean;
@@ -17,6 +17,14 @@ type Props = {
   onSwitchToPaidPath: () => void;
 };
 
+/** What the one-time paid seat gets you — pulled out as chips so the value is
+ *  scannable rather than buried in the paragraph. */
+const PAID_SEAT_BENEFITS = [
+  "Cohort seat locked in",
+  "No merit cut-off",
+  "Entrance exam optional",
+];
+
 /** Upsell modal for entrance/merit registrants — not shown on the paid-seat flow. */
 export default function EnrollPathChoiceModal({
   isOpen,
@@ -27,86 +35,115 @@ export default function EnrollPathChoiceModal({
   onConfirmEntrancePath,
   onSwitchToPaidPath,
 }: Props) {
-  const showPaidUpsell =
-    typeof seatAmountInr === "number" && seatAmountInr > 0;
+  const showPaidUpsell = typeof seatAmountInr === "number" && seatAmountInr > 0;
+  const hasListPrice =
+    typeof listPriceInr === "number" &&
+    typeof seatAmountInr === "number" &&
+    listPriceInr > seatAmountInr;
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
       title={undefined}
-      className={cn(
-        "max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto",
-        "border-2 border-amber-200/90 shadow-xl shadow-amber-900/10",
-      )}
+      className="max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto"
     >
       <div className="space-y-5 p-1">
-        <div className="text-center space-y-2">
-          <p className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-amber-900">
+        {/* Header */}
+        <div className="space-y-2.5 text-center">
+          <p className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] text-primary">
             <Sparkles className="size-3.5" aria-hidden />
             Ready to register
           </p>
-          <h2 className="text-xl font-bold text-stone-900 leading-snug">
+          <h2 className="text-xl font-bold leading-snug text-stone-900 sm:text-2xl">
             Complete your registration for{" "}
             <span className="text-primary">{programTitle}</span>
           </h2>
-          <p className="text-sm text-stone-600 leading-relaxed">
+          <p className="mx-auto max-w-md text-sm leading-relaxed text-stone-500">
             You&apos;re on the{" "}
-            <strong className="text-stone-800">entrance exam</strong> path. Your
-            details are saved in this browser you can switch paths without
-            losing your answers.
+            <strong className="font-semibold text-stone-700">
+              entrance-exam
+            </strong>{" "}
+            path. Your answers are saved in this browser, so you can switch
+            paths anytime without losing them.
           </p>
         </div>
 
+        {/* Optional one-time paid-seat upgrade */}
         {showPaidUpsell ? (
-          <div
-            className={cn(
-              "rounded-2xl border border-amber-300/80 bg-linear-to-br from-amber-50 via-white to-orange-50/90",
-              "p-4 sm:p-5 space-y-3 shadow-inner",
-            )}
-          >
-            <p className="text-xs font-bold uppercase tracking-wide text-amber-900/90 flex items-center gap-2">
-              <ShieldCheck className="size-4 shrink-0" aria-hidden />
-              Prefer a confirmed seat?
-            </p>
-            <p className="text-sm text-stone-800 leading-relaxed">
-              Skip the uncertainty of merit-only intake:{" "}
-              <strong>secure your cohort seat with a one-time fee</strong>. You
-              can still take the entrance exam for practice your paid seat
-              stays locked after payment.
-            </p>
-            <div className="flex flex-wrap items-baseline gap-2">
-              <span className="text-2xl font-bold tabular-nums text-stone-900">
-                ₹{seatAmountInr.toLocaleString("en-IN")}
+          <div className="overflow-hidden rounded-2xl border border-primary/20 bg-linear-to-br from-orange-50 via-white to-amber-50/50 shadow-sm">
+            <div className="flex items-center justify-between gap-2 border-b border-primary/10 bg-white/60 px-4 py-2.5">
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-primary">
+                <ShieldCheck className="size-4 shrink-0" aria-hidden />
+                Guaranteed seat
               </span>
-              {typeof listPriceInr === "number" &&
-                listPriceInr > seatAmountInr && (
-                  <span className="text-sm text-stone-400 line-through tabular-nums">
-                    ₹{listPriceInr.toLocaleString("en-IN")}
+              <span className="rounded-full bg-stone-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-stone-500">
+                Optional
+              </span>
+            </div>
+
+            <div className="space-y-3.5 p-4 sm:p-5">
+              <p className="text-sm leading-relaxed text-stone-600">
+                Skip the uncertainty of merit-only intake and lock in your
+                cohort seat with a one-time fee. You can still sit the entrance
+                exam for practice your seat stays reserved either way.
+              </p>
+
+              <ul className="flex flex-wrap gap-1.5">
+                {PAID_SEAT_BENEFITS.map((benefit) => (
+                  <li
+                    key={benefit}
+                    className="inline-flex items-center gap-1 rounded-full border border-primary/15 bg-white px-2.5 py-1 text-xs font-medium text-stone-700"
+                  >
+                    <Check className="size-3 text-primary" aria-hidden />
+                    {benefit}
+                  </li>
+                ))}
+              </ul>
+
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl font-extrabold tabular-nums text-stone-900">
+                  ₹{seatAmountInr.toLocaleString("en-IN")}
+                </span>
+                {hasListPrice && (
+                  <span className="text-sm tabular-nums text-stone-400 line-through">
+                    ₹{listPriceInr!.toLocaleString("en-IN")}
                   </span>
                 )}
+                <span className="text-[11px] font-medium text-stone-400">
+                  one-time
+                </span>
+              </div>
+
+              <OrangeButton
+                type="button"
+                onClick={onSwitchToPaidPath}
+                className="w-full justify-center gap-2 py-3 text-sm font-bold"
+              >
+                Switch to paid seat path
+                <ArrowRight className="size-4" aria-hidden />
+              </OrangeButton>
             </div>
-            <OrangeButton
-              type="button"
-              onClick={onSwitchToPaidPath}
-              className="w-full py-3 text-sm font-bold justify-center gap-2"
-            >
-              Switch to paid seat path
-              <ArrowRight className="size-4" aria-hidden />
-            </OrangeButton>
           </div>
         ) : null}
 
-        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-1">
+        {/* Footer — the entrance path is the default; paid seat above is optional */}
+        <div
+          className={cn(
+            "flex flex-col-reverse gap-2 border-t border-stone-100 pt-4",
+            "sm:flex-row sm:items-center sm:justify-end",
+          )}
+        >
           <WhiteButton type="button" glow={false} onClick={onClose}>
             Back to form
           </WhiteButton>
           <OrangeButton
             type="button"
             onClick={onConfirmEntrancePath}
-            className="w-full sm:w-auto py-3 font-bold"
+            className="w-full justify-center gap-1.5 py-3 font-bold sm:w-auto"
           >
-            Continue Registeration
+            Continue registration
+            <ArrowRight className="size-4" aria-hidden />
           </OrangeButton>
         </div>
       </div>

@@ -714,7 +714,9 @@ const EnrollForm = ({ preview }: { preview: InternshipEnrollPreview }) => {
       // tells them whether to retry / contact support vs. fix a field. Field
       // validation is handled separately by onFormInvalid (amber warning).
       const axiosErr = error as {
-        response?: { data?: { error?: { message?: string }; message?: string } };
+        response?: {
+          data?: { error?: { message?: string }; message?: string };
+        };
         request?: unknown;
       };
       if (axiosErr.response) {
@@ -985,7 +987,7 @@ const EnrollForm = ({ preview }: { preview: InternshipEnrollPreview }) => {
                         )}
                       </p>
                       <p className="mt-2 text-sm text-stone-600 leading-relaxed">
-                        Charged once you continue — Paytm on the next screen.
+                        Charged once you continue, Paytm on the next screen.
                       </p>
                     </div>
                   )}

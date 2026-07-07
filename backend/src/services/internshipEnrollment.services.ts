@@ -938,11 +938,10 @@ export async function switchInternshipBatch(
   if (!targetBatch.entranceExamTemplateId) {
     throw new AppError("That cohort does not have an entrance exam", 400);
   }
-  if (!isBatchSwitchWindowOpen(targetBatch.internshipStartDate)) {
-    throw new AppError(
-      "The window to join that cohort has closed",
-      400,
-    );
+  // A cohort can only be joined while its applications are open — a past cohort
+  // whose apply-by date has passed is not eligible even if it hasn't started.
+  if (!isApplicationWindowOpenIst(targetBatch.applicationLastDate)) {
+    throw new AppError("Applications for that cohort have closed", 400);
   }
 
   const clash = await InternshipEnrollmentModel.findOne({

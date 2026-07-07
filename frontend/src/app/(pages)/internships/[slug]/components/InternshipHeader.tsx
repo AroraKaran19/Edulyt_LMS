@@ -3,6 +3,7 @@ import "quill/dist/quill.core.css";
 import { Internship, InternshipEnrollmentListRow } from "@/types";
 import Image from "next/image";
 import {
+  ArrowLeftRight,
   Check,
   DownloadIcon,
   Facebook,
@@ -30,7 +31,12 @@ import { toast } from "react-toastify";
 import apiClient from "@/configs/apiConfig";
 import { ENDPOINTS } from "@/constants/endpoints";
 import ApplyPathModal from "./ApplyPathModal";
+import SwitchBatchModal from "@/app/(pages)/dashboard/internships/components/SwitchBatchModal";
 import { getUpcomingBatch } from "@/lib/utils/internshipCohortDate";
+
+/** Learner may move a pre-exam registration to another cohort within 15 days
+ *  of their batch's start (mirrors the server BATCH_SWITCH_GRACE_DAYS window). */
+const SWITCH_GRACE_MS = 15 * 24 * 60 * 60 * 1000;
 
 /** Same internship as this page (by id or slug snapshot). */
 function enrollmentMatchesInternship(
@@ -119,7 +125,7 @@ function applyHintForEnrollment(
     return {
       kind: "replace",
       label: "Already registered",
-      href: s === "exam_registered" ? `${dashHome}/pending` : dashHome,
+      href: dashHome,
     };
   }
   return { kind: "apply" };
@@ -129,6 +135,7 @@ const InternshipHeader = ({ internship }: { internship: Internship }) => {
   const heroLines =
     internship.headerList?.map((s) => s?.trim()).filter(Boolean) ?? [];
   const [applyModalOpen, setApplyModalOpen] = useState(false);
+  const [switchModalOpen, setSwitchModalOpen] = useState(false);
   const [resumePayLoading, setResumePayLoading] = useState(false);
   const { status: sessionStatus } = useSession();
   const router = useRouter();
@@ -171,6 +178,17 @@ const InternshipHeader = ({ internship }: { internship: Internship }) => {
       ),
     [myEnrollment, internship.slug],
   );
+
+  // Show "Register for another cohort" only for a pre-exam registration still
+  // inside its switch window. The server re-validates on submit.
+  const canSwitchBatch = useMemo(() => {
+    if (myEnrollment?.status !== "exam_registered") return false;
+    const start = myEnrollment.batchSnapshot?.internshipStartDate;
+    if (!start) return false;
+    const t = new Date(start).getTime();
+    if (Number.isNaN(t)) return false;
+    return Date.now() <= t + SWITCH_GRACE_MS;
+  }, [myEnrollment]);
 
   const upcomingBatch = useMemo(
     () => getUpcomingBatch(internship.batches ?? []),
@@ -609,6 +627,16 @@ const InternshipHeader = ({ internship }: { internship: Internship }) => {
                             : "Apply Now"}
                 </OrangeButton>
               </div>
+              {canSwitchBatch && (
+                <button
+                  type="button"
+                  onClick={() => setSwitchModalOpen(true)}
+                  className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-orange-200 bg-white px-4 py-2.5 text-sm font-semibold text-orange-700 transition-colors hover:bg-orange-50"
+                >
+                  <ArrowLeftRight className="size-4" />
+                  Register for another cohort
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -617,6 +645,14 @@ const InternshipHeader = ({ internship }: { internship: Internship }) => {
         isOpen={applyModalOpen}
         onClose={() => setApplyModalOpen(false)}
         internshipSlug={internship.slug}
+      />
+      <SwitchBatchModal
+        isOpen={switchModalOpen}
+        onClose={() => setSwitchModalOpen(false)}
+        enrollmentId={myEnrollment?._id ?? ""}
+        internshipSlug={internship.slug}
+        currentBatchId={myEnrollment?.batchSnapshot?.batchId}
+        onSwitched={() => window.location.reload()}
       />
     </div>
   );

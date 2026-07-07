@@ -39,6 +39,9 @@ type SearchHit = {
 const DashboardNavbar = () => {
   const pathname = usePathname();
   const router = useRouter();
+  // Account pages (profile / settings) use a minimal header — no course search
+  // or dashboard tabs, which don't belong in the account section.
+  const isAccountRoute = pathname === "/profile" || pathname === "/settings";
   const { stats, isLoading } = useUserStats();
   const [navSearch, setNavSearch] = useState("");
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -214,7 +217,7 @@ const DashboardNavbar = () => {
             draggable={false}
           />
         </Link>
-        {pathname !== "/profile" && (
+        {!isAccountRoute && (
           <div
             className="hidden lg:flex max-w-[350px] w-full min-w-0 flex-1 items-start mt-2"
             ref={searchContainerRef}
@@ -291,7 +294,7 @@ const DashboardNavbar = () => {
           <UserMenu />
         </div>
       </div>
-      {pathname !== "/profile" && (
+      {!isAccountRoute && (
         <div className="w-full py-4.25 px-4 lg:px-20 shadow-[0_2px_0_rgba(0,0,0,0.1)]">
           <nav className="w-full flex items-center gap-4 overflow-x-auto">
             {navItems.map((item, index) => (

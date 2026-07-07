@@ -12,7 +12,7 @@ const sections = [
     },
     {
         title: "Stay relevant",
-        body: "Pick the tag that best matches your story (Career Switch, Interviews, Projects, Campus Placements, Freshers, On Job, Internships, Articles). Off-topic posts will be moved or removed.",
+        body: "Pick the tag that best matches your story (Career Switch, Interviews, Projects, Campus Placements, Freshers, Experience (10+ years), Internships, Articles). Off-topic posts will be moved or removed.",
     },
     {
         title: "No promotions or spam",

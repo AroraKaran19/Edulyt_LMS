@@ -1,9 +1,9 @@
 "use client";
 
 import React from "react";
-import { Linkedin } from "lucide-react";
 import Image from "next/image";
 import useAuth from "@/hooks/useAuth";
+import { LinkedinIcon } from "@/components/ui/LinkedinIcon";
 import type { Student } from "@/types";
 
 const ProfileCard = () => {
@@ -39,10 +39,13 @@ const ProfileCard = () => {
     const collegeName = student?.collegeName;
     const currentPosition = student?.currentPosition;
     const currentCompany = student?.currentCompany;
-    const linkedinUrl =
-        student?.accounts?.linkedin?.providerAccountId
-            ? `linkedin.com/in/${student.accounts.linkedin.providerAccountId}`
-            : undefined;
+    const linkedinUrl = student?.linkedinUrl?.trim();
+    const linkedinConnected = Boolean(linkedinUrl);
+    const linkedinHref = linkedinUrl
+        ? linkedinUrl.startsWith("http")
+            ? linkedinUrl
+            : `https://${linkedinUrl}`
+        : undefined;
 
     return (
         <div className="bg-white rounded-3xl p-6 shadow-[0_4px_20px_rgba(0,0,0,0,05)] border border-gray-100 mb-6">
@@ -83,19 +86,32 @@ const ProfileCard = () => {
                         </p>
                     )}
 
-                    {linkedinUrl && (
-                        <a
-                            href={`https://${linkedinUrl}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 mt-3 text-[10px] text-gray-500 hover:text-blue-600 transition-colors"
-                        >
-                            <div className="bg-[#0077b5] p-1 rounded-sm">
-                                <Linkedin className="w-2.5 h-2.5 text-white fill-white" />
-                            </div>
-                            <span>{linkedinUrl}</span>
-                        </a>
-                    )}
+                    <div className="mt-2.5">
+                        {linkedinConnected ? (
+                            <a
+                                href={linkedinHref}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title="View LinkedIn profile"
+                                className="inline-flex items-center gap-1.5 text-[#0A66C2] transition-opacity hover:opacity-80"
+                            >
+                                <LinkedinIcon className="w-5 h-5" />
+                                <span className="text-xs font-semibold">
+                                    LinkedIn
+                                </span>
+                            </a>
+                        ) : (
+                            <span
+                                title="Add your LinkedIn URL in profile settings"
+                                className="inline-flex items-center gap-1.5 text-gray-300"
+                            >
+                                <LinkedinIcon className="w-5 h-5" />
+                                <span className="text-xs font-medium">
+                                    Not linked
+                                </span>
+                            </span>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>

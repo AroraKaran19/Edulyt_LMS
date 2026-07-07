@@ -7,17 +7,8 @@ import apiClient from "@/configs/apiConfig";
 import { ENDPOINTS } from "@/constants/endpoints";
 import Modal from "@/components/ui/Modal";
 import { cn } from "@/lib/utils";
+import { isApplicationWindowOpenIst } from "@/lib/applicationWindow";
 import type { Internship, InternshipBatches } from "@/types";
-
-/** Learner-side mirror of the server's BATCH_SWITCH_GRACE_DAYS window. */
-const SWITCH_GRACE_MS = 15 * 24 * 60 * 60 * 1000;
-
-function withinSwitchWindow(start: Date | string | undefined): boolean {
-  if (!start) return false;
-  const t = new Date(start).getTime();
-  if (Number.isNaN(t)) return false;
-  return Date.now() <= t + SWITCH_GRACE_MS;
-}
 
 function formatDate(d: Date | string | undefined): string {
   if (!d) return "—";
@@ -81,8 +72,9 @@ export default function SwitchBatchModal({
     void load();
   }, [isOpen, load]);
 
-  // Eligible = a different, active, entrance-exam cohort still inside its
-  // start+15 window. The server re-validates all of this on submit.
+  // Eligible = a different, active, entrance-exam cohort whose application
+  // window is still open (a past cohort whose apply-by date has passed can't be
+  // joined even if it hasn't started). The server re-validates on submit.
   const options = useMemo(
     () =>
       batches.filter(
@@ -91,7 +83,9 @@ export default function SwitchBatchModal({
           String(b._id) !== String(currentBatchId) &&
           b.isActive &&
           Boolean(b.entranceExamTemplateId) &&
-          withinSwitchWindow(b.internshipStartDate),
+          isApplicationWindowOpenIst(
+            b.applicationLastDate as unknown as string,
+          ),
       ),
     [batches, currentBatchId],
   );
