@@ -1,4 +1,5 @@
 import {
+  AppError,
   asyncHandler,
   sendSuccessResponse,
 } from "../middlewares/error.middleware";
@@ -13,13 +14,20 @@ import {
 
 /**
  * @route   GET /api/admin/staff/admins
- * @desc    List all admin (and super-admin) accounts
+ * @desc    List all admin (and super-admin) accounts, paginated
  * @access  Super-admin
+ * @query   page, limit
  */
 export const listAdminsController = asyncHandler(
-  async (_req: Request, res: Response) => {
-    const admins = await listAdminsService();
-    sendSuccessResponse(res, admins, "Admins fetched successfully", 200);
+  async (req: Request, res: Response) => {
+    const { page = 1, limit = 10 } = req.query;
+
+    if (Number(page) < 1 || Number(limit) < 1) {
+      throw new AppError("Page and limit must be positive numbers", 400);
+    }
+
+    const result = await listAdminsService(Number(page), Number(limit));
+    sendSuccessResponse(res, result, "Admins fetched successfully", 200);
   },
 );
 

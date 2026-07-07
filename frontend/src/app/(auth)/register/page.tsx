@@ -181,11 +181,13 @@ const RegisterPage = () => {
         toast.error("First name is required");
         return;
       }
+      
+      const normalizedEmail = email.trim().toLowerCase();
 
       // First, try to register with the backend
       try {
         const response = await apiClient.post("/auth/register", {
-          email,
+          email: normalizedEmail,
           firstName: firstName.trim(),
           lastName: lastName?.trim() || "",
           password,
@@ -199,7 +201,7 @@ const RegisterPage = () => {
 
           // If registration succeeds, proceed with NextAuth signIn
           const result = await signIn("credentials", {
-            email,
+            email: normalizedEmail,
             password,
             redirect: false, // Don't redirect automatically
             callbackUrl: callbackUrl || "/dashboard",

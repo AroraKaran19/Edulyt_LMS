@@ -7,6 +7,7 @@ import { KeyRound, ShieldCheck, Pencil, Trash2, X, UserPlus } from "lucide-react
 import { fetcher } from "@/lib/utils";
 import apiClient from "@/configs/apiConfig";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
+import Pagination from "@/components/admin/Pagination";
 import { ADMIN_PERMISSION_CATALOG } from "@/config/adminPermissions";
 import PermissionPicker from "./components/PermissionPicker";
 import AddAdminModal from "./components/AddAdminModal";
@@ -21,6 +22,7 @@ interface AdminUser {
 }
 
 const ADMINS_KEY = "/admin/staff/admins";
+const PAGE_LIMIT = 10;
 
 /** Human-readable chips for a permission-key list. */
 const describePermissions = (keys: string[] = []): string[] => {
@@ -54,10 +56,16 @@ const fullName = (u: AdminUser) =>
   `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim() || "—";
 
 const AdminAccessPage = () => {
-  const { data, isLoading, mutate } = useSWR(ADMINS_KEY, fetcher, {
-    revalidateOnFocus: false,
-  });
-  const admins: AdminUser[] = data?.data?.data ?? [];
+  const [page, setPage] = useState(1);
+  const { data, isLoading, mutate } = useSWR(
+    `${ADMINS_KEY}?page=${page}&limit=${PAGE_LIMIT}`,
+    fetcher,
+    { revalidateOnFocus: false, keepPreviousData: true },
+  );
+  const payload = data?.data?.data;
+  const admins: AdminUser[] = payload?.admins ?? [];
+  const total: number = payload?.total ?? 0;
+  const totalPages: number = payload?.totalPages ?? 1;
 
   const [editing, setEditing] = useState<AdminUser | null>(null);
   const [revoking, setRevoking] = useState<AdminUser | null>(null);
@@ -86,8 +94,7 @@ const AdminAccessPage = () => {
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         <div className="px-4 sm:px-6 py-4 border-b border-gray-200 flex items-center justify-between gap-3">
           <h2 className="text-lg font-bold text-gray-900">
-            Admins{" "}
-            <span className="text-gray-400 font-medium">({admins.length})</span>
+            Admins <span className="text-gray-400 font-medium">({total})</span>
           </h2>
           <OrangeButton
             glow={false}
@@ -226,6 +233,18 @@ const AdminAccessPage = () => {
             </tbody>
           </table>
         </div>
+
+        {totalPages > 1 && (
+          <div className="px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-t border-gray-200 sm:px-6">
+            <p className="text-sm text-gray-700">{total} total</p>
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              onPageChange={setPage}
+              disabled={isLoading}
+            />
+          </div>
+        )}
       </div>
 
       {adding && (

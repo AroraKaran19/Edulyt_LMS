@@ -33,12 +33,31 @@ const normalizeEmail = (email?: string): string => {
   return normalized;
 };
 
-/** List all admins and super-admins (super-admins shown read-only on the UI). */
-export const listAdminsService = async () => {
-  return UserModel.find({ userType: { $in: ["admin", "super-admin"] } })
-    .select(SAFE_PROJECTION)
-    .sort({ userType: 1, createdAt: -1 })
-    .lean();
+/**
+ * List all admins and super-admins, paginated (super-admins shown read-only on
+ * the UI). Runs the page query and the total count in parallel; the count is a
+ * plain countDocuments so it stays cheap regardless of page size.
+ */
+export const listAdminsService = async (page: number, limit: number) => {
+  const skip = (page - 1) * limit;
+  const filter = { userType: { $in: ["admin", "super-admin"] } };
+
+  const [admins, total] = await Promise.all([
+    UserModel.find(filter)
+      .select(SAFE_PROJECTION)
+      .sort({ userType: 1, createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean(),
+    UserModel.countDocuments(filter),
+  ]);
+
+  return {
+    admins,
+    total,
+    totalPages: Math.ceil(total / limit),
+    page,
+  };
 };
 
 export interface CreateAdminInput {
