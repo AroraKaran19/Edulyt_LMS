@@ -596,7 +596,7 @@ export default function DashboardInternshipCard({ row, onWithdrawn }: Props) {
                       {certReminder.phase === "upcoming" ? (
                         <>
                           Your certification window starts in two days or less
-                          (UTC). Schedule:{" "}
+                          (IST). Schedule:{" "}
                           <span className="font-mono text-violet-900">
                             {formatCertExamIstRange(
                               certReminder.examStartAt,

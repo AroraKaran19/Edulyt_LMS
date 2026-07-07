@@ -162,7 +162,7 @@ function DashboardInternshipsContent() {
                 : `${certificationReminderCountOnPage} programs`}
             </span>{" "}
             {certificationReminderCountOnPage === 1 ? "has" : "have"} a
-            certification exam in the next two days or it is open now (UTC). See
+            certification exam in the next two days or it is open now (IST). See
             the violet notice on each card and open the program to take the exam.
           </p>
         </div>
