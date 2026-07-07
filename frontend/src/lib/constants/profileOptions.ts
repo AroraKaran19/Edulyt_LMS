@@ -118,3 +118,205 @@ export const EXPERIENCE_LEVELS: ProfileOption[] = [
     label: "Working Professional - Non Tech Domain",
   },
 ];
+
+/** Father's occupation categories. Ends with "Other" → free-text fallback.
+ *  Shared by the checkout flow (CartForm) and the profile page. */
+export const FATHER_OCCUPATION_OPTIONS: ProfileOption[] = [
+  {
+    value: "Professional",
+    label: "Professional (Doctors, Engineers, Teachers, Lawyers, Accountants)",
+  },
+  { value: "Managerial/Executive", label: "Managerial/Executive" },
+  {
+    value: "Skilled Worker/Technician",
+    label: "Skilled Worker/Technician (Electricians, Mechanics, Technicians)",
+  },
+  {
+    value: "Service Worker",
+    label: "Service Worker (Sales, Food Service, Protective Services)",
+  },
+  { value: "Agriculture/Farming", label: "Agriculture/Farming" },
+  { value: "Homemaker", label: "Homemaker" },
+  { value: "Unemployed/Retired", label: "Unemployed/Retired" },
+  { value: "Other", label: "Other/Not Specified" },
+];
+
+/** Indian states and union territories. Ends with "Other" → free-text
+ *  fallback so users outside this list can still type their state. */
+export const STATE_OPTIONS: ProfileOption[] = [
+  { value: "Andhra Pradesh", label: "Andhra Pradesh" },
+  { value: "Arunachal Pradesh", label: "Arunachal Pradesh" },
+  { value: "Assam", label: "Assam" },
+  { value: "Bihar", label: "Bihar" },
+  { value: "Chhattisgarh", label: "Chhattisgarh" },
+  { value: "Goa", label: "Goa" },
+  { value: "Gujarat", label: "Gujarat" },
+  { value: "Haryana", label: "Haryana" },
+  { value: "Himachal Pradesh", label: "Himachal Pradesh" },
+  { value: "Jharkhand", label: "Jharkhand" },
+  { value: "Karnataka", label: "Karnataka" },
+  { value: "Kerala", label: "Kerala" },
+  { value: "Madhya Pradesh", label: "Madhya Pradesh" },
+  { value: "Maharashtra", label: "Maharashtra" },
+  { value: "Manipur", label: "Manipur" },
+  { value: "Meghalaya", label: "Meghalaya" },
+  { value: "Mizoram", label: "Mizoram" },
+  { value: "Nagaland", label: "Nagaland" },
+  { value: "Odisha", label: "Odisha" },
+  { value: "Punjab", label: "Punjab" },
+  { value: "Rajasthan", label: "Rajasthan" },
+  { value: "Sikkim", label: "Sikkim" },
+  { value: "Tamil Nadu", label: "Tamil Nadu" },
+  { value: "Telangana", label: "Telangana" },
+  { value: "Tripura", label: "Tripura" },
+  { value: "Uttar Pradesh", label: "Uttar Pradesh" },
+  { value: "Uttarakhand", label: "Uttarakhand" },
+  { value: "West Bengal", label: "West Bengal" },
+  { value: "Andaman and Nicobar Islands", label: "Andaman and Nicobar Islands" },
+  { value: "Chandigarh", label: "Chandigarh" },
+  {
+    value: "Dadra and Nagar Haveli and Daman and Diu",
+    label: "Dadra and Nagar Haveli and Daman and Diu",
+  },
+  {
+    value: "Delhi (National Capital Territory)",
+    label: "Delhi (National Capital Territory)",
+  },
+  { value: "Jammu and Kashmir", label: "Jammu and Kashmir" },
+  { value: "Ladakh", label: "Ladakh" },
+  { value: "Lakshadweep", label: "Lakshadweep" },
+  { value: "Puducherry", label: "Puducherry" },
+  { value: "Other", label: "Other" },
+];
+
+/** Student areas of interest (analytics/AI tracks). Ends with "Other" →
+ *  free-text fallback so users can enter their own. */
+export const AREA_OF_INTEREST_OPTIONS: ProfileOption[] = [
+  {
+    value: "Basic Analytics Skill",
+    label: "Basic Analytics Skill - Excel, SQL, Python",
+  },
+  {
+    value: "Analysis & Visualization",
+    label:
+      "Analysis & Visualization – Data exploration, dashboards, reporting (Excel, Tableau, Power BI)",
+  },
+  {
+    value: "Programming & Databases",
+    label: "Programming & Databases – Python, R, SQL, database management",
+  },
+  {
+    value: "Machine Learning & AI",
+    label:
+      "Machine Learning & AI – Supervised & unsupervised learning, predictive modeling",
+  },
+  {
+    value: "Deep Learning & NLP",
+    label:
+      "Deep Learning & NLP – Neural networks, computer vision, natural language processing",
+  },
+  {
+    value: "Big Data & Cloud Analytics",
+    label: "Big Data & Cloud Analytics – Hadoop, Spark, AWS, Azure, GCP",
+  },
+  {
+    value: "Business & Financial Analytics",
+    label:
+      "Business & Financial Analytics – Marketing, HR, finance, retail analytics",
+  },
+  {
+    value: "Operations & Supply Chain Analytics",
+    label:
+      "Operations & Supply Chain Analytics – Process optimization, logistics, operations data",
+  },
+  {
+    value: "Data Engineering",
+    label: "Data Engineering – ETL pipelines, data warehousing, data modeling",
+  },
+  {
+    value: "AI Ethics & Responsible AI",
+    label: "AI Ethics & Responsible AI – Fairness, bias mitigation, AI governance",
+  },
+  {
+    value: "Automation & RPA",
+    label: "Automation & RPA – Workflow automation, AI-powered automation tools",
+  },
+  {
+    value: "Career & Skill Development",
+    label:
+      "Career & Skill Development – Data scientist, ML engineer, analytics consultant roles",
+  },
+  {
+    value: "Emerging Technologies & Trends",
+    label:
+      "Emerging Technologies & Trends – IoT analytics, edge AI, advanced predictive modeling",
+  },
+  { value: "Other", label: "Other" },
+];
+
+/** Working-professional domains/industries. Ends with "Other" → free-text
+ *  fallback so users can enter their own. Shown on the profile page only when
+ *  the experience level is a Working Professional variant. */
+export const DOMAIN_OPTIONS: ProfileOption[] = [
+  {
+    value: "Analytics / Data Science",
+    label:
+      "Analytics / Data Science – General analytics, business intelligence, predictive modeling",
+  },
+  {
+    value: "Consulting",
+    label:
+      "Consulting – Management consulting, strategy, operations, analytics consulting",
+  },
+  {
+    value: "Banking & Finance",
+    label:
+      "Banking & Finance – Investment banking, retail banking, FinTech, risk analytics",
+  },
+  {
+    value: "Pharmaceuticals / Healthcare",
+    label:
+      "Pharmaceuticals / Healthcare – Drug development, clinical analytics, hospital/healthcare analytics",
+  },
+  {
+    value: "Retail & E-commerce",
+    label:
+      "Retail & E-commerce – Customer analytics, inventory optimization, sales forecasting",
+  },
+  {
+    value: "Telecom / IT",
+    label:
+      "Telecom / IT – Network analytics, IT operations, software & services analytics",
+  },
+  {
+    value: "FMCG / Consumer Goods",
+    label:
+      "FMCG / Consumer Goods – Market analytics, consumer behavior, supply chain analytics",
+  },
+  {
+    value: "Manufacturing & Operations",
+    label:
+      "Manufacturing & Operations – Production analytics, quality control, process optimization",
+  },
+  {
+    value: "Energy & Utilities",
+    label:
+      "Energy & Utilities – Smart grid, resource analytics, renewable energy analytics",
+  },
+  {
+    value: "Education / EdTech",
+    label:
+      "Education / EdTech – Learning analytics, student performance, course recommendation",
+  },
+  {
+    value: "Logistics & Supply Chain",
+    label:
+      "Logistics & Supply Chain – Transportation optimization, warehouse analytics, demand forecasting",
+  },
+  {
+    value: "Government / Public Policy",
+    label:
+      "Government / Public Policy – Policy analytics, census data, urban planning analytics",
+  },
+  { value: "Other", label: "Other" },
+];

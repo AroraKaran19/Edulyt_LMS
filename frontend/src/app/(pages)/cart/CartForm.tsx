@@ -26,27 +26,10 @@ import Modal from "@/components/ui/Modal";
 import { User as UserIcon, Tag, X, Check } from "lucide-react";
 import { useCoupon } from "@/hooks/useCoupon";
 import useReferral from "@/hooks/useReferral";
-import { DEGREE_OPTIONS } from "@/lib/constants/profileOptions";
-
-const FATHER_OCCUPATION_OPTIONS = [
-  {
-    value: "Professional",
-    label: "Professional (Doctors, Engineers, Teachers, Lawyers, Accountants)",
-  },
-  { value: "Managerial/Executive", label: "Managerial/Executive" },
-  {
-    value: "Skilled Worker/Technician",
-    label: "Skilled Worker/Technician (Electricians, Mechanics, Technicians)",
-  },
-  {
-    value: "Service Worker",
-    label: "Service Worker (Sales, Food Service, Protective Services)",
-  },
-  { value: "Agriculture/Farming", label: "Agriculture/Farming" },
-  { value: "Homemaker", label: "Homemaker" },
-  { value: "Unemployed/Retired", label: "Unemployed/Retired" },
-  { value: "Other", label: "Other/Not Specified" },
-];
+import {
+  DEGREE_OPTIONS,
+  FATHER_OCCUPATION_OPTIONS,
+} from "@/lib/constants/profileOptions";
 
 interface EnrollmentFormData {
   name: string;

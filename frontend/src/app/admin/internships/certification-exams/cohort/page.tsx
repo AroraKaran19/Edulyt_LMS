@@ -23,7 +23,7 @@ import type { InternshipEnrollmentListRow } from "@/types";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import Pagination from "@/components/admin/Pagination";
 import Input from "@/components/ui/inputs/Input";
-import EntranceExamSubmissionModal from "../../entrance-exams/components/EntranceExamSubmissionModal";
+import SubmissionDetailModal from "../../components/SubmissionDetailModal";
 
 function formatDate(iso?: string) {
   if (!iso) return "—";
@@ -319,7 +319,7 @@ function CohortContent() {
         </div>
       </div>
 
-      <EntranceExamSubmissionModal
+      <SubmissionDetailModal
         isOpen={!!submissionId}
         submissionId={submissionId}
         onClose={() => setSubmissionId(null)}

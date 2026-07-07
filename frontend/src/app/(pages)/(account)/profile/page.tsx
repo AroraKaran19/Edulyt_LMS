@@ -37,6 +37,10 @@ import {
 import {
   DEGREE_OPTIONS,
   EXPERIENCE_LEVELS,
+  FATHER_OCCUPATION_OPTIONS,
+  STATE_OPTIONS,
+  AREA_OF_INTEREST_OPTIONS,
+  DOMAIN_OPTIONS,
 } from "@/lib/constants/profileOptions";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
@@ -360,6 +364,25 @@ const ProfilePage = () => {
       });
     }
   };
+
+  // State dropdown selection. "Other" reveals a free-text field; a stored
+  // value that isn't a preset opens as "Other" with the text prefilled.
+  const [selectedState, setSelectedState] = useState<string>(() => {
+    const state = formData.address?.state || "";
+    if (!state) return "";
+    return STATE_OPTIONS.some((o) => o.value === state) ? state : "Other";
+  });
+
+  useEffect(() => {
+    const state = formData.address?.state || "";
+    if (!state) {
+      setSelectedState("");
+      return;
+    }
+    setSelectedState(
+      STATE_OPTIONS.some((o) => o.value === state) ? state : "Other",
+    );
+  }, [formData.address?.state]);
 
   const handleExperienceChange = (
     index: number,
@@ -1803,12 +1826,35 @@ const ProfilePage = () => {
                   value={formData.address?.city || ""}
                   onChange={(e) => handleAddressChange("city", e.target.value)}
                 />
-                <Input
-                  label="State"
-                  placeholder="Enter your state"
-                  value={formData.address?.state || ""}
-                  onChange={(e) => handleAddressChange("state", e.target.value)}
-                />
+                <div className="flex flex-col gap-2">
+                  <Select
+                    label="State"
+                    placeholder="Select your state"
+                    options={STATE_OPTIONS}
+                    searchable
+                    searchPlaceholder="Search states..."
+                    value={selectedState}
+                    onChange={(value) => {
+                      setSelectedState(value);
+                      // Preset value flows to address.state; "Other" clears it
+                      // so the free-text field below becomes the source.
+                      handleAddressChange(
+                        "state",
+                        value !== "Other" ? value : "",
+                      );
+                    }}
+                  />
+                  {selectedState === "Other" && (
+                    <Input
+                      label="Specify State"
+                      placeholder="Enter your state"
+                      value={formData.address?.state || ""}
+                      onChange={(e) =>
+                        handleAddressChange("state", e.target.value)
+                      }
+                    />
+                  )}
+                </div>
                 <Input
                   label="Country"
                   placeholder="Enter your country"
@@ -2398,6 +2444,68 @@ const StudentFields = ({
     );
   }, [formData.degreeName]);
 
+  // Father's occupation dropdown selection. Same "Other" free-text pattern.
+  const [selectedFatherOccupation, setSelectedFatherOccupation] =
+    useState<string>(() => {
+      const occupation = formData.fatherOccupation || "";
+      if (!occupation) return "";
+      return FATHER_OCCUPATION_OPTIONS.some((o) => o.value === occupation)
+        ? occupation
+        : "Other";
+    });
+
+  useEffect(() => {
+    const occupation = formData.fatherOccupation || "";
+    if (!occupation) {
+      setSelectedFatherOccupation("");
+      return;
+    }
+    setSelectedFatherOccupation(
+      FATHER_OCCUPATION_OPTIONS.some((o) => o.value === occupation)
+        ? occupation
+        : "Other",
+    );
+  }, [formData.fatherOccupation]);
+
+  // Area of interest dropdown selection. Same "Other" free-text pattern.
+  const [selectedAreaOfInterest, setSelectedAreaOfInterest] =
+    useState<string>(() => {
+      const area = formData.areaOfInterest || "";
+      if (!area) return "";
+      return AREA_OF_INTEREST_OPTIONS.some((o) => o.value === area)
+        ? area
+        : "Other";
+    });
+
+  useEffect(() => {
+    const area = formData.areaOfInterest || "";
+    if (!area) {
+      setSelectedAreaOfInterest("");
+      return;
+    }
+    setSelectedAreaOfInterest(
+      AREA_OF_INTEREST_OPTIONS.some((o) => o.value === area) ? area : "Other",
+    );
+  }, [formData.areaOfInterest]);
+
+  // Domain dropdown selection (working professionals). Same "Other" pattern.
+  const [selectedDomain, setSelectedDomain] = useState<string>(() => {
+    const domain = formData.domain || "";
+    if (!domain) return "";
+    return DOMAIN_OPTIONS.some((o) => o.value === domain) ? domain : "Other";
+  });
+
+  useEffect(() => {
+    const domain = formData.domain || "";
+    if (!domain) {
+      setSelectedDomain("");
+      return;
+    }
+    setSelectedDomain(
+      DOMAIN_OPTIONS.some((o) => o.value === domain) ? domain : "Other",
+    );
+  }, [formData.domain]);
+
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 15 }, (_, i) => ({
     value: (currentYear - 10 + i).toString(),
@@ -2472,20 +2580,64 @@ const StudentFields = ({
           value={formData.experienceLevel || ""}
           onChange={(value) => handleInputChange("experienceLevel", value)}
         />
-        <Input
-          label="Father's Occupation"
-          placeholder="Enter father's occupation"
-          value={formData.fatherOccupation || ""}
-          onChange={(e) =>
-            handleInputChange("fatherOccupation", e.target.value)
-          }
-        />
-        <Input
-          label="Area of Interest"
-          placeholder="Enter your area of interest"
-          value={formData.areaOfInterest || ""}
-          onChange={(e) => handleInputChange("areaOfInterest", e.target.value)}
-        />
+        <div className="flex flex-col gap-2">
+          <Select
+            label="Father's Occupation"
+            placeholder="Select father's occupation"
+            options={FATHER_OCCUPATION_OPTIONS}
+            searchable
+            searchPlaceholder="Search occupations..."
+            value={selectedFatherOccupation}
+            onChange={(value) => {
+              setSelectedFatherOccupation(value);
+              // Preset value flows to fatherOccupation; "Other" clears it so
+              // the free-text field below becomes the source.
+              handleInputChange(
+                "fatherOccupation",
+                value !== "Other" ? value : "",
+              );
+            }}
+          />
+          {selectedFatherOccupation === "Other" && (
+            <Input
+              label="Specify Occupation"
+              placeholder="Enter father's occupation"
+              value={formData.fatherOccupation || ""}
+              onChange={(e) =>
+                handleInputChange("fatherOccupation", e.target.value)
+              }
+            />
+          )}
+        </div>
+        <div className="flex flex-col gap-2">
+          <Select
+            label="Area of Interest"
+            placeholder="Select your area of interest"
+            options={AREA_OF_INTEREST_OPTIONS}
+            searchable
+            searchPlaceholder="Search areas of interest..."
+            value={selectedAreaOfInterest}
+            onChange={(value) => {
+              setSelectedAreaOfInterest(value);
+              // Preset value flows to areaOfInterest; "Other" clears it so the
+              // free-text field below becomes the source.
+              handleInputChange(
+                "areaOfInterest",
+                value !== "Other" ? value : "",
+              );
+            }}
+          />
+          {selectedAreaOfInterest === "Other" && (
+            <Input
+              label="Specify Area of Interest"
+              placeholder="Enter your area of interest"
+              value={formData.areaOfInterest || ""}
+              onChange={(e) =>
+                handleInputChange("areaOfInterest", e.target.value)
+              }
+            />
+          )}
+        </div>
         {/* Show working professional fields only when experience level is Working Professional */}
         {(formData.experienceLevel === "Working Professional - Tech Domain" ||
           formData.experienceLevel ===
@@ -2507,12 +2659,30 @@ const StudentFields = ({
                 handleInputChange("currentCompany", e.target.value)
               }
             />
-            <Input
-              label="Domain"
-              placeholder="Enter your domain/field"
-              value={formData.domain || ""}
-              onChange={(e) => handleInputChange("domain", e.target.value)}
-            />
+            <div className="flex flex-col gap-2">
+              <Select
+                label="Domain"
+                placeholder="Select your domain/field"
+                options={DOMAIN_OPTIONS}
+                searchable
+                searchPlaceholder="Search domains..."
+                value={selectedDomain}
+                onChange={(value) => {
+                  setSelectedDomain(value);
+                  // Preset value flows to domain; "Other" clears it so the
+                  // free-text field below becomes the source.
+                  handleInputChange("domain", value !== "Other" ? value : "");
+                }}
+              />
+              {selectedDomain === "Other" && (
+                <Input
+                  label="Specify Domain"
+                  placeholder="Enter your domain/field"
+                  value={formData.domain || ""}
+                  onChange={(e) => handleInputChange("domain", e.target.value)}
+                />
+              )}
+            </div>
           </>
         )}
         <Input

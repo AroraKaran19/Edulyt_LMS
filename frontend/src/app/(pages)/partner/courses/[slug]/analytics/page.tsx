@@ -14,6 +14,8 @@ import { toast } from "react-toastify";
 import PartnerCard from "@/components/ui/partner/PartnerCard";
 import PartnerStatCard from "@/components/ui/partner/PartnerStatCard";
 import Loader from "@/components/ui/Loader";
+import PartnerExportButton from "@/components/ui/partner/PartnerExportButton";
+import type { ExcelRow } from "@/lib/exportToExcel";
 import usePartner, {
   type PartnerCourseDetailResponse,
 } from "@/hooks/usePartner";
@@ -83,6 +85,14 @@ export default function PartnerCourseAnalyticsPage() {
       )
     : students;
 
+  const buildStudentRows = (): ExcelRow[] =>
+    filteredStudents.map((s) => ({
+      "Student Name": s.name,
+      Email: s.email,
+      "Completion (%)": s.completion,
+      Certificate: s.certified ? "Issued" : "Not issued",
+    }));
+
   return (
     <div className="space-y-4 p-2 py-6 sm:p-4">
       <Link
@@ -141,6 +151,12 @@ export default function PartnerCourseAnalyticsPage() {
             <span className="shrink-0 text-xs text-[#667085]">
               {filteredStudents.length} of {students.length}
             </span>
+            <PartnerExportButton
+              getRows={buildStudentRows}
+              fileName={`${course.title}-students`}
+              sheetName="Students"
+              disabled={filteredStudents.length === 0}
+            />
           </div>
         </div>
         <div className="overflow-x-auto">

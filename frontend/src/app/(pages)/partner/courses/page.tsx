@@ -21,11 +21,16 @@ import InfiniteScrollSelect, {
   type InfiniteScrollLoadResult,
 } from "@/components/ui/InfiniteScrollSelect";
 import Loader from "@/components/ui/Loader";
+import PartnerExportButton from "@/components/ui/partner/PartnerExportButton";
+import type { ExcelRow } from "@/lib/exportToExcel";
 import usePartner, {
   type PartnerAudience,
   type PartnerCoursesEnrollmentsResponse,
   type PartnerCoursesResponse,
 } from "@/hooks/usePartner";
+
+/** pageSize is capped at 100 server-side, so exports fetch in 100-row pages. */
+const EXPORT_PAGE_SIZE = 100;
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50];
 
@@ -244,6 +249,48 @@ export default function PartnerCoursesPage() {
     search || audienceFilter || categoryId || courseId,
   );
 
+  // Pull every enrollment matching the current filters (following pagination)
+  // and flatten it into export rows.
+  const buildEnrollmentRows = async (): Promise<ExcelRow[]> => {
+    const filters = {
+      q: search,
+      audience: audienceFilter,
+      categoryId: categoryId || undefined,
+      courseId: courseId || undefined,
+    };
+    const first = await getCoursesEnrollments({
+      page: 1,
+      pageSize: EXPORT_PAGE_SIZE,
+      ...filters,
+    });
+    const totalPages = Math.max(1, Math.ceil(first.total / EXPORT_PAGE_SIZE));
+    const rest =
+      totalPages > 1
+        ? await Promise.all(
+            Array.from({ length: totalPages - 1 }, (_, i) =>
+              getCoursesEnrollments({
+                page: i + 2,
+                pageSize: EXPORT_PAGE_SIZE,
+                ...filters,
+              }),
+            ),
+          )
+        : [];
+    const rows = [first, ...rest].flatMap((res) => res.items);
+    return rows.map((r) => ({
+      Student: r.studentName,
+      Email: r.email,
+      Audience: r.audiences
+        .map((a) => AUDIENCE_LABEL[a])
+        .join(", "),
+      Domain: r.domains.join(", "),
+      "Course Name": r.courseTitle,
+      "Completion (%)": r.completion,
+      Certified: r.certified ? "Yes" : "No",
+      "Certificate URL": r.certificateUrl ?? "",
+    }));
+  };
+
   if (isLoading && !data) {
     return (
       <div className="flex h-full items-center justify-center p-8">
@@ -324,9 +371,17 @@ export default function PartnerCoursesPage() {
       <PartnerCategoryPie data={categoryBreakdown} />
 
       <PartnerCard className="p-4 sm:p-5">
-        <h2 className="text-base font-semibold text-black sm:text-xl">
-          Enrollments
-        </h2>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-base font-semibold text-black sm:text-xl">
+            Enrollments
+          </h2>
+          <PartnerExportButton
+            getRows={buildEnrollmentRows}
+            fileName="course-enrollments"
+            sheetName="Enrollments"
+            disabled={total === 0}
+          />
+        </div>
 
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className="flex flex-col gap-1 text-xs font-medium text-[#344054]">

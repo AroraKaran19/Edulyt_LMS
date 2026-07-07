@@ -18,11 +18,24 @@ import { cn } from "@/lib/utils";
 import PartnerCard from "@/components/ui/partner/PartnerCard";
 import PartnerStatCard from "@/components/ui/partner/PartnerStatCard";
 import Loader from "@/components/ui/Loader";
+import PartnerExportButton from "@/components/ui/partner/PartnerExportButton";
+import type { ExcelRow } from "@/lib/exportToExcel";
 import usePartner, {
   type PartnerInternshipDetailResponse,
   type PartnerInternshipStudentRow,
   type PartnerInternshipStudentsResponse,
 } from "@/hooks/usePartner";
+
+/** pageSize is capped at 100 server-side, so exports fetch in 100-row pages. */
+const EXPORT_PAGE_SIZE = 100;
+
+/** The furthest funnel stage a student reached, as a plain label. */
+function studentStatusLabel(s: PartnerInternshipStudentRow): string {
+  if (s.certified) return "Certified";
+  if (s.selected) return "Selected";
+  if (s.appearedInExam) return "Exam Appeared";
+  return "Enrolled";
+}
 
 /** Single badge for the furthest funnel stage the student has reached. */
 function StatusBadges({ student }: { student: PartnerInternshipStudentRow }) {
@@ -220,6 +233,44 @@ export default function PartnerInternshipAnalyticsPage() {
   const rangeStart = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const rangeEnd = Math.min(total, page * pageSize);
 
+  const buildStudentRows = async (): Promise<ExcelRow[]> => {
+    const allSelected = selectedBatchIds.size === batches.length;
+    const filters = {
+      q: search,
+      status: statusFilter,
+      batchIds: allSelected ? undefined : [...selectedBatchIds],
+    };
+    const first = await getInternshipStudents(slug, {
+      page: 1,
+      pageSize: EXPORT_PAGE_SIZE,
+      ...filters,
+    });
+    const totalPages = Math.max(1, Math.ceil(first.total / EXPORT_PAGE_SIZE));
+    const rest =
+      totalPages > 1
+        ? await Promise.all(
+            Array.from({ length: totalPages - 1 }, (_, i) =>
+              getInternshipStudents(slug, {
+                page: i + 2,
+                pageSize: EXPORT_PAGE_SIZE,
+                ...filters,
+              }),
+            ),
+          )
+        : [];
+    const rows = [first, ...rest].flatMap((res) => res.items);
+    return rows.map((s) => ({
+      "Student Name": s.name,
+      Email: s.email,
+      Batch: s.batchName,
+      Status: studentStatusLabel(s),
+      "Offer Letter": s.selected ? "Received" : "Not received",
+      "Offer Letter URL": s.offerLetterUrl ?? "",
+      Certificate: s.certified ? "Issued" : "Not issued",
+      "Certificate URL": s.certificateUrl ?? "",
+    }));
+  };
+
   return (
     <div className="space-y-4 p-2 py-6 sm:p-4">
       <Link
@@ -275,23 +326,31 @@ export default function PartnerInternshipAnalyticsPage() {
               <h2 className="text-base font-semibold text-black sm:text-xl">
                 Student lists by batch
               </h2>
-              <label className="flex items-center gap-2 text-sm">
-                <span className="font-medium text-[#344054]">Status</span>
-                <select
-                  value={statusFilter}
-                  onChange={(e) => {
-                    setStatusFilter(e.target.value as StatusFilter);
-                    setPage(1);
-                  }}
-                  className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#F77124] focus:ring-2 focus:ring-[#F77124]/20"
-                >
-                  {STATUS_FILTER_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <label className="flex items-center gap-2 text-sm">
+                  <span className="font-medium text-[#344054]">Status</span>
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => {
+                      setStatusFilter(e.target.value as StatusFilter);
+                      setPage(1);
+                    }}
+                    className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#F77124] focus:ring-2 focus:ring-[#F77124]/20"
+                  >
+                    {STATUS_FILTER_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <PartnerExportButton
+                  getRows={buildStudentRows}
+                  fileName={`${internship.title}-students`}
+                  sheetName="Students"
+                  disabled={total === 0}
+                />
+              </div>
             </div>
 
             <div className="mt-4">

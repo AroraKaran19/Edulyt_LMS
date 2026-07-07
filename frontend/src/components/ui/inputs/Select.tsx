@@ -77,6 +77,10 @@ const Select = ({
   const selectedOption = options.find((option) => option.value === value);
   const displayValue = selectedOption ? selectedOption.label : placeholder;
 
+  // Fallback "Other" option, offered when a search matches nothing so users
+  // can still pick it and type their own value.
+  const otherOption = options.find((option) => option.value === "Other");
+
   // Filter options by search term (matches label or value)
   const filteredOptions = searchable && searchTerm.trim()
     ? options.filter(
@@ -169,9 +173,32 @@ const Select = ({
             )}
             <div className="max-h-60 overflow-y-auto">
             {filteredOptions.length === 0 ? (
-              <div className="p-4 text-center text-gray-500">
-                {searchTerm.trim() ? "No options found" : "No options available"}
-              </div>
+              searchTerm.trim() && otherOption ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsOpen(false);
+                    if (onChange) {
+                      onChange(otherOption.value);
+                    }
+                  }}
+                  className={cn(
+                    "w-full px-4 py-3 text-left text-sm hover:bg-orange-50",
+                    "transition-colors duration-150 ease-in-out",
+                    "rounded-xl focus:bg-orange-50 focus:outline-none",
+                    value === otherOption.value &&
+                      "bg-orange-100 text-orange-700 font-medium"
+                  )}
+                >
+                  {otherOption.label}
+                </button>
+              ) : (
+                <div className="p-4 text-center text-gray-500">
+                  {searchTerm.trim()
+                    ? "No options found"
+                    : "No options available"}
+                </div>
+              )
             ) : (
               filteredOptions.map((option) => (
               <button
