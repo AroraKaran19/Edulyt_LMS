@@ -16,6 +16,7 @@ import {
   enrollmentRoutes,
   userRoutes,
   adminRoutes,
+  adminStaffRoutes,
   uploadRoutes,
   instructorRoutes,
   reviewRoutes,
@@ -80,6 +81,7 @@ app.use("/api/qna", qnaRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/enrollments", enrollmentRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/admin/staff", adminStaffRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/instructors", instructorRoutes);

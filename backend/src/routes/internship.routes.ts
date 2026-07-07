@@ -1,6 +1,10 @@
 import { Router } from "express";
 import { verifyUser } from "../middlewares/user.middleware";
-import { verifyAdmin } from "../middlewares/admin.middleware";
+import {
+  verifyAdmin,
+  requirePermission,
+  requireSectionAccess,
+} from "../middlewares/admin.middleware";
 import {
   listInternshipsPublic,
   listFeaturedInternshipsPublic,
@@ -61,41 +65,65 @@ router.use(verifyAdmin);
  * @desc    List all internships (admin, paginated + filters)
  * @access  Admin
  */
-router.get("/admin", listInternshipsAdmin);
+router.get(
+  "/admin",
+  requireSectionAccess("internships"),
+  listInternshipsAdmin,
+);
 
 /**
  * @route   GET /api/internships/admin/id/:id
  * @desc    Get internship by ID (admin, populated)
  * @access  Admin
  */
-router.get("/admin/id/:id", getInternshipAdmin);
+router.get(
+  "/admin/id/:id",
+  requireSectionAccess("internships"),
+  getInternshipAdmin,
+);
 
 /**
  * @route   POST /api/internships/metadata
  * @desc    Create internship (metadata + batches)
  * @access  Admin
  */
-router.post("/metadata", createInternship);
+router.post(
+  "/metadata",
+  requirePermission("internships.manage"),
+  createInternship,
+);
 
 /**
  * @route   PUT /api/internships/:id/metadata
  * @desc    Update internship (metadata)
  * @access  Admin
  */
-router.put("/:id/metadata", updateInternship);
+router.put(
+  "/:id/metadata",
+  requirePermission("internships.manage"),
+  updateInternship,
+);
 
 /**
  * @route   POST /api/internships/:id/duplicate
  * @desc    Duplicate internship
  * @access  Admin
  */
-router.post("/:id/duplicate", duplicateInternship);
+router.post(
+  "/:id/duplicate",
+  requirePermission("internships.manage"),
+  duplicateInternship,
+);
 
 /**
  * @route   DELETE /api/internships/:id
  * @desc    Delete internship
  * @access  Admin
  */
-router.delete("/:id", deleteInternship);
+router.delete(
+  "/:id",
+  requirePermission("internships.manage"),
+  deleteInternship,
+);
 
 export default router;

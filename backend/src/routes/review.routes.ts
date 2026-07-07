@@ -10,7 +10,7 @@ import {
   rejectReview,
 } from "../controllers/review.controller";
 import { verifyUser } from "../middlewares/user.middleware";
-import { verifyAdmin } from "../middlewares/admin.middleware";
+import { adminGuard } from "../middlewares/admin.middleware";
 
 const router = Router();
 
@@ -76,41 +76,41 @@ router.delete("/reviews/:id", verifyUser, deleteReview);
  * @desc    Get all reviews for admin (with full data)
  * @access  Admin
  */
-router.get("/reviews/admin", verifyUser, verifyAdmin, getAllReviews);
+router.get("/reviews/admin", ...adminGuard("courses.moderation"),getAllReviews);
 
 /**
  * @route   GET /api/reviews/admin/:id
  * @desc    Get a review by ID for admin (with full data)
  * @access  Admin
  */
-router.get("/reviews/admin/:id", verifyUser, verifyAdmin, getReviewById);
+router.get("/reviews/admin/:id", ...adminGuard("courses.moderation"),getReviewById);
 
 /**
  * @route   PUT /api/reviews/admin/:id
  * @desc    Update a review (Admin can update any review)
  * @access  Admin
  */
-router.put("/reviews/admin/:id", verifyUser, verifyAdmin, updateReview);
+router.put("/reviews/admin/:id", ...adminGuard("courses.moderation"),updateReview);
 
 /**
  * @route   DELETE /api/reviews/admin/:id
  * @desc    Delete a review (Admin can delete any review)
  * @access  Admin
  */
-router.delete("/reviews/admin/:id", verifyUser, verifyAdmin, deleteReview);
+router.delete("/reviews/admin/:id", ...adminGuard("courses.moderation"),deleteReview);
 
 /**
  * @route   PATCH /api/reviews/admin/:id/approve
  * @desc    Approve a review (Admin/Instructor only)
  * @access  Admin
  */
-router.patch("/reviews/admin/:id/approve", verifyUser, verifyAdmin, approveReview);
+router.patch("/reviews/admin/:id/approve", ...adminGuard("courses.moderation"),approveReview);
 
 /**
  * @route   PATCH /api/reviews/admin/:id/reject
  * @desc    Reject/Un-approve a review (Admin/Instructor only)
  * @access  Admin
  */
-router.patch("/reviews/admin/:id/reject", verifyUser, verifyAdmin, rejectReview);
+router.patch("/reviews/admin/:id/reject", ...adminGuard("courses.moderation"),rejectReview);
 
 export default router;

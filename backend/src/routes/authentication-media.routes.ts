@@ -6,8 +6,7 @@ import {
   updateAuthenticationMedia,
   reorderAuthenticationMedia,
 } from "../controllers/authentication-media.controller";
-import { verifyAdmin } from "../middlewares/admin.middleware";
-import { verifyUser } from "../middlewares/user.middleware";
+import { adminGuard } from "../middlewares/admin.middleware";
 import { Router } from "express";
 
 const router = Router();
@@ -31,28 +30,28 @@ router.get("/:id", getAuthenticationMediaById);
  * @desc    Create new authentication media
  * @access  Admin
  */
-router.post("/", verifyUser, verifyAdmin, createAuthenticationMedia);
+router.post("/", ...adminGuard("settings.authentication-media"),createAuthenticationMedia);
 
 /**
  * @route   PUT /api/authentication-media/:id
  * @desc    Update authentication media
  * @access  Admin
  */
-router.put("/:id", verifyUser, verifyAdmin, updateAuthenticationMedia);
+router.put("/:id", ...adminGuard("settings.authentication-media"),updateAuthenticationMedia);
 
 /**
  * @route   DELETE /api/authentication-media/:id
  * @desc    Delete authentication media
  * @access  Admin
  */
-router.delete("/:id", verifyUser, verifyAdmin, deleteAuthenticationMedia);
+router.delete("/:id", ...adminGuard("settings.authentication-media"),deleteAuthenticationMedia);
 
 /**
  * @route   POST /api/authentication-media/reorder
  * @desc    Reorder authentication media
  * @access  Admin
  */
-router.post("/reorder", verifyUser, verifyAdmin, reorderAuthenticationMedia);
+router.post("/reorder", ...adminGuard("settings.authentication-media"),reorderAuthenticationMedia);
 
 export default router;
 

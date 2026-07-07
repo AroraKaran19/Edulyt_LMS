@@ -83,11 +83,13 @@ const AuthGuard: React.FC<AuthGuardProps> = ({
       return;
     }
 
-    // Check permissions if required
+    // Check permissions if required (super-admins have implicit full access)
     if (requiredPermissions && requiredPermissions.length > 0) {
-      const hasPermission = requiredPermissions.some((permission) =>
-        user.permissions?.includes(permission)
-      );
+      const hasPermission =
+        user.userType === "super-admin" ||
+        requiredPermissions.some((permission) =>
+          user.permissions?.includes(permission)
+        );
       if (!hasPermission) {
         router.back();
         return;
@@ -136,11 +138,13 @@ const AuthGuard: React.FC<AuthGuardProps> = ({
     return null;
   }
 
-  // Check permissions if required
+  // Check permissions if required (super-admins have implicit full access)
   if (requiredPermissions && requiredPermissions.length > 0) {
-    const hasPermission = requiredPermissions.some((permission) =>
-      user.permissions?.includes(permission)
-    );
+    const hasPermission =
+      user.userType === "super-admin" ||
+      requiredPermissions.some((permission) =>
+        user.permissions?.includes(permission)
+      );
     if (!hasPermission) {
       return null;
     }

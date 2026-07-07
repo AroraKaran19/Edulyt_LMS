@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { verifyUser } from "../middlewares/user.middleware";
-import { verifyAdmin } from "../middlewares/admin.middleware";
+import { verifyAdmin, requirePermission } from "../middlewares/admin.middleware";
 import {
   activateInternshipLiveMeetingLinkController,
   attendInternshipLiveMeetingController,
@@ -27,6 +27,7 @@ router.post("/attend/:token", attendInternshipLiveMeetingController);
 
 // ── Admin ──
 router.use(verifyAdmin);
+router.use(requirePermission("internships.live-meetings"));
 
 /** POST /api/internship-live-meetings — create */
 router.post("/", createInternshipLiveMeetingController);

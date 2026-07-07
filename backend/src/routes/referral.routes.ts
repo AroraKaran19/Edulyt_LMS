@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { verifyUser, denyPartners } from "../middlewares/user.middleware";
-import { verifyAdmin } from "../middlewares/admin.middleware";
+import { verifyAdmin, requirePermission } from "../middlewares/admin.middleware";
 import {
   createReferralWithdrawalController,
   getReferralCommissionConfigController,
@@ -52,20 +52,30 @@ router.get(
 router.use(verifyAdmin);
 
 /** GET /api/referral/admin/config */
-router.get("/admin/config", getReferralCommissionConfigController);
+router.get(
+  "/admin/config",
+  requirePermission("settings.referral-commission-tiers"),
+  getReferralCommissionConfigController,
+);
 
 /** PUT /api/referral/admin/config — body: { tiers: [{ thresholdSales, commissionPercent }] } */
-router.put("/admin/config", updateReferralCommissionConfigController);
+router.put(
+  "/admin/config",
+  requirePermission("settings.referral-commission-tiers"),
+  updateReferralCommissionConfigController,
+);
 
 /** GET /api/referral/admin/withdrawals?status=&q=&page=&limit= */
 router.get(
   "/admin/withdrawals",
+  requirePermission("users.referral-withdrawals"),
   listAllReferralWithdrawalsAdminController,
 );
 
 /** PATCH /api/referral/admin/withdrawals/:id/status — body: { status, notes? } */
 router.patch(
   "/admin/withdrawals/:id/status",
+  requirePermission("users.referral-withdrawals"),
   transitionReferralWithdrawalController,
 );
 

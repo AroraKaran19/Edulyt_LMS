@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { verifyUser, denyPartners } from "../middlewares/user.middleware";
-import { verifyAdmin } from "../middlewares/admin.middleware";
+import { verifyAdmin, requirePermission } from "../middlewares/admin.middleware";
 import {
   registerForExamController,
   listMyInternshipEnrollmentsController,
@@ -69,6 +69,7 @@ router.get(
 router.get(
   "/admin/entrance-exam-cohorts",
   verifyAdmin,
+  requirePermission("internships.entrance-exams"),
   listEntranceExamCohortsController,
 );
 
@@ -76,16 +77,23 @@ router.get(
 router.get(
   "/admin/certification-exam-cohorts",
   verifyAdmin,
+  requirePermission("internships.certification-exams"),
   listCertificationExamCohortsController,
 );
 
 /** GET /api/internship-enrollments/admin */
-router.get("/admin", verifyAdmin, listInternshipEnrollmentsAdminController);
+router.get(
+  "/admin",
+  verifyAdmin,
+  requirePermission("internships.enrollments"),
+  listInternshipEnrollmentsAdminController,
+);
 
 /** POST /api/internship-enrollments/admin/approve-to-enrolled (before :enrollmentId) */
 router.post(
   "/admin/approve-to-enrolled",
   verifyAdmin,
+  requirePermission("internships.enrollments"),
   adminBulkApproveToEnrolledController,
 );
 
@@ -98,6 +106,7 @@ router.post(
 router.get(
   "/admin/documentation/pending-internships",
   verifyAdmin,
+  requirePermission("internships.doc-review"),
   listInternshipsWithPendingDocReviewController,
 );
 
@@ -108,6 +117,7 @@ router.get(
 router.post(
   "/admin/documentation/bulk-approve",
   verifyAdmin,
+  requirePermission("internships.doc-review"),
   adminBulkApproveInternshipDocumentationController,
 );
 
@@ -115,6 +125,7 @@ router.post(
 router.delete(
   "/admin/:enrollmentId",
   verifyAdmin,
+  requirePermission("internships.enrollments"),
   deleteInternshipEnrollmentAdminController,
 );
 
@@ -122,6 +133,7 @@ router.delete(
 router.get(
   "/admin/:enrollmentId",
   verifyAdmin,
+  requirePermission("internships.enrollments"),
   getInternshipEnrollmentByIdAdminController,
 );
 
@@ -129,6 +141,7 @@ router.get(
 router.patch(
   "/admin/:enrollmentId/status",
   verifyAdmin,
+  requirePermission("internships.enrollments"),
   adminUpdateEnrollmentStatusController,
 );
 
@@ -136,6 +149,7 @@ router.patch(
 router.patch(
   "/admin/:enrollmentId/batch",
   verifyAdmin,
+  requirePermission("internships.enrollments"),
   adminChangeEnrollmentBatchController,
 );
 
@@ -143,6 +157,7 @@ router.patch(
 router.patch(
   "/admin/:enrollmentId/duration",
   verifyAdmin,
+  requirePermission("internships.enrollments"),
   adminUpdateEnrollmentDurationController,
 );
 
@@ -150,6 +165,7 @@ router.patch(
 router.patch(
   "/admin/:enrollmentId/certificate-override",
   verifyAdmin,
+  requirePermission("internships.enrollments"),
   adminSetCertificateOverrideController,
 );
 
@@ -157,6 +173,7 @@ router.patch(
 router.patch(
   "/admin/:enrollmentId/documentation",
   verifyAdmin,
+  requirePermission("internships.doc-review"),
   adminUpdateInternshipDocumentationController,
 );
 
@@ -164,6 +181,7 @@ router.patch(
 router.post(
   "/admin/:enrollmentId/documentation/verify",
   verifyAdmin,
+  requirePermission("internships.doc-review"),
   adminVerifyInternshipDocumentationController,
 );
 

@@ -212,6 +212,10 @@ internshipEnrollmentSchema.index(
 );
 internshipEnrollmentSchema.index({ internship: 1, status: 1 });
 internshipEnrollmentSchema.index({ user: 1, status: 1 });
+// Sparse: only docs actually selected into the programme carry `enrolledAt`
+// (pipeline states don't). Serves the admin dashboard's "today's / total
+// enrolled" range counts and admin enrolledAt date-range filters.
+internshipEnrollmentSchema.index({ enrolledAt: 1 }, { sparse: true });
 
 // Keep `endDate` derived from `enrolledAt + programDurationMonths`. Centralized
 // here so every `.save()` / `.create()` path stays correct; pre-enrollment

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { verifyUser } from "../middlewares/user.middleware";
-import { verifyAdmin } from "../middlewares/admin.middleware";
+import { verifyAdmin, requirePermission } from "../middlewares/admin.middleware";
 import {
   createAnnouncement,
   listAnnouncementsAdmin,
@@ -16,8 +16,8 @@ router.use(verifyUser);
 router.get("/feed", getAnnouncementFeed);
 
 // ── Admin management ────────────────────────────────────────────────────────
-router.get("/admin", verifyAdmin, listAnnouncementsAdmin);
-router.post("/", verifyAdmin, createAnnouncement);
-router.delete("/:id", verifyAdmin, deleteAnnouncement);
+router.get("/admin", verifyAdmin, requirePermission("settings.announcements"),listAnnouncementsAdmin);
+router.post("/", verifyAdmin, requirePermission("settings.announcements"),createAnnouncement);
+router.delete("/:id", verifyAdmin, requirePermission("settings.announcements"),deleteAnnouncement);
 
 export default router;

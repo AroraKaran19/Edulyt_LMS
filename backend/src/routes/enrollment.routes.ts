@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { verifyUser } from "../middlewares/user.middleware";
-import { verifyAdmin } from "../middlewares/admin.middleware";
+import { adminGuard } from "../middlewares/admin.middleware";
 import { verifyEnrollmentOwnership } from "../middlewares/enrollment.middleware";
 import {
   createEnrollment,
@@ -30,7 +30,7 @@ const router = Router();
  * @desc    Create a new enrollment (gift, trial, manual - admin/super-admin only)
  * @access  Admin, Super-admin
  */
-router.post("/", verifyUser, verifyAdmin, createEnrollment);
+router.post("/", ...adminGuard("courses.enrollments"),createEnrollment);
 
 /**
  * @route   GET /api/enrollments/check/:courseId
@@ -58,7 +58,7 @@ router.get("/dashboard-stats", verifyUser, getUserDashboardStats);
  * @desc    Get course IDs per user for multiple users (admin only)
  * @access  Admin, Super-admin
  */
-router.post("/batch-by-users", verifyUser, verifyAdmin, getEnrollmentsByUserIds);
+router.post("/batch-by-users", ...adminGuard("courses.enrollments"),getEnrollmentsByUserIds);
 
 /**
  * @route   GET /api/enrollments/:enrollmentId

@@ -1,5 +1,4 @@
-import { verifyAdmin } from "../middlewares/admin.middleware";
-import { verifyUser } from "../middlewares/user.middleware";
+import { adminGuard } from "../middlewares/admin.middleware";
 import { Router } from "express";
 import {
   createCourseLesson,
@@ -91,35 +90,35 @@ router.get("/check-slug/:slug", checkSlugAvailability);
  * @desc    Get all courses for admin
  * @access  Admin
  */
-router.get("/admin", verifyUser, verifyAdmin, getAdminCourses);
+router.get("/admin", ...adminGuard("courses.manage"),getAdminCourses);
 
 /**
  * @route   GET /api/courses/admin/options
  * @desc    Lightweight admin course list (id + title only)
  * @access  Admin
  */
-router.get("/admin/options", verifyUser, verifyAdmin, getAdminCourseOptions);
+router.get("/admin/options", ...adminGuard("courses.manage"),getAdminCourseOptions);
 
 /**
  * @route   GET /api/courses/admin/id/:courseId
  * @desc    Get a course by id for admin
  * @access  Admin
  */
-router.get("/admin/id/:courseId", verifyUser, verifyAdmin, getAdminCourseById);
+router.get("/admin/id/:courseId", ...adminGuard("courses.manage"),getAdminCourseById);
 
 /**
  * @route   GET /api/courses/admin/slug/:slug
  * @desc    Get a course by slug for admin
  * @access  Admin
  */
-router.get("/admin/slug/:slug", verifyUser, verifyAdmin, getAdminCourseBySlug);
+router.get("/admin/slug/:slug", ...adminGuard("courses.manage"),getAdminCourseBySlug);
 
 /**
  * @route   POST /api/courses
  * @desc    Create a course metadata
  * @access  Admin
  */
-router.post("/metadata", verifyUser, verifyAdmin, createCourseMetadata);
+router.post("/metadata", ...adminGuard("courses.manage"),createCourseMetadata);
 
 // COURSE MODULE MANAGEMENT ROUTES
 
@@ -128,7 +127,7 @@ router.post("/metadata", verifyUser, verifyAdmin, createCourseMetadata);
  * @desc    Create a course module
  * @access  Admin
  */
-router.post("/:courseId/modules", verifyUser, verifyAdmin, createCourseModule);
+router.post("/:courseId/modules", ...adminGuard("courses.manage"),createCourseModule);
 
 /**
  * @route   PUT /api/courses/modules/:moduleId
@@ -137,8 +136,7 @@ router.post("/:courseId/modules", verifyUser, verifyAdmin, createCourseModule);
  */
 router.put(
   "/:courseId/modules/:moduleId",
-  verifyUser,
-  verifyAdmin,
+  ...adminGuard("courses.manage"),
   updateCourseModule
 );
 
@@ -149,8 +147,7 @@ router.put(
  */
 router.delete(
   "/:courseId/modules/:moduleId",
-  verifyUser,
-  verifyAdmin,
+  ...adminGuard("courses.manage"),
   deleteCourseModule
 );
 
@@ -163,8 +160,7 @@ router.delete(
  */
 router.post(
   "/:courseId/modules/:moduleId/lessons",
-  verifyUser,
-  verifyAdmin,
+  ...adminGuard("courses.manage"),
   createCourseLesson
 );
 
@@ -175,8 +171,7 @@ router.post(
  */
 router.put(
   "/:courseId/modules/:moduleId/lessons/:lessonId",
-  verifyUser,
-  verifyAdmin,
+  ...adminGuard("courses.manage"),
   updateCourseLesson
 );
 
@@ -187,8 +182,7 @@ router.put(
  */
 router.delete(
   "/:courseId/modules/:moduleId/lessons/:lessonId",
-  verifyUser,
-  verifyAdmin,
+  ...adminGuard("courses.manage"),
   deleteCourseLesson
 );
 
@@ -201,8 +195,7 @@ router.delete(
  */
 router.post(
   "/:courseId/modules/:moduleId/lessons/:lessonId/contents",
-  verifyUser,
-  verifyAdmin,
+  ...adminGuard("courses.manage"),
   createCourseLessonContent
 );
 
@@ -213,8 +206,7 @@ router.post(
  */
 router.put(
   "/:courseId/modules/:moduleId/lessons/:lessonId/contents/:contentId",
-  verifyUser,
-  verifyAdmin,
+  ...adminGuard("courses.manage"),
   updateCourseLessonContent
 );
 
@@ -225,8 +217,7 @@ router.put(
  */
 router.delete(
   "/:courseId/modules/:moduleId/lessons/:lessonId/contents/:contentId",
-  verifyUser,
-  verifyAdmin,
+  ...adminGuard("courses.manage"),
   deleteCourseLessonContent
 );
 
@@ -237,8 +228,7 @@ router.delete(
  */
 router.post(
   "/admin/duplicate/:courseId",
-  verifyUser,
-  verifyAdmin,
+  ...adminGuard("courses.manage"),
   duplicateCourse
 );
 
@@ -249,8 +239,7 @@ router.post(
  */
 router.post(
   "/admin/duplicate-metadata/:courseId",
-  verifyUser,
-  verifyAdmin,
+  ...adminGuard("courses.manage"),
   duplicateCourseMetadata
 );
 
@@ -261,8 +250,7 @@ router.post(
  */
 router.post(
   "/admin/duplicate-with-modules/:courseId",
-  verifyUser,
-  verifyAdmin,
+  ...adminGuard("courses.manage"),
   duplicateCourseWithModules
 );
 
@@ -271,14 +259,14 @@ router.post(
  * @desc    Update a course status
  * @access  Admin
  */
-router.put("/:courseId/status", verifyUser, verifyAdmin, updateCourseStatus);
+router.put("/:courseId/status", ...adminGuard("courses.manage"),updateCourseStatus);
 
 /**
  * @route   PUT /api/courses/:courseId/toggle-content-status
  * @desc    Toggle module/lesson/content active status for a specific course
  * @access  Admin
  */
-router.put("/:courseId/toggle-content-status", verifyUser, verifyAdmin, toggleCourseContentStatus);
+router.put("/:courseId/toggle-content-status", ...adminGuard("courses.manage"),toggleCourseContentStatus);
 
 /**
  * @route   PUT /api/courses/:courseId/metadata
@@ -287,8 +275,7 @@ router.put("/:courseId/toggle-content-status", verifyUser, verifyAdmin, toggleCo
  */
 router.put(
   "/:courseId/metadata",
-  verifyUser,
-  verifyAdmin,
+  ...adminGuard("courses.manage"),
   updateCourseMetadata
 );
 
@@ -297,27 +284,27 @@ router.put(
  * @desc    Delete a course
  * @access  Admin
  */
-router.delete("/:courseId", verifyUser, verifyAdmin, deleteCourse);
+router.delete("/:courseId", ...adminGuard("courses.manage"),deleteCourse);
 
 /**
  * @route   PUT /api/courses/:courseId/modules/reorder
  * @desc    Reorder course modules
  * @access  Admin
  */
-router.put("/:courseId/modules/reorder", verifyUser, verifyAdmin, reorderModules);
+router.put("/:courseId/modules/reorder", ...adminGuard("courses.manage"),reorderModules);
 
 /**
  * @route   PUT /api/courses/modules/:moduleId/lessons/reorder
  * @desc    Reorder course lessons
  * @access  Admin
  */
-router.put("/modules/:moduleId/lessons/reorder", verifyUser, verifyAdmin, reorderLessons);
+router.put("/modules/:moduleId/lessons/reorder", ...adminGuard("courses.manage"),reorderLessons);
 
 /**
  * @route   PUT /api/courses/lessons/:lessonId/contents/reorder
  * @desc    Reorder lesson content
  * @access  Admin
  */
-router.put("/lessons/:lessonId/contents/reorder", verifyUser, verifyAdmin, reorderContent);
+router.put("/lessons/:lessonId/contents/reorder", ...adminGuard("courses.manage"),reorderContent);
 
 export default router;

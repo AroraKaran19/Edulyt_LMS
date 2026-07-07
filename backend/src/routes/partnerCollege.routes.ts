@@ -6,8 +6,7 @@ import {
   updatePartnerCollege,
   deletePartnerCollege,
 } from "../controllers/partnerCollege.controller";
-import { verifyAdmin } from "../middlewares/admin.middleware";
-import { verifyUser } from "../middlewares/user.middleware";
+import { adminGuard } from "../middlewares/admin.middleware";
 
 const router = Router();
 
@@ -30,20 +29,20 @@ router.get("/:id", getPartnerCollegeById);
  * @desc    Create a new partner college
  * @access  Admin
  */
-router.post("/", verifyUser, verifyAdmin, createPartnerCollege);
+router.post("/", ...adminGuard("settings.partnership-import"),createPartnerCollege);
 
 /**
  * @route   PUT /api/partner-colleges/:id
  * @desc    Update a partner college
  * @access  Admin
  */
-router.put("/:id", verifyUser, verifyAdmin, updatePartnerCollege);
+router.put("/:id", ...adminGuard("settings.partnership-import"),updatePartnerCollege);
 
 /**
  * @route   DELETE /api/partner-colleges/:id
  * @desc    Delete a partner college
  * @access  Admin
  */
-router.delete("/:id", verifyUser, verifyAdmin, deletePartnerCollege);
+router.delete("/:id", ...adminGuard("settings.partnership-import"),deletePartnerCollege);
 
 export default router;

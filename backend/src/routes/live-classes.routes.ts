@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { verifyUser } from "../middlewares/user.middleware";
-import { verifyAdmin } from "../middlewares/admin.middleware";
+import { adminGuard } from "../middlewares/admin.middleware";
 import { verifyAdminOrInstructor } from "../middlewares/instructor.middleware";
 import {
   createLiveClass,
@@ -62,8 +62,7 @@ router.delete(
  */
 router.get(
   "/admin",
-  verifyUser,
-  verifyAdmin,
+  ...adminGuard("courses.live-classes"),
   getAllLiveClasses
 );
 
@@ -74,8 +73,7 @@ router.get(
  */
 router.get(
   "/ongoing",
-  verifyUser,
-  verifyAdmin,
+  ...adminGuard("courses.live-classes"),
   getAllOngoingLiveClasses
 );
 

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { verifyUser } from "../middlewares/user.middleware";
-import { verifyAdmin } from "../middlewares/admin.middleware";
+import { verifyAdmin, requirePermission } from "../middlewares/admin.middleware";
 import {
   listInternshipQuestionsAdminController,
   createInternshipQuestionAdminController,
@@ -15,6 +15,7 @@ const router = Router();
 
 router.use(verifyUser);
 router.use(verifyAdmin);
+router.use(requirePermission("internships.questions"));
 
 /** POST /api/internship-questions — create (admin) */
 router.post("/", createInternshipQuestionAdminController);

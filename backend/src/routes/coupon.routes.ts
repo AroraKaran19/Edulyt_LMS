@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { verifyUser } from "../middlewares/user.middleware";
-import { verifyAdmin } from "../middlewares/admin.middleware";
+import { adminGuard } from "../middlewares/admin.middleware";
 import {
   getAllCoupons,
   getCouponById,
@@ -18,42 +18,42 @@ const router = Router();
  * @desc    Get all coupons (Admin only)
  * @access  Admin
  */
-router.get("/", verifyUser, verifyAdmin, getAllCoupons);
+router.get("/", ...adminGuard("coupons"),getAllCoupons);
 
 /**
  * @route   GET /api/coupons/:couponId
  * @desc    Get coupon by ID (Admin only)
  * @access  Admin
  */
-router.get("/:couponId", verifyUser, verifyAdmin, getCouponById);
+router.get("/:couponId", ...adminGuard("coupons"),getCouponById);
 
 /**
  * @route   GET /api/coupons/code/:code
  * @desc    Get coupon by code (Admin only)
  * @access  Admin
  */
-router.get("/code/:code", verifyUser, verifyAdmin, getCouponByCode);
+router.get("/code/:code", ...adminGuard("coupons"),getCouponByCode);
 
 /**
  * @route   POST /api/coupons
  * @desc    Create a new coupon (Admin only)
  * @access  Admin
  */
-router.post("/", verifyUser, verifyAdmin, createCoupon);
+router.post("/", ...adminGuard("coupons"),createCoupon);
 
 /**
  * @route   PUT /api/coupons/:couponId
  * @desc    Update a coupon (Admin only)
  * @access  Admin
  */
-router.put("/:couponId", verifyUser, verifyAdmin, updateCoupon);
+router.put("/:couponId", ...adminGuard("coupons"),updateCoupon);
 
 /**
  * @route   DELETE /api/coupons/:couponId
  * @desc    Delete a coupon (Admin only)
  * @access  Admin
  */
-router.delete("/:couponId", verifyUser, verifyAdmin, deleteCoupon);
+router.delete("/:couponId", ...adminGuard("coupons"),deleteCoupon);
 
 /**
  * @route   POST /api/coupons/validate

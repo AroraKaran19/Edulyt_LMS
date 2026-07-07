@@ -82,11 +82,15 @@ const SuperAdminDashboard = ({
       timePeriod: data.timePeriod,
       platformStats: data.platformStats,
       todayEnrollments: data.todayEnrollments ?? 0,
+      todayEnrollmentsCourse: data.todayEnrollmentsCourse ?? 0,
+      todayEnrollmentsInternship: data.todayEnrollmentsInternship ?? 0,
       enrollmentsMonthlyBreakdown: data.enrollmentsMonthlyBreakdown ?? [],
       totalRevenue: data.totalRevenue ?? 0,
       totalCertificates: data.totalCertificates ?? 0,
       completedEnrollments: data.completedEnrollments ?? 0,
       totalEnrollments: data.totalEnrollments ?? 0,
+      totalEnrollmentsCourse: data.totalEnrollmentsCourse ?? 0,
+      totalEnrollmentsInternship: data.totalEnrollmentsInternship ?? 0,
       successfulOrdersCount: data.successfulOrdersCount ?? 0,
     };
   }, [dashboardStatsData?.data?.data]);
@@ -103,11 +107,15 @@ const SuperAdminDashboard = ({
     timePeriod,
     platformStats,
     todayEnrollments = 0,
+    todayEnrollmentsCourse = 0,
+    todayEnrollmentsInternship = 0,
     enrollmentsMonthlyBreakdown = [],
     totalRevenue = 0,
     totalCertificates = 0,
     completedEnrollments = 0,
     totalEnrollments = 0,
+    totalEnrollmentsCourse = 0,
+    totalEnrollmentsInternship = 0,
     successfulOrdersCount = 0,
   } = dashboardStats || {};
 
@@ -252,15 +260,29 @@ const SuperAdminDashboard = ({
               <h3 className="text-[#475467] font-medium text-sm sm:text-base">
                 Today&apos;s Enrollments
               </h3>
-              <div className="flex items-baseline gap-2 mt-2">
-                {isLoading ? (
+              {isLoading ? (
+                <div className="mt-2">
                   <ButtonLoader />
-                ) : (
-                  <span className="text-xl sm:text-3xl font-extrabold text-[#1D2939]">
-                    {todayEnrollments}
-                  </span>
-                )}
-              </div>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-baseline gap-2 mt-2">
+                    <span className="text-xl sm:text-3xl font-extrabold text-[#1D2939]">
+                      {todayEnrollments}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-xs font-medium">
+                    <span className="flex items-center gap-1.5 text-[#475467]">
+                      <span className="size-2 rounded-full bg-[#0EA5E9]" />
+                      Courses: {todayEnrollmentsCourse}
+                    </span>
+                    <span className="flex items-center gap-1.5 text-[#475467]">
+                      <span className="size-2 rounded-full bg-[#F5742C]" />
+                      Internships: {todayEnrollmentsInternship}
+                    </span>
+                  </div>
+                </>
+              )}
             </div>
           </div>
           <div className="lg:col-span-5 bg-white rounded-xl p-3 shadow-sm border border-[#EAECF0]">
@@ -385,7 +407,15 @@ const SuperAdminDashboard = ({
                   {totalEnrollments.toLocaleString()}
                 </span>
               )}
-              <p className="text-xs text-[#6B7280] mt-0.5">All time</p>
+              {!isLoading && (
+                <p className="text-xs text-[#6B7280] mt-0.5">
+                  Courses: {totalEnrollmentsCourse.toLocaleString()} ·
+                  Internships: {totalEnrollmentsInternship.toLocaleString()}
+                </p>
+              )}
+              <p className="text-xs text-[#6B7280] mt-0.5">
+                {filters.find((f) => f.value === duration)?.label}
+              </p>
             </div>
           </div>
           <div className="bg-white rounded-xl p-4 shadow-sm border border-[#EAECF0] flex items-center gap-3">

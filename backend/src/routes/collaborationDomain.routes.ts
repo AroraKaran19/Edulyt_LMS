@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { verifyUser } from "../middlewares/user.middleware";
-import { verifyAdmin } from "../middlewares/admin.middleware";
+import { adminGuard } from "../middlewares/admin.middleware";
 import {
   listCollaborationDomains,
   getCollaborationDomainById,
@@ -24,7 +24,7 @@ router.post("/resolve", verifyUser, resolveCollaborationForCheckout);
  * @desc    List collaboration domains (Admin only)
  * @access  Admin
  */
-router.get("/", verifyUser, verifyAdmin, listCollaborationDomains);
+router.get("/", ...adminGuard("settings.collaboration-domains"),listCollaborationDomains);
 
 /**
  * @route   GET /api/collaboration-domains/:collaborationDomainId
@@ -33,8 +33,7 @@ router.get("/", verifyUser, verifyAdmin, listCollaborationDomains);
  */
 router.get(
   "/:collaborationDomainId",
-  verifyUser,
-  verifyAdmin,
+  ...adminGuard("settings.collaboration-domains"),
   getCollaborationDomainById
 );
 
@@ -43,7 +42,7 @@ router.get(
  * @desc    Create a collaboration domain (Admin only)
  * @access  Admin
  */
-router.post("/", verifyUser, verifyAdmin, createCollaborationDomain);
+router.post("/", ...adminGuard("settings.collaboration-domains"),createCollaborationDomain);
 
 /**
  * @route   PUT /api/collaboration-domains/:collaborationDomainId
@@ -52,8 +51,7 @@ router.post("/", verifyUser, verifyAdmin, createCollaborationDomain);
  */
 router.put(
   "/:collaborationDomainId",
-  verifyUser,
-  verifyAdmin,
+  ...adminGuard("settings.collaboration-domains"),
   updateCollaborationDomain
 );
 
@@ -64,8 +62,7 @@ router.put(
  */
 router.delete(
   "/:collaborationDomainId",
-  verifyUser,
-  verifyAdmin,
+  ...adminGuard("settings.collaboration-domains"),
   deleteCollaborationDomain
 );
 

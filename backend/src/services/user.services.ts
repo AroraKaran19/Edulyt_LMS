@@ -84,6 +84,8 @@ export interface GetAdminUserOptionsParams {
   /** Comma-separated email list (exact match), used for Excel import */
   emails?: string[];
   userType?: string;
+  /** Exclude these user types (e.g. ["admin","super-admin"] for the promote picker). Ignored when a specific `userType` is set. */
+  excludeUserTypes?: string[];
   status?: string;
   /** Exclude users enrolled in any of these course IDs (gift modal) */
   excludeEnrolledInCourseIds?: string[];
@@ -231,6 +233,7 @@ export const getAdminUserOptionsService = async (
     search,
     emails,
     userType,
+    excludeUserTypes,
     status,
     excludeEnrolledInCourseIds,
     enrollmentStatusForCourseIds,
@@ -258,6 +261,10 @@ export const getAdminUserOptionsService = async (
 
   if (userType && userType !== "all") {
     filters.userType = userType;
+  } else if (excludeUserTypes?.length) {
+    // Only applies when no specific userType is requested (e.g. promote picker
+    // excludes existing admins/super-admins).
+    filters.userType = { $nin: excludeUserTypes };
   }
 
   if (status && status !== "all") {

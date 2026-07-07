@@ -8,6 +8,7 @@ import qnaRoutes from "./qna.route";
 import enrollmentRoutes from "./enrollment.routes";
 import userRoutes from "./user.routes";
 import adminRoutes from "./admin.routes";
+import adminStaffRoutes from "./adminStaff.routes";
 import uploadRoutes from "./upload.routes";
 import instructorRoutes from "./instructor.routes";
 import reviewRoutes from "./review.routes";
@@ -50,6 +51,7 @@ export {
   enrollmentRoutes,
   userRoutes,
   adminRoutes,
+  adminStaffRoutes,
   uploadRoutes,
   instructorRoutes,
   reviewRoutes,

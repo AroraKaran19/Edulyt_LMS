@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { verifyUser } from "../middlewares/user.middleware";
-import { verifyAdmin } from "../middlewares/admin.middleware";
+import { verifyAdmin, requirePermission } from "../middlewares/admin.middleware";
 import {
   listCollegesPublic,
   listCollegesAdmin,
@@ -22,6 +22,8 @@ router.use(verifyUser);
 router.get("/", listCollegesPublic);
 
 router.use(verifyAdmin);
+// Everything below is admin college management.
+router.use(requirePermission("settings.colleges"));
 
 /**
  * @route   GET /api/colleges/admin

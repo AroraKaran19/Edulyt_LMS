@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { verifyUser } from "../middlewares/user.middleware";
-import { verifyAdmin } from "../middlewares/admin.middleware";
+import { verifyAdmin, requirePermission } from "../middlewares/admin.middleware";
 import {
   getUsers,
   getAdminUserOptions,
@@ -33,9 +33,10 @@ router.put("/change-email", verifyUser, changeUserEmail);
 router.delete("/unlink-google", verifyUser, unlinkGoogleAccount);
 router.delete("/unlink-linkedin", verifyUser, unlinkLinkedInAccount);
 
-// Admin routes 
+// Admin routes
 router.use(verifyUser);
 router.use(verifyAdmin);
+router.use(requirePermission("users.manage"));
 
 /**
  * @route   GET /api/users/admin

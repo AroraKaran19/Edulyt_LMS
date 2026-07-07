@@ -3,6 +3,7 @@ import {
   ChevronLeft,
   ChevronRight,
   HelpCircle,
+  KeyRound,
   MessageSquare,
   Settings,
   ShoppingCart,
@@ -14,6 +15,10 @@ import React from "react";
 import SidebarMenuItem from "./SidebarMenuItem";
 import { cn } from "@/lib/utils";
 import useAuth from "@/hooks/useAuth";
+import {
+  canAccessPage,
+  resolvePageKeyFromPath,
+} from "@/config/adminPermissions";
 
 interface MenuItem {
   icon?: React.ReactNode;
@@ -36,7 +41,15 @@ const AdminSidebar = ({
   onNavigate,
   isMobileOverlay = false,
 }: AdminSidebarProps) => {
-  const { handleSignOut } = useAuth();
+  const { user, handleSignOut } = useAuth();
+  const isSuperAdmin = user?.userType === "super-admin";
+  const permissions = user?.permissions ?? [];
+
+  const canSeeHref = (href: string): boolean => {
+    const key = resolvePageKeyFromPath(href);
+    return key ? canAccessPage(permissions, isSuperAdmin, key) : false;
+  };
+
   const menuItems: MenuItem[] = [
     {
       iconSrc: "/admin/dashboard-icon.svg",
@@ -224,6 +237,36 @@ const AdminSidebar = ({
     },
   ];
 
+  // Filter the menu to what the viewer may see. Sections keep only their
+  // accessible submenu items and disappear entirely when none remain.
+  const visibleMenuItems: MenuItem[] = menuItems
+    .map((item) => {
+      if (item.submenu && item.submenu.length > 0) {
+        const submenu = item.submenu.filter((s) => canSeeHref(s.href));
+        return submenu.length > 0 ? { ...item, submenu } : null;
+      }
+      return canSeeHref(item.href) ? item : null;
+    })
+    .filter((item): item is MenuItem => item !== null);
+
+  // Super-admin-only entry point to admin/permission management. Placed right
+  // after Dashboard so it's visible without scrolling the menu.
+  if (isSuperAdmin) {
+    const adminAccessItem: MenuItem = {
+      icon: <KeyRound className="size-6" />,
+      label: "Admin Access",
+      href: "/admin/access",
+    };
+    const dashboardIndex = visibleMenuItems.findIndex(
+      (item) => item.href === "/admin",
+    );
+    visibleMenuItems.splice(
+      dashboardIndex >= 0 ? dashboardIndex + 1 : 0,
+      0,
+      adminAccessItem,
+    );
+  }
+
   return (
     <div
       className={cn(
@@ -279,7 +322,7 @@ const AdminSidebar = ({
                 MENU
               </h2>
               <div className="flex admin-sidebar-menu-items w-full flex-col gap-4">
-                {menuItems.map((item, index) => (
+                {visibleMenuItems.map((item, index) => (
                   <SidebarMenuItem
                     key={index}
                     menuItem={item}

@@ -1,4 +1,4 @@
-import { verifyAdmin } from "../middlewares/admin.middleware";
+import { adminGuard } from "../middlewares/admin.middleware";
 import { verifyUser, denyPartners } from "../middlewares/user.middleware";
 import { Router } from "express";
 import {
@@ -64,14 +64,14 @@ router.get("/verify/:token", verifyUser, verifyPayment);
  * @desc    Get an order by ID
  * @access  Admin
  */
-router.get("/:orderId", verifyAdmin, getOrderInfo);
+router.get("/:orderId", ...adminGuard("orders"),getOrderInfo);
 
 /**
  * @route   DELETE /api/orders/:orderId
  * @desc    Delete an order
  * @access  Admin
  */
-router.delete("/:orderId", verifyAdmin, deleteOrder);
+router.delete("/:orderId", ...adminGuard("orders"),deleteOrder);
 
 /**
  * @route   POST /api/orders/webhook

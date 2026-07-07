@@ -6,6 +6,7 @@ import { GetUserEnrollmentsService } from "./enrollment.services";
 import { getUserCertificatesService } from "./certificate.services";
 import { getTotalSpendByUserIdService } from "./order.services";
 import { listMyInternshipEnrollments } from "./internshipEnrollment.services";
+import { InternshipEnrollmentModel } from "../models/internshipEnrollment.schema";
 
 // User types to include in analytics (exclude admin, super-admin)
 const ANALYTICS_USER_TYPES = ["student", "instructor", "collaborator"];
@@ -185,33 +186,30 @@ export const getDashboardStats = async (
     (a, b) => a.year - b.year || a.monthNum - b.monthNum
   );
 
-  // Today's enrollments: IST calendar day via MongoDB ($$NOW + Asia/Kolkata), no JS/UTC drift
-  const todayEnrollmentsAgg = await EnrollmentModel.aggregate<{ count: number }>([
-    {
-      $match: {
-        $expr: {
-          $eq: [
-            {
-              $dateToString: {
-                format: "%Y-%m-%d",
-                date: "$enrolledAt",
-                timezone: "Asia/Kolkata",
-              },
-            },
-            {
-              $dateToString: {
-                format: "%Y-%m-%d",
-                date: "$$NOW",
-                timezone: "Asia/Kolkata",
-              },
-            },
-          ],
-        },
-      },
-    },
-    { $group: { _id: null, count: { $sum: 1 } } },
-  ]);
-  const todayEnrollments = todayEnrollmentsAgg[0]?.count ?? 0;
+  // Today's enrollments — the IST calendar day expressed as a UTC [start, end)
+  // range so both counts hit the `enrolledAt` index (course + internship)
+  // instead of scanning the whole collection. The previous $expr/$dateToString
+  // comparison against $$NOW could not use any index. IST is a fixed UTC+5:30
+  // offset (no DST), derived from the app-server clock.
+  const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+  const nowIst = new Date(Date.now() + IST_OFFSET_MS);
+  const istMidnightLabelledUtc = Date.UTC(
+    nowIst.getUTCFullYear(),
+    nowIst.getUTCMonth(),
+    nowIst.getUTCDate(),
+  );
+  const todayStart = new Date(istMidnightLabelledUtc - IST_OFFSET_MS);
+  const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
+  const enrolledTodayFilter = {
+    enrolledAt: { $gte: todayStart, $lt: todayEnd },
+  };
+  const [todayEnrollmentsCourse, todayEnrollmentsInternship] = await Promise.all(
+    [
+      EnrollmentModel.countDocuments(enrolledTodayFilter),
+      InternshipEnrollmentModel.countDocuments(enrolledTodayFilter),
+    ],
+  );
+  const todayEnrollments = todayEnrollmentsCourse + todayEnrollmentsInternship;
 
   // Enrollments per month (for distinct chart - shows course engagement)
   const enrolledAtFilter = {
@@ -231,19 +229,34 @@ export const getDashboardStats = async (
     { $sort: { "_id.year": 1, "_id.month": 1 } },
   ]);
 
-  // Business & engagement stats (revenue, certificates, enrollments)
-  const [revenueResult, totalCertificates, completedEnrollments, totalEnrollments, successfulOrdersCount] =
-    await Promise.all([
-      OrderModel.aggregate<{ total: number }>([
-        { $match: { paymentStatus: "success" } },
-        { $group: { _id: null, total: { $sum: "$amount" } } },
-      ]),
-      CertificateModel.countDocuments(),
-      EnrollmentModel.countDocuments({ status: "completed" }),
-      EnrollmentModel.countDocuments(),
-      OrderModel.countDocuments({ paymentStatus: "success" }),
-    ]);
+  // Business & engagement stats (revenue, certificates, enrollments).
+  // Total enrollments are scoped to the selected duration window via the
+  // indexed `enrolledAt` range (course `{ enrolledAt: -1 }` + sparse internship
+  // `{ enrolledAt: 1 }`). Internship docs with no `enrolledAt` (pre-selection
+  // pipeline states) are naturally excluded by the range.
+  const enrolledInPeriodFilter = {
+    enrolledAt: { $gte: startDate, $lte: endDate },
+  };
+  const [
+    revenueResult,
+    totalCertificates,
+    completedEnrollments,
+    totalEnrollmentsCourse,
+    totalEnrollmentsInternship,
+    successfulOrdersCount,
+  ] = await Promise.all([
+    OrderModel.aggregate<{ total: number }>([
+      { $match: { paymentStatus: "success" } },
+      { $group: { _id: null, total: { $sum: "$amount" } } },
+    ]),
+    CertificateModel.countDocuments(),
+    EnrollmentModel.countDocuments({ status: "completed" }),
+    EnrollmentModel.countDocuments(enrolledInPeriodFilter),
+    InternshipEnrollmentModel.countDocuments(enrolledInPeriodFilter),
+    OrderModel.countDocuments({ paymentStatus: "success" }),
+  ]);
 
+  const totalEnrollments = totalEnrollmentsCourse + totalEnrollmentsInternship;
   const totalRevenue = revenueResult[0]?.total ?? 0;
 
   // Platform-wide stats (super-admin only)
@@ -279,8 +292,10 @@ export const getDashboardStats = async (
     // Chart data for active/inactive users by year (filtered by duration)
     chartData,
 
-    // Today's enrollments
+    // Today's enrollments (combined + course/internship breakdown)
     todayEnrollments,
+    todayEnrollmentsCourse,
+    todayEnrollmentsInternship,
 
     // Enrollments per month (for chart - course engagement)
     enrollmentsMonthlyBreakdown,
@@ -290,6 +305,8 @@ export const getDashboardStats = async (
     totalCertificates,
     completedEnrollments,
     totalEnrollments,
+    totalEnrollmentsCourse,
+    totalEnrollmentsInternship,
     successfulOrdersCount,
 
     // Time period specific data

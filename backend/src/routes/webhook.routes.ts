@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { triggerPaymentWebhook, getPaymentWebhookStatus } from "../controllers/webhook.controller";
-import { verifyAdmin } from "../middlewares/admin.middleware";
+import { adminGuard } from "../middlewares/admin.middleware";
 
 const router = Router();
 
@@ -9,13 +9,13 @@ const router = Router();
  * @desc    Trigger payment verification manually
  * @access  Admin/Internal
  */
-router.post("/payment-verification", verifyAdmin, triggerPaymentWebhook);
+router.post("/payment-verification", ...adminGuard("orders"),triggerPaymentWebhook);
 
 /**
  * @route   GET /api/webhook/payment-status
  * @desc    Get status of payment verification cron job
  * @access  Admin/Internal
  */
-router.get("/payment-status", verifyAdmin, getPaymentWebhookStatus);
+router.get("/payment-status", ...adminGuard("orders"),getPaymentWebhookStatus);
 
 export default router;

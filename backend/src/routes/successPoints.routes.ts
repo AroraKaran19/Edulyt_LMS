@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { verifyUser } from "../middlewares/user.middleware";
-import { verifyAdmin } from "../middlewares/admin.middleware";
+import { adminGuard } from "../middlewares/admin.middleware";
 import {
   adminAdjustSuccessPoints,
   getMySuccessPoints,
@@ -60,8 +60,7 @@ router.post("/transfer", verifyUser, transferSuccessPoints);
  */
 router.post(
   "/admin/adjust",
-  verifyUser,
-  verifyAdmin,
+  ...adminGuard("users.manage"),
   adminAdjustSuccessPoints,
 );
 

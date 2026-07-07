@@ -1,4 +1,3 @@
-import { verifyUser } from "../middlewares/user.middleware";
 import {
   createCategory,
   deleteCategory,
@@ -7,7 +6,7 @@ import {
   getHomePageCategories,
   updateCategory,
 } from "../controllers/category.controller";
-import { verifyAdmin } from "../middlewares/admin.middleware";
+import { adminGuard } from "../middlewares/admin.middleware";
 import { Router } from "express";
 
 const router = Router();
@@ -32,28 +31,28 @@ router.get("/homepage", getHomePageCategories);
  * @desc    Get all categories for admin (with full data)
  * @access  Admin
  */
-router.get("/admin", verifyUser, verifyAdmin, getAllCategories);
+router.get("/admin", ...adminGuard("courses.manage"),getAllCategories);
 
 /**
  * @route   GET /api/categories/admin/:id
  * @desc    Get a category by ID for admin (with full data)
  * @access  Admin
  */
-router.get("/admin/:id", verifyUser, verifyAdmin, getCategoryById);
+router.get("/admin/:id", ...adminGuard("courses.manage"),getCategoryById);
 
 /**
  * @route   PUT /api/categories/admin/:id
  * @desc    Update a category (Admin can update any category)
  * @access  Admin
  */
-router.put("/admin/:id", verifyUser, verifyAdmin, updateCategory);
+router.put("/admin/:id", ...adminGuard("courses.manage"),updateCategory);
 
 /**
  * @route   DELETE /api/categories/admin/:id
  * @desc    Delete a category (Admin can delete any category)
  * @access  Admin
  */
-router.delete("/admin/:id", verifyUser, verifyAdmin, deleteCategory);
+router.delete("/admin/:id", ...adminGuard("courses.manage"),deleteCategory);
 
 /**
  * @route   GET /api/categories/:id
@@ -67,20 +66,20 @@ router.get("/:id", getCategoryById);
  * @desc    Create a new category
  * @access  Admin
  */
-router.post("/", verifyUser, verifyAdmin, createCategory);
+router.post("/", ...adminGuard("courses.manage"),createCategory);
 
 /**
  * @route   PUT /api/categories/:id
  * @desc    Update a category
  * @access  Admin
  */
-router.put("/:id", verifyUser, verifyAdmin, updateCategory);
+router.put("/:id", ...adminGuard("courses.manage"),updateCategory);
 
 /**
  * @route   DELETE /api/categories/:id
  * @desc    Delete a category
  * @access  Admin
  */
-router.delete("/:id", verifyUser, verifyAdmin, deleteCategory);
+router.delete("/:id", ...adminGuard("courses.manage"),deleteCategory);
 
 export default router;

@@ -11,7 +11,7 @@ import {
   rejectQnA,
 } from "../controllers/qna.controller";
 import { verifyUser } from "../middlewares/user.middleware";
-import { verifyAdmin } from "../middlewares/admin.middleware";
+import { adminGuard } from "../middlewares/admin.middleware";
 import { Router } from "express";
 
 const router = Router();
@@ -81,41 +81,41 @@ router.delete("/:qnaId/reply/:replyId", verifyUser, removeReply);
  * @desc    Get all QnAs for admin (with full data)
  * @access  Admin
  */
-router.get("/admin", verifyUser, verifyAdmin, getAllQnAs);
+router.get("/admin", ...adminGuard("courses.moderation"),getAllQnAs);
 
 /**
  * @route   GET /api/admin/qnas/:id
  * @desc    Get a QnA by ID for admin (with full data)
  * @access  Admin
  */
-router.get("/admin/:id", verifyUser, verifyAdmin, getQnAById);
+router.get("/admin/:id", ...adminGuard("courses.moderation"),getQnAById);
 
 /**
  * @route   PUT /api/admin/qnas/:id
  * @desc    Update a QnA (Admin can update any QnA)
  * @access  Admin
  */
-router.put("/admin/:id", verifyUser, verifyAdmin, updateQnA);
+router.put("/admin/:id", ...adminGuard("courses.moderation"),updateQnA);
 
 /**
  * @route   DELETE /api/admin/qnas/:id
  * @desc    Delete a QnA (Admin can delete any QnA)
  * @access  Admin
  */
-router.delete("/admin/:id", verifyUser, verifyAdmin, deleteQnA);
+router.delete("/admin/:id", ...adminGuard("courses.moderation"),deleteQnA);
 
 /**
  * @route   PATCH /api/qna/admin/:id/approve
  * @desc    Approve a Q&A (Admin/Instructor only)
  * @access  Admin
  */
-router.patch("/admin/:id/approve", verifyUser, verifyAdmin, approveQnA);
+router.patch("/admin/:id/approve", ...adminGuard("courses.moderation"),approveQnA);
 
 /**
  * @route   PATCH /api/qna/admin/:id/reject
  * @desc    Reject/Un-approve a Q&A (Admin/Instructor only)
  * @access  Admin
  */
-router.patch("/admin/:id/reject", verifyUser, verifyAdmin, rejectQnA);
+router.patch("/admin/:id/reject", ...adminGuard("courses.moderation"),rejectQnA);
 
 export default router;

@@ -1,6 +1,9 @@
 import { Router } from "express";
 import { verifyUser } from "../middlewares/user.middleware";
-import { verifyAdmin } from "../middlewares/admin.middleware";
+import {
+  verifyAdmin,
+  requireAnyPermission,
+} from "../middlewares/admin.middleware";
 import {
   getAllInstructors,
   getInstructorById,
@@ -9,9 +12,11 @@ import {
 
 const router = Router();
 
-// Apply middleware to all routes
+// Apply middleware to all routes. Instructor lookups are consumed by both
+// course management (assigning instructors) and user management.
 router.use(verifyUser);
 router.use(verifyAdmin);
+router.use(requireAnyPermission("users.manage", "courses.manage"));
 
 /**
  * @route   GET /api/instructors

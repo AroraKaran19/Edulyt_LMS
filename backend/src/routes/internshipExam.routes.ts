@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { verifyUser } from "../middlewares/user.middleware";
-import { verifyAdmin } from "../middlewares/admin.middleware";
+import { verifyAdmin, requirePermission } from "../middlewares/admin.middleware";
 import {
   listInternshipExamTemplatesAdminController,
   createInternshipExamAdminController,
@@ -13,6 +13,7 @@ const router = Router();
 
 router.use(verifyUser);
 router.use(verifyAdmin);
+router.use(requirePermission("internships.exams"));
 
 /** POST /api/internship-exams — create template */
 router.post("/", createInternshipExamAdminController);

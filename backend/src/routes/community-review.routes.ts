@@ -3,7 +3,7 @@ import {
   optionalVerifyUser,
   verifyUser,
 } from "../middlewares/user.middleware";
-import { verifyAdmin } from "../middlewares/admin.middleware";
+import { adminGuard } from "../middlewares/admin.middleware";
 import {
   addReplyToCommunityReview,
   adminApproveCommunityReview,
@@ -68,7 +68,7 @@ router.post("/:id/reply", verifyUser, addReplyToCommunityReview);
  *          Optional ?tag=<tag> and ?search=<text> further narrow results.
  * @access  Admin
  */
-router.get("/admin", verifyUser, verifyAdmin, adminListCommunityReviews);
+router.get("/admin", ...adminGuard("community.moderation"),adminListCommunityReviews);
 
 /**
  * @route   PATCH /api/community-reviews/admin/:id/approve
@@ -77,8 +77,7 @@ router.get("/admin", verifyUser, verifyAdmin, adminListCommunityReviews);
  */
 router.patch(
   "/admin/:id/approve",
-  verifyUser,
-  verifyAdmin,
+  ...adminGuard("community.moderation"),
   adminApproveCommunityReview
 );
 
@@ -89,8 +88,7 @@ router.patch(
  */
 router.patch(
   "/admin/:id/reject",
-  verifyUser,
-  verifyAdmin,
+  ...adminGuard("community.moderation"),
   adminRejectCommunityReview
 );
 
@@ -102,8 +100,7 @@ router.patch(
  */
 router.delete(
   "/admin/:id",
-  verifyUser,
-  verifyAdmin,
+  ...adminGuard("community.moderation"),
   adminDeleteCommunityReview
 );
 

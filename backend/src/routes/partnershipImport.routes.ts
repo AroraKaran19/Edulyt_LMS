@@ -1,6 +1,5 @@
 import { Router } from "express";
-import { verifyUser } from "../middlewares/user.middleware";
-import { verifyAdmin } from "../middlewares/admin.middleware";
+import { adminGuard } from "../middlewares/admin.middleware";
 import {
   createPartnershipImportConfig,
   deletePartnershipImportConfig,
@@ -19,62 +18,53 @@ import {
 
 const router = Router();
 
-router.get("/", verifyUser, verifyAdmin, listPartnershipImportConfigs);
-router.post("/", verifyUser, verifyAdmin, createPartnershipImportConfig);
+router.get("/", ...adminGuard("settings.partnership-import"),listPartnershipImportConfigs);
+router.post("/", ...adminGuard("settings.partnership-import"),createPartnershipImportConfig);
 
 router.get(
   "/:partnershipImportConfigId/whitelist/stats",
-  verifyUser,
-  verifyAdmin,
+  ...adminGuard("settings.partnership-import"),
   getCollaborationWhitelistStats
 );
 router.get(
   "/:partnershipImportConfigId/whitelist",
-  verifyUser,
-  verifyAdmin,
+  ...adminGuard("settings.partnership-import"),
   listCollaborationWhitelist
 );
 router.post(
   "/:partnershipImportConfigId/whitelist/import",
-  verifyUser,
-  verifyAdmin,
+  ...adminGuard("settings.partnership-import"),
   importCollaborationWhitelist
 );
 router.put(
   "/:partnershipImportConfigId/whitelist/:entryId",
-  verifyUser,
-  verifyAdmin,
+  ...adminGuard("settings.partnership-import"),
   updateCollaborationWhitelistEntry
 );
 router.delete(
   "/:partnershipImportConfigId/whitelist/:entryId",
-  verifyUser,
-  verifyAdmin,
+  ...adminGuard("settings.partnership-import"),
   deleteCollaborationWhitelistEntry
 );
 router.post(
   "/:partnershipImportConfigId/whitelist/:entryId/retry",
-  verifyUser,
-  verifyAdmin,
+  ...adminGuard("settings.partnership-import"),
   retryCollaborationWhitelistEntry
 );
 
 router.get(
   "/:partnershipImportConfigId",
-  verifyUser,
-  verifyAdmin,
+  ...adminGuard("settings.partnership-import"),
   getPartnershipImportConfigById
 );
 router.put(
   "/:partnershipImportConfigId",
-  verifyUser,
-  verifyAdmin,
+  ...adminGuard("settings.partnership-import"),
   updatePartnershipImportConfig
 );
 router.delete(
   "/:partnershipImportConfigId",
-  verifyUser,
-  verifyAdmin,
+  ...adminGuard("settings.partnership-import"),
   deletePartnershipImportConfig
 );
 
