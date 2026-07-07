@@ -162,8 +162,7 @@ const AboutTheCourseComponent = ({ course }: { course: Course }) => {
           ))}
         </div>
         <div className="course-certifiers-container w-full flex flex-wrap gap-4 justify-between relative">
-          {/* This will stay static for now */}
-          {courseCertifiedBy.map((certifier, index) => (
+          {/* {courseCertifiedBy.map((certifier, index) => (
             <div
               key={index}
               className="course-certifier-card w-max flex flex-col items-center justify-center select-none"
@@ -176,7 +175,7 @@ const AboutTheCourseComponent = ({ course }: { course: Course }) => {
                 draggable={false}
               />
             </div>
-          ))}
+          ))} */}
         </div>
       </section>
     </>

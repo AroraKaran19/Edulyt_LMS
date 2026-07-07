@@ -315,6 +315,14 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       video.removeEventListener("canplay", handleCanPlay);
       video.removeEventListener("loadeddata", handleLoadedData);
       video.removeEventListener("error", handleError);
+
+      // The player is remounted per lesson (`key={content._id}`). Safari keeps a
+      // detached <video> playing after it leaves the DOM, so its audio overlaps
+      // the next lesson ("double audio"). Pausing the outgoing element on
+      // unmount stops it. This runs only when the element is being discarded —
+      // never during playback — so it can't re-buffer the active video, and it
+      // leaves `src` intact so a dev Strict-Mode remount still has its source.
+      video.pause();
     };
   }, []); // Empty deps - handlers are stable
 
