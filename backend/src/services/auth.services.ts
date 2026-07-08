@@ -179,6 +179,92 @@ export const removeRefreshTokenFamily = async (
   }
 };
 
+/** One active login session (a refresh-token `family`), summarized for display. */
+export type SessionSummary = {
+  family: string;
+  deviceInfo?: { userAgent?: string; ipAddress?: string; deviceType?: string };
+  createdAt: Date;
+  lastActive: Date;
+  current: boolean;
+};
+
+/**
+ * The user's live login sessions, one per refresh-token family (= per device).
+ * A family with several rotated tokens collapses to a single entry; expired
+ * lineages are dropped. `current` marks the family that made this request.
+ */
+export const listUserSessions = async (
+  userId: unknown,
+  currentFamily?: string,
+): Promise<SessionSummary[]> => {
+  const user = await UserModel.findById(userId).select("refreshTokens").lean();
+  if (!user) return [];
+  const now = Date.now();
+
+  type Acc = {
+    family: string;
+    deviceInfo?: SessionSummary["deviceInfo"];
+    createdAt: number;
+    lastActive: number;
+  };
+  const byFamily = new Map<string, Acc>();
+
+  for (const rt of (user.refreshTokens ?? []) as unknown as {
+    family: string;
+    deviceInfo?: SessionSummary["deviceInfo"];
+    createdAt?: Date | string;
+    lastUsed?: Date | string;
+    idleExpiresAt?: Date | string;
+    absoluteExpiresAt?: Date | string;
+  }[]) {
+    const idle = rt.idleExpiresAt ? new Date(rt.idleExpiresAt).getTime() : 0;
+    const abs = rt.absoluteExpiresAt
+      ? new Date(rt.absoluteExpiresAt).getTime()
+      : 0;
+    // Skip expired lineages — they're not live sessions.
+    if (idle < now || abs < now) continue;
+
+    const created = rt.createdAt ? new Date(rt.createdAt).getTime() : now;
+    const used = rt.lastUsed ? new Date(rt.lastUsed).getTime() : created;
+    const prev = byFamily.get(rt.family);
+    if (!prev) {
+      byFamily.set(rt.family, {
+        family: rt.family,
+        deviceInfo: rt.deviceInfo,
+        createdAt: created,
+        lastActive: used,
+      });
+    } else {
+      prev.createdAt = Math.min(prev.createdAt, created);
+      if (used >= prev.lastActive) {
+        prev.lastActive = used;
+        prev.deviceInfo = rt.deviceInfo; // most-recent device details win
+      }
+    }
+  }
+
+  return [...byFamily.values()]
+    .map((s) => ({
+      family: s.family,
+      deviceInfo: s.deviceInfo,
+      createdAt: new Date(s.createdAt),
+      lastActive: new Date(s.lastActive),
+      current: Boolean(currentFamily) && s.family === currentFamily,
+    }))
+    .sort((a, b) => b.lastActive.getTime() - a.lastActive.getTime());
+};
+
+/** Sign out every device except the given family (used by "log out others"). */
+export const revokeOtherRefreshTokenFamilies = async (
+  userId: unknown,
+  keepFamily: string,
+) => {
+  await UserModel.updateOne(
+    { _id: userId },
+    { $pull: { refreshTokens: { family: { $ne: keepFamily } } } },
+  );
+};
+
 export const resetUserPassword = async (token: string, newPassword: string) => {
   if (!process.env.JWT_SECRET) {
     throw new AppError("JWT_SECRET is not set", 500);

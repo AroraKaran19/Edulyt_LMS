@@ -64,6 +64,18 @@ apiClient.interceptors.response.use(
       const status = error.response.status;
       const data = error.response.data;
 
+      // Already retried once and still unauthorized → the session is dead, not
+      // just stale. This is the path a *remotely signed-out* device takes: its
+      // access token is still unexpired (so no refresh fires) but the backend
+      // now rejects it because the session was revoked. Sign out cleanly.
+      if (status === 401 && originalRequest._retry) {
+        if (typeof window !== "undefined") {
+          await signOut({ redirect: false });
+          window.location.href = "/login";
+        }
+        return Promise.reject(error);
+      }
+
       // Handle 401 Unauthorized - access token likely expired.
       // The refresh token lives only in the NextAuth encrypted session, so we
       // re-fetch the session (which triggers NextAuth's server-side rotation)

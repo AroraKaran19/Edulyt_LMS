@@ -27,7 +27,7 @@ export const authOptions: NextAuthOptions = {
         /** Partner page sends `"partner"` to route to `/auth/partner/login`; otherwise `/auth/login`. */
         portal: { label: "Portal", type: "text" },
       },
-      authorize: async (credentials) => {
+      authorize: async (credentials, req) => {
         if (!credentials?.email || !credentials?.password) {
           return null;
         }
@@ -38,10 +38,31 @@ export const authOptions: NextAuthOptions = {
               : "";
           const path =
             portal === "partner" ? "/auth/partner/login" : "/auth/login";
-          const response = await apiClient.post(path, {
-            email: credentials.email,
-            password: credentials.password,
-          });
+          // This call is made server-side, so the backend would otherwise see
+          // *this server* as the client ("axios", "::1"). Forward the real
+          // browser user-agent / IP from the incoming request so the account's
+          // Active Sessions list shows the actual device.
+          const headerValue = (v?: string | string[]) =>
+            Array.isArray(v) ? v[0] : v;
+          const browserUserAgent = headerValue(req?.headers?.["user-agent"]);
+          const forwardedFor = headerValue(
+            req?.headers?.["x-forwarded-for"] ?? req?.headers?.["x-real-ip"]
+          );
+          const response = await apiClient.post(
+            path,
+            {
+              email: credentials.email,
+              password: credentials.password,
+            },
+            {
+              headers: {
+                ...(browserUserAgent
+                  ? { "x-client-user-agent": browserUserAgent }
+                  : {}),
+                ...(forwardedFor ? { "x-forwarded-for": forwardedFor } : {}),
+              },
+            }
+          );
           return {
             ...response.data?.data?.user,
             accessToken: response.data?.data?.accessToken,

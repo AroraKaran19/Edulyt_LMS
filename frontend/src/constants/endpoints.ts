@@ -14,6 +14,12 @@ export const ENDPOINTS = {
     resetPassword: "/auth/reset-password",
     generateResetPasswordToken: "/auth/generate-reset-password-token",
     changePassword: "/auth/change-password",
+    /** GET — active login sessions (one per device). */
+    sessions: "/auth/sessions",
+    /** POST body `{ family }` — sign out a specific device. */
+    revokeSession: "/auth/sessions/revoke",
+    /** POST — sign out every device except the current one. */
+    revokeOtherSessions: "/auth/sessions/revoke-others",
   },
 
   // Course Routes

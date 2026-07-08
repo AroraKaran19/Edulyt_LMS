@@ -5,6 +5,25 @@ import { AppError } from "../middlewares/error.middleware";
 const GLOBAL_KEY = "global";
 
 /**
+ * The home page settings are a singleton CMS document read on every public
+ * homepage visit but written only when an admin edits a section. We serve a
+ * cached copy to avoid the `findOne` + 3 `.populate()` lookups on each read.
+ *
+ * Correctness: admin writes call `invalidateHomePageSettingsCache()` so edits
+ * show immediately on the instance that made them. The TTL is a safety net that
+ * bounds staleness when the API runs on multiple instances (an edit on one
+ * can't clear another's in-memory cache).
+ */
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+let settingsCache: { data: Record<string, unknown>; expiresAt: number } | null =
+  null;
+
+/** Drop the cached settings so the next read rebuilds from the database. */
+export function invalidateHomePageSettingsCache(): void {
+  settingsCache = null;
+}
+
+/**
  * Allowed section keys (mirrors `keyof HomePageSettings` on the frontend).
  * Update this list if a new section is added to the schema.
  */
@@ -96,6 +115,10 @@ function populateAll<T extends mongoose.Query<unknown, unknown>>(query: T): T {
 }
 
 export async function getHomePageSettings(): Promise<Record<string, unknown>> {
+  if (settingsCache && settingsCache.expiresAt > Date.now()) {
+    return settingsCache.data;
+  }
+
   let doc = await populateAll(
     HomePageSettingsModel.findOne({ key: GLOBAL_KEY }),
   ).lean();
@@ -112,7 +135,9 @@ export async function getHomePageSettings(): Promise<Record<string, unknown>> {
     ).lean();
   }
 
-  return (doc ?? {}) as Record<string, unknown>;
+  const data = (doc ?? {}) as Record<string, unknown>;
+  settingsCache = { data, expiresAt: Date.now() + CACHE_TTL_MS };
+  return data;
 }
 
 interface UpdateSectionInput {
@@ -154,5 +179,7 @@ export async function updateHomePageSection(
     },
   );
 
+  // Edit landed — clear the cache so this (and the public read) rebuild fresh.
+  invalidateHomePageSettingsCache();
   return getHomePageSettings();
 }

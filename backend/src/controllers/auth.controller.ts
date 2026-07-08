@@ -8,10 +8,12 @@ import { Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import {
   changeUserPassword,
+  listUserSessions,
   loginUser,
   registerUser,
   removeRefreshTokenFamily,
   resetUserPassword,
+  revokeOtherRefreshTokenFamilies,
   revokeRefreshTokenFamily,
 } from "../services/auth.services";
 import { createRefreshToken, rotateRefreshToken } from "../utils/refreshToken";
@@ -39,11 +41,28 @@ const detectDeviceType = (userAgent: string) => {
   }
 };
 
-const buildDeviceInfo = (req: Request): DeviceInfo => ({
-  userAgent: req.headers["user-agent"],
-  ipAddress: req.ip,
-  deviceType: detectDeviceType(req.headers["user-agent"] || ""),
-});
+const firstHeader = (value?: string | string[]): string | undefined =>
+  Array.isArray(value) ? value[0] : value;
+
+/**
+ * Login/refresh requests are proxied by the Next.js server (NextAuth), so the
+ * raw `user-agent`/`req.ip` describe *that server* (e.g. "axios/1.12.2", "::1"),
+ * not the end user's browser. When the auth layer forwards the real browser
+ * values we prefer them; otherwise we fall back to the request's own headers.
+ */
+const buildDeviceInfo = (req: Request): DeviceInfo => {
+  const userAgent =
+    firstHeader(req.headers["x-client-user-agent"]) ||
+    firstHeader(req.headers["user-agent"]) ||
+    "";
+  const forwardedFor = firstHeader(req.headers["x-forwarded-for"]);
+  const ipAddress = forwardedFor?.split(",")[0].trim() || req.ip;
+  return {
+    userAgent,
+    ipAddress,
+    deviceType: detectDeviceType(userAgent),
+  };
+};
 
 const protectedUser = (user: User) => {
   return {
@@ -74,10 +93,10 @@ async function finalizeCredentialLogin(
     throw new AppError("User record is missing an id", 500);
   }
   const protectedLoggedInUser = protectedUser(user);
-  const accessToken = await generateAccessToken(userId);
   const { plaintext: refreshToken, entry } = createRefreshToken(
     buildDeviceInfo(req),
   );
+  const accessToken = await generateAccessToken(userId, entry.family);
   await UserModel.findByIdAndUpdate(user._id, {
     $push: { refreshTokens: entry },
   });
@@ -296,10 +315,10 @@ export const oauthSignin = asyncHandler(async (req: Request, res: Response) => {
 
   const protectedOAuthUser = protectedUser(user);
 
-  const accessToken = await generateAccessToken(user._id);
   const { plaintext: refreshToken, entry } = createRefreshToken(
     buildDeviceInfo(req),
   );
+  const accessToken = await generateAccessToken(user._id, entry.family);
 
   await UserModel.findByIdAndUpdate(user._id, {
     $push: { refreshTokens: entry },
@@ -351,11 +370,17 @@ export const refreshToken = asyncHandler(
       }
     }
 
-    const newAccessToken = await generateAccessToken(String(user._id));
+    const newAccessToken = await generateAccessToken(
+      String(user._id),
+      entry.family,
+    );
     const { plaintext: newRefreshToken, entry: child } = rotateRefreshToken(
       entry.family,
       new Date(entry.absoluteExpiresAt),
-      buildDeviceInfo(req),
+      // Keep the device details captured at login. Rotation runs through the
+      // Next.js proxy, so rebuilding from this request would overwrite the real
+      // browser identity with the proxy's ("axios", "::1").
+      entry.deviceInfo,
     );
 
     // Invalidate the presented token (keep it for the grace window) ...
@@ -410,14 +435,71 @@ export const logout = asyncHandler(async (req: Request, res: Response) => {
   sendSuccessResponse(res, null, "Logged out successfully");
 });
 
-export const generateAccessToken = async (userId: string) => {
+/**
+ * @route GET /api/auth/sessions
+ * @desc  The signed-in user's active login sessions (one per device), with the
+ *        current device flagged. Access-token auth (verifyUser).
+ */
+export const getMySessionsController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const user = req.user;
+    if (!user) throw new AppError("Unauthorized", 401);
+    const sessions = await listUserSessions(user._id, req.currentFamily);
+    sendSuccessResponse(res, { sessions }, "Sessions fetched");
+  },
+);
+
+/**
+ * @route POST /api/auth/sessions/revoke  Body: { family }
+ * @desc  Sign out a specific device by revoking its refresh-token family.
+ */
+export const revokeSessionController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const user = req.user;
+    if (!user) throw new AppError("Unauthorized", 401);
+    const { family } = req.body as { family?: string };
+    if (!family || typeof family !== "string") {
+      throw new AppError("family is required", 400);
+    }
+    await removeRefreshTokenFamily(user._id, family);
+    sendSuccessResponse(res, null, "Session signed out");
+  },
+);
+
+/**
+ * @route POST /api/auth/sessions/revoke-others
+ * @desc  Sign out every device except the one making this request.
+ */
+export const revokeOtherSessionsController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const user = req.user;
+    if (!user) throw new AppError("Unauthorized", 401);
+    // Without a known current family we can't tell which session to keep, so
+    // revoking "others" would sign the user out everywhere. Ask them to
+    // re-authenticate (their next token refresh embeds the family).
+    if (!req.currentFamily) {
+      throw new AppError(
+        "Please sign out and sign back in to manage other sessions.",
+        409,
+      );
+    }
+    await revokeOtherRefreshTokenFamilies(user._id, req.currentFamily);
+    sendSuccessResponse(res, null, "Signed out of all other devices");
+  },
+);
+
+export const generateAccessToken = async (userId: string, family?: string) => {
   if (!process.env.JWT_SECRET) {
     throw new AppError("JWT_SECRET is not set", 500);
   }
   try {
-    return jwt.sign({ userId }, process.env.JWT_SECRET, {
-      expiresIn: ACCESS_TOKEN_TTL,
-    });
+    // `family` (the refresh-token lineage / session id) lets verifyUser mark
+    // which session made the request — used by the Active Sessions screen.
+    return jwt.sign(
+      { userId, ...(family ? { family } : {}) },
+      process.env.JWT_SECRET,
+      { expiresIn: ACCESS_TOKEN_TTL },
+    );
   } catch (error) {
     throw new AppError("Failed to generate access token", 500);
   }

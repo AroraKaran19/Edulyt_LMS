@@ -1,7 +1,7 @@
 import {
   changePassword,
-  generateAccessToken,
   generateResetPasswordToken,
+  getMySessionsController,
   login,
   logout,
   partnerLogin,
@@ -9,6 +9,8 @@ import {
   refreshToken,
   register,
   resetPassword,
+  revokeOtherSessionsController,
+  revokeSessionController,
 } from "../controllers/auth.controller";
 import { verifyUser } from "../middlewares/user.middleware";
 import { verifyTokenForRefresh } from "../middlewares/autoRefresh.middleware";
@@ -59,17 +61,6 @@ router.post("/refresh-token", verifyTokenForRefresh, refreshToken);
 router.post("/logout", verifyTokenForRefresh, logout);
 
 /**
- * @route   POST /api/auth/generate-access-token
- * @desc    Generate access token
- * @access  User
- */
-router.post(
-  "/generate-access-token",
-  verifyTokenForRefresh,
-  generateAccessToken
-);
-
-/**
  * @route   POST /api/auth/reset-password
  * @desc    Reset password
  * @access  Public
@@ -90,5 +81,30 @@ router.post("/generate-reset-password-token", generateResetPasswordToken);
  * @access  User
  */
 router.post("/change-password", verifyUser, changePassword);
+
+/**
+ * @route   GET /api/auth/sessions
+ * @desc    List the user's active login sessions (one per device).
+ * @access  User
+ */
+router.get("/sessions", verifyUser, getMySessionsController);
+
+/**
+ * @route   POST /api/auth/sessions/revoke   Body: { family }
+ * @desc    Sign out a specific device.
+ * @access  User
+ */
+router.post("/sessions/revoke", verifyUser, revokeSessionController);
+
+/**
+ * @route   POST /api/auth/sessions/revoke-others
+ * @desc    Sign out every device except the current one.
+ * @access  User
+ */
+router.post(
+  "/sessions/revoke-others",
+  verifyUser,
+  revokeOtherSessionsController,
+);
 
 export default router;
