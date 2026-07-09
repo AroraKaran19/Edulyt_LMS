@@ -301,7 +301,14 @@ const PrivacyPolicyPage = () => {
                     <MapPin className="w-6 h-6" />
                   </div>
                   <h3 className="font-semibold mb-2">Address</h3>
-                  <p className="text-orange-100">Dwarka, New Delhi- 110077</p>
+                  <p className="text-orange-100">
+                    Registered Address: D-160, Sector-8, Dwarka, New Delhi -
+                    110075
+                  </p>
+                  <p className="text-orange-100 mt-2">
+                    Bangalore Branch Address: L-194, Venkatapura, Santhosapuram,
+                    Sector 6, HSR Layout, Bengaluru, Karnataka 560102
+                  </p>
                 </div>
                 <div className="flex flex-col items-center text-center">
                   <div className="bg-white/20 p-3 rounded-full mb-3">

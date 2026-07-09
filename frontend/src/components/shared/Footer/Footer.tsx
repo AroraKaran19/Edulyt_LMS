@@ -126,9 +126,16 @@ const Footer = () => {
     },
     {
       icon: MapPin,
-      label: "Address",
-      value: "D-160, Sector-8, Dwarka, New Delhi-110077 ",
-      href: "https://www.google.com/maps/dir//Block+D,+Sector+8+Dwarka,+Dwarka,+New+Delhi,+Delhi,+110077/@28.56991,76.99041,12z/data=!4m8!4m7!1m0!1m5!1m1!1s0x390d1b08879148a5:0x8edcb8606c09a455!2m2!1d77.0728619!2d28.5699176?entry=ttu&g_ep=EgoyMDI1MDgxOS4wIKXMDSoASAFQAw%3D%3D",
+      label: "Registered Address",
+      value: "Registered Address: D-160, Sector-8, Dwarka, New Delhi - 110075",
+      href: "https://www.google.com/maps/search/?api=1&query=D-160%2C+Sector-8%2C+Dwarka%2C+New+Delhi+-+110075",
+    },
+    {
+      icon: MapPin,
+      label: "Bangalore Branch Address",
+      value:
+        "Bangalore Branch Address: L-194, Venkatapura, Santhosapuram, Sector 6, HSR Layout, Bengaluru, Karnataka 560102",
+      href: "https://www.google.com/maps/search/?api=1&query=L-194%2C+Venkatapura%2C+Santhosapuram%2C+Sector+6%2C+HSR+Layout%2C+Bengaluru%2C+Karnataka+560102",
     },
   ];
 
