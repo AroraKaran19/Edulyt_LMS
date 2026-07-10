@@ -19,7 +19,10 @@ import QRCode from "qrcode";
 import { InternshipEnrollmentModel } from "../models/internshipEnrollment.schema";
 import { InternshipModel } from "../models/internship.schema";
 import { uploadFileToS3 } from "./upload.services";
-import { convertDocxToPdf } from "../utils/certificateGeneratorDocx";
+import {
+  convertDocxToPdf,
+  replacePlainTextPlaceholders,
+} from "../utils/certificateGeneratorDocx";
 
 /**
  * Update pending payments for a user
@@ -230,52 +233,9 @@ const handleFailedPayment = async (order: any) => {
   }
 };
 
-function escapeXml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&apos;");
-}
-
 function formatOfferLetterDate(d: Date): string {
   const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
   return `${String(d.getUTCDate()).padStart(2,"0")}-${months[d.getUTCMonth()]}-${d.getUTCFullYear()}`;
-}
-
-
-function fillOfferLetterXml(
-  xml: string,
-  data: {
-    letterDate: string;
-    name: string;
-    internId: string;
-    joiningDate: string;
-    domain: string;
-    duration: string;
-  },
-): string {
-  const e = escapeXml;
-
-  // 1. Intern ID — single <w:t> node in template
-  xml = xml.replace("<w:t>AI-XXXX</w:t>", `<w:t>${e(data.internId)}</w:t>`);
-
-  // 2. Letter date header "DD - MM - YYYY" — 5 split runs
-  xml = xml.replace(
-    /<w:t>DD<\/w:t>([\s\S]{1,300}?)<w:t>-<\/w:t>([\s\S]{1,300}?)<w:t>MM<\/w:t>([\s\S]{1,300}?)<w:t>-<\/w:t>([\s\S]{1,300}?)<w:t>YYYY<\/w:t>/,
-    `<w:t>${e(data.letterDate)}</w:t>`,
-  );
-
-  // 3–6. Four bracketed placeholders in order: [name], [joiningDate], [domain], [duration]
-  let idx = 0;
-  const values = [e(data.name), e(data.joiningDate), e(data.domain), e(data.duration)];
-  xml = xml.replace(
-    /<w:t>\[<\/w:t>[\s\S]*?<w:t>\]<\/w:t>/g,
-    () => `<w:t>${values[idx++] ?? ""}</w:t>`,
-  );
-
-  return xml;
 }
 
 // __dirname is backend/dist/services (or src/services); three segments reach repo root.
@@ -284,71 +244,85 @@ const OFFER_LETTER_TEMPLATE = path.resolve(
   "../../../frontend/public/course-certificates/Airkrit Certificates/Airkrit India Offer Letter - Intern - AI-02453 - Template.docx",
 );
 
+export interface OfferLetterData {
+  letterDate: string;
+  name: string;
+  internId: string;
+  joiningDate: string;
+  domain: string;
+  duration: string;
+}
+
 /**
- * Inject the QR PNG at the `[%qrImage]` placeholder via docxtemplater's
- * ImageModule. The raw-XML pass above has already substituted every other
- * placeholder, so docxtemplater only ever sees the image tag. If the template
- * hasn't yet been edited to include `[%qrImage]`, render is a no-op and the
- * letter goes out without a QR rather than failing.
+ * Render the offer-letter DOCX from the Airkrit template.
+ *
+ * The template mixes three kinds of placeholder, each handled by the mechanism
+ * that can actually resolve it:
+ *
+ *  - Named bracket tags — `[Your Name]`, `[DD-MMM-YYYY]` (joining date), the
+ *    long "[Your selected Domain ... Intern]" tag, and `[X]` (months). These are
+ *    resolved by docxtemplater, which correctly merges tags split across runs.
+ *    The descriptive tags have no natural data key, so a `nullGetter` maps them.
+ *  - Plain split-run tokens in the header — the `DD-MM-YYYY` letter date and
+ *    `AI-XXXX` intern ID. Word fragments these across runs, so the run-aware
+ *    `replacePlainTextPlaceholders` pass fills them (preserving their bold run).
+ *  - `[%qrImage]` — filled from the verification URL by the image module.
+ *
+ * An unmapped tag renders "" rather than docxtemplater's literal "undefined".
  */
-function injectQrIntoDocx(docxBuffer: Buffer, qrPng: Buffer): Buffer {
-  const zip = new PizZip(docxBuffer);
+export async function generateOfferLetterBuffer(
+  data: OfferLetterData,
+  options: { verificationUrl?: string } = {},
+): Promise<Buffer> {
+  const zip = new PizZip(fs.readFileSync(OFFER_LETTER_TEMPLATE));
+
+  let qrPng: Buffer | null = null;
+  if (options.verificationUrl) {
+    try {
+      qrPng = await QRCode.toBuffer(options.verificationUrl, {
+        type: "png",
+        width: 300,
+        margin: 1,
+        errorCorrectionLevel: "M",
+      });
+    } catch (err) {
+      console.warn("[offer-letter] QR generation failed, shipping without QR:", err);
+    }
+  }
+
   const imageModule = new ImageModule({
     centered: false,
     getImage: (tagValue: string) =>
-      tagValue === "qrImage" ? qrPng : Buffer.from(""),
+      tagValue === "qrImage" && qrPng ? qrPng : Buffer.from(""),
     // 96px @ 96 DPI = 1 inch square — same sizing as the certificate QR.
     getSize: () => [96, 96],
   });
+
   const doc = new Docxtemplater(zip, {
     delimiters: { start: "[", end: "]" },
     paragraphLoop: true,
     linebreaks: true,
     modules: [imageModule],
-    nullGetter: () => "",
+    nullGetter: (part: any): string => {
+      if (part && part.module) return "";
+      const tag = String(part?.value ?? "").trim();
+      const lower = tag.toLowerCase();
+      if (lower.includes("domain")) return data.domain;
+      if (tag === "X") return data.duration;
+      if (/dd\s*-\s*mmm/.test(lower)) return data.joiningDate; // [DD-MMM-YYYY]
+      return "";
+    },
   });
-  try {
-    doc.render({ qrImage: "qrImage" });
-  } catch (err) {
-    console.warn(
-      "[offer-letter] QR render skipped (template may be missing [%qrImage]):",
-      err,
-    );
-    return docxBuffer;
-  }
-  return doc.getZip().generate({
-    type: "nodebuffer",
-    compression: "DEFLATE",
-  }) as Buffer;
-}
 
-async function generateOfferLetterBuffer(
-  data: Parameters<typeof fillOfferLetterXml>[1],
-  options: { verificationUrl?: string } = {},
-): Promise<Buffer> {
-  const templateBuffer = fs.readFileSync(OFFER_LETTER_TEMPLATE);
-  const zip = new PizZip(templateBuffer);
-  const docXml = zip.file("word/document.xml")!.asText();
-  zip.file("word/document.xml", fillOfferLetterXml(docXml, data));
-  const textFilled = zip.generate({
-    type: "nodebuffer",
-    compression: "DEFLATE",
-  }) as Buffer;
+  doc.render({ "Your Name": data.name, qrImage: qrPng ? "qrImage" : "" });
 
-  if (!options.verificationUrl) return textFilled;
+  const outZip = doc.getZip();
+  replacePlainTextPlaceholders(outZip, {
+    "AI-XXXX": data.internId,
+    "DD-MM-YYYY": data.letterDate,
+  });
 
-  try {
-    const qrPng = await QRCode.toBuffer(options.verificationUrl, {
-      type: "png",
-      width: 300,
-      margin: 1,
-      errorCorrectionLevel: "M",
-    });
-    return injectQrIntoDocx(textFilled, qrPng);
-  } catch (err) {
-    console.warn("[offer-letter] QR generation failed, shipping without QR:", err);
-    return textFilled;
-  }
+  return outZip.generate({ type: "nodebuffer", compression: "DEFLATE" }) as Buffer;
 }
 
 /**

@@ -7,6 +7,33 @@ import apiClient from "@/configs/apiConfig";
 import ImageComponent from "@/components/ui/ImageComponent";
 import { CertificateVerificationData } from "@/types/certificate";
 
+/**
+ * Wording per document type. One verification endpoint backs course
+ * certificates, internship certificates and letters of recommendation, so this
+ * page must not hard-code "Certificate" / "Course Name".
+ */
+const DOC_COPY = {
+  course: {
+    title: "Certificate",
+    subject: "Course Name",
+    idLabel: "Certificate ID",
+    verifiedNote: "This certificate is authentic and has been verified",
+  },
+  internship: {
+    title: "Internship Certificate",
+    subject: "Internship",
+    idLabel: "Certificate ID",
+    verifiedNote: "This certificate is authentic and has been verified",
+  },
+  lor: {
+    title: "Letter of Recommendation",
+    subject: "Program",
+    idLabel: "Document ID",
+    verifiedNote:
+      "This letter of recommendation is authentic and has been verified",
+  },
+} as const;
+
 const VerifyCertificatePage = () => {
   const params = useParams();
   const verificationCode = params?.verificationCode as string;
@@ -51,7 +78,7 @@ const VerifyCertificatePage = () => {
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <Loader2 className="w-12 h-12 animate-spin text-orange-500 mx-auto mb-4" />
-          <p className="text-gray-600">Verifying certificate...</p>
+          <p className="text-gray-600">Verifying document...</p>
         </div>
       </div>
     );
@@ -63,11 +90,11 @@ const VerifyCertificatePage = () => {
         <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-8 text-center">
           <XCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            Certificate Not Found
+            Document Not Found
           </h1>
           <p className="text-gray-600 mb-6">
             {error ||
-              "The certificate you are looking for does not exist or has been invalidated."}
+              "The document you are looking for does not exist or has been invalidated."}
           </p>
           <p className="text-sm text-gray-500">
             Verification Code:{" "}
@@ -80,6 +107,8 @@ const VerifyCertificatePage = () => {
     );
   }
 
+  const copy = DOC_COPY[certificate.certificateType ?? "course"] ?? DOC_COPY.course;
+
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-4xl mx-auto">
@@ -91,19 +120,17 @@ const VerifyCertificatePage = () => {
             </div>
             <div>
               <h1 className="text-2xl font-bold text-gray-900">
-                Certificate Verified
+                {copy.title} Verified
               </h1>
-              <p className="text-gray-600 text-sm">
-                This certificate is authentic and has been verified
-              </p>
+              <p className="text-gray-600 text-sm">{copy.verifiedNote}</p>
             </div>
           </div>
         </div>
 
-        {/* Certificate Details */}
+        {/* Document Details */}
         <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
           <h2 className="text-xl font-bold text-gray-900 mb-4">
-            Certificate Details
+            {copy.title} Details
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -115,14 +142,14 @@ const VerifyCertificatePage = () => {
             </div>
 
             <div>
-              <p className="text-sm text-gray-500 mb-1">Course Name</p>
+              <p className="text-sm text-gray-500 mb-1">{copy.subject}</p>
               <p className="text-lg font-semibold text-gray-900">
                 {certificate.courseId?.title || certificate.courseName}
               </p>
             </div>
 
             <div>
-              <p className="text-sm text-gray-500 mb-1">Certificate ID</p>
+              <p className="text-sm text-gray-500 mb-1">{copy.idLabel}</p>
               <p className="text-lg font-semibold text-gray-900 font-mono">
                 {certificate.certificateId}
               </p>
@@ -167,7 +194,7 @@ const VerifyCertificatePage = () => {
         {/* Certificate Preview */}
         {certificate.courseId?.thumbnail && (
           <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Course</h2>
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Program</h2>
             <div className="relative w-full h-48 rounded-lg overflow-hidden">
               <ImageComponent
                 src={certificate.courseId.thumbnail}

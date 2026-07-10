@@ -64,6 +64,7 @@ export interface Certificate {
  */
 export interface CertificateVerificationData {
   _id: string;
+  certificateType?: "course" | "internship" | "lor";
   certificateId: string;
   studentName: string;
   courseName: string;

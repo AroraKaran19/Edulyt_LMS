@@ -23,13 +23,45 @@ export interface CertificateData {
   instructorName?: string;
   keyTopics?: string; // Key topics or technologies
   verificationUrl?: string; // URL for QR code verification
+  // Internship-certificate-only fields (ignored by the course-cert template):
+  internRole?: string; // Designation, e.g. "Data Analytics Intern"
+  internDurationMonths?: string; // Number of months, e.g. "3"
+  internPeriod?: string; // Period text, e.g. "01 - Jul - 2026 to 30 - Sep - 2026"
+}
+
+/**
+ * Resolve the descriptive placeholders the Airkrit templates use but that have
+ * no direct data key: gender pronouns and the internship role/duration/period.
+ * Used as docxtemplater's nullGetter so an unmapped tag never renders the
+ * literal string "undefined" (docxtemplater's default) — it resolves to a
+ * sensible value, or "" as a last resort.
+ *
+ * Pronouns are gender-neutral ("they/them/their") because no gender is stored
+ * on users; the capitalized template variants (e.g. "[His/Her]") map to the
+ * capitalized neutral form ("Their").
+ */
+function makeFieldNullGetter(data: CertificateData) {
+  return (part: any): string => {
+    // Leave module tags (image/loops) for their own modules to resolve.
+    if (part && part.module) return "";
+    const tag = String(part?.value ?? "").trim();
+    const lower = tag.toLowerCase();
+    const capitalized = /^[A-Z]/.test(tag);
+    if (lower === "he/she") return capitalized ? "They" : "they";
+    if (lower === "him/her") return capitalized ? "Them" : "them";
+    if (lower === "his/her") return capitalized ? "Their" : "their";
+    if (lower.includes("domain")) return data.internRole ?? "";
+    if (tag === "X") return data.internDurationMonths ?? "";
+    if (/dd\s*-\s*mmm/.test(lower)) return data.internPeriod ?? "";
+    return "";
+  };
 }
 
 /**
  * Post-process the DOCX XML to replace plain text placeholders that weren't caught by docxtemplater
  * This handles cases where the template has plain text like "DD-MM-YYYY" instead of "[DD-MM-YYYY]"
  */
-function replacePlainTextPlaceholders(
+export function replacePlainTextPlaceholders(
   zip: PizZip,
   replacements: { [key: string]: string }
 ): void {
@@ -488,6 +520,9 @@ export async function generateCertificateFromDocx(
       paragraphLoop: true,
       linebreaks: true,
       modules: [imageModule], // Add image module for QR code
+      // Resolve pronouns + internship role/duration/period, and ensure no tag
+      // ever renders the literal "undefined" (docxtemplater's default).
+      nullGetter: makeFieldNullGetter(data),
     });
 
     // Prepare data for replacement
@@ -500,6 +535,8 @@ export async function generateCertificateFromDocx(
     const templateData: any = {
       "Your Name": data.studentName, // Not bold (used in greeting)
       "Full Name": `${BOLD_MARKER_PREFIX}${data.studentName}${BOLD_MARKER_SUFFIX}`, // Will be made bold
+      // The LOR template closes with "We fully endorse [Name] ...".
+      Name: `${BOLD_MARKER_PREFIX}${data.studentName}${BOLD_MARKER_SUFFIX}`,
       "Course Name": `${BOLD_MARKER_PREFIX}${data.courseName}${BOLD_MARKER_SUFFIX}`, // Will be made bold
       "Key Topics or Technologies": `${BOLD_MARKER_PREFIX}${
         data.keyTopics || "the course topics"

@@ -218,7 +218,7 @@ const CertificateDetailPage = () => {
               certificate.courseId?.thumbnail && (
                 <div className="bg-white rounded-xl p-6 border border-[#0000001F]">
                   <h2 className="text-xl font-bold text-gray-900 mb-4">
-                    Course
+                    Program
                   </h2>
                   <div className="relative w-full h-48 rounded-lg overflow-hidden">
                     <ImageComponent

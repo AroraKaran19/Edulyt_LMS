@@ -15,6 +15,18 @@ import path from "path";
 import fs from "fs";
 import os from "os";
 
+const MONTHS_SHORT = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
+/** "01 - Jul - 2026" — matches the internship template's period format. */
+function formatPeriodDate(d: Date): string {
+  return `${String(d.getUTCDate()).padStart(2, "0")} - ${
+    MONTHS_SHORT[d.getUTCMonth()]
+  } - ${d.getUTCFullYear()}`;
+}
+
 /**
  * Generate a unique certificate ID based on user ID and enrollment ID
  * Format: AI-XXXXX (e.g., AI-12345)
@@ -282,12 +294,33 @@ export const createInternshipCertificateService = async (
 
   const [user, internship] = await Promise.all([
     UserModel.findById((enrollment as any).user).select("firstName lastName").lean(),
-    InternshipModel.findById((enrollment as any).internship).select("title").lean(),
+    InternshipModel.findById((enrollment as any).internship)
+      .select("title offerLetterDesignation")
+      .lean(),
   ]);
   if (!user || !internship) throw new AppError("User or internship not found", 404);
 
   const studentName = `${(user as any).firstName || ""} ${(user as any).lastName || ""}`.trim();
   const internshipTitle = (internship as any).title || "Internship";
+
+  // The internship-certificate template carries a role, a month count, and a
+  // period range. Mirror the offer-letter's sourcing: admin-configured
+  // designation, else "{title} Intern"; duration from the enrollment.
+  const designation = String(
+    (internship as any).offerLetterDesignation ?? "",
+  ).trim();
+  const internRole = designation || `${internshipTitle} Intern`;
+
+  const programMonths = (enrollment as any).programDurationMonths;
+  const durationMonths = typeof programMonths === "number" ? programMonths : 3;
+
+  const startSrc =
+    (enrollment as any).batchSnapshot?.internshipStartDate ??
+    (enrollment as any).enrolledAt;
+  const startDate = startSrc ? new Date(startSrc) : new Date();
+  const endDate = new Date(startDate);
+  endDate.setUTCMonth(endDate.getUTCMonth() + durationMonths);
+  const internPeriod = `(${formatPeriodDate(startDate)} to ${formatPeriodDate(endDate)})`;
 
   const certificateId = generateCertificateId(
     (user as any)._id.toString(),
@@ -324,6 +357,9 @@ export const createInternshipCertificateService = async (
       completionDate: ((enrollment as any).enrolledAt || new Date()).toISOString(),
       certificateId,
       verificationUrl,
+      internRole,
+      internDurationMonths: String(durationMonths),
+      internPeriod,
     });
 
     await convertDocxToPdf(docxPath, pdfPath);

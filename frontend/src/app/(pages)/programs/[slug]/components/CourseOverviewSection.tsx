@@ -8,6 +8,8 @@ import { Course, CourseModule } from "@/types";
 import { LockIcon } from "../../../../../../public/icons";
 import { Play } from "lucide-react";
 
+const CURRICULUM_TAB_INDEX = 1;
+
 const CourseOverviewSection = ({
   course,
   isEnrolled = false,
@@ -47,6 +49,28 @@ const CourseOverviewSection = ({
     },
   ];
 
+  // Deep link: /programs/{slug}#curriculum opens the curriculum tab and scrolls to it
+  useEffect(() => {
+    const openCurriculumFromHash = () => {
+      if (window.location.hash !== "#curriculum") return;
+
+      setCurrentTabIndex(CURRICULUM_TAB_INDEX);
+      setIsAutoSwitchEnabled(false);
+
+      // Wait a frame so the tab content is painted before measuring scroll position
+      requestAnimationFrame(() => {
+        document
+          .getElementById("curriculum")
+          ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    };
+
+    openCurriculumFromHash();
+    window.addEventListener("hashchange", openCurriculumFromHash);
+    return () =>
+      window.removeEventListener("hashchange", openCurriculumFromHash);
+  }, []);
+
   // Auto-switch tabs every 20 seconds (only if enabled)
   useEffect(() => {
     if (!isAutoSwitchEnabled) {
@@ -77,7 +101,7 @@ const CourseOverviewSection = ({
   };
 
   return (
-    <SectionContainer id="course-overview">
+    <SectionContainer id="curriculum" className="scroll-mt-24">
       <TabSwitcher
         tabs={tabs}
         activeTabIndex={currentTabIndex}

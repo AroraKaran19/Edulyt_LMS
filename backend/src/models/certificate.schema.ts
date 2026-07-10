@@ -5,7 +5,7 @@ const certificateSchema = new mongoose.Schema<Certificate>(
   {
     certificateType: {
       type: String,
-      enum: ["course", "internship"],
+      enum: ["course", "internship", "lor"],
       default: "course",
       required: true,
     },
