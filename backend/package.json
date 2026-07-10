@@ -37,7 +37,9 @@
     "scripts:migrate-documentation-to-batch": "ts-node src/scripts/migrate-documentation-to-batch.ts",
     "scripts:migrate-documentation-to-batch:apply": "ts-node src/scripts/migrate-documentation-to-batch.ts --apply",
     "scripts:cleanup-orphan-task-templates": "ts-node src/scripts/cleanup-orphan-task-templates.ts",
-    "scripts:cleanup-orphan-task-templates:apply": "ts-node src/scripts/cleanup-orphan-task-templates.ts --apply"
+    "scripts:cleanup-orphan-task-templates:apply": "ts-node src/scripts/cleanup-orphan-task-templates.ts --apply",
+    "scripts:seed-sample-certs": "ts-node src/scripts/seed-sample-certificates.ts",
+    "scripts:remove-sample-certs": "ts-node src/scripts/remove-sample-certificates.ts"
   },
   "keywords": [
     "airkrit",

@@ -131,8 +131,8 @@ export const createCertificateService = async (
     // Generate certificate DOCX file
     const templatePath = path.join(
       process.cwd(),
-      "../frontend/public/course-certificates/Certificates",
-      "Airkrit India Course Certificate - AI-01171 - Template.docx"
+      "../frontend/public/course-certificates/Airkrit Certificates",
+      "Airkrit India Training Certificate - AI-01171 - Template.docx"
     );
 
     if (!fs.existsSync(templatePath)) {
@@ -300,7 +300,7 @@ export const createInternshipCertificateService = async (
 
   const templatePath = path.join(
     process.cwd(),
-    "../frontend/public/course-certificates/Certificates",
+    "../frontend/public/course-certificates/Airkrit Certificates",
     "Airkrit India Certificate Internship - AI-01171 - Template.docx"
   );
 
@@ -446,8 +446,8 @@ export const regenerateCertificateService = async (
     // Generate certificate DOCX file
     const templatePath = path.join(
       process.cwd(),
-      "../frontend/public/course-certificates/Certificates",
-      "Airkrit India Course Certificate - AI-01171 - Template.docx"
+      "../frontend/public/course-certificates/Airkrit Certificates",
+      "Airkrit India Training Certificate - AI-01171 - Template.docx"
     );
 
     if (!fs.existsSync(templatePath)) {

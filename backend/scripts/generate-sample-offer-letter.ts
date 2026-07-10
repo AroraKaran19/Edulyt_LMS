@@ -8,7 +8,7 @@ import { convertDocxToPdf } from "../src/utils/certificateGeneratorDocx";
 
 const TEMPLATE_PATH = path.resolve(
   __dirname,
-  "../../frontend/public/course-certificates/Certificates/Airkrit India Offer Letter - Intern - AI-02453 - Template.docx",
+  "../../frontend/public/course-certificates/Airkrit Certificates/Airkrit India Offer Letter - Intern - AI-02453 - Template.docx",
 );
 
 const OUTPUT_DOCX = path.resolve(__dirname, "sample-offer-letter.docx");

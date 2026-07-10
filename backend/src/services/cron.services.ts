@@ -281,7 +281,7 @@ function fillOfferLetterXml(
 // __dirname is backend/dist/services (or src/services); three segments reach repo root.
 const OFFER_LETTER_TEMPLATE = path.resolve(
   __dirname,
-  "../../../frontend/public/course-certificates/Certificates/Airkrit India Offer Letter - Intern - AI-02453 - Template.docx",
+  "../../../frontend/public/course-certificates/Airkrit Certificates/Airkrit India Offer Letter - Intern - AI-02453 - Template.docx",
 );
 
 /**

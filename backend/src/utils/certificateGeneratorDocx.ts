@@ -76,30 +76,49 @@ function replacePlainTextPlaceholders(
       return result;
     };
 
-    // Find all text nodes (w:t elements)
-    const textNodes = getElementsByTagNameNS(doc, ns.w, "t");
+    const paragraphs = getElementsByTagNameNS(doc, ns.w, "p");
+    paragraphs.forEach((paragraph: any) => {
+      // Re-scan the paragraph after each replacement so shifting offsets can't
+      // corrupt a later match. Bounded to defensively avoid any infinite loop.
+      for (let guard = 0; guard < 200; guard++) {
+        const tNodes = getElementsByTagNameNS(paragraph, ns.w, "t");
+        if (tNodes.length === 0) break;
 
-    // Replace plain text placeholders in each text node
-    textNodes.forEach((textNode: any) => {
-      let textContent = textNode.textContent || "";
-      let modified = false;
-
-      // Replace each placeholder (replace all occurrences)
-      for (const [placeholder, replacement] of Object.entries(replacements)) {
-        if (textContent.includes(placeholder)) {
-          // Use global replace to replace all occurrences
-          const regex = new RegExp(
-            placeholder.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-            "g"
-          );
-          textContent = textContent.replace(regex, replacement);
-          modified = true;
+        const segments: string[] = tNodes.map((n: any) => n.textContent || "");
+        const starts: number[] = [];
+        let acc = 0;
+        for (const s of segments) {
+          starts.push(acc);
+          acc += s.length;
         }
-      }
+        const full = segments.join("");
 
-      // Update the text node if it was modified
-      if (modified) {
-        textNode.textContent = textContent;
+        // Pick the earliest-occurring placeholder in this paragraph.
+        let match: { rep: string; pos: number; len: number } | null = null;
+        for (const [placeholder, replacement] of Object.entries(replacements)) {
+          const pos = full.indexOf(placeholder);
+          if (pos !== -1 && (match === null || pos < match.pos)) {
+            match = { rep: replacement, pos, len: placeholder.length };
+          }
+        }
+        if (!match) break;
+
+        const end = match.pos + match.len; // exclusive
+        // First run containing the start of the match, last run containing its end.
+        let a = 0;
+        while (a < segments.length - 1 && starts[a] + segments[a].length <= match.pos) a++;
+        let b = a;
+        while (b < segments.length - 1 && starts[b] + segments[b].length <= end - 1) b++;
+
+        const prefix = segments[a].slice(0, match.pos - starts[a]);
+        const suffix = segments[b].slice(end - starts[b]);
+        if (a === b) {
+          tNodes[a].textContent = prefix + match.rep + suffix;
+        } else {
+          tNodes[a].textContent = prefix + match.rep;
+          for (let i = a + 1; i < b; i++) tNodes[i].textContent = "";
+          tNodes[b].textContent = suffix;
+        }
       }
     });
 
