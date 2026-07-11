@@ -30,6 +30,19 @@ import {
   DEGREE_OPTIONS,
   FATHER_OCCUPATION_OPTIONS,
 } from "@/lib/constants/profileOptions";
+import { CATEGORY_SIBLING_PERK_ENABLED } from "@/lib/featureFlags";
+import YourCoursesStep from "./components/YourCoursesStep";
+import type { Category } from "@/types";
+
+// Primary category id of a course = first entry of its category array. Handles
+// both the id-only (string) and populated Category-object shapes.
+const getPrimaryCategoryId = (
+  category: Course["category"] | undefined,
+): string | undefined => {
+  const first = category?.[0];
+  if (!first) return undefined;
+  return typeof first === "string" ? first : (first as Category)._id;
+};
 
 interface EnrollmentFormData {
   name: string;
@@ -148,6 +161,43 @@ const CartForm = ({
       cancelled = true;
     };
   }, []);
+
+  // Sibling courses in the same primary category, granted free when the
+  // CATEGORY_SIBLING_ENROLLMENT_ENABLED perk is on. Drives the "Courses"
+  // step: the step is shown only when the perk is on AND ≥1 sibling exists.
+  const [siblingCourses, setSiblingCourses] = useState<Course[]>([]);
+  const [siblingsLoaded, setSiblingsLoaded] = useState(false);
+  useEffect(() => {
+    if (!CATEGORY_SIBLING_PERK_ENABLED) {
+      setSiblingsLoaded(true);
+      return;
+    }
+    const primaryCategoryId = getPrimaryCategoryId(course.category);
+    if (!primaryCategoryId) {
+      setSiblingsLoaded(true);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await apiClient.get(
+          `/courses?categories=${primaryCategoryId}&limit=50`,
+        );
+        const list: Course[] = res.data?.data?.courses ?? [];
+        const siblings = list.filter(
+          (c) => c._id !== course._id && c.slug !== course.slug,
+        );
+        if (!cancelled) setSiblingCourses(siblings);
+      } catch {
+        if (!cancelled) setSiblingCourses([]);
+      } finally {
+        if (!cancelled) setSiblingsLoaded(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [course._id, course.slug, course.category]);
 
   const checkoutPricing = useMemo(() => {
     const planPrice =
@@ -463,21 +513,19 @@ const CartForm = ({
 
   const [cartSteps, setCartSteps] = useState<
     { title: string; isActive?: boolean; completed: boolean }[]
-  >([
-    {
-      title: "Application",
-      isActive: true,
-      completed: false,
-    },
-    {
-      title: "T&C",
-      completed: false,
-    },
-    {
-      title: "Enroll",
-      completed: false,
-    },
-  ]);
+  >(() => {
+    const steps = [
+      { title: "Application", isActive: true, completed: false },
+      { title: "T&C", completed: false },
+      { title: "Enroll", completed: false },
+    ];
+    // Insert "Courses" after Application when the perk is on. If it turns
+    // out there are no sibling courses, the effect below removes it again.
+    if (CATEGORY_SIBLING_PERK_ENABLED) {
+      steps.splice(1, 0, { title: "Courses", completed: false });
+    }
+    return steps;
+  });
   const [isCreatingOrder, setIsCreatingOrder] = useState(false);
 
   // Redirect to login if not authenticated
@@ -617,42 +665,49 @@ const CartForm = ({
     });
   }, [termsLoaded, courseTermsUrl, setValue]);
 
+  // Perk is on but this course has no free siblings → drop the "Courses"
+  // step. If the user was already on it, advance them to whatever step now
+  // occupies that position.
+  useEffect(() => {
+    if (!CATEGORY_SIBLING_PERK_ENABLED) return;
+    if (!siblingsLoaded || siblingCourses.length > 0) return;
+    setCartSteps((prev) => {
+      const idx = prev.findIndex((s) => s.title === "Courses");
+      if (idx === -1) return prev;
+      const wasActive = prev[idx].isActive;
+      const filtered = prev.filter((s) => s.title !== "Courses");
+      if (!wasActive) return filtered;
+      const nextIdx = Math.min(idx, filtered.length - 1);
+      return filtered.map((s, i) => ({ ...s, isActive: i === nextIdx }));
+    });
+  }, [siblingsLoaded, siblingCourses.length]);
+
+  // Mark the given step complete and activate the one after it. Position-based
+  // so it stays correct no matter which optional steps (Your Courses, T&C) are
+  // present.
+  const advanceFrom = (title: string) => {
+    setCartSteps((prev) => {
+      const idx = prev.findIndex((step) => step.title === title);
+      if (idx === -1) return prev;
+      return prev.map((step, i) => ({
+        ...step,
+        completed: i === idx ? true : step.completed,
+        isActive: i === idx + 1,
+      }));
+    });
+  };
+
   const handleStepClick = (index: number) => {
     const currentActiveIndex = cartSteps.findIndex((step) => step.isActive);
-
-    // If clicking on the same step, do nothing
     if (currentActiveIndex === index) return;
-
-    // Hardcoded step validation logic
-    if (index === 0) {
-      // Application step - always allow going back to it
-      setCartSteps((prev) =>
-        prev.map((step, i) => ({ ...step, isActive: i === index })),
-      );
-      return;
-    }
-
-    if (index === 1) {
-      // T&C step - only allow if Application is completed
-      if (!cartSteps[0].completed) {
-        return; // Block if Application not completed
-      }
-      setCartSteps((prev) =>
-        prev.map((step, i) => ({ ...step, isActive: i === index })),
-      );
-      return;
-    }
-
-    if (index === 2) {
-      // Enroll step - only allow if both Application and T&C are completed
-      if (!cartSteps[0].completed || !cartSteps[1].completed) {
-        return; // Block if previous steps not completed
-      }
-      setCartSteps((prev) =>
-        prev.map((step, i) => ({ ...step, isActive: i === index })),
-      );
-      return;
-    }
+    // Allow navigating to a step only if every earlier step is completed.
+    const priorCompleted = cartSteps
+      .slice(0, index)
+      .every((step) => step.completed);
+    if (!priorCompleted) return;
+    setCartSteps((prev) =>
+      prev.map((step, i) => ({ ...step, isActive: i === index })),
+    );
   };
 
   return (
@@ -897,20 +952,22 @@ const CartForm = ({
                           ]);
 
                           if (isFormValid) {
-                            // Mark current step as completed before moving to next
-                            setCartSteps((prev) =>
-                              prev.map((step, i) => ({
-                                ...step,
-                                completed: i === 0 ? true : step.completed,
-                                isActive: i === 1,
-                              })),
-                            );
+                            advanceFrom("Application");
                           }
                         }}
                       >
                         Next
                       </OrangeButton>
                     </div>
+                  );
+                case "Courses":
+                  return (
+                    <YourCoursesStep
+                      course={course}
+                      siblings={siblingCourses}
+                      loading={!siblingsLoaded}
+                      onContinue={() => advanceFrom("Courses")}
+                    />
                   );
                 case "T&C":
                   return (
@@ -963,13 +1020,7 @@ const CartForm = ({
                             "termsAndConditions",
                           ]);
                           if (isFormValid) {
-                            setCartSteps((prev) =>
-                              prev.map((step, i) => ({
-                                ...step,
-                                completed: i === 1 ? true : step.completed,
-                                isActive: i === 2,
-                              })),
-                            );
+                            advanceFrom("T&C");
                           }
                         }}
                       >

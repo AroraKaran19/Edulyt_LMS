@@ -11,6 +11,7 @@ import Link from "next/link";
 import { Suspense, useState, useEffect, useRef, useCallback, useMemo } from "react";
 import useSWR from "swr";
 import { useCategory } from "@/hooks/useCategory";
+import { CATEGORY_SIBLING_PERK_ENABLED } from "@/lib/featureFlags";
 
 const NavbarContent = ({
   navLink,
@@ -437,6 +438,19 @@ const NavbarContent = ({
             {allCourses.length} {allCourses.length === 1 ? "program" : "programs"}
           </p>
         </div>
+        {CATEGORY_SIBLING_PERK_ENABLED && allCourses.length > 1 && (
+          <div className="w-full flex items-start gap-3 rounded-xl border border-orange-200 bg-linear-to-r from-orange-50 to-white px-4 py-3">
+            <span className="text-lg leading-none shrink-0" aria-hidden>
+              🎁
+            </span>
+            <p className="text-sm text-gray-700">
+              <span className="font-bold text-orange-600">
+                Enroll in any one {selectedCategory?.name} program
+              </span>{" "}
+              and unlock every other {selectedCategory?.name} program{" "}
+            </p>
+          </div>
+        )}
         <div className="w-full h-full">
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-10">
             {allCourses.map((course: Course, index: number) => {

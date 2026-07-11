@@ -195,6 +195,19 @@ const enrollmentSchema = new mongoose.Schema<Enrollment>(
       default: "essential",
     },
 
+    // Category sibling grant metadata (set only for enrollments auto-created
+    // because the user paid for another course in the same primary category).
+    grantSource: {
+      type: String,
+      enum: ["category-sibling"],
+      default: undefined,
+    },
+    grantedFromCourseId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Course",
+      default: undefined,
+    },
+
     // Partial access control (for admin-controlled access)
     accessControl: {
       type: partialAccessControlSchema,

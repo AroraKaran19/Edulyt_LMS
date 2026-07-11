@@ -41,6 +41,10 @@ interface EnrollmentItem {
   date: string;
   trialExpiresAt?: string;
   giftFrom?: string;
+  /** Set on free category-sibling grants (which otherwise read as "paid"). */
+  grantSource?: string;
+  /** The purchased course that triggered a category-sibling grant. */
+  grantedFromCourse?: { title?: string; slug?: string };
 }
 
 const EnrollmentsPage = () => {
@@ -189,6 +193,16 @@ const EnrollmentsPage = () => {
 
   const renderTypeBadge = (item: EnrollmentItem) => {
     if (item.type === "paid") {
+      // Free category-sibling grant — a "paid"-sourced enrollment the user
+      // didn't actually pay for. Flag it distinctly.
+      if (item.grantSource === "category-sibling") {
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+            <Gift className="w-3 h-3" />
+            Free · Bundle
+          </span>
+        );
+      }
       return (
         <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 border border-green-200">
           Paid

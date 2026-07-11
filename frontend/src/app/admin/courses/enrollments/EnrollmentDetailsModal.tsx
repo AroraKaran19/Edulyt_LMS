@@ -29,6 +29,10 @@ interface EnrollmentItem {
   giftFrom?: string;
   orderId?: string;
   txnId?: string;
+  /** Set on free category-sibling grants (which otherwise read as "paid"). */
+  grantSource?: string;
+  /** The purchased course that triggered a category-sibling grant. */
+  grantedFromCourse?: { title?: string; slug?: string };
 }
 
 interface EnrollmentDetailsModalProps {
@@ -92,14 +96,20 @@ const EnrollmentDetailsModal = ({
     </div>
   );
 
-  const typeLabel =
-    enrollment.type === "paid"
+  const isCategoryGrant =
+    enrollment.type === "paid" &&
+    enrollment.grantSource === "category-sibling";
+
+  const typeLabel = isCategoryGrant
+    ? "Free · Bundle"
+    : enrollment.type === "paid"
       ? "Paid"
       : enrollment.type === "gift"
         ? "Gift"
         : "Trial";
-  const typeBg =
-    enrollment.type === "paid"
+  const typeBg = isCategoryGrant
+    ? "bg-emerald-100 text-emerald-800 border-emerald-200"
+    : enrollment.type === "paid"
       ? "bg-green-100 text-green-800 border-green-200"
       : enrollment.type === "gift"
         ? "bg-purple-100 text-purple-800 border-purple-200"
@@ -144,6 +154,22 @@ const EnrollmentDetailsModal = ({
           value={enrollment.courseId?.title ?? "—"}
           icon={BookOpen}
         />
+
+        {isCategoryGrant && (
+          <InfoRow
+            label="Category Grant"
+            value={
+              <span className="text-sm">
+                Free — unlocked by purchasing{" "}
+                <span className="font-semibold">
+                  {enrollment.grantedFromCourse?.title ?? "another course"}
+                </span>{" "}
+                in the same category.
+              </span>
+            }
+            icon={Gift}
+          />
+        )}
 
         <InfoRow label="Plan Type" value={enrollment.planType?.toUpperCase() ?? "—"} />
 

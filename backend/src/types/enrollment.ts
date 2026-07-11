@@ -99,6 +99,13 @@ export interface Enrollment {
   giftFromSnapshot?: { displayName: string; email?: string };
   promotionCode?: string;
   planType?: "elite" | "essential"; // If enrolled via promotion
+
+  // Category sibling grant metadata. Set only on enrollments auto-created because
+  // the user paid for another course sharing this course's primary category.
+  // The enrollment itself is a normal, fully-valid enrollment; these fields are
+  // traceability markers only. See createEnrollmentAfterPayment fan-out.
+  grantSource?: "category-sibling";
+  grantedFromCourseId?: Course["_id"]; // The paid course that triggered this grant
   
   // Partial access control (for admin-controlled access)
   // If undefined or null, user has full access to the entire course

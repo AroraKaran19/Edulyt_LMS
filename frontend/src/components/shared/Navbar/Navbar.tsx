@@ -3,7 +3,7 @@ import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import ImageComponent from "@/components/ui/ImageComponent";
 import Link from "next/link";
 import NavLink from "./components/NavLink";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import NavbarContent from "./components/NavbarContent";
 import MobileMenu from "./components/MobileMenu";
 import { NavItem } from "@/types";
@@ -110,7 +110,22 @@ const Navbar = () => {
   ];
   const [hoveredNavLink, setHoveredNavLink] = useState<NavItem | null>(null);
   const [isHoverContainerVisible, setIsHoverContainerVisible] = useState(false);
-  const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null);
+  // Track ALL pending hover timers so every one can be cancelled on re-hover.
+  // A single state slot could only hold one id, which let a stale "hide" timer
+  // fire after the user re-hovered and tear down the mega-menu mid-interaction.
+  const hoverTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const clearHoverTimeouts = useCallback(() => {
+    hoverTimeoutsRef.current.forEach(clearTimeout);
+    hoverTimeoutsRef.current = [];
+  }, []);
+  const scheduleHoverTimeout = useCallback((cb: () => void, ms: number) => {
+    const id = setTimeout(cb, ms);
+    hoverTimeoutsRef.current.push(id);
+    return id;
+  }, []);
+  // Cancel any pending timers when the navbar unmounts.
+  useEffect(() => () => clearHoverTimeouts(), [clearHoverTimeouts]);
+
   const [isAnimating, setIsAnimating] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [isDropdownClicked, setIsDropdownClicked] = useState(false);
@@ -131,16 +146,17 @@ const Navbar = () => {
   }, [isHoverContainerVisible]);
 
   const showHoverContainer = (navLink?: NavItem) => {
-    if (hoverTimeout) {
-      clearTimeout(hoverTimeout);
-      setHoverTimeout(null);
-    }
+    // Cancel every pending hide/reset timer so re-hovering can't be undone by a
+    // stale timer that was scheduled while leaving.
+    clearHoverTimeouts();
 
-    // If we're transitioning between nav links, don't hide the container
+    // Switching between two dropdown tabs: swap the content but keep the panel
+    // open. Re-assert visibility so a hide already in flight can't win the race.
     if (navLink && hoveredNavLink && navLink.label !== hoveredNavLink.label) {
       setIsTransitioning(true);
       setHoveredNavLink(navLink);
-      // Keep container visible during transition
+      setIsHoverContainerVisible(true);
+      setIsDropdownClicked(false);
       return;
     }
 
@@ -153,14 +169,12 @@ const Navbar = () => {
   };
 
   const hideHoverContainer = () => {
-    const timeout = setTimeout(() => {
+    scheduleHoverTimeout(() => {
       setIsHoverContainerVisible(false);
     }, 150); // Small delay to allow mouse to move to container
-    const timeout2 = setTimeout(() => {
+    scheduleHoverTimeout(() => {
       setHoveredNavLink(null);
     }, 300);
-    setHoverTimeout(timeout);
-    setHoverTimeout(timeout2);
   };
 
   const handleNavLinkMouseLeave = () => {
@@ -169,12 +183,11 @@ const Navbar = () => {
       return;
     }
 
-    const timeout = setTimeout(() => {
+    scheduleHoverTimeout(() => {
       if (!isTransitioning && !isDropdownClicked) {
         hideHoverContainer();
       }
     }, 100); // Slightly longer delay to allow for transitions
-    setHoverTimeout(timeout);
   };
 
   const handleDropdownClick = () => {
@@ -220,10 +233,7 @@ const Navbar = () => {
               displayLabel={item.displayLabel}
               count={item.count}
               onMouseEnter={() => {
-                if (hoverTimeout) {
-                  clearTimeout(hoverTimeout);
-                  setHoverTimeout(null);
-                }
+                clearHoverTimeouts();
                 if (navLinkHasHoverDropdown(item)) {
                   showHoverContainer(item);
                 } else {
@@ -236,10 +246,9 @@ const Navbar = () => {
                     navLinkHasHoverDropdown(hoveredNavLink)
                   ) {
                     setIsHoverContainerVisible(false);
-                    const t = setTimeout(() => {
+                    scheduleHoverTimeout(() => {
                       setHoveredNavLink(null);
                     }, 300);
-                    setHoverTimeout(t);
                   } else {
                     setIsHoverContainerVisible(false);
                     setHoveredNavLink(null);

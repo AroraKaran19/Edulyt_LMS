@@ -104,6 +104,10 @@ export interface AdminEnrollmentItem {
   giftFrom?: string;
   orderId?: string;
   txnId?: string;
+  /** Set on free category-sibling grants (enrollmentSource stays "direct"). */
+  grantSource?: "category-sibling";
+  /** The purchased course that triggered a category-sibling grant. */
+  grantedFromCourse?: { title?: string; slug?: string };
 }
 
 export const getAdminEnrollmentsService = async (
@@ -159,6 +163,17 @@ export const getAdminEnrollmentsService = async (
   };
   const unwindCourse: any = {
     $unwind: { path: "$course", preserveNullAndEmptyArrays: true },
+  };
+  // Resolve the source course for free category-sibling grants. No-op (empty
+  // array) for normal enrollments where grantedFromCourseId is unset.
+  const grantedFromLookup: any = {
+    $lookup: {
+      from: "courses",
+      localField: "grantedFromCourseId",
+      foreignField: "_id",
+      as: "grantedFromCourse",
+      pipeline: [{ $project: { title: 1, slug: 1 } }],
+    },
   };
   const buildSearchMatch = (raw: string): any => {
     const searchRegex = new RegExp(
@@ -216,6 +231,8 @@ export const getAdminEnrollmentsService = async (
         date: "$enrolledAt",
         orderId: { $arrayElemAt: ["$order._id", 0] },
         txnId: { $arrayElemAt: ["$order.txnId", 0] },
+        grantSource: 1,
+        grantedFromCourse: { $arrayElemAt: ["$grantedFromCourse", 0] },
       },
     };
 
@@ -237,6 +254,7 @@ export const getAdminEnrollmentsService = async (
           unwindUser,
           courseLookup,
           unwindCourse,
+          grantedFromLookup,
           orderLookup,
           finalProject,
         ]),
@@ -259,6 +277,7 @@ export const getAdminEnrollmentsService = async (
           { $sort: { enrolledAt: -1 } },
           { $skip: skip },
           { $limit: limit },
+          grantedFromLookup,
           orderLookup,
           finalProject,
         ]),
@@ -281,6 +300,10 @@ export const getAdminEnrollmentsService = async (
         date: e.date,
         orderId: e.orderId?.toString(),
         txnId: e.txnId,
+        grantSource: e.grantSource,
+        grantedFromCourse: e.grantedFromCourse
+          ? { title: e.grantedFromCourse.title, slug: e.grantedFromCourse.slug }
+          : undefined,
       })),
       total,
       totalPages,
@@ -456,6 +479,8 @@ export const getAdminEnrollmentsService = async (
       giftFrom: "$giftFromName",
       orderId: { $arrayElemAt: ["$order._id", 0] },
       txnId: { $arrayElemAt: ["$order.txnId", 0] },
+      grantSource: 1,
+      grantedFromCourse: { $arrayElemAt: ["$grantedFromCourse", 0] },
     },
   };
 
@@ -475,6 +500,7 @@ export const getAdminEnrollmentsService = async (
         unwindCourse,
         typeField,
         ...giftFromLookupAndNameStages,
+        grantedFromLookup,
         orderLookup,
         allProject,
       ]),
@@ -497,6 +523,7 @@ export const getAdminEnrollmentsService = async (
         { $limit: limit },
         typeField,
         ...giftFromLookupAndNameStages,
+        grantedFromLookup,
         orderLookup,
         allProject,
       ]),
@@ -522,7 +549,15 @@ export const getAdminEnrollmentsService = async (
       if (e.type === "gift") return { ...base, giftFrom: e.giftFrom };
       if (e.type === "trial")
         return { ...base, trialExpiresAt: e.trialExpiresAt };
-      return { ...base, orderId: e.orderId?.toString(), txnId: e.txnId };
+      return {
+        ...base,
+        orderId: e.orderId?.toString(),
+        txnId: e.txnId,
+        grantSource: e.grantSource,
+        grantedFromCourse: e.grantedFromCourse
+          ? { title: e.grantedFromCourse.title, slug: e.grantedFromCourse.slug }
+          : undefined,
+      };
     }),
     total: allTotal,
     totalPages,
