@@ -1,13 +1,13 @@
 import { Course, User } from "./";
 
-/** Distinguishes course checkout from internship batch (seat) Paytm orders. */
+/** Distinguishes course checkout from internship batch (seat) orders. */
 export type PaymentOrderKind =
   | "course"
   | "internship_seat"
   | "internship_success_points";
 
 /**
- * One document per payment attempt (Paytm). Course purchases use `orderKind: "course"`;
+ * One document per payment attempt. Course purchases use `orderKind: "course"`;
  * “book seat / without entrance” uses `orderKind: "internship_seat"`.
  * Purchased internship certification success points use `internship_success_points`.
  */
@@ -43,10 +43,13 @@ export interface PaymentOrder {
   internshipSuccessPointsQuantity?: number;
   /** Set after points are credited so webhooks cannot double-apply. */
   internshipSuccessPointsFulfillmentApplied?: boolean;
-  paymentMethod: "paytm";
+  /** The gateway that owns this order. Doubles as the provider discriminator. */
+  paymentMethod: "paytm" | "razorpay";
   paymentMode: string;
   txnId: string;
   token: string;
+  /** The gateway's own order id. paytm: our _id | razorpay: "order_XXX". */
+  gatewayOrderId?: string;
   paymentStatus: "pending" | "success" | "failed";
   paymentErrorReason?: string;
   couponCode?: string;

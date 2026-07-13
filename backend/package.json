@@ -4,7 +4,7 @@
   "description": "Backend API for Airkrit platform",
   "main": "dist/server.js",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc -p tsconfig.build.json",
     "start": "node dist/server.js",
     "start:cluster": "npm run build && pm2 start ecosystem.config.cjs",
     "start:worker": "node dist/worker.js",
@@ -39,7 +39,16 @@
     "scripts:cleanup-orphan-task-templates": "ts-node src/scripts/cleanup-orphan-task-templates.ts",
     "scripts:cleanup-orphan-task-templates:apply": "ts-node src/scripts/cleanup-orphan-task-templates.ts --apply",
     "scripts:seed-sample-certs": "ts-node src/scripts/seed-sample-certificates.ts",
-    "scripts:remove-sample-certs": "ts-node src/scripts/remove-sample-certificates.ts"
+    "scripts:remove-sample-certs": "ts-node src/scripts/remove-sample-certificates.ts",
+    "scripts:diagnose-missing-duration": "ts-node src/scripts/diagnose-missing-program-duration.ts",
+    "scripts:dry-run-cert-verdicts": "ts-node src/scripts/dry-run-internship-certificate-verdicts.ts",
+    "scripts:dry-run-cert-verdicts:csv": "ts-node src/scripts/dry-run-internship-certificate-verdicts.ts --csv",
+    "scripts:repair-duration": "ts-node src/scripts/repair-program-duration.ts",
+    "scripts:repair-duration:apply": "ts-node src/scripts/repair-program-duration.ts --apply",
+    "scripts:reset-premature-verdicts": "ts-node src/scripts/reset-premature-internship-verdicts.ts",
+    "scripts:reset-premature-verdicts:apply": "ts-node src/scripts/reset-premature-internship-verdicts.ts --apply",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "keywords": [
     "airkrit",
@@ -92,6 +101,7 @@
     "@types/paytmchecksum": "^1.5.0",
     "@types/qrcode": "^1.5.6",
     "@types/serve-favicon": "^2.5.7",
-    "nodemon": "^3.0.2"
+    "nodemon": "^3.0.2",
+    "vitest": "^2.1.9"
   }
 }

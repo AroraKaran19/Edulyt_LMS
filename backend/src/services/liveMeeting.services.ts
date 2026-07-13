@@ -6,6 +6,10 @@ import { InternshipModel } from "../models/internship.schema";
 import { InternshipEnrollmentModel } from "../models/internshipEnrollment.schema";
 import { AppError } from "../middlewares/error.middleware";
 import { validateUrl } from "../models/validators";
+import {
+  isProgramWindowOver,
+  resolveProgramEndDate,
+} from "../lib/internshipProgramWindow";
 import type {
   AdminLiveMeetingAttendanceResponse,
   AdminLiveMeetingAttendanceRow,
@@ -982,10 +986,23 @@ export async function recordAttendanceClick(
     "batchSnapshot.batchId": meeting.batchId,
     status: { $in: ENROLLED_STATUSES },
   })
-    .select("_id")
+    .select("_id endDate batchSnapshot.internshipStartDate programDurationMonths")
     .lean();
 
   if (!enrollment) return { ok: false, reason: "not-enrolled" };
+
+  // No new attendance once the learner's program window has closed — attendance
+  // points can only be earned inside their duration.
+  const programEnd = resolveProgramEndDate({
+    endDate: (enrollment as { endDate?: Date }).endDate,
+    cohortStart: (enrollment as { batchSnapshot?: { internshipStartDate?: Date } })
+      .batchSnapshot?.internshipStartDate,
+    durationMonths: (enrollment as { programDurationMonths?: number })
+      .programDurationMonths,
+  });
+  if (isProgramWindowOver(programEnd)) {
+    return { ok: false, reason: "program-ended" };
+  }
 
   const field = slot === 1 ? "link1.clickedBy" : "link2.clickedBy";
   const result = await InternshipLiveMeetingModel.updateOne(

@@ -11,6 +11,7 @@ import { convertDocxToPdf } from "../utils/certificateGeneratorDocx";
 import { uploadFileToS3 } from "./upload.services";
 import { tryAwardCompletionSuccessPoints } from "./successPoints.services";
 import { computeInternshipEligibility } from "./internshipEligibility.services";
+import { computeProgramEndDate } from "../lib/internshipProgramWindow";
 import path from "path";
 import fs from "fs";
 import os from "os";
@@ -282,12 +283,30 @@ export const createInternshipCertificateService = async (
   // Percentage-threshold gate: the certificate is only issued when the
   // learner's earned `internshipSuccessPoints` clears the configured percent
   // of total achievable (tasks + meetings + cert exam in their window).
+  // `certificateEligible` is the FULLY-RESOLVED verdict: the points threshold,
+  // the certification-exam gate when one is configured, and any admin override.
+  // Gating on the raw `meetsThreshold` (points only) meant this generator would
+  // happily certify an exam-configured learner who failed or skipped the exam,
+  // and a learner an admin had marked `certificateOverride: "fail"` whose job
+  // was already queued — setting the override does not cancel in-flight jobs.
+  // This is the last line of defence before a PDF is minted; it must enforce
+  // the whole rule rather than trusting every caller to remember it.
   const eligibility = await computeInternshipEligibility(enrollmentId);
-  if (!eligibility.meetsThreshold) {
+  if (!eligibility.certificateEligible) {
+    const examNote =
+      eligibility.examConfigured && !eligibility.examPassed
+        ? ` Certification exam not passed (${eligibility.examScore}/${eligibility.examThreshold}).`
+        : "";
+    const overrideNote =
+      eligibility.certificateOverride === "fail"
+        ? " An admin has marked this learner as not certified."
+        : "";
     throw new AppError(
-      `Learner has not met the certification threshold ` +
+      `Learner is not eligible for a certificate ` +
         `(${eligibility.earned} / ${eligibility.requiredPoints} points; ` +
-        `${eligibility.thresholdPct}% of ${eligibility.totalAchievable}).`,
+        `${eligibility.thresholdPct}% of ${eligibility.totalAchievable}).` +
+        examNote +
+        overrideNote,
       400,
     );
   }
@@ -295,13 +314,19 @@ export const createInternshipCertificateService = async (
   const [user, internship] = await Promise.all([
     UserModel.findById((enrollment as any).user).select("firstName lastName").lean(),
     InternshipModel.findById((enrollment as any).internship)
-      .select("title offerLetterDesignation")
+      .select("title offerLetterDesignation thumbnail")
       .lean(),
   ]);
   if (!user || !internship) throw new AppError("User or internship not found", 404);
 
   const studentName = `${(user as any).firstName || ""} ${(user as any).lastName || ""}`.trim();
   const internshipTitle = (internship as any).title || "Internship";
+  // Prefer the live internship thumbnail; fall back to the enrollment snapshot.
+  const thumbnailUrl =
+    (typeof (internship as any).thumbnail === "string" &&
+      (internship as any).thumbnail) ||
+    (enrollment as any).internshipSnapshot?.thumbnail ||
+    null;
 
   // The internship-certificate template carries a role, a month count, and a
   // period range. Mirror the offer-letter's sourcing: admin-configured
@@ -311,15 +336,20 @@ export const createInternshipCertificateService = async (
   ).trim();
   const internRole = designation || `${internshipTitle} Intern`;
 
-  const programMonths = (enrollment as any).programDurationMonths;
-  const durationMonths = typeof programMonths === "number" ? programMonths : 3;
-
-  const startSrc =
+  // The period PRINTED ON THE CERTIFICATE must be the same window the verdict
+  // was computed against — cohort start + the learner's chosen duration. This
+  // was previously re-derived here with a `?? 3` fallback and UTC month math,
+  // a fourth independent copy of the window calculation, so the dates on the
+  // document could disagree with the decision behind it.
+  const durationMonths = (enrollment as any).programDurationMonths as number;
+  const startDate = new Date(
     (enrollment as any).batchSnapshot?.internshipStartDate ??
-    (enrollment as any).enrolledAt;
-  const startDate = startSrc ? new Date(startSrc) : new Date();
-  const endDate = new Date(startDate);
-  endDate.setUTCMonth(endDate.getUTCMonth() + durationMonths);
+      (enrollment as any).enrolledAt,
+  );
+  const endDate =
+    (enrollment as any).endDate != null
+      ? new Date((enrollment as any).endDate)
+      : computeProgramEndDate(startDate, durationMonths);
   const internPeriod = `(${formatPeriodDate(startDate)} to ${formatPeriodDate(endDate)})`;
 
   const certificateId = generateCertificateId(
@@ -383,6 +413,7 @@ export const createInternshipCertificateService = async (
       certificateId,
       studentName,
       courseName: internshipTitle,
+      thumbnailUrl,
       completionDate: (enrollment as any).enrolledAt || new Date(),
       issuedAt: new Date(),
       fileUrl,

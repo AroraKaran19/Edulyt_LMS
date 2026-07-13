@@ -85,6 +85,161 @@ type Props = {
   onUpdated?: () => void;
 };
 
+const numberIn = (n: number) => n.toLocaleString("en-IN");
+
+/**
+ * Certificate verdict at a glance, plus the admin override controls.
+ *
+ * The badge reflects the EFFECTIVE outcome (an admin override wins over the
+ * computed verdict); the meter always shows the underlying evidence, so a
+ * learner passed by override still visibly reads as "short on points".
+ */
+function CertificateResultCard({
+  evaluation,
+  override,
+  saving,
+  onSet,
+}: {
+  evaluation?: InternshipEnrollmentListRow["certificateEvaluation"];
+  override?: "pass" | "fail" | null;
+  saving: "pass" | "fail" | "clear" | null;
+  onSet: (verdict: "pass" | "fail" | "clear") => void;
+}) {
+  const effective: "pass" | "fail" | "pending" =
+    override === "pass"
+      ? "pass"
+      : override === "fail"
+        ? "fail"
+        : (evaluation?.verdict ?? "pending");
+
+  const theme = {
+    pass: {
+      wrap: "border-emerald-200 bg-emerald-50/50",
+      badge: "bg-emerald-100 text-emerald-700 ring-emerald-600/20",
+      dot: "bg-emerald-500",
+      label: "Certificate issued",
+    },
+    fail: {
+      wrap: "border-rose-200 bg-rose-50/50",
+      badge: "bg-rose-100 text-rose-700 ring-rose-600/20",
+      dot: "bg-rose-500",
+      label: "Certificate withheld",
+    },
+    pending: {
+      wrap: "border-slate-200 bg-slate-50",
+      badge: "bg-slate-100 text-slate-600 ring-slate-500/20",
+      dot: "bg-slate-400",
+      label: "Awaiting evaluation",
+    },
+  }[effective];
+
+  const ach = evaluation?.totalAchievable ?? 0;
+  const req = evaluation?.requiredPoints ?? 0;
+  const earned = evaluation?.earned ?? 0;
+  const met = evaluation ? earned >= req : false;
+  const fillPct = ach > 0 ? Math.min(100, (earned / ach) * 100) : 0;
+  const thrPct = ach > 0 ? Math.min(100, (req / ach) * 100) : 0;
+
+  return (
+    <div className={`rounded-xl border px-3.5 py-3 ${theme.wrap}`}>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+          Certificate
+        </p>
+        <span
+          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 ring-inset ${theme.badge}`}
+        >
+          <span className={`h-1.5 w-1.5 rounded-full ${theme.dot}`} />
+          {theme.label}
+        </span>
+      </div>
+
+      {evaluation && ach > 0 ? (
+        <div className="mt-3">
+          <div className="flex items-baseline justify-between gap-2">
+            <p className="text-sm font-semibold tabular-nums text-slate-800">
+              {numberIn(earned)}
+              <span className="ml-1 text-xs font-normal text-slate-400">
+                / {numberIn(ach)} pts
+              </span>
+            </p>
+            <p
+              className={`text-[11px] font-semibold tabular-nums ${met ? "text-emerald-600" : "text-rose-600"}`}
+            >
+              {met ? "Pass mark met" : `${numberIn(req - earned)} short`}
+            </p>
+          </div>
+          <div className="relative mt-1.5 h-2 rounded-full bg-slate-200">
+            <div
+              className={`h-full rounded-full ${met ? "bg-emerald-500" : "bg-rose-400"}`}
+              style={{ width: `${fillPct}%` }}
+            />
+            <div
+              className="absolute -top-1 h-4 w-px bg-slate-500"
+              style={{ left: `calc(${thrPct}% - 0.5px)` }}
+              title={`Pass mark: ${evaluation.thresholdPct}%`}
+            />
+          </div>
+          <p className="mt-1.5 text-[10px] tabular-nums text-slate-500">
+            Pass mark {numberIn(req)} pts · {evaluation.thresholdPct}% of{" "}
+            {numberIn(ach)}
+          </p>
+        </div>
+      ) : evaluation ? (
+        <p className="mt-2 text-[11px] leading-snug text-amber-700">
+          No task or meeting points are configured in this learner&apos;s
+          window, so the verdict can&apos;t be computed. Set the result
+          manually.
+        </p>
+      ) : (
+        <p className="mt-2 text-[11px] leading-snug text-slate-500">
+          The program window hasn&apos;t been evaluated yet. You can still issue
+          the certificate now.
+        </p>
+      )}
+
+      {override && (
+        <p className="mt-2.5 rounded-md bg-white/70 px-2 py-1.5 text-[11px] leading-snug text-slate-600 ring-1 ring-inset ring-slate-200">
+          Set by an admin — the certificate is{" "}
+          <span className="font-semibold">
+            {override === "pass" ? "issued" : "withheld"}
+          </span>{" "}
+          regardless of the computed result.
+        </p>
+      )}
+
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          disabled={saving !== null || override === "pass"}
+          onClick={() => onSet("pass")}
+          className="inline-flex items-center rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {saving === "pass" ? "Issuing…" : "Issue certificate"}
+        </button>
+        <button
+          type="button"
+          disabled={saving !== null || override === "fail"}
+          onClick={() => onSet("fail")}
+          className="inline-flex items-center rounded-lg border border-rose-200 bg-white px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {saving === "fail" ? "Withholding…" : "Withhold"}
+        </button>
+        {override && (
+          <button
+            type="button"
+            disabled={saving !== null}
+            onClick={() => onSet("clear")}
+            className="ml-auto text-[11px] font-medium text-slate-500 underline underline-offset-2 transition hover:text-slate-700 disabled:opacity-40"
+          >
+            {saving === "clear" ? "Resetting…" : "Use computed result"}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function InternshipEnrollmentDetailModal({
   isOpen,
   enrollmentId,
@@ -107,6 +262,11 @@ export default function InternshipEnrollmentDetailModal({
   const [showRevokeConfirm, setShowRevokeConfirm] = useState(false);
   const [savingRevoke, setSavingRevoke] = useState(false);
   const [revokeError, setRevokeError] = useState<string | null>(null);
+
+  // Certificate verdict override state (pass a failed student / fail / reset)
+  const [savingOverride, setSavingOverride] = useState<
+    "pass" | "fail" | "clear" | null
+  >(null);
 
   // Delete state (hard delete — removes the enrollment + its task submissions)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -312,6 +472,43 @@ export default function InternshipEnrollmentDetailModal({
       toast.error(msg);
     } finally {
       setSavingDuration(false);
+    }
+  }
+
+  async function handleCertificateOverride(verdict: "pass" | "fail" | "clear") {
+    if (!enrollmentId || savingOverride) return;
+    setSavingOverride(verdict);
+    try {
+      const res = await apiClient.patch(
+        ENDPOINTS.internshipEnrollments.adminCertificateOverride(enrollmentId),
+        { verdict },
+      );
+      const row = res.data?.data as InternshipEnrollmentListRow | undefined;
+      if (row) setDetail(row);
+      toast.success(
+        verdict === "pass"
+          ? "Passed — certificate will be issued"
+          : verdict === "fail"
+            ? "Marked as failed — certificate withheld"
+            : "Reverted to the computed result",
+      );
+      onUpdated?.();
+    } catch (e: unknown) {
+      const msg =
+        e &&
+        typeof e === "object" &&
+        "response" in e &&
+        e.response &&
+        typeof e.response === "object" &&
+        "data" in e.response &&
+        e.response.data &&
+        typeof e.response.data === "object" &&
+        "message" in e.response.data
+          ? String((e.response.data as { message?: string }).message)
+          : "Could not update the certificate result";
+      toast.error(msg);
+    } finally {
+      setSavingOverride(null);
     }
   }
 
@@ -1031,6 +1228,17 @@ export default function InternshipEnrollmentDetailModal({
               </p>
             </div>
           </div>
+
+          {(detail.status === "enrolled" ||
+            detail.status === "completed" ||
+            detail.status === "paused") && (
+            <CertificateResultCard
+              evaluation={detail.certificateEvaluation}
+              override={detail.certificateOverride}
+              saving={savingOverride}
+              onSet={(v) => void handleCertificateOverride(v)}
+            />
+          )}
 
           {canRevoke ? (
             <div className="rounded-lg border border-red-200 bg-red-50/70 px-3 py-3 space-y-2">

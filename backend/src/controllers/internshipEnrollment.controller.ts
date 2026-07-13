@@ -197,6 +197,7 @@ export const listInternshipEnrollmentsAdminController = asyncHandler(
       batchId,
       batchSearch,
       lifecycle: lifecycleQ,
+      certificateOutcome: certificateOutcomeQ,
       enrollmentType: enrollmentTypeQ,
       enrolledFrom,
       enrolledTo,
@@ -218,6 +219,12 @@ export const listInternshipEnrollmentsAdminController = asyncHandler(
       enrollmentTypeQ === "merit" || enrollmentTypeQ === "paid"
         ? enrollmentTypeQ
         : undefined;
+    const certificateOutcome =
+      certificateOutcomeQ === "certified" ||
+      certificateOutcomeQ === "not_certified" ||
+      certificateOutcomeQ === "pending"
+        ? certificateOutcomeQ
+        : undefined;
     const meritPoolFirst =
       meritPoolFirstQ === "true" || meritPoolFirstQ === "1";
     const result = await listInternshipEnrollmentsAdmin(p, l, {
@@ -227,6 +234,7 @@ export const listInternshipEnrollmentsAdminController = asyncHandler(
       batchId: typeof batchId === "string" ? batchId : undefined,
       batchSearch: typeof batchSearch === "string" ? batchSearch : undefined,
       lifecycle,
+      certificateOutcome,
       enrollmentType,
       enrolledFrom: typeof enrolledFrom === "string" ? enrolledFrom : undefined,
       enrolledTo: typeof enrolledTo === "string" ? enrolledTo : undefined,

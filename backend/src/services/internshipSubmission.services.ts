@@ -17,6 +17,10 @@ import {
   parseProgramDurationMonthsFromAnswers,
 } from "../lib/certificationExamSchedule";
 import {
+  isProgramWindowOver,
+  resolveProgramEndDate,
+} from "../lib/internshipProgramWindow";
+import {
   assertS3ObjectContentLengthAtMost,
   extractS3KeyFromUrl,
 } from "./upload.services";
@@ -357,6 +361,23 @@ export async function createInternshipSubmission(
         "Submit your Aadhar and photo to unlock task submissions.",
         403,
         "DOCUMENTATION_PENDING",
+      );
+    }
+    // Hard program-window block: no task submission once the learner's program
+    // has ended, even if the task's own due date runs longer. Points can only
+    // be earned inside the learner's duration.
+    if (
+      isProgramWindowOver(
+        resolveProgramEndDate({
+          endDate: enrollment.endDate,
+          cohortStart: enrollment.batchSnapshot?.internshipStartDate,
+          durationMonths: enrollment.programDurationMonths,
+        }),
+      )
+    ) {
+      throw new AppError(
+        "Your internship program has ended — task submissions are closed.",
+        403,
       );
     }
     // Anchor to the batch start date; fall back to enrolment date only when the
@@ -778,6 +799,32 @@ export async function saveFileAnswer(
 
 // ─── Submit (finalize + auto-grade MCQ) ──────────────────────────────────────
 
+/**
+ * Throw 403 if the learner's program window has closed. Applied to in-program
+ * point-earning actions (task finalize) so a draft started in-window can't be
+ * submitted after the program ends. Pre-enrollment rows (no endDate) pass.
+ */
+async function assertProgramWindowOpen(
+  enrollmentId: unknown,
+  closedMessage: string,
+): Promise<void> {
+  if (!enrollmentId) return;
+  const enr = await InternshipEnrollmentModel.findById(String(enrollmentId))
+    .select("endDate batchSnapshot.internshipStartDate programDurationMonths")
+    .lean();
+  if (!enr) return;
+  const end = resolveProgramEndDate({
+    endDate: (enr as { endDate?: Date }).endDate,
+    cohortStart: (enr as { batchSnapshot?: { internshipStartDate?: Date } })
+      .batchSnapshot?.internshipStartDate,
+    durationMonths: (enr as { programDurationMonths?: number })
+      .programDurationMonths,
+  });
+  if (isProgramWindowOver(end)) {
+    throw new AppError(closedMessage, 403);
+  }
+}
+
 export async function submitSubmission(
   submissionId: string,
 ): Promise<Record<string, unknown>> {
@@ -795,6 +842,11 @@ export async function submitSubmission(
   );
   if (submitFor === "exam") {
     await assertWithinExamWindow(sub.toObject());
+  } else if (submitFor === "task") {
+    await assertProgramWindowOpen(
+      (sub as { enrollmentId?: unknown }).enrollmentId,
+      "Your internship program has ended — task submissions are closed.",
+    );
   }
 
   const snapshot = sub.toObject().templateSnapshot as
@@ -1158,11 +1210,12 @@ export async function finalizeCertificationExamReview(
   sub.status = "fully_reviewed";
   await sub.save();
 
-  // Cert exam: credit `totalAwardedScore` to the learner's
-  // `internshipSuccessPoints` (the same accumulator tasks write to).
-  // Idempotency note — `finalizeCertificationExamReview` transitions a sub
-  // out of "submitted" / "partially_reviewed", so the status guard prevents
-  // a re-run from awarding twice.
+  // The certification exam is a BONUS points source: crediting its
+  // `totalAwardedScore` to `internshipSuccessPoints` (when passed) is the ONLY
+  // thing finalization does toward the certificate. Issuance is decided later,
+  // by the day-N+1 evaluation worker, on success points alone — so there is no
+  // cert job queued here. Idempotency: the status guard above stops a re-run
+  // from awarding twice.
   await accrueSuccessPointsIfPassed({
     submissionFor: String(
       (sub as { submissionFor?: unknown }).submissionFor ?? "",
@@ -1171,37 +1224,6 @@ export async function finalizeCertificationExamReview(
     totalAwardedScore: sub.totalAwardedScore,
     templateSnapshot: sub.toObject().templateSnapshot,
   });
-
-  // Queue the cert job if the learner has passed the exam *and* met the
-  // configured percentage-of-total threshold. The eligibility service
-  // re-reads `internshipSuccessPoints` so it picks up the credit above.
-  try {
-    const examPassed =
-      snap.thresholdScore == null ||
-      sub.totalAwardedScore >= snap.thresholdScore;
-    if (examPassed) {
-      const { computeInternshipEligibility } = await import(
-        "./internshipEligibility.services"
-      );
-      const eligibility = await computeInternshipEligibility(
-        String(sub.enrollmentId),
-      );
-      if (eligibility.meetsThreshold) {
-        const { createCertificateJobService } = await import(
-          "./certificateJob.services"
-        );
-        await createCertificateJobService({
-          enrollmentId: String(sub.enrollmentId),
-          certificateType: "internship",
-          studentName: "",
-          courseName: "",
-          completionDate: new Date(),
-        });
-      }
-    }
-  } catch (certErr) {
-    console.error("[Certificate] Failed to queue internship certificate job:", certErr);
-  }
 
   return await serializeSubmission(sub.toObject());
 }

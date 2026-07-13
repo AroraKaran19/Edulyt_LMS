@@ -5,6 +5,7 @@ const orderSchema = new Schema<PaymentOrder>(
   {
     txnId: { type: String, required: true, unique: true },
     token: { type: String, required: false },
+    gatewayOrderId: { type: String, required: false, trim: true },
     amount: { type: Number, required: true },
     currency: { type: String, required: true, default: "INR" },
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
@@ -104,6 +105,7 @@ orderSchema.index({ paymentMode: 1, createdAt: -1 });
 orderSchema.index({ paymentMethod: 1, createdAt: -1 });
 orderSchema.index({ paymentStatus: 1, createdAt: -1 });
 orderSchema.index({ internshipEnrollmentId: 1 }, { sparse: true });
+orderSchema.index({ gatewayOrderId: 1 }, { sparse: true });
 
 orderSchema.pre("save", async function (next) {
   if (!this.isNew) return next();

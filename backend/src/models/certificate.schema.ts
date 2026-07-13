@@ -51,6 +51,15 @@ const certificateSchema = new mongoose.Schema<Certificate>(
       type: String,
       required: true,
     },
+    /**
+     * Display thumbnail for the certificate card. Course certificates resolve
+     * this from the populated course; internship certificates have no course,
+     * so the internship thumbnail is stored here at generation time.
+     */
+    thumbnailUrl: {
+      type: String,
+      default: null,
+    },
     completionDate: {
       type: Date,
       required: true,

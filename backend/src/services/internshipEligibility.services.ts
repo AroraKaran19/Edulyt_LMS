@@ -6,6 +6,10 @@ import { InternshipExamModel } from "../models/internshipExam.schema";
 import { InternshipLiveMeetingModel } from "../models/liveMeeting.schema";
 import { InternshipSubmissionModel } from "../models/internshipSubmission.schema";
 import { AppError } from "../middlewares/error.middleware";
+import {
+  computeProgramEndDate,
+  computeAchievableTaskPoints,
+} from "../lib/internshipProgramWindow";
 
 export interface InternshipEligibility {
   /** Work points a learner can earn: tasks + live-meeting attendance.
@@ -70,7 +74,7 @@ export async function computeInternshipEligibility(
     )
     .lean<{
       internship?: mongoose.Types.ObjectId;
-      batchSnapshot?: { batchId?: string };
+      batchSnapshot?: { batchId?: string; internshipStartDate?: Date };
       enrolledAt?: Date;
       endDate?: Date;
       programDurationMonths?: number;
@@ -102,25 +106,35 @@ export async function computeInternshipEligibility(
   const certificationExamTemplateId =
     batchCfg?.certificationExamTemplateId ?? null;
 
-  // Resolve the window. Prefer stored endDate; fall back to derivation.
-  const enrolledAt = enrollment.enrolledAt
-    ? new Date(enrollment.enrolledAt)
+  // The window is anchored on the COHORT start — the same anchor that decides
+  // which tasks the learner is actually shown (getLearnerProgramBySlug).
+  // Anchoring on `enrolledAt` (set when an admin approves them, or when the
+  // offer-letter worker runs — days or weeks after the cohort begins) measured
+  // the pool over a different window than the learner's real task calendar, so
+  // the certificate denominator did not match what they were asked to do.
+  const cohortStart = enrollment.batchSnapshot?.internshipStartDate
+    ? new Date(enrollment.batchSnapshot.internshipStartDate)
     : null;
-  let endDate: Date | null = enrollment.endDate
-    ? new Date(enrollment.endDate)
-    : null;
-  if (!endDate && enrolledAt && enrollment.programDurationMonths) {
-    endDate = new Date(enrolledAt);
-    endDate.setMonth(endDate.getMonth() + enrollment.programDurationMonths);
+  const months = enrollment.programDurationMonths;
+  let endDate: Date | null = null;
+  if (
+    cohortStart &&
+    !Number.isNaN(cohortStart.getTime()) &&
+    months &&
+    months > 0
+  ) {
+    endDate = computeProgramEndDate(cohortStart, months);
   }
 
   let tasksTotal = 0;
   let meetingsTotal = 0;
   let certExamTotal = 0;
 
-  if (enrolledAt && endDate) {
-    // Tasks: count any task whose due date (enrolledAt + dueDays) lands at
-    // or before the learner's window end. Inactive templates are skipped.
+  if (cohortStart && endDate) {
+    // Tasks: every active template whose due date (cohort start + dueDays)
+    // lands at or before the learner's window end. A task contributes its
+    // configured success points (the certificate "credits"), not its grading
+    // totalScore.
     const taskIds = taskTemplateIds;
     if (taskIds.length > 0) {
       const tasks = await InternshipTaskModel.find({
@@ -130,17 +144,7 @@ export async function computeInternshipEligibility(
         .lean<
           { successPoints?: number; dueDays?: number; isActive?: boolean }[]
         >();
-      for (const t of tasks) {
-        if (t.isActive === false) continue;
-        const dueDays = Number(t.dueDays ?? 0);
-        const dueAt = new Date(enrolledAt);
-        dueAt.setDate(dueAt.getDate() + dueDays);
-        if (dueAt <= endDate) {
-          // A task contributes its configured success points (the certificate
-          // "credits"), not its grading totalScore.
-          tasksTotal += Math.max(0, Number(t.successPoints ?? 0));
-        }
-      }
+      tasksTotal = computeAchievableTaskPoints(tasks, cohortStart, endDate);
     }
 
     // Live meetings: those scheduled inside the window for the learner's batch.
@@ -149,7 +153,7 @@ export async function computeInternshipEligibility(
       const meetings = await InternshipLiveMeetingModel.find({
         internship: enrollment.internship,
         batchId,
-        startDateTime: { $gte: enrolledAt, $lte: endDate },
+        startDateTime: { $gte: cohortStart, $lte: endDate },
       })
         .select("successPoints")
         .lean<{ successPoints?: number }[]>();
@@ -181,12 +185,12 @@ export async function computeInternshipEligibility(
     }
   }
 
-  // The learner's certification-exam submission, used to (a) report the pass
-  // gate and (b) subtract any exam points already folded into
-  // internshipSuccessPoints so the % reflects WORK points only.
+  // The learner's certification-exam submission — reported for information only.
+  // The exam is a BONUS points source, not a gate: any points it awards are
+  // already folded into `internshipSuccessPoints` (accrueSuccessPointsIfPassed)
+  // and count toward the threshold like tasks/meetings.
   let examSubmitted = false;
   let examScore = 0;
-  let examFinalized = false;
   if (examConfigured) {
     const certSub = await InternshipSubmissionModel.findOne({
       enrollmentId: new mongoose.Types.ObjectId(enrollmentId),
@@ -198,16 +202,12 @@ export async function computeInternshipEligibility(
     if (certSub) {
       examSubmitted = true;
       examScore = Math.max(0, Number(certSub.totalAwardedScore ?? 0));
-      examFinalized = String(certSub.status) === "fully_reviewed";
     }
   }
-  // Exam points are credited into the accumulator only once the exam is
-  // finalized AND passed (mirrors accrueSuccessPointsIfPassed) — subtract
-  // exactly that so it never counts toward the work-points %.
   const examPassed = examSubmitted && examScore >= examThreshold;
-  const examContribution = examFinalized && examPassed ? examScore : 0;
 
-  // Pool the learner is measured against: tasks + live-meeting attendance only.
+  // Pool the learner is measured against: tasks + live-meeting attendance. The
+  // exam is bonus credit on top, so it is intentionally NOT part of the pool.
   const totalAchievable = tasksTotal + meetingsTotal;
 
   const rawPct = internship.certificationThreshold;
@@ -216,11 +216,11 @@ export async function computeInternshipEligibility(
       ? Math.max(0, Math.min(100, rawPct))
       : 0;
 
-  // Work points only — strip out any exam points folded into the accumulator.
+  // Success points earned — includes any exam bonus already folded into the
+  // accumulator. The exam simply helps a learner reach the threshold.
   const earned = Math.max(
     0,
-    Math.floor(Number(enrollment.internshipSuccessPoints ?? 0)) -
-      examContribution,
+    Math.floor(Number(enrollment.internshipSuccessPoints ?? 0)),
   );
   const requiredPoints = Math.ceil((totalAchievable * thresholdPct) / 100);
   const meetsThreshold = thresholdPct === 0 || earned >= requiredPoints;
@@ -228,9 +228,9 @@ export async function computeInternshipEligibility(
     ? 0
     : Math.max(0, requiredPoints - earned);
 
-  // Certificate requires BOTH gates: work-points threshold AND a passed exam.
-  // When no exam is configured, the exam gate is not applicable.
-  const computedEligible = meetsThreshold && (!examConfigured || examPassed);
+  // Certificate is decided by SUCCESS POINTS ALONE. The certification exam is a
+  // bonus point source, never a gate — configured or not, taken or not.
+  const computedEligible = meetsThreshold;
 
   // Admin override wins over the computed verdict. "pass" force-clears both
   // gates (so the certificate-issuance path, which gates on `meetsThreshold`,

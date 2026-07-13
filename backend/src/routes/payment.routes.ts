@@ -3,6 +3,7 @@ import {
   getPaymentStatus,
   verifyPaymentToken,
   paytmWebhookHandler,
+  gatewayWebhookHandler,
 } from "../controllers/payment.controller";
 
 const router = Router();
@@ -21,6 +22,14 @@ router.get("/status/:orderId", getPaymentStatus);
  */
 router.get("/verify-token/:token", verifyPaymentToken);
 
+// Back-compat: the Paytm dashboard points at this URL — do not remove.
 router.post("/paytm-webhook", paytmWebhookHandler);
+
+/**
+ * @route   POST /api/payment/webhook/:gateway
+ * @desc    Gateway-agnostic webhook entry point.
+ * @access  Public
+ */
+router.post("/webhook/:gateway", gatewayWebhookHandler);
 
 export default router;

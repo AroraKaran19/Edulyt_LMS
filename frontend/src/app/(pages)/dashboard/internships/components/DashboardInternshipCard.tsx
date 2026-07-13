@@ -357,6 +357,15 @@ export default function DashboardInternshipCard({ row, onWithdrawn }: Props) {
   const start = formatCohortDate(row.batchSnapshot?.internshipStartDate);
 
   const showExamWaiting = EXAM_WAITING_STATUSES.has(row.status);
+
+  // Explain a missed certificate — but NEVER to a learner an admin has rescued.
+  // `certificateOverride: "pass"` issues the certificate while the evaluation
+  // snapshot still reads "fail", so without this guard a certified learner
+  // would be told they didn't qualify.
+  const showCertificateShortfall =
+    row.certificateEvaluation?.verdict === "fail" &&
+    row.certificateOverride !== "pass";
+
   const ENROLLED_STATUSES = new Set(["enrolled", "completed", "paused"]);
   const certReminder = ENROLLED_STATUSES.has(row.status)
     ? getCertificationExamListReminder(
@@ -447,8 +456,12 @@ export default function DashboardInternshipCard({ row, onWithdrawn }: Props) {
 
   /** Enrolled but cohort `internshipStartDate` is still in the future — hide tasks link. */
   const cohortNotStartedYet = batchStartTime !== null && now < batchStartTime;
+  /** Program window has closed — tasks/live classes are no longer accessible. */
+  const programEndTime = row.endDate ? new Date(row.endDate).getTime() : null;
+  const programEnded =
+    programEndTime !== null && !Number.isNaN(programEndTime) && now > programEndTime;
   const hideDashboardProgramLink =
-    ENROLLED_STATUSES.has(row.status) && cohortNotStartedYet;
+    ENROLLED_STATUSES.has(row.status) && (cohortNotStartedYet || programEnded);
 
   const pendingCtx = row.paymentPendingContext;
   const paymentPendingBlocked = Boolean(
@@ -577,6 +590,41 @@ export default function DashboardInternshipCard({ row, onWithdrawn }: Props) {
               status={row.status}
               failedOrMissed={isFailedOrMissed}
             />
+            {showCertificateShortfall && (
+              <div
+                className="mt-3 rounded-xl border border-rose-200 bg-rose-50/70 px-3 py-2.5"
+                role="status"
+              >
+                <p className="text-xs font-bold text-rose-800">
+                  Certificate not awarded
+                </p>
+                <p className="mt-1 text-[11px] leading-relaxed text-rose-950/80">
+                  You earned{" "}
+                  <span className="font-semibold">
+                    {row.certificateEvaluation!.earned}
+                  </span>{" "}
+                  of the{" "}
+                  <span className="font-semibold">
+                    {row.certificateEvaluation!.requiredPoints}
+                  </span>{" "}
+                  success points needed (
+                  {row.certificateEvaluation!.thresholdPct}% of{" "}
+                  {row.certificateEvaluation!.totalAchievable} achievable) before
+                  your program ended.
+                </p>
+                <p className="mt-2 text-[10px] leading-snug text-rose-950/65">
+                  If you think this is a mistake, reach out to our support team
+                  at{" "}
+                  <a
+                    href="tel:+918929252575"
+                    className="font-semibold text-rose-800 underline underline-offset-2 hover:text-rose-900"
+                  >
+                    +91-8929252575
+                  </a>{" "}
+                  and we&apos;ll review it with you.
+                </p>
+              </div>
+            )}
             {certReminder.show && (
               <div
                 className="mt-3 rounded-xl border border-violet-300/80 bg-linear-to-r from-violet-50 to-indigo-50/90 px-3 py-2.5"
@@ -840,7 +888,9 @@ export default function DashboardInternshipCard({ row, onWithdrawn }: Props) {
                     </div>
                   ) : (
                     <p className="text-[11px] text-stone-500">
-                      {hideDashboardProgramLink ? (
+                      {programEnded ? (
+                        "Your internship program has ended. Tasks and live classes are now closed."
+                      ) : hideDashboardProgramLink ? (
                         <>
                           Your cohort begins{" "}
                           {start !== "—" ? (
@@ -868,9 +918,9 @@ export default function DashboardInternshipCard({ row, onWithdrawn }: Props) {
                       <ArrowUpRight className="h-4 w-4" />
                     </Link>
                   ) : hideDashboardProgramLink ? (
-                    <span className="inline-flex items-center gap-1.5 rounded-xl border border-amber-300/60 bg-amber-50 px-3 py-1.5 text-[11px] font-semibold text-amber-900 shrink-0">
+                    <span className="inline-flex items-center gap-1.5 rounded-xl border border-stone-300/60 bg-stone-50 px-3 py-1.5 text-[11px] font-semibold text-stone-600 shrink-0">
                       <Hourglass className="h-3 w-3" />
-                      Not started yet
+                      {programEnded ? "Program ended" : "Not started yet"}
                     </span>
                   ) : (
                     <span className="text-xs text-stone-400">

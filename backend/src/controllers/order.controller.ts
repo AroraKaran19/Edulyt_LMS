@@ -17,6 +17,40 @@ import {
   verifyPayment as verifyPaymentService,
 } from "../services/order.services";
 import { UserModel } from "../models";
+import { isFreeOrderResult } from "../services/payments/orderFlow";
+import type { CheckoutSession } from "../services/payments/types";
+
+/**
+ * Phase 1 adapts the normalized gateway result back into the legacy response
+ * shape the frontend already understands. Phase 3 replaces this with the
+ * normalized payload once the checkout launcher is gateway-aware.
+ *
+ * `_id` always comes from `result.orderId` (OUR order id) — never from
+ * `gatewayOrderId`, which is the gateway's own id and differs for Razorpay.
+ */
+const toLegacyOrderResponse = (result: CheckoutSession) => {
+  if (isFreeOrderResult(result)) {
+    return {
+      _id: result.orderId,
+      freeOrder: true as const,
+      token: result.token,
+    };
+  }
+  return {
+    _id: result.orderId,
+    gateway: result.gateway,
+    token: result.clientToken,
+  };
+};
+
+const PAYMENT_COOKIE_OPTIONS = {
+  httpOnly: false,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "lax" as const,
+  path: "/",
+  maxAge: 1000 * 60 * 5, // 5 minutes
+  domain: process.env.NODE_ENV === "production" ? ".airkrit.com" : undefined,
+};
 
 export const getSelfOrders = asyncHandler(
   async (req: Request, res: Response) => {
@@ -44,7 +78,15 @@ export const getSelfOrders = asyncHandler(
 );
 
 export const createOrder = asyncHandler(async (req: Request, res: Response) => {
-  const { courseId, planType, userId, couponCode, referralCode, useSuccessPoints } = req.body;
+  const {
+    courseId,
+    planType,
+    userId,
+    couponCode,
+    referralCode,
+    useSuccessPoints,
+    gateway,
+  } = req.body;
 
   const user = await UserModel.findById(userId);
   if (!user) {
@@ -71,31 +113,29 @@ export const createOrder = asyncHandler(async (req: Request, res: Response) => {
     couponCode,
     typeof referralCode === "string" ? referralCode : undefined,
     useSuccessPoints === true,
+    typeof gateway === "string" ? gateway : undefined,
   );
 
   if (!order) {
     throw new AppError("Failed to create order", 500);
   }
 
-  res.cookie("paymentToken", order.token, {
-    httpOnly: false,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge: 1000 * 60 * 5, // 5 minutes
-    domain: process.env.NODE_ENV === "production" ? ".airkrit.com" : undefined, // Set domain only in production
-  });
-  sendSuccessResponse(res, order, "Order created successfully", 201);
+  const payload = toLegacyOrderResponse(order);
+  if (payload.token) {
+    res.cookie("paymentToken", payload.token, PAYMENT_COOKIE_OPTIONS);
+  }
+  sendSuccessResponse(res, payload, "Order created successfully", 201);
   return;
 });
 
 /**
- * Create Paytm order for paid internship seat (enrollment in `payment_pending`).
+ * Create a checkout order for a paid internship seat (enrollment in `payment_pending`).
  */
 export const createInternshipSeatOrder = asyncHandler(
   async (req: Request, res: Response) => {
-    const { internshipEnrollmentId } = req.body as {
+    const { internshipEnrollmentId, gateway } = req.body as {
       internshipEnrollmentId?: string;
+      gateway?: string;
     };
     if (!req.user?._id) {
       throw new AppError("Unauthorized", 401);
@@ -107,36 +147,31 @@ export const createInternshipSeatOrder = asyncHandler(
     const order = await createInternshipSeatOrderService(
       String(req.user._id),
       internshipEnrollmentId,
+      typeof gateway === "string" ? gateway : undefined,
     );
 
     if (!order) {
       throw new AppError("Failed to create order", 500);
     }
 
-    if ("token" in order && order.token) {
-      res.cookie("paymentToken", order.token, {
-        httpOnly: false,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        path: "/",
-        maxAge: 1000 * 60 * 5,
-        domain:
-          process.env.NODE_ENV === "production" ? ".airkrit.com" : undefined,
-      });
+    const payload = toLegacyOrderResponse(order);
+    if (payload.token) {
+      res.cookie("paymentToken", payload.token, PAYMENT_COOKIE_OPTIONS);
     }
-    sendSuccessResponse(res, order, "Order created successfully", 201);
+    sendSuccessResponse(res, payload, "Order created successfully", 201);
     return;
   },
 );
 
 /**
- * Create Paytm order for purchasing internship certification success points.
+ * Create a checkout order for purchasing internship certification success points.
  */
 export const createInternshipSuccessPointsOrder = asyncHandler(
   async (req: Request, res: Response) => {
-    const { internshipEnrollmentId, quantity } = req.body as {
+    const { internshipEnrollmentId, quantity, gateway } = req.body as {
       internshipEnrollmentId?: string;
       quantity?: number;
+      gateway?: string;
     };
     if (!req.user?._id) {
       throw new AppError("Unauthorized", 401);
@@ -152,24 +187,18 @@ export const createInternshipSuccessPointsOrder = asyncHandler(
       String(req.user._id),
       internshipEnrollmentId,
       Number(quantity),
+      typeof gateway === "string" ? gateway : undefined,
     );
 
     if (!order) {
       throw new AppError("Failed to create order", 500);
     }
 
-    if ("token" in order && order.token) {
-      res.cookie("paymentToken", order.token, {
-        httpOnly: false,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        path: "/",
-        maxAge: 1000 * 60 * 5,
-        domain:
-          process.env.NODE_ENV === "production" ? ".airkrit.com" : undefined,
-      });
+    const payload = toLegacyOrderResponse(order);
+    if (payload.token) {
+      res.cookie("paymentToken", payload.token, PAYMENT_COOKIE_OPTIONS);
     }
-    sendSuccessResponse(res, order, "Order created successfully", 201);
+    sendSuccessResponse(res, payload, "Order created successfully", 201);
     return;
   },
 );

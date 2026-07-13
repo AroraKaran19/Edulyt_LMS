@@ -248,10 +248,27 @@ export interface InternshipEnrollmentListRow {
   enrolledAt?: string;
   /** Program length the learner chose at registration, in months (1–120). */
   programDurationMonths?: number;
-  /** ISO — materialized program end (`enrolledAt + programDurationMonths`). */
+  /** ISO — program end (cohort `internshipStartDate` + `programDurationMonths`). */
   endDate?: string;
   /** Admin certificate verdict override in effect ("pass" | "fail" | null). */
   certificateOverride?: "pass" | "fail" | null;
+  /**
+   * Frozen certificate verdict, written the day after the learner's program
+   * window closed.
+   *
+   * IMPORTANT: an admin can rescue a failed learner via `certificateOverride:
+   * "pass"` — the certificate is issued while this snapshot still reads "fail".
+   * Always check `certificateOverride` before rendering a failure message.
+   */
+  certificateEvaluation?: {
+    verdict: "pass" | "fail";
+    reason: "passed" | "points_shortfall";
+    earned: number;
+    totalAchievable: number;
+    thresholdPct: number;
+    requiredPoints: number;
+    evaluatedAt: string;
+  };
   createdAt?: string;
   updatedAt?: string;
   /** ISO — when the entrance exam window opens (populated for merit-path `exam_registered`/`exam_attempted`). */

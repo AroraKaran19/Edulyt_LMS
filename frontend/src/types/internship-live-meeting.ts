@@ -91,7 +91,15 @@ export interface SetAttendanceOverrideBody {
 
 export type StudentAttendResult =
   | { ok: true; slot: 1 | 2; alreadyMarked: boolean; meetingName: string }
-  | { ok: false; reason: "expired" | "not-activated" | "not-enrolled" | "invalid" };
+  | {
+      ok: false;
+      reason:
+        | "expired"
+        | "not-activated"
+        | "not-enrolled"
+        | "invalid"
+        | "program-ended";
+    };
 
 /**
  * Student-safe view of a live meeting on the dashboard — no admin tokens,

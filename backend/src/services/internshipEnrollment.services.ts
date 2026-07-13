@@ -19,6 +19,10 @@ import {
   isInstantWithinWindowUtc,
   parseProgramDurationMonthsFromAnswers,
 } from "../lib/certificationExamSchedule";
+import {
+  isProgramWindowOver,
+  resolveProgramEndDate,
+} from "../lib/internshipProgramWindow";
 import { cached, PUBLIC_CACHE_TTL_MS } from "../utils/ttlCache";
 
 function escapeRegex(s: string): string {
@@ -173,6 +177,25 @@ export type InternshipEnrollmentListRow = {
 
   /** Public S3 URL of the generated offer letter DOCX. Admin-facing. */
   offerLetterUrl?: string;
+
+  /**
+   * Frozen certificate verdict, written when the learner's program window was
+   * evaluated. `verdict: "fail"` explains why no certificate was issued.
+   *
+   * NOTE: an admin can rescue a failed learner with `certificateOverride:
+   * "pass"` — the certificate is then issued while this snapshot still reads
+   * "fail". Consumers MUST check `certificateOverride` before rendering a
+   * failure message, or a certified learner will be told they didn't qualify.
+   */
+  certificateEvaluation?: {
+    verdict: "pass" | "fail";
+    reason: "passed" | "points_shortfall";
+    earned: number;
+    totalAchievable: number;
+    thresholdPct: number;
+    requiredPoints: number;
+    evaluatedAt: string;
+  };
 };
 
 /**
@@ -191,6 +214,8 @@ export async function listInternshipEnrollmentsAdmin(
     batchSearch?: string;
     /** When status is "all" or omitted: `program` = seat confirmed / post-admission; `pipeline` = exam & selection; `all` = no status filter. */
     lifecycle?: "program" | "pipeline" | "all";
+    /** Filter by certificate outcome (override wins over the computed verdict). */
+    certificateOutcome?: "certified" | "not_certified" | "pending";
     enrollmentType?: "merit" | "paid";
     /** Filter enrollments where `enrolledAt` >= this ISO date string. */
     enrolledFrom?: string;
@@ -216,6 +241,7 @@ export async function listInternshipEnrollmentsAdmin(
     batchId,
     batchSearch,
     lifecycle,
+    certificateOutcome,
     enrollmentType,
     enrolledFrom,
     enrolledTo,
@@ -288,6 +314,38 @@ export async function listInternshipEnrollmentsAdmin(
       applicationSubmittedAt: 0,
     },
   });
+
+  // Certificate outcome filter. The effective outcome is override-wins:
+  // an admin "pass"/"fail" supersedes the computed verdict; otherwise the
+  // evaluation snapshot decides; otherwise the learner is still pending.
+  if (
+    certificateOutcome === "certified" ||
+    certificateOutcome === "not_certified" ||
+    certificateOutcome === "pending"
+  ) {
+    pipeline.push({
+      $addFields: {
+        _certOutcome: {
+          $switch: {
+            branches: [
+              { case: { $eq: ["$certificateOverride", "pass"] }, then: "certified" },
+              { case: { $eq: ["$certificateOverride", "fail"] }, then: "not_certified" },
+              {
+                case: { $eq: ["$certificateEvaluation.verdict", "pass"] },
+                then: "certified",
+              },
+              {
+                case: { $eq: ["$certificateEvaluation.verdict", "fail"] },
+                then: "not_certified",
+              },
+            ],
+            default: "pending",
+          },
+        },
+      },
+    });
+    pipeline.push({ $match: { _certOutcome: certificateOutcome } });
+  }
   pipeline.push(
     {
       $lookup: {
@@ -481,6 +539,27 @@ export async function listInternshipEnrollmentsAdmin(
           ? (r as { documentationRejectionNote: string })
               .documentationRejectionNote
           : undefined,
+      // Certificate outcome so the list can badge/filter certified vs withheld
+      // without opening each row. Override wins over the computed verdict.
+      certificateOverride:
+        (r as { certificateOverride?: "pass" | "fail" | null })
+          .certificateOverride ?? null,
+      ...(() => {
+        const ce = (r as { certificateEvaluation?: Record<string, unknown> })
+          .certificateEvaluation;
+        if (!ce) return {};
+        return {
+          certificateEvaluation: {
+            verdict: ce.verdict as "pass" | "fail",
+            reason: ce.reason as "passed" | "points_shortfall",
+            earned: Number(ce.earned ?? 0),
+            totalAchievable: Number(ce.totalAchievable ?? 0),
+            thresholdPct: Number(ce.thresholdPct ?? 0),
+            requiredPoints: Number(ce.requiredPoints ?? 0),
+            evaluatedAt: toIso(ce.evaluatedAt) ?? "",
+          },
+        };
+      })(),
     };
   });
 
@@ -576,6 +655,22 @@ export async function getInternshipEnrollmentByIdAdmin(
     certificateOverride:
       (doc as { certificateOverride?: "pass" | "fail" | null })
         .certificateOverride ?? null,
+    ...(() => {
+      const ce = (doc as { certificateEvaluation?: Record<string, unknown> })
+        .certificateEvaluation;
+      if (!ce) return {};
+      return {
+        certificateEvaluation: {
+          verdict: ce.verdict as "pass" | "fail",
+          reason: ce.reason as "passed" | "points_shortfall",
+          earned: Number(ce.earned ?? 0),
+          totalAchievable: Number(ce.totalAchievable ?? 0),
+          thresholdPct: Number(ce.thresholdPct ?? 0),
+          requiredPoints: Number(ce.requiredPoints ?? 0),
+          evaluatedAt: toIso(ce.evaluatedAt) ?? "",
+        },
+      };
+    })(),
     createdAt: doc.createdAt
       ? new Date(doc.createdAt).toISOString()
       : undefined,
@@ -999,7 +1094,7 @@ export async function switchInternshipBatch(
 
 /**
  * “Book seat / without entrance” — requires batch `plan` with pricing.
- * Learner must complete payment via Paytm; enrollment stays `payment_pending` until then.
+ * Learner must complete payment via the gateway; enrollment stays `payment_pending` until then.
  */
 export async function registerForPaidSeat(
   userId: mongoose.Types.ObjectId,
@@ -1755,6 +1850,27 @@ export async function listMyInternshipEnrollments(
       ...(typeof (doc as Record<string, unknown>).internId === "string"
         ? { internId: (doc as Record<string, unknown>).internId as string }
         : {}),
+      // Certificate verdict + the admin override that can supersede it. Both are
+      // sent so the UI never tells an admin-rescued learner they failed.
+      certificateOverride:
+        (doc as { certificateOverride?: "pass" | "fail" | null })
+          .certificateOverride ?? null,
+      ...(() => {
+        const ce = (doc as { certificateEvaluation?: Record<string, unknown> })
+          .certificateEvaluation;
+        if (!ce) return {};
+        return {
+          certificateEvaluation: {
+            verdict: ce.verdict as "pass" | "fail",
+            reason: ce.reason as "passed" | "points_shortfall",
+            earned: Number(ce.earned ?? 0),
+            totalAchievable: Number(ce.totalAchievable ?? 0),
+            thresholdPct: Number(ce.thresholdPct ?? 0),
+            requiredPoints: Number(ce.requiredPoints ?? 0),
+            evaluatedAt: toIso(ce.evaluatedAt) ?? "",
+          },
+        };
+      })(),
     };
   });
 
@@ -2874,6 +2990,24 @@ export async function getLearnerProgramBySlug(
   const startTime = startRaw ? new Date(startRaw).getTime() : null;
   if (startTime !== null && !Number.isNaN(startTime) && Date.now() < startTime) {
     throw new AppError("This internship hasn't started yet", 403);
+  }
+
+  // Program window closed — once the learner's duration is over, tasks and live
+  // classes are no longer accessible (no submissions, no attendance), and the
+  // page is blocked even by direct URL. The certificate lives on the separate
+  // Certificates page, so this doesn't hide their result.
+  const programEnd = resolveProgramEndDate({
+    endDate: (doc as { endDate?: Date | string }).endDate,
+    cohortStart: doc.batchSnapshot?.internshipStartDate,
+    durationMonths: (doc as { programDurationMonths?: number })
+      .programDurationMonths,
+  });
+  if (isProgramWindowOver(programEnd)) {
+    throw new AppError(
+      "Your internship program has ended.",
+      403,
+      "PROGRAM_ENDED",
+    );
   }
 
   // 3. Get the batch's task template IDs

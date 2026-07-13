@@ -114,7 +114,7 @@ const CertificatesPage = () => {
                 <div className="relative order-1 sm:order-0">
                   <input
                     type="text"
-                    placeholder="Search a certificate by its name or course name"
+                    placeholder="Search certificates by name or program"
                     value={search}
                     onChange={(e) => handleSearchChange(e.target.value)}
                     className="placeholder:text-[#0000003D] placeholder:text-xs w-full sm:w-[240px] md:w-[320px] lg:w-[380px] h-10 sm:h-12 px-3 sm:px-4 pr-10 sm:pr-12 bg-[#F5F5F5] rounded-xl border border-[#00000026] text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 shadow-[0px_4px_4px_0px_#00000012_inset]"
@@ -177,6 +177,7 @@ const CertificatesPage = () => {
                             src={
                               (typeof certificate.courseId === "object" &&
                                 certificate.courseId?.thumbnail) ||
+                              certificate.thumbnailUrl ||
                               "/certificates-user-icon.svg"
                             }
                             alt={

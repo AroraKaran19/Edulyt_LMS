@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { computeProgramEndDate } from "../lib/internshipProgramWindow";
 
 const internshipEnrollmentSchema = new mongoose.Schema(
   {
@@ -130,14 +131,47 @@ const internshipEnrollmentSchema = new mongoose.Schema(
     },
 
     /**
+     * Frozen verdict written by the certificate evaluation worker on day N+1
+     * after the learner's program window ends. The numbers are snapshotted at
+     * decision time so support can answer "why didn't I get my certificate?"
+     * without recomputing.
+     *
+     * The automatic verdict is not re-run — its presence is the worker's
+     * idempotency guard — and success-point purchases are blocked once it
+     * exists. An admin can still rescue a `fail` via `certificateOverride`,
+     * which wins over this snapshot everywhere the certificate is gated.
+     */
+    certificateEvaluation: {
+      type: new mongoose.Schema(
+        {
+          evaluatedAt: { type: Date, required: true },
+          verdict: { type: String, enum: ["pass", "fail"], required: true },
+          reason: {
+            type: String,
+            enum: ["passed", "points_shortfall"],
+            required: true,
+          },
+          earned: { type: Number, required: true },
+          totalAchievable: { type: Number, required: true },
+          thresholdPct: { type: Number, required: true },
+          requiredPoints: { type: Number, required: true },
+        },
+        { _id: false },
+      ),
+      default: undefined,
+    },
+
+    /**
      * Program length chosen at registration (`internshipDuration` in applicationAnswers), in months.
-     * Drives per-learner certification exam day (last UTC day of the program).
+     * Required — it anchors `endDate`, which drives the certification exam day
+     * AND the certificate verdict. A missing value would leave the enrollment
+     * with no deadline, invisible to the evaluation worker forever.
      */
     programDurationMonths: {
       type: Number,
+      required: [true, "Program duration (months) is required"],
       min: 1,
       max: 120,
-      default: undefined,
     },
 
     /**
@@ -217,19 +251,30 @@ internshipEnrollmentSchema.index({ user: 1, status: 1 });
 // enrolled" range counts and admin enrolledAt date-range filters.
 internshipEnrollmentSchema.index({ enrolledAt: 1 }, { sparse: true });
 
-// Keep `endDate` derived from `enrolledAt + programDurationMonths`. Centralized
-// here so every `.save()` / `.create()` path stays correct; pre-enrollment
-// docs (no enrolledAt yet) leave endDate undefined naturally.
+// Serves the certificate-evaluation enqueuer: enrolled rows whose program
+// window has closed and that have not yet been judged.
+internshipEnrollmentSchema.index({ status: 1, endDate: 1 });
+
+// `endDate` is derived from the COHORT start + the learner's chosen duration —
+// NOT `enrolledAt`. `enrolledAt` is set when an admin approves the learner or
+// when the offer-letter worker runs, days or weeks after the cohort begins;
+// anchoring on it gave the learner a different window than the task calendar
+// they are actually shown (getLearnerProgramBySlug anchors on the cohort start),
+// so the certificate was graded against a pool that didn't match their work.
 internshipEnrollmentSchema.pre("save", function (next) {
-  const enrolledAt = this.enrolledAt instanceof Date ? this.enrolledAt : null;
+  const startRaw = this.batchSnapshot?.internshipStartDate;
+  const cohortStart = startRaw ? new Date(startRaw) : null;
   const months =
     typeof this.programDurationMonths === "number"
       ? this.programDurationMonths
       : null;
-  if (enrolledAt && months && months > 0) {
-    const d = new Date(enrolledAt);
-    d.setMonth(d.getMonth() + months);
-    this.endDate = d;
+  if (
+    cohortStart &&
+    !Number.isNaN(cohortStart.getTime()) &&
+    months &&
+    months > 0
+  ) {
+    this.endDate = computeProgramEndDate(cohortStart, months);
   } else {
     this.endDate = undefined;
   }

@@ -20,6 +20,7 @@ type ErrorReason =
   | "not-activated"
   | "expired"
   | "not-enrolled"
+  | "program-ended"
   | "unknown";
 
 type Outcome =
@@ -49,6 +50,10 @@ const ERROR_COPY: Record<ErrorReason, { title: string; body: string }> = {
     title: "Not in this batch",
     body: "Only learners in this internship's specific batch can mark attendance for this meeting.",
   },
+  "program-ended": {
+    title: "Program ended",
+    body: "Your internship program has ended, so attendance can no longer be marked.",
+  },
   unknown: {
     title: "Couldn't mark attendance",
     body: "Something went wrong. Please try again.",
@@ -63,7 +68,8 @@ function parseErrorReason(err: unknown): ErrorReason {
     raw === "invalid" ||
     raw === "not-activated" ||
     raw === "expired" ||
-    raw === "not-enrolled"
+    raw === "not-enrolled" ||
+    raw === "program-ended"
   ) {
     return raw;
   }

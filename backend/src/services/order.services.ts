@@ -14,516 +14,35 @@ import {
 } from "../models";
 import { InternshipModel } from "../models/internship.schema";
 import { InternshipEnrollmentModel } from "../models/internshipEnrollment.schema";
-import jwt from "jsonwebtoken";
-import { generatePaytmChecksum } from "../utils/lib/generatePaytmChecksum";
-import axios from "axios";
+import { verifyPaymentGatewayToken } from "./payments/token";
+import {
+  applyPaymentResult,
+  beginGatewayCheckout,
+  reconcileOrder,
+  resolveGateway,
+} from "./payments/orderFlow";
+import { getProvider } from "./payments/registry";
 import { validateCouponService } from "./coupon.services";
-import {
-  tryAwardInternshipRegistrationPoints,
-  tryAwardPurchaseSuccessPoints,
-  tryRedeemSuccessPointsForOrder,
-} from "./successPoints.services";
 import { getPointsSettings } from "./pointsSettings.services";
-import {
-  qualifiesForInternshipVoucher,
-  issueInternshipVoucher,
-} from "./internshipVoucher.services";
 import type { CourseDiscount, Discount } from "../types";
 import { isApplicationWindowOpenIst } from "../utils/applicationWindow";
-import { parseProgramDurationMonthsFromAnswers } from "../lib/certificationExamSchedule";
+
+// Re-exported for back-compat: these moved to ./payments/token, but existing
+// importers still reach for them here.
+export {
+  generatePaymentGatewayToken,
+  verifyPaymentGatewayToken,
+} from "./payments/token";
 
 const SUCCESS_POINTS_PURCHASE_MAX = 500;
 
-const updatePendingPayments = async (userId: string, updateOperation: any) => {
-  const user = await UserModel.findById(userId);
-  if (!user) throw new AppError("User not found", 404);
-
-  if (user.userType === "student") {
-    await StudentModel.findByIdAndUpdate(userId, updateOperation);
-  }
-};
-
-/**
- * After Paytm success: confirm paid internship seat and mark cohort enrolled.
- */
-export const createInternshipSeatEnrollmentAfterPayment = async (
-  order: any,
-) => {
-  const enrollmentId = order.internshipEnrollmentId;
-  if (!enrollmentId) {
-    throw new AppError("Order is missing internship enrollment reference", 400);
-  }
-
-  const enrollment = await InternshipEnrollmentModel.findById(enrollmentId);
-  if (!enrollment) {
-    throw new AppError("Internship enrollment not found", 404);
-  }
-
-  if (
-    enrollment.status === "enrolled" ||
-    enrollment.status === "pending_documentation"
-  ) {
-    // Idempotent: payment already settled. Learners may remain in
-    // `pending_documentation` until they submit KYC.
-    return enrollment;
-  }
-
-  // Accept all enrollment shapes that can legitimately complete a seat payment:
-  //  • paid + payment_pending   — fresh direct-seat registration
-  //  • merit + exam_registered  — merit learner upgrading before exam
-  //  • merit + exam_attempted   — merit learner upgrading after exam (any score)
-  //  • merit + in_merit_pool    — merit learner upgrading while awaiting selection
-  //  • merit + admin_rejected   — merit learner rejected from pool, buying a seat
-  // For merit upgrades enrollmentType is promoted to "paid" below, atomically
-  // with status="enrolled" — never on form submit, never before payment.
-  const upgradeableMeritStatuses = [
-    "exam_registered",
-    "exam_attempted",
-    "in_merit_pool",
-    "admin_rejected",
-  ] as string[];
-  const isPaidPending =
-    enrollment.enrollmentType === "paid" &&
-    String(enrollment.status) === "payment_pending";
-  const isMeritUpgrade =
-    enrollment.enrollmentType === "merit" &&
-    upgradeableMeritStatuses.includes(String(enrollment.status));
-  if (!isPaidPending && !isMeritUpgrade) {
-    throw new AppError(
-      "Enrollment is not awaiting payment for a direct seat",
-      400,
-    );
-  }
-
-  const userId = order.userId?.toString?.() ?? String(order.userId);
-  if (String(enrollment.user) !== userId) {
-    throw new AppError("Order does not match this enrollment", 403);
-  }
-
-  enrollment.enrollmentType = "paid";
-  enrollment.status = "pending_documentation";
-  // NOTE: `enrolledAt` is intentionally NOT set here. The paid path differs
-  // from the merit path only in skipping the entrance exam — everything
-  // downstream (docs, offer letter) is identical, and `enrolledAt` is the
-  // anchor for task unlock schedules, so it must be set when the learner
-  // actually reaches the `enrolled` state (offer-letter cron / admin
-  // status update), not when they pay.
-  const ans = enrollment.applicationAnswers as Record<string, unknown> | undefined;
-  const months = parseProgramDurationMonthsFromAnswers(ans ?? null);
-  if (months != null) enrollment.programDurationMonths = months;
-  enrollment.paymentAmount = order.amount;
-  enrollment.paymentOrderId = String(order._id);
-  enrollment.paymentConfirmedAt = new Date();
-  await enrollment.save();
-
-  const internshipOid = enrollment.internship as mongoose.Types.ObjectId;
-  const batchIdStr = enrollment.batchSnapshot?.batchId;
-  if (batchIdStr && mongoose.Types.ObjectId.isValid(batchIdStr)) {
-    await InternshipModel.updateOne(
-      {
-        _id: internshipOid,
-        "batches._id": new mongoose.Types.ObjectId(batchIdStr),
-      },
-      {
-        $inc: {
-          "batches.$.analytics.totalEnrollments": 1,
-        },
-      },
-    );
-  }
-  await InternshipModel.updateOne(
-    { _id: internshipOid },
-    {
-      $inc: { "analytics.totalEnrollments": 1 },
-    },
-  );
-
-  try {
-    await tryAwardInternshipRegistrationPoints(String(enrollment._id));
-  } catch (e) {
-    // A reward failure must never break paid-seat confirmation.
-    console.error("Internship registration reward failed:", e);
-  }
-
-  return enrollment;
-};
-
-/**
- * After Paytm success: credit purchased internship success points (certification) once per order.
- */
-export const createInternshipSuccessPointsAfterPayment = async (order: any) => {
-  const enrollmentId = order.internshipEnrollmentId;
-  if (!enrollmentId) {
-    throw new AppError("Order is missing internship enrollment reference", 400);
-  }
-
-  const qty = Math.floor(Number(order.internshipSuccessPointsQuantity));
-  if (!Number.isFinite(qty) || qty < 1) {
-    throw new AppError("Invalid purchased quantity on order", 400);
-  }
-
-  const enrollment = await InternshipEnrollmentModel.findById(enrollmentId);
-  if (!enrollment) {
-    throw new AppError("Internship enrollment not found", 404);
-  }
-
-  const userId = order.userId?.toString?.() ?? String(order.userId);
-  if (String(enrollment.user) !== userId) {
-    throw new AppError("Order does not match this enrollment", 403);
-  }
-
-  const ALLOWED_STATUSES = ["enrolled", "completed", "paused"] as string[];
-  if (!ALLOWED_STATUSES.includes(String(enrollment.status))) {
-    throw new AppError(
-      "Enrollment is not eligible for success point purchases",
-      400,
-    );
-  }
-
-  const internship = await InternshipModel.findById(enrollment.internship)
-    .select("certificationThreshold title")
-    .lean();
-  const thresholdRaw = (internship as { certificationThreshold?: unknown })
-    ?.certificationThreshold;
-  const threshold =
-    typeof thresholdRaw === "number" && !Number.isNaN(thresholdRaw)
-      ? Math.max(0, Math.floor(thresholdRaw))
-      : 0;
-  if (threshold <= 0) {
-    throw new AppError(
-      "This program does not use certification success points",
-      400,
-    );
-  }
-
-  const claim = await OrderModel.updateOne(
-    {
-      _id: order._id,
-      paymentStatus: "success",
-      internshipSuccessPointsFulfillmentApplied: { $ne: true },
-    },
-    { $set: { internshipSuccessPointsFulfillmentApplied: true } },
-  );
-
-  if (!claim.modifiedCount) {
-    return enrollment;
-  }
-
-  try {
-    await InternshipEnrollmentModel.findByIdAndUpdate(enrollmentId, {
-      $inc: { internshipSuccessPoints: qty },
-    });
-  } catch (err) {
-    await OrderModel.updateOne(
-      { _id: order._id },
-      { $set: { internshipSuccessPointsFulfillmentApplied: false } },
-    );
-    throw err;
-  }
-
-  // After crediting points, check if learner now qualifies for a certificate
-  try {
-    const freshEnrollment = await InternshipEnrollmentModel.findById(enrollmentId)
-      .select("internshipSuccessPoints")
-      .lean();
-    if (freshEnrollment && ((freshEnrollment as any).internshipSuccessPoints ?? 0) >= threshold) {
-      const { InternshipSubmissionModel } = await import("../models/internshipSubmission.schema");
-      const passingSub = await InternshipSubmissionModel.findOne({
-        enrollmentId: String(enrollmentId),
-        submissionFor: "exam",
-        status: "fully_reviewed",
-        "templateSnapshot.examType": "certification",
-      })
-        .select("totalAwardedScore templateSnapshot")
-        .lean();
-      if (passingSub) {
-        const awardedScore = (passingSub as any).totalAwardedScore ?? 0;
-        const examThreshold = (passingSub as any).templateSnapshot?.thresholdScore ?? 0;
-        if (awardedScore >= examThreshold) {
-          const { createCertificateJobService } = await import("./certificateJob.services");
-          await createCertificateJobService({
-            enrollmentId: String(enrollmentId),
-            certificateType: "internship",
-            studentName: "",
-            courseName: "",
-            completionDate: new Date(),
-          });
-        }
-      }
-    }
-  } catch (certErr) {
-    console.error("[Certificate] Failed to queue internship certificate job after payment:", certErr);
-  }
-
-  return InternshipEnrollmentModel.findById(enrollmentId);
-};
-
-// Create enrollment after successful payment
-export const createEnrollmentAfterPayment = async (order: any) => {
-  try {
-    if (order.orderKind === "internship_seat") {
-      return await createInternshipSeatEnrollmentAfterPayment(order);
-    }
-    if (order.orderKind === "internship_success_points") {
-      return await createInternshipSuccessPointsAfterPayment(order);
-    }
-
-    // Check if enrollment already exists
-    const existingEnrollment = await EnrollmentModel.findOne({
-      userId: order.userId,
-      courseId: order.courseId,
-      status: { $nin: ["dropped", "revoked"] },
-    });
-
-    if (existingEnrollment) {
-      // Idempotent retry: still attempt both the grant and the redemption
-      // deduction. Each is no-op when its respective flag is already set.
-      if (order.planType && order.courseId && order._id) {
-        try {
-          await tryAwardPurchaseSuccessPoints({
-            orderId: String(order._id),
-            userId: String(order.userId),
-            courseId: String(order.courseId),
-            planType: order.planType,
-            enrollmentId: String(existingEnrollment._id),
-          });
-        } catch (e) {
-          console.error("Purchase success points grant failed:", e);
-        }
-        try {
-          await tryRedeemSuccessPointsForOrder({
-            orderId: String(order._id),
-            userId: String(order.userId),
-            courseId: String(order.courseId),
-          });
-        } catch (e) {
-          console.error("Success points redemption failed:", e);
-        }
-      }
-
-      // Retry backfill: a prior attempt may have created the paid enrollment but
-      // failed to fan out the category siblings. Re-run the grant (idempotent —
-      // it skips courses the user already holds). Best-effort, never throws.
-      try {
-        const purchasedCourse = await CourseModel.findById(order.courseId).select(
-          "_id category"
-        );
-        if (purchasedCourse) {
-          const { grantCategorySiblingEnrollments } = await import(
-            "./enrollment.services"
-          );
-          await grantCategorySiblingEnrollments({
-            userId: String(order.userId),
-            purchasedCourse,
-            planType: order.planType,
-          });
-        }
-      } catch (grantErr) {
-        console.error("Category sibling enrollment grant (retry) failed:", grantErr);
-      }
-
-      return existingEnrollment;
-    }
-
-    // Verify user exists and is a student
-    const user = await StudentModel.findById(order.userId);
-    if (!user) {
-      throw new AppError(`Student not found with ID: ${order.userId}`, 404);
-    }
-
-    // Verify course exists
-    const course = await CourseModel.findById(order.courseId);
-    if (!course) {
-      throw new AppError(`Course not found with ID: ${order.courseId}`, 404);
-    }
-
-    // Create new enrollment
-    const enrollment = new EnrollmentModel({
-      userId: order.userId,
-      courseId: order.courseId,
-      // Snapshot the course title so enrollment history survives course deletion/unlink.
-      courseName: course.title,
-      planType: order.planType, // Include planType from order
-      enrolledAt: new Date(),
-      status: "active",
-      enrollmentSource: "direct",
-      progress: {
-        overallCompletion: 0,
-        totalModules: 0,
-        completedModules: 0,
-        totalLessons: 0,
-        completedLessons: 0,
-        lastActivityAt: new Date(),
-      },
-      lastUpdated: new Date(),
-      totalTimeSpent: 0,
-    });
-
-    const savedEnrollment = await enrollment.save();
-
-    // Add enrollment to user's enrollments array
-    const updatedUser = await StudentModel.findByIdAndUpdate(
-      order.userId,
-      { $push: { enrollments: savedEnrollment._id } },
-      { new: true }
-    );
-
-    if (!updatedUser) {
-      console.error(
-        `Failed to update user ${order.userId} with enrollment ${savedEnrollment._id}`
-      );
-      // Rollback enrollment creation
-      await EnrollmentModel.findByIdAndDelete(savedEnrollment._id);
-      throw new AppError("Failed to update user with enrollment", 500);
-    }
-
-    // Update course analytics (total enrollments and active enrollments)
-    await CourseModel.findByIdAndUpdate(
-      order.courseId,
-      {
-        $inc: {
-          "analytics.totalEnrollments": 1,
-          "analytics.activeEnrollments": 1,
-        },
-      },
-      { new: true }
-    );
-
-    // Update instructor totalStudents
-    if (course && course.instructor) {
-      // Extract instructor IDs
-      const instructorIds: string[] = [];
-      
-      if (Array.isArray(course.instructor)) {
-        for (const instructor of course.instructor) {
-          if (!instructor) continue;
-          
-          if (typeof instructor === 'string') {
-            instructorIds.push(instructor);
-          } else if (typeof instructor === 'object' && '_id' in instructor) {
-            instructorIds.push(String((instructor as any)._id));
-          }
-        }
-      } else {
-        const instructor = course.instructor;
-        if (typeof instructor === 'string') {
-          instructorIds.push(instructor);
-        } else if (instructor && typeof instructor === 'object' && '_id' in instructor) {
-          instructorIds.push(String((instructor as any)._id));
-        }
-      }
-      
-      // Update totalStudents for each instructor
-      for (const instructorId of instructorIds) {
-        await UserModel.findByIdAndUpdate(
-          instructorId,
-          { $inc: { totalStudents: 1 } },
-          { new: true }
-        );
-      }
-    }
-
-    // Issue a free-internship voucher if the learner paid ≥ 50 % of the
-    // original plan price (amount paid ≥ total discounts applied).
-    if (
-      qualifiesForInternshipVoucher({
-        amount: order.amount,
-        couponDiscount: order.couponDiscount,
-        collaborationDiscount: order.collaborationDiscount,
-      })
-    ) {
-      try {
-        await issueInternshipVoucher({
-          userId: String(order.userId),
-          enrollmentId: String(savedEnrollment._id),
-          orderId: String(order._id),
-        });
-      } catch (voucherErr) {
-        // Non-critical: log and move on; enrollment itself succeeded.
-        console.error("Failed to issue internship voucher:", voucherErr);
-      }
-    }
-
-    // Record a referral sale when the order carried a code from a different
-    // user. Idempotent via the `orderId` unique index on `ReferralSale`.
-    if (order.referralCode) {
-      try {
-        const { recordReferralSaleForOrder } = await import(
-          "./referral.services"
-        );
-        const buyer = await UserModel.findById(order.userId)
-          .select("firstName lastName email")
-          .lean();
-        const buyerName =
-          `${(buyer as { firstName?: string } | null)?.firstName ?? ""} ${
-            (buyer as { lastName?: string } | null)?.lastName ?? ""
-          }`.trim() ||
-          String((buyer as { email?: string } | null)?.email ?? "");
-        await recordReferralSaleForOrder({
-          orderId: String(order._id),
-          code: order.referralCode,
-          buyerUserId: String(order.userId),
-          courseId: order.courseId ? String(order.courseId) : undefined,
-          courseName: String(order.courseName ?? course.title ?? ""),
-          buyerName,
-          amount: Number(order.amount ?? 0),
-        });
-      } catch (refErr) {
-        // Non-critical: the referrer can be reconciled manually if this fails.
-        console.error("Failed to record referral sale:", refErr);
-      }
-    }
-
-    // Grant per-plan purchase success points + redeem points the buyer
-    // chose to apply at checkout. Both are idempotent at the order level.
-    if (order.planType && order.courseId && order._id) {
-      try {
-        await tryAwardPurchaseSuccessPoints({
-          orderId: String(order._id),
-          userId: String(order.userId),
-          courseId: String(order.courseId),
-          planType: order.planType,
-          enrollmentId: String(savedEnrollment._id),
-        });
-      } catch (e) {
-        console.error("Purchase success points grant failed:", e);
-      }
-      try {
-        await tryRedeemSuccessPointsForOrder({
-          orderId: String(order._id),
-          userId: String(order.userId),
-          courseId: String(order.courseId),
-        });
-      } catch (e) {
-        console.error("Success points redemption failed:", e);
-      }
-    }
-
-    // Fan out free enrollments to sibling courses in the same primary category
-    // (gated behind CATEGORY_SIBLING_ENROLLMENT_ENABLED). Best-effort: a failure
-    // here must never fail an order whose payment already succeeded.
-    try {
-      const { grantCategorySiblingEnrollments } = await import(
-        "./enrollment.services"
-      );
-      await grantCategorySiblingEnrollments({
-        userId: String(order.userId),
-        purchasedCourse: course,
-        planType: order.planType,
-      });
-    } catch (grantErr) {
-      console.error("Category sibling enrollment grant failed:", grantErr);
-    }
-
-    return savedEnrollment;
-  } catch (error) {
-    console.error("Failed to create enrollment after payment:", error);
-    if (error instanceof AppError) {
-      throw error;
-    }
-    throw new AppError("Failed to create enrollment after payment", 500);
-  }
-};
+// Post-payment fulfillment moved to ./payments/fulfillment so orderFlow can
+// call it without importing this module (which imports orderFlow).
+export {
+  createEnrollmentAfterPayment,
+  createInternshipSeatEnrollmentAfterPayment,
+  createInternshipSuccessPointsAfterPayment,
+} from "./payments/fulfillment";
 
 export const getAdminOrdersService = async (
   page: number,
@@ -759,7 +278,7 @@ async function computeCheckoutAfterCollaboration(params: {
 /**
  * Resolve the amount to charge: always compute on the backend from plan/course
  * discounts, partnership collaboration, and coupon. The frontend totalAmount
- * is ignored — the backend is the single source of truth so Paytm always matches.
+ * is ignored — the backend is the single source of truth so the gateway always matches.
  */
 async function resolveOrderAmount(params: {
   planPrice: number;
@@ -839,10 +358,10 @@ export const createOrderService = async (
   couponCode?: string,
   referralCode?: string,
   useSuccessPoints?: boolean,
+  gateway?: string,
 ) => {
-  if (!process.env.PAYTM_MID || !process.env.PAYTM_WEBSITE) {
-    throw new AppError("PAYTM_MID or PAYTM_WEBSITE is not set", 500);
-  }
+  // The provider's isConfigured() owns credential validation now.
+  const gatewayName = resolveGateway(gateway);
 
   const [course, user] = await Promise.all([
     CourseModel.findById(courseId),
@@ -981,7 +500,7 @@ export const createOrderService = async (
 
   const order = new OrderModel({
     txnId: Math.random().toString(36).substring(2, 15),
-    token: "", // Will be set by Paytm's txnToken
+    token: "", // Will be set by the gateway's client token
     userId,
     orderKind: "course",
     courseId,
@@ -990,7 +509,7 @@ export const createOrderService = async (
     planType,
     amount,
     currency: "INR",
-    paymentMethod: "paytm",
+    paymentMethod: gatewayName,
     paymentMode: "online",
     paymentStatus: "pending",
     couponCode: appliedCouponCode,
@@ -1014,125 +533,23 @@ export const createOrderService = async (
     $push: { orders: order._id.toString() },
   });
 
-  // If final amount is less than ₹1, treat as free — skip Paytm and complete enrollment
-  const isFreeOrder = amount < 1;
-  if (isFreeOrder) {
-    order.amount = 0;
-    order.paymentStatus = "success";
-    await order.save();
-    await createEnrollmentAfterPayment(order);
-    const paymentGatewayToken = generatePaymentGatewayToken(order._id.toString());
-    return {
-      _id: order._id.toString(),
-      freeOrder: true,
-      token: paymentGatewayToken,
-    };
-  }
-
-  const paymentGatewayToken = generatePaymentGatewayToken(order._id.toString());
-  const redirectUrl = `${
-    process.env.FRONTEND_URL
-  }/payment/status/${order._id.toString()}?token=${paymentGatewayToken}`;
-
-  // Paytm requires amount with at most 2 decimal places; avoid floating-point strings like "0.34999999999999964"
-  const amountForPaytm =
-    Number.isInteger(amount) ? amount.toString() : Number(amount.toFixed(2)).toString();
-
-  const body = {
-    requestType: "Payment",
-    mid: process.env.PAYTM_MID,
-    websiteName: process.env.PAYTM_WEBSITE,
-    orderId: order._id.toString(),
-    callbackUrl: redirectUrl,
-    txnAmount: { value: amountForPaytm, currency: "INR" },
-    userInfo: { custId: userId },
-  };
-
-  const checksum = await generatePaytmChecksum(body);
-
-  if (!checksum) {
-    throw new AppError("Failed to generate Paytm checksum", 500);
-  }
-
-  let response;
-  try {
-    response = await axios.post(
-      `https://secure.paytmpayments.com/theia/api/v1/initiateTransaction?mid=${
-        process.env.PAYTM_MID
-      }&orderId=${order._id.toString()}`,
-      {
-        head: {
-          signature: checksum,
-          channelId: "WEB",
-          version: "v1",
-          requestTimestamp: `${Math.floor(Date.now() / 1000)}`,
-        },
-        body,
-      },
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-      }
-    );
-  } catch (err: any) {
-    const paytmBody = err.response?.data?.body;
-    const resultInfo = paytmBody?.resultInfo;
-    const message =
-      resultInfo?.resultMsg ||
-      err.response?.data?.message ||
-      err.message ||
-      "Failed to initiate Paytm transaction";
-    throw new AppError(message, err.response?.status || 500);
-  }
-
-  if (response.status !== 200) {
-    throw new AppError("Error initiating transaction", 500);
-  }
-
-  const paytmBody = response.data?.body;
-  const resultInfo = paytmBody?.resultInfo;
-
-  // Paytm returns 200 even for validation/API errors; check resultInfo first
-  if (resultInfo && resultInfo.resultStatus !== "S") {
-    const message =
-      resultInfo.resultMsg ||
-      `Paytm error (code: ${resultInfo.resultCode || "unknown"})`;
-    throw new AppError(message, 400);
-  }
-
-  if (!paytmBody?.txnToken) {
-    const paytmMessage = resultInfo?.resultMsg
-      ? resultInfo.resultMsg
-      : "Invalid response from Paytm - no transaction token";
-    throw new AppError(paytmMessage, 500);
-  }
-
-  order.token = paytmBody.txnToken; // Paytm's transaction token
-  await order.save();
-
-  await updatePendingPayments(userId, {
-    $push: { pendingPayments: order._id.toString() },
+  return beginGatewayCheckout(order, {
+    userId: String(userId),
+    name: userName,
+    email: userEmail,
   });
-
-  return {
-    _id: order._id.toString(),
-    token: paytmBody.txnToken,
-  };
 };
 
 /**
- * Create Paytm order for “direct seat” internship enrollment (after form, `payment_pending`).
+ * Create a checkout order for “direct seat” internship enrollment (after form, `payment_pending`).
  * Amount is derived from the batch plan + discounts (single source of truth, same as enroll-preview).
  */
 export const createInternshipSeatOrderService = async (
   userId: string,
   internshipEnrollmentId: string,
+  gateway?: string,
 ) => {
-  if (!process.env.PAYTM_MID || !process.env.PAYTM_WEBSITE) {
-    throw new AppError("PAYTM_MID or PAYTM_WEBSITE is not set", 500);
-  }
+  const gatewayName = resolveGateway(gateway);
 
   if (!mongoose.Types.ObjectId.isValid(internshipEnrollmentId)) {
     throw new AppError("Invalid enrollment id", 400);
@@ -1249,7 +666,7 @@ export const createInternshipSeatOrderService = async (
     orderKind: "internship_seat",
     amount,
     currency: "INR",
-    paymentMethod: "paytm",
+    paymentMethod: gatewayName,
     paymentMode: "online",
     paymentStatus: "pending",
     userName,
@@ -1264,127 +681,23 @@ export const createInternshipSeatOrderService = async (
     $push: { orders: order._id.toString() },
   });
 
-  if (amount < 1) {
-    order.amount = 0;
-    order.paymentStatus = "success";
-    await order.save();
-    await createEnrollmentAfterPayment(order);
-    const paymentGatewayToken = generatePaymentGatewayToken(
-      order._id.toString(),
-    );
-    return {
-      _id: order._id.toString(),
-      freeOrder: true,
-      token: paymentGatewayToken,
-    };
-  }
-
-  const paymentGatewayToken = generatePaymentGatewayToken(order._id.toString());
-  const redirectUrl = `${
-    process.env.FRONTEND_URL
-  }/payment/status/${order._id.toString()}?token=${paymentGatewayToken}`;
-
-  const amountForPaytm = Number.isInteger(amount)
-    ? amount.toString()
-    : Number(amount.toFixed(2)).toString();
-
-  const paytmRequestBody = {
-    requestType: "Payment" as const,
-    mid: process.env.PAYTM_MID,
-    websiteName: process.env.PAYTM_WEBSITE,
-    orderId: order._id.toString(),
-    callbackUrl: redirectUrl,
-    txnAmount: { value: amountForPaytm, currency: "INR" as const },
-    userInfo: { custId: userId },
-  };
-
-  const checksum = await generatePaytmChecksum(paytmRequestBody);
-
-  if (!checksum) {
-    throw new AppError("Failed to generate Paytm checksum", 500);
-  }
-
-  let response;
-  try {
-    response = await axios.post(
-      `https://secure.paytmpayments.com/theia/api/v1/initiateTransaction?mid=${
-        process.env.PAYTM_MID
-      }&orderId=${order._id.toString()}`,
-      {
-        head: {
-          signature: checksum,
-          channelId: "WEB",
-          version: "v1",
-          requestTimestamp: `${Math.floor(Date.now() / 1000)}`,
-        },
-        body: paytmRequestBody,
-      },
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-      },
-    );
-  } catch (err: unknown) {
-    const e = err as { response?: { data?: { body?: { resultInfo?: { resultMsg?: string } } } } };
-    const paytmBody = e.response?.data?.body;
-    const resultInfo = paytmBody?.resultInfo;
-    const message =
-      resultInfo?.resultMsg ||
-      (e as { message?: string }).message ||
-      "Failed to initiate Paytm transaction";
-    throw new AppError(
-      message,
-      (e as { response?: { status?: number } }).response?.status || 500,
-    );
-  }
-
-  if (response.status !== 200) {
-    throw new AppError("Error initiating transaction", 500);
-  }
-
-  const paytmBody = response.data?.body;
-  const resultInfo = paytmBody?.resultInfo;
-
-  if (resultInfo && resultInfo.resultStatus !== "S") {
-    const message =
-      resultInfo.resultMsg ||
-      `Paytm error (code: ${resultInfo.resultCode || "unknown"})`;
-    throw new AppError(message, 400);
-  }
-
-  if (!paytmBody?.txnToken) {
-    const paytmMessage = resultInfo?.resultMsg
-      ? resultInfo.resultMsg
-      : "Invalid response from Paytm - no transaction token";
-    throw new AppError(paytmMessage, 500);
-  }
-
-  order.token = paytmBody.txnToken;
-  await order.save();
-
-  await updatePendingPayments(userId, {
-    $push: { pendingPayments: order._id.toString() },
+  return beginGatewayCheckout(order, {
+    userId: String(userId),
+    name: userName,
   });
-
-  return {
-    _id: order._id.toString(),
-    token: paytmBody.txnToken,
-  };
 };
 
 /**
- * Create Paytm order for purchasing internship certification success points (admin-priced INR per point).
+ * Create a checkout order for purchasing internship certification success points
+ * (admin-priced INR per point).
  */
 export const createInternshipSuccessPointsOrderService = async (
   userId: string,
   internshipEnrollmentId: string,
   quantity: number,
+  gateway?: string,
 ) => {
-  if (!process.env.PAYTM_MID || !process.env.PAYTM_WEBSITE) {
-    throw new AppError("PAYTM_MID or PAYTM_WEBSITE is not set", 500);
-  }
+  const gatewayName = resolveGateway(gateway);
 
   if (!mongoose.Types.ObjectId.isValid(internshipEnrollmentId)) {
     throw new AppError("Invalid enrollment id", 400);
@@ -1414,6 +727,27 @@ export const createInternshipSuccessPointsOrderService = async (
   if (!activeStatuses.includes(String(enrollment.status))) {
     throw new AppError(
       "Your enrollment is not active for this purchase",
+      400,
+    );
+  }
+
+  // The certificate verdict is final once written — points bought afterwards
+  // cannot change it, so we must not take the learner's money. Blocked at the
+  // window boundary too, so a purchase can't be started on the last night and
+  // settle after the verdict has already been decided.
+  if (
+    (enrollment as unknown as { certificateEvaluation?: unknown })
+      .certificateEvaluation
+  ) {
+    throw new AppError(
+      "Evaluation for this program has closed — success points can no longer be purchased.",
+      400,
+    );
+  }
+  const windowEnd = (enrollment as unknown as { endDate?: Date }).endDate;
+  if (windowEnd instanceof Date && windowEnd.getTime() < Date.now()) {
+    throw new AppError(
+      "Your program window has ended — success points can no longer be purchased.",
       400,
     );
   }
@@ -1469,7 +803,7 @@ export const createInternshipSuccessPointsOrderService = async (
     orderKind: "internship_success_points",
     amount,
     currency: "INR",
-    paymentMethod: "paytm",
+    paymentMethod: gatewayName,
     paymentMode: "online",
     paymentStatus: "pending",
     userName,
@@ -1485,114 +819,10 @@ export const createInternshipSuccessPointsOrderService = async (
     $push: { orders: order._id.toString() },
   });
 
-  if (amount < 1) {
-    order.amount = 0;
-    order.paymentStatus = "success";
-    await order.save();
-    await createEnrollmentAfterPayment(order);
-    const paymentGatewayToken = generatePaymentGatewayToken(
-      order._id.toString(),
-    );
-    return {
-      _id: order._id.toString(),
-      freeOrder: true,
-      token: paymentGatewayToken,
-    };
-  }
-
-  const paymentGatewayToken = generatePaymentGatewayToken(order._id.toString());
-  const redirectUrl = `${
-    process.env.FRONTEND_URL
-  }/payment/status/${order._id.toString()}?token=${paymentGatewayToken}`;
-
-  const amountForPaytm = Number.isInteger(amount)
-    ? amount.toString()
-    : Number(amount.toFixed(2)).toString();
-
-  const paytmRequestBody = {
-    requestType: "Payment" as const,
-    mid: process.env.PAYTM_MID,
-    websiteName: process.env.PAYTM_WEBSITE,
-    orderId: order._id.toString(),
-    callbackUrl: redirectUrl,
-    txnAmount: { value: amountForPaytm, currency: "INR" as const },
-    userInfo: { custId: userId },
-  };
-
-  const checksum = await generatePaytmChecksum(paytmRequestBody);
-
-  if (!checksum) {
-    throw new AppError("Failed to generate Paytm checksum", 500);
-  }
-
-  let response;
-  try {
-    response = await axios.post(
-      `https://secure.paytmpayments.com/theia/api/v1/initiateTransaction?mid=${
-        process.env.PAYTM_MID
-      }&orderId=${order._id.toString()}`,
-      {
-        head: {
-          signature: checksum,
-          channelId: "WEB",
-          version: "v1",
-          requestTimestamp: `${Math.floor(Date.now() / 1000)}`,
-        },
-        body: paytmRequestBody,
-      },
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-      },
-    );
-  } catch (err: unknown) {
-    const e = err as { response?: { data?: { body?: { resultInfo?: { resultMsg?: string } } } } };
-    const paytmBody = e.response?.data?.body;
-    const resultInfo = paytmBody?.resultInfo;
-    const message =
-      resultInfo?.resultMsg ||
-      (e as { message?: string }).message ||
-      "Failed to initiate Paytm transaction";
-    throw new AppError(
-      message,
-      (e as { response?: { status?: number } }).response?.status || 500,
-    );
-  }
-
-  if (response.status !== 200) {
-    throw new AppError("Error initiating transaction", 500);
-  }
-
-  const paytmBody = response.data?.body;
-  const resultInfo = paytmBody?.resultInfo;
-
-  if (resultInfo && resultInfo.resultStatus !== "S") {
-    const message =
-      resultInfo.resultMsg ||
-      `Paytm error (code: ${resultInfo.resultCode || "unknown"})`;
-    throw new AppError(message, 400);
-  }
-
-  if (!paytmBody?.txnToken) {
-    const paytmMessage = resultInfo?.resultMsg
-      ? resultInfo.resultMsg
-      : "Invalid response from Paytm - no transaction token";
-    throw new AppError(paytmMessage, 500);
-  }
-
-  order.token = paytmBody.txnToken;
-  await order.save();
-
-  await updatePendingPayments(userId, {
-    $push: { pendingPayments: order._id.toString() },
+  return beginGatewayCheckout(order, {
+    userId: String(userId),
+    name: userName,
   });
-
-  return {
-    _id: order._id.toString(),
-    token: paytmBody.txnToken,
-  };
 };
 
 export const getOrderInfoService = async (orderId: string) => {
@@ -1620,76 +850,7 @@ export const verifyPayment = async (token: string) => {
   const order = await OrderModel.findOne({ _id: orderId });
   if (!order) throw new AppError("Order not found", 404);
 
-  if (order.paymentStatus === "success" || order.paymentStatus === "failed") {
-    return {
-      status: order.paymentStatus,
-      orderId: order._id.toString(),
-      updatedAt: order.updatedAt,
-      amount: order.amount,
-      txnId: order.txnId,
-    };
-  }
-
-  const signature = await generatePaytmChecksum({
-    mid: process.env.PAYTM_MID,
-    orderId: orderId,
-  });
-
-  const status = await axios.post(
-    `https://secure.paytmpayments.com/v3/order/status`,
-    {
-      body: { mid: process.env.PAYTM_MID, orderId: orderId },
-      head: { signature: signature },
-    },
-    {
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-    }
-  );
-
-  if (status.status !== 200) {
-    return {
-      status: order.paymentStatus,
-      orderId: order._id.toString(),
-      updatedAt: order.updatedAt,
-      amount: order.amount,
-      txnId: order.txnId,
-    };
-  }
-
-  if (status.data.body.resultInfo.resultStatus === "TXN_SUCCESS") {
-    order.paymentStatus = "success";
-    order.paymentMode = status.data.body.paymentMode;
-    order.txnId = status.data.body.txnId;
-    await order.save();
-
-    await updatePendingPayments(order.userId?.toString() || "", {
-      $pull: { pendingPayments: order._id.toString() },
-    });
-
-    // Create enrollment after successful payment (this will update analytics)
-    try {
-      await createEnrollmentAfterPayment(order);
-    } catch (enrollmentError) {
-      console.error(
-        `Failed to create enrollment for order ${order._id}:`,
-        enrollmentError
-      );
-      // Don't throw here as payment is already successful
-      // The enrollment can be created manually later if needed
-    }
-  } else if (status.data.body.resultInfo.resultStatus === "TXN_FAILURE") {
-    order.paymentStatus = "failed";
-    order.paymentErrorReason =
-      status.data.body.resultInfo?.resultMsg || "Payment declined";
-    await order.save();
-
-    await updatePendingPayments(order.userId?.toString() || "", {
-      $pull: { pendingPayments: order._id.toString() },
-    });
-  }
+  await reconcileOrder(order);
 
   return {
     status: order.paymentStatus,
@@ -1700,65 +861,24 @@ export const verifyPayment = async (token: string) => {
   };
 };
 
-export const generatePaymentGatewayToken = (orderId: string) => {
-  return jwt.sign({ orderId }, process.env.JWT_SECRET!, { expiresIn: "5m" });
-};
-
-export const verifyPaymentGatewayToken = (
-  token: string
-): { orderId: string } => {
-  try {
-    return jwt.verify(token, process.env.JWT_SECRET!) as { orderId: string };
-  } catch (error) {
-    throw new AppError("Invalid token", 400);
-  }
-};
-
 export const processWebhook = async (webhookData: any) => {
   try {
-    const orderId = webhookData.orderId || webhookData.ORDERID;
-    const txnId = webhookData.txnId || webhookData.TXNID;
-    const status = webhookData.status || webhookData.STATUS;
+    const gateway = webhookData.gateway ?? "paytm";
+    const result = await getProvider(gateway).verifyWebhook(webhookData, {});
 
-    if (!orderId) {
-      return { success: false, message: "Order ID not found in webhook data" };
-    }
-
-    const order = await OrderModel.findById(orderId);
+    const order = await OrderModel.findById(result.orderId);
     if (!order) {
-      return { success: false, message: "Order not found", orderId };
+      return { success: false, message: "Order not found", orderId: result.orderId };
     }
 
-    if (order.paymentStatus === "success") {
-      return {
-        success: true,
-        message: "Order already processed successfully",
-        orderId,
-      };
-    }
+    await applyPaymentResult(order, result);
 
-    if (status === "TXN_SUCCESS" || status === "success") {
-      await handleSuccessfulPayment(order, txnId);
-      return {
-        success: true,
-        message: "Payment processed successfully",
-        orderId,
-      };
-    } else if (status === "TXN_FAILURE" || status === "failed") {
-      const errorReason =
-        webhookData.respMsg ||
-        webhookData.RESPMSG ||
-        webhookData.resultMsg ||
-        "Payment declined";
-      await handleFailedPayment(order, errorReason);
-      return { success: true, message: "Payment failure processed", orderId };
-    } else {
-      return {
-        success: false,
-        message: `Unknown payment status: ${status}`,
-        orderId,
-      };
-    }
+    return {
+      success: true,
+      message: "Webhook processed",
+      orderId: result.orderId,
+      status: order.paymentStatus,
+    };
   } catch (error) {
     console.error("Error processing webhook:", error);
     return {
@@ -1767,44 +887,6 @@ export const processWebhook = async (webhookData: any) => {
       error: error instanceof Error ? error.message : "Unknown error",
     };
   }
-};
-
-const handleSuccessfulPayment = async (order: any, txnId: string) => {
-  order.paymentStatus = "success";
-  order.txnId = txnId;
-  order.paymentMode = "online";
-  await order.save();
-
-  await updatePendingPayments(order.userId?.toString() || "", {
-    $pull: { pendingPayments: order._id.toString() },
-  });
-
-  // Create enrollment after successful payment (this will update analytics)
-  try {
-    await createEnrollmentAfterPayment(order);
-  } catch (enrollmentError) {
-    console.error(
-      `Failed to create enrollment for order ${order._id}:`,
-      enrollmentError
-    );
-    // Don't throw here as payment is already successful
-    // The enrollment can be created manually later if needed
-  }
-};
-
-const handleFailedPayment = async (
-  order: any,
-  errorReason?: string
-) => {
-  order.paymentStatus = "failed";
-  if (errorReason) {
-    order.paymentErrorReason = errorReason;
-  }
-  await order.save();
-
-  await updatePendingPayments(order.userId?.toString() || "", {
-    $pull: { pendingPayments: order._id.toString() },
-  });
 };
 
 export const deleteOrderService = async (orderId: string) => {

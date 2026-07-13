@@ -29,6 +29,43 @@ const LIFECYCLE_FILTER_OPTIONS: { value: string; label: string }[] = [
   { value: "all", label: "Every status" },
 ];
 
+const CERT_OUTCOME_FILTER_OPTIONS: { value: string; label: string }[] = [
+  { value: "all", label: "Any certificate outcome" },
+  { value: "certified", label: "Certified" },
+  { value: "not_certified", label: "Not certified" },
+  { value: "pending", label: "Awaiting evaluation" },
+];
+
+type CertOutcome = "certified" | "not_certified" | "pending";
+
+/** Effective certificate outcome: an admin override wins over the computed verdict. */
+function certOutcomeOf(row: InternshipEnrollmentListRow): CertOutcome {
+  if (row.certificateOverride === "pass") return "certified";
+  if (row.certificateOverride === "fail") return "not_certified";
+  const v = row.certificateEvaluation?.verdict;
+  if (v === "pass") return "certified";
+  if (v === "fail") return "not_certified";
+  return "pending";
+}
+
+const CERT_OUTCOME_BADGE: Record<
+  CertOutcome,
+  { label: string; className: string }
+> = {
+  certified: {
+    label: "Certified",
+    className: "bg-emerald-100 text-emerald-800 border-emerald-200",
+  },
+  not_certified: {
+    label: "Not certified",
+    className: "bg-rose-100 text-rose-800 border-rose-200",
+  },
+  pending: {
+    label: "Awaiting",
+    className: "bg-slate-100 text-slate-600 border-slate-200",
+  },
+};
+
 const ENROLLMENT_TYPE_OPTIONS: { value: string; label: string }[] = [
   { value: "all", label: "All paths" },
   { value: "merit", label: "Merit" },
@@ -84,7 +121,7 @@ function formatStatus(status: string) {
   return status.replace(/_/g, " ");
 }
 
-const COL_SPAN = 8;
+const COL_SPAN = 9;
 
 export default function InternshipEnrollmentsAdminPage() {
   const [rows, setRows] = useState<InternshipEnrollmentListRow[]>([]);
@@ -95,6 +132,7 @@ export default function InternshipEnrollmentsAdminPage() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [lifecycleFilter, setLifecycleFilter] = useState("program");
+  const [certOutcomeFilter, setCertOutcomeFilter] = useState("all");
   const [enrollmentTypeFilter, setEnrollmentTypeFilter] = useState("all");
   const [batchSearch, setBatchSearch] = useState("");
   const [debouncedBatchSearch, setDebouncedBatchSearch] = useState("");
@@ -141,6 +179,8 @@ export default function InternshipEnrollmentsAdminPage() {
       if (debouncedSearch) params.search = debouncedSearch;
       if (statusFilter !== "all") params.status = statusFilter;
       params.lifecycle = lifecycleFilter;
+      if (certOutcomeFilter !== "all")
+        params.certificateOutcome = certOutcomeFilter;
       if (enrollmentTypeFilter !== "all")
         params.enrollmentType = enrollmentTypeFilter;
       if (debouncedBatchSearch) params.batchSearch = debouncedBatchSearch;
@@ -172,6 +212,7 @@ export default function InternshipEnrollmentsAdminPage() {
     debouncedSearch,
     statusFilter,
     lifecycleFilter,
+    certOutcomeFilter,
     enrollmentTypeFilter,
     debouncedBatchSearch,
     enrolledFrom,
@@ -186,6 +227,7 @@ export default function InternshipEnrollmentsAdminPage() {
     Boolean(debouncedSearch) ||
     statusFilter !== "all" ||
     lifecycleFilter !== "program" ||
+    certOutcomeFilter !== "all" ||
     enrollmentTypeFilter !== "all" ||
     Boolean(debouncedBatchSearch) ||
     Boolean(enrolledFrom) ||
@@ -221,6 +263,17 @@ export default function InternshipEnrollmentsAdminPage() {
                   setPage(1);
                 }}
                 placeholder="Status"
+              />
+            </div>
+            <div className="sm:w-56">
+              <Select
+                options={CERT_OUTCOME_FILTER_OPTIONS}
+                value={certOutcomeFilter}
+                onChange={(val) => {
+                  setCertOutcomeFilter(val);
+                  setPage(1);
+                }}
+                placeholder="Certificate"
               />
             </div>
           </div>
@@ -292,7 +345,7 @@ export default function InternshipEnrollmentsAdminPage() {
         }
       >
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1040px]">
+          <table className="w-full min-w-[1160px]">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 min-w-[160px]">
@@ -309,6 +362,9 @@ export default function InternshipEnrollmentsAdminPage() {
                 </th>
                 <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700">
                   Status
+                </th>
+                <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700">
+                  Certificate
                 </th>
                 <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 tabular-nums">
                   Points
@@ -424,6 +480,18 @@ export default function InternshipEnrollmentsAdminPage() {
                       >
                         {formatStatus(row.status)}
                       </span>
+                    </td>
+                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                      {(() => {
+                        const badge = CERT_OUTCOME_BADGE[certOutcomeOf(row)];
+                        return (
+                          <span
+                            className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full border ${badge.className}`}
+                          >
+                            {badge.label}
+                          </span>
+                        );
+                      })()}
                     </td>
                     <td className="px-4 sm:px-6 py-4 text-sm text-gray-700 tabular-nums">
                       {row.internshipSuccessPoints ?? 0}

@@ -14,6 +14,7 @@ export interface Certificate {
   certificateId: string; // Unique certificate ID (e.g., "AI-12345")
   studentName: string; // Name at time of certificate generation
   courseName: string; // Course name at time of certificate generation
+  thumbnailUrl?: string; // Display thumbnail (internship certs store it directly)
   completionDate: Date; // Date course was completed
   issuedAt: Date; // Date certificate was issued/generated
 

@@ -29,15 +29,14 @@ import dotenv from "dotenv";
 import path from "path";
 import fs from "fs";
 import os from "os";
-import PizZip from "pizzip";
-import Docxtemplater from "docxtemplater";
-import ImageModule from "docxtemplater-image-module-free";
-import QRCode from "qrcode";
-
 import {
   generateCertificateFromDocx,
   convertDocxToPdf,
 } from "../utils/certificateGeneratorDocx";
+import {
+  generateOfferLetterBuffer,
+  type OfferLetterData,
+} from "../services/cron.services";
 import { uploadFileToS3 } from "../services/upload.services";
 import { CertificateModel } from "../models/certificate.schema";
 import { UserModel } from "../models/user.schema";
@@ -69,11 +68,16 @@ const OFFER_LETTER_TEMPLATE = path.join(
   TEMPLATE_DIR,
   "Airkrit India Offer Letter - Intern - AI-02453 - Template.docx",
 );
+const LOR_TEMPLATE = path.join(
+  TEMPLATE_DIR,
+  "Airkrit India LOR - AI-01171 - Template.docx",
+);
 
 // Distinctive IDs so samples never clash with real certs and are easy to purge.
 const SAMPLE_TRAINING_ID = "AI-99001";
 const SAMPLE_INTERNSHIP_ID = "AI-99002";
 export const SAMPLE_OFFER_INTERN_ID = "AI-99003";
+const SAMPLE_LOR_ID = "AI-99004";
 
 // Backing user for the offer-letter verify lookup (so it shows a learner name).
 export const SAMPLE_USER_EMAIL = "sample.student@airkrit-sample.local";
@@ -82,6 +86,7 @@ export const SAMPLE_USER_EMAIL = "sample.student@airkrit-sample.local";
 export const SAMPLE_CERTIFICATE_IDS = [
   SAMPLE_TRAINING_ID,
   SAMPLE_INTERNSHIP_ID,
+  SAMPLE_LOR_ID,
 ];
 
 const OUTPUT_DIR = path.resolve(__dirname, "../../sample-certificates-output");
@@ -130,91 +135,31 @@ function saveLocal(fileName: string, buffer: Buffer): string {
   return localPath;
 }
 
-// --- Offer-letter–specific rendering (mirrors cron.services.ts pipeline) -----
+// --- Offer letter: delegates to the production renderer in cron.services -----
 
-function escapeXml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&apos;");
+const MONTHS_SHORT = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
+/** "01 - Jul - 2026" — the internship template's period format. */
+function formatPeriodDate(d: Date): string {
+  return `${String(d.getUTCDate()).padStart(2, "0")} - ${
+    MONTHS_SHORT[d.getUTCMonth()]
+  } - ${d.getUTCFullYear()}`;
 }
 
 function formatOfferLetterDate(d: Date): string {
-  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-  return `${String(d.getUTCDate()).padStart(2, "0")}-${months[d.getUTCMonth()]}-${d.getUTCFullYear()}`;
+  return `${String(d.getUTCDate()).padStart(2, "0")}-${
+    MONTHS_SHORT[d.getUTCMonth()]
+  }-${d.getUTCFullYear()}`;
 }
 
-function fillOfferLetterXml(
-  xml: string,
-  data: {
-    letterDate: string;
-    name: string;
-    internId: string;
-    joiningDate: string;
-    domain: string;
-    duration: string;
-  },
-): string {
-  const e = escapeXml;
-  xml = xml.replace("<w:t>AI-XXXX</w:t>", `<w:t>${e(data.internId)}</w:t>`);
-  xml = xml.replace(
-    /<w:t>DD<\/w:t>([\s\S]{1,300}?)<w:t>-<\/w:t>([\s\S]{1,300}?)<w:t>MM<\/w:t>([\s\S]{1,300}?)<w:t>-<\/w:t>([\s\S]{1,300}?)<w:t>YYYY<\/w:t>/,
-    `<w:t>${e(data.letterDate)}</w:t>`,
-  );
-  let idx = 0;
-  const values = [e(data.name), e(data.joiningDate), e(data.domain), e(data.duration)];
-  xml = xml.replace(
-    /<w:t>\[<\/w:t>[\s\S]*?<w:t>\]<\/w:t>/g,
-    () => `<w:t>${values[idx++] ?? ""}</w:t>`,
-  );
-  return xml;
-}
-
-async function generateOfferLetterPdfBuffer(data: {
-  letterDate: string;
-  name: string;
-  internId: string;
-  joiningDate: string;
-  domain: string;
-  duration: string;
-  verificationUrl: string;
-}): Promise<Buffer> {
-  if (!fs.existsSync(OFFER_LETTER_TEMPLATE)) {
-    throw new Error(`Template not found: ${OFFER_LETTER_TEMPLATE}`);
-  }
-  const zip = new PizZip(fs.readFileSync(OFFER_LETTER_TEMPLATE));
-  const docXml = zip.file("word/document.xml")!.asText();
-  zip.file("word/document.xml", fillOfferLetterXml(docXml, data));
-  let out = zip.generate({ type: "nodebuffer", compression: "DEFLATE" }) as Buffer;
-
-  // QR pass (same as production offer-letter worker).
-  try {
-    const qrPng = await QRCode.toBuffer(data.verificationUrl, {
-      type: "png",
-      width: 300,
-      margin: 1,
-      errorCorrectionLevel: "M",
-    });
-    const imageModule = new ImageModule({
-      centered: false,
-      getImage: (tagValue: string) =>
-        tagValue === "qrImage" ? qrPng : Buffer.from(""),
-      getSize: () => [96, 96],
-    });
-    const doc = new Docxtemplater(new PizZip(out), {
-      delimiters: { start: "[", end: "]" },
-      paragraphLoop: true,
-      linebreaks: true,
-      modules: [imageModule],
-      nullGetter: () => "",
-    });
-    doc.render({ qrImage: "qrImage" });
-    out = doc.getZip().generate({ type: "nodebuffer", compression: "DEFLATE" }) as Buffer;
-  } catch (err) {
-    console.warn("[offer-letter] QR render skipped:", err);
-  }
+async function generateOfferLetterPdfBuffer(
+  data: OfferLetterData & { verificationUrl: string },
+): Promise<Buffer> {
+  const { verificationUrl, ...letter } = data;
+  const out = await generateOfferLetterBuffer(letter, { verificationUrl });
 
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "sample-offer-"));
   const docxPath = path.join(tempDir, "offer.docx");
@@ -326,6 +271,12 @@ async function main(): Promise<void> {
       const verificationCode = `VER-${SAMPLE_INTERNSHIP_ID}-SAMPLE`;
       const verificationUrl = `${FRONTEND_URL}/verify-certificate/${verificationCode}`;
 
+      // The internship template also carries a role, a month count and a period.
+      const durationMonths = 3;
+      const periodStart = new Date(completionDate);
+      periodStart.setUTCMonth(periodStart.getUTCMonth() - durationMonths);
+      const internPeriod = `(${formatPeriodDate(periodStart)} to ${formatPeriodDate(completionDate)})`;
+
       console.log(`Generating Internship Certificate (${SAMPLE_INTERNSHIP_ID})...`);
       const pdf = await docxTemplateToPdfBuffer(INTERNSHIP_TEMPLATE, {
         studentName,
@@ -333,6 +284,9 @@ async function main(): Promise<void> {
         completionDate: completionDate.toISOString(),
         certificateId: SAMPLE_INTERNSHIP_ID,
         verificationUrl,
+        internRole: "Data Analytics Intern",
+        internDurationMonths: String(durationMonths),
+        internPeriod,
       });
 
       const fileName = `Airkrit_Internship_${sanitizeForFilename(internshipTitle)}_${sanitizeForFilename(studentName)}.pdf`;
@@ -367,7 +321,55 @@ async function main(): Promise<void> {
       });
     }
 
-    // ---- 3. Offer Letter (PDF + backing records so the QR/verify works) --
+    // ---- 3. Letter of Recommendation (LOR) -------------------------------
+    {
+      const studentName = "Sample Student";
+      const programName = "Full Stack Web Development";
+      const verificationCode = `VER-${SAMPLE_LOR_ID}-SAMPLE`;
+      const verificationUrl = `${FRONTEND_URL}/verify-certificate/${verificationCode}`;
+
+      console.log(`Generating Letter of Recommendation (${SAMPLE_LOR_ID})...`);
+      const pdf = await docxTemplateToPdfBuffer(LOR_TEMPLATE, {
+        studentName,
+        courseName: programName,
+        completionDate: completionDate.toISOString(),
+        certificateId: SAMPLE_LOR_ID,
+        verificationUrl,
+      });
+
+      const fileName = `Airkrit_LOR_${sanitizeForFilename(studentName)}.pdf`;
+      const localPath = saveLocal(fileName, pdf);
+      const s3Url = await uploadFileToS3(pdf, fileName, "certificates", "application/pdf");
+
+      await CertificateModel.create({
+        certificateType: "lor",
+        enrollmentModel: "Enrollment",
+        enrollmentId: new mongoose.Types.ObjectId(),
+        userId: new mongoose.Types.ObjectId(),
+        courseId: null,
+        certificateId: SAMPLE_LOR_ID,
+        studentName,
+        courseName: programName,
+        completionDate,
+        issuedAt: new Date(),
+        fileUrl: s3Url,
+        verificationCode,
+        verificationUrl,
+        isLatest: true,
+        version: 1,
+        isActive: true,
+      });
+
+      results.push({
+        doc: "Letter of Recommendation",
+        certificateId: SAMPLE_LOR_ID,
+        verifyUrl: verificationUrl,
+        s3Url,
+        localPath,
+      });
+    }
+
+    // ---- 4. Offer Letter (PDF + backing records so the QR/verify works) --
     {
       const name = "Sample Student";
       const now = new Date();

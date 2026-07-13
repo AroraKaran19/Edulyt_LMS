@@ -1,14 +1,6 @@
 import cron from "node-cron";
-import {
-  OrderModel,
-  CourseModel,
-  UserModel,
-  StudentModel,
-} from "../models";
-import { generatePaytmChecksum } from "../utils/lib/generatePaytmChecksum";
-import axios from "axios";
-import { AppError } from "../middlewares/error.middleware";
-import { createEnrollmentAfterPayment } from "./order.services";
+import { OrderModel, UserModel } from "../models";
+import { reconcileOrder } from "./payments/orderFlow";
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
@@ -18,24 +10,12 @@ import ImageModule from "docxtemplater-image-module-free";
 import QRCode from "qrcode";
 import { InternshipEnrollmentModel } from "../models/internshipEnrollment.schema";
 import { InternshipModel } from "../models/internship.schema";
+import { enqueueDueInternshipEvaluations } from "./internshipEvaluationJob.services";
 import { uploadFileToS3 } from "./upload.services";
 import {
   convertDocxToPdf,
   replacePlainTextPlaceholders,
 } from "../utils/certificateGeneratorDocx";
-
-/**
- * Update pending payments for a user
- */
-const updatePendingPayments = async (userId: string, updateOperation: any) => {
-  const user = await UserModel.findById(userId);
-  if (!user) throw new AppError("User not found", 404);
-
-  if (user.userType === "student") {
-    await StudentModel.findByIdAndUpdate(userId, updateOperation);
-  }
-};
-
 
 const PENDING_ORDER_AGE_HOURS = 24;
 
@@ -115,121 +95,14 @@ const checkPendingPayments = async () => {
 };
 
 /**
- * Verify payment status for a single order
+ * Verify payment status for a single order. All gateway talk + settlement
+ * lives in orderFlow now; the cron just drives it.
  */
 const verifyOrderPayment = async (order: any) => {
   try {
-    // Generate checksum for Paytm API
-    const signature = await generatePaytmChecksum({
-      mid: process.env.PAYTM_MID,
-      orderId: order._id.toString(),
-    });
-
-    if (!signature) {
-      console.error(`❌ Failed to generate checksum for order ${order._id}`);
-      return;
-    }
-
-    // Call Paytm API to check payment status
-    const statusResponse = await axios.post(
-      `https://secure.paytmpayments.com/v3/order/status`,
-      {
-        body: {
-          mid: process.env.PAYTM_MID,
-          orderId: order._id.toString(),
-        },
-        head: { signature: signature },
-      },
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        timeout: 10000, // 10 second timeout
-      }
-    );
-
-    if (statusResponse.status !== 200) {
-      console.log(
-        `⚠️ Paytm API returned non-200 status for order ${order._id}`
-      );
-      return;
-    }
-
-    const resultStatus = statusResponse.data.body.resultInfo.resultStatus;
-
-    if (resultStatus === "TXN_SUCCESS") {
-      // Payment successful
-      await handleSuccessfulPayment(order, statusResponse.data.body);
-    } else if (resultStatus === "TXN_FAILURE") {
-      // Payment failed
-      const errorReason =
-        statusResponse.data.body.resultInfo?.resultMsg || "Payment declined";
-      order.paymentErrorReason = errorReason;
-      await handleFailedPayment(order);
-      console.log(`❌ Payment failed for order ${order._id}: ${errorReason}`);
-    } else {
-      // Still pending
-      console.log(`⏳ Payment still pending for order ${order._id}`);
-    }
+    await reconcileOrder(order);
   } catch (error) {
     console.error(`❌ Error verifying payment for order ${order._id}:`, error);
-  }
-};
-
-/**
- * Handle successful payment
- */
-const handleSuccessfulPayment = async (order: any, paytmResponse: any) => {
-  try {
-    
-    // Update order status
-    order.paymentStatus = "success";
-    order.paymentMode = paytmResponse.paymentMode;
-    order.txnId = paytmResponse.txnId;
-    await order.save();
-
-    // Remove from pending payments
-    await updatePendingPayments(order.userId?.toString() || "", {
-      $pull: { pendingPayments: order._id.toString() },
-    });
-
-    // Create enrollment after successful payment (this will update analytics)
-    try {
-      await createEnrollmentAfterPayment(order);
-    } catch (enrollmentError) {
-      console.error(`Failed to create enrollment for order ${order._id}:`, enrollmentError);
-      // Don't throw here as payment is already successful
-      // The enrollment can be created manually later if needed
-    }
-
-  } catch (error) {
-    console.error(
-      `Error processing successful payment for order ${order._id}:`,
-      error
-    );
-  }
-};
-
-/**
- * Handle failed payment
- */
-const handleFailedPayment = async (order: any) => {
-  try {
-    // Update order status
-    order.paymentStatus = "failed";
-    await order.save();
-
-    // Remove from pending payments
-    await updatePendingPayments(order.userId?.toString() || "", {
-      $pull: { pendingPayments: order._id.toString() },
-    });
-
-  } catch (error) {
-    console.error(
-      `Error processing failed payment for order ${order._id}:`,
-      error
-    );
   }
 };
 
@@ -487,6 +360,30 @@ export const initializeCronJobs = () => {
 
   console.log("✅ Cron jobs initialized:");
   console.log("  - Payment verification: Every 10 minutes");
+
+  // Certificate evaluation: enqueue learners whose program window has closed.
+  // 01:00 IST — `endDate` is IST end-of-day, so this is the N+1 morning and the
+  // learner had their whole final day to earn points.
+  //
+  // Gated: the verdict decides whether a real person receives a certificate, so
+  // it stays off until the dry-run report has been reviewed and accepted.
+  if (process.env.INTERNSHIP_EVALUATION_ENABLED === "true") {
+    cron.schedule(
+      "0 1 * * *",
+      () => {
+        console.log("⏰ Running internship certificate evaluation enqueue...");
+        void enqueueDueInternshipEvaluations();
+      },
+      {
+        timezone: "Asia/Kolkata",
+      }
+    );
+    console.log("  - Internship certificate evaluation: Daily at 01:00 IST");
+  } else {
+    console.log(
+      "  - Internship certificate evaluation: DISABLED (set INTERNSHIP_EVALUATION_ENABLED=true)"
+    );
+  }
 };
 
 /**
