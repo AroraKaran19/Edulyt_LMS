@@ -355,6 +355,7 @@ export default function DashboardInternshipCard({ row, onWithdrawn }: Props) {
     row.internship?.slug?.trim() || row.internshipSnapshot?.slug?.trim() || "";
   const batchName = row.batchSnapshot?.name?.trim() || "Cohort";
   const start = formatCohortDate(row.batchSnapshot?.internshipStartDate);
+  const end = row.endDate ? formatCohortDate(row.endDate) : null;
 
   const showExamWaiting = EXAM_WAITING_STATUSES.has(row.status);
 
@@ -585,6 +586,12 @@ export default function DashboardInternshipCard({ row, onWithdrawn }: Props) {
                 <Calendar className="h-3.5 w-3.5 shrink-0 text-stone-400" />
                 Starts {start}
               </span>
+              {end && (
+                <span className="inline-flex items-center gap-1.5">
+                  <Calendar className="h-3.5 w-3.5 shrink-0 text-stone-400" />
+                  Ends {end}
+                </span>
+              )}
             </div>
             <InternshipFlowProgress
               status={row.status}

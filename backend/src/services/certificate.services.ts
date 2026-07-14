@@ -280,6 +280,22 @@ export const createInternshipCertificateService = async (
   const enrollment = await InternshipEnrollmentModel.findById(enrollmentId).lean();
   if (!enrollment) throw new AppError("Internship enrollment not found", 404);
 
+  // The "Intern ID" printed on the certificate must be the SAME id allotted at
+  // offer-letter time (`enrollment.internId`, e.g. "AI-00042"), not the internal
+  // certificateId hash — otherwise the certificate and the offer letter disagree.
+  // It is normally stamped at doc-verify; allocate + persist here only as a
+  // safety net for legacy rows that reached certification without one (mirrors
+  // the offer-letter cron's fallback).
+  let internId = (enrollment as any).internId as string | undefined;
+  if (!internId) {
+    const { allocateNextInternId } = await import("./internId.services");
+    internId = await allocateNextInternId();
+    await InternshipEnrollmentModel.updateOne(
+      { _id: enrollmentId },
+      { $set: { internId } },
+    );
+  }
+
   // Percentage-threshold gate: the certificate is only issued when the
   // learner's earned `internshipSuccessPoints` clears the configured percent
   // of total achievable (tasks + meetings + cert exam in their window).
@@ -386,6 +402,7 @@ export const createInternshipCertificateService = async (
       courseName: internshipTitle,
       completionDate: ((enrollment as any).enrolledAt || new Date()).toISOString(),
       certificateId,
+      internId,
       verificationUrl,
       internRole,
       internDurationMonths: String(durationMonths),

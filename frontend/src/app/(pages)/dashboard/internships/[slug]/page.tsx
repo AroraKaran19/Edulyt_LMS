@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import axios from "axios";
+import { toast } from "react-toastify";
 import apiClient from "@/configs/apiConfig";
 import {
   Loader2,
@@ -568,11 +569,22 @@ export default function InternshipProgramPage() {
         if (cancelled) return;
         if (axios.isAxiosError(err)) {
           const status = err.response?.status;
+          const errBody = err.response?.data?.error as
+            | { code?: string; message?: string }
+            | undefined;
           if (status === 403 || status === 404) {
+            // Tell the learner why they were sent back, instead of a silent bounce.
+            if (errBody?.code === "PROGRAM_ENDED") {
+              toast.info("Your internship program has ended. Tasks and live classes are now closed.");
+            } else if (errBody?.code === "DOCUMENTATION_PENDING") {
+              toast.info("Submit your documents to unlock tasks and live classes.");
+            } else if (errBody?.message) {
+              toast.info(errBody.message);
+            }
             router.replace("/dashboard/internships");
             return;
           }
-          setError(err.response?.data?.message || "Failed to load program");
+          setError(errBody?.message || "Failed to load program");
         } else {
           setError("Failed to load program");
         }

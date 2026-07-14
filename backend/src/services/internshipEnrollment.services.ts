@@ -1821,6 +1821,12 @@ export async function listMyInternshipEnrollments(
           ? doc.internshipSuccessPoints
           : 0,
       enrolledAt: toIso(doc.enrolledAt),
+      endDate: toIso((doc as { endDate?: Date }).endDate),
+      programDurationMonths:
+        typeof (doc as { programDurationMonths?: number }).programDurationMonths ===
+        "number"
+          ? (doc as { programDurationMonths: number }).programDurationMonths
+          : undefined,
       createdAt: doc.createdAt
         ? toIso((doc as { createdAt: unknown }).createdAt)
         : undefined,

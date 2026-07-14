@@ -24,6 +24,10 @@ export interface CertificateData {
   keyTopics?: string; // Key topics or technologies
   verificationUrl?: string; // URL for QR code verification
   // Internship-certificate-only fields (ignored by the course-cert template):
+  // Real allotted intern ID (e.g. "AI-00042"), matching the offer letter. When
+  // set it fills the template's "AI-XXXX" / "Intern ID" placeholder instead of
+  // the internal certificateId hash — see `printedId` below.
+  internId?: string;
   internRole?: string; // Designation, e.g. "Data Analytics Intern"
   internDurationMonths?: string; // Number of months, e.g. "3"
   internPeriod?: string; // Period text, e.g. "01 - Jul - 2026 to 30 - Sep - 2026"
@@ -532,6 +536,11 @@ export async function generateCertificateFromDocx(
 
     const formattedDate = formatDateDDMMYYYY(data.completionDate);
 
+    // The ID printed into the "AI-XXXX" placeholder: the real intern ID for
+    // internship certificates (so it matches the offer letter), the internal
+    // certificateId hash otherwise. `internId` already carries the "AI-" prefix.
+    const printedId = data.internId ?? data.certificateId;
+
     const templateData: any = {
       "Your Name": data.studentName, // Not bold (used in greeting)
       "Full Name": `${BOLD_MARKER_PREFIX}${data.studentName}${BOLD_MARKER_SUFFIX}`, // Will be made bold
@@ -548,10 +557,10 @@ export async function generateCertificateFromDocx(
       "Completion Date": `${BOLD_MARKER_PREFIX}${formattedDate}${BOLD_MARKER_SUFFIX}`,
       // Certificate ID (will be made bold)
       // Support multiple variations including "ID : AI-XXXX" format
-      "AI-XXXX": `${BOLD_MARKER_PREFIX}${data.certificateId}${BOLD_MARKER_SUFFIX}`,
-      "ID : AI-XXXX": `ID : ${BOLD_MARKER_PREFIX}${data.certificateId}${BOLD_MARKER_SUFFIX}`,
-      "Certificate ID": `${BOLD_MARKER_PREFIX}${data.certificateId}${BOLD_MARKER_SUFFIX}`,
-      ID: `${BOLD_MARKER_PREFIX}${data.certificateId}${BOLD_MARKER_SUFFIX}`,
+      "AI-XXXX": `${BOLD_MARKER_PREFIX}${printedId}${BOLD_MARKER_SUFFIX}`,
+      "ID : AI-XXXX": `ID : ${BOLD_MARKER_PREFIX}${printedId}${BOLD_MARKER_SUFFIX}`,
+      "Certificate ID": `${BOLD_MARKER_PREFIX}${printedId}${BOLD_MARKER_SUFFIX}`,
+      ID: `${BOLD_MARKER_PREFIX}${printedId}${BOLD_MARKER_SUFFIX}`,
       // QR Code placeholder - will be replaced by ImageModule if QR code exists
       qrImage: qrCodeBuffer ? "qrImage" : "", // Empty string if no QR code
     };
@@ -576,8 +585,8 @@ export async function generateCertificateFromDocx(
     // Also handles certificate ID placeholders like "AI-XXXX" or "ID : AI-XXXX"
     // Order matters: replace longer strings first to avoid partial replacements
     const plainTextReplacements: { [key: string]: string } = {
-      "ID : AI-XXXX": `ID : ${BOLD_MARKER_PREFIX}${data.certificateId}${BOLD_MARKER_SUFFIX}`,
-      "AI-XXXX": `${BOLD_MARKER_PREFIX}${data.certificateId}${BOLD_MARKER_SUFFIX}`,
+      "ID : AI-XXXX": `ID : ${BOLD_MARKER_PREFIX}${printedId}${BOLD_MARKER_SUFFIX}`,
+      "AI-XXXX": `${BOLD_MARKER_PREFIX}${printedId}${BOLD_MARKER_SUFFIX}`,
       "DD-MM-YYYY": `${BOLD_MARKER_PREFIX}${formattedDate}${BOLD_MARKER_SUFFIX}`,
     };
     replacePlainTextPlaceholders(doc.getZip(), plainTextReplacements);
@@ -592,7 +601,7 @@ export async function generateCertificateFromDocx(
 
         // Replace AI-XXXX patterns in the entire XML (case-insensitive)
         // Handle various formats: "AI-XXXX", "[AI-XXXX]", "ID : AI-XXXX", "[ID : AI-XXXX]"
-        const replacementValue = `${BOLD_MARKER_PREFIX}${data.certificateId}${BOLD_MARKER_SUFFIX}`;
+        const replacementValue = `${BOLD_MARKER_PREFIX}${printedId}${BOLD_MARKER_SUFFIX}`;
 
         // First, replace "ID : AI-XXXX" patterns (with or without brackets, with flexible spacing)
         xmlContent = xmlContent.replace(/\[?ID\s*:\s*AI-XXXX\]?/gi, (match) => {
