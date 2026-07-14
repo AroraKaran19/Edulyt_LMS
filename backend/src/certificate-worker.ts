@@ -1,6 +1,13 @@
 /**
- * PM2 process: scheduled crons + certificate + offer-letter generation queues.
+ * PM2 process: scheduled crons + certificate, offer-letter, and internship
+ * certificate-evaluation queues.
  * Do not run multiple instances (duplicate crons / duplicate polling).
+ *
+ * The internship evaluation worker lives here on purpose: the daily enqueue cron
+ * is already registered by `initializeCronJobs()`, and a passing verdict enqueues
+ * a certificate job that THIS process drains — so verdict → certificate → PDF all
+ * happen in one place. It is pure DB I/O, so it adds no meaningful memory.
+ * It stays inert unless INTERNSHIP_EVALUATION_ENABLED=true.
  *
  * Run: node dist/certificate-worker.js
  */
@@ -10,6 +17,7 @@ import { initializeS3 } from "./config/s3";
 import { initializeCronJobs } from "./services/cron.services";
 import { startCertificateWorker } from "./workers/certificate.worker";
 import { startOfferLetterWorker } from "./workers/offerLetter.worker";
+import { startInternshipEvaluationWorker } from "./workers/internshipEvaluation.worker";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -19,10 +27,13 @@ const start = async () => {
     await connectDB();
     await initializeS3();
 
-    console.log("🕐 Starting certificate worker (cron + certificate + offer-letter jobs)...");
+    console.log(
+      "🕐 Starting certificate worker (cron + certificate + offer-letter + internship-evaluation jobs)...",
+    );
     initializeCronJobs();
     startCertificateWorker();
     startOfferLetterWorker();
+    startInternshipEvaluationWorker();
 
     console.log("✅ Certificate worker running");
 
