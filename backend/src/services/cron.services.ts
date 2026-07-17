@@ -11,6 +11,7 @@ import QRCode from "qrcode";
 import { InternshipEnrollmentModel } from "../models/internshipEnrollment.schema";
 import { InternshipModel } from "../models/internship.schema";
 import { enqueueDueInternshipEvaluations } from "./internshipEvaluationJob.services";
+import { randomizeActiveCourseSeatsLeft } from "./course.services";
 import { uploadFileToS3 } from "./upload.services";
 import {
   convertDocxToPdf,
@@ -382,6 +383,34 @@ export const initializeCronJobs = () => {
   } else {
     console.log(
       "  - Internship certificate evaluation: DISABLED (set INTERNSHIP_EVALUATION_ENABLED=true)"
+    );
+  }
+
+  // Re-roll every active course's synthetic `seatsLeft` twice a day.
+  //
+  // Gated: this overwrites a user-facing field on the whole active catalogue,
+  // so it stays off until switched on deliberately per environment.
+  if (process.env.SEATS_LEFT_ROTATION_ENABLED === "true") {
+    cron.schedule(
+      "0 0,12 * * *",
+      () => {
+        console.log("⏰ Running seatsLeft rotation...");
+        void randomizeActiveCourseSeatsLeft()
+          .then((count) => {
+            console.log(`✅ seatsLeft rotated for ${count} active course(s)`);
+          })
+          .catch((error) => {
+            console.error("❌ seatsLeft rotation failed:", error);
+          });
+      },
+      {
+        timezone: "Asia/Kolkata",
+      }
+    );
+    console.log("  - seatsLeft rotation: 00:00 and 12:00 IST");
+  } else {
+    console.log(
+      "  - seatsLeft rotation: DISABLED (set SEATS_LEFT_ROTATION_ENABLED=true)"
     );
   }
 };

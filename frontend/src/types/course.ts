@@ -265,6 +265,13 @@ export interface Course {
   curriculum?: string;
   brochure?: string;
 
+  // Seats
+  seatsLeft?: number;
+
+  // Static display metrics (admin-set, not derived from real reviews/ratings)
+  staticReviewCount?: number;
+  staticRating?: number;
+
   // Analytics
   analytics?: {
     totalRatings: number;

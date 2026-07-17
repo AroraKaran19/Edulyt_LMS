@@ -290,6 +290,96 @@ const Screen2 = () => {
             </p>
           </Modal>
         </div>
+        <div className="w-full max-w-md">
+          <Controller
+            name="staticReviewCount"
+            control={control}
+            rules={{
+              min: { value: 0, message: "Minimum is 0" },
+              validate: (v) => {
+                if (v === undefined || v === null) return true;
+                const n = Number(v);
+                if (!Number.isFinite(n) || !Number.isInteger(n)) {
+                  return "Enter a whole number";
+                }
+                return true;
+              },
+            }}
+            render={({ field }) => (
+              <Input
+                type="number"
+                label="Review count (displayed)"
+                min={0}
+                step={1}
+                value={
+                  field.value === undefined || field.value === null
+                    ? 0
+                    : field.value
+                }
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  if (raw === "") {
+                    field.onChange(undefined);
+                    return;
+                  }
+                  const n = Number(raw);
+                  if (Number.isFinite(n)) {
+                    field.onChange(Math.trunc(n));
+                  }
+                }}
+                error={errors.staticReviewCount?.message as string}
+              />
+            )}
+          />
+          <p className="text-xs text-gray-500 mt-1.5 pl-0.5">
+            Shown on the course page. Not derived from real reviews.
+          </p>
+        </div>
+        <div className="w-full max-w-md">
+          <Controller
+            name="staticRating"
+            control={control}
+            rules={{
+              min: { value: 0, message: "Minimum is 0" },
+              max: { value: 5, message: "Maximum is 5" },
+              validate: (v) => {
+                if (v === undefined || v === null) return true;
+                const n = Number(v);
+                if (!Number.isFinite(n)) return "Enter a number";
+                return true;
+              },
+            }}
+            render={({ field }) => (
+              <Input
+                type="number"
+                label="Rating (displayed, 0-5)"
+                min={0}
+                max={5}
+                step={0.1}
+                value={
+                  field.value === undefined || field.value === null
+                    ? 0
+                    : field.value
+                }
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  if (raw === "") {
+                    field.onChange(undefined);
+                    return;
+                  }
+                  const n = Number(raw);
+                  if (Number.isFinite(n)) {
+                    field.onChange(n);
+                  }
+                }}
+                error={errors.staticRating?.message as string}
+              />
+            )}
+          />
+          <p className="text-xs text-gray-500 mt-1.5 pl-0.5">
+            Shown on the course page. Not derived from real ratings.
+          </p>
+        </div>
         <div>
           <RichTextEditor
             title="Who Should Join This Course"

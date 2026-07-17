@@ -101,6 +101,25 @@ const courseSchema = new mongoose.Schema<Course>(
       min: 0,
       max: 1_000_000,
     },
+    seatsLeft: {
+      type: Number,
+      required: false,
+      default: 0,
+      min: 0,
+    },
+    staticReviewCount: {
+      type: Number,
+      required: false,
+      default: 0,
+      min: 0,
+    },
+    staticRating: {
+      type: Number,
+      required: false,
+      default: 0,
+      min: 0,
+      max: 5,
+    },
     whatYouWillLearn: { type: String, required: true },
     skills: { type: [String], required: true },
     highlights: {

@@ -34,6 +34,8 @@
     "scripts:wipe-questions:confirm": "ts-node src/scripts/wipe-internship-questions.ts --confirm",
     "scripts:migrate-task-due-days": "ts-node src/scripts/migrate-task-due-days.ts",
     "scripts:migrate-task-due-days:apply": "ts-node src/scripts/migrate-task-due-days.ts --apply",
+    "scripts:backfill-referral-commission": "ts-node src/scripts/backfill-referral-commission.ts",
+    "scripts:backfill-referral-commission:apply": "ts-node src/scripts/backfill-referral-commission.ts --apply",
     "scripts:migrate-documentation-to-batch": "ts-node src/scripts/migrate-documentation-to-batch.ts",
     "scripts:migrate-documentation-to-batch:apply": "ts-node src/scripts/migrate-documentation-to-batch.ts --apply",
     "scripts:cleanup-orphan-task-templates": "ts-node src/scripts/cleanup-orphan-task-templates.ts",

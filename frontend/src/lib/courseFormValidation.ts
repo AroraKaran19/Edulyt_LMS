@@ -486,6 +486,32 @@ export const validateScreen2 = (
     }
   }
 
+  // Static review count (Screen 2) — optional, whole number
+  const src = data.staticReviewCount;
+  if (src !== undefined && src !== null) {
+    const n = Number(src);
+    if (!Number.isFinite(n) || !Number.isInteger(n)) {
+      errors.push("Review count must be a whole number");
+      missingFields.push("staticReviewCount");
+    } else if (n < 0) {
+      errors.push("Review count cannot be negative");
+      missingFields.push("staticReviewCount");
+    }
+  }
+
+  // Static rating (Screen 2) — optional, 0-5, decimals allowed
+  const sr = data.staticRating;
+  if (sr !== undefined && sr !== null) {
+    const n = Number(sr);
+    if (!Number.isFinite(n)) {
+      errors.push("Rating must be a number");
+      missingFields.push("staticRating");
+    } else if (n < 0 || n > 5) {
+      errors.push("Rating must be between 0 and 5");
+      missingFields.push("staticRating");
+    }
+  }
+
   // Prerequisites validation (optional)
   // No validation needed as prerequisites are optional
 

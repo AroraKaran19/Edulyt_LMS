@@ -204,6 +204,11 @@ export interface Course {
   isCertified?: boolean;
   /** Points granted to the user when their certificate for this course is generated. 0 = none. */
   completionSuccessPoints?: number;
+  seatsLeft?: number;
+  /** Admin-set review count shown on the course page. Not derived from real reviews. */
+  staticReviewCount?: number;
+  /** Admin-set rating (0-5) shown on the course page. Not derived from real ratings. */
+  staticRating?: number;
 
   // Course Content
   whatYouWillLearn: string;

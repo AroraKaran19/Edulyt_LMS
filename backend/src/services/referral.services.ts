@@ -102,23 +102,34 @@ async function loadCommissionTiers(): Promise<ReferralCommissionTier[]> {
 
 interface BalanceSnapshot {
   activeCount: number;
+  /** Rate the referrer's NEXT sale will earn. Display only — earned commission
+   *  is frozen per-sale and this value never touches a balance. */
   currentTierPct: number;
   lifetimeEarned: number;
   heldOrPaid: number;
   available: number;
 }
 
-/** Live balance snapshot. Tier is recomputed on every read. */
+/**
+ * Live balance snapshot. `lifetimeEarned` is the sum of the commission frozen
+ * onto each active sale at the time it was made, so it is immune to later tier
+ * config edits and is monotonic (it can only fall via a `reversed` refund).
+ */
 export async function computeReferralBalance(
   userId: mongoose.Types.ObjectId,
 ): Promise<BalanceSnapshot> {
-  const [sales, tiers, outflowAgg] = await Promise.all([
-    ReferralSaleModel.find({
-      referrerUserId: userId,
-      status: "active",
-    })
-      .select("amount")
-      .lean(),
+  const [salesAgg, tiers, outflowAgg] = await Promise.all([
+    // Rides the { referrerUserId, status, createdAt } index.
+    ReferralSaleModel.aggregate<{ _id: null; count: number; earned: number }>([
+      { $match: { referrerUserId: userId, status: "active" } },
+      {
+        $group: {
+          _id: null,
+          count: { $sum: 1 },
+          earned: { $sum: "$commissionAmount" },
+        },
+      },
+    ]),
     loadCommissionTiers(),
     ReferralWithdrawalModel.aggregate<{ _id: null; sum: number }>([
       {
@@ -131,12 +142,11 @@ export async function computeReferralBalance(
     ]),
   ]);
 
-  const activeCount = sales.length;
-  const currentTierPct = pickCurrentTierPct(activeCount, tiers);
-  const lifetimeEarned = sales.reduce(
-    (s, r) => s + Number(r.amount ?? 0) * (currentTierPct / 100),
-    0,
-  );
+  const activeCount = Number(salesAgg[0]?.count ?? 0);
+  const lifetimeEarned = Number(salesAgg[0]?.earned ?? 0);
+  // The next sale is rated at activeCount + 1 — mirror that here so the figure
+  // we show is the one they will actually get.
+  const currentTierPct = pickCurrentTierPct(activeCount + 1, tiers);
   const heldOrPaid = Number(outflowAgg[0]?.sum ?? 0);
   const available = lifetimeEarned - heldOrPaid;
 
@@ -161,6 +171,30 @@ export interface ReferralRecentSaleRow {
   createdAt: string;
 }
 
+/** Maps a lean `ReferralSale` doc to the row shape shared by the overview and
+ *  the paginated sales list. `commission` reads the frozen `commissionAmount`
+ *  — never re-derived from the live tier config. */
+function toSaleRow(r: {
+  _id: unknown;
+  amount?: number;
+  commissionAmount?: number;
+  status: ReferralSale["status"];
+  courseName?: string;
+  buyerName?: string;
+  createdAt?: Date;
+}): ReferralRecentSaleRow {
+  return {
+    _id: String(r._id),
+    courseName: String(r.courseName ?? ""),
+    buyerName: String(r.buyerName ?? ""),
+    amount: Number(r.amount ?? 0),
+    commission:
+      r.status === "active" ? round2(Number(r.commissionAmount ?? 0)) : 0,
+    status: r.status,
+    createdAt: (r.createdAt ?? new Date()).toISOString(),
+  };
+}
+
 export interface ReferralOverviewResult {
   code: string;
   upiId: string;
@@ -183,18 +217,7 @@ export async function getReferralOverviewForUser(
     .limit(5)
     .lean();
 
-  const recentSales: ReferralRecentSaleRow[] = recent.map((r) => ({
-    _id: String(r._id),
-    courseName: String((r as { courseName?: string }).courseName ?? ""),
-    buyerName: String((r as { buyerName?: string }).buyerName ?? ""),
-    amount: Number(r.amount ?? 0),
-    commission:
-      r.status === "active"
-        ? round2(Number(r.amount ?? 0) * (balance.currentTierPct / 100))
-        : 0,
-    status: r.status,
-    createdAt: ((r as { createdAt: Date }).createdAt ?? new Date()).toISOString(),
-  }));
+  const recentSales: ReferralRecentSaleRow[] = recent.map(toSaleRow);
 
   return {
     code: profile.code,
@@ -281,8 +304,9 @@ export async function validateReferralCode(
 
 /**
  * Records a `ReferralSale` for a completed course order, when the order
- * carried a valid referral code from someone other than the buyer. Idempotent:
- * the `orderId` unique index swallows duplicate calls.
+ * carried a valid referral code from someone other than the buyer. The
+ * commission rate live at this instant is frozen onto the row and is never
+ * recalculated. Idempotent: the `orderId` unique index swallows duplicate calls.
  */
 export async function recordReferralSaleForOrder(params: {
   orderId: mongoose.Types.ObjectId | string;
@@ -302,6 +326,19 @@ export async function recordReferralSaleForOrder(params: {
   if (!profile) return;
   if (String(profile.userId) === String(params.buyerUserId)) return;
 
+  // Rate this sale against the referrer's count *including* this sale, so a
+  // `1+` tier pays out on their very first one.
+  const [tiers, priorActiveCount] = await Promise.all([
+    loadCommissionTiers(),
+    ReferralSaleModel.countDocuments({
+      referrerUserId: profile.userId,
+      status: "active",
+    }),
+  ]);
+  const amount = Math.max(0, Number(params.amount ?? 0));
+  const commissionPercent = pickCurrentTierPct(priorActiveCount + 1, tiers);
+  const commissionAmount = round2(amount * (commissionPercent / 100));
+
   try {
     await ReferralSaleModel.create({
       referrerUserId: profile.userId,
@@ -312,7 +349,9 @@ export async function recordReferralSaleForOrder(params: {
         : undefined,
       courseName: params.courseName ?? "",
       buyerName: params.buyerName ?? "",
-      amount: Math.max(0, Number(params.amount ?? 0)),
+      amount,
+      commissionPercent,
+      commissionAmount,
       code,
       status: "active",
     });
@@ -339,28 +378,16 @@ export async function listReferralSalesForUser(
   const l = Math.min(100, Math.max(1, Math.floor(limit)));
 
   const filter = { referrerUserId: userId };
-  const [docs, total, balance] = await Promise.all([
+  const [docs, total] = await Promise.all([
     ReferralSaleModel.find(filter)
       .sort({ createdAt: -1 })
       .skip((p - 1) * l)
       .limit(l)
       .lean(),
     ReferralSaleModel.countDocuments(filter),
-    computeReferralBalance(userId),
   ]);
 
-  const items: ReferralRecentSaleRow[] = docs.map((r) => ({
-    _id: String(r._id),
-    courseName: String((r as { courseName?: string }).courseName ?? ""),
-    buyerName: String((r as { buyerName?: string }).buyerName ?? ""),
-    amount: Number(r.amount ?? 0),
-    commission:
-      r.status === "active"
-        ? round2(Number(r.amount ?? 0) * (balance.currentTierPct / 100))
-        : 0,
-    status: r.status,
-    createdAt: ((r as { createdAt: Date }).createdAt ?? new Date()).toISOString(),
-  }));
+  const items: ReferralRecentSaleRow[] = docs.map(toSaleRow);
 
   return {
     items,

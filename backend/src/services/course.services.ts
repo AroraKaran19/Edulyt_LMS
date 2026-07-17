@@ -1885,3 +1885,38 @@ export const reorderContentService = async (
 
   return updatedContent as Content[];
 };
+
+export const SEATS_LEFT_MIN = 2;
+export const SEATS_LEFT_MAX = 9;
+
+/**
+ * Assign every active course a fresh random `seatsLeft` in [SEATS_LEFT_MIN,
+ * SEATS_LEFT_MAX].
+ *
+ * The value is synthetic — it is not derived from enrollments, capacity, or any
+ * other real quantity, and is overwritten wholesale on every run. Nothing may
+ * gate enrollment, payment, or capacity on it.
+ *
+ * Runs as a single aggregation-pipeline update so `$rand` is evaluated
+ * server-side per document — otherwise every course would land on the same
+ * number. Deliberately unindexed: the filter matches nearly the whole
+ * collection, so a scan is the correct plan and an `isActive` index would not
+ * be used.
+ */
+export const randomizeActiveCourseSeatsLeft = async (): Promise<number> => {
+  const span = SEATS_LEFT_MAX - SEATS_LEFT_MIN + 1;
+
+  const result = await CourseModel.updateMany({ isActive: true }, [
+    {
+      $set: {
+        seatsLeft: {
+          $floor: {
+            $add: [SEATS_LEFT_MIN, { $multiply: [{ $rand: {} }, span] }],
+          },
+        },
+      },
+    },
+  ]);
+
+  return result.modifiedCount;
+};

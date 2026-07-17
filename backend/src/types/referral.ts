@@ -43,6 +43,13 @@ export interface ReferralSale {
   buyerName: string;
   /** Order amount (what the buyer paid) — base for commission calculation. */
   amount: number;
+  /**
+   * Commission rate live at the moment this sale was recorded, and the rupee
+   * figure derived from it. Both are write-once: an admin editing the tier
+   * config never re-rates a sale that has already been earned.
+   */
+  commissionPercent: number;
+  commissionAmount: number;
   code: string;
   status: ReferralSaleStatus;
   createdAt?: Date;

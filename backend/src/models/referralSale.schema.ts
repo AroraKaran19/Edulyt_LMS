@@ -3,8 +3,12 @@ import type { ReferralSale } from "../types/referral";
 
 /**
  * One row per qualifying paid course order that carried a referral code.
- * `status: "active"` rows count toward the referrer's lifetime tier and
- * balance; `reversed` rows are excluded (refund hook lands later).
+ * `status: "active"` rows count toward the referrer's balance; `reversed` rows
+ * are excluded (refund hook lands later).
+ *
+ * `commissionPercent` / `commissionAmount` are frozen at creation from the tier
+ * config live at that instant. Nothing re-rates them afterwards — an admin
+ * changing the tiers only affects sales recorded from that point on.
  */
 const referralSaleSchema = new mongoose.Schema<ReferralSale>(
   {
@@ -33,6 +37,8 @@ const referralSaleSchema = new mongoose.Schema<ReferralSale>(
     courseName: { type: String, required: true, trim: true, default: "" },
     buyerName: { type: String, required: true, trim: true, default: "" },
     amount: { type: Number, required: true, min: 0 },
+    commissionPercent: { type: Number, required: true, min: 0, max: 100 },
+    commissionAmount: { type: Number, required: true, min: 0 },
     code: {
       type: String,
       required: true,

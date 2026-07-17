@@ -6,7 +6,7 @@ import DiscountCountdown from "./DiscountCountdown";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import { calculateDiscountTime, cn } from "@/lib/utils";
 import { Plus_Jakarta_Sans } from "next/font/google";
-import { Star } from "lucide-react";
+import { Flame, Star } from "lucide-react";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import EnquiryFormModal from "./EnquiryFormModal";
 import EnrollmentModal from "./EnrollmentModal";
@@ -41,8 +41,31 @@ const CourseHeader = ({
     setIsEnrollmentModalOpen ?? setLocalIsEnrollmentModalOpen;
   const router = useRouter();
 
+  // Until a course earns a real rating, show the admin-set static pair instead.
+  // Both values switch together so the rating and its review count always agree.
+  const { displayRating, displayReviewCount } = useMemo(() => {
+    const averageRating = course?.analytics?.averageRating || 0;
+
+    if (averageRating > 0) {
+      return {
+        displayRating: averageRating,
+        displayReviewCount: course?.analytics?.totalReviews || 0,
+      };
+    }
+
+    return {
+      displayRating: course?.staticRating || 0,
+      displayReviewCount: course?.staticReviewCount || 0,
+    };
+  }, [
+    course?.analytics?.averageRating,
+    course?.analytics?.totalReviews,
+    course?.staticRating,
+    course?.staticReviewCount,
+  ]);
+
   const formattedReviewsCount = useMemo(() => {
-    const totalReviews = course?.analytics?.totalReviews;
+    const totalReviews = displayReviewCount;
 
     if (!totalReviews || totalReviews === 0) {
       return "0";
@@ -55,7 +78,7 @@ const CourseHeader = ({
     } else {
       return totalReviews.toString();
     }
-  }, [course?.analytics?.totalReviews]);
+  }, [displayReviewCount]);
 
   const discountCountdown = useMemo(
     () => {
@@ -127,36 +150,57 @@ const CourseHeader = ({
                 </div>
               )}
             {course?.isActive && (
-              <div className="flex gap-5">
-                {isCheckingEnrollment ? (
-                  <OrangeButton
-                    className="font-bold text-sm md:text-base opacity-50 cursor-not-allowed"
-                    disabled
+              <div className="flex flex-col items-center lg:items-end gap-2">
+                <div className="flex gap-5">
+                  {isCheckingEnrollment ? (
+                    <OrangeButton
+                      className="font-bold text-sm md:text-base opacity-50 cursor-not-allowed"
+                      disabled
+                    >
+                      Checking...
+                    </OrangeButton>
+                  ) : !isEnrolled ? (
+                    <OrangeButton
+                      className="font-bold text-sm md:text-base"
+                      onClick={() => setIsEnrollmentModalOpen?.(true)}
+                    >
+                      Enroll Now
+                    </OrangeButton>
+                  ) : (
+                    <OrangeButton
+                      className="font-bold text-sm md:text-base"
+                      onClick={() =>
+                        router.push(`/programs/${course.slug}/watch`)
+                      }
+                    >
+                      Continue Learning
+                    </OrangeButton>
+                  )}
+                  <WhiteButton
+                    glow
+                    className="font-bold lg:hidden text-sm md:text-base"
+                    onClick={() => setIsEnquiryModalOpen(true)}
                   >
-                    Checking...
-                  </OrangeButton>
-                ) : !isEnrolled ? (
-                  <OrangeButton
-                    className="font-bold text-sm md:text-base"
-                    onClick={() => setIsEnrollmentModalOpen?.(true)}
-                  >
-                    Enroll Now
-                  </OrangeButton>
-                ) : (
-                  <OrangeButton
-                    className="font-bold text-sm md:text-base"
-                    onClick={() => router.push(`/programs/${course.slug}/watch`)}
-                  >
-                    Continue Learning
-                  </OrangeButton>
-                )}
-                <WhiteButton
-                  glow
-                  className="font-bold lg:hidden text-sm md:text-base"
-                  onClick={() => setIsEnquiryModalOpen(true)}
-                >
-                  Enquire
-                </WhiteButton>
+                    Enquire
+                  </WhiteButton>
+                </div>
+
+                {!isEnrolled &&
+                  course.seatsLeft != null &&
+                  course.seatsLeft > 0 && (
+                    <div className="relative flex items-center gap-1.5 bg-linear-to-r from-red-600 to-orange-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg shadow-orange-400/40 animate-pulse select-none">
+                      {/* glow ring */}
+                      <span className="absolute inset-0 rounded-full bg-linear-to-r from-red-500 to-orange-400 opacity-40 blur-sm" />
+                      <Flame className="relative size-3.5 shrink-0" />
+                      <span className="relative tracking-wide">
+                        Only{" "}
+                        <span className="text-yellow-300">
+                          {course.seatsLeft}
+                        </span>{" "}
+                        {course.seatsLeft === 1 ? "seat" : "seats"} left!
+                      </span>
+                    </div>
+                  )}
               </div>
             )}
           </div>
@@ -171,12 +215,12 @@ const CourseHeader = ({
                 fill="#F7AD24"
               />
               <span className="text-base md:text-2xl font-normal text-text-primary font-coolvetica tracking-wide">
-                {course?.analytics?.averageRating || 0}
+                {displayRating}
               </span>
               <span className="text-sm md:text-base font-normal text-text-primary">
                 (
                 {(() => {
-                  const totalReviews = course?.analytics?.totalReviews || 0;
+                  const totalReviews = displayReviewCount;
                   if (totalReviews > 100) {
                     return `more than ${formattedReviewsCount} reviews`;
                   } else if (totalReviews === 1) {

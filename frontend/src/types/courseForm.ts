@@ -302,6 +302,8 @@ export const SCREEN_CONFIG: Record<number, ScreenConfig> = {
       "duration",
       "language",
       "completionSuccessPoints",
+      "staticReviewCount",
+      "staticRating",
     ],
   },
   3: {
