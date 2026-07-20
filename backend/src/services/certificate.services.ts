@@ -271,12 +271,31 @@ export const createCertificateService = async (
 };
 
 /**
- * Generate an internship certificate PDF, upload to S3, save a CertificateModel
- * record (so the QR code verify endpoint works), and return the result.
+ * Everything the internship-certificate template needs for one enrollment.
+ * Resolved in ONE place so the live issue path and the backfill script can
+ * never drift apart — the role/duration/period math in particular has already
+ * been duplicated into disagreeing copies once (see the note on `internPeriod`).
  */
-export const createInternshipCertificateService = async (
-  enrollmentId: string
-): Promise<{ certificateId: string; fileUrl: string }> => {
+export interface InternshipCertificateContext {
+  userId: any;
+  studentName: string;
+  internshipTitle: string;
+  thumbnailUrl: string | null;
+  internId: string;
+  internRole: string;
+  durationMonths: number;
+  internPeriod: string;
+  completionDate: Date;
+}
+
+/**
+ * Load (and, for legacy rows, repair) the data behind one internship
+ * certificate. Does NOT gate on eligibility — callers that issue a NEW
+ * certificate must do that themselves.
+ */
+export const loadInternshipCertificateContext = async (
+  enrollmentId: string,
+): Promise<InternshipCertificateContext> => {
   const enrollment = await InternshipEnrollmentModel.findById(enrollmentId).lean();
   if (!enrollment) throw new AppError("Internship enrollment not found", 404);
 
@@ -293,37 +312,6 @@ export const createInternshipCertificateService = async (
     await InternshipEnrollmentModel.updateOne(
       { _id: enrollmentId },
       { $set: { internId } },
-    );
-  }
-
-  // Percentage-threshold gate: the certificate is only issued when the
-  // learner's earned `internshipSuccessPoints` clears the configured percent
-  // of total achievable (tasks + meetings + cert exam in their window).
-  // `certificateEligible` is the FULLY-RESOLVED verdict: the points threshold,
-  // the certification-exam gate when one is configured, and any admin override.
-  // Gating on the raw `meetsThreshold` (points only) meant this generator would
-  // happily certify an exam-configured learner who failed or skipped the exam,
-  // and a learner an admin had marked `certificateOverride: "fail"` whose job
-  // was already queued — setting the override does not cancel in-flight jobs.
-  // This is the last line of defence before a PDF is minted; it must enforce
-  // the whole rule rather than trusting every caller to remember it.
-  const eligibility = await computeInternshipEligibility(enrollmentId);
-  if (!eligibility.certificateEligible) {
-    const examNote =
-      eligibility.examConfigured && !eligibility.examPassed
-        ? ` Certification exam not passed (${eligibility.examScore}/${eligibility.examThreshold}).`
-        : "";
-    const overrideNote =
-      eligibility.certificateOverride === "fail"
-        ? " An admin has marked this learner as not certified."
-        : "";
-    throw new AppError(
-      `Learner is not eligible for a certificate ` +
-        `(${eligibility.earned} / ${eligibility.requiredPoints} points; ` +
-        `${eligibility.thresholdPct}% of ${eligibility.totalAchievable}).` +
-        examNote +
-        overrideNote,
-      400,
     );
   }
 
@@ -368,21 +356,37 @@ export const createInternshipCertificateService = async (
       : computeProgramEndDate(startDate, durationMonths);
   const internPeriod = `(${formatPeriodDate(startDate)} to ${formatPeriodDate(endDate)})`;
 
-  const certificateId = generateCertificateId(
-    (user as any)._id.toString(),
-    enrollmentId.toString()
-  );
+  return {
+    userId: (user as any)._id,
+    studentName,
+    internshipTitle,
+    thumbnailUrl,
+    internId,
+    internRole,
+    durationMonths,
+    internPeriod,
+    completionDate: (enrollment as any).enrolledAt || new Date(),
+  };
+};
 
-  const verificationCode = `VER-${certificateId}-${Date.now().toString(36).toUpperCase()}`;
-  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
-  const verificationUrl = `${frontendUrl}/verify-certificate/${verificationCode}`;
-
+/**
+ * Render the internship certificate PDF for an already-resolved context.
+ *
+ * NOTE: the host MUST have a Calibri-metric font (Carlito) installed. Without
+ * it LibreOffice substitutes a ~40% wider face and the template's fixed-size
+ * text boxes silently CLIP the overflow — historically blanking the intern-ID
+ * digits on every certificate. See backend/DEPLOYMENT.md.
+ */
+export const renderInternshipCertificatePdf = async (
+  ctx: InternshipCertificateContext,
+  certificateId: string,
+  verificationUrl: string,
+): Promise<Buffer> => {
   const templatePath = path.join(
     process.cwd(),
     "../frontend/public/course-certificates/Airkrit Certificates",
     "Airkrit India Certificate Internship - AI-01171 - Template.docx"
   );
-
   if (!fs.existsSync(templatePath)) {
     throw new AppError("Internship certificate template not found", 404);
   }
@@ -391,33 +395,109 @@ export const createInternshipCertificateService = async (
   fs.mkdirSync(tempDir, { recursive: true });
   const docxPath = path.join(tempDir, `cert-${certificateId}.docx`);
   const pdfPath = path.join(tempDir, `cert-${certificateId}.pdf`);
-
   const cleanup = () => {
     try { fs.rmSync(tempDir, { recursive: true, force: true }); } catch {}
   };
 
   try {
     await generateCertificateFromDocx(templatePath, docxPath, {
-      studentName,
-      courseName: internshipTitle,
-      completionDate: ((enrollment as any).enrolledAt || new Date()).toISOString(),
+      studentName: ctx.studentName,
+      courseName: ctx.internshipTitle,
+      completionDate: ctx.completionDate.toISOString(),
       certificateId,
-      internId,
+      internId: ctx.internId,
       verificationUrl,
-      internRole,
-      internDurationMonths: String(durationMonths),
-      internPeriod,
+      internRole: ctx.internRole,
+      internDurationMonths: String(ctx.durationMonths),
+      internPeriod: ctx.internPeriod,
     });
-
     await convertDocxToPdf(docxPath, pdfPath);
     const pdfBuffer = fs.readFileSync(pdfPath);
-
-    const sanitize = (s: string) =>
-      s.replace(/[^a-zA-Z0-9\s-]/g, "").replace(/\s+/g, "_").substring(0, 100);
-    const pdfFileName = `Airkrit_Internship_${sanitize(internshipTitle)}_${sanitize(studentName)}.pdf`;
-
-    const fileUrl = await uploadFileToS3(pdfBuffer, pdfFileName, "certificates", "application/pdf");
     cleanup();
+    return pdfBuffer;
+  } catch (error) {
+    cleanup();
+    throw error;
+  }
+};
+
+/** Certificate PDF filename, shared by the issue path and the backfill. */
+export const internshipCertificateFileName = (
+  internshipTitle: string,
+  studentName: string,
+): string => {
+  const sanitize = (s: string) =>
+    s.replace(/[^a-zA-Z0-9\s-]/g, "").replace(/\s+/g, "_").substring(0, 100);
+  return `Airkrit_Internship_${sanitize(internshipTitle)}_${sanitize(studentName)}.pdf`;
+};
+
+/**
+ * Generate an internship certificate PDF, upload to S3, save a CertificateModel
+ * record (so the QR code verify endpoint works), and return the result.
+ */
+export const createInternshipCertificateService = async (
+  enrollmentId: string
+): Promise<{ certificateId: string; fileUrl: string }> => {
+  const enrollment = await InternshipEnrollmentModel.findById(enrollmentId)
+    .select("_id")
+    .lean();
+  if (!enrollment) throw new AppError("Internship enrollment not found", 404);
+
+  // Percentage-threshold gate: the certificate is only issued when the
+  // learner's earned `internshipSuccessPoints` clears the configured percent
+  // of total achievable (tasks + meetings + cert exam in their window).
+  // `certificateEligible` is the FULLY-RESOLVED verdict: the points threshold,
+  // the certification-exam gate when one is configured, and any admin override.
+  // Gating on the raw `meetsThreshold` (points only) meant this generator would
+  // happily certify an exam-configured learner who failed or skipped the exam,
+  // and a learner an admin had marked `certificateOverride: "fail"` whose job
+  // was already queued — setting the override does not cancel in-flight jobs.
+  // This is the last line of defence before a PDF is minted; it must enforce
+  // the whole rule rather than trusting every caller to remember it.
+  const eligibility = await computeInternshipEligibility(enrollmentId);
+  if (!eligibility.certificateEligible) {
+    const examNote =
+      eligibility.examConfigured && !eligibility.examPassed
+        ? ` Certification exam not passed (${eligibility.examScore}/${eligibility.examThreshold}).`
+        : "";
+    const overrideNote =
+      eligibility.certificateOverride === "fail"
+        ? " An admin has marked this learner as not certified."
+        : "";
+    throw new AppError(
+      `Learner is not eligible for a certificate ` +
+        `(${eligibility.earned} / ${eligibility.requiredPoints} points; ` +
+        `${eligibility.thresholdPct}% of ${eligibility.totalAchievable}).` +
+        examNote +
+        overrideNote,
+      400,
+    );
+  }
+
+  const ctx = await loadInternshipCertificateContext(enrollmentId);
+
+  const certificateId = generateCertificateId(
+    ctx.userId.toString(),
+    enrollmentId.toString()
+  );
+
+  const verificationCode = `VER-${certificateId}-${Date.now().toString(36).toUpperCase()}`;
+  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+  const verificationUrl = `${frontendUrl}/verify-certificate/${verificationCode}`;
+
+  try {
+    const pdfBuffer = await renderInternshipCertificatePdf(
+      ctx,
+      certificateId,
+      verificationUrl,
+    );
+
+    const fileUrl = await uploadFileToS3(
+      pdfBuffer,
+      internshipCertificateFileName(ctx.internshipTitle, ctx.studentName),
+      "certificates",
+      "application/pdf",
+    );
 
     // Save CertificateModel record so the QR verify endpoint can find it.
     // enrollmentModel drives refPath so .populate("enrollmentId") resolves correctly.
@@ -425,13 +505,13 @@ export const createInternshipCertificateService = async (
       certificateType: "internship",
       enrollmentModel: "InternshipEnrollment",
       enrollmentId,
-      userId: (user as any)._id,
+      userId: ctx.userId,
       courseId: null,
       certificateId,
-      studentName,
-      courseName: internshipTitle,
-      thumbnailUrl,
-      completionDate: (enrollment as any).enrolledAt || new Date(),
+      studentName: ctx.studentName,
+      courseName: ctx.internshipTitle,
+      thumbnailUrl: ctx.thumbnailUrl,
+      completionDate: ctx.completionDate,
       issuedAt: new Date(),
       fileUrl,
       verificationCode,
@@ -443,7 +523,6 @@ export const createInternshipCertificateService = async (
 
     return { certificateId, fileUrl };
   } catch (error) {
-    cleanup();
     if (error instanceof AppError) throw error;
     console.error("Error creating internship certificate:", error);
     throw new AppError("Failed to create internship certificate", 500);

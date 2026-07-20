@@ -86,6 +86,53 @@ zip -r backend-deploy.zip dist/ package.json package-lock.json Procfile .ebexten
 - Environment variables must be configured in Elastic Beanstalk
 - The server will run `npm install` automatically on deployment
 
+## Fonts required on the PDF host (worker-cert)
+
+**Any host that runs `worker-cert` must have a Calibri-metric font installed.**
+This is not cosmetic — it silently corrupts issued documents.
+
+The DOCX templates in `frontend/public/course-certificates/Airkrit Certificates`
+are authored in **Calibri**, and every text box is sized to its Calibri text. If
+Calibri (or a metric-compatible substitute) is absent, LibreOffice silently
+falls back to **DejaVu Sans**, which is ~40% wider. The text reflows, overflows
+its box, and the box **clips the overflow away**. Nothing errors, nothing logs,
+and the clipped text still appears in the PDF's text layer — so the database,
+the API and the logs all look perfectly healthy while the visible certificate is
+wrong. In July 2026 this shipped 28 internship certificates whose Intern ID
+rendered as a bare `AI-` with no number.
+
+Install on every PDF-generating host:
+
+```bash
+# Debian/Ubuntu
+sudo apt-get install -y fonts-crosextra-carlito fonts-liberation
+sudo fc-cache -f
+
+# Amazon Linux / RHEL
+sudo yum install -y liberation-fonts
+# Carlito: install the TTFs into /usr/share/fonts/ and run `fc-cache -f`
+```
+
+`fonts-crosextra-carlito` provides **Carlito**, which is metric-compatible with
+Calibri, so it lays out identically. Verify after install:
+
+```bash
+fc-match Calibri     # must report Carlito, NOT DejaVu Sans
+```
+
+**Re-check this after any instance replacement or AMI rebuild** — that is how
+the fonts went missing last time (offer letters generated before the rebuild
+embed Carlito; ones generated after embed DejaVu Sans).
+
+To confirm a generated PDF is healthy, check which font it embedded:
+
+```bash
+pdffonts certificate.pdf   # expect Carlito/Calibri; DejaVuSans means fonts are missing
+```
+
+The certificate template has been hardened so the Intern ID survives even
+without the font, but the body text can still clip — the font is the real fix.
+
 ## 413 Payload Too Large Error Fix
 
 The `.ebextensions` folder contains configurations to handle large payloads (up to 100MB):
