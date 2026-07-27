@@ -1,5 +1,9 @@
 import { formatDuration } from "@/lib/utils";
 import {
+  formatReviewCount,
+  getCourseDisplayRating,
+} from "@/lib/utils/courseRating";
+import {
   Content,
   Course,
   CourseLesson,
@@ -35,10 +39,15 @@ const OverviewSection = ({ course }: { course: Course }) => {
     );
   }, [course]);
 
-  const formattedReviewsCount = useMemo(() => {
-    const totalReviews = course?.analytics?.totalReviews || 0;
-    return totalReviews.toLocaleString();
-  }, [course?.analytics?.totalReviews]);
+  const { displayRating, displayReviewCount } = useMemo(() => {
+    const { rating, reviewCount } = getCourseDisplayRating(course);
+    return { displayRating: rating, displayReviewCount: reviewCount };
+  }, [course]);
+
+  const formattedReviewsCount = useMemo(
+    () => formatReviewCount(displayReviewCount),
+    [displayReviewCount]
+  );
 
   return (
     <div className="flex flex-col gap-6">
@@ -58,12 +67,12 @@ const OverviewSection = ({ course }: { course: Course }) => {
           <div className="course-rating w-full flex flex-wrap gap-1 md:gap-2 items-center justify-center md:justify-start">
             <Star className="size-4 md:size-5 text-[#F7AD24]" fill="#F7AD24" />
             <span className="text-base md:text-2xl font-normal text-text-primary font-coolvetica tracking-wide">
-              {course?.analytics?.totalRatings}
+              {displayRating}
             </span>
             <span className="text-sm md:text-base font-normal text-text-primary">
               (
               {(() => {
-                const totalReviews = course?.analytics?.totalReviews || 0;
+                const totalReviews = displayReviewCount;
                 if (totalReviews > 100) {
                   return `more than ${formattedReviewsCount} reviews`;
                 } else if (totalReviews === 1) {

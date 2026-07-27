@@ -138,7 +138,7 @@ const DiscountCountdown = ({
       </p>
       
       {/* Line 3: Countdown Time */}
-      <p className="font-medium text-text-primary text-center md:text-left underline">
+      <p className="font-medium text-text-primary text-center md:text-right underline">
           {displayCountdown.days > 0 ? `${displayCountdown.days} D : ` : ""}
           {displayCountdown.hours > 0 ? `${displayCountdown.hours} Hr : ` : ""}
           {displayCountdown.minutes > 0

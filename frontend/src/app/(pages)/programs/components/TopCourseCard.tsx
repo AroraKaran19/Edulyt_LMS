@@ -2,6 +2,7 @@ import React from "react";
 import { Course, Instructor } from "@/types";
 import { cn } from "@/lib/utils";
 import { calculateDiscountDisplay } from "@/lib/utils/discount";
+import { getCourseDisplayRating } from "@/lib/utils/courseRating";
 import { Plus } from "lucide-react";
 import BestsellerBadge from "@/components/ui/course/BestsellerBadge";
 import RatingContainer from "@/components/ui/course/RatingContainer";
@@ -37,6 +38,8 @@ const TopCourseCard = ({
   // Any discount (plan and/or active course-level) present?
   const hasAnyDiscount = !!discountInfo.discountLabel;
 
+  const { rating, reviewCount } = getCourseDisplayRating(course);
+
   return (
     <div
       className={cn(
@@ -71,8 +74,8 @@ const TopCourseCard = ({
         {course.title}
       </p>
       <RatingContainer
-        reviewCount={course.analytics?.totalReviews || 0}
-        totalRating={course.analytics?.totalRatings || 0}
+        reviewCount={reviewCount}
+        totalRating={rating}
         className="mt-2"
         courseSlug={course.slug}
       />

@@ -19,6 +19,10 @@ import Image from "next/image";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import { Button } from "@/components/ui/buttons/button";
 import Pagination from "@/components/admin/Pagination";
+import RowActionsMenu, {
+  type RowAction,
+} from "@/components/admin/RowActionsMenu";
+import WhatsAppButton from "@/components/ui/buttons/WhatsAppButton";
 import Input from "@/components/ui/inputs/Input";
 import Select from "@/components/ui/inputs/Select";
 import useUserManagement from "@/hooks/useUserManagement";
@@ -774,84 +778,79 @@ const ManageUsersPage = () => {
                     </td>
                     <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleViewUserDetails(user)}
-                          className="cursor-pointer"
-                          title="View Details"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleToggleAccountActive(user)}
-                          disabled={statusToggleUserId === user._id}
-                          className={
-                            user.status === "active"
-                              ? "cursor-pointer text-amber-700 hover:text-amber-800 hover:bg-amber-50"
-                              : "cursor-pointer text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50"
-                          }
-                          title={
-                            user.status === "active"
-                              ? "Disable account (cannot sign in)"
-                              : "Enable account"
-                          }
-                        >
-                          {user.status === "active" ? (
-                            <UserX className="w-4 h-4" />
-                          ) : (
-                            <UserCheck className="w-4 h-4" />
-                          )}
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEditUser(user)}
-                          className="cursor-pointer text-blue-600 hover:text-blue-700"
-                          title="Edit User"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedUser(user);
-                            setShowChangePasswordModal(true);
-                          }}
-                          className="cursor-pointer text-purple-600 hover:text-purple-700"
-                          title="Change Password"
-                        >
-                          <Key className="w-4 h-4" />
-                        </Button>
-                        {user.userType === "student" && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedUser(user);
-                              setShowSuccessPointsModal(true);
-                            }}
-                            className="cursor-pointer text-[#F77124] hover:text-[#e66013]"
-                            title="Success Points"
-                          >
-                            <Star className="w-4 h-4" />
-                          </Button>
-                        )}
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedUser(user);
-                            setShowDeleteConfirm(true);
-                          }}
-                          className="cursor-pointer text-red-600 hover:text-red-700"
-                          title="Delete User"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                        <WhatsAppButton
+                          number={user.whatsappNumber || user.phone}
+                          label={`Message ${
+                            user.firstName || user.email
+                          } on WhatsApp`}
+                        />
+                        <RowActionsMenu
+                          triggerLabel={`Actions for ${
+                            user.firstName || user.email
+                          }`}
+                          actions={[
+                            {
+                              key: "view",
+                              label: "View details",
+                              icon: Eye,
+                              onSelect: () => handleViewUserDetails(user),
+                            },
+                            {
+                              key: "status",
+                              label:
+                                user.status === "active"
+                                  ? "Disable account"
+                                  : "Enable account",
+                              icon: user.status === "active" ? UserX : UserCheck,
+                              tone:
+                                user.status === "active"
+                                  ? "warning"
+                                  : "success",
+                              disabled: statusToggleUserId === user._id,
+                              onSelect: () => handleToggleAccountActive(user),
+                            },
+                            {
+                              key: "edit",
+                              label: "Edit user",
+                              icon: Edit,
+                              onSelect: () => handleEditUser(user),
+                            },
+                            {
+                              key: "password",
+                              label: "Change password",
+                              icon: Key,
+                              onSelect: () => {
+                                setSelectedUser(user);
+                                setShowChangePasswordModal(true);
+                              },
+                            },
+                            ...(user.userType === "student"
+                              ? ([
+                                  {
+                                    key: "success-points",
+                                    label: "Success points",
+                                    icon: Star,
+                                    tone: "brand",
+                                    onSelect: () => {
+                                      setSelectedUser(user);
+                                      setShowSuccessPointsModal(true);
+                                    },
+                                  },
+                                ] as RowAction[])
+                              : []),
+                            {
+                              key: "delete",
+                              label: "Delete user",
+                              icon: Trash2,
+                              tone: "danger",
+                              separatorBefore: true,
+                              onSelect: () => {
+                                setSelectedUser(user);
+                                setShowDeleteConfirm(true);
+                              },
+                            },
+                          ]}
+                        />
                       </div>
                     </td>
                   </tr>

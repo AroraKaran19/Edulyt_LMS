@@ -19,6 +19,7 @@ import {
   canAccessPage,
   resolvePageKeyFromPath,
 } from "@/config/adminPermissions";
+import Link from "next/link";
 
 interface MenuItem {
   icon?: React.ReactNode;
@@ -301,16 +302,18 @@ const AdminSidebar = ({
       {!isCollapsed && (
         <div className="flex flex-col h-full min-h-0">
           {/* Fixed header - logo */}
-          <ImageComponent
-            src="/logo.svg"
-            alt="logo"
-            width={170}
-            height={50}
-            className="object-contain aspect-video h-[70px] select-none mx-auto"
-            loading="eager"
-            draggable={false}
-            unoptimized
-          />
+          <Link href="/" draggable={false}>
+            <ImageComponent
+              src="/logo.svg"
+              alt="logo"
+              width={170}
+              height={50}
+              className="object-contain aspect-video h-[70px] select-none mx-auto"
+              loading="eager"
+              draggable={false}
+              unoptimized
+            />
+          </Link>
 
           {/* Scrollable menu */}
           <div

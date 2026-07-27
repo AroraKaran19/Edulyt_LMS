@@ -35,6 +35,10 @@ const ContinueWatchingSection = () => {
           if (!enrollment.courseId || typeof enrollment.courseId !== "object")
             return false;
 
+          // Same for deactivated courses: there is nothing to continue, so they
+          // stay under My Programs rather than taking a Continue Watching slot.
+          if ((enrollment.courseId as Course).isActive === false) return false;
+
           // Check if enrollment has progress data
           const progress = calculateProgress(enrollment);
           

@@ -2,10 +2,13 @@ import BestsellerBadge from "@/components/ui/course/BestsellerBadge";
 import InstructorCard from "@/components/ui/course/InstructorCard";
 import RatingContainer from "@/components/ui/course/RatingContainer";
 import ImageComponent from "@/components/ui/ImageComponent";
+import { getCourseDisplayRating } from "@/lib/utils/courseRating";
 import { Course, Instructor } from "@/types";
 import { Plus } from "lucide-react";
 
 const CourseCardHolder = ({ course }: { course: Course }) => {
+  const { rating, reviewCount } = getCourseDisplayRating(course);
+
   return (
     <div className="w-full h-128 rounded-2xl overflow-hidden relative">
       <ImageComponent
@@ -27,8 +30,8 @@ const CourseCardHolder = ({ course }: { course: Course }) => {
             {course.title}
           </span>
           <RatingContainer
-            reviewCount={course.analytics?.totalReviews || 0}
-            totalRating={course.analytics?.totalRatings || 0}
+            reviewCount={reviewCount}
+            totalRating={rating}
             className="mt-2 text-sm"
             courseSlug={course?.slug}
             reviewCountText="text-white!"

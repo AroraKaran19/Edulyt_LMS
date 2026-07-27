@@ -414,7 +414,9 @@ export const getPublicInstructorCoursesBySlugService = async (
     const skip = (page - 1) * limit;
 
     const courses = await CourseModel.find(courseFilter)
-      .select("title slug thumbnail plans discount isFeatured analytics instructor")
+      .select(
+        "title slug thumbnail plans discount isFeatured analytics staticRating staticReviewCount instructor"
+      )
       .populate(
         "instructor",
         "firstName lastName email profilePicture slug userType rating totalStudents"

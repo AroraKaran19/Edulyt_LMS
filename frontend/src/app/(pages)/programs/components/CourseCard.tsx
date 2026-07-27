@@ -5,6 +5,7 @@ import RatingContainer from "@/components/ui/course/RatingContainer";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import { cn } from "@/lib/utils";
 import { calculateDiscountDisplay } from "@/lib/utils/discount";
+import { getCourseDisplayRating } from "@/lib/utils/courseRating";
 import { Course, Instructor } from "@/types";
 import { Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -32,6 +33,8 @@ const CourseCard = ({
   );
 
   const hasAnyDiscount = !!discountInfo.discountLabel;
+
+  const { rating, reviewCount } = getCourseDisplayRating(course);
 
   return (
     <div
@@ -69,8 +72,8 @@ const CourseCard = ({
           {course?.title}
         </p>
         <RatingContainer
-          reviewCount={course?.analytics?.totalReviews || 0}
-          totalRating={course.analytics?.totalRatings || 0}
+          reviewCount={reviewCount}
+          totalRating={rating}
           className="mt-2 text-xs"
           courseSlug={course?.slug}
         />

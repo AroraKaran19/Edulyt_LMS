@@ -5,8 +5,12 @@ import { useMemo, useState } from "react";
 import DiscountCountdown from "./DiscountCountdown";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import { calculateDiscountTime, cn } from "@/lib/utils";
+import {
+  formatReviewCount,
+  getCourseDisplayRating,
+} from "@/lib/utils/courseRating";
 import { Plus_Jakarta_Sans } from "next/font/google";
-import { Flame, Star } from "lucide-react";
+import { Star } from "lucide-react";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import EnquiryFormModal from "./EnquiryFormModal";
 import EnrollmentModal from "./EnrollmentModal";
@@ -41,22 +45,9 @@ const CourseHeader = ({
     setIsEnrollmentModalOpen ?? setLocalIsEnrollmentModalOpen;
   const router = useRouter();
 
-  // Until a course earns a real rating, show the admin-set static pair instead.
-  // Both values switch together so the rating and its review count always agree.
   const { displayRating, displayReviewCount } = useMemo(() => {
-    const averageRating = course?.analytics?.averageRating || 0;
-
-    if (averageRating > 0) {
-      return {
-        displayRating: averageRating,
-        displayReviewCount: course?.analytics?.totalReviews || 0,
-      };
-    }
-
-    return {
-      displayRating: course?.staticRating || 0,
-      displayReviewCount: course?.staticReviewCount || 0,
-    };
+    const { rating, reviewCount } = getCourseDisplayRating(course);
+    return { displayRating: rating, displayReviewCount: reviewCount };
   }, [
     course?.analytics?.averageRating,
     course?.analytics?.totalReviews,
@@ -64,21 +55,10 @@ const CourseHeader = ({
     course?.staticReviewCount,
   ]);
 
-  const formattedReviewsCount = useMemo(() => {
-    const totalReviews = displayReviewCount;
-
-    if (!totalReviews || totalReviews === 0) {
-      return "0";
-    }
-
-    if (totalReviews >= 1000000) {
-      return `${(totalReviews / 1000000).toFixed(1).replace(/\.0$/, "")}M`;
-    } else if (totalReviews >= 1000) {
-      return `${(totalReviews / 1000).toFixed(1).replace(/\.0$/, "")}K`;
-    } else {
-      return totalReviews.toString();
-    }
-  }, [displayReviewCount]);
+  const formattedReviewsCount = useMemo(
+    () => formatReviewCount(displayReviewCount),
+    [displayReviewCount]
+  );
 
   const discountCountdown = useMemo(
     () => {
@@ -188,18 +168,29 @@ const CourseHeader = ({
                 {!isEnrolled &&
                   course.seatsLeft != null &&
                   course.seatsLeft > 0 && (
-                    <div className="relative flex items-center gap-1.5 bg-linear-to-r from-red-600 to-orange-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg shadow-orange-400/40 animate-pulse select-none">
-                      {/* glow ring */}
-                      <span className="absolute inset-0 rounded-full bg-linear-to-r from-red-500 to-orange-400 opacity-40 blur-sm" />
-                      <Flame className="relative size-3.5 shrink-0" />
-                      <span className="relative tracking-wide">
-                        Only{" "}
-                        <span className="text-yellow-300">
-                          {course.seatsLeft}
-                        </span>{" "}
-                        {course.seatsLeft === 1 ? "seat" : "seats"} left!
+                    // The count is the message: a stamped numeral, no motion.
+                    // Scarcity is carried by weight (solid fill at 3 or fewer),
+                    // so this stays quieter than the Enroll button beside it.
+                    <p
+                      className={cn(
+                        "seats-left flex items-center gap-2 select-none",
+                        plusJakartaSans.className
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "grid place-items-center size-8 rounded-xl border font-coolvetica text-lg leading-none tabular-nums",
+                          course.seatsLeft <= 3
+                            ? "bg-primary border-primary text-white"
+                            : "bg-[#FFF6EC] border-[#F7AD24]/50 text-primary"
+                        )}
+                      >
+                        {course.seatsLeft}
                       </span>
-                    </div>
+                      <span className="text-sm text-text-primary/70">
+                        {course.seatsLeft === 1 ? "seat" : "seats"} left
+                      </span>
+                    </p>
                   )}
               </div>
             )}
