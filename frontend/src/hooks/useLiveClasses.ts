@@ -1,11 +1,28 @@
 import { useState, useCallback } from "react";
 import apiClient from "@/configs/apiConfig";
-import {
-  LiveClass,
-  LiveClassResponse,
+import { ENDPOINTS } from "@/constants/endpoints";
+import type {
   CreateLiveClassData,
+  LiveClass,
+  LiveClassAttendanceResponse,
+  LiveClassResponse,
+  StudentLiveClassesPage,
   UpdateLiveClassData,
-} from "@/types";
+} from "@/types/live-classes";
+
+/** Pulls the most specific message the API returned. */
+function errorMessage(err: unknown, fallback: string): string {
+  const e = err as {
+    response?: { data?: { error?: { message?: string }; message?: string } };
+    message?: string;
+  };
+  return (
+    e?.response?.data?.error?.message ||
+    e?.response?.data?.message ||
+    e?.message ||
+    fallback
+  );
+}
 
 export const useLiveClasses = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -16,194 +33,199 @@ export const useLiveClasses = () => {
   const handleRequest = useCallback(
     async <T>(
       requestFn: () => Promise<T>,
-      errorMessage: string
+      fallbackMessage: string,
     ): Promise<T | null> => {
       setIsLoading(true);
       setError(null);
       try {
-        const response = await requestFn();
-        return response;
-      } catch (err: any) {
-        const msg =
-          err?.response?.data?.error?.message || 
-          err?.response?.data?.message ||
-          err?.message || 
-          errorMessage;
-        setError(msg);
-        // Return null but the error is stored in state and can be accessed
+        return await requestFn();
+      } catch (err: unknown) {
+        setError(errorMessage(err, fallbackMessage));
         return null;
       } finally {
         setIsLoading(false);
       }
     },
-    []
+    [],
   );
 
   // ===================
-  // Admin & Instructor Methods
+  // Admin & Instructor
   // ===================
 
-  /**
-   * Get all live classes (Admin only)
-   */
+  /** Server-side paginated + searched list. */
   const getAllLiveClasses = useCallback(
     async (
       page: number = 1,
-      limit: number = 10
-    ): Promise<LiveClassResponse | null> => {
-      return handleRequest(async () => {
-        const params = new URLSearchParams();
-        params.append("page", page.toString());
-        params.append("limit", limit.toString());
-
-        const response = await apiClient.get(
-          `/live-classes/admin?${params.toString()}`
-        );
-        return response.data.data;
-      }, "Failed to fetch live classes");
-    },
-    [handleRequest]
+      limit: number = 10,
+      opts: { courseId?: string; search?: string } = {},
+    ): Promise<LiveClassResponse | null> =>
+      handleRequest(async () => {
+        const response = await apiClient.get(ENDPOINTS.liveClasses.adminList, {
+          params: {
+            page,
+            limit,
+            ...(opts.courseId ? { courseId: opts.courseId } : {}),
+            ...(opts.search ? { search: opts.search } : {}),
+          },
+        });
+        return response.data.data as LiveClassResponse;
+      }, "Failed to fetch live classes"),
+    [handleRequest],
   );
 
-  /**
-   * Get all ongoing live classes (Admin only)
-   */
   const getOngoingLiveClasses = useCallback(
     async (
       page: number = 1,
-      limit: number = 10
-    ): Promise<LiveClassResponse | null> => {
-      return handleRequest(async () => {
-        const params = new URLSearchParams();
-        params.append("page", page.toString());
-        params.append("limit", limit.toString());
-
-        const response = await apiClient.get(
-          `/live-classes/ongoing?${params.toString()}`
-        );
-        return response.data.data;
-      }, "Failed to fetch ongoing live classes");
-    },
-    [handleRequest]
+      limit: number = 10,
+    ): Promise<LiveClassResponse | null> =>
+      handleRequest(async () => {
+        const response = await apiClient.get(ENDPOINTS.liveClasses.ongoing, {
+          params: { page, limit },
+        });
+        return response.data.data as LiveClassResponse;
+      }, "Failed to fetch ongoing live classes"),
+    [handleRequest],
   );
 
-  /**
-   * Get instructor's live classes
-   */
   const getInstructorLiveClasses = useCallback(
     async (
       page: number = 1,
       limit: number = 10,
-      courseId?: string
-    ): Promise<LiveClassResponse | null> => {
-      return handleRequest(async () => {
-        const params = new URLSearchParams();
-        params.append("page", page.toString());
-        params.append("limit", limit.toString());
-        if (courseId) {
-          params.append("courseId", courseId);
-        }
-
+      courseId?: string,
+    ): Promise<LiveClassResponse | null> =>
+      handleRequest(async () => {
         const response = await apiClient.get(
-          `/live-classes/instructor?${params.toString()}`
+          ENDPOINTS.liveClasses.instructorList,
+          { params: { page, limit, ...(courseId ? { courseId } : {}) } },
         );
-        return response.data.data;
-      }, "Failed to fetch instructor live classes");
-    },
-    [handleRequest]
+        return response.data.data as LiveClassResponse;
+      }, "Failed to fetch instructor live classes"),
+    [handleRequest],
   );
 
-  /**
-   * Create a new live class
-   */
   const createLiveClass = useCallback(
-    async (data: CreateLiveClassData): Promise<LiveClass | null> => {
-      return handleRequest(async () => {
-        const response = await apiClient.post("/live-classes", data);
-        return response.data.data;
-      }, "Failed to create live class");
-    },
-    [handleRequest]
+    async (data: CreateLiveClassData): Promise<LiveClass | null> =>
+      handleRequest(async () => {
+        const response = await apiClient.post(
+          ENDPOINTS.liveClasses.create,
+          data,
+        );
+        return response.data.data as LiveClass;
+      }, "Failed to create live class"),
+    [handleRequest],
   );
 
-  /**
-   * Update an existing live class
-   */
   const updateLiveClass = useCallback(
     async (
       liveClassId: string,
-      data: Partial<CreateLiveClassData>
-    ): Promise<LiveClass | null> => {
-      return handleRequest(async () => {
+      data: UpdateLiveClassData,
+    ): Promise<LiveClass | null> =>
+      handleRequest(async () => {
         const response = await apiClient.put(
-          `/live-classes/${liveClassId}`,
-          data
+          ENDPOINTS.liveClasses.update(liveClassId),
+          data,
         );
-        return response.data.data;
-      }, "Failed to update live class");
-    },
-    [handleRequest]
+        return response.data.data as LiveClass;
+      }, "Failed to update live class"),
+    [handleRequest],
   );
 
-  /**
-   * Get live class by ID
-   */
   const getLiveClassById = useCallback(
-    async (liveClassId: string): Promise<LiveClass | null> => {
-      return handleRequest(async () => {
-        const response = await apiClient.get(`/live-classes/${liveClassId}`);
-        return response.data.data;
-      }, "Failed to fetch live class");
-    },
-    [handleRequest]
+    async (liveClassId: string): Promise<LiveClass | null> =>
+      handleRequest(async () => {
+        const response = await apiClient.get(
+          ENDPOINTS.liveClasses.byId(liveClassId),
+        );
+        return response.data.data as LiveClass;
+      }, "Failed to fetch live class"),
+    [handleRequest],
   );
 
-  /**
-   * Delete a live class
-   */
   const deleteLiveClass = useCallback(
     async (liveClassId: string): Promise<boolean> => {
-      return handleRequest(async () => {
-        await apiClient.delete(`/live-classes/${liveClassId}`);
+      const result = await handleRequest(async () => {
+        await apiClient.delete(ENDPOINTS.liveClasses.remove(liveClassId));
         return true;
-      }, "Failed to delete live class") !== null;
+      }, "Failed to delete live class");
+      return result === true;
     },
-    [handleRequest]
+    [handleRequest],
+  );
+
+  /**
+   * Opens attendance link 1 or 2. One-shot — the API rejects a second
+   * activation with 409, which is surfaced through `error`.
+   */
+  const activateLiveClassLink = useCallback(
+    async (liveClassId: string, slot: 1 | 2): Promise<LiveClass | null> =>
+      handleRequest(async () => {
+        const response = await apiClient.post(
+          ENDPOINTS.liveClasses.adminActivate(liveClassId, slot),
+        );
+        return response.data.data as LiveClass;
+      }, `Failed to activate attendance ${slot}`),
+    [handleRequest],
+  );
+
+  /**
+   * Roster with each learner's attendance clicks and verdict. Requesting this
+   * after both windows have closed is what finalizes attendance server-side.
+   */
+  const getLiveClassAttendance = useCallback(
+    async (liveClassId: string): Promise<LiveClassAttendanceResponse | null> =>
+      handleRequest(async () => {
+        const response = await apiClient.get(
+          ENDPOINTS.liveClasses.adminAttendance(liveClassId),
+        );
+        return response.data.data as LiveClassAttendanceResponse;
+      }, "Failed to fetch attendance"),
+    [handleRequest],
+  );
+
+  /**
+   * Forces one learner's verdict, or `clear` to fall back to the computed one.
+   * Returns the whole refreshed roster so counts stay in sync.
+   */
+  const setAttendanceOverride = useCallback(
+    async (
+      liveClassId: string,
+      userId: string,
+      verdict: "present" | "absent" | "clear",
+    ): Promise<LiveClassAttendanceResponse | null> =>
+      handleRequest(async () => {
+        const response = await apiClient.post(
+          ENDPOINTS.liveClasses.adminAttendanceOverride(liveClassId),
+          { userId, verdict },
+        );
+        return response.data.data as LiveClassAttendanceResponse;
+      }, "Failed to update attendance"),
+    [handleRequest],
   );
 
   // ===================
-  // Student Methods
+  // Student
   // ===================
 
-  /**
-   * Get student's live classes (for enrolled courses)
-   */
   const getStudentLiveClasses = useCallback(
     async (
       page: number = 1,
-      limit: number = 10
-    ): Promise<LiveClassResponse | null> => {
-      return handleRequest(async () => {
-        const params = new URLSearchParams();
-        params.append("page", page.toString());
-        params.append("limit", limit.toString());
-
-        const response = await apiClient.get(
-          `/live-classes/student?${params.toString()}`
-        );
-        return response.data.data;
-      }, "Failed to fetch student live classes");
-    },
-    [handleRequest]
+      limit: number = 10,
+    ): Promise<StudentLiveClassesPage | null> =>
+      handleRequest(async () => {
+        const response = await apiClient.get(ENDPOINTS.liveClasses.student, {
+          params: { page, limit },
+        });
+        return response.data.data as StudentLiveClassesPage;
+      }, "Failed to fetch live classes"),
+    [handleRequest],
   );
 
   return {
-    // State
     isLoading,
     error,
     clearError,
 
-    // Admin & Instructor Methods
     getAllLiveClasses,
     getOngoingLiveClasses,
     getInstructorLiveClasses,
@@ -211,8 +233,10 @@ export const useLiveClasses = () => {
     updateLiveClass,
     deleteLiveClass,
     getLiveClassById,
+    activateLiveClassLink,
+    getLiveClassAttendance,
+    setAttendanceOverride,
 
-    // Student Methods
     getStudentLiveClasses,
   };
 };

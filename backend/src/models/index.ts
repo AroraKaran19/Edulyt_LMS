@@ -26,6 +26,7 @@ import ReviewModel from "./review.schema";
 import { EnrollmentModel } from "./enrollment.schema";
 import { CertificateModel } from "./certificate.schema";
 import LiveClassModel from "./live-classes.schema";
+import { LiveClassAttendanceModel } from "./liveClassAttendance.schema";
 import AuthenticationMediaModel from "./authentication-media.schema";
 import { CouponModel } from "./coupon.schema";
 import { CollaborationDomainModel } from "./collaborationDomain.schema";
@@ -61,6 +62,7 @@ export {
   EnrollmentModel,
   CertificateModel,
   LiveClassModel,
+  LiveClassAttendanceModel,
   AuthenticationMediaModel,
   CouponModel,
   CollaborationDomainModel,

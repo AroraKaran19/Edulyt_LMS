@@ -24,6 +24,7 @@ import {
 } from "./context/VideoTimeContext";
 import TabSwitcher from "@/components/ui/course/TabSwitcher";
 import OverviewSection from "./components/OverviewSection";
+import LiveClassesSection from "./components/LiveClassesSection";
 import { VideoContent } from "@/types";
 import Reviews from "./components/Reviews";
 import QASections from "./components/QASections";
@@ -1107,14 +1108,9 @@ const PreviewCourse = ({ course }: { course: Course }) => {
     undefined
   );
 
-  useEffect(() => {
-    if (!qnaParam) {
-      setForcedTabIndex(undefined);
-      return;
-    }
-    if (width === 0) return;
-    setForcedTabIndex(width < 1024 ? 2 : 1);
-  }, [qnaParam, width]);
+  // NOTE: the effect that resolves this from a ?qna= deep link lives below the
+  // `tabs` memo — it looks the Q&A tab up by label rather than by a hardcoded
+  // index, so inserting a tab can't silently retarget the deep link.
 
   const getQnAByIdRef = useRef(getQnAById);
   useEffect(() => {
@@ -1238,6 +1234,11 @@ const PreviewCourse = ({ course }: { course: Course }) => {
     [courseId, reviews, isLoadingReviews, fetchReviews]
   );
 
+  const liveClassesTabComponent = useMemo(
+    () => <LiveClassesSection courseId={courseId} />,
+    [courseId]
+  );
+
   // Memoize tabs array - only recreate when structure actually changes
   const tabs = useMemo(() => {
     const mobileContentTab = isMobile
@@ -1257,6 +1258,10 @@ const PreviewCourse = ({ course }: { course: Course }) => {
         component: overviewTabComponent,
       },
       {
+        label: "Live Classes",
+        component: liveClassesTabComponent,
+      },
+      {
         label: `Q&A (${filteredQuestions.length})`,
         component: qaTabComponent,
       },
@@ -1269,11 +1274,25 @@ const PreviewCourse = ({ course }: { course: Course }) => {
     isMobile,
     mobileContentTabComponent,
     overviewTabComponent,
+    liveClassesTabComponent,
     qaTabComponent,
     reviewsTabComponent,
     filteredQuestions.length,
     modulesCount,
   ]);
+
+  // Resolve the ?qna= deep link to whichever slot the Q&A tab currently
+  // occupies. The index shifts with viewport (mobile gains a "Course Content"
+  // tab) and with any tab added above it, so it's looked up, not hardcoded.
+  useEffect(() => {
+    if (!qnaParam) {
+      setForcedTabIndex(undefined);
+      return;
+    }
+    if (width === 0) return;
+    const index = tabs.findIndex((tab) => tab.label.startsWith("Q&A"));
+    setForcedTabIndex(index >= 0 ? index : undefined);
+  }, [qnaParam, width, tabs]);
 
   // Show loading state while initializing
   if (!isInitialized) {

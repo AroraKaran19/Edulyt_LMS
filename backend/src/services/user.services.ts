@@ -407,7 +407,7 @@ export const updateUserStatusService = async (
  */
 const deleteUserFilesFromS3 = async (
   user: any,
-  liveClasses: { imageUrl?: string }[],
+  liveClasses: { imageUrl?: string | null }[],
 ): Promise<void> => {
   const urls: string[] = [];
   if (user?.profilePicture) urls.push(user.profilePicture);

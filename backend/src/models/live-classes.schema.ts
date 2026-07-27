@@ -1,12 +1,54 @@
 import mongoose from "mongoose";
-import { LiveClass } from "../types/live-classes";
 import { validateUrl } from "./validators";
 
 // ===================
 // Live Class Schema
 // ===================
 
-const liveClassSchema = new mongoose.Schema<LiveClass & { expiresAt?: Date }>(
+const liveClassLinkSchema = new mongoose.Schema(
+  {
+    token: { type: String, required: true, trim: true },
+    expiryMins: {
+      type: Number,
+      required: true,
+      min: [1, "expiryMins must be at least 1"],
+    },
+    activatedAt: { type: Date, default: null },
+    clickedBy: {
+      type: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+      default: [],
+    },
+  },
+  { _id: false },
+);
+
+/**
+ * A forced verdict for one student, set by an admin. Presence of an entry
+ * overrides the computed verdict; absence means "use computed".
+ */
+const liveClassOverrideSchema = new mongoose.Schema(
+  {
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    verdict: {
+      type: String,
+      enum: ["present", "absent"],
+      required: true,
+    },
+    setBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    setAt: { type: Date, default: Date.now },
+  },
+  { _id: false },
+);
+
+const liveClassSchema = new mongoose.Schema(
   {
     title: {
       type: String,
@@ -15,26 +57,33 @@ const liveClassSchema = new mongoose.Schema<LiveClass & { expiresAt?: Date }>(
       minlength: [3, "Title must be at least 3 characters"],
       maxlength: [200, "Title must not exceed 200 characters"],
     },
-    imageUrl: {
-      type: String,
-      required: false,
-      validate: {
-        validator: function (v: string) {
-          if (!v) return true; // Allow empty string
-          return validateUrl(v);
-        },
-        message: "Image URL must be a valid URL (http:// or https://)",
-      },
-    },
     description: {
       type: String,
       required: false,
       trim: true,
-      maxlength: [1000, "Description must not exceed 1000 characters"],
+      default: "",
+      maxlength: [2000, "Description must not exceed 2000 characters"],
     },
+    imageUrl: {
+      type: String,
+      required: false,
+      default: "",
+      validate: {
+        validator: (v: string) => !v || validateUrl(v),
+        message: "Image URL must be a valid URL (http:// or https://)",
+      },
+    },
+
+    /**
+     * Optional host for THIS class — unrelated to `course.instructor`, which is
+     * its own (already optional) array and is untouched by this module.
+     * Requiring one per class would be wrong: a course may have none assigned,
+     * and that must not block scheduling. `createdBy` is the accountable field.
+     */
     instructor: {
       type: mongoose.Schema.Types.ObjectId,
-      required: true,
+      required: false,
+      default: null,
       ref: "User",
     },
     course: {
@@ -42,83 +91,70 @@ const liveClassSchema = new mongoose.Schema<LiveClass & { expiresAt?: Date }>(
       required: true,
       ref: "Course",
     },
-    startDate: {
-      type: Date,
-      required: true,
-    },
-    startTime: {
+
+    /** Zoom / Meet / etc. URL the admin shares with students. */
+    meetingLink: {
       type: String,
       required: true,
+      trim: true,
       validate: {
-        validator: function (v: string) {
-          // Validate time format HH:mm
-          return /^([0-1][0-9]|2[0-3]):[0-5][0-9]$/.test(v);
-        },
-        message: "Start time must be in HH:mm format",
+        validator: (v: string) => validateUrl(v),
+        message: "Meeting link must be a valid URL (http:// or https://)",
       },
     },
-    endDate: {
-      type: Date,
-      required: true,
-    },
-    endTime: {
+    /** Optional link to the recorded session, set after the class. */
+    recordingLink: {
       type: String,
-      required: true,
+      trim: true,
+      default: "",
       validate: {
-        validator: function (v: string) {
-          // Validate time format HH:mm
-          return /^([0-1][0-9]|2[0-3]):[0-5][0-9]$/.test(v);
-        },
-        message: "End time must be in HH:mm format",
+        validator: (v: string) => !v || validateUrl(v),
+        message: "Recording link must be a valid URL (http:// or https://)",
       },
     },
-    expiresAt: {
-      type: Date,
-      required: false,
-      // This field will be automatically set in pre-save hook
+
+    startDateTime: { type: Date, required: true },
+    endDateTime: { type: Date, required: true },
+
+    link1: { type: liveClassLinkSchema, required: true },
+    link2: { type: liveClassLinkSchema, required: true },
+
+    /** Admin verdict overrides, one entry per affected student. */
+    manualOverrides: {
+      type: [liveClassOverrideSchema],
+      default: [],
+    },
+
+    finalizedAt: { type: Date, default: null },
+
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
     },
   },
-  {
-    timestamps: true, // Automatically adds createdAt and updatedAt
-  }
+  { timestamps: true },
 );
 
-// Add pre-save hook to validate that end date/time is after start date/time
-// and set expiresAt for TTL index
 liveClassSchema.pre("save", function (next) {
-  // Combine date and time to create full datetime
-  const startDateTime = new Date(this.startDate);
-  const [startHours, startMinutes] = this.startTime.split(":").map(Number);
-  startDateTime.setHours(startHours, startMinutes, 0, 0);
-
-  const endDateTime = new Date(this.endDate);
-  const [endHours, endMinutes] = this.endTime.split(":").map(Number);
-  endDateTime.setHours(endHours, endMinutes, 0, 0);
-
-  if (endDateTime <= startDateTime) {
-    return next(new Error("End date and time must be after start date and time"));
+  if (this.endDateTime && this.endDateTime <= this.startDateTime) {
+    return next(new Error("endDateTime must be after startDateTime"));
   }
-
-  // Set expiresAt to endDateTime for TTL index (auto-delete after end date/time)
-  this.expiresAt = endDateTime;
-
   next();
 });
 
-// Add index for efficient queries
-liveClassSchema.index({ instructor: 1 });
-liveClassSchema.index({ course: 1 });
-liveClassSchema.index({ startDate: 1 });
-liveClassSchema.index({ endDate: 1 });
-liveClassSchema.index({ startDate: 1, endDate: 1 });
-liveClassSchema.index({ course: 1, startDate: 1 }); // Compound index for course-based date queries
+// NOTE: the old schema carried a TTL index on `expiresAt` that silently deleted
+// every live class the moment it ended, destroying all history and attendance.
+// It is gone on purpose — `src/scripts/migrate-live-classes-to-datetime.ts`
+// drops the leftover `expiresAt_1` index from existing databases.
 
-// TTL index - automatically delete documents when expiresAt time is reached
-// MongoDB will delete the document when the expiresAt date/time passes
-liveClassSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+liveClassSchema.index({ course: 1, startDateTime: -1 });
+liveClassSchema.index({ instructor: 1, startDateTime: -1 });
+liveClassSchema.index({ startDateTime: -1 });
+liveClassSchema.index({ startDateTime: 1, endDateTime: 1 });
+liveClassSchema.index({ "link1.token": 1 }, { unique: true, sparse: true });
+liveClassSchema.index({ "link2.token": 1 }, { unique: true, sparse: true });
 
-// Create and export the model
-const LiveClassModel = mongoose.model<LiveClass>("LiveClass", liveClassSchema);
+const LiveClassModel = mongoose.model("LiveClass", liveClassSchema);
 
 export default LiveClassModel;
-

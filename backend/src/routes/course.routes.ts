@@ -1,4 +1,9 @@
-import { adminGuard } from "../middlewares/admin.middleware";
+import {
+  adminGuard,
+  requireAnyPermission,
+  verifyAdmin,
+} from "../middlewares/admin.middleware";
+import { verifyUser } from "../middlewares/user.middleware";
 import { Router } from "express";
 import {
   createCourseLesson,
@@ -95,9 +100,19 @@ router.get("/admin", ...adminGuard("courses.manage"),getAdminCourses);
 /**
  * @route   GET /api/courses/admin/options
  * @desc    Lightweight admin course list (id + title only)
- * @access  Admin
+ * @access  Admin holding any page that needs a course picker
+ *
+ * Read-only lookup shared across course pages, so holding either page is
+ * enough — the live-classes page needs it to pick a course, and its admins
+ * don't necessarily hold `courses.manage`.
  */
-router.get("/admin/options", ...adminGuard("courses.manage"),getAdminCourseOptions);
+router.get(
+  "/admin/options",
+  verifyUser,
+  verifyAdmin,
+  requireAnyPermission("courses.manage", "courses.live-classes"),
+  getAdminCourseOptions,
+);
 
 /**
  * @route   GET /api/courses/admin/id/:courseId

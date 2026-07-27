@@ -244,10 +244,22 @@ const CourseCard = ({
     );
   };
 
+  // Disabled course: the watch page 404s, so the whole card must stop leading
+  // there rather than letting the learner click into nothing.
+  const isCourseDisabled = course.isActive === false;
+
   return (
     <div
-      className="group bg-white border border-gray-200 rounded-xl flex flex-col h-full shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden cursor-pointer"
-      onClick={() => router.push(`/programs/${course.slug}/watch`)}
+      className={cn(
+        "group bg-white border border-gray-200 rounded-xl flex flex-col h-full shadow-sm transition-all duration-300 overflow-hidden",
+        isCourseDisabled
+          ? "opacity-80 cursor-default"
+          : "hover:shadow-lg cursor-pointer",
+      )}
+      onClick={() => {
+        if (isCourseDisabled) return;
+        router.push(`/programs/${course.slug}/watch`);
+      }}
     >
       {/* Image Section */}
       <div className="relative w-full aspect-video overflow-hidden bg-gray-100">
@@ -256,11 +268,19 @@ const CourseCard = ({
           alt={course.title || "Course thumbnail"}
           width={400}
           height={225}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          className={cn(
+            "w-full h-full object-cover transition-transform duration-300",
+            !isCourseDisabled && "group-hover:scale-105",
+          )}
         />
 
         {/* Overlay Badges */}
         <div className="absolute top-3 left-3 flex flex-col gap-2">
+          {isCourseDisabled && (
+            <div className="px-3 py-1.5 w-fit rounded-full text-xs font-semibold backdrop-blur-sm border bg-gray-700/90 text-white border-gray-600">
+              No longer available
+            </div>
+          )}
           {/* Trial Badge */}
           {isTrial && (
             <div className="flex flex-col gap-1">
@@ -443,6 +463,14 @@ const CourseCard = ({
                 <Download className="w-4 h-4" />
                 <span>Certificate</span>
               </Link>
+            ) : isCourseDisabled ? (
+              <span
+                onClick={(e) => e.stopPropagation()}
+                title="This course is currently unavailable"
+                className="flex items-center gap-1.5 sm:gap-2 bg-gray-100 border border-gray-200 text-gray-400 rounded-lg px-3 sm:px-4 py-2 text-xs font-semibold cursor-not-allowed select-none"
+              >
+                Unavailable
+              </span>
             ) : progress > 0 ? (
               <Link
                 href={`/programs/${course.slug}/watch`}

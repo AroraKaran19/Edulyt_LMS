@@ -178,8 +178,11 @@ export const getCourseBySlug = asyncHandler(
 
     const result = await getCourseBySlugService(slug, false);
     if (!result) {
-      sendSuccessResponse(res, [], "Course not found", 200);
-      return;
+      // A missing OR disabled course (the service filters on isActive) is a
+      // 404, not a 200. Returning `[]` with 200 made callers treat the empty
+      // array as a course — truthy, so their `!course` guards never fired and
+      // the page crashed on `course.title` instead of showing "not found".
+      throw new AppError("Course not found", 404);
     }
     sendSuccessResponse(res, result, "Course retrieved successfully", 200);
     return;

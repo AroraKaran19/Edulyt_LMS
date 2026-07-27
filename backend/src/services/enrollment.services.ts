@@ -456,7 +456,11 @@ export const GetUserEnrollmentsService = async (
       .populate({
         path: "courseId",
         select:
-          "title thumbnail description category duration slug instructor plans analytics isFeatured isCertified modules deactivatedModules deactivatedLessons",
+          // `isActive` is deliberately included: a learner can hold an
+          // enrollment in a course that has since been disabled. The watch page
+          // gates on `isActive`, so without this flag the UI renders a normal
+          // card whose "Continue" leads to a dead end.
+          "title thumbnail description category duration slug instructor plans analytics isFeatured isCertified isActive modules deactivatedModules deactivatedLessons",
         populate: [
           {
             path: "instructor",

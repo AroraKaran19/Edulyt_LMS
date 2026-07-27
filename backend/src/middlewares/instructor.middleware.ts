@@ -29,8 +29,14 @@ export const verifyAdminOrInstructor = async (
     return next(new AppError("Authentication required", 401));
   }
 
-  // Check if user is admin or instructor
-  if (user.userType !== "admin" && user.userType !== "instructor") {
+  // Admin roles must stay in step with `verifyAdmin` — super-admin was missing
+  // here, so a super-admin passed every `verifyAdmin` route but was rejected
+  // from the ones behind this guard.
+  if (
+    user.userType !== "admin" &&
+    user.userType !== "super-admin" &&
+    user.userType !== "instructor"
+  ) {
     return next(new AppError("Admin or Instructor access required", 403));
   }
 

@@ -12,6 +12,7 @@ import {
   VideoNoteModel,
   QnAModel,
   LiveClassModel,
+  LiveClassAttendanceModel,
 } from "../models";
 import { Content, Course, CourseLesson, CourseModule } from "../types";
 import mongoose from "mongoose";
@@ -1693,7 +1694,14 @@ export const DeleteCourseService = async (
   // Delete Q&A for this course
   await QnAModel.deleteMany({ courseId });
 
-  // Delete live classes for this course
+  // Delete live classes for this course, plus their absent-attendance rows
+  // (which key off the live class, not the course, so they'd otherwise orphan).
+  const liveClassIds = liveClasses.map((lc) => lc._id);
+  if (liveClassIds.length > 0) {
+    await LiveClassAttendanceModel.deleteMany({
+      liveClass: { $in: liveClassIds },
+    });
+  }
   await LiveClassModel.deleteMany({ course: courseId });
 
   // Remove course from instructors' ownedCourses

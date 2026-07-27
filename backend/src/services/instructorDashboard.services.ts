@@ -313,17 +313,16 @@ export const getInstructorDashboardService = async (
     };
   });
 
-  const liveSessionsCount = await LiveClassModel.countDocuments({
-    instructor: oid,
-  });
-
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
 
-  const upcomingLiveSessions = await LiveClassModel.countDocuments({
-    instructor: oid,
-    startDate: { $gte: startOfToday },
-  });
+  const [liveSessionsCount, upcomingLiveSessions] = await Promise.all([
+    LiveClassModel.countDocuments({ instructor: oid }),
+    LiveClassModel.countDocuments({
+      instructor: oid,
+      startDateTime: { $gte: startOfToday },
+    }),
+  ]);
 
   return {
     summary: {

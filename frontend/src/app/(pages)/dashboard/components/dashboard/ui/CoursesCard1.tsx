@@ -13,6 +13,32 @@ interface CoursesCard1Props {
   enrollment?: Enrollment;
 }
 
+/**
+ * "Continue", or an inert "Unavailable" chip when the course has been disabled.
+ * Module-level so it isn't re-created (and its subtree re-mounted) every render.
+ */
+const ContinueAction = ({
+  disabled,
+  className,
+  onClick,
+}: {
+  disabled: boolean;
+  className: string;
+  onClick: () => void;
+}) =>
+  disabled ? (
+    <span
+      className={`inline-flex items-center justify-center rounded-lg border border-gray-200 bg-gray-100 px-3 py-2 text-xs font-semibold text-gray-400 cursor-not-allowed select-none ${className}`}
+      title="This course is currently unavailable"
+    >
+      Unavailable
+    </span>
+  ) : (
+    <WhiteButton className={className} onClick={onClick}>
+      Continue
+    </WhiteButton>
+  );
+
 const CoursesCard1 = ({ course, enrollment }: CoursesCard1Props) => {
   const calculateProgress = useCallback((enrollment: Enrollment): number => {
     if (!enrollment.progress) return 0;
@@ -68,14 +94,24 @@ const CoursesCard1 = ({ course, enrollment }: CoursesCard1Props) => {
     );
   }
 
+  // Course still exists but has been disabled. The watch page gates on
+  // `isActive`, so "Continue" would dead-end — surface that up front instead of
+  // letting the learner click into nothing.
+  const isDisabled = course.isActive === false;
+
   const handleContinue = () => {
+    if (isDisabled) return;
     if (course.slug) {
       window.open(`/programs/${course.slug}/watch`, '_blank');
     }
   };
 
   return (
-    <div className="flex flex-col sm:flex-row w-full p-2 sm:p-1 border border-gray-200 rounded-lg items-stretch gap-3">
+    <div
+      className={`flex flex-col sm:flex-row w-full p-2 sm:p-1 border border-gray-200 rounded-lg items-stretch gap-3 ${
+        isDisabled ? "opacity-80" : ""
+      }`}
+    >
       {/* Image - responsive sizing */}
       <Image
         src={course.thumbnail || "/courses-demo-image.png"}
@@ -90,7 +126,16 @@ const CoursesCard1 = ({ course, enrollment }: CoursesCard1Props) => {
       
       {/* Title and Instructors Section */}
       <div className="flex w-full flex-col gap-2 justify-center items-start min-w-0 flex-1">
-        <h2 className="text-sm sm:text-base font-bold line-clamp-2 sm:line-clamp-1 text-ellipsis w-full">
+        {isDisabled && (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-700/90 px-2 py-0.5 text-[10px] font-semibold text-white">
+            <AlertCircle className="w-3 h-3" /> No longer available
+          </span>
+        )}
+        <h2
+          className={`text-sm sm:text-base font-bold line-clamp-2 sm:line-clamp-1 text-ellipsis w-full ${
+            isDisabled ? "text-gray-700" : ""
+          }`}
+        >
           {course.title || "Untitled Course"}
         </h2>
         <div className="flex instructors gap-2 flex-wrap">
@@ -131,12 +176,11 @@ const CoursesCard1 = ({ course, enrollment }: CoursesCard1Props) => {
               <span className="text-xs text-gray-500">Lesson {currentPosition.lesson}</span>
             </div>
           </div>
-          <WhiteButton 
-            className="text-xs font-bold text-gray-500 px-3 py-1.5"
+          <ContinueAction
+            disabled={isDisabled}
             onClick={handleContinue}
-          >
-            Continue
-          </WhiteButton>
+            className="text-xs font-bold text-gray-500 px-3 py-1.5"
+          />
         </div>
 
         {/* Desktop: Original layout */}
@@ -165,12 +209,11 @@ const CoursesCard1 = ({ course, enrollment }: CoursesCard1Props) => {
             </div>
           </div>
           <div className="h-1/2 w-0.25 bg-gray-300 shrink-0" />
-          <WhiteButton 
-            className="w-max text-sm font-bold text-gray-500"
+          <ContinueAction
+            disabled={isDisabled}
             onClick={handleContinue}
-          >
-            Continue
-          </WhiteButton>
+            className="w-max text-sm font-bold text-gray-500"
+          />
         </div>
       </div>
     </div>

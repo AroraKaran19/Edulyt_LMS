@@ -139,6 +139,44 @@ export const ENDPOINTS = {
       `/internship-live-meetings/attend/${encodeURIComponent(token)}`,
   },
 
+  /**
+   * Course live classes + two-link attendance — same mechanics as
+   * `internshipLiveMeetings`, scoped to a course instead of a batch. Admin
+   * activates each link mid-class and shares its URL; a student is **present**
+   * only if both are opened within their windows.
+   */
+  liveClasses: {
+    /** POST — create a live class (admin / instructor). */
+    create: "/live-classes",
+    /** GET — all live classes, optional ?courseId=&search= (admin). */
+    adminList: "/live-classes/admin",
+    /** GET — currently-running live classes (admin). */
+    ongoing: "/live-classes/ongoing",
+    /** GET — the caller's own live classes (instructor). */
+    instructorList: "/live-classes/instructor",
+    byId: (liveClassId: string) =>
+      `/live-classes/${encodeURIComponent(liveClassId)}`,
+    update: (liveClassId: string) =>
+      `/live-classes/${encodeURIComponent(liveClassId)}`,
+    remove: (liveClassId: string) =>
+      `/live-classes/${encodeURIComponent(liveClassId)}`,
+    adminAttendance: (liveClassId: string) =>
+      `/live-classes/admin/${encodeURIComponent(liveClassId)}/attendance`,
+    /** POST — admin forces/clears a learner's attendance verdict. */
+    adminAttendanceOverride: (liveClassId: string) =>
+      `/live-classes/admin/${encodeURIComponent(liveClassId)}/attendance/override`,
+    adminActivate: (liveClassId: string, slot: 1 | 2) =>
+      `/live-classes/admin/${encodeURIComponent(liveClassId)}/activate/${slot}`,
+    /** GET — live classes for the learner's elite-plan enrollments. */
+    student: "/live-classes/student",
+    /** GET — one enrolled course's feed, for the course player's tab. */
+    studentByCourse: (courseId: string) =>
+      `/live-classes/student/course/${encodeURIComponent(courseId)}`,
+    /** POST — student records an attendance click via token. */
+    attend: (token: string) =>
+      `/live-classes/attend/${encodeURIComponent(token)}`,
+  },
+
   internshipSubmissions: {
     /** POST — create a new exam/task submission. */
     create: "/internship-submissions",

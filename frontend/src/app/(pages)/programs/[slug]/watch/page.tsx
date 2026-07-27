@@ -1,12 +1,23 @@
 import { Suspense } from "react";
-import Error from "@/components/ui/Error";
-import { getErrorUIConfig } from "@/configs/errorUIConfig";
+import { notFound } from "next/navigation";
 import { ENDPOINTS } from "@/constants/endpoints";
 import { fetcher } from "@/lib/utils";
 import { Course } from "@/types";
 import { AxiosError } from "axios";
 import PreviewCourse from "./PreviewCourse";
 import EnrollmentGuard from "@/components/EnrollmentGuard";
+
+/**
+ * The API has historically answered "no such course" with `200 []`, which is
+ * truthy — a plain `|| null` let the empty array through as a course and the
+ * page then crashed on `course.title`. Require an actual object with an id.
+ */
+function asCourse(payload: unknown): Course | null {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return null;
+  }
+  return "_id" in payload ? (payload as Course) : null;
+}
 
 async function fetchCourse(slug: string): Promise<{
   status: number;
@@ -16,7 +27,7 @@ async function fetchCourse(slug: string): Promise<{
     const response = await fetcher(`${ENDPOINTS.courses.bySlug}/${slug}`);
     return {
       status: response?.status || 500,
-      course: response?.data?.data || null,
+      course: asCourse(response?.data?.data),
     };
   } catch (error) {
     if (error instanceof AxiosError) {
@@ -39,8 +50,8 @@ export async function generateMetadata({
 
   if (!course) {
     return {
-      title: "Module Not Found | Airkrit",
-      description: "The module you are looking for does not exist.",
+      title: "Course Not Found | Airkrit",
+      description: "The course you are looking for does not exist.",
     };
   }
 
@@ -81,21 +92,10 @@ const IndividualModulePage = async ({
   const { slug } = await params;
   const { course } = await fetchCourse(slug);
 
-  const errorConfig = getErrorUIConfig({
-    statusCode: 404,
-    errorType: "backend",
-  });
-  if (!course) {
-    return (
-      <Error
-        icon={errorConfig.icon}
-        iconColor={errorConfig.iconColor}
-        title="Course Not Found"
-        description="The course you are looking for does not exist."
-        className="h-[calc(100dvh-100px)] w-full"
-      />
-    );
-  }
+  // Missing, unpublished or disabled all land here. `notFound()` renders the
+  // app's not-found page with a real 404 status, rather than a 200 that merely
+  // looks like an error page.
+  if (!course) notFound();
 
   return (
     <EnrollmentGuard course={course}>
