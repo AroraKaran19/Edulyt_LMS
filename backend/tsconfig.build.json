@@ -3,6 +3,10 @@
   "exclude": [
     "node_modules",
     "dist",
-    "test"
+    "test",
+    // Tests now live in `test/`, but keep these so a stray or in-progress
+    // test left under src/ can never break a production build.
+    "src/**/*.test.ts",
+    "src/**/__tests__/**"
   ]
 }

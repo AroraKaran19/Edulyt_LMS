@@ -11,6 +11,7 @@ import {
   getInternshipTaskByIdAdmin,
   updateInternshipTaskAdmin,
   deleteInternshipTaskAdmin,
+  previewTaskReachability,
   type UpsertInternshipTaskBody,
 } from "../services/internshipTask.services";
 
@@ -108,5 +109,27 @@ export const deleteInternshipTaskAdminController = asyncHandler(
       "Task template deleted successfully",
       200,
     );
+  },
+);
+
+/**
+ * @route   POST /api/internship-tasks/admin/reachability-preview
+ * @desc    Which learner durations can reach each task in a batch's calendar.
+ * @access  Admin
+ */
+export const previewTaskReachabilityController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { cohortStart, taskTemplateIds } = req.body as {
+      cohortStart?: string;
+      taskTemplateIds?: string[];
+    };
+    if (!cohortStart) {
+      throw new AppError("cohortStart is required", 400);
+    }
+    const rows = await previewTaskReachability(
+      cohortStart,
+      Array.isArray(taskTemplateIds) ? taskTemplateIds : [],
+    );
+    sendSuccessResponse(res, { rows }, "Reachability computed", 200);
   },
 );

@@ -7,6 +7,7 @@ import {
   getInternshipTaskByIdAdminController,
   updateInternshipTaskAdminController,
   deleteInternshipTaskAdminController,
+  previewTaskReachabilityController,
 } from "../controllers/internshipTask.controller";
 
 const router = Router();
@@ -20,6 +21,9 @@ router.post("/", createInternshipTaskAdminController);
 
 /** GET /api/internship-tasks/admin?page=1&limit=20&search=&status=all|active|inactive */
 router.get("/admin", listInternshipTasksAdminController);
+
+/** POST /api/internship-tasks/admin/reachability-preview */
+router.post("/admin/reachability-preview", previewTaskReachabilityController);
 
 /** GET/PATCH/DELETE /api/internship-tasks/admin/:taskId */
 router.get("/admin/:taskId", getInternshipTaskByIdAdminController);

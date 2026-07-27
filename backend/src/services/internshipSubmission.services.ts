@@ -20,6 +20,7 @@ import {
   isProgramWindowOver,
   resolveProgramEndDate,
 } from "../lib/internshipProgramWindow";
+import { computeTaskWindow } from "../lib/internshipTaskWindow";
 import {
   assertS3ObjectContentLengthAtMost,
   extractS3KeyFromUrl,
@@ -366,15 +367,12 @@ export async function createInternshipSubmission(
     // Hard program-window block: no task submission once the learner's program
     // has ended, even if the task's own due date runs longer. Points can only
     // be earned inside the learner's duration.
-    if (
-      isProgramWindowOver(
-        resolveProgramEndDate({
-          endDate: enrollment.endDate,
-          cohortStart: enrollment.batchSnapshot?.internshipStartDate,
-          durationMonths: enrollment.programDurationMonths,
-        }),
-      )
-    ) {
+    const programEnd = resolveProgramEndDate({
+      endDate: enrollment.endDate,
+      cohortStart: enrollment.batchSnapshot?.internshipStartDate,
+      durationMonths: enrollment.programDurationMonths,
+    });
+    if (isProgramWindowOver(programEnd)) {
       throw new AppError(
         "Your internship program has ended — task submissions are closed.",
         403,
@@ -397,25 +395,25 @@ export async function createInternshipSubmission(
         .select("unlockAfterDays dueDays")
         .lean();
       if (task) {
-        const MS_PER_DAY = 86_400_000;
-        const unlockAfterDays =
-          typeof task.unlockAfterDays === "number" ? task.unlockAfterDays : 0;
-        const dueDays = typeof task.dueDays === "number" ? task.dueDays : 0;
-        const visibleFrom = new Date(
-          anchor.getTime() + unlockAfterDays * MS_PER_DAY,
-        );
-        // `dueDays` is the window length after unlock, not an anchor offset.
-        const dueAt = new Date(visibleFrom.getTime() + dueDays * MS_PER_DAY);
+        const win = computeTaskWindow(task, anchor, programEnd);
         const now = new Date();
-        if (now < visibleFrom) {
+        if (!win.isReachable) {
           throw new AppError(
-            `This task is not yet available. It unlocks on ${visibleFrom.toISOString().slice(0, 10)}.`,
+            "This task is not available in your program duration.",
             403,
           );
         }
-        if (now >= dueAt) {
+        if (now < win.visibleFrom) {
           throw new AppError(
-            `The submission window for this task has closed. It was due by ${dueAt.toISOString().slice(0, 10)}.`,
+            `This task is not yet available. It unlocks on ${win.visibleFrom.toISOString().slice(0, 10)}.`,
+            403,
+          );
+        }
+        // `closesAt` is IST end-of-day of the due date — the same instant the
+        // learner's "Missed" badge uses, so the two cannot disagree.
+        if (now > win.closesAt) {
+          throw new AppError(
+            `The submission window for this task has closed. It was due by ${win.dueAt.toISOString().slice(0, 10)}.`,
             403,
           );
         }

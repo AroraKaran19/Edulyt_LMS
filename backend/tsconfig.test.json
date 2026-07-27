@@ -14,6 +14,10 @@
   ],
   "exclude": [
     "node_modules",
-    "dist"
+    "dist",
+    // Tests belong in `test/`. Anything still under src/ is in-progress work
+    // and shouldn't fail this check.
+    "src/**/*.test.ts",
+    "src/**/__tests__/**"
   ]
 }

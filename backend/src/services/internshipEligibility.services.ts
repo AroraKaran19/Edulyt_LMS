@@ -131,18 +131,22 @@ export async function computeInternshipEligibility(
   let certExamTotal = 0;
 
   if (cohortStart && endDate) {
-    // Tasks: every active template whose due date (cohort start + dueDays)
-    // lands at or before the learner's window end. A task contributes its
-    // configured success points (the certificate "credits"), not its grading
-    // totalScore.
+    // Tasks: every active template the learner can actually reach inside their
+    // window (see computeTaskWindow). A task contributes its configured success
+    // points (the certificate "credits"), not its grading totalScore.
     const taskIds = taskTemplateIds;
     if (taskIds.length > 0) {
       const tasks = await InternshipTaskModel.find({
         _id: { $in: taskIds },
       })
-        .select("successPoints dueDays isActive")
+        .select("successPoints unlockAfterDays dueDays isActive")
         .lean<
-          { successPoints?: number; dueDays?: number; isActive?: boolean }[]
+          {
+            successPoints?: number;
+            unlockAfterDays?: number;
+            dueDays?: number;
+            isActive?: boolean;
+          }[]
         >();
       tasksTotal = computeAchievableTaskPoints(tasks, cohortStart, endDate);
     }

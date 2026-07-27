@@ -8,10 +8,12 @@ import type { InternshipQuestionResponse } from "./internship-question";
  * Many internships can reference the same template; each learner submission
  * stores `internshipId`, `batchId`, and `taskId` for backtracking.
  *
- * Like exams, scheduling is **relative to each user's enrollmentDate** when
- * the template is applied in a given internship/batch context:
- *   visibleFrom = enrollmentDate + unlockAfterDays
- *   dueAt       = enrollmentDate + dueDays
+ * Scheduling is relative to the **cohort start date**
+ * (`batchSnapshot.internshipStartDate`), not the learner's enrollment date:
+ *   visibleFrom = cohortStart + unlockAfterDays
+ *   dueAt       = min(visibleFrom + dueDays, learner's program end)
+ * A task that opens outside the learner's duration, or leaves them fewer than
+ * 5 days, is neither shown nor counted. See backend `internshipTaskWindow.ts`.
  *
  * Questions must have usageType "task" or "both" in the question bank.
  *
@@ -35,14 +37,14 @@ export interface InternshipTask {
   successPoints: number;
 
   /**
-   * Days after a user's enrollmentDate when this task becomes visible.
-   * 0 = available immediately on enrollment.
+   * Days after the COHORT start when this task becomes visible.
+   * 0 = available immediately when the cohort begins.
    */
   unlockAfterDays: number;
 
   /**
-   * Days after a user's enrollmentDate when this task is due.
-   * Must be >= unlockAfterDays.
+   * Length of the submission window in days, measured from `unlockAfterDays`
+   * (NOT an offset from the cohort start — see migrate-task-due-days.ts).
    */
   dueDays: number;
 

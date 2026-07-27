@@ -6,6 +6,7 @@ import { ClipboardList, Info } from "lucide-react";
 import Container from "@/app/admin/components/ui/Container";
 import { InternshipFormData } from "@/types/internshipForm";
 import BatchTaskTemplatesSelect from "../BatchTaskTemplatesSelect";
+import BatchTaskReachabilityPanel from "../BatchTaskReachabilityPanel";
 
 /**
  * Optional wizard step (Screen 13 of 14): link reusable task templates to each
@@ -89,6 +90,7 @@ const Screen13 = () => {
                 </span>
               </div>
               <BatchTaskTemplatesSelect batchIndex={index} />
+              <BatchTaskReachabilityPanel batchIndex={index} />
             </div>
           );
         })}

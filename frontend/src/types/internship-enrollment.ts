@@ -359,8 +359,12 @@ export interface LearnerTaskRow {
   questionCount: number;
   isUnlocked: boolean;
   isDue: boolean;
+  /** True when the deadline was truncated by the learner's program end. */
+  isClamped: boolean;
   visibleFrom: string;
   dueAt: string;
+  /** ISO — the instant submissions stop (IST end-of-day of dueAt). */
+  closesAt: string;
   submission?: {
     _id: string;
     status: string;

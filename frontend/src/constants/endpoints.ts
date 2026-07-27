@@ -107,6 +107,7 @@ export const ENDPOINTS = {
 
   internshipTasks: {
     adminList: "/internship-tasks/admin",
+    adminReachabilityPreview: "/internship-tasks/admin/reachability-preview",
     adminById: (taskId: string) =>
       `/internship-tasks/admin/${encodeURIComponent(taskId)}`,
     create: "/internship-tasks",

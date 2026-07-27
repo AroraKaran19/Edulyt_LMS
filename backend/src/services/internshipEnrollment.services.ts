@@ -23,6 +23,7 @@ import {
   isProgramWindowOver,
   resolveProgramEndDate,
 } from "../lib/internshipProgramWindow";
+import { computeTaskWindow } from "../lib/internshipTaskWindow";
 import { cached, PUBLIC_CACHE_TTL_MS } from "../utils/ttlCache";
 
 function escapeRegex(s: string): string {
@@ -2755,10 +2756,14 @@ export type LearnerTaskRow = {
   questionCount: number;
   isUnlocked: boolean;
   isDue: boolean;
+  /** True when the deadline was truncated by the learner's program end. */
+  isClamped: boolean;
   /** ISO string: when this task becomes available. */
   visibleFrom: string;
-  /** ISO string: submission deadline. */
+  /** ISO string: submission deadline (clamped to the program end). */
   dueAt: string;
+  /** ISO string: the instant submissions stop — IST end-of-day of dueAt. */
+  closesAt: string;
   /** Exists when the learner has already started or submitted this task. */
   submission?: {
     _id: string;
@@ -3047,7 +3052,6 @@ export async function getLearnerProgramBySlug(
       ? rawAnchor
       : new Date(rawAnchor ?? Date.now());
 
-  const MS_PER_DAY = 86_400_000;
   const now = Date.now();
 
   // 5. Fetch tasks and filter to unlocked ones
@@ -3066,13 +3070,12 @@ export async function getLearnerProgramBySlug(
     const unlockAfterDays =
       typeof task.unlockAfterDays === "number" ? task.unlockAfterDays : 0;
     const dueDays = typeof task.dueDays === "number" ? task.dueDays : 0;
-    const visibleFrom = new Date(
-      anchor.getTime() + unlockAfterDays * MS_PER_DAY,
-    );
-    // `dueDays` is the window length after unlock, not an offset from the anchor.
-    const dueAt = new Date(visibleFrom.getTime() + dueDays * MS_PER_DAY);
+    const win = computeTaskWindow(task, anchor, programEnd);
 
-    if (now < visibleFrom.getTime()) continue; // locked — skip
+    // Not reachable → the learner is never shown it, and computeAchievableTaskPoints
+    // keeps it out of their achievable pool. The two must stay in lockstep.
+    if (!win.isReachable) continue;
+    if (now < win.visibleFrom.getTime()) continue; // locked — skip
 
     const sub = await InternshipSubmissionModel.findOne({
       userId,
@@ -3107,12 +3110,13 @@ export async function getLearnerProgramBySlug(
       dueDays,
       questionCount: Array.isArray(task.questions) ? task.questions.length : 0,
       isUnlocked: true,
-      // `dueAt` lands at the start of the due calendar day, but the learner has
-      // the whole of that day to submit. The task is only "missed" once the day
-      // after `dueAt` has begun — otherwise it shows missed on the due date.
-      isDue: now >= dueAt.getTime() + MS_PER_DAY,
-      visibleFrom: visibleFrom.toISOString(),
-      dueAt: dueAt.toISOString(),
+      // `closesAt` is IST end-of-day of the due date, so the learner keeps the
+      // whole of their due date and the submission guard agrees exactly.
+      isDue: now > win.closesAt.getTime(),
+      isClamped: win.isClamped,
+      visibleFrom: win.visibleFrom.toISOString(),
+      dueAt: win.dueAt.toISOString(),
+      closesAt: win.closesAt.toISOString(),
       submission: sub
         ? {
             _id: String(sub._id),

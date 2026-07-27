@@ -8,6 +8,7 @@
  * task calendar the learner is actually shown (see getLearnerProgramBySlug).
  */
 import { computeCertificationExamWindowUtc } from "./certificationExamSchedule";
+import { computeTaskWindow } from "./internshipTaskWindow";
 
 /** Inclusive end of the learner's program window: IST end-of-day of the last day. */
 export function computeProgramEndDate(
@@ -84,13 +85,19 @@ export function deriveCertificateVerdict(e: {
 
 export type AchievableTask = {
   successPoints?: number;
+  unlockAfterDays?: number;
   dueDays?: number;
   isActive?: boolean;
 };
 
 /**
  * Success points a learner could have earned from tasks: every active template
- * whose due date (cohort start + dueDays) falls at or before the window end.
+ * the learner can actually reach inside their program window.
+ *
+ * Membership is decided by `computeTaskWindow` — the same call the learner's
+ * task list uses — so the certificate denominator always matches what the
+ * learner was shown. `isActive` is filtered here rather than in the window
+ * rule: whether a template is published is unrelated to when it is due.
  */
 export function computeAchievableTaskPoints(
   tasks: AchievableTask[],
@@ -100,11 +107,8 @@ export function computeAchievableTaskPoints(
   let total = 0;
   for (const t of tasks) {
     if (t.isActive === false) continue;
-    const dueAt = new Date(cohortStart);
-    dueAt.setDate(dueAt.getDate() + Number(t.dueDays ?? 0));
-    if (dueAt <= endDate) {
-      total += Math.max(0, Number(t.successPoints ?? 0));
-    }
+    if (!computeTaskWindow(t, cohortStart, endDate).isReachable) continue;
+    total += Math.max(0, Number(t.successPoints ?? 0));
   }
   return total;
 }

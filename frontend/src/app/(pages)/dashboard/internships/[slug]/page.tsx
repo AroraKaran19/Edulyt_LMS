@@ -330,7 +330,15 @@ function TaskCard({ task, slug }: { task: LearnerTaskRow; slug: string }) {
               </span>
             ))}
 
-          <span className="text-stone-400">Due {formatDate(task.dueAt)}</span>
+          <span className="text-stone-400">
+            Due {formatDate(task.dueAt)}
+            {task.isClamped ? (
+              <span className="text-amber-700">
+                {" "}
+                — last day of your program
+              </span>
+            ) : null}
+          </span>
         </div>
       </div>
       <div className="shrink-0 self-center">

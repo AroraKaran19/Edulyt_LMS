@@ -3,6 +3,8 @@ import { InternshipTaskModel } from "../models/internshipTask.schema";
 import { InternshipQuestionModel } from "../models/internshipQuestion.schema";
 import { InternshipModel } from "../models/internship.schema";
 import { AppError } from "../middlewares/error.middleware";
+import { computeTaskWindow } from "../lib/internshipTaskWindow";
+import { computeProgramEndDate } from "../lib/internshipProgramWindow";
 
 function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -495,4 +497,77 @@ export async function deleteInternshipTaskAdmin(id: string): Promise<void> {
     { "batches.taskTemplateIds": res._id },
     { $pull: { "batches.$[].taskTemplateIds": res._id } },
   );
+}
+
+/** One row of the admin reachability preview — one learner duration option. */
+export type TaskReachabilityRow = {
+  months: number;
+  /** ISO — when a learner on this duration finishes. */
+  endDate: string;
+  reachableCount: number;
+  totalCount: number;
+  reachablePoints: number;
+  totalPoints: number;
+};
+
+/**
+ * For a batch's cohort start and selected task templates, report how many tasks
+ * each learner duration can actually reach. Durations are 1–6 months, matching
+ * the options the enroll form offers.
+ *
+ * Server-side on purpose: reimplementing the window rule in frontend TypeScript
+ * would recreate the call-site divergence this module exists to remove.
+ */
+export async function previewTaskReachability(
+  cohortStartRaw: string | Date,
+  taskTemplateIds: string[],
+): Promise<TaskReachabilityRow[]> {
+  const cohortStart = new Date(cohortStartRaw);
+  if (Number.isNaN(cohortStart.getTime())) {
+    throw new AppError("A valid cohort start date is required", 400);
+  }
+
+  const ids = (taskTemplateIds ?? [])
+    .filter((id) => mongoose.Types.ObjectId.isValid(String(id)))
+    .map((id) => new mongoose.Types.ObjectId(String(id)));
+
+  const tasks =
+    ids.length > 0
+      ? await InternshipTaskModel.find({ _id: { $in: ids }, isActive: true })
+          .select("successPoints unlockAfterDays dueDays")
+          .lean<
+            {
+              successPoints?: number;
+              unlockAfterDays?: number;
+              dueDays?: number;
+            }[]
+          >()
+      : [];
+
+  const totalCount = tasks.length;
+  const totalPoints = tasks.reduce(
+    (s, t) => s + Math.max(0, Number(t.successPoints ?? 0)),
+    0,
+  );
+
+  const rows: TaskReachabilityRow[] = [];
+  for (let months = 1; months <= 6; months++) {
+    const endDate = computeProgramEndDate(cohortStart, months);
+    let reachableCount = 0;
+    let reachablePoints = 0;
+    for (const t of tasks) {
+      if (!computeTaskWindow(t, cohortStart, endDate).isReachable) continue;
+      reachableCount++;
+      reachablePoints += Math.max(0, Number(t.successPoints ?? 0));
+    }
+    rows.push({
+      months,
+      endDate: endDate.toISOString(),
+      reachableCount,
+      totalCount,
+      reachablePoints,
+      totalPoints,
+    });
+  }
+  return rows;
 }
