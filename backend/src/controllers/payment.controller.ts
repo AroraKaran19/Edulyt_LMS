@@ -7,7 +7,71 @@ import {
   reconcileOrder,
   applyPaymentResult,
 } from "../services/payments/orderFlow";
-import { getProvider } from "../services/payments/registry";
+import { getEnabledGateways, getProvider } from "../services/payments/registry";
+
+/** Display names for the checkout picker. Keyed by GatewayName. */
+const GATEWAY_LABELS: Record<string, string> = {
+  paytm: "Paytm",
+  razorpay: "Razorpay",
+};
+
+/**
+ * @route   GET /api/payment/gateways
+ * @desc    Gateways that are both enabled and configured, in preference order.
+ *          The picker reads this — it must never hardcode the list, or turning a
+ *          gateway off in env leaves a dead button that fails at getProvider.
+ * @access  Public
+ */
+export const listGateways = asyncHandler(async (_req: Request, res: Response) => {
+  const gateways = getEnabledGateways().map((name) => ({
+    name,
+    label: GATEWAY_LABELS[name] ?? name,
+  }));
+
+  sendSuccessResponse(
+    res,
+    { gateways },
+    "Payment gateways retrieved successfully",
+    200,
+  );
+});
+
+/**
+ * @route   POST /api/payment/verify/:orderId
+ * @desc    Settle an order from the client-side gateway signature, so a paying
+ *          learner doesn't wait on webhook latency. Idempotent: applyPaymentResult
+ *          no-ops on an already-settled order.
+ * @access  Public — the gateway signature in the body is the authorization. It
+ *          cannot be forged without the gateway's key secret, and the provider
+ *          rejects a signature whose gateway order id isn't this order's.
+ */
+export const verifyPaymentSignature = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { orderId } = req.params;
+    if (!orderId) throw new AppError("Order ID is required", 400);
+
+    const order = await OrderModel.findById(orderId);
+    if (!order) throw new AppError("Order not found", 404);
+
+    const provider = getProvider(order.paymentMethod);
+    if (!provider.verifySignature) {
+      throw new AppError(
+        `${provider.name} does not support client-side verification`,
+        400,
+      );
+    }
+
+    const result = await provider.verifySignature(order, req.body);
+    await applyPaymentResult(order, result);
+
+    sendSuccessResponse(
+      res,
+      { orderId: order._id.toString(), status: order.paymentStatus },
+      "Payment verified successfully",
+      200,
+    );
+  },
+);
 
 /**
  * @route   GET /api/payment/status/:orderId
@@ -74,6 +138,7 @@ const settleWebhook = async (
   const result = await getProvider(gateway).verifyWebhook(
     req.body,
     req.headers as Record<string, string | undefined>,
+    (req as Request & { rawBody?: Buffer }).rawBody,
   );
 
   const order = await OrderModel.findById(result.orderId);

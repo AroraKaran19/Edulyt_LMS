@@ -32,6 +32,8 @@ import { toast } from "react-toastify";
 import apiClient from "@/configs/apiConfig";
 import { ENDPOINTS } from "@/constants/endpoints";
 import { withdrawPaymentPendingEnrollment } from "@/hooks/useMyInternshipEnrollments";
+import { useCheckout } from "@/hooks/useCheckout";
+import type { CheckoutOrder } from "@/types/order";
 
 function statusBadgeClass(status: string) {
   if (status === "enrolled")
@@ -120,6 +122,12 @@ function BuyConfirmedSeatCta({
   const [price, setPrice] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { start, picker, isBusy } = useCheckout();
+
+  // `loading` covers enrollment + order creation; `isBusy` covers the stretch
+  // after a gateway is picked. Without the second, the button would look idle
+  // while the order is being created behind the closed picker.
+  const busy = loading || isBusy;
 
   const slug =
     row.internshipSnapshot?.slug?.trim() || row.internship?.slug?.trim() || "";
@@ -177,29 +185,26 @@ function BuyConfirmedSeatCta({
         | undefined;
       if (!enrollmentId) throw new Error("Enrollment creation failed");
 
-      // Create Paytm order
-      const orderRes = await apiClient.post(
-        ENDPOINTS.orders.createInternshipSeat,
-        {
-          internshipEnrollmentId: enrollmentId,
-        },
-      );
-      const order = orderRes.data?.data as
-        | { _id: string; freeOrder?: boolean; token?: string }
-        | undefined;
-      if (!order) throw new Error("Order creation failed");
-
-      if (order.freeOrder && order.token) {
-        window.location.href = `/payment/status/${order._id}?token=${order.token}`;
-        return;
-      }
-      window.location.href = `/paytm-redirect?orderId=${order._id}`;
+      // Resolves the gateway (picker when there's a choice), creates the order
+      // with it, then opens that gateway's checkout.
+      await start(async (gateway) => {
+        const orderRes = await apiClient.post(
+          ENDPOINTS.orders.createInternshipSeat,
+          { internshipEnrollmentId: enrollmentId, gateway },
+        );
+        const order = orderRes.data?.data as CheckoutOrder | undefined;
+        if (!order) throw new Error("Order creation failed");
+        return order;
+      });
     } catch (e: unknown) {
       const msg =
         (e as { response?: { data?: { error?: { message?: string } } } })
           ?.response?.data?.error?.message ??
         (e instanceof Error ? e.message : "Something went wrong");
       setError(msg);
+    } finally {
+      // `start` returns as soon as the picker opens — long before payment. Clearing
+      // here (not only on error) stops the button spinning behind the modal.
       setLoading(false);
     }
   };
@@ -259,16 +264,16 @@ function BuyConfirmedSeatCta({
           <button
             type="button"
             onClick={handlePurchase}
-            disabled={loading}
+            disabled={busy}
             className={cn(
               "inline-flex items-center gap-1 text-[11px] font-semibold underline-offset-2 hover:underline shrink-0",
               "text-stone-600 hover:text-orange-700 disabled:opacity-60 disabled:cursor-not-allowed",
             )}
           >
-            {loading && (
+            {busy && (
               <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-stone-300 border-t-stone-700" />
             )}
-            {loading
+            {busy
               ? "Please wait…"
               : row.enrollmentType === "paid"
                 ? "Complete payment"
@@ -279,6 +284,7 @@ function BuyConfirmedSeatCta({
         {error && (
           <p className="text-[11px] text-red-600 font-medium">{error}</p>
         )}
+        {picker}
       </div>
     );
   }
@@ -320,16 +326,16 @@ function BuyConfirmedSeatCta({
         <button
           type="button"
           onClick={handlePurchase}
-          disabled={loading}
+          disabled={busy}
           className={cn(
             "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition shrink-0",
             "bg-orange-500 text-white hover:bg-orange-600 disabled:opacity-60 disabled:cursor-not-allowed",
           )}
         >
-          {loading && (
+          {busy && (
             <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-white/30 border-t-white" />
           )}
-          {loading
+          {busy
             ? "Please wait…"
             : row.enrollmentType === "paid"
               ? "Complete Payment"
@@ -337,6 +343,7 @@ function BuyConfirmedSeatCta({
         </button>
       </div>
       {error && <p className="text-[11px] text-red-600 font-medium">{error}</p>}
+      {picker}
     </div>
   );
 }
@@ -344,6 +351,10 @@ function BuyConfirmedSeatCta({
 export default function DashboardInternshipCard({ row, onWithdrawn }: Props) {
   const [withdrawing, setWithdrawing] = useState(false);
   const [resumingPayment, setResumingPayment] = useState(false);
+  // Aliased: `start` below is the cohort start date.
+  const { start: startCheckout, picker, isBusy } = useCheckout();
+  // `isBusy` covers order creation after a gateway is picked, once the picker closed.
+  const payBusy = resumingPayment || isBusy;
   const [withdrawConfirmOpen, setWithdrawConfirmOpen] = useState(false);
   const [docsModalOpen, setDocsModalOpen] = useState(false);
   const [switchModalOpen, setSwitchModalOpen] = useState(false);
@@ -487,25 +498,23 @@ export default function DashboardInternshipCard({ row, onWithdrawn }: Props) {
   const handleResumePayment = async () => {
     setResumingPayment(true);
     try {
-      const orderRes = await apiClient.post(
-        ENDPOINTS.orders.createInternshipSeat,
-        { internshipEnrollmentId: row._id },
-      );
-      const order = orderRes.data?.data as
-        | { _id: string; freeOrder?: boolean; token?: string }
-        | undefined;
-      if (!order) throw new Error("Could not start payment");
-      if (order.freeOrder && order.token) {
-        window.location.href = `/payment/status/${order._id}?token=${order.token}`;
-        return;
-      }
-      window.location.href = `/paytm-redirect?orderId=${order._id}`;
+      await startCheckout(async (gateway) => {
+        const orderRes = await apiClient.post(
+          ENDPOINTS.orders.createInternshipSeat,
+          { internshipEnrollmentId: row._id, gateway },
+        );
+        const order = orderRes.data?.data as CheckoutOrder | undefined;
+        if (!order) throw new Error("Could not start payment");
+        return order;
+      });
     } catch (e: unknown) {
       const msg =
         (e as { response?: { data?: { error?: { message?: string } } } })
           ?.response?.data?.error?.message ??
         (e instanceof Error ? e.message : "Could not start payment");
       toast.error(msg);
+    } finally {
+      // `start` returns when the picker opens, not when payment completes.
       setResumingPayment(false);
     }
   };
@@ -857,17 +866,15 @@ export default function DashboardInternshipCard({ row, onWithdrawn }: Props) {
                     glow={false}
                     type="button"
                     onClick={() => void handleResumePayment()}
-                    disabled={
-                      resumingPayment || withdrawing || paymentPendingBlocked
-                    }
+                    disabled={payBusy || withdrawing || paymentPendingBlocked}
                     className="inline-flex items-center justify-center gap-1.5 min-h-9 px-4 text-xs sm:text-sm font-semibold"
                   >
-                    {resumingPayment ? "Redirecting…" : "Complete payment"}
+                    {payBusy ? "Redirecting…" : "Complete payment"}
                   </OrangeButton>
                   <button
                     type="button"
                     onClick={() => setWithdrawConfirmOpen(true)}
-                    disabled={withdrawing || resumingPayment}
+                    disabled={withdrawing || payBusy}
                     className={cn(
                       "text-xs sm:text-sm font-semibold text-stone-600 underline underline-offset-2",
                       "hover:text-orange-700 disabled:opacity-50 disabled:cursor-not-allowed p-0 bg-transparent border-0 cursor-pointer",
@@ -1008,6 +1015,8 @@ export default function DashboardInternshipCard({ row, onWithdrawn }: Props) {
         currentBatchId={row.batchSnapshot?.batchId}
         onSwitched={() => onWithdrawn?.()}
       />
+
+      {picker}
     </>
   );
 }

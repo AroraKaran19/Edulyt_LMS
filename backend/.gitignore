@@ -55,3 +55,9 @@ Thumbs.db
 *.temp
 
 test-50mb-course.ts
+
+# Test suite (anchored to backend/test — not any nested "test" dir).
+# NOTE: this keeps the suite out of version control, so CI and other clones
+# will not have it. The files were tracked before the move, so `git rm -r
+# --cached test` is still needed to actually untrack them.
+/test/

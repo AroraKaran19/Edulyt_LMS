@@ -1,11 +1,12 @@
 import { AppError } from "../../middlewares/error.middleware";
 import { getConfiguredGatewayNames } from "./config";
 import { PaytmProvider } from "./paytm/provider";
+import { RazorpayProvider } from "./razorpay/provider";
 import type { GatewayName, PaymentProvider } from "./types";
 
 const PROVIDERS: Partial<Record<GatewayName, PaymentProvider>> = {
   paytm: new PaytmProvider(),
-  // razorpay: new RazorpayProvider(),  ← Phase 2
+  razorpay: new RazorpayProvider(),
 };
 
 /** Enabled AND actually configured (credentials present), in preference order. */

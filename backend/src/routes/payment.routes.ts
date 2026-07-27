@@ -4,6 +4,8 @@ import {
   verifyPaymentToken,
   paytmWebhookHandler,
   gatewayWebhookHandler,
+  listGateways,
+  verifyPaymentSignature,
 } from "../controllers/payment.controller";
 
 const router = Router();
@@ -21,6 +23,20 @@ router.get("/status/:orderId", getPaymentStatus);
  * @access  Public
  */
 router.get("/verify-token/:token", verifyPaymentToken);
+
+/**
+ * @route   GET /api/payment/gateways
+ * @desc    Active payment gateways for the checkout picker.
+ * @access  Public
+ */
+router.get("/gateways", listGateways);
+
+/**
+ * @route   POST /api/payment/verify/:orderId
+ * @desc    Settle an order from a client-side gateway signature.
+ * @access  Public (the signature authorizes it)
+ */
+router.post("/verify/:orderId", verifyPaymentSignature);
 
 // Back-compat: the Paytm dashboard points at this URL — do not remove.
 router.post("/paytm-webhook", paytmWebhookHandler);

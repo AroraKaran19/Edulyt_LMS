@@ -33,6 +33,8 @@ import { ENDPOINTS } from "@/constants/endpoints";
 import ApplyPathModal from "./ApplyPathModal";
 import SwitchBatchModal from "@/app/(pages)/dashboard/internships/components/SwitchBatchModal";
 import { getUpcomingBatch } from "@/lib/utils/internshipCohortDate";
+import { useCheckout } from "@/hooks/useCheckout";
+import type { CheckoutOrder } from "@/types/order";
 
 /** Learner may move a pre-exam registration to another cohort within 15 days
  *  of their batch's start (mirrors the server BATCH_SWITCH_GRACE_DAYS window). */
@@ -137,6 +139,9 @@ const InternshipHeader = ({ internship }: { internship: Internship }) => {
   const [applyModalOpen, setApplyModalOpen] = useState(false);
   const [switchModalOpen, setSwitchModalOpen] = useState(false);
   const [resumePayLoading, setResumePayLoading] = useState(false);
+  const { start, picker, isBusy } = useCheckout();
+  // `isBusy` covers order creation after a gateway is picked, once the picker closed.
+  const payBusy = resumePayLoading || isBusy;
   const { status: sessionStatus } = useSession();
   const router = useRouter();
   const pathname = usePathname();
@@ -239,25 +244,23 @@ const InternshipHeader = ({ internship }: { internship: Internship }) => {
       }
       setResumePayLoading(true);
       try {
-        const orderRes = await apiClient.post(
-          ENDPOINTS.orders.createInternshipSeat,
-          { internshipEnrollmentId: eid },
-        );
-        const order = orderRes.data?.data as
-          | { _id: string; freeOrder?: boolean; token?: string }
-          | undefined;
-        if (!order) throw new Error("Could not start payment");
-        if (order.freeOrder && order.token) {
-          window.location.href = `/payment/status/${order._id}?token=${order.token}`;
-          return;
-        }
-        window.location.href = `/paytm-redirect?orderId=${order._id}`;
+        await start(async (gateway) => {
+          const orderRes = await apiClient.post(
+            ENDPOINTS.orders.createInternshipSeat,
+            { internshipEnrollmentId: eid, gateway },
+          );
+          const order = orderRes.data?.data as CheckoutOrder | undefined;
+          if (!order) throw new Error("Could not start payment");
+          return order;
+        });
       } catch (e: unknown) {
         const msg =
           (e as { response?: { data?: { error?: { message?: string } } } })
             ?.response?.data?.error?.message ??
           (e instanceof Error ? e.message : "Could not start payment");
         toast.error(msg);
+      } finally {
+        // `start` returns when the picker opens, not when payment completes.
         setResumePayLoading(false);
       }
       return;
@@ -598,9 +601,7 @@ const InternshipHeader = ({ internship }: { internship: Internship }) => {
                 <OrangeButton
                   glow={false}
                   className="w-full"
-                  disabled={
-                    sessionLoading || checkingEnrollment || resumePayLoading
-                  }
+                  disabled={sessionLoading || checkingEnrollment || payBusy}
                   onClick={() => void handleApplyPrimaryClick()}
                   aria-label={
                     applyHint.kind === "replace"
@@ -618,7 +619,7 @@ const InternshipHeader = ({ internship }: { internship: Internship }) => {
                     ? "Loading…"
                     : checkingEnrollment
                       ? "Checking…"
-                      : resumePayLoading
+                      : payBusy
                         ? "Redirecting…"
                         : applyHint.kind === "replace"
                           ? applyHint.label
@@ -654,6 +655,7 @@ const InternshipHeader = ({ internship }: { internship: Internship }) => {
         currentBatchId={myEnrollment?.batchSnapshot?.batchId}
         onSwitched={() => window.location.reload()}
       />
+      {picker}
     </div>
   );
 };

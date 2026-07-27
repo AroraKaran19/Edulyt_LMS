@@ -68,9 +68,15 @@ export interface PaymentProvider {
   isConfigured(): boolean;
   initiatePayment(input: InitiatePaymentInput): Promise<InitiatePaymentResult>;
   fetchPaymentStatus(order: OrderDoc): Promise<GatewayPaymentResult>;
+  /**
+   * `rawBody` is the parsed body (Paytm checksums the parsed form object).
+   * `rawBodyBuffer` is the exact bytes Express received — Razorpay's HMAC is over
+   * those, and re-serializing the parsed body does not reproduce them.
+   */
   verifyWebhook(
     rawBody: unknown,
     headers: Record<string, string | undefined>,
+    rawBodyBuffer?: Buffer,
   ): Promise<WebhookVerifyResult>;
   /** Client-side signature confirmation. Razorpay implements it; Paytm omits it. */
   verifySignature?(

@@ -33,6 +33,8 @@ import {
 import { CATEGORY_SIBLING_PERK_ENABLED } from "@/lib/featureFlags";
 import YourCoursesStep from "./components/YourCoursesStep";
 import type { Category } from "@/types";
+import { useCheckout } from "@/hooks/useCheckout";
+import type { CheckoutOrder } from "@/types/order";
 
 // Primary category id of a course = first entry of its category array. Handles
 // both the id-only (string) and populated Category-object shapes.
@@ -527,6 +529,7 @@ const CartForm = ({
     return steps;
   });
   const [isCreatingOrder, setIsCreatingOrder] = useState(false);
+  const { start, picker } = useCheckout();
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -1406,20 +1409,18 @@ const CartForm = ({
                               // session so subsequent pages reading from
                               // useSession() see the new values without a
                               // reload. Best-effort — DB is source of truth.
-                              try {
-                                await updateSession?.({
-                                  firstName,
-                                  lastName,
-                                  email: formData.email,
-                                  phone: formData.phone,
-                                  collegeName: formData.collegeName,
-                                  college: formData.college || undefined,
-                                  degreeName: formData.degreeName,
-                                  fatherOccupation: formData.fatherOccupation,
-                                });
-                              } catch {
-                                /* session sync is best-effort */
-                              }
+                              // NOTE: we deliberately do NOT call updateSession()
+                              // here. It refreshes the NextAuth session, which
+                              // remounts this component and wipes its state —
+                              // including the gateway picker, which has to stay
+                              // open while the learner chooses. The old Paytm
+                              // code got away with it only because it navigated
+                              // away immediately. The write above is already
+                              // persisted (DB is source of truth), and every exit
+                              // from here is a full page load — Paytm redirect,
+                              // Razorpay → status page, or the free-order status
+                              // page — so the session is re-read server-side
+                              // regardless.
 
                               const orderData: any = {
                                 courseId: course._id,
@@ -1436,20 +1437,22 @@ const CartForm = ({
                                 orderData.useSuccessPoints = true;
                               }
 
-                              const response = await apiClient.post(
-                                "/orders",
-                                orderData,
-                              );
-                              const order = response.data.data;
-
-                              // If order is free (amount < ₹1), go directly to success page
-                              if (order.freeOrder && order.token) {
-                                window.location.href = `/payment/status/${order._id}?token=${order.token}`;
-                                return;
-                              }
-
-                              // Redirect to paytm-redirect page with order ID
-                              window.location.href = `/paytm-redirect?orderId=${order._id}`;
+                              // Resolves the gateway (picker when there's a
+                              // choice), creates the order with it, then opens
+                              // that gateway's checkout. The free-order branch
+                              // is handled inside useCheckout.
+                              await start(async (gateway) => {
+                                const response = await apiClient.post(
+                                  "/orders",
+                                  { ...orderData, gateway },
+                                );
+                                const order = response.data
+                                  .data as CheckoutOrder;
+                                if (!order?._id) {
+                                  throw new Error("Order creation failed");
+                                }
+                                return order;
+                              });
                             } catch (error: any) {
                               console.error("Error creating order:", error);
 
@@ -1528,6 +1531,7 @@ const CartForm = ({
           </OrangeButton>
         </div>
       </Modal>
+      {picker}
     </div>
   );
 };

@@ -34,6 +34,8 @@ import type { LearnerProgramDetail, LearnerTaskRow } from "@/types";
 import type { StudentLiveMeetingItem } from "@/types/internship-live-meeting";
 import useStudentInternshipLiveMeetings from "@/hooks/useStudentInternshipLiveMeetings";
 import { cn } from "@/lib/utils";
+import { useCheckout } from "@/hooks/useCheckout";
+import type { CheckoutOrder } from "@/types/order";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -147,6 +149,9 @@ function BuyInternshipSuccessPointsPanel({
   const [qty, setQty] = useState(suggested);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { start, picker, isBusy } = useCheckout();
+  // `isBusy` covers order creation after a gateway is picked, once the picker closed.
+  const busy = loading || isBusy;
 
   const safeQty = Math.min(
     MAX_SUCCESS_POINTS_PURCHASE,
@@ -158,26 +163,27 @@ function BuyInternshipSuccessPointsPanel({
     setLoading(true);
     setError(null);
     try {
-      const orderRes = await apiClient.post(ENDPOINTS.orders.createInternshipSuccessPoints, {
-        internshipEnrollmentId: enrollmentId,
-        quantity: safeQty,
+      await start(async (gateway) => {
+        const orderRes = await apiClient.post(
+          ENDPOINTS.orders.createInternshipSuccessPoints,
+          {
+            internshipEnrollmentId: enrollmentId,
+            quantity: safeQty,
+            gateway,
+          },
+        );
+        const order = orderRes.data?.data as CheckoutOrder | undefined;
+        if (!order?._id) throw new Error("Order creation failed");
+        return order;
       });
-      const order = orderRes.data?.data as
-        | { _id: string; freeOrder?: boolean; token?: string }
-        | undefined;
-      if (!order?._id) throw new Error("Order creation failed");
-
-      if (order.freeOrder && order.token) {
-        window.location.href = `/payment/status/${order._id}?token=${order.token}`;
-        return;
-      }
-      window.location.href = `/paytm-redirect?orderId=${order._id}`;
     } catch (e: unknown) {
       const msg =
         (e as { response?: { data?: { error?: { message?: string } } } })
           ?.response?.data?.error?.message ??
         (e instanceof Error ? e.message : "Something went wrong");
       setError(msg);
+    } finally {
+      // `start` returns when the picker opens, not when payment completes.
       setLoading(false);
     }
   };
@@ -224,23 +230,25 @@ function BuyInternshipSuccessPointsPanel({
         <button
           type="button"
           onClick={() => void handlePay()}
-          disabled={loading}
+          disabled={busy}
           className={cn(
             "ml-auto inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition",
             "bg-stone-900 text-amber-100 hover:bg-stone-800 disabled:opacity-60 disabled:cursor-not-allowed",
           )}
         >
-          {loading ? (
+          {busy ? (
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
           ) : (
             <Sparkles className="w-3.5 h-3.5" />
           )}
-          {loading ? "Please wait…" : "Pay with Paytm"}
+          {/* Gateway-neutral: the learner picks the gateway after this click. */}
+          {busy ? "Please wait…" : "Pay now"}
         </button>
       </div>
       {error ? (
         <p className="text-[11px] text-red-600 font-medium">{error}</p>
       ) : null}
+      {picker}
     </div>
   );
 }

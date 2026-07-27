@@ -296,6 +296,14 @@ export const ENDPOINTS = {
     delete: "/orders",
   },
 
+  // Payment Gateway Routes
+  payments: {
+    /** GET — gateways that are enabled AND configured, in preference order. */
+    gateways: "/payment/gateways",
+    /** POST — settle an order from a client-side gateway signature. */
+    verify: (orderId: string) => `/payment/verify/${encodeURIComponent(orderId)}`,
+  },
+
   // FAQ Routes
   faqs: {
     // Public Routes

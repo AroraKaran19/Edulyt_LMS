@@ -505,9 +505,14 @@ export const downloadImageAndUploadToS3 = async (
     const buffer = Buffer.from(response.data);
     if (buffer.length === 0) return null;
 
+    // axios types this as string | number | boolean | string[] | AxiosHeaders,
+    // so narrow to string before parsing rather than assuming.
+    const rawContentType = response.headers["content-type"];
     let contentType =
-      response.headers["content-type"]?.split(";")[0]?.trim().toLowerCase() ||
-      "";
+      (typeof rawContentType === "string" ? rawContentType : "")
+        .split(";")[0]
+        ?.trim()
+        .toLowerCase() || "";
     if (!IMAGE_CONTENT_TYPES.includes(contentType)) {
       // Try to infer from magic bytes
       if (buffer[0] === 0xff && buffer[1] === 0xd8) contentType = "image/jpeg";

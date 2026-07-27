@@ -40,6 +40,11 @@ const toLegacyOrderResponse = (result: CheckoutSession) => {
     _id: result.orderId,
     gateway: result.gateway,
     token: result.clientToken,
+    // Razorpay's checkout needs both of these; Paytm's ignores them.
+    gatewayOrderId: result.gatewayOrderId,
+    keyId: (result.extra as { keyId?: string } | undefined)?.keyId,
+    amount: result.amount,
+    currency: result.currency,
   };
 };
 

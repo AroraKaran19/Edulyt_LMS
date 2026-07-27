@@ -33,6 +33,8 @@ import {
   writeEnrollDraftDoc,
 } from "./enrollDraftStorage";
 import { EXPERIENCE_LEVELS } from "@/lib/constants/profileOptions";
+import { useCheckout } from "@/hooks/useCheckout";
+import type { CheckoutOrder } from "@/types/order";
 
 // Custom WhatsApp SVG Icon
 const WhatsAppIcon = ({ className }: { className?: string }) => (
@@ -435,6 +437,8 @@ const EnrollForm = ({ preview }: { preview: InternshipEnrollPreview }) => {
     label: formatBatchLabel(b),
   }));
 
+  const { start, picker } = useCheckout();
+
   const {
     register,
     handleSubmit,
@@ -626,24 +630,32 @@ const EnrollForm = ({ preview }: { preview: InternshipEnrollPreview }) => {
 
       // Keep the active NextAuth session in sync so other pages that read
       // from `useSession()` see the freshly-saved values without a reload.
-      try {
-        await updateSession?.({
-          firstName,
-          lastName,
-          email: data.email,
-          phone: data.phone,
-          dob: data.dob.toISOString(),
-          gender: data.gender,
-          collegeName: data.university,
-          college: collegeId || undefined,
-          degreeName: data.courseName,
-          experienceLevel: data.experience,
-          ...(Number.isFinite(passingYearNum)
-            ? { passingYear: passingYearNum }
-            : {}),
-        });
-      } catch {
-        // Session sync is best-effort — DB is the source of truth.
+      //
+      // Skipped on the paid-seat flow: updateSession() refreshes the session,
+      // which remounts this component and destroys the gateway picker's state
+      // while the learner is still choosing. That path exits via a full page
+      // load anyway (Paytm redirect, or Razorpay → status page), so the session
+      // is re-read server-side regardless. The write above is already persisted.
+      if (!isSeatFlow) {
+        try {
+          await updateSession?.({
+            firstName,
+            lastName,
+            email: data.email,
+            phone: data.phone,
+            dob: data.dob.toISOString(),
+            gender: data.gender,
+            collegeName: data.university,
+            college: collegeId || undefined,
+            degreeName: data.courseName,
+            experienceLevel: data.experience,
+            ...(Number.isFinite(passingYearNum)
+              ? { passingYear: passingYearNum }
+              : {}),
+          });
+        } catch {
+          // Session sync is best-effort — DB is the source of truth.
+        }
       }
 
       const applicationAnswers = buildApplicationAnswersPayload(data);
@@ -678,23 +690,17 @@ const EnrollForm = ({ preview }: { preview: InternshipEnrollPreview }) => {
           | undefined;
         if (!enrollmentId) throw new Error("Enrollment creation failed");
 
-        const orderRes = await apiClient.post(
-          ENDPOINTS.orders.createInternshipSeat,
-          { internshipEnrollmentId: enrollmentId },
-        );
-        const order = orderRes.data?.data as
-          | { _id: string; freeOrder?: boolean; token?: string }
-          | undefined;
-        if (!order) throw new Error("Order creation failed");
+        await start(async (gateway) => {
+          const orderRes = await apiClient.post(
+            ENDPOINTS.orders.createInternshipSeat,
+            { internshipEnrollmentId: enrollmentId, gateway },
+          );
+          const order = orderRes.data?.data as CheckoutOrder | undefined;
+          if (!order) throw new Error("Order creation failed");
 
-        clearEnrollDraft(slug);
-
-        if (order.freeOrder && order.token) {
-          window.location.href = `/payment/status/${order._id}?token=${order.token}`;
-          return;
-        }
-
-        window.location.href = `/paytm-redirect?orderId=${order._id}`;
+          clearEnrollDraft(slug);
+          return order;
+        });
       } else {
         await apiClient.post(ENDPOINTS.internshipEnrollments.create, {
           internshipId: preview.internship._id,
@@ -1604,6 +1610,7 @@ const EnrollForm = ({ preview }: { preview: InternshipEnrollPreview }) => {
         onConfirmEntrancePath={handlePathModalConfirm}
         onSwitchToPaidPath={handleEntranceSwitchToPaid}
       />
+      {picker}
     </div>
   );
 };

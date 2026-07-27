@@ -52,7 +52,8 @@
     "scripts:reset-premature-verdicts": "ts-node src/scripts/reset-premature-internship-verdicts.ts",
     "scripts:reset-premature-verdicts:apply": "ts-node src/scripts/reset-premature-internship-verdicts.ts --apply",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "typecheck:test": "tsc --noEmit -p tsconfig.test.json"
   },
   "keywords": [
     "airkrit",
@@ -88,6 +89,7 @@
     "paytmchecksum": "^1.5.1",
     "pizzip": "^3.2.0",
     "qrcode": "^1.5.4",
+    "razorpay": "^2.9.8",
     "serve-favicon": "^2.5.1",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",

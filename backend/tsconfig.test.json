@@ -1,0 +1,19 @@
+{
+  // Tests live outside `src`, so they can't join the main config — its
+  // `rootDir` is `src` and TS rejects any file above it. This config drops
+  // rootDir (nothing is emitted anyway) and type-checks src + test together.
+  //   npm run typecheck:test
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "noEmit": true
+  },
+  "include": [
+    "src/**/*",
+    "test/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
+}

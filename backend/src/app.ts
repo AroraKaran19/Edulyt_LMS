@@ -60,7 +60,18 @@ app.use(
     credentials: true,
   }),
 );
-app.use(express.json({ limit: "100mb" }));
+app.use(
+  express.json({
+    limit: "100mb",
+    // Razorpay signs the exact bytes it sends; the parsed body cannot be
+    // re-serialized back into them (key order, whitespace, unicode escaping).
+    // This keeps a reference to the buffer Express already allocated, so it
+    // costs no additional memory.
+    verify: (req, _res, buf) => {
+      (req as express.Request & { rawBody?: Buffer }).rawBody = buf;
+    },
+  }),
+);
 app.use(express.urlencoded({ extended: true, limit: "100mb" }));
 app.use(cookieParser());
 
