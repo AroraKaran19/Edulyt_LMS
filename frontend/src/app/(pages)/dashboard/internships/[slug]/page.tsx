@@ -335,7 +335,7 @@ function TaskCard({ task, slug }: { task: LearnerTaskRow; slug: string }) {
             {task.isClamped ? (
               <span className="text-amber-700">
                 {" "}
-                — last day of your program
+                - last day of your program
               </span>
             ) : null}
           </span>
