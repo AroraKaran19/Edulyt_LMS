@@ -35,6 +35,8 @@ const InternshipSection = () => {
     const params = new URLSearchParams();
     params.append("page", page.toString());
     params.append("limit", "10");
+    // Closed programs stay browsable here; the card blocks registration.
+    params.append("includeClosed", "true");
 
     if (debouncedSearch) {
       params.append("search", debouncedSearch);

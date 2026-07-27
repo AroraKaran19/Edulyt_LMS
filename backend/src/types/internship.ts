@@ -48,6 +48,8 @@ export interface InternshipPublicListing {
   discount?: CourseDiscount | null;
   /** Legacy root plan on old documents. */
   plan?: { price?: number; discount?: Discount } | null;
+  /** `false` = still listed, but closed for new registrations. */
+  isActive?: boolean;
 }
 
 export interface InternshipBatches {

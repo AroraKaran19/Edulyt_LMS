@@ -64,9 +64,11 @@ const Navbar = () => {
 
     (async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/internships?page=1&limit=1`, {
-          signal: controller.signal,
-        });
+        // Counts the same set the dropdown lists, closed programs included.
+        const res = await fetch(
+          `${API_BASE_URL}/internships?page=1&limit=1&includeClosed=true`,
+          { signal: controller.signal },
+        );
 
         if (!res.ok) return;
 

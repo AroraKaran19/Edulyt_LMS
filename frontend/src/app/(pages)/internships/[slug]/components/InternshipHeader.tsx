@@ -184,6 +184,11 @@ const InternshipHeader = ({ internship }: { internship: Internship }) => {
     [myEnrollment, internship.slug],
   );
 
+  // Inactive internship: the page stays public, but nobody new can register.
+  // Learners who already hold an enrollment keep their existing action.
+  const internshipClosed = internship.isActive === false;
+  const enrollmentsClosed = internshipClosed && applyHint.kind === "apply";
+
   // Show "Register for another cohort" only for a pre-exam registration still
   // inside its switch window. The server re-validates on submit.
   const canSwitchBatch = useMemo(() => {
@@ -223,7 +228,7 @@ const InternshipHeader = ({ internship }: { internship: Internship }) => {
   const sessionLoading = sessionStatus === "loading";
 
   const handleApplyPrimaryClick = async () => {
-    if (sessionLoading) return;
+    if (sessionLoading || enrollmentsClosed) return;
     if (sessionStatus !== "authenticated") {
       const slugPath = `/internships/${encodeURIComponent(internship.slug)}`;
       const returnTo =
@@ -474,30 +479,35 @@ const InternshipHeader = ({ internship }: { internship: Internship }) => {
             <div className="bg-white shadow-[0_0_10px_2px_rgba(0,0,0,0.1)] w-full rounded-2xl px-5 py-6 overflow-auto flex flex-col">
               <table className="w-full [&_td]:p-2 lg:[&_td]:p-4">
                 <tbody>
-                  <tr className="border-b border-gray-200">
-                    <td className="text-xs lg:text-sm font-medium">
-                      Application Last Date
-                    </td>
-                    <td className="text-right">
-                      <p className="inline-block p-1.5 px-2 lg:px-3 rounded-full bg-black/10 text-xs lg:text-sm font-normal">
-                        {formatCohortDate(
-                          cohortForKeyDates?.applicationLastDate,
-                        )}
-                      </p>
-                    </td>
-                  </tr>
-                  <tr className="border-b border-gray-200">
-                    <td className="text-xs lg:text-sm font-medium">
-                      Internship Start Date
-                    </td>
-                    <td className="text-right">
-                      <p className="inline-block p-1.5 px-2 lg:px-3 rounded-full bg-black/10 text-xs lg:text-sm font-normal">
-                        {formatCohortDate(
-                          cohortForKeyDates?.internshipStartDate,
-                        )}
-                      </p>
-                    </td>
-                  </tr>
+                  {/* Closed programs never advertise cohort dates. */}
+                  {!internshipClosed && (
+                    <>
+                      <tr className="border-b border-gray-200">
+                        <td className="text-xs lg:text-sm font-medium">
+                          Application Last Date
+                        </td>
+                        <td className="text-right">
+                          <p className="inline-block p-1.5 px-2 lg:px-3 rounded-full bg-black/10 text-xs lg:text-sm font-normal">
+                            {formatCohortDate(
+                              cohortForKeyDates?.applicationLastDate,
+                            )}
+                          </p>
+                        </td>
+                      </tr>
+                      <tr className="border-b border-gray-200">
+                        <td className="text-xs lg:text-sm font-medium">
+                          Internship Start Date
+                        </td>
+                        <td className="text-right">
+                          <p className="inline-block p-1.5 px-2 lg:px-3 rounded-full bg-black/10 text-xs lg:text-sm font-normal">
+                            {formatCohortDate(
+                              cohortForKeyDates?.internshipStartDate,
+                            )}
+                          </p>
+                        </td>
+                      </tr>
+                    </>
+                  )}
                   {internship.whatsappGroupLink && (
                     <tr className="border-b border-gray-200">
                       <td className="text-xs lg:text-sm font-medium">
@@ -533,16 +543,18 @@ const InternshipHeader = ({ internship }: { internship: Internship }) => {
                       </div>
                     </td>
                   </tr>
-                  <tr className="border-b border-gray-200">
-                    <td className="text-xs lg:text-sm font-medium">
-                      Upcoming batch
-                    </td>
-                    <td className="text-right">
-                      <div className="inline-block p-1.5 px-3 lg:px-4 capitalize rounded-full bg-black/10 text-xs lg:text-sm font-normal">
-                        {formatCohortDate(upcomingBatch?.internshipStartDate)}
-                      </div>
-                    </td>
-                  </tr>
+                  {!internshipClosed && (
+                    <tr className="border-b border-gray-200">
+                      <td className="text-xs lg:text-sm font-medium">
+                        Upcoming batch
+                      </td>
+                      <td className="text-right">
+                        <div className="inline-block p-1.5 px-3 lg:px-4 capitalize rounded-full bg-black/10 text-xs lg:text-sm font-normal">
+                          {formatCohortDate(upcomingBatch?.internshipStartDate)}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
                   {/* <tr className="border-b border-gray-200">
                     <td className="text-xs lg:text-sm font-medium">Rating</td>
                     <td className="text-right">
@@ -598,6 +610,14 @@ const InternshipHeader = ({ internship }: { internship: Internship }) => {
                     Call us: +91 89292 52575
                   </span>
                 </WhiteButton>
+                {enrollmentsClosed ? (
+                  <div
+                    role="status"
+                    className="flex w-full items-center justify-center rounded-lg border border-stone-300 bg-stone-100 px-4 py-3 text-center text-sm font-bold text-stone-600"
+                  >
+                    Enrollments are closed!
+                  </div>
+                ) : (
                 <OrangeButton
                   glow={false}
                   className="w-full"
@@ -627,6 +647,7 @@ const InternshipHeader = ({ internship }: { internship: Internship }) => {
                             ? "Complete payment"
                             : "Apply Now"}
                 </OrangeButton>
+                )}
               </div>
               {canSwitchBatch && (
                 <button

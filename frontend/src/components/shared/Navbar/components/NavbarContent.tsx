@@ -176,6 +176,8 @@ const NavbarContent = ({
     const params = new URLSearchParams();
     params.append("page", internshipPage.toString());
     params.append("limit", "12");
+    // Closed programs stay listed here too, flagged as not accepting registrations.
+    params.append("includeClosed", "true");
     return `${ENDPOINTS.internships.all}?${params.toString()}`;
   }, [navLink?.label, internshipPage]);
 
@@ -562,7 +564,9 @@ const NavbarContent = ({
         </div>
         <div className="w-full h-full">
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-10">
-            {allInternships.map((item) => (
+            {allInternships.map((item) => {
+              const closed = item.isActive === false;
+              return (
               <Link
                 key={item._id ?? item.slug}
                 href={`/internships/${item.slug}`}
@@ -582,15 +586,24 @@ const NavbarContent = ({
                     alt={item.title || "Internship"}
                     width={100}
                     height={100}
-                    className="w-full h-full rounded-xl object-cover"
+                    className={cn(
+                      "w-full h-full rounded-xl object-cover",
+                      closed && "grayscale",
+                    )}
                     draggable={false}
                   />
                 </div>
                 <div className="w-2/3 h-full flex flex-col gap-1 py-2">
                   <h3 className="text-sm font-bold line-clamp-2">{item.title}</h3>
+                  {closed && (
+                    <span className="text-[11px] font-bold text-stone-500">
+                      Enrollments are closed!
+                    </span>
+                  )}
                 </div>
               </Link>
-            ))}
+              );
+            })}
           </div>
 
           {isLoadingMoreInternships && (

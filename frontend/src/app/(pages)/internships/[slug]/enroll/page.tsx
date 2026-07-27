@@ -84,7 +84,11 @@ const EnrollPage = async ({
       )}
     >
       <div className="w-full max-w-4xl lg:max-w-7xl mx-auto">
-        {preview.batches.length === 0 ? (
+        {preview.enrollmentsClosed ? (
+          <p className="text-center text-stone-700 text-base font-bold max-w-md mx-auto leading-relaxed">
+            Enrollments are closed!
+          </p>
+        ) : preview.batches.length === 0 ? (
           <p className="text-center text-stone-600 text-sm max-w-md mx-auto leading-relaxed">
             There are no open cohorts for this program right now. Batches may be
             full, inactive, or past the application date — please try again

@@ -42,6 +42,8 @@ export interface InternshipPublicListing {
   }[];
   discount?: CourseDiscount | null;
   plan?: { price?: number; discount?: Discount } | null;
+  /** `false` = still listed, but closed for new registrations. */
+  isActive?: boolean;
 }
 
 export interface InternshipBatches {
@@ -282,4 +284,6 @@ export interface InternshipEnrollPreview {
     whatsappGroupLink?: string;
   };
   batches: InternshipEnrollPreviewBatch[];
+  /** Internship is inactive: no cohort is offered and registration is refused. */
+  enrollmentsClosed?: boolean;
 }

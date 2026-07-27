@@ -20,12 +20,14 @@ import {
 
 /**
  * @route   GET /api/internships
- * @desc    List active internships (public, paginated + search + audience filter)
+ * @desc    List active internships (public, paginated + search + audience filter).
+ *          `includeClosed=true` also lists inactive internships (browse-only,
+ *          registration closed) for the public internships page.
  * @access  Public
  */
 export const listInternshipsPublic = asyncHandler(
   async (req: Request, res: Response) => {
-    const { page = 1, limit = 20, search, audience } = req.query;
+    const { page = 1, limit = 20, search, audience, includeClosed } = req.query;
     const p = Number(page);
     const l = Number(limit);
     if (p < 1 || l < 1) {
@@ -39,7 +41,8 @@ export const listInternshipsPublic = asyncHandler(
       p,
       l,
       typeof search === "string" ? search : undefined,
-      aud
+      aud,
+      includeClosed === "true"
     );
     sendSuccessResponse(
       res,

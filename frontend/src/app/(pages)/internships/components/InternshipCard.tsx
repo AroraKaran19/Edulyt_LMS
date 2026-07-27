@@ -71,6 +71,9 @@ const InternshipCard = ({
     (internship as Internship & { featured?: boolean }).featured,
   );
 
+  // Inactive internship: still browsable, but no longer taking registrations.
+  const enrollmentsClosed = internship.isActive === false;
+
   return (
     <div
       className={cn(
@@ -86,13 +89,21 @@ const InternshipCard = ({
           alt={internship.title}
           width={500}
           height={500}
-          className="rounded-2xl w-full h-full object-fill max-h-[150px] md:max-h-[457px] opacity-90"
+          className={cn(
+            "rounded-2xl w-full h-full object-fill max-h-[150px] md:max-h-[457px] opacity-90",
+            enrollmentsClosed && "grayscale",
+          )}
           draggable={false}
           loading="eager"
           unoptimized
           priority
         />
-        {hasAnyDiscount && (
+        {enrollmentsClosed && (
+          <span className="absolute top-2 left-2 rounded-full bg-stone-900/85 px-3 py-1 text-xs font-bold text-white">
+            Enrollments Closed
+          </span>
+        )}
+        {hasAnyDiscount && !enrollmentsClosed && (
           <DiscountBadge
             label={discountInfo.discountLabel}
             className="absolute top-2 right-2"
@@ -110,10 +121,12 @@ const InternshipCard = ({
         <p className="text-2xl font-bold mt-2 font-coolvetica select-none text-balance wrap-break-words line-clamp-2">
           {internship.title}
         </p>
-        <InternshipBatchCountContainer
-          batches={internship.batches ?? []}
-          className="mt-2"
-        />
+        {!enrollmentsClosed && (
+          <InternshipBatchCountContainer
+            batches={internship.batches ?? []}
+            className="mt-2"
+          />
+        )}
         {/* <RatingContainer
           reviewCount={internship?.analytics?.totalReviews || 0}
           totalRating={internship.analytics?.totalRatings || 0}
@@ -142,7 +155,12 @@ const InternshipCard = ({
         </div>
         <div className="price mt-auto flex w-full flex-wrap items-center justify-between gap-x-3 gap-y-2 select-none pt-1">
           <div className="min-w-0 flex-1 basis-[40%] pr-2 sm:basis-auto">
-            {batchStartLabel && batchStartDateTimeIso ? (
+            {/* Closed programs never show cohort dates. */}
+            {enrollmentsClosed ? (
+              <p className="truncate text-[13px] leading-snug font-bold text-stone-600 sm:text-sm">
+                Enrollments are closed!
+              </p>
+            ) : batchStartLabel && batchStartDateTimeIso ? (
               <p className="truncate text-[13px] leading-snug text-text-secondary sm:text-sm">
                 <span className="font-medium text-text-secondary">
                   Upcoming cohort

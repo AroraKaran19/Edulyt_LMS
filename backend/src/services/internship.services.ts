@@ -150,6 +150,7 @@ function mapLeanDocToPublicListing(
         ? (doc.discount as CourseDiscount)
         : undefined,
     plan: planLegacy,
+    isActive: doc.isActive !== false,
   };
 }
 
@@ -366,18 +367,22 @@ const totalPages = (total: number, limit: number) =>
   Math.max(0, Math.ceil(total / limit));
 
 /**
- * Public list: active internships only, paginated + search.
+ * Public list: active internships, paginated + search.
+ * `includeClosed` also returns inactive internships (browsable, but closed for
+ * registration) and pushes them below the open ones. Off by default so the
+ * pickers that enroll a learner straight away never offer a closed program.
  */
 export const listInternshipsPublicService = async (
   page: number,
   limit: number,
   search?: string,
   audience?: "college-students" | "professionals",
+  includeClosed = false,
 ): Promise<ListPublicInternshipsResult> => {
   const skip = (page - 1) * limit;
   const searchFilter = buildSearchFilter(search);
   const filters: mongoose.FilterQuery<Internship> = {
-    isActive: true,
+    ...(includeClosed ? {} : { isActive: true }),
     ...searchFilter,
   };
   if (audience) {
@@ -395,8 +400,9 @@ export const listInternshipsPublicService = async (
       plan: 1,
       discount: 1,
       mentors: 1,
+      isActive: 1,
     })
-    .sort({ createdAt: -1 })
+    .sort(includeClosed ? { isActive: -1, createdAt: -1 } : { createdAt: -1 })
     .skip(skip)
     .limit(limit)
     .populate(
@@ -608,11 +614,13 @@ export const getInternshipByIdAdminService = async (
 
 /**
  * Get internship by slug (public, with populated relations).
+ * Inactive internships are still served — the page renders read-only with
+ * enrollment closed (`isActive: false` on the payload).
  */
 export const getInternshipBySlugService = async (
   slug: string,
 ): Promise<InternshipResponse | null> => {
-  const doc = await InternshipModel.findOne({ slug, isActive: true })
+  const doc = await InternshipModel.findOne({ slug })
     .populate("testimonials", "name currentRole feedback verified")
     .populate("partnerColleges", "name location website image")
     .populate("faqs", "question answer")
@@ -654,6 +662,8 @@ export type InternshipEnrollPreview = {
     whatsappGroupLink?: string;
   };
   batches: InternshipEnrollPreviewBatch[];
+  /** Internship is inactive: no cohort is offered, registration is refused. */
+  enrollmentsClosed: boolean;
 };
 
 const toIso = (d: unknown): string => {
@@ -669,12 +679,16 @@ const toIso = (d: unknown): string => {
 export const getInternshipEnrollPreviewService = async (
   slug: string,
 ): Promise<InternshipEnrollPreview | null> => {
-  const doc = await InternshipModel.findOne({ slug, isActive: true })
-    .select("title slug batches discount whatsappGroupLink")
+  const doc = await InternshipModel.findOne({ slug })
+    .select("title slug batches discount whatsappGroupLink isActive")
     .lean();
   if (!doc || doc._id == null) return null;
 
-  const batchesRaw = Array.isArray(doc.batches) ? doc.batches : [];
+  const enrollmentsClosed = (doc as { isActive?: boolean }).isActive === false;
+  // Closed program: still resolvable (the page explains itself), but no cohort
+  // is offered — the enrollment endpoints reject it server-side anyway.
+  const batchesRaw =
+    !enrollmentsClosed && Array.isArray(doc.batches) ? doc.batches : [];
   const examIdSet = new Set<string>();
   for (const b of batchesRaw) {
     const br = b as Record<string, unknown>;
@@ -792,6 +806,7 @@ export const getInternshipEnrollPreviewService = async (
           : "",
     },
     batches,
+    enrollmentsClosed,
   };
 };
 
