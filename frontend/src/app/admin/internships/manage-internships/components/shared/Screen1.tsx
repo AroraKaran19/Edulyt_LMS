@@ -45,6 +45,9 @@ const Screen1 = () => {
   const thumbnailValue = watch("thumbnail");
   const thumbnailS3Key = watch("thumbnailS3Key");
   const thumbnailSource = watch("thumbnailSource");
+  const enquiryImageValue = watch("enquiryImage");
+  const enquiryImageS3Key = watch("enquiryImageS3Key");
+  const enquiryImageSource = watch("enquiryImageSource");
   const brochureValue = watch("brochure");
   const brochureS3Key = watch("brochureS3Key");
   const brochureSource = watch("brochureSource");
@@ -75,6 +78,9 @@ const Screen1 = () => {
   const [thumbnailFolderName, setThumbnailFolderName] = useState(
     "internships/new_internship/thumbnail",
   );
+  const [enquiryImageFolderName, setEnquiryImageFolderName] = useState(
+    "internships/new_internship/enquiry_image",
+  );
   const [brochureFolderName, setBrochureFolderName] = useState(
     "internships/new_internship/brochure",
   );
@@ -86,6 +92,7 @@ const Screen1 = () => {
     if (titleValue) {
       const baseFolder = titleValue.replace(/[^a-zA-Z0-9]/g, "_").toLowerCase();
       setThumbnailFolderName(`internships/${baseFolder}/thumbnail`);
+      setEnquiryImageFolderName(`internships/${baseFolder}/enquiry_image`);
       setBrochureFolderName(`internships/${baseFolder}/brochure`);
       setJobDescriptionFolderName(`internships/${baseFolder}/job_description`);
     }
@@ -149,6 +156,69 @@ const Screen1 = () => {
     setValue("thumbnail", "", { shouldDirty: true, shouldTouch: true });
     setValue("thumbnailS3Key", "", { shouldDirty: true, shouldTouch: true });
     setValue("thumbnailSource", "url", {
+      shouldDirty: true,
+      shouldTouch: true,
+    });
+  };
+
+  const handleEnquiryImageUpload = async (file: File, folderName: string) => {
+    try {
+      const result = await uploadCourseThumbnail(file, folderName);
+      if (result.success && result.data) {
+        setValue("enquiryImage", result.data.url, {
+          shouldDirty: true,
+          shouldTouch: true,
+        });
+        setValue("enquiryImageS3Key", result.data.s3Key, {
+          shouldDirty: true,
+          shouldTouch: true,
+        });
+        setValue("enquiryImageSource", "upload", {
+          shouldDirty: true,
+          shouldTouch: true,
+        });
+        return result.data.url;
+      }
+      throw new Error(result.error || "Upload failed");
+    } catch (error) {
+      console.error("Failed to upload enquiry image:", error);
+      setValue("enquiryImage", "", { shouldDirty: true, shouldTouch: true });
+      setValue("enquiryImageS3Key", "", {
+        shouldDirty: true,
+        shouldTouch: true,
+      });
+      setValue("enquiryImageSource", "url", {
+        shouldDirty: true,
+        shouldTouch: true,
+      });
+      throw error;
+    }
+  };
+
+  const handleEnquiryImageUrlChange = async (url: string) => {
+    if (enquiryImageS3Key && enquiryImageSource === "upload") {
+      try {
+        await deleteFile(enquiryImageS3Key);
+      } catch (error) {
+        console.error("Failed to delete old enquiry image from S3:", error);
+      }
+    }
+
+    setValue("enquiryImage", url, { shouldDirty: true, shouldTouch: true });
+    setValue("enquiryImageSource", "url", {
+      shouldDirty: true,
+      shouldTouch: true,
+    });
+    setValue("enquiryImageS3Key", "", {
+      shouldDirty: true,
+      shouldTouch: true,
+    });
+  };
+
+  const handleEnquiryImageRemove = () => {
+    setValue("enquiryImage", "", { shouldDirty: true, shouldTouch: true });
+    setValue("enquiryImageS3Key", "", { shouldDirty: true, shouldTouch: true });
+    setValue("enquiryImageSource", "url", {
       shouldDirty: true,
       shouldTouch: true,
     });
@@ -622,6 +692,46 @@ const Screen1 = () => {
                 error={errors.thumbnail?.message || uploadError}
                 isUploading={isUploading}
                 required={true}
+              />
+            )}
+          />
+        </div>
+        <div>
+          <Controller
+            name="enquiryImage"
+            control={control}
+            defaultValue=""
+            rules={{
+              validate: (value) => {
+                if (!value) return true;
+                if (typeof value === "string" && value.startsWith("http")) {
+                  try {
+                    new URL(value);
+                    return true;
+                  } catch {
+                    return "Please enter a valid URL";
+                  }
+                }
+                return true;
+              },
+            }}
+            render={() => (
+              <UploadMediaContainer
+                title="Enquiry Form Image (Optional)"
+                description="Shown beside the enquiry form on the internship detail page. Leave empty to use the default image."
+                type="image"
+                folderName={enquiryImageFolderName}
+                mediaUrl={enquiryImageValue}
+                mediaSource={enquiryImageSource}
+                s3Key={enquiryImageS3Key}
+                onFileUpload={handleEnquiryImageUpload}
+                onFileRemove={handleEnquiryImageRemove}
+                onUrlSubmit={handleEnquiryImageUrlChange}
+                allowUrlInput
+                maxSize={5}
+                acceptedFormats={[".jpg", ".jpeg", ".png", ".webp"]}
+                error={errors.enquiryImage?.message}
+                isUploading={isUploading}
               />
             )}
           />

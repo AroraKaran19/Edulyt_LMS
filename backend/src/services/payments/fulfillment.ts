@@ -9,6 +9,9 @@ import {
 } from "../../models";
 import { InternshipModel } from "../../models/internship.schema";
 import { InternshipEnrollmentModel } from "../../models/internshipEnrollment.schema";
+import { CourseInternshipModel } from "../../models/courseInternship.schema";
+import { CourseInternshipEnrollmentModel } from "../../models/courseInternshipEnrollment.schema";
+import { computeProgramEndDate } from "../../lib/internshipProgramWindow";
 import {
   tryAwardInternshipRegistrationPoints,
   tryAwardPurchaseSuccessPoints,
@@ -230,6 +233,83 @@ export const createInternshipSuccessPointsAfterPayment = async (order: any) => {
   return InternshipEnrollmentModel.findById(enrollmentId);
 };
 
+/**
+ * Creates the learner's course-internship enrollment after a paid course order
+ * that included the add-on.
+ *
+ * Never throws. Losing a course someone paid for because an add-on failed is
+ * the worse outcome, so failures are logged with the order id for admin retry.
+ *
+ * Idempotency comes from the unique index on `orderId`: a replayed webhook
+ * loses the race with a duplicate-key error, which is treated as "already done"
+ * rather than as a failure.
+ */
+const ensureCourseInternshipEnrollment = async (order: any): Promise<void> => {
+  const programId = order?.courseInternshipProgramId;
+  const months = Number(order?.courseInternshipMonths);
+  if (!programId || !Number.isInteger(months) || months < 1) return;
+
+  try {
+    const existing = await CourseInternshipEnrollmentModel.findOne({
+      orderId: order._id,
+    })
+      .select("_id")
+      .lean();
+    if (existing) return;
+
+    const [program, course] = await Promise.all([
+      CourseInternshipModel.findById(programId)
+        .select("title offerLetterDesignation")
+        .lean(),
+      CourseModel.findById(order.courseId).select("title").lean(),
+    ]);
+
+    if (!program) {
+      console.error(
+        `[CourseInternship] Program ${programId} missing for order ${order._id}; enrollment not created`,
+      );
+      return;
+    }
+
+    // The learner's window starts now: this runs from applyPaymentResult on
+    // success, so "now" IS the payment-confirmation instant. (Orders carry no
+    // paymentConfirmedAt field to read instead.) The end date is stamped once
+    // here so a later change to the course's offer never moves it.
+    const startDate = new Date();
+    const endDate = computeProgramEndDate(startDate, months);
+
+    await CourseInternshipEnrollmentModel.create({
+      user: order.userId,
+      courseInternship: programId,
+      course: order.courseId,
+      orderId: order._id,
+      programSnapshot: {
+        title: (program as { title?: string }).title ?? "",
+        offerLetterDesignation:
+          (program as { offerLetterDesignation?: string })
+            .offerLetterDesignation ?? "",
+      },
+      courseSnapshot: { title: (course as { title?: string })?.title ?? "" },
+      startDate,
+      durationMonths: months,
+      endDate,
+      status: "active",
+    });
+
+    console.log(
+      `[CourseInternship] Enrolled user ${order.userId} in program ${programId} for ${months} month(s) from order ${order._id}`,
+    );
+  } catch (err) {
+    // A concurrent webhook won the race — the enrollment exists, nothing to do.
+    if ((err as { code?: number })?.code === 11000) return;
+
+    console.error(
+      `[CourseInternship] Failed to create enrollment for order ${order?._id}. The course enrollment stands; create this one from the admin screen.`,
+      err,
+    );
+  }
+};
+
 // Create enrollment after successful payment
 export const createEnrollmentAfterPayment = async (order: any) => {
   try {
@@ -346,6 +426,8 @@ export const createEnrollmentAfterPayment = async (order: any) => {
       } catch (grantErr) {
         console.error("Category sibling enrollment grant (retry) failed:", grantErr);
       }
+
+      await ensureCourseInternshipEnrollment(order);
 
       return existingEnrollment;
     }
@@ -539,6 +621,8 @@ export const createEnrollmentAfterPayment = async (order: any) => {
     } catch (grantErr) {
       console.error("Category sibling enrollment grant failed:", grantErr);
     }
+
+    await ensureCourseInternshipEnrollment(order);
 
     return savedEnrollment;
   } catch (error) {

@@ -112,6 +112,13 @@ export const ENDPOINTS = {
       `/course-internships/${encodeURIComponent(programId)}`,
   },
 
+  /** A learner's own course-internship enrollments. */
+  courseInternshipEnrollments: {
+    mine: "/course-internship-enrollments/me",
+    mineById: (enrollmentId: string) =>
+      `/course-internship-enrollments/me/${encodeURIComponent(enrollmentId)}`,
+  },
+
   internshipTasks: {
     adminList: "/internship-tasks/admin",
     adminReachabilityPreview: "/internship-tasks/admin/reachability-preview",

@@ -7,6 +7,7 @@ import {
   StringListField,
   TextField,
 } from "../components/fields";
+import ImageField from "../components/ImageField";
 import { findSectionIndex, HOME_PAGE_SECTIONS } from "../sections";
 import type { HomeStudentSectionSettings } from "@/types/home-page-settings";
 
@@ -19,6 +20,8 @@ const empty: HomeStudentSectionSettings = {
   headingHighlightCareer: "",
   confusionPrompts: [],
   helpCtaText: "",
+  imageSrc: "",
+  imageAlt: "",
 };
 
 export default function StudentSectionPage() {
@@ -82,6 +85,17 @@ export default function StudentSectionPage() {
           value={state.helpCtaText ?? ""}
           onChange={(helpCtaText) => update({ helpCtaText })}
           placeholder="We can help you decide"
+        />
+      </FieldGroup>
+
+      <FieldGroup title="Side image">
+        <ImageField
+          title="Student section image"
+          description="Shown to the right of the confusion prompts."
+          imageSrc={state.imageSrc}
+          imageAlt={state.imageAlt}
+          onChange={({ imageSrc, imageAlt }) => update({ imageSrc, imageAlt })}
+          folderName="home-page/student"
         />
       </FieldGroup>
     </div>

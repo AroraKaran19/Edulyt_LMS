@@ -9,6 +9,7 @@ import {
   TextAreaField,
   TextField,
 } from "../components/fields";
+import ImageField from "../components/ImageField";
 import { findSectionIndex, HOME_PAGE_SECTIONS } from "../sections";
 import type { HomePathSelectionSectionSettings } from "@/types/home-page-settings";
 
@@ -22,6 +23,7 @@ const empty: HomePathSelectionSectionSettings = {
   headingHighlight: "",
   introParagraphs: [],
   valueProps: [],
+  backgroundImageSrc: "",
 };
 
 export default function PathSelectionSectionPage() {
@@ -95,6 +97,19 @@ export default function PathSelectionSectionPage() {
               />
             </>
           )}
+        />
+      </FieldGroup>
+
+      <FieldGroup
+        title="Background"
+        description="Faint texture behind the section. It renders at 10% opacity, so a light pattern works best."
+      >
+        <ImageField
+          title="Section background"
+          imageSrc={state.backgroundImageSrc}
+          onChange={({ imageSrc }) => update({ backgroundImageSrc: imageSrc })}
+          folderName="home-page/path-selection"
+          showAltText={false}
         />
       </FieldGroup>
     </div>

@@ -54,12 +54,14 @@ const HomePathSelectionSection = ({
     settings?.eyebrow || "It\u2019s Time to Choose the Right Path.";
   const headingHighlight =
     settings?.headingHighlight || "One Decision.";
+  const backgroundImageSrc =
+    settings?.backgroundImageSrc || "/home/hero_bg.png";
 
   return (
     <section id="home-path-selection" className="w-full relative">
       <div className="absolute w-full h-full pointer-events-none">
         <Image
-          src="/home/hero_bg.png"
+          src={backgroundImageSrc}
           alt="Hero Background"
           fill
           draggable={false}

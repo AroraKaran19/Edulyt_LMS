@@ -105,6 +105,20 @@ const CartForm = ({
     useState<CollaborationCheckoutResolve | null>(null);
   const [collabLoading, setCollabLoading] = useState(false);
 
+  // Internship add-on. One price for the course — the duration the learner
+  // picks sets their certificate period, not what they pay. The server
+  // re-derives the price from the course, so nothing here is trusted.
+  const internshipOffer = course?.internshipOffer;
+  const internshipDurations = internshipOffer?.durations ?? [];
+  const hasInternshipOffer =
+    !!internshipOffer?.programId && internshipDurations.length > 0;
+  const [wantsInternship, setWantsInternship] = useState(false);
+  const [internshipMonths, setInternshipMonths] = useState<number>(
+    internshipDurations[0] ?? 0,
+  );
+  const internshipPrice =
+    hasInternshipOffer && wantsInternship ? (internshipOffer?.price ?? 0) : 0;
+
   // Success-points redemption at checkout (per-plan cap × admin redemption rate).
   const [useSuccessPoints, setUseSuccessPoints] = useState(false);
   const [successPointsBalance, setSuccessPointsBalance] = useState<number>(0);
@@ -1209,6 +1223,58 @@ const CartForm = ({
                           <h3 className="font-semibold text-text-primary mb-3">
                             Order Summary
                           </h3>
+
+                          {hasInternshipOffer && (
+                            <div className="mb-4 rounded-xl border border-orange-200 bg-orange-50/60 p-3">
+                              <label className="flex items-start gap-2.5 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  className="mt-0.5 size-4 accent-orange-500 shrink-0"
+                                  checked={wantsInternship}
+                                  onChange={(e) => {
+                                    setWantsInternship(e.target.checked);
+                                    if (e.target.checked && !internshipMonths) {
+                                      setInternshipMonths(
+                                        internshipDurations[0],
+                                      );
+                                    }
+                                  }}
+                                />
+                                <span className="text-sm font-semibold text-text-primary">
+                                  Do you wish to join internship as well?
+                                  <span className="ml-1 font-bold text-orange-600">
+                                    +₹{internshipOffer?.price ?? 0}
+                                  </span>
+                                </span>
+                              </label>
+
+                              {wantsInternship && (
+                                <div className="mt-3 pl-6.5">
+                                  <label className="block text-xs font-medium text-text-primary mb-1.5">
+                                    Duration
+                                  </label>
+                                  <select
+                                    value={internshipMonths}
+                                    onChange={(e) =>
+                                      setInternshipMonths(Number(e.target.value))
+                                    }
+                                    className="w-full rounded-lg border border-gray-300 bg-white p-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                  >
+                                    {internshipDurations.map((months) => (
+                                      <option key={months} value={months}>
+                                        {months} month{months === 1 ? "" : "s"}
+                                      </option>
+                                    ))}
+                                  </select>
+                                  <p className="mt-1.5 text-xs text-gray-500">
+                                    Sets how long your internship runs and the
+                                    period on your certificate. The price is the
+                                    same for every duration.
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          )}
                           {(() => {
                             const {
                               planPrice,
@@ -1253,13 +1319,18 @@ const CartForm = ({
                             const pointsDiscount = useSuccessPoints
                               ? successPointsPreview.discount
                               : 0;
-                            const finalAmount = Math.max(
-                              0,
-                              Math.round(
-                                (finalAmountBeforePoints - pointsDiscount) *
-                                  100,
-                              ) / 100,
-                            );
+                            // The internship add-on sits OUTSIDE the discount
+                            // stack — coupon, referral and points all apply to
+                            // the course only. Mirrors the backend, which is
+                            // authoritative.
+                            const finalAmount =
+                              Math.max(
+                                0,
+                                Math.round(
+                                  (finalAmountBeforePoints - pointsDiscount) *
+                                    100,
+                                ) / 100,
+                              ) + internshipPrice;
 
                             // Round to 2 decimal places for display to avoid floating-point precision issues (e.g. 0.34999999999999964 → 0.35)
                             const formatPrice = (n: number) =>
@@ -1352,6 +1423,18 @@ const CartForm = ({
                                   </div>
                                 )}
 
+                                {internshipPrice > 0 && (
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-text-primary text-sm">
+                                      Internship ({internshipMonths} month
+                                      {internshipMonths === 1 ? "" : "s"})
+                                    </span>
+                                    <span className="font-semibold text-text-primary">
+                                      ₹{formatPrice(internshipPrice)}
+                                    </span>
+                                  </div>
+                                )}
+
                                 <div className="flex justify-between items-center border-t-2 pt-3 mt-2">
                                   <span className="font-bold text-text-primary text-base">
                                     Total Amount
@@ -1435,6 +1518,12 @@ const CartForm = ({
                               }
                               if (useSuccessPoints) {
                                 orderData.useSuccessPoints = true;
+                              }
+                              // Only the duration is sent — the server prices
+                              // it from the course's own offer.
+                              if (wantsInternship && internshipMonths > 0) {
+                                orderData.courseInternshipMonths =
+                                  internshipMonths;
                               }
 
                               // Resolves the gateway (picker when there's a

@@ -23,6 +23,14 @@ export interface HomeHeroSettings {
   comparisonRows: HomeHeroComparisonRow[];
   exploreOfferingsLabel?: string;
   exploreOfferingsHref?: string;
+  /** Side image beside the comparison table. */
+  imageSrc?: string;
+  imageAlt?: string;
+  /** Faint dotted texture behind the whole hero. */
+  backgroundImageSrc?: string;
+  /** Brand logos used as the comparison table's column headers. */
+  comparisonAirkritLogoSrc?: string;
+  comparisonYoutubeLogoSrc?: string;
 }
 
 export interface HomeStudentSectionSettings {
@@ -31,6 +39,8 @@ export interface HomeStudentSectionSettings {
   headingHighlightCareer?: string;
   confusionPrompts: string[];
   helpCtaText?: string;
+  imageSrc?: string;
+  imageAlt?: string;
 }
 
 export interface HomeIndustrySectionSettings {
@@ -140,6 +150,8 @@ export interface HomeProfessionalSectionSettings {
   headingHighlightWorking?: string;
   promptBullets: string[];
   helpCtaText?: string;
+  imageSrc?: string;
+  imageAlt?: string;
 }
 
 export interface HomeDreamJobSectionSettings {
@@ -159,6 +171,8 @@ export interface HomePathSelectionSectionSettings {
   headingHighlight?: string;
   introParagraphs: string[];
   valueProps: Array<{ title: string; description: string }>;
+  /** Faint dotted texture behind the section. */
+  backgroundImageSrc?: string;
 }
 
 export interface HomeFaqSectionSettings {

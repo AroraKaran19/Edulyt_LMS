@@ -35,6 +35,19 @@ const orderSchema = new Schema<PaymentOrder>(
       required: false,
     },
     internshipTitle: { type: String, required: false, trim: true },
+    /**
+     * Course-internship add-on chosen at checkout. `orderKind` stays "course" —
+     * this is a course purchase with an add-on, not a new kind of order.
+     * The price is recorded as charged so a later change to the course's offer
+     * never rewrites history.
+     */
+    courseInternshipProgramId: {
+      type: Schema.Types.ObjectId,
+      ref: "CourseInternship",
+      required: false,
+    },
+    courseInternshipMonths: { type: Number, required: false, min: 1 },
+    courseInternshipPrice: { type: Number, required: false, min: 0 },
     internshipSuccessPointsQuantity: {
       type: Number,
       required: false,

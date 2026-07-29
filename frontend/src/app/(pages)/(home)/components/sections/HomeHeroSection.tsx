@@ -112,11 +112,19 @@ const HomeHeroSection = ({ settings }: { settings?: HomeHeroSettings }) => {
   const exploreLabel = settings?.exploreOfferingsLabel || "Explore Offerings";
   const exploreHref = settings?.exploreOfferingsHref || "";
 
+  const backgroundImageSrc =
+    settings?.backgroundImageSrc || "/home/hero_bg.png";
+  const airkritLogoSrc = settings?.comparisonAirkritLogoSrc || "/logo.svg";
+  const youtubeLogoSrc =
+    settings?.comparisonYoutubeLogoSrc || "/youtube-logo.svg";
+  const imageSrc = settings?.imageSrc || "/home/hero_side_image.jpeg";
+  const imageAlt = settings?.imageAlt || "Hero Side Image";
+
   return (
     <section id="home-hero" className="w-full relative">
       <div className="absolute w-full h-full pointer-events-none bg-linear-to-r from-[#FFFBF7] via-orange-50/35 to-[#FFF8F0]">
         <Image
-          src="/home/hero_bg.png"
+          src={backgroundImageSrc}
           alt="Hero Background"
           fill
           draggable={false}
@@ -151,7 +159,7 @@ const HomeHeroSection = ({ settings }: { settings?: HomeHeroSettings }) => {
                     </th>
                     <th className="w-[20%] min-w-20 text-center align-middle py-4 px-2 sm:px-5 font-semibold border-[0_1px_1px_1px] border-gray-200">
                       <Image
-                        src="/logo.svg"
+                        src={airkritLogoSrc}
                         alt="Airkrit Logo"
                         width={100}
                         height={100}
@@ -164,7 +172,7 @@ const HomeHeroSection = ({ settings }: { settings?: HomeHeroSettings }) => {
                     </th>
                     <th className="w-[20%] min-w-20 text-center align-middle py-4 px-2 sm:px-5 font-semibold border-[0_1px_1px_1px] border-gray-200">
                       <Image
-                        src="/youtube-logo.svg"
+                        src={youtubeLogoSrc}
                         alt="YouTube Logo"
                         width={100}
                         height={100}
@@ -232,8 +240,8 @@ const HomeHeroSection = ({ settings }: { settings?: HomeHeroSettings }) => {
           </div>
           <div className="col-span-2">
             <Image
-              src="/home/hero_side_image.jpeg"
-              alt="Hero Side Image"
+              src={imageSrc}
+              alt={imageAlt}
               width={100}
               height={100}
               className="w-full h-full object-cover select-none pointer-events-none mask-[linear-gradient(to_right,transparent_0%,black_32%,black_68%,transparent_100%)] [-webkit-mask-image:linear-gradient(to_right,transparent_0%,black_32%,black_68%,transparent_100%)]"

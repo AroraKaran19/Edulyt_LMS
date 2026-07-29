@@ -7,6 +7,7 @@ import {
   getHomePageSettings,
   updateHomePageSection,
 } from "../services/homePageSettings.services";
+import { triggerRevalidate } from "../services/revalidate.service";
 
 /**
  * @route GET /api/admin/home-page-settings
@@ -26,6 +27,12 @@ export const getHomePageSettingsController = asyncHandler(
 export const patchHomePageSettingsController = asyncHandler(
   async (req: Request, res: Response) => {
     const data = await updateHomePageSection(req.body ?? {});
+
+    // Bust the Next cache so the edit shows on the public homepage right away.
+    // Not awaited: the write already succeeded, and a slow or dead frontend must
+    // not hold up the admin's response.
+    void triggerRevalidate();
+
     sendSuccessResponse(res, data, "Home page section updated", 200);
   },
 );

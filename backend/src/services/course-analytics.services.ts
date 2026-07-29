@@ -290,3 +290,30 @@ export const getEnrollmentsPerDayService = async (
 
   return result as { date: string; count: number }[];
 };
+
+/**
+ * Date the very first enrollment was created, used as the start of the
+ * "All Time" range so the chart never renders empty leading months.
+ * @param courseId - Optional; restrict to a specific course
+ * @returns The earliest enrolledAt, or null when there are no enrollments
+ */
+export const getFirstEnrollmentDateService = async (
+  courseId?: string
+): Promise<Date | null> => {
+  if (courseId && mongoose.Types.ObjectId.isValid(courseId)) {
+    // Bounded by the course's own enrollments via {courseId: 1, status: 1};
+    // $min streams them, so there is no in-memory sort to blow up on.
+    const [row] = await EnrollmentModel.aggregate([
+      { $match: { courseId: new mongoose.Types.ObjectId(courseId) } },
+      { $group: { _id: null, firstEnrolledAt: { $min: "$enrolledAt" } } },
+    ]);
+    return (row?.firstEnrolledAt as Date | undefined) ?? null;
+  }
+
+  // Single document off the {enrolledAt: -1} index, scanned in reverse.
+  const first = await EnrollmentModel.findOne({}, { enrolledAt: 1 })
+    .sort({ enrolledAt: 1 })
+    .lean();
+
+  return (first?.enrolledAt as Date | undefined) ?? null;
+};

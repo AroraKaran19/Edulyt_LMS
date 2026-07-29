@@ -152,6 +152,10 @@ const DashboardNavbar = () => {
       count: stats.totalInternships,
     },
     {
+      label: "Course Internships",
+      href: "/dashboard/course-internships",
+    },
+    {
       label: "Certificates",
       href: "/dashboard/certificates",
       count: stats.totalCertificates,

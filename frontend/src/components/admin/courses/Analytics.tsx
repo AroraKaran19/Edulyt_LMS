@@ -86,9 +86,10 @@ function getDateRange(
     case "12m":
       from.setFullYear(from.getFullYear() - 1);
       break;
+    // Empty `from` means "All Time": the API starts the range at the first
+    // enrollment ever created, so there is no date to send.
     case "all":
-      from.setFullYear(from.getFullYear() - 5);
-      break;
+      return { from: "", to: toLocalDateStr(today) };
     default:
       from.setDate(from.getDate() - 6);
   }
@@ -168,14 +169,23 @@ function EnrollmentsOverTimeGraph({
 
   const fetchData = useCallback(async () => {
     try {
-      const params = new URLSearchParams({ from, to });
+      // "All Time" sends no `from`: the API resolves it to the day the first
+      // enrollment was created and echoes the range back, so the axis never
+      // starts on an empty day.
+      const params = new URLSearchParams({ to });
+      if (from) params.append("from", from);
       if (courseId) params.append("courseId", courseId);
       const response = await apiClient.get(
         `/admin/courses-analytics/enrollments-over-time?${params.toString()}`
       );
-      const data = (response.data?.data ?? []) as { date: string; count: number }[];
-      const filled = fillMissingDays(data, from, to);
-      setChartData(filled);
+      const payload = response.data?.data as
+        | { from: string | null; to: string; data: { date: string; count: number }[] }
+        | undefined;
+      const data = payload?.data ?? [];
+      // from is null only when there are no enrollments at all.
+      setChartData(
+        payload?.from ? fillMissingDays(data, payload.from, payload.to) : []
+      );
     } catch {
       setChartData([]);
     } finally {

@@ -79,6 +79,10 @@ const AdminSidebar = ({
           href: "/admin/courses/live-classes",
         },
         {
+          label: "Course Internships",
+          href: "/admin/courses/course-internships/manage",
+        },
+        {
           label: "Moderation",
           href: "/admin/courses/moderation",
         },
@@ -128,17 +132,6 @@ const AdminSidebar = ({
         {
           label: "Live meetings",
           href: "/admin/internships/live-meetings",
-        },
-      ],
-    },
-    {
-      iconSrc: "/admin/internship.svg",
-      label: "CourseInternships",
-      href: "/admin/course-internships",
-      submenu: [
-        {
-          label: "Manage Programs",
-          href: "/admin/course-internships/manage",
         },
       ],
     },

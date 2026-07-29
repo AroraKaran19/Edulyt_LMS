@@ -136,6 +136,12 @@ const internshipSchema = new mongoose.Schema<Internship>(
       required: [true, "Thumbnail is required"],
       trim: true,
     },
+    /** Optional image beside the enquiry form on the detail page. Falls back to a shipped default. */
+    enquiryImage: {
+      type: String,
+      default: "",
+      trim: true,
+    },
     certification: {
       type: Boolean,
       default: true,

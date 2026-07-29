@@ -286,6 +286,19 @@ const Screen14 = () => {
                 />
               </div>
             )}
+
+            {formData.enquiryImage && (
+              <div>
+                <label className="text-sm text-gray-600">
+                  Enquiry form image
+                </label>
+                <img
+                  src={formData.enquiryImage}
+                  alt="Enquiry form"
+                  className="mt-2 w-full max-w-md h-48 object-cover rounded-lg"
+                />
+              </div>
+            )}
           </div>
         </div>
 

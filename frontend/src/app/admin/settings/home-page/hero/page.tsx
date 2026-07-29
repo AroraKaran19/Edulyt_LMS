@@ -8,6 +8,7 @@ import {
   TextAreaField,
   TextField,
 } from "../components/fields";
+import ImageField from "../components/ImageField";
 import { findSectionIndex, HOME_PAGE_SECTIONS } from "../sections";
 import type {
   HomeHeroComparisonRow,
@@ -24,6 +25,11 @@ const emptyHero: HomeHeroSettings = {
   comparisonRows: [],
   exploreOfferingsLabel: "",
   exploreOfferingsHref: "",
+  imageSrc: "",
+  imageAlt: "",
+  backgroundImageSrc: "",
+  comparisonAirkritLogoSrc: "",
+  comparisonYoutubeLogoSrc: "",
 };
 
 export default function HeroSectionPage() {
@@ -77,7 +83,7 @@ export default function HeroSectionPage() {
 
       <FieldGroup
         title="Comparison table"
-        description="Body rows of the Airkrit vs YouTube vs Others table. Header columns are fixed."
+        description="Body rows of the Airkrit vs YouTube vs Others table. The Features and Others column headers are fixed text."
       >
         <TextAreaField
           label="Heading (HTML allowed)"
@@ -155,6 +161,55 @@ export default function HeroSectionPage() {
             placeholder="/programs"
           />
         </div>
+      </FieldGroup>
+
+      <FieldGroup
+        title="Comparison table logos"
+        description="Column headers of the comparison table. Transparent PNG or SVG works best; both render at a fixed height."
+      >
+        <ImageField
+          title="Airkrit column logo"
+          imageSrc={state.comparisonAirkritLogoSrc}
+          onChange={({ imageSrc }) =>
+            update({ comparisonAirkritLogoSrc: imageSrc })
+          }
+          folderName="home-page/hero"
+          showAltText={false}
+        />
+        <ImageField
+          title="Comparison column logo"
+          description="The competitor column, YouTube by default."
+          imageSrc={state.comparisonYoutubeLogoSrc}
+          onChange={({ imageSrc }) =>
+            update({ comparisonYoutubeLogoSrc: imageSrc })
+          }
+          folderName="home-page/hero"
+          showAltText={false}
+        />
+      </FieldGroup>
+
+      <FieldGroup title="Side image">
+        <ImageField
+          title="Hero side image"
+          description="Shown to the right of the comparison table."
+          imageSrc={state.imageSrc}
+          imageAlt={state.imageAlt}
+          onChange={({ imageSrc, imageAlt }) => update({ imageSrc, imageAlt })}
+          folderName="home-page/hero"
+        />
+      </FieldGroup>
+
+      <FieldGroup
+        title="Background"
+        description="Faint texture behind the whole hero. It renders at 10% opacity, so a light pattern works best."
+      >
+        <ImageField
+          title="Hero background"
+          imageSrc={state.backgroundImageSrc}
+          onChange={({ imageSrc }) => update({ backgroundImageSrc: imageSrc })}
+          folderName="home-page/hero"
+          showAltText={false}
+        />
       </FieldGroup>
     </div>
   );

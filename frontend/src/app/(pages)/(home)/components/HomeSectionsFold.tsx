@@ -1,8 +1,5 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import apiClient from "@/configs/apiConfig";
-import { ENDPOINTS } from "@/constants/endpoints";
 import type { HomePageSettings } from "@/types/home-page-settings";
 import { faqItems } from "@/constants/faq";
 import HomeStudentSection from "./sections/HomeStudentSection";
@@ -20,50 +17,12 @@ import HomeDreamJobSection from "./sections/HomeDreamJobSection";
 import HomePathSelectionSection from "./sections/HomePathSelectionSection";
 import FAQSection from "../../programs/[slug]/components/FAQSection";
 
-function parseSettings(payload: unknown): HomePageSettings {
-  if (!payload || typeof payload !== "object") return {};
-  const env = payload as { data?: unknown };
-  const d = env.data;
-  if (!d || typeof d !== "object") return {};
-  return d as HomePageSettings;
-}
-
-export default function HomeSectionsFold() {
-  const [settings, setSettings] = useState<HomePageSettings | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const originalOverflowRef = useRef<string>("");
-
-  useEffect(() => {
-    originalOverflowRef.current = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    apiClient
-      .get(ENDPOINTS.homePageSettings)
-      .then((res) => setSettings(parseSettings(res.data)))
-      .catch(() => setSettings({}))
-      .finally(() => {
-        setIsLoading(false);
-        document.body.style.overflow = originalOverflowRef.current;
-      });
-
-    return () => {
-      document.body.style.overflow = originalOverflowRef.current;
-    };
-  }, []);
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="flex flex-col items-center gap-3">
-          <div className="size-10 rounded-full border-4 border-primary border-t-transparent animate-spin" />
-          <p className="text-sm text-text-secondary font-medium">
-            Loading content&hellip;
-          </p>
-        </div>
-      </div>
-    );
-  }
-
+export default function HomeSectionsFold({
+  settings,
+}: {
+  /** Server-fetched CMS settings; `{}` when the API is unreachable. */
+  settings: HomePageSettings;
+}) {
   const faqSection = settings?.faq;
   const faqs =
     faqSection?.faqs && faqSection.faqs.length > 0

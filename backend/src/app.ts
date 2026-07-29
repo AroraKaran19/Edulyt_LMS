@@ -35,6 +35,7 @@ import {
   internshipQuestionRoutes,
   internshipTaskRoutes,
   courseInternshipRoutes,
+  courseInternshipEnrollmentRoutes,
   internshipSubmissionRoutes,
   internshipEnrollmentRoutes,
   partnerCollegeRoutes,
@@ -113,6 +114,10 @@ app.use("/api/internship-exams", internshipExamRoutes);
 app.use("/api/internship-questions", internshipQuestionRoutes);
 app.use("/api/internship-tasks", internshipTaskRoutes);
 app.use("/api/course-internships", courseInternshipRoutes);
+app.use(
+  "/api/course-internship-enrollments",
+  courseInternshipEnrollmentRoutes,
+);
 app.use("/api/internship-submissions", internshipSubmissionRoutes);
 app.use("/api/internship-enrollments", internshipEnrollmentRoutes);
 app.use("/api/partner-colleges", partnerCollegeRoutes);

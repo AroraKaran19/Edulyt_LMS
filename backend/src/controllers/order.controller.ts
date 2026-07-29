@@ -91,6 +91,7 @@ export const createOrder = asyncHandler(async (req: Request, res: Response) => {
     referralCode,
     useSuccessPoints,
     gateway,
+    courseInternshipMonths,
   } = req.body;
 
   const user = await UserModel.findById(userId);
@@ -119,6 +120,9 @@ export const createOrder = asyncHandler(async (req: Request, res: Response) => {
     typeof referralCode === "string" ? referralCode : undefined,
     useSuccessPoints === true,
     typeof gateway === "string" ? gateway : undefined,
+    // Validated against the course's own offer in the service; the client
+    // chooses a duration, never a price.
+    courseInternshipMonths,
   );
 
   if (!order) {

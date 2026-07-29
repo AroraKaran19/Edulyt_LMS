@@ -7,6 +7,7 @@ import { Plus, BookOpen, AlertCircle } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCallback } from "react";
+import { cn } from "@/lib/utils";
 
 interface CourseCard2Props {
   course?: Course | null;
@@ -61,7 +62,12 @@ const CourseCard2 = ({ course, enrollment }: CourseCard2Props) => {
 
   const progress = enrollment ? calculateProgress(enrollment) : 0;
 
+  // Disabled course: the watch page 404s, so the card must stop leading there
+  // (same treatment as the My Programs card).
+  const isCourseDisabled = course.isActive === false;
+
   const handleClick = () => {
+    if (isCourseDisabled) return;
     if (course.slug) {
       router.push(`/programs/${course.slug}/watch`);
     }
@@ -69,7 +75,12 @@ const CourseCard2 = ({ course, enrollment }: CourseCard2Props) => {
 
   return (
     <div
-      className="flex course-card-2 w-full h-full flex-col gap-4 border border-gray-200 rounded-lg p-3 cursor-pointer hover:shadow-md transition-shadow"
+      className={cn(
+        "flex course-card-2 w-full h-full flex-col gap-4 border border-gray-200 rounded-lg p-3 transition-shadow",
+        isCourseDisabled
+          ? "opacity-80 cursor-default"
+          : "cursor-pointer hover:shadow-md",
+      )}
       onClick={handleClick}
     >
       <div className="image-container w-full relative">
@@ -78,7 +89,10 @@ const CourseCard2 = ({ course, enrollment }: CourseCard2Props) => {
           alt={course.title || "Course thumbnail"}
           width={150}
           height={122}
-          className="object-fill w-full max-h-[132px] aspect-video rounded-lg select-none"
+          className={cn(
+            "object-fill w-full max-h-[132px] aspect-video rounded-lg select-none",
+            isCourseDisabled && "grayscale",
+          )}
           loading="lazy"
           quality={100}
           draggable={false}
@@ -87,10 +101,20 @@ const CourseCard2 = ({ course, enrollment }: CourseCard2Props) => {
           <div className="content-length absolute top-2 left-2 px-1 py-0.5 bg-black/75 rounded-md text-white text-xs font-semibold">
             {`${totalLessons} ${totalLessons === 1 ? "Module" : "Modules"}`}
           </div>
+          {isCourseDisabled && (
+            <div className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-md bg-gray-700/90 px-2 py-0.5 text-[10px] font-semibold text-white">
+              <AlertCircle className="h-3 w-3" /> No longer available
+            </div>
+          )}
         </div>
       </div>
       <div className="flex w-full h-full flex-col gap-2">
-        <h2 className="text-base font-bold line-clamp-1 text-ellipsis">
+        <h2
+          className={cn(
+            "text-base font-bold line-clamp-1 text-ellipsis",
+            isCourseDisabled && "text-gray-500",
+          )}
+        >
           {course.title || "Untitled Course"}
         </h2>
         <div className="instructors flex gap-2">

@@ -7,6 +7,7 @@ import {
   StringListField,
   TextField,
 } from "../components/fields";
+import ImageField from "../components/ImageField";
 import { findSectionIndex, HOME_PAGE_SECTIONS } from "../sections";
 import type { HomeProfessionalSectionSettings } from "@/types/home-page-settings";
 
@@ -21,6 +22,8 @@ const empty: HomeProfessionalSectionSettings = {
   headingHighlightWorking: "",
   promptBullets: [],
   helpCtaText: "",
+  imageSrc: "",
+  imageAlt: "",
 };
 
 export default function ProfessionalSectionPage() {
@@ -98,6 +101,17 @@ export default function ProfessionalSectionPage() {
           value={state.helpCtaText ?? ""}
           onChange={(helpCtaText) => update({ helpCtaText })}
           placeholder="Talk to a mentor"
+        />
+      </FieldGroup>
+
+      <FieldGroup title="Side image">
+        <ImageField
+          title="Professional section image"
+          description="Shown to the right of the prompt bullets."
+          imageSrc={state.imageSrc}
+          imageAlt={state.imageAlt}
+          onChange={({ imageSrc, imageAlt }) => update({ imageSrc, imageAlt })}
+          folderName="home-page/professional"
         />
       </FieldGroup>
     </div>

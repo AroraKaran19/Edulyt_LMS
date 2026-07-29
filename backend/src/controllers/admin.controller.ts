@@ -11,6 +11,7 @@ import {
 import {
   getCourseAnalytics,
   getEnrollmentsPerDayService,
+  getFirstEnrollmentDateService,
 } from "../services/course-analytics.services";
 import { getAdminOrdersService } from "../services/order.services";
 import {
@@ -268,11 +269,31 @@ export const revokeEnrollmentController = asyncHandler(
   }
 );
 
+// Enrollments are bucketed per IST day, so the query window has to be anchored
+// to IST midnight too. Anchoring to server-local midnight instead would clip
+// the first ~5.5 hours of the opening day and bleed into the next one.
+const IST_OFFSET = "+05:30";
+
+const toIstDateStr = (d: Date): string =>
+  new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(d);
+
+const startOfIstDay = (dateStr: string): Date =>
+  new Date(`${dateStr}T00:00:00.000${IST_OFFSET}`);
+
+const endOfIstDay = (dateStr: string): Date =>
+  new Date(`${dateStr}T23:59:59.999${IST_OFFSET}`);
+
 /**
  * @route   GET /api/admin/courses-analytics/enrollments-over-time
  * @desc    Get enrollments per day for courses analytics
  * @access  Admin
- * @query   from - Start date (YYYY-MM-DD)
+ * @query   from - Start date (YYYY-MM-DD). Omit for "All Time": the range then
+ *                 starts on the day the first enrollment was created.
  * @query   to - End date (YYYY-MM-DD)
  * @query   courseId - Optional; restrict to a specific course
  */
@@ -280,31 +301,56 @@ export const getEnrollmentsOverTimeController = asyncHandler(
   async (req: Request, res: Response) => {
     const { from, to, courseId } = req.query;
 
-    if (!from || !to || typeof from !== "string" || typeof to !== "string") {
-      throw new AppError("from and to date parameters are required", 400);
+    if (!to || typeof to !== "string") {
+      throw new AppError("to date parameter is required", 400);
     }
 
-    const fromDate = new Date(from);
-    const toDate = new Date(to);
-
-    if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) {
-      throw new AppError("Invalid date format for from or to", 400);
+    const parsedTo = new Date(to);
+    if (isNaN(parsedTo.getTime())) {
+      throw new AppError("Invalid date format for to", 400);
     }
-    if (fromDate > toDate) {
-      throw new AppError("from date must be before or equal to to date", 400);
-    }
-
-    toDate.setHours(23, 59, 59, 999);
-    fromDate.setHours(0, 0, 0, 0);
 
     const validCourseId =
       typeof courseId === "string" && courseId.trim() ? courseId.trim() : undefined;
 
+    let fromStr: string;
+    if (typeof from === "string" && from.trim()) {
+      const parsedFrom = new Date(from);
+      if (isNaN(parsedFrom.getTime())) {
+        throw new AppError("Invalid date format for from", 400);
+      }
+      fromStr = toIstDateStr(parsedFrom);
+    } else {
+      // "All Time": resolve the start server-side from the earliest enrollment
+      // (of this course, when one is selected).
+      const firstEnrolledAt = await getFirstEnrollmentDateService(validCourseId);
+      if (!firstEnrolledAt) {
+        return sendSuccessResponse(
+          res,
+          { from: null, to: toIstDateStr(parsedTo), data: [] },
+          "Enrollments over time retrieved",
+          200
+        );
+      }
+      fromStr = toIstDateStr(firstEnrolledAt);
+    }
+
+    const toStr = toIstDateStr(parsedTo);
+    if (fromStr > toStr) {
+      throw new AppError("from date must be before or equal to to date", 400);
+    }
+
     const data = await getEnrollmentsPerDayService(
-      fromDate,
-      toDate,
+      startOfIstDay(fromStr),
+      endOfIstDay(toStr),
       validCourseId
     );
-    sendSuccessResponse(res, data, "Enrollments over time retrieved", 200);
+
+    sendSuccessResponse(
+      res,
+      { from: fromStr, to: toStr, data },
+      "Enrollments over time retrieved",
+      200
+    );
   }
 );

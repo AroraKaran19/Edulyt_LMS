@@ -13,7 +13,7 @@ const router = Router();
 
 router.use(verifyUser);
 router.use(verifyAdmin);
-router.use(requirePermission("course-internships.manage"));
+router.use(requirePermission("courses.course-internships"));
 
 /** GET /api/course-internships?page=1&limit=20&search=&status=all|active|inactive */
 router.get("/", listCourseInternshipsController);

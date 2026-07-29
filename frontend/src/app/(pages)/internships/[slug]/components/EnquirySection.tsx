@@ -410,7 +410,7 @@ const EnquirySection = ({ internship }: { internship: Internship }) => {
         </Container>
         <div className="w-full rounded-2xl col-span-1 lg:col-span-2">
           <Image
-            src="/internship/dummy.jpg"
+            src={internship.enquiryImage || "/internship/dummy.jpg"}
             alt="Enquiry Section Background"
             width={1000}
             height={1000}

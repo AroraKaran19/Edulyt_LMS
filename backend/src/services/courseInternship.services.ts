@@ -63,7 +63,9 @@ export const listCourseInternshipsService = async (
 
   const [programs, total] = await Promise.all([
     CourseInternshipModel.find(filters)
-      .select("title slug thumbnail isActive courses taskTemplateIds updatedAt")
+      .select(
+        "title slug description thumbnail isActive courses taskTemplateIds updatedAt",
+      )
       .sort({ updatedAt: -1 })
       .skip(skip)
       .limit(limit)

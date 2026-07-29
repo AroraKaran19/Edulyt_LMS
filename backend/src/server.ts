@@ -8,6 +8,7 @@ import { startCollaborationWorker } from "./workers/collaboration.worker";
 import { startOfferLetterWorker } from "./workers/offerLetter.worker";
 import { startTokenCleanupWorker } from "./workers/tokenCleanup.worker";
 import { startInternshipEvaluationWorker } from "./workers/internshipEvaluation.worker";
+import { flushMailQueue, pendingMailCount } from "./utils/mailer";
 
 dotenv.config();
 
@@ -43,8 +44,14 @@ const startServer = async () => {
     // Gracefully shutdown the server
     process.on("SIGTERM", () => {
       console.log("🔄 Shutting down server...");
-      server.close(() => {
+      server.close(async () => {
         console.log("🔒 Server closed");
+        // Mail is queued off the request path; let it drain before we exit.
+        const pending = pendingMailCount();
+        if (pending > 0) {
+          console.log(`📧 Waiting on ${pending} queued email(s)...`);
+          await flushMailQueue();
+        }
         disconnectDB();
       });
     });

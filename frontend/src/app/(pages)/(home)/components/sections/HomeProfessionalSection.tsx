@@ -39,6 +39,8 @@ const HomeProfessionalSection = ({
   const highlightWorking = settings?.headingHighlightWorking || "But Not Growing?";
   const helpCtaText =
     settings?.helpCtaText || "We have professional courses for you";
+  const imageSrc = settings?.imageSrc || "/home/profession_path.png";
+  const imageAlt = settings?.imageAlt || "";
 
   return (
     <section
@@ -102,8 +104,8 @@ const HomeProfessionalSection = ({
           </div>
           <div className="col-span-1 lg:col-span-2 relative w-full overflow-visible">
             <Image
-              src="/home/profession_path.png"
-              alt=""
+              src={imageSrc}
+              alt={imageAlt}
               width={800}
               height={600}
               className="hidden lg:block relative lg:absolute bottom-0 right-0 z-0 h-[min(520px,82vh)] w-[600px] max-w-none object-contain object-bottom-right opacity-95 select-none pointer-events-none mask-[linear-gradient(to_right,transparent_0%,black_32%,black_68%,transparent_100%)] [-webkit-mask-image:linear-gradient(to_right,transparent_0%,black_32%,black_68%,transparent_100%)]"
@@ -114,8 +116,8 @@ const HomeProfessionalSection = ({
               loading="lazy"
             />
             <Image
-              src="/home/profession_path.png"
-              alt=""
+              src={imageSrc}
+              alt={imageAlt}
               width={800}
               height={600}
               sizes="(max-width: 1024px) 90vw, 40vw"

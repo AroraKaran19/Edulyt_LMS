@@ -78,6 +78,10 @@ export interface InternshipFormData {
   thumbnail: string;
   thumbnailSource?: "upload" | "url";
   thumbnailS3Key?: string;
+  /** Optional image beside the enquiry form on the detail page. */
+  enquiryImage?: string;
+  enquiryImageSource?: "upload" | "url";
+  enquiryImageS3Key?: string;
   audience: "college-students" | "professionals";
   mode: "online" | "offline" | "hybrid";
   certification: boolean;

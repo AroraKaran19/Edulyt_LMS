@@ -39,6 +39,12 @@ export interface PaymentOrder {
   internshipEnrollmentId?: string;
   /** Display on receipts / admin (internship title at checkout). */
   internshipTitle?: string;
+  /** Course-internship add-on: program chosen at checkout. */
+  courseInternshipProgramId?: string;
+  /** Course-internship add-on: duration the learner picked, in months. */
+  courseInternshipMonths?: number;
+  /** Course-internship add-on: amount charged for it, as charged. */
+  courseInternshipPrice?: number;
   /** Success-points purchase — whole points purchased (when `orderKind === "internship_success_points"`). */
   internshipSuccessPointsQuantity?: number;
   /** Set after points are credited so webhooks cannot double-apply. */

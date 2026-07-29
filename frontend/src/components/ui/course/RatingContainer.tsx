@@ -1,5 +1,6 @@
 import { Star } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatReviewCount } from "@/lib/utils/courseRating";
 import { useRouter } from "next/navigation";
 
 const RatingContainer = ({
@@ -56,7 +57,7 @@ const RatingContainer = ({
           className={cn("font-normal text-gray-500 break-all", reviewCountText)}
         >
           {reviewCount > 100
-            ? `(more than ${reviewCount} reviews)`
+            ? `(${formatReviewCount(reviewCount)}+ reviews)`
             : reviewCount === 1
               ? `(${reviewCount} review)`
               : `(${reviewCount} reviews)`}

@@ -23,6 +23,7 @@ import {
 } from "./payments/orderFlow";
 import { getProvider } from "./payments/registry";
 import { validateCouponService } from "./coupon.services";
+import { resolveOfferSelection } from "../lib/courseInternshipOffer";
 import { getPointsSettings } from "./pointsSettings.services";
 import type { CourseDiscount, Discount } from "../types";
 import { isApplicationWindowOpenIst } from "../utils/applicationWindow";
@@ -359,6 +360,8 @@ export const createOrderService = async (
   referralCode?: string,
   useSuccessPoints?: boolean,
   gateway?: string,
+  /** Course-internship add-on: duration the learner picked, if any. */
+  courseInternshipMonths?: number,
 ) => {
   // The provider's isConfigured() owns credential validation now.
   const gatewayName = resolveGateway(gateway);
@@ -492,6 +495,21 @@ export const createOrderService = async (
     }
   }
 
+  // Internship add-on, priced LAST and deliberately outside the discount stack:
+  // coupons, collaboration, referral and success points all apply to the course
+  // only. The price comes from the course's own offer — a learner chooses which
+  // duration, never what it costs.
+  const { selection: internshipSelection, error: internshipError } =
+    resolveOfferSelection(
+      (course as any).internshipOffer,
+      courseInternshipMonths,
+    );
+  if (internshipError) throw new AppError(internshipError, 400);
+
+  if (internshipSelection) {
+    amount = Math.round((amount + internshipSelection.price) * 100) / 100;
+  }
+
   const courseName = (course as any).title ?? "";
   const userName =
     user && ((user as any).firstName || (user as any).lastName)
@@ -525,6 +543,13 @@ export const createOrderService = async (
     referralDiscount,
     successPointsApplied,
     successPointsDiscount,
+    ...(internshipSelection
+      ? {
+          courseInternshipProgramId: (course as any).internshipOffer.programId,
+          courseInternshipMonths: internshipSelection.months,
+          courseInternshipPrice: internshipSelection.price,
+        }
+      : {}),
   });
   await order.save();
 

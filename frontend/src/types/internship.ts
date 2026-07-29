@@ -82,6 +82,8 @@ export interface Internship {
   title: string;
   description: string;
   thumbnail: string;
+  /** Optional image beside the enquiry form on the detail page. */
+  enquiryImage?: string;
 
   certification: boolean;
   /** Minimum internship success points before certification exam (0 = none). */
@@ -174,6 +176,8 @@ export interface InternshipResponse {
   title: string;
   description: string;
   thumbnail: string;
+  /** Optional image beside the enquiry form on the detail page. */
+  enquiryImage?: string;
 
   certification: boolean;
   /** Minimum internship success points before certification exam (0 = none). */

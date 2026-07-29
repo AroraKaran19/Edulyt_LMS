@@ -34,6 +34,11 @@ const heroSchema = new Schema(
     comparisonRows: { type: [heroComparisonRowSchema], default: [] },
     exploreOfferingsLabel: { type: String, default: "" },
     exploreOfferingsHref: { type: String, default: "" },
+    imageSrc: { type: String, default: "" },
+    imageAlt: { type: String, default: "" },
+    backgroundImageSrc: { type: String, default: "" },
+    comparisonAirkritLogoSrc: { type: String, default: "" },
+    comparisonYoutubeLogoSrc: { type: String, default: "" },
   },
   { _id: false },
 );
@@ -45,6 +50,8 @@ const studentSchema = new Schema(
     headingHighlightCareer: { type: String, default: "" },
     confusionPrompts: { type: [String], default: [] },
     helpCtaText: { type: String, default: "" },
+    imageSrc: { type: String, default: "" },
+    imageAlt: { type: String, default: "" },
   },
   { _id: false },
 );
@@ -210,6 +217,8 @@ const professionalSchema = new Schema(
     headingHighlightWorking: { type: String, default: "" },
     promptBullets: { type: [String], default: [] },
     helpCtaText: { type: String, default: "" },
+    imageSrc: { type: String, default: "" },
+    imageAlt: { type: String, default: "" },
   },
   { _id: false },
 );
@@ -243,6 +252,7 @@ const pathSelectionSchema = new Schema(
     headingHighlight: { type: String, default: "" },
     introParagraphs: { type: [String], default: [] },
     valueProps: { type: [valuePropSchema], default: [] },
+    backgroundImageSrc: { type: String, default: "" },
   },
   { _id: false },
 );

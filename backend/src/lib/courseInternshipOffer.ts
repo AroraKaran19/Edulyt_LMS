@@ -74,6 +74,53 @@ export function normalizeInternshipOffer(input: unknown): NormalizeResult {
   });
 }
 
+export type OfferSelection = {
+  months: number;
+  price: number;
+};
+
+/**
+ * Validates a learner's add-on choice against the course's own offer.
+ *
+ * The price always comes from the offer, never from the client — a learner can
+ * choose *which* duration, never what it costs. All durations cost the same;
+ * the choice sets the certificate period only.
+ */
+export function resolveOfferSelection(
+  offer: { price: number; durations: number[] } | null | undefined,
+  months: unknown,
+): { selection: OfferSelection | null; error: string | null } {
+  const wantsInternship = months !== undefined && months !== null && months !== "";
+
+  if (!wantsInternship) return { selection: null, error: null };
+
+  if (!offer || !Array.isArray(offer.durations) || offer.durations.length === 0) {
+    return {
+      selection: null,
+      error: "This course does not offer an internship",
+    };
+  }
+
+  const requested = Number(months);
+  if (!Number.isInteger(requested) || requested < 1) {
+    return { selection: null, error: "Invalid internship duration" };
+  }
+
+  if (!offer.durations.includes(requested)) {
+    return {
+      selection: null,
+      error: "That internship duration is not offered for this course",
+    };
+  }
+
+  const price = Number(offer.price);
+  if (!Number.isFinite(price) || price < 0) {
+    return { selection: null, error: "This course's internship price is invalid" };
+  }
+
+  return { selection: { months: requested, price }, error: null };
+}
+
 export type MirrorSync = {
   /** Program to remove this course from, or null. */
   pullFrom: string | null;

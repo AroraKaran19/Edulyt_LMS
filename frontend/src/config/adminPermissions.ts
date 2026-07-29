@@ -40,6 +40,7 @@ export const ADMIN_PERMISSION_CATALOG: AdminSection[] = [
       { key: "courses.manage", label: "Manage Courses", href: "/admin/courses/manage-courses" },
       { key: "courses.enrollments", label: "Enrollments", href: "/admin/courses/enrollments" },
       { key: "courses.live-classes", label: "Live Classes", href: "/admin/courses/live-classes" },
+      { key: "courses.course-internships", label: "Course Internships", href: "/admin/courses/course-internships/manage" },
       { key: "courses.moderation", label: "Moderation", href: "/admin/courses/moderation" },
     ],
   },
@@ -57,13 +58,6 @@ export const ADMIN_PERMISSION_CATALOG: AdminSection[] = [
       { key: "internships.exams", label: "Exam templates", href: "/admin/internships/exams" },
       { key: "internships.tasks", label: "Task templates", href: "/admin/internships/tasks" },
       { key: "internships.live-meetings", label: "Live meetings", href: "/admin/internships/live-meetings" },
-    ],
-  },
-  {
-    key: "course-internships",
-    label: "CourseInternships",
-    pages: [
-      { key: "course-internships.manage", label: "Manage Programs", href: "/admin/course-internships/manage" },
     ],
   },
   {
