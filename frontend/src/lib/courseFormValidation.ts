@@ -518,8 +518,14 @@ export const validateScreen2 = (
   // what they pay.
   const offer = data.internshipOffer;
   if (offer && offer.programId) {
-    const price = Number(offer.price);
-    if (!Number.isFinite(price) || price < 0) {
+    // An attached programme must carry a stated price, including ₹0 for a free
+    // internship — a blank field is a mistake, not "free".
+    if (offer.price === undefined || offer.price === null) {
+      errors.push(
+        "Internship price is required — enter 0 if the internship is free"
+      );
+      missingFields.push("internshipOffer");
+    } else if (!Number.isFinite(Number(offer.price)) || Number(offer.price) < 0) {
       errors.push("Internship price must be 0 or more");
       missingFields.push("internshipOffer");
     }

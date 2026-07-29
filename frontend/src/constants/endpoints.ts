@@ -393,6 +393,19 @@ export const ENDPOINTS = {
       `/referral/admin/withdrawals/${encodeURIComponent(id)}/status`,
   },
 
+  /**
+   * Admin reports. All three accept `from`, `to` (YYYY-MM-DD), `q`, `page`,
+   * `limit`, and `format=csv` to get the whole window as a CSV attachment.
+   */
+  reports: {
+    /** GET — student wallet success points: earned vs spent, per user. */
+    successPointsPlatform: "/reports/success-points/platform",
+    /** GET — internship success points earned, per user. */
+    successPointsInternship: "/reports/success-points/internship",
+    /** GET — per-referrer referrals, commission earned, and payouts. */
+    referrals: "/reports/referrals",
+  },
+
   // QnA Routes
   qnas: {
     // Public Routes

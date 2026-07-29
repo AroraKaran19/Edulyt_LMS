@@ -1005,6 +1005,72 @@ const CartForm = ({
                           loading="lazy"
                         />
                       </div>
+                      {hasInternshipOffer && (
+                        <div className="w-full flex flex-col gap-3 rounded-xl border border-orange-200 bg-orange-50/60 p-4">
+                          <div>
+                            <h3 className="text-base font-bold text-text-primary">
+                              Integrated Internship
+                            </h3>
+                            <p className="text-sm text-text-primary/70 mt-1">
+                              This course offers an integrated internship that
+                              runs alongside your studies, with guided tasks and
+                              a certificate on completion. Joining is optional
+                              and does not affect your course enrolment.
+                            </p>
+                          </div>
+
+                          <CheckBoxContainer
+                            label="Yes, I wish to join the integrated internship"
+                            checked={wantsInternship}
+                            setChange={(checked) => {
+                              setWantsInternship(checked);
+                              if (checked && !internshipMonths) {
+                                setInternshipMonths(internshipDurations[0]);
+                              }
+                            }}
+                          />
+
+                          {wantsInternship && (
+                            <div className="flex flex-col gap-3 border-t border-orange-200 pt-3">
+                              <div className="flex items-center justify-between gap-4">
+                                <span className="text-sm font-medium text-text-primary">
+                                  Internship fee
+                                </span>
+                                <span className="text-base font-bold text-orange-600">
+                                  {(internshipOffer?.price ?? 0) > 0
+                                    ? `₹${internshipOffer?.price}`
+                                    : "Included at no extra cost"}
+                                </span>
+                              </div>
+
+                              <div>
+                                <label className="block text-sm font-medium text-text-primary mb-1.5">
+                                  Preferred duration
+                                </label>
+                                <select
+                                  value={internshipMonths}
+                                  onChange={(e) =>
+                                    setInternshipMonths(Number(e.target.value))
+                                  }
+                                  className="w-full rounded-lg border border-gray-300 bg-white p-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                                >
+                                  {internshipDurations.map((months) => (
+                                    <option key={months} value={months}>
+                                      {months} month{months === 1 ? "" : "s"}
+                                    </option>
+                                  ))}
+                                </select>
+                                <p className="mt-1.5 text-xs text-text-primary/60">
+                                  Sets how long your internship runs and the
+                                  period shown on your certificate. The fee is
+                                  the same for every duration.
+                                </p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
                       <div className="w-full flex flex-col gap-2">
                         <CheckBoxContainer
                           label="I accept the terms and conditions"
@@ -1224,57 +1290,8 @@ const CartForm = ({
                             Order Summary
                           </h3>
 
-                          {hasInternshipOffer && (
-                            <div className="mb-4 rounded-xl border border-orange-200 bg-orange-50/60 p-3">
-                              <label className="flex items-start gap-2.5 cursor-pointer">
-                                <input
-                                  type="checkbox"
-                                  className="mt-0.5 size-4 accent-orange-500 shrink-0"
-                                  checked={wantsInternship}
-                                  onChange={(e) => {
-                                    setWantsInternship(e.target.checked);
-                                    if (e.target.checked && !internshipMonths) {
-                                      setInternshipMonths(
-                                        internshipDurations[0],
-                                      );
-                                    }
-                                  }}
-                                />
-                                <span className="text-sm font-semibold text-text-primary">
-                                  Do you wish to join internship as well?
-                                  <span className="ml-1 font-bold text-orange-600">
-                                    +₹{internshipOffer?.price ?? 0}
-                                  </span>
-                                </span>
-                              </label>
-
-                              {wantsInternship && (
-                                <div className="mt-3 pl-6.5">
-                                  <label className="block text-xs font-medium text-text-primary mb-1.5">
-                                    Duration
-                                  </label>
-                                  <select
-                                    value={internshipMonths}
-                                    onChange={(e) =>
-                                      setInternshipMonths(Number(e.target.value))
-                                    }
-                                    className="w-full rounded-lg border border-gray-300 bg-white p-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
-                                  >
-                                    {internshipDurations.map((months) => (
-                                      <option key={months} value={months}>
-                                        {months} month{months === 1 ? "" : "s"}
-                                      </option>
-                                    ))}
-                                  </select>
-                                  <p className="mt-1.5 text-xs text-gray-500">
-                                    Sets how long your internship runs and the
-                                    period on your certificate. The price is the
-                                    same for every duration.
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-                          )}
+                          {/* The opt-in itself lives on the Terms step; the
+                              summary only reports what was chosen there. */}
                           {(() => {
                             const {
                               planPrice,
@@ -1423,14 +1440,16 @@ const CartForm = ({
                                   </div>
                                 )}
 
-                                {internshipPrice > 0 && (
+                                {hasInternshipOffer && wantsInternship && (
                                   <div className="flex justify-between items-center">
                                     <span className="text-text-primary text-sm">
-                                      Internship ({internshipMonths} month
-                                      {internshipMonths === 1 ? "" : "s"})
+                                      Integrated Internship ({internshipMonths}{" "}
+                                      month{internshipMonths === 1 ? "" : "s"})
                                     </span>
                                     <span className="font-semibold text-text-primary">
-                                      ₹{formatPrice(internshipPrice)}
+                                      {internshipPrice > 0
+                                        ? `₹${formatPrice(internshipPrice)}`
+                                        : "Free"}
                                     </span>
                                   </div>
                                 )}

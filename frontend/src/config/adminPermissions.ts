@@ -101,6 +101,14 @@ export const ADMIN_PERMISSION_CATALOG: AdminSection[] = [
     pages: [{ key: "coupons", label: "Coupons", href: "/admin/coupons" }],
   },
   {
+    key: "reports",
+    label: "Reports",
+    pages: [
+      { key: "reports.success-points", label: "Success Points", href: "/admin/reports/success-points" },
+      { key: "reports.referrals", label: "Referrals", href: "/admin/reports/referrals" },
+    ],
+  },
+  {
     key: "settings",
     label: "Settings",
     pages: [

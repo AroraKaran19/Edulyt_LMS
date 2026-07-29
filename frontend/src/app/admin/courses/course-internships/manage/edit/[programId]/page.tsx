@@ -7,7 +7,6 @@ import {
   BookOpenIcon,
   BriefcaseIcon,
   CheckSquareIcon,
-  ClipboardListIcon,
   EyeIcon,
   SaveIcon,
 } from "lucide-react";
@@ -21,15 +20,13 @@ import {
 import Screen1 from "../../components/shared/Screen1";
 import Screen2 from "../../components/shared/Screen2";
 import Screen3 from "../../components/shared/Screen3";
-import Screen4 from "../../components/shared/Screen4";
 
 const LIST_ROUTE = "/admin/courses/course-internships/manage";
 
 const QUICK_NAV_TABS = [
   { label: "Basic Information", screen: 1, icon: BookOpenIcon },
-  { label: "Programme Details", screen: 2, icon: ClipboardListIcon },
-  { label: "Tasks & Documents", screen: 3, icon: CheckSquareIcon },
-  { label: "Review", screen: 4, icon: EyeIcon },
+  { label: "Tasks & Documents", screen: 2, icon: CheckSquareIcon },
+  { label: "Review", screen: 3, icon: EyeIcon },
 ];
 
 const EditProgramPageContent = () => {
@@ -105,7 +102,6 @@ const EditProgramPageContent = () => {
         {currentScreen === 1 && <Screen1 />}
         {currentScreen === 2 && <Screen2 />}
         {currentScreen === 3 && <Screen3 />}
-        {currentScreen === 4 && <Screen4 />}
       </div>
 
       <div className="flex justify-between items-center h-fit p-4">

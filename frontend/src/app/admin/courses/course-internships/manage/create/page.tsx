@@ -12,7 +12,6 @@ import {
 import Screen1 from "../components/shared/Screen1";
 import Screen2 from "../components/shared/Screen2";
 import Screen3 from "../components/shared/Screen3";
-import Screen4 from "../components/shared/Screen4";
 
 const LIST_ROUTE = "/admin/courses/course-internships/manage";
 
@@ -59,7 +58,6 @@ const CreateProgramPageContent = () => {
         {currentScreen === 1 && <Screen1 />}
         {currentScreen === 2 && <Screen2 />}
         {currentScreen === 3 && <Screen3 />}
-        {currentScreen === 4 && <Screen4 />}
       </div>
 
       <div className="flex justify-between items-center h-fit p-4">

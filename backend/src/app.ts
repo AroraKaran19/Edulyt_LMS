@@ -49,6 +49,7 @@ import {
   referralRoutes,
   communityReviewRoutes,
   successPointsRoutes,
+  reportRoutes,
 } from "./routes";
 
 dotenv.config();
@@ -131,6 +132,7 @@ app.use("/api/announcements", announcementRoutes);
 app.use("/api/referral", referralRoutes);
 app.use("/api/community-reviews", communityReviewRoutes);
 app.use("/api/success-points", successPointsRoutes);
+app.use("/api/reports", reportRoutes);
 
 app.use(notFoundHandler); // Handle 404 errors
 app.use(errorHandler); // Handle all other errors

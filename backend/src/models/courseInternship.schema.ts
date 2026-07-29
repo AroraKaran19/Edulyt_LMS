@@ -21,8 +21,6 @@ const courseInternshipSchema = new mongoose.Schema(
     },
 
     mentors: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
-    perks: [{ type: String, trim: true }],
-    whatYouWillDo: [{ type: String, trim: true }],
 
     /** Templates from the shared library at /admin/internships/tasks. */
     taskTemplateIds: [
@@ -33,7 +31,6 @@ const courseInternshipSchema = new mongoose.Schema(
     documentationDueOffsetDays: { type: Number, default: 7, min: 0 },
 
     offerLetterDesignation: { type: String, default: "", trim: true },
-    whatsappGroupLink: { type: String, default: "", trim: true },
 
     /**
      * Derived mirror of `courses.internshipOffer.programId`. Written only by the

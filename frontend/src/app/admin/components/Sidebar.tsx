@@ -2,6 +2,7 @@
 import {
   ChevronLeft,
   ChevronRight,
+  FileBarChart,
   HelpCircle,
   KeyRound,
   MessageSquare,
@@ -184,6 +185,21 @@ const AdminSidebar = ({
       icon: <Tag className="size-6" />,
       label: "Coupons",
       href: "/admin/coupons",
+    },
+    {
+      icon: <FileBarChart className="size-6" />,
+      label: "Reports",
+      href: "/admin/reports/success-points",
+      submenu: [
+        {
+          label: "Success Points",
+          href: "/admin/reports/success-points",
+        },
+        {
+          label: "Referrals",
+          href: "/admin/reports/referrals",
+        },
+      ],
     },
     {
       icon: <Settings className="size-6" />,

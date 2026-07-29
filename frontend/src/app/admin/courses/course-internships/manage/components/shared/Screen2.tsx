@@ -2,143 +2,84 @@
 
 import Container from "@/app/admin/components/ui/Container";
 import Input from "@/components/ui/inputs/Input";
-import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import { Controller, useFormContext } from "react-hook-form";
 import { CourseInternshipFormData } from "@/types/courseInternshipForm";
-import { ClipboardListIcon, Plus, X } from "lucide-react";
-import { useState } from "react";
-
-/** Free-text list editor used for perks and "what you will do". */
-function StringListField({
-  label,
-  values,
-  onChange,
-  placeholder,
-}: {
-  label: string;
-  values: string[];
-  onChange: (next: string[]) => void;
-  placeholder: string;
-}) {
-  const [draft, setDraft] = useState("");
-
-  const add = () => {
-    const value = draft.trim();
-    if (!value) return;
-    onChange([...values, value]);
-    setDraft("");
-  };
-
-  return (
-    <div>
-      <label className="font-medium text-black mb-2 block">{label}</label>
-      <div className="flex gap-2">
-        <Input
-          value={draft}
-          setChange={setDraft}
-          placeholder={placeholder}
-          className="flex-1"
-          onKeyDown={(e: React.KeyboardEvent) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              add();
-            }
-          }}
-        />
-        <WhiteButton type="button" glow={false} onClick={add}>
-          <Plus className="size-4" />
-        </WhiteButton>
-      </div>
-      {values.length > 0 && (
-        <ul className="mt-3 flex flex-wrap gap-2">
-          {values.map((value, index) => (
-            <li
-              key={`${value}-${index}`}
-              className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1.5 text-sm text-gray-700"
-            >
-              {value}
-              <button
-                type="button"
-                aria-label={`Remove ${value}`}
-                className="text-gray-400 hover:text-gray-700 cursor-pointer"
-                onClick={() => onChange(values.filter((_, i) => i !== index))}
-              >
-                <X className="size-3.5" />
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-}
+import { CheckSquareIcon } from "lucide-react";
+import TaskTemplatesSelect from "../TaskTemplatesSelect";
 
 const Screen2 = () => {
-  const { control } = useFormContext<CourseInternshipFormData>();
+  const { control, watch } = useFormContext<CourseInternshipFormData>();
+
+  const documentationRequired = watch("documentationRequired");
 
   return (
     <Container
-      title="Programme Details"
-      description="Perks, work and the details printed on documents"
-      icon={ClipboardListIcon}
+      title="Tasks & Documents"
+      description="What the learner has to complete, and by when"
+      icon={CheckSquareIcon}
       classNameBody="flex flex-col gap-6"
     >
-      <Controller
-        name="perks"
-        control={control}
-        render={({ field }) => (
-          <StringListField
-            label="Perks"
-            values={field.value ?? []}
-            onChange={field.onChange}
-            placeholder="Certificate of completion"
-          />
-        )}
-      />
+      <div>
+        <TaskTemplatesSelect />
+        <p className="text-sm text-gray-500 mt-2">
+          Each template carries its own unlock and due offsets, counted from the
+          learner&apos;s purchase date. A task that would fall outside a
+          learner&apos;s chosen duration is hidden from them and left out of
+          their score.
+        </p>
+      </div>
 
-      <Controller
-        name="whatYouWillDo"
-        control={control}
-        render={({ field }) => (
-          <StringListField
-            label="What you will do"
-            values={field.value ?? []}
-            onChange={field.onChange}
-            placeholder="Build a sales dashboard"
-          />
-        )}
-      />
+      <div className="border-t border-gray-200 pt-6">
+        <Controller
+          name="documentationRequired"
+          control={control}
+          render={({ field }) => (
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                className="mt-0.5 size-4 accent-orange-500 shrink-0"
+                checked={!!field.value}
+                onChange={(e) => field.onChange(e.target.checked)}
+              />
+              <span>
+                <span className="block font-medium text-black">
+                  Require document review
+                </span>
+                <span className="block text-sm text-gray-500">
+                  The learner uploads documents for an admin to approve before a
+                  certificate can be issued.
+                </span>
+              </span>
+            </label>
+          )}
+        />
 
-      <Controller
-        name="offerLetterDesignation"
-        control={control}
-        render={({ field }) => (
-          <div>
-            <Input
-              label="Offer Letter Designation"
-              value={field.value}
-              setChange={field.onChange}
-              placeholder="Data Analyst Intern"
+        {documentationRequired && (
+          <div className="mt-4 max-w-xs">
+            <Controller
+              name="documentationDueOffsetDays"
+              control={control}
+              rules={{
+                min: { value: 0, message: "Cannot be negative" },
+              }}
+              render={({ field, fieldState }) => (
+                <Input
+                  type="number"
+                  label="Documents due (days after purchase)"
+                  min={0}
+                  step={1}
+                  value={field.value}
+                  onChange={(e) => {
+                    const n = Number(e.target.value);
+                    field.onChange(Number.isFinite(n) ? n : 0);
+                  }}
+                  error={fieldState.error?.message}
+                />
+              )}
             />
-            <p className="text-xs text-gray-500 mt-1.5 pl-0.5">
-              Printed on the learner&apos;s offer letter and certificate.
-            </p>
           </div>
         )}
-      />
-
-      <Controller
-        name="whatsappGroupLink"
-        control={control}
-        render={({ field }) => (
-          <Input
-            label="WhatsApp Group Link"
-            value={field.value}
-            setChange={field.onChange}
-            placeholder="https://chat.whatsapp.com/…"
-          />
-        )}
-      />
+      </div>
     </Container>
   );
 };

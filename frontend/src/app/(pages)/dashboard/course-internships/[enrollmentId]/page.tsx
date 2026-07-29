@@ -37,7 +37,6 @@ type EnrollmentDetail = {
   durationMonths: number;
   status: "active" | "completed" | "expired";
   daysRemaining: number;
-  whatsappGroupLink: string;
   documentation: {
     required: boolean;
     dueAt: string | null;
@@ -148,16 +147,6 @@ export default function CourseInternshipDetailPage() {
               ? `${data.daysRemaining} day${data.daysRemaining === 1 ? "" : "s"} left`
               : data.status}
           </span>
-          {data.whatsappGroupLink && (
-            <a
-              href={data.whatsappGroupLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-emerald-700 underline"
-            >
-              Join the WhatsApp group
-            </a>
-          )}
         </div>
       </div>
 

@@ -10,12 +10,22 @@ import { Controller } from "react-hook-form";
 import { CourseFormData } from "@/types/courseForm";
 import { getTextFromHtml } from "@/lib/courseFormUtils";
 import dynamic from "next/dynamic";
-import { ChangeEvent, useRef, useEffect, useState } from "react";
+import {
+  ChangeEvent,
+  useCallback,
+  useRef,
+  useEffect,
+  useState,
+} from "react";
 import apiClient from "@/configs/apiConfig";
 import { ENDPOINTS } from "@/constants/endpoints";
+import { InfiniteScrollSelect } from "@/components/ui/dropdown/InfiniteScrollSelect";
 
-/** Durations a learner can pick at checkout. */
-const INTERNSHIP_DURATION_OPTIONS = [1, 2, 3, 6];
+/** Durations a learner can pick at checkout: 1–6 months. */
+const INTERNSHIP_DURATION_OPTIONS = [1, 2, 3, 4, 5, 6];
+
+/** Row from GET /course-internships used by the programme picker. */
+type InternshipProgramOption = { _id: string; title: string };
 
 const RichTextEditor = dynamic(
   () => import("@/components/shared/Editor/Editor"),
@@ -26,9 +36,6 @@ const Screen2 = () => {
   const [isMounted, setIsMounted] = useState(false);
   const [showSuccessPointsRulesModal, setShowSuccessPointsRulesModal] =
     useState(false);
-  const [internshipPrograms, setInternshipPrograms] = useState<
-    { _id: string; title: string }[]
-  >([]);
   const whatYouWillLearnEditorRef = useRef<EditorHandle | null>(null);
   const whoShouldJoinEditorRef = useRef<EditorHandle | null>(null);
 
@@ -43,17 +50,32 @@ const Screen2 = () => {
     setIsMounted(true);
   }, []);
 
-  // Programs available to offer with this course. Only active ones are sellable.
-  useEffect(() => {
-    apiClient
-      .get(ENDPOINTS.courseInternships.all, {
-        params: { page: 1, limit: 100, status: "active" },
-      })
-      .then((res) => {
-        setInternshipPrograms(res.data?.data?.programs ?? []);
-      })
-      .catch(() => setInternshipPrograms([]));
-  }, []);
+  // Programmes available to offer with this course, paginated with search.
+  // Only active ones are sellable.
+  const fetchInternshipPrograms = useCallback(
+    async (page: number, search: string) => {
+      const res = await apiClient.get(ENDPOINTS.courseInternships.all, {
+        params: {
+          page,
+          limit: 15,
+          search: search.trim() || undefined,
+          status: "active",
+        },
+      });
+      const payload = res.data?.data as
+        | { programs?: InternshipProgramOption[]; totalPages?: number }
+        | undefined;
+
+      return {
+        items: (payload?.programs ?? []) as InternshipProgramOption[],
+        totalPages:
+          typeof payload?.totalPages === "number" && payload.totalPages >= 1
+            ? payload.totalPages
+            : 1,
+      };
+    },
+    []
+  );
 
   // Watch form values
   const whatYouWillLearnValue = watch("whatYouWillLearn");
@@ -407,13 +429,16 @@ const Screen2 = () => {
             render={({ field }) => {
               const offer = field.value;
               const programId = offer?.programId ?? "";
-              const price = offer?.price ?? 0;
+              const price = offer?.price;
               const durations = offer?.durations ?? [];
+              // A price must be stated deliberately once a programme is
+              // attached — including ₹0 for a free internship. Never defaulted.
+              const priceMissing = !Number.isFinite(price as number);
 
               const patch = (
                 next: Partial<{
                   programId: string;
-                  price: number;
+                  price?: number;
                   durations: number[];
                 }>
               ) =>
@@ -442,13 +467,12 @@ const Screen2 = () => {
                     pay.
                   </p>
 
-                  <label className="font-medium text-black mb-2 block text-sm">
-                    Program
-                  </label>
-                  <select
+                  <InfiniteScrollSelect<InternshipProgramOption>
+                    label="Program"
+                    placeholder="None — no internship offered"
                     value={programId}
-                    onChange={(e) => {
-                      const nextId = e.target.value;
+                    onChange={(next) => {
+                      const nextId = typeof next === "string" ? next : "";
                       // Clearing sends an explicit null: JSON.stringify drops
                       // undefined keys, so the server would never see the
                       // field and the old offer would survive the save.
@@ -458,15 +482,17 @@ const Screen2 = () => {
                       }
                       patch({ programId: nextId });
                     }}
-                    className="w-full rounded-lg border border-gray-300 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
-                  >
-                    <option value="">None — no internship offered</option>
-                    {internshipPrograms.map((p) => (
-                      <option key={p._id} value={p._id}>
-                        {p.title}
-                      </option>
-                    ))}
-                  </select>
+                    fetchOptions={fetchInternshipPrograms}
+                    getOptionLabel={(p) =>
+                      (p as InternshipProgramOption).title || "Untitled"
+                    }
+                    getOptionValue={(p) =>
+                      String((p as InternshipProgramOption)._id ?? "")
+                    }
+                    searchPlaceholder="Search programs…"
+                    emptyMessage="No active programs. Create one under Courses → Course Internships."
+                    dropdownPortal
+                  />
 
                   {programId ? (
                     <>
@@ -474,13 +500,27 @@ const Screen2 = () => {
                         <Input
                           type="number"
                           label="Price (₹)"
+                          required
                           min={0}
                           step={1}
-                          value={price}
+                          value={price ?? ""}
+                          placeholder="Enter 0 for a free internship"
                           onChange={(e) => {
-                            const n = Number(e.target.value);
-                            patch({ price: Number.isFinite(n) ? n : 0 });
+                            const raw = e.target.value;
+                            if (raw === "") {
+                              patch({ price: undefined });
+                              return;
+                            }
+                            const n = Number(raw);
+                            patch({
+                              price: Number.isFinite(n) ? n : undefined,
+                            });
                           }}
+                          error={
+                            priceMissing
+                              ? "Price is required — enter 0 if the internship is free"
+                              : undefined
+                          }
                         />
                       </div>
 

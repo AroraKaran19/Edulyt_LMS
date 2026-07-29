@@ -52,9 +52,6 @@ type ProgramResponse = {
   description?: string;
   thumbnail?: string;
   offerLetterDesignation?: string;
-  whatsappGroupLink?: string;
-  perks?: string[];
-  whatYouWillDo?: string[];
   taskTemplateIds?: Array<string | { _id?: string }>;
   documentationRequired?: boolean;
   documentationDueOffsetDays?: number;
@@ -104,9 +101,6 @@ export const CourseInternshipFormProvider = ({
           thumbnail: p.thumbnail ?? "",
           thumbnailSource: p.thumbnail ? "url" : "url",
           offerLetterDesignation: p.offerLetterDesignation ?? "",
-          whatsappGroupLink: p.whatsappGroupLink ?? "",
-          perks: Array.isArray(p.perks) ? p.perks : [],
-          whatYouWillDo: Array.isArray(p.whatYouWillDo) ? p.whatYouWillDo : [],
           taskTemplateIds: Array.isArray(p.taskTemplateIds)
             ? p.taskTemplateIds.map((t) =>
                 typeof t === "string" ? t : String(t?._id ?? ""),
@@ -147,10 +141,7 @@ export const CourseInternshipFormProvider = ({
       title: values.title,
       description: values.description,
       thumbnail: values.thumbnail,
-      perks: values.perks,
-      whatYouWillDo: values.whatYouWillDo,
       offerLetterDesignation: values.offerLetterDesignation,
-      whatsappGroupLink: values.whatsappGroupLink,
       taskTemplateIds: values.taskTemplateIds,
       documentationRequired: values.documentationRequired,
       documentationDueOffsetDays: values.documentationDueOffsetDays,

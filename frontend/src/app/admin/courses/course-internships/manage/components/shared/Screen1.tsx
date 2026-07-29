@@ -134,6 +134,24 @@ const Screen1 = () => {
       </div>
 
       <Controller
+        name="offerLetterDesignation"
+        control={control}
+        render={({ field }) => (
+          <div>
+            <Input
+              label="Offer Letter Designation"
+              value={field.value}
+              setChange={field.onChange}
+              placeholder="Data Analyst Intern"
+            />
+            <p className="text-xs text-gray-500 mt-1.5 pl-0.5">
+              Printed on the learner&apos;s offer letter and certificate.
+            </p>
+          </div>
+        )}
+      />
+
+      <Controller
         name="thumbnail"
         control={control}
         render={() => (

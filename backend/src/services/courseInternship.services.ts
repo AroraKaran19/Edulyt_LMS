@@ -8,13 +8,10 @@ export type UpsertCourseInternshipBody = {
   thumbnail?: string;
   slug?: string;
   mentors?: string[];
-  perks?: string[];
-  whatYouWillDo?: string[];
   taskTemplateIds?: string[];
   documentationRequired?: boolean;
   documentationDueOffsetDays?: number;
   offerLetterDesignation?: string;
-  whatsappGroupLink?: string;
   isActive?: boolean;
 };
 

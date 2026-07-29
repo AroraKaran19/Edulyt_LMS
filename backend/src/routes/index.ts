@@ -41,6 +41,7 @@ import announcementRoutes from "./announcement.routes";
 import referralRoutes from "./referral.routes";
 import communityReviewRoutes from "./community-review.routes";
 import successPointsRoutes from "./successPoints.routes";
+import reportRoutes from "./report.routes";
 
 export {
   authRoutes,
@@ -86,4 +87,5 @@ export {
   referralRoutes,
   communityReviewRoutes,
   successPointsRoutes,
+  reportRoutes,
 };

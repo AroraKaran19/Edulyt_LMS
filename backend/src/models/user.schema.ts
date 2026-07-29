@@ -419,6 +419,13 @@ const studentSchema = new mongoose.Schema<Student>({
   firstLoginBonusAwarded: { type: Boolean, required: false, default: false },
 });
 
+// Multikey index on the wallet ledger's timestamps. Lets the admin
+// success-points report pre-select only the students holding at least one
+// transaction inside the requested date range, instead of unwinding the whole
+// students collection. Sparse: students who never transacted carry an empty
+// array and are not worth indexing.
+studentSchema.index({ "successPointsHistory.earnedAt": 1 }, { sparse: true });
+
 // Collaborator discriminator schema
 const collaboratorSchema = new mongoose.Schema<Collaborator>({
   totalReferrals: {

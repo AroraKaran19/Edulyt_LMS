@@ -78,7 +78,7 @@ export const getMyCourseInternshipService = async (
     enrollment.courseInternship,
   )
     .select(
-      "title description thumbnail taskTemplateIds documentationRequired documentationDueOffsetDays whatsappGroupLink perks whatYouWillDo",
+      "title description thumbnail taskTemplateIds documentationRequired documentationDueOffsetDays",
     )
     .lean<Record<string, any> | null>();
 
@@ -158,9 +158,6 @@ export const getMyCourseInternshipService = async (
       0,
       Math.ceil((endDate.getTime() - now) / 86_400_000),
     ),
-    perks: program?.perks ?? [],
-    whatYouWillDo: program?.whatYouWillDo ?? [],
-    whatsappGroupLink: program?.whatsappGroupLink ?? "",
     documentation: {
       required: !!program?.documentationRequired,
       dueAt: documentationDueAt,

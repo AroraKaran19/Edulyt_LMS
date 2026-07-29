@@ -23,11 +23,19 @@ export interface CourseFormData
   faqs: string[]; // Array of FAQ IDs
 
   /**
-   * Widened to allow `null` — clearing the offer must reach the server as an
-   * explicit null. `undefined` is dropped by JSON.stringify, so the update
-   * endpoint would never see the key and the old offer would survive.
+   * Widened from `Course["internshipOffer"]` in two ways:
+   *  - `null` is allowed, because clearing the offer must reach the server as an
+   *    explicit null; `undefined` is dropped by JSON.stringify, so the update
+   *    endpoint would never see the key and the old offer would survive.
+   *  - `price` is optional, so the field can start blank and force the admin to
+   *    state a price deliberately. A free internship is `0`, entered on purpose,
+   *    never a silent default.
    */
-  internshipOffer?: Course["internshipOffer"] | null;
+  internshipOffer?: {
+    programId: string;
+    price?: number;
+    durations: number[];
+  } | null;
 
   thumbnailSource?: "upload" | "url";
   thumbnailS3Key?: string;
