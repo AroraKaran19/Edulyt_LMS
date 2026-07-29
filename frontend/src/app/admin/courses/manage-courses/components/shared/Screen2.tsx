@@ -11,6 +11,11 @@ import { CourseFormData } from "@/types/courseForm";
 import { getTextFromHtml } from "@/lib/courseFormUtils";
 import dynamic from "next/dynamic";
 import { ChangeEvent, useRef, useEffect, useState } from "react";
+import apiClient from "@/configs/apiConfig";
+import { ENDPOINTS } from "@/constants/endpoints";
+
+/** Durations a learner can pick at checkout. */
+const INTERNSHIP_DURATION_OPTIONS = [1, 2, 3, 6];
 
 const RichTextEditor = dynamic(
   () => import("@/components/shared/Editor/Editor"),
@@ -21,6 +26,9 @@ const Screen2 = () => {
   const [isMounted, setIsMounted] = useState(false);
   const [showSuccessPointsRulesModal, setShowSuccessPointsRulesModal] =
     useState(false);
+  const [internshipPrograms, setInternshipPrograms] = useState<
+    { _id: string; title: string }[]
+  >([]);
   const whatYouWillLearnEditorRef = useRef<EditorHandle | null>(null);
   const whoShouldJoinEditorRef = useRef<EditorHandle | null>(null);
 
@@ -33,6 +41,18 @@ const Screen2 = () => {
   // Ensure component is mounted on client side
   useEffect(() => {
     setIsMounted(true);
+  }, []);
+
+  // Programs available to offer with this course. Only active ones are sellable.
+  useEffect(() => {
+    apiClient
+      .get(ENDPOINTS.courseInternships.all, {
+        params: { page: 1, limit: 100, status: "active" },
+      })
+      .then((res) => {
+        setInternshipPrograms(res.data?.data?.programs ?? []);
+      })
+      .catch(() => setInternshipPrograms([]));
   }, []);
 
   // Watch form values
@@ -379,6 +399,121 @@ const Screen2 = () => {
           <p className="text-xs text-gray-500 mt-1.5 pl-0.5">
             Shown on the course page. Not derived from real ratings.
           </p>
+        </div>
+        <div className="w-full max-w-md">
+          <Controller
+            name="internshipOffer"
+            control={control}
+            render={({ field }) => {
+              const offer = field.value;
+              const programId = offer?.programId ?? "";
+              const price = offer?.price ?? 0;
+              const durations = offer?.durations ?? [];
+
+              const patch = (
+                next: Partial<{
+                  programId: string;
+                  price: number;
+                  durations: number[];
+                }>
+              ) =>
+                field.onChange({
+                  programId,
+                  price,
+                  durations,
+                  ...next,
+                });
+
+              const toggleDuration = (months: number) =>
+                patch({
+                  durations: durations.includes(months)
+                    ? durations.filter((m) => m !== months)
+                    : [...durations, months].sort((a, b) => a - b),
+                });
+
+              return (
+                <div className="rounded-lg border border-gray-200 p-4">
+                  <p className="font-medium text-black mb-1">
+                    Internship offer
+                  </p>
+                  <p className="text-xs text-gray-500 mb-3">
+                    Sold as an add-on at checkout. One price — the duration a
+                    learner picks sets their certificate period, not what they
+                    pay.
+                  </p>
+
+                  <label className="font-medium text-black mb-2 block text-sm">
+                    Program
+                  </label>
+                  <select
+                    value={programId}
+                    onChange={(e) => {
+                      const nextId = e.target.value;
+                      // Clearing sends an explicit null: JSON.stringify drops
+                      // undefined keys, so the server would never see the
+                      // field and the old offer would survive the save.
+                      if (!nextId) {
+                        field.onChange(null);
+                        return;
+                      }
+                      patch({ programId: nextId });
+                    }}
+                    className="w-full rounded-lg border border-gray-300 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  >
+                    <option value="">None — no internship offered</option>
+                    {internshipPrograms.map((p) => (
+                      <option key={p._id} value={p._id}>
+                        {p.title}
+                      </option>
+                    ))}
+                  </select>
+
+                  {programId ? (
+                    <>
+                      <div className="mt-3">
+                        <Input
+                          type="number"
+                          label="Price (₹)"
+                          min={0}
+                          step={1}
+                          value={price}
+                          onChange={(e) => {
+                            const n = Number(e.target.value);
+                            patch({ price: Number.isFinite(n) ? n : 0 });
+                          }}
+                        />
+                      </div>
+
+                      <p className="font-medium text-black mt-3 mb-2 block text-sm">
+                        Durations offered
+                      </p>
+                      <div className="flex flex-wrap gap-3">
+                        {INTERNSHIP_DURATION_OPTIONS.map((months) => (
+                          <label
+                            key={months}
+                            className="inline-flex items-center gap-2 text-sm cursor-pointer"
+                          >
+                            <input
+                              type="checkbox"
+                              className="size-4 accent-orange-500"
+                              checked={durations.includes(months)}
+                              onChange={() => toggleDuration(months)}
+                            />
+                            {months} month{months === 1 ? "" : "s"}
+                          </label>
+                        ))}
+                      </div>
+                      {durations.length === 0 && (
+                        <p className="text-xs text-red-500 mt-2">
+                          Select at least one duration.
+                        </p>
+                      )}
+                    </>
+                  ) : null}
+                </div>
+              );
+            }}
+          />
         </div>
         <div>
           <RichTextEditor

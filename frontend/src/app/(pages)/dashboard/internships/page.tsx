@@ -11,6 +11,7 @@ import EmptyState from "../components/applications/EmptyState";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import DashboardInternshipCard from "./components/DashboardInternshipCard";
+import { InternshipCardSkeletonGrid } from "./components/InternshipCardSkeleton";
 import CertificationInfoCard from "./components/CertificationInfoCard";
 import InternshipExamReminderBanner from "./components/InternshipExamReminderBanner";
 import AnnouncementSection from "../components/dashboard/AnnouncementSection";
@@ -192,39 +193,31 @@ function DashboardInternshipsContent() {
       </div>
 
       {isLoading && rows.length === 0 ? (
-        <div className="flex items-center justify-center py-16 text-gray-500 gap-2">
-          <Loader2 className="h-6 w-6 animate-spin" />
-          Loading your programs…
-        </div>
+        <InternshipCardSkeletonGrid />
       ) : error ? (
         <div className="text-center py-12">
           <p className="text-red-500 mb-4">{error}</p>
-          <button
-            type="button"
-            onClick={() => void fetchRows()}
-            className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition cursor-pointer"
-          >
+          <OrangeButton onClick={() => void fetchRows()} className="px-4 py-2">
             Retry
-          </button>
+          </OrangeButton>
         </div>
       ) : !hasRows && debouncedSearch ? (
-        <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50/80 py-12 px-4 text-center">
+        <div className="rounded-2xl border border-dashed border-gray-200 py-12 px-4 text-center">
           <p className="text-gray-800 font-medium">
             No enrollments match &quot;{debouncedSearch}&quot;
           </p>
           <p className="mt-2 text-sm text-gray-600">
             Try another program or cohort name.
           </p>
-          <button
-            type="button"
+          <OrangeButton
             onClick={() => {
               setSearch("");
               setDebouncedSearch("");
             }}
-            className="mt-6 bg-[#F5691D] text-white px-4 py-2 rounded-2xl cursor-pointer hover:bg-orange-600 transition"
+            className="mt-6 px-4 py-2"
           >
             Clear search
-          </button>
+          </OrangeButton>
         </div>
       ) : !hasRows ? (
         <div className="py-6">

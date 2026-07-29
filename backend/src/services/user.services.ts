@@ -65,6 +65,9 @@ export interface GetUsersParams {
   excludeEnrolledInCourseIds?: string[];
   /** Add alreadyEnrolledInSelected to each user (for trial modal) */
   enrollmentStatusForCourseIds?: string[];
+  /** Attach `totalSpend` per user. Super-admin only — skipped otherwise, which
+   *  also avoids the orders aggregation entirely. */
+  includeTotalSpend?: boolean;
 }
 
 export interface GetUsersResult {
@@ -118,6 +121,7 @@ export const getUsersService = async (
     status,
     excludeEnrolledInCourseIds,
     enrollmentStatusForCourseIds,
+    includeTotalSpend = false,
   } = params;
   const skip = (page - 1) * limit;
 
@@ -187,7 +191,7 @@ export const getUsersService = async (
   }
 
   // Add total spend (successful paid orders only) for each user
-  if (resultUsers.length > 0) {
+  if (includeTotalSpend && resultUsers.length > 0) {
     const userIds = resultUsers
       .map((u) => u._id)
       .filter(

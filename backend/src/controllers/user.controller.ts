@@ -63,6 +63,8 @@ export const getUsers = asyncHandler(async (req: Request, res: Response) => {
     status: status as string,
     excludeEnrolledInCourseIds: toStringArray(excludeEnrolledInCourseIds),
     enrollmentStatusForCourseIds: toStringArray(enrollmentStatusForCourseIds),
+    // Spend figures are super-admin only.
+    includeTotalSpend: viewerType === "super-admin",
   });
 
   sendSuccessResponse(res, result, "Users fetched successfully", 200);

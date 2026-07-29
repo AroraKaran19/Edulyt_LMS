@@ -125,7 +125,8 @@ apiClient.interceptors.response.use(
       // Attach error type for UI handling
       error.errorType = ERROR_TYPES.BACKEND_ERROR;
       error.statusCode = status;
-      error.serverMessage = data?.message || "Server error occurred";
+      error.serverMessage =
+        data?.error?.message || data?.message || "Server error occurred";
     } else if (error.request) {
       // Request was made but no response received
       // Use helper function to detect server down (with internet check)

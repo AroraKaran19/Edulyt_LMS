@@ -120,6 +120,36 @@ const courseSchema = new mongoose.Schema<Course>(
       min: 0,
       max: 5,
     },
+    /**
+     * The internship this course sells as a checkout add-on. Source of truth for
+     * the course↔program link; `courseInternships.courses[]` mirrors it.
+     *
+     * One price — the duration a learner picks sets their certificate period,
+     * not the amount they pay. Absent means no internship is offered.
+     */
+    internshipOffer: {
+      type: new mongoose.Schema(
+        {
+          programId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "CourseInternship",
+            required: true,
+          },
+          price: { type: Number, required: true, min: 0 },
+          durations: {
+            type: [Number],
+            required: true,
+            validate: {
+              validator: (v: number[]) => Array.isArray(v) && v.length > 0,
+              message: "Select at least one internship duration",
+            },
+          },
+        },
+        { _id: false },
+      ),
+      required: false,
+      default: undefined,
+    },
     whatYouWillLearn: { type: String, required: true },
     skills: { type: [String], required: true },
     highlights: {

@@ -105,6 +105,13 @@ export const ENDPOINTS = {
     create: "/internship-questions",
   },
 
+  /** Internship programs sold as a course add-on (admin CRUD). */
+  courseInternships: {
+    all: "/course-internships",
+    byId: (programId: string) =>
+      `/course-internships/${encodeURIComponent(programId)}`,
+  },
+
   internshipTasks: {
     adminList: "/internship-tasks/admin",
     adminReachabilityPreview: "/internship-tasks/admin/reachability-preview",

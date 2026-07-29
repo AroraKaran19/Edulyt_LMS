@@ -71,6 +71,15 @@ export interface PaymentOrder {
   successPointsDiscount?: number;
   /** Idempotency flag: redeemed points already deducted from buyer's wallet. */
   successPointsRedeemed?: boolean;
+  /**
+   * Tax-invoice sequence, e.g. "2627-00001", allocated once when the invoice
+   * job first runs. Retries reuse it so a re-run never burns a second number.
+   */
+  invoiceNumber?: string;
+  /** Public S3 URL of the generated invoice PDF. */
+  invoiceUrl?: string;
+  /** When the invoice PDF was rendered and uploaded. */
+  invoicedAt?: Date;
   createdAt?: Date;
   updatedAt?: Date;
 }

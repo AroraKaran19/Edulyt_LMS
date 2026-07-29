@@ -18,6 +18,7 @@ import { initializeCronJobs } from "./services/cron.services";
 import { startCertificateWorker } from "./workers/certificate.worker";
 import { startOfferLetterWorker } from "./workers/offerLetter.worker";
 import { startInternshipEvaluationWorker } from "./workers/internshipEvaluation.worker";
+import { startInvoiceWorker } from "./workers/invoice.worker";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -28,12 +29,13 @@ const start = async () => {
     await initializeS3();
 
     console.log(
-      "🕐 Starting certificate worker (cron + certificate + offer-letter + internship-evaluation jobs)...",
+      "🕐 Starting certificate worker (cron + certificate + offer-letter + internship-evaluation + invoice jobs)...",
     );
     initializeCronJobs();
     startCertificateWorker();
     startOfferLetterWorker();
     startInternshipEvaluationWorker();
+    startInvoiceWorker();
 
     console.log("✅ Certificate worker running");
 

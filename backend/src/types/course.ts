@@ -209,6 +209,15 @@ export interface Course {
   staticReviewCount?: number;
   /** Admin-set rating (0-5) shown on the course page. Not derived from real ratings. */
   staticRating?: number;
+  /**
+   * Internship add-on sold with this course. Absent means none is offered.
+   * One price; the chosen duration sets the certificate period, not the amount.
+   */
+  internshipOffer?: {
+    programId: string;
+    price: number;
+    durations: number[];
+  };
 
   // Course Content
   whatYouWillLearn: string;

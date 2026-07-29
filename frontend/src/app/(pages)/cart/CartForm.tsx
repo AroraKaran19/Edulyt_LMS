@@ -1460,7 +1460,9 @@ const CartForm = ({
                               let errorMessage =
                                 "Failed to create order. Please try again.";
 
-                              if (error.response?.data?.message) {
+                              if (error.response?.data?.error?.message) {
+                                errorMessage = error.response.data.error.message;
+                              } else if (error.response?.data?.message) {
                                 errorMessage = error.response.data.message;
                               } else if (error.serverMessage) {
                                 errorMessage = error.serverMessage;

@@ -14,6 +14,7 @@ import {
   getCertificateJobByEnrollmentService,
   getAllCertificateJobsService,
   retryCertificateJobService,
+  reclaimStuckCertificateJobsService,
 } from "../services/certificateJob.services";
 
 /**
@@ -294,6 +295,33 @@ export const retryCertificateJob = asyncHandler(
     const job = await retryCertificateJobService(jobId);
 
     sendSuccessResponse(res, job, "Job queued for retry successfully", 200);
+  }
+);
+
+/**
+ * Reclaim certificate jobs wedged in `processing` (admin, manual).
+ *
+ * The certificate worker never sweeps on its own, so this is the only way a
+ * job orphaned by a crashed process gets unblocked. Until it runs, the partial
+ * unique index keeps rejecting new jobs for that enrollment.
+ *
+ * Takes no parameters. The stuck threshold and reclaim limit come from
+ * CERTIFICATE_WORKER_STUCK_TIMEOUT_MIN / CERTIFICATE_WORKER_MAX_STUCK_RECLAIMS,
+ * so the thresholds stay operator-controlled rather than settable per request.
+ *
+ * @route POST /api/admin/certificate-jobs/reclaim-stuck
+ * @access Admin
+ */
+export const reclaimStuckCertificateJobs = asyncHandler(
+  async (_req: Request, res: Response) => {
+    const result = await reclaimStuckCertificateJobsService();
+
+    sendSuccessResponse(
+      res,
+      result,
+      `Reclaim sweep complete: ${result.reclaimed} requeued, ${result.failed} marked failed`,
+      200,
+    );
   }
 );
 

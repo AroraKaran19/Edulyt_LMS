@@ -240,12 +240,65 @@ export const createEnrollmentAfterPayment = async (order: any) => {
       return await createInternshipSuccessPointsAfterPayment(order);
     }
 
-    // Check if enrollment already exists
-    const existingEnrollment = await EnrollmentModel.findOne({
+    // Status-agnostic ON PURPOSE: the unique { userId, courseId } index has no
+    // partial filter, so a dropped/revoked row is invisible to a `$nin` lookup
+    // yet still collides on insert (E11000). Mirrors the same reasoning in
+    // grantCategorySiblingEnrollments.
+    const INACTIVE_STATUSES = ["dropped", "revoked"];
+    let priorEnrollment = await EnrollmentModel.findOne({
       userId: order.userId,
       courseId: order.courseId,
-      status: { $nin: ["dropped", "revoked"] },
     });
+
+    // Re-purchase after a revoke or drop. Reactivate the row in place rather
+    // than deleting and reinserting: its _id is referenced by certificates,
+    // certificate jobs and users.enrollmentId, so a new _id would orphan them.
+    // Progress starts clean, since a revoke withdraws the entitlement.
+    if (priorEnrollment && INACTIVE_STATUSES.includes(priorEnrollment.status)) {
+      const previousStatus = priorEnrollment.status;
+      const now = new Date();
+      const validUntil = new Date(now);
+      validUntil.setFullYear(validUntil.getFullYear() + 4);
+
+      priorEnrollment = await EnrollmentModel.findByIdAndUpdate(
+        priorEnrollment._id,
+        {
+          $set: {
+            status: "active",
+            planType: order.planType,
+            enrolledAt: now,
+            // The pre("save") hook only fills validUntil when unset, and this
+            // row already carries the old window, so set it explicitly.
+            validUntil,
+            lastUpdated: now,
+            totalTimeSpent: 0,
+            completedContents: [],
+            progress: {
+              overallCompletion: 0,
+              totalModules: 0,
+              completedModules: 0,
+              totalLessons: 0,
+              completedLessons: 0,
+              lastActivityAt: now,
+            },
+          },
+        },
+        { new: true },
+      );
+
+      // Course analytics and instructor totalStudents are deliberately NOT
+      // re-incremented: revokeEnrollment never decremented them, so those
+      // counters still include this enrollment.
+      await StudentModel.findByIdAndUpdate(order.userId, {
+        $addToSet: { enrollments: priorEnrollment?._id },
+      });
+
+      console.log(
+        `[Fulfilment] Reactivated ${previousStatus} enrollment ${priorEnrollment?._id} for user ${order.userId} on course ${order.courseId}`,
+      );
+    }
+
+    const existingEnrollment = priorEnrollment;
 
     if (existingEnrollment) {
       // Idempotent retry: still attempt both the grant and the redemption

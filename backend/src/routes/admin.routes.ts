@@ -26,12 +26,18 @@ import {
 import {
   getAllCertificateJobs,
   retryCertificateJob,
+  reclaimStuckCertificateJobs,
   getCertificatesByUserId,
 } from "../controllers/certificate.controller";
 import {
   getAllCollaborationJobs,
   retryCollaborationJob,
 } from "../controllers/collaborationJob.controller";
+import {
+  getAllInvoiceJobs,
+  retryInvoiceJob,
+  reclaimStuckInvoiceJobs,
+} from "../controllers/invoiceJob.controller";
 import {
   getAllOfferLetterJobs,
   retryOfferLetterJob,
@@ -61,6 +67,14 @@ router.get("/courses-analytics", requirePermission("courses.analytics"), getCour
 // Certificate jobs (admin settings)
 router.get("/certificate-jobs", requirePermission("settings.certificate-jobs"), getAllCertificateJobs);
 router.post("/certificate-jobs/:jobId/retry", requirePermission("settings.certificate-jobs"), retryCertificateJob);
+// Manual only: the certificate worker never sweeps stuck `processing` rows itself.
+router.post("/certificate-jobs/reclaim-stuck", requirePermission("settings.certificate-jobs"), reclaimStuckCertificateJobs);
+
+// Invoice jobs (admin settings)
+router.get("/invoice-jobs", requirePermission("settings.invoice-jobs"), getAllInvoiceJobs);
+router.post("/invoice-jobs/:jobId/retry", requirePermission("settings.invoice-jobs"), retryInvoiceJob);
+// Manual only: the invoice worker never sweeps stuck `processing` rows itself.
+router.post("/invoice-jobs/reclaim-stuck", requirePermission("settings.invoice-jobs"), reclaimStuckInvoiceJobs);
 
 // Offer letter jobs (admin settings)
 router.get("/offer-letter-jobs", requirePermission("settings.offer-letter-jobs"), getAllOfferLetterJobs);

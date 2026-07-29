@@ -16,10 +16,18 @@ export interface CourseFormData
     | "createdBy"
     | "createdAt"
     | "updatedAt"
+    | "internshipOffer"
   > {
   // Override testimonials to be string array (IDs) instead of full objects
   testimonials: string[]; // Array of testimonial IDs
   faqs: string[]; // Array of FAQ IDs
+
+  /**
+   * Widened to allow `null` — clearing the offer must reach the server as an
+   * explicit null. `undefined` is dropped by JSON.stringify, so the update
+   * endpoint would never see the key and the old offer would survive.
+   */
+  internshipOffer?: Course["internshipOffer"] | null;
 
   thumbnailSource?: "upload" | "url";
   thumbnailS3Key?: string;
@@ -304,6 +312,7 @@ export const SCREEN_CONFIG: Record<number, ScreenConfig> = {
       "completionSuccessPoints",
       "staticReviewCount",
       "staticRating",
+      "internshipOffer",
     ],
   },
   3: {

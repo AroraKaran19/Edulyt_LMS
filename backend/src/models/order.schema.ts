@@ -92,6 +92,12 @@ const orderSchema = new Schema<PaymentOrder>(
       required: false,
       default: false,
     },
+    /** Tax-invoice sequence, allocated once and reused across job retries. */
+    invoiceNumber: { type: String, required: false, trim: true },
+    /** Public S3 URL of the generated invoice PDF. */
+    invoiceUrl: { type: String, required: false, trim: true },
+    /** When the invoice PDF was rendered and uploaded. */
+    invoicedAt: { type: Date, required: false },
   },
   { timestamps: true },
 );
@@ -106,6 +112,9 @@ orderSchema.index({ paymentMethod: 1, createdAt: -1 });
 orderSchema.index({ paymentStatus: 1, createdAt: -1 });
 orderSchema.index({ internshipEnrollmentId: 1 }, { sparse: true });
 orderSchema.index({ gatewayOrderId: 1 }, { sparse: true });
+// A tax-invoice number must never repeat. Sparse so the many orders without
+// one (pending, failed, not yet invoiced) do not collide on null.
+orderSchema.index({ invoiceNumber: 1 }, { unique: true, sparse: true });
 
 orderSchema.pre("save", async function (next) {
   if (!this.isNew) return next();

@@ -7,6 +7,37 @@ import { InternshipModel } from "../models/internship.schema";
 import { v4 as uuidv4 } from "uuid";
 
 /**
+ * Read a numeric env var, falling back when unset or unparseable.
+ * Written out rather than using `Number(x) || fallback` because a legitimate
+ * configured 0 is falsy and would silently take the fallback.
+ */
+function envNumber(raw: string | undefined, fallback: number): number {
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+/**
+ * How long a job may sit in `processing` before the manual sweep treats it as
+ * stuck. Env: CERTIFICATE_WORKER_STUCK_TIMEOUT_MIN (default 10).
+ *
+ * Read by the API process, since the sweep runs from the admin endpoint rather
+ * than the worker. Set it wherever the API runs, not only on the worker box.
+ */
+const STUCK_TIMEOUT_MIN = Math.max(
+  1,
+  envNumber(process.env.CERTIFICATE_WORKER_STUCK_TIMEOUT_MIN, 10),
+);
+
+/**
+ * After this many reclaims a job is marked `failed` instead of requeued.
+ * Env: CERTIFICATE_WORKER_MAX_STUCK_RECLAIMS (default 2). 0 means never requeue.
+ */
+const MAX_STUCK_RECLAIMS = Math.max(
+  0,
+  envNumber(process.env.CERTIFICATE_WORKER_MAX_STUCK_RECLAIMS, 2),
+);
+
+/**
  * Create a new certificate generation job
  * Uses atomic findOneAndUpdate + partial unique index to prevent duplicate jobs under concurrent requests
  */
@@ -154,6 +185,95 @@ export const getNextPendingJobService = async (): Promise<CertificateJob | null>
     console.error("Error getting next pending job:", error);
     return null;
   }
+};
+
+/**
+ * Manually sweep certificate jobs wedged in `processing`.
+ */
+export const reclaimStuckCertificateJobsService = async (): Promise<{
+  reclaimed: number;
+  failed: number;
+  reclaimedJobIds: string[];
+  failedJobIds: string[];
+  /** Echoed back so the admin can see what the server was configured with. */
+  timeoutMinutes: number;
+  maxReclaims: number;
+}> => {
+  const minutes = Math.floor(STUCK_TIMEOUT_MIN);
+  const limit = Math.floor(MAX_STUCK_RECLAIMS);
+  const cutoff = new Date(Date.now() - minutes * 60 * 1000);
+
+  // `startedAt` is written atomically by the claim, so a live job always has
+  // one. The `updatedAt` arm only catches legacy or hand-edited rows that are
+  // in `processing` without it, which would otherwise never be reclaimable.
+  const stuck = await CertificateJobModel.find({
+    status: "processing",
+    $or: [
+      { startedAt: { $lt: cutoff } },
+      { startedAt: null, updatedAt: { $lt: cutoff } },
+    ],
+  })
+    .select("jobId retryCount")
+    .lean();
+
+  if (stuck.length === 0) {
+    return {
+      reclaimed: 0,
+      failed: 0,
+      reclaimedJobIds: [],
+      failedJobIds: [],
+      timeoutMinutes: minutes,
+      maxReclaims: limit,
+    };
+  }
+
+  const reclaimedJobIds: string[] = [];
+  const failedJobIds: string[] = [];
+
+  for (const job of stuck) {
+    const next = (job.retryCount ?? 0) + 1;
+
+    if (next > limit) {
+      await CertificateJobModel.updateOne(
+        { jobId: job.jobId, status: "processing" },
+        {
+          $set: {
+            status: "failed",
+            completedAt: new Date(),
+            error: `Stuck in processing > ${minutes} min across ${next} reclaim(s); marked failed for admin retry.`,
+          },
+        },
+      );
+      failedJobIds.push(job.jobId);
+    } else {
+      await CertificateJobModel.updateOne(
+        { jobId: job.jobId, status: "processing" },
+        {
+          $set: {
+            status: "pending",
+            progress: 0,
+            retryCount: next,
+            error: `Reclaimed manually: stuck in processing > ${minutes} min (reclaim ${next}/${limit})`,
+          },
+          $unset: { startedAt: "" },
+        },
+      );
+      reclaimedJobIds.push(job.jobId);
+    }
+  }
+
+  console.log(
+    `[Certificate Job] Manual reclaim sweep: reset=${reclaimedJobIds.length}, marked-failed=${failedJobIds.length} (timeout=${minutes}m, maxReclaims=${limit})`,
+  );
+
+  return {
+    reclaimed: reclaimedJobIds.length,
+    failed: failedJobIds.length,
+    reclaimedJobIds,
+    failedJobIds,
+    timeoutMinutes: minutes,
+    maxReclaims: limit,
+  };
 };
 
 /**

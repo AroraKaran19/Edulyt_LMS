@@ -512,6 +512,23 @@ export const validateScreen2 = (
     }
   }
 
+  // Internship offer (Screen 2) — optional. Present only when a program is
+  // chosen; then it needs a price and at least one duration. One price for the
+  // course: the duration a learner picks sets their certificate period, not
+  // what they pay.
+  const offer = data.internshipOffer;
+  if (offer && offer.programId) {
+    const price = Number(offer.price);
+    if (!Number.isFinite(price) || price < 0) {
+      errors.push("Internship price must be 0 or more");
+      missingFields.push("internshipOffer");
+    }
+    if (!Array.isArray(offer.durations) || offer.durations.length === 0) {
+      errors.push("Select at least one internship duration");
+      missingFields.push("internshipOffer");
+    }
+  }
+
   // Prerequisites validation (optional)
   // No validation needed as prerequisites are optional
 

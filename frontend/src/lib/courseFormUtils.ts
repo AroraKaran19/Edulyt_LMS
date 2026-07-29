@@ -673,6 +673,7 @@ export const getInitialFormData = (
     completionSuccessPoints: 0,
     staticReviewCount: 0,
     staticRating: 0,
+    internshipOffer: undefined,
     whatYouWillLearn: "",
     skills: [],
     highlights: [],

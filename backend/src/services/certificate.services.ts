@@ -11,7 +11,10 @@ import { convertDocxToPdf } from "../utils/certificateGeneratorDocx";
 import { uploadFileToS3 } from "./upload.services";
 import { tryAwardCompletionSuccessPoints } from "./successPoints.services";
 import { computeInternshipEligibility } from "./internshipEligibility.services";
-import { computeProgramEndDate } from "../lib/internshipProgramWindow";
+import {
+  computeProgramEndDate,
+  resolveProgramEndDate,
+} from "../lib/internshipProgramWindow";
 import path from "path";
 import fs from "fs";
 import os from "os";
@@ -289,6 +292,49 @@ export interface InternshipCertificateContext {
 }
 
 /**
+ * The completion date recorded on the certificate and shown on the public
+ * verification page: the end of the learner's OWN programme, i.e. the moment
+ * an admin marked them enrolled (`enrolledAt`) plus the duration they chose at
+ * registration.
+ */
+export const computeInternshipCompletionDate = (
+  enrollment: Record<string, any>,
+): Date | null => {
+  // Validate the duration HERE rather than relying on computeProgramEndDate to
+  // throw: its range check is `months < 1 || months > 120`, and `undefined`
+  // fails both comparisons, so a row missing programDurationMonths returns an
+  // Invalid Date instead of throwing. The result is re-checked for the same
+  // reason: an invalid date must never reach the certificate record.
+  const months = enrollment.programDurationMonths;
+  const hasUsableDuration =
+    typeof months === "number" &&
+    Number.isFinite(months) &&
+    months >= 1 &&
+    months <= 120;
+  const enrolledAt = enrollment.enrolledAt
+    ? new Date(enrollment.enrolledAt)
+    : null;
+
+  if (enrolledAt && !Number.isNaN(enrolledAt.getTime()) && hasUsableDuration) {
+    try {
+      const end = computeProgramEndDate(enrolledAt, months);
+      if (!Number.isNaN(end.getTime())) return end;
+    } catch {
+      // Fall through to the cohort-anchored window below.
+    }
+  }
+
+  // Legacy rows with no usable enrolledAt + duration keep the cohort-anchored
+  // window rather than blocking certificate issue.
+  const fallback = resolveProgramEndDate({
+    endDate: enrollment.endDate,
+    cohortStart: enrollment.batchSnapshot?.internshipStartDate,
+    durationMonths: hasUsableDuration ? months : null,
+  });
+  return fallback && !Number.isNaN(fallback.getTime()) ? fallback : null;
+};
+
+/**
  * Load (and, for legacy rows, repair) the data behind one internship
  * certificate. Does NOT gate on eligibility — callers that issue a NEW
  * certificate must do that themselves.
@@ -365,7 +411,7 @@ export const loadInternshipCertificateContext = async (
     internRole,
     durationMonths,
     internPeriod,
-    completionDate: (enrollment as any).enrolledAt || new Date(),
+    completionDate: computeInternshipCompletionDate(enrollment) ?? endDate,
   };
 };
 

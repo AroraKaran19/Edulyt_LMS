@@ -26,6 +26,7 @@ import internshipRoutes from "./internship.routes";
 import internshipExamRoutes from "./internshipExam.routes";
 import internshipQuestionRoutes from "./internshipQuestion.routes";
 import internshipTaskRoutes from "./internshipTask.routes";
+import courseInternshipRoutes from "./courseInternship.routes";
 import internshipSubmissionRoutes from "./internshipSubmission.routes";
 import internshipEnrollmentRoutes from "./internshipEnrollment.routes";
 import partnerCollegeRoutes from "./partnerCollege.routes";
@@ -69,6 +70,7 @@ export {
   internshipExamRoutes,
   internshipQuestionRoutes,
   internshipTaskRoutes,
+  courseInternshipRoutes,
   internshipSubmissionRoutes,
   internshipEnrollmentRoutes,
   partnerCollegeRoutes,

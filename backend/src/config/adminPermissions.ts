@@ -65,6 +65,13 @@ export const ADMIN_PERMISSION_CATALOG: AdminSection[] = [
     ],
   },
   {
+    key: "course-internships",
+    label: "CourseInternships",
+    pages: [
+      { key: "course-internships.manage", label: "Manage Programs", href: "/admin/course-internships/manage" },
+    ],
+  },
+  {
     key: "users",
     label: "All Users",
     pages: [
@@ -114,6 +121,7 @@ export const ADMIN_PERMISSION_CATALOG: AdminSection[] = [
       { key: "settings.terms-and-conditions", label: "Terms & Conditions", href: "/admin/settings/terms-and-conditions" },
       { key: "settings.colleges", label: "Colleges List", href: "/admin/settings/colleges" },
       { key: "settings.certificate-jobs", label: "Certificate Jobs", href: "/admin/settings/certificate-jobs" },
+      { key: "settings.invoice-jobs", label: "Invoice Jobs", href: "/admin/settings/invoice-jobs" },
       { key: "settings.offer-letter-jobs", label: "Offer Letter Jobs", href: "/admin/settings/offer-letter-jobs" },
       { key: "settings.collaboration-jobs", label: "Collaboration Jobs", href: "/admin/settings/collaboration-jobs" },
       { key: "settings.collaboration-domains", label: "Collaboration Domains", href: "/admin/settings/collaboration-domains" },

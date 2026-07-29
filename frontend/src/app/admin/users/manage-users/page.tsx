@@ -653,9 +653,12 @@ const ManageUsersPage = () => {
                 <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                   User
                 </th>
-                <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                  Total Spend
-                </th>
+                {/* Spend figures are super-admin only. */}
+                {isSuperAdmin && (
+                  <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                    Total Spend
+                  </th>
+                )}
                 <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                   Type
                 </th>
@@ -676,7 +679,7 @@ const ManageUsersPage = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {isLoading ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center">
+                  <td colSpan={isSuperAdmin ? 7 : 6} className="px-6 py-12 text-center">
                     <div className="flex flex-col items-center justify-center">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 mb-3"></div>
                       <p className="text-gray-500 text-sm">Loading users...</p>
@@ -685,7 +688,7 @@ const ManageUsersPage = () => {
                 </tr>
               ) : users.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center">
+                  <td colSpan={isSuperAdmin ? 7 : 6} className="px-6 py-12 text-center">
                     <div className="flex flex-col items-center justify-center">
                       <UserIcon className="w-12 h-12 text-gray-400 mb-3" />
                       <p className="text-gray-500 text-sm font-medium">
@@ -738,18 +741,20 @@ const ManageUsersPage = () => {
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
-                      {user.userType === "student" ? (
-                        <>
-                          ₹
-                          {(
-                            user as User & { totalSpend?: number }
-                          ).totalSpend?.toLocaleString("en-IN") ?? 0}
-                        </>
-                      ) : (
-                        <span className="text-gray-400 font-normal">N/A</span>
-                      )}
-                    </td>
+                    {isSuperAdmin && (
+                      <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
+                        {user.userType === "student" ? (
+                          <>
+                            ₹
+                            {(
+                              user as User & { totalSpend?: number }
+                            ).totalSpend?.toLocaleString("en-IN") ?? 0}
+                          </>
+                        ) : (
+                          <span className="text-gray-400 font-normal">N/A</span>
+                        )}
+                      </td>
+                    )}
                     <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
                       <span
                         className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getUserTypeBadgeColor(
@@ -795,26 +800,36 @@ const ManageUsersPage = () => {
                               icon: Eye,
                               onSelect: () => handleViewUserDetails(user),
                             },
-                            {
-                              key: "status",
-                              label:
-                                user.status === "active"
-                                  ? "Disable account"
-                                  : "Enable account",
-                              icon: user.status === "active" ? UserX : UserCheck,
-                              tone:
-                                user.status === "active"
-                                  ? "warning"
-                                  : "success",
-                              disabled: statusToggleUserId === user._id,
-                              onSelect: () => handleToggleAccountActive(user),
-                            },
-                            {
-                              key: "edit",
-                              label: "Edit user",
-                              icon: Edit,
-                              onSelect: () => handleEditUser(user),
-                            },
+                            // Disabling, editing and deleting accounts are
+                            // super-admin only; the routes enforce it too.
+                            ...(isSuperAdmin
+                              ? ([
+                                  {
+                                    key: "status",
+                                    label:
+                                      user.status === "active"
+                                        ? "Disable account"
+                                        : "Enable account",
+                                    icon:
+                                      user.status === "active"
+                                        ? UserX
+                                        : UserCheck,
+                                    tone:
+                                      user.status === "active"
+                                        ? "warning"
+                                        : "success",
+                                    disabled: statusToggleUserId === user._id,
+                                    onSelect: () =>
+                                      handleToggleAccountActive(user),
+                                  },
+                                  {
+                                    key: "edit",
+                                    label: "Edit user",
+                                    icon: Edit,
+                                    onSelect: () => handleEditUser(user),
+                                  },
+                                ] as RowAction[])
+                              : []),
                             {
                               key: "password",
                               label: "Change password",
@@ -838,17 +853,21 @@ const ManageUsersPage = () => {
                                   },
                                 ] as RowAction[])
                               : []),
-                            {
-                              key: "delete",
-                              label: "Delete user",
-                              icon: Trash2,
-                              tone: "danger",
-                              separatorBefore: true,
-                              onSelect: () => {
-                                setSelectedUser(user);
-                                setShowDeleteConfirm(true);
-                              },
-                            },
+                            ...(isSuperAdmin
+                              ? ([
+                                  {
+                                    key: "delete",
+                                    label: "Delete user",
+                                    icon: Trash2,
+                                    tone: "danger",
+                                    separatorBefore: true,
+                                    onSelect: () => {
+                                      setSelectedUser(user);
+                                      setShowDeleteConfirm(true);
+                                    },
+                                  },
+                                ] as RowAction[])
+                              : []),
                           ]}
                         />
                       </div>

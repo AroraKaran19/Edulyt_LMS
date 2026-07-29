@@ -1,6 +1,10 @@
 import { Router } from "express";
 import { verifyUser } from "../middlewares/user.middleware";
-import { verifyAdmin, requirePermission } from "../middlewares/admin.middleware";
+import {
+  verifyAdmin,
+  requirePermission,
+  verifySuperAdmin,
+} from "../middlewares/admin.middleware";
 import {
   getUsers,
   getAdminUserOptions,
@@ -62,16 +66,16 @@ router.get("/admin/:userId", getUserById);
 /**
  * @route   PUT /api/users/admin/:userId
  * @desc    Update any user's profile (handles all user types)
- * @access  Admin
+ * @access  Super admin
  */
-router.put("/admin/:userId", adminUpdateUser);
+router.put("/admin/:userId", verifySuperAdmin, adminUpdateUser);
 
 /**
  * @route   PUT /api/users/admin/:userId/status
- * @desc    Update user status
- * @access  Admin
+ * @desc    Update user status (enable / disable an account)
+ * @access  Super admin
  */
-router.put("/admin/:userId/status", updateUserStatus);
+router.put("/admin/:userId/status", verifySuperAdmin, updateUserStatus);
 
 /**
  * @route   PUT /api/users/admin/:userId/password
@@ -83,9 +87,9 @@ router.put("/admin/:userId/password", adminChangeUserPassword);
 /**
  * @route   DELETE /api/users/admin/:userId
  * @desc    Delete user (permanent delete)
- * @access  Admin
+ * @access  Super admin
  */
-router.delete("/admin/:userId", deleteUser);
+router.delete("/admin/:userId", verifySuperAdmin, deleteUser);
 
 /**
  * @route   POST /api/users/admin/partner

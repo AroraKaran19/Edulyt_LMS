@@ -132,6 +132,17 @@ const AdminSidebar = ({
       ],
     },
     {
+      iconSrc: "/admin/internship.svg",
+      label: "CourseInternships",
+      href: "/admin/course-internships",
+      submenu: [
+        {
+          label: "Manage Programs",
+          href: "/admin/course-internships/manage",
+        },
+      ],
+    },
+    {
       iconSrc: "/admin/all-users-icon.svg",
       label: "All Users",
       href: "/admin/users",
@@ -209,6 +220,10 @@ const AdminSidebar = ({
         {
           label: "Certificate Jobs",
           href: "/admin/settings/certificate-jobs",
+        },
+        {
+          label: "Invoice Jobs",
+          href: "/admin/settings/invoice-jobs",
         },
         {
           label: "Offer Letter Jobs",

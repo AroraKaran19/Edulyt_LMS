@@ -1,13 +1,14 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
-import { Search, ChevronDown, FileX, Loader2 } from "lucide-react";
+import { Search, ChevronDown, FileX } from "lucide-react";
 import { Course } from "@/types";
 import EmptyState from "../components/applications/EmptyState";
 import { cn } from "@/lib/utils";
 import useUserEnrollments from "@/hooks/useUserEnrollments";
 import { Enrollment } from "@/types/enrollment";
 import CourseCard from "./components/CourseCard";
+import { CourseCardSkeletonGrid } from "./components/CourseCardSkeleton";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import AnnouncementSection from "../components/dashboard/AnnouncementSection";
@@ -107,6 +108,14 @@ const CoursesPage = () => {
         activeTab === "All"
           ? result.enrollments
           : result.enrollments.filter(hasLiveCourse);
+
+      const isUnavailable = (enrollment: Enrollment) =>
+        !hasLiveCourse(enrollment) ||
+        (enrollment.courseId as { isActive?: boolean }).isActive === false;
+
+      filteredEnrollments = [...filteredEnrollments].sort(
+        (a, b) => Number(isUnavailable(a)) - Number(isUnavailable(b)),
+      );
 
       // Filter for "Newly bought" tab - only show direct enrollments (not trial, gift, or promotion)
       if (activeTab === "Newly bought") {
@@ -259,19 +268,16 @@ const CoursesPage = () => {
     <div className="py-4">
       <AnnouncementSection audience="course" className="mb-6" />
 
-      {isLoading ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
-        </div>
-      ) : error ? (
+      {/* `isLoading` deliberately does NOT gate this whole block any more: it
+          used to blank the header, tabs, search and sort on every refetch, so
+          changing a tab wiped the controls you just used. Loading is handled
+          in the results section below with a card skeleton. */}
+      {error ? (
         <div className="text-center py-12">
           <p className="text-red-500 mb-4">Error: {error}</p>
-          <button
-            onClick={fetchEnrollments}
-            className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition cursor-pointer"
-          >
+          <OrangeButton onClick={fetchEnrollments} className="px-4 py-2">
             Retry
-          </button>
+          </OrangeButton>
         </div>
       ) : (
         <>
@@ -372,11 +378,10 @@ const CoursesPage = () => {
           </div>
 
           {/* Results Section */}
-          {isSearching ? (
-            <div className="flex flex-col items-center justify-center min-h-[40vh] py-12">
-              <Loader2 className="w-12 h-12 text-orange-500 animate-spin mb-4" />
-              <p className="text-gray-600">Searching courses...</p>
-            </div>
+          {isLoading || isSearching ? (
+            /* Reuse the last known count so a refetch keeps the grid the same
+               height instead of collapsing and re-expanding. */
+            <CourseCardSkeletonGrid count={enrollments.length || 8} />
           ) : isSearchActive && !hasEnrollments ? (
             <div className="flex flex-col items-center justify-center min-h-[40vh] py-12">
               <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-6">
@@ -389,13 +394,12 @@ const CoursesPage = () => {
                 We couldn't find any courses matching "{debouncedSearch}". Try
                 searching with a different term or check your spelling.
               </p>
-              <button
-                type="button"
+              <OrangeButton
                 onClick={() => setSearch("")}
-                className="cursor-pointer px-6 py-3 bg-orange-500 text-white rounded-xl font-medium hover:bg-orange-600 transition-colors shadow-md"
+                className="font-medium"
               >
                 Clear Search
-              </button>
+              </OrangeButton>
             </div>
           ) : !hasEnrollments && emptyStateConfig ? (
             <div className="mt-8">

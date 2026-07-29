@@ -18,6 +18,11 @@ import { Content, Course, CourseLesson, CourseModule } from "../types";
 import mongoose from "mongoose";
 import { createFuzzySearchOrFilter } from "../utils/lib/fuzzySearch";
 import {
+  normalizeInternshipOffer,
+  planMirrorSync,
+} from "../lib/courseInternshipOffer";
+import { CourseInternshipModel } from "../models/courseInternship.schema";
+import {
   deleteFilesFromS3,
   extractS3KeyFromUrl,
 } from "./upload.services";
@@ -726,14 +731,82 @@ export const getCourseBySlugService = async (
   return course as Course;
 };
 
+/**
+ * Validates a course's internship offer and reconciles the program-side mirror
+ * (`courseInternships.courses[]`).
+ *
+ * The course field is the source of truth; the mirror exists only so the admin
+ * program list can show "used by N courses" without a second query. It is
+ * maintained here, and only here, so an admin never edits the link twice.
+ *
+ * Returns the value to persist on the course — `undefined` clears the offer.
+ */
+const applyInternshipOffer = async (
+  courseId: string,
+  rawOffer: unknown,
+  previousProgramId: string | null
+): Promise<
+  { programId: string; price: number; durations: number[] } | undefined
+> => {
+  const { offer, error } = normalizeInternshipOffer(rawOffer);
+  if (error) throw new AppError(error, 400);
+
+  if (offer) {
+    const program = await CourseInternshipModel.findById(offer.programId)
+      .select("_id")
+      .lean();
+    if (!program) throw new AppError("Internship program not found", 404);
+  }
+
+  const { pullFrom, addTo } = planMirrorSync(
+    previousProgramId,
+    offer?.programId ?? null
+  );
+
+  // $pull / $addToSet keep the mirror idempotent if a save is retried.
+  if (pullFrom) {
+    await CourseInternshipModel.updateOne(
+      { _id: pullFrom },
+      { $pull: { courses: courseId } }
+    );
+  }
+  if (addTo) {
+    await CourseInternshipModel.updateOne(
+      { _id: addTo },
+      { $addToSet: { courses: courseId } }
+    );
+  }
+
+  return offer ?? undefined;
+};
+
 export const CreateCourseMetadataService = async (
   courseData: any
 ): Promise<Course | null> => {
   try {
     const cleanedCourseData = { ...courseData, modules: [] };
+    // Validated and mirrored after save — the mirror needs the course's _id.
+    delete cleanedCourseData.internshipOffer;
+
     const course = new CourseModel(cleanedCourseData);
 
     const savedCourse = await course.save();
+
+    if (courseData.internshipOffer) {
+      const offer = await applyInternshipOffer(
+        String(savedCourse._id),
+        courseData.internshipOffer,
+        null
+      );
+      if (offer) {
+        await CourseModel.updateOne(
+          { _id: savedCourse._id },
+          { $set: { internshipOffer: offer } }
+        );
+        (savedCourse as any).internshipOffer = offer;
+      }
+    }
+
     return savedCourse as Course;
   } catch (error) {
     if (error instanceof AppError) {
@@ -1528,6 +1601,9 @@ export const UpdateCourseMetadataService = async (
     "deactivatedModules",
     "deactivatedLessons",
     "deactivatedContents",
+    // Handled explicitly below: the generic loop drops null/undefined, which
+    // would silently ignore "remove this course's internship offer".
+    "internshipOffer",
   ];
 
   Object.keys(courseData).forEach((key) => {
@@ -1542,9 +1618,36 @@ export const UpdateCourseMetadataService = async (
     }
   });
 
+  // The internship offer is set or cleared explicitly, so that clearing it
+  // survives the null-stripping above.
+  let clearInternshipOffer = false;
+  if ("internshipOffer" in courseData) {
+    const existing = await CourseModel.findById(courseId)
+      .select("internshipOffer")
+      .lean<{ internshipOffer?: { programId?: unknown } } | null>();
+    const previousProgramId = existing?.internshipOffer?.programId
+      ? String(existing.internshipOffer.programId)
+      : null;
+
+    const offer = await applyInternshipOffer(
+      String(courseId),
+      courseData.internshipOffer,
+      previousProgramId
+    );
+
+    if (offer) {
+      cleanedData.internshipOffer = offer;
+    } else {
+      clearInternshipOffer = true;
+    }
+  }
+
   const updatedCourse = await CourseModel.findOneAndUpdate(
     { _id: courseId },
-    cleanedData,
+    {
+      $set: cleanedData,
+      ...(clearInternshipOffer ? { $unset: { internshipOffer: "" } } : {}),
+    },
     { new: true, runValidators: true }
   );
 

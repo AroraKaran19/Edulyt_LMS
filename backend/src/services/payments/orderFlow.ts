@@ -1,4 +1,6 @@
 import { UserModel, StudentModel } from "../../models";
+import { isInvoiceableOrder } from "../../lib/invoiceEligibility";
+import { enqueueInvoiceJobSafe } from "../invoiceJob.services";
 import { createEnrollmentAfterPayment } from "./fulfillment";
 import { getProvider, resolveGateway } from "./registry";
 import { generatePaymentGatewayToken } from "./token";
@@ -53,6 +55,12 @@ export const applyPaymentResult = async (
     } catch (err) {
       console.error(`Failed to create enrollment for order ${order._id}:`, err);
     }
+
+    // Queue only. Rendering the PDF and pushing it to S3 happens in the invoice
+    // worker, so the gateway callback returns without waiting on LibreOffice.
+    if (isInvoiceableOrder(order)) {
+      await enqueueInvoiceJobSafe(order._id.toString());
+    }
     return;
   }
 
@@ -95,7 +103,17 @@ export const beginGatewayCheckout = async (
     order.amount = 0;
     order.paymentStatus = "success";
     await order.save();
-    await createEnrollmentAfterPayment(order);
+    try {
+      await createEnrollmentAfterPayment(order);
+    } catch (err) {
+      console.error(`Failed to create enrollment for free order ${orderId}:`, err);
+    }
+    // Discounted to zero at checkout is still a checkout purchase, so it still
+    // gets a ₹0 tax invoice. Free grants never reach here (they make no order).
+    // Outside the try above so fulfilment trouble cannot swallow the invoice.
+    if (isInvoiceableOrder(order)) {
+      await enqueueInvoiceJobSafe(orderId);
+    }
     return {
       freeOrder: true,
       orderId,
