@@ -131,10 +131,18 @@ export const cleanupExpiredTokens = async () => {
   try {
     const now = new Date();
     // Remove tokens past their absolute (hard) cap from all users without any further processing.
-    await UserModel.updateMany(
+    const result = await UserModel.updateMany(
       { "refreshTokens.absoluteExpiresAt": { $lt: now } },
       { $pull: { refreshTokens: { absoluteExpiresAt: { $lt: now } } } },
     );
+    // Only speaks up when it actually pruned something; an idle hourly tick
+    // would otherwise fill the log. Silence here means "nothing expired", not
+    // "worker dead" — the startup line in tokenCleanup.worker.ts proves liveness.
+    if (result.modifiedCount > 0) {
+      console.log(
+        `[Token Cleanup Worker] Pruned expired refresh tokens from ${result.modifiedCount} user(s).`,
+      );
+    }
   } catch (error) {
     console.error("Error cleaning up expired tokens:", error);
   }

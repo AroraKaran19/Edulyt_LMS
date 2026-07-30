@@ -1,13 +1,12 @@
 /**
- * PM2 process: scheduled crons + certificate, offer-letter, and internship
- * certificate-evaluation queues.
+ * PM2 process: scheduled crons + the certificate queue.
  * Do not run multiple instances (duplicate crons / duplicate polling).
  *
- * The internship evaluation worker lives here on purpose: the daily enqueue cron
- * is already registered by `initializeCronJobs()`, and a passing verdict enqueues
- * a certificate job that THIS process drains — so verdict → certificate → PDF all
- * happen in one place. It is pure DB I/O, so it adds no meaningful memory.
- * It stays inert unless INTERNSHIP_EVALUATION_ENABLED=true.
+ * This is the ONLY process that calls `initializeCronJobs()`. Every scheduled
+ * job in the system fires from here, including the daily enqueues that feed the
+ * offer-letter and internship-evaluation queues — those queues are now drained
+ * by their own PM2 apps (worker-offer-letter, worker-internship-eval,
+ * worker-invoice). Adding a second instance of this app double-fires every cron.
  *
  * Run: node dist/certificate-worker.js
  */
@@ -16,9 +15,6 @@ import { connectDB, disconnectDB } from "./config/database";
 import { initializeS3 } from "./config/s3";
 import { initializeCronJobs } from "./services/cron.services";
 import { startCertificateWorker } from "./workers/certificate.worker";
-import { startOfferLetterWorker } from "./workers/offerLetter.worker";
-import { startInternshipEvaluationWorker } from "./workers/internshipEvaluation.worker";
-import { startInvoiceWorker } from "./workers/invoice.worker";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -28,14 +24,9 @@ const start = async () => {
     await connectDB();
     await initializeS3();
 
-    console.log(
-      "🕐 Starting certificate worker (cron + certificate + offer-letter + internship-evaluation + invoice jobs)...",
-    );
+    console.log("🕐 Starting certificate worker (cron + certificate jobs)...");
     initializeCronJobs();
     startCertificateWorker();
-    startOfferLetterWorker();
-    startInternshipEvaluationWorker();
-    startInvoiceWorker();
 
     console.log("✅ Certificate worker running");
 
