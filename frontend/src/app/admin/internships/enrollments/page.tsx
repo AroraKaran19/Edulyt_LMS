@@ -1,40 +1,90 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
-import { HelpCircle, User, Briefcase, Calendar } from "lucide-react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import {
+  HelpCircle,
+  User,
+  Briefcase,
+  Calendar,
+  SlidersHorizontal,
+  X,
+} from "lucide-react";
 import { toast } from "react-toastify";
 import apiClient from "@/configs/apiConfig";
 import { ENDPOINTS } from "@/constants/endpoints";
-import Select from "@/components/ui/inputs/Select";
+import Select, { type SelectOption } from "@/components/ui/inputs/Select";
+import AsyncSelect from "@/components/ui/inputs/AsyncSelect";
 import Pagination from "@/components/admin/Pagination";
 import InternshipAdminListShell from "../components/InternshipAdminListShell";
 import type { InternshipEnrollmentListRow } from "@/types";
 import InternshipEnrollmentDetailModal from "./InternshipEnrollmentDetailModal";
 
-const STATUS_FILTER_OPTIONS: { value: string; label: string }[] = [
-  { value: "all", label: "All (in this group)" },
-  { value: "enrolled", label: "Enrolled" },
-  { value: "completed", label: "Completed" },
-  { value: "paused", label: "Paused" },
-  { value: "dropped", label: "Dropped" },
-  { value: "revoked", label: "Revoked" },
-];
+/**
+ * One control for the whole lifecycle. Values are either a lifecycle group
+ * ("program" / "pipeline" / "all") or `s:` followed by one status or a
+ * comma-separated group of them — the two used to be separate dropdowns that
+ * could contradict each other, because the API lets a chosen status override
+ * the lifecycle group silently.
+ */
+const STATUS_FILTER_DEFAULT = "program";
 
-const LIFECYCLE_FILTER_OPTIONS: { value: string; label: string }[] = [
+const DOCUMENTATION_STATUSES = [
+  "pending_documentation",
+  "docs_under_review",
+  "re_pending_documentation",
+  "offer_letter_pending",
+].join(",");
+
+const STATUS_FILTER_OPTIONS: SelectOption[] = [
+  { value: "program", label: "In program (all)", group: "In program" },
   {
-    value: "program",
-    label: "In program (enrolled, completed, …)",
+    value: `s:${DOCUMENTATION_STATUSES}`,
+    label: "Documentation pending",
+    group: "In program",
   },
-  { value: "pipeline", label: "Exam & selection only" },
-  { value: "all", label: "Every status" },
+  { value: "s:enrolled", label: "Enrolled", group: "In program" },
+  { value: "s:completed", label: "Completed", group: "In program" },
+  { value: "s:paused", label: "Paused", group: "In program" },
+  { value: "s:dropped", label: "Dropped", group: "In program" },
+  { value: "s:revoked", label: "Revoked", group: "In program" },
+  {
+    value: "pipeline",
+    label: "Exam & selection (all)",
+    group: "Exam & selection",
+  },
+  {
+    value: "s:exam_registered",
+    label: "Exam registered",
+    group: "Exam & selection",
+  },
+  {
+    value: "s:exam_attempted",
+    label: "Exam attempted",
+    group: "Exam & selection",
+  },
+  {
+    value: "s:in_merit_pool",
+    label: "In merit pool",
+    group: "Exam & selection",
+  },
+  {
+    value: "s:payment_pending",
+    label: "Payment pending",
+    group: "Exam & selection",
+  },
+  { value: "s:admin_rejected", label: "Rejected", group: "Exam & selection" },
+  { value: "all", label: "Every status", group: "Everything" },
 ];
 
-const CERT_OUTCOME_FILTER_OPTIONS: { value: string; label: string }[] = [
+const CERT_OUTCOME_FILTER_OPTIONS: SelectOption[] = [
   { value: "all", label: "Any certificate outcome" },
   { value: "certified", label: "Certified" },
   { value: "not_certified", label: "Not certified" },
   { value: "pending", label: "Awaiting evaluation" },
 ];
+
+const ALL_INTERNSHIPS = "all";
+const ALL_BATCHES = "all";
 
 type CertOutcome = "certified" | "not_certified" | "pending";
 
@@ -66,11 +116,14 @@ const CERT_OUTCOME_BADGE: Record<
   },
 };
 
-const ENROLLMENT_TYPE_OPTIONS: { value: string; label: string }[] = [
+const ENROLLMENT_TYPE_OPTIONS: SelectOption[] = [
   { value: "all", label: "All paths" },
   { value: "merit", label: "Merit" },
   { value: "paid", label: "Paid" },
 ];
+
+const labelOf = (options: SelectOption[], value: string) =>
+  options.find((o) => o.value === value)?.label ?? value;
 
 function formatDate(iso?: string) {
   if (!iso) return "—";
@@ -130,20 +183,20 @@ export default function InternshipEnrollmentsAdminPage() {
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [lifecycleFilter, setLifecycleFilter] = useState("program");
+  const [statusFilter, setStatusFilter] = useState(STATUS_FILTER_DEFAULT);
   const [certOutcomeFilter, setCertOutcomeFilter] = useState("all");
   const [enrollmentTypeFilter, setEnrollmentTypeFilter] = useState("all");
-  const [batchSearch, setBatchSearch] = useState("");
-  const [debouncedBatchSearch, setDebouncedBatchSearch] = useState("");
+  const [internshipFilter, setInternshipFilter] = useState(ALL_INTERNSHIPS);
+  const [internshipLabel, setInternshipLabel] = useState("");
+  const [batchFilter, setBatchFilter] = useState(ALL_BATCHES);
+  const [batches, setBatches] = useState<{ _id: string; name: string }[]>([]);
+  const [isLoadingBatches, setIsLoadingBatches] = useState(false);
+  const [showMoreFilters, setShowMoreFilters] = useState(false);
   const [enrolledFrom, setEnrolledFrom] = useState("");
   const [enrolledTo, setEnrolledTo] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const batchSearchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null,
-  );
 
   useEffect(() => {
     if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
@@ -156,18 +209,71 @@ export default function InternshipEnrollmentsAdminPage() {
     };
   }, [search]);
 
+  // Internship picker feed — paged in as the dropdown scrolls, so the page
+  // never pulls the whole catalogue (or its populated relations) up front.
+  const fetchInternshipOptions = useCallback(
+    async (optionsPage: number, optionsSearch: string) => {
+      const res = await apiClient.get(ENDPOINTS.internships.admin.options, {
+        params: { page: optionsPage, limit: 20, search: optionsSearch },
+      });
+      const d = res.data?.data as {
+        items?: { _id: string; title: string }[];
+        hasMore?: boolean;
+      };
+      return {
+        items: (d?.items ?? []).map((i) => ({
+          value: String(i._id),
+          label: i.title,
+        })),
+        hasMore: Boolean(d?.hasMore),
+      };
+    },
+    [],
+  );
+
+  // Batches of the selected internship. Cleared whenever the internship changes
+  // so a stale cohort can never stay applied to a different programme.
   useEffect(() => {
-    if (batchSearchTimeoutRef.current)
-      clearTimeout(batchSearchTimeoutRef.current);
-    batchSearchTimeoutRef.current = setTimeout(() => {
-      setDebouncedBatchSearch(batchSearch.trim());
-      setPage(1);
-    }, 400);
+    if (internshipFilter === ALL_INTERNSHIPS) {
+      setBatches([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      setIsLoadingBatches(true);
+      try {
+        const res = await apiClient.get(
+          `${ENDPOINTS.internships.admin.byId}/${internshipFilter}`,
+        );
+        const data = res.data?.data as {
+          batches?: { _id: string; name: string }[];
+        };
+        if (!cancelled) {
+          setBatches(
+            (data?.batches ?? []).map((b) => ({
+              _id: String(b._id),
+              name: b.name,
+            })),
+          );
+        }
+      } catch {
+        if (!cancelled) setBatches([]);
+      } finally {
+        if (!cancelled) setIsLoadingBatches(false);
+      }
+    })();
     return () => {
-      if (batchSearchTimeoutRef.current)
-        clearTimeout(batchSearchTimeoutRef.current);
+      cancelled = true;
     };
-  }, [batchSearch]);
+  }, [internshipFilter]);
+
+  const batchOptions = useMemo<SelectOption[]>(
+    () => [
+      { value: ALL_BATCHES, label: "All batches" },
+      ...batches.map((b) => ({ value: b._id, label: b.name })),
+    ],
+    [batches],
+  );
 
   const fetchRows = useCallback(async () => {
     setIsLoading(true);
@@ -177,13 +283,21 @@ export default function InternshipEnrollmentsAdminPage() {
         limit: 10,
       };
       if (debouncedSearch) params.search = debouncedSearch;
-      if (statusFilter !== "all") params.status = statusFilter;
-      params.lifecycle = lifecycleFilter;
+      // Either a lifecycle group or an explicit `s:`-prefixed status list —
+      // never both, so the two can no longer disagree.
+      if (statusFilter.startsWith("s:")) {
+        params.status = statusFilter.slice(2);
+        params.lifecycle = "all";
+      } else {
+        params.lifecycle = statusFilter;
+      }
       if (certOutcomeFilter !== "all")
         params.certificateOutcome = certOutcomeFilter;
       if (enrollmentTypeFilter !== "all")
         params.enrollmentType = enrollmentTypeFilter;
-      if (debouncedBatchSearch) params.batchSearch = debouncedBatchSearch;
+      if (internshipFilter !== ALL_INTERNSHIPS)
+        params.internshipId = internshipFilter;
+      if (batchFilter !== ALL_BATCHES) params.batchId = batchFilter;
       if (enrolledFrom) params.enrolledFrom = enrolledFrom;
       if (enrolledTo) params.enrolledTo = enrolledTo;
 
@@ -211,10 +325,10 @@ export default function InternshipEnrollmentsAdminPage() {
     page,
     debouncedSearch,
     statusFilter,
-    lifecycleFilter,
     certOutcomeFilter,
     enrollmentTypeFilter,
-    debouncedBatchSearch,
+    internshipFilter,
+    batchFilter,
     enrolledFrom,
     enrolledTo,
   ]);
@@ -223,37 +337,102 @@ export default function InternshipEnrollmentsAdminPage() {
     void fetchRows();
   }, [fetchRows]);
 
-  const hasActiveFilters =
-    Boolean(debouncedSearch) ||
-    statusFilter !== "all" ||
-    lifecycleFilter !== "program" ||
-    certOutcomeFilter !== "all" ||
-    enrollmentTypeFilter !== "all" ||
-    Boolean(debouncedBatchSearch) ||
-    Boolean(enrolledFrom) ||
-    Boolean(enrolledTo);
+  /** Filters tucked behind "More filters" — the badge counts these. */
+  const moreFiltersCount =
+    (enrollmentTypeFilter !== "all" ? 1 : 0) +
+    (certOutcomeFilter !== "all" ? 1 : 0) +
+    (enrolledFrom || enrolledTo ? 1 : 0);
+
+  const chips: { key: string; label: string; onClear: () => void }[] = [];
+  if (statusFilter !== STATUS_FILTER_DEFAULT) {
+    chips.push({
+      key: "status",
+      label: labelOf(STATUS_FILTER_OPTIONS, statusFilter),
+      onClear: () => {
+        setStatusFilter(STATUS_FILTER_DEFAULT);
+        setPage(1);
+      },
+    });
+  }
+  if (internshipFilter !== ALL_INTERNSHIPS) {
+    chips.push({
+      key: "internship",
+      label: internshipLabel || "Internship",
+      onClear: () => {
+        setInternshipFilter(ALL_INTERNSHIPS);
+        setInternshipLabel("");
+        setBatchFilter(ALL_BATCHES);
+        setPage(1);
+      },
+    });
+  }
+  if (batchFilter !== ALL_BATCHES) {
+    chips.push({
+      key: "batch",
+      label: `Batch: ${labelOf(batchOptions, batchFilter)}`,
+      onClear: () => {
+        setBatchFilter(ALL_BATCHES);
+        setPage(1);
+      },
+    });
+  }
+  if (enrollmentTypeFilter !== "all") {
+    chips.push({
+      key: "path",
+      label: `Path: ${labelOf(ENROLLMENT_TYPE_OPTIONS, enrollmentTypeFilter)}`,
+      onClear: () => {
+        setEnrollmentTypeFilter("all");
+        setPage(1);
+      },
+    });
+  }
+  if (certOutcomeFilter !== "all") {
+    chips.push({
+      key: "certificate",
+      label: labelOf(CERT_OUTCOME_FILTER_OPTIONS, certOutcomeFilter),
+      onClear: () => {
+        setCertOutcomeFilter("all");
+        setPage(1);
+      },
+    });
+  }
+  if (enrolledFrom || enrolledTo) {
+    chips.push({
+      key: "enrolled",
+      label: `Enrolled ${enrolledFrom || "any"} → ${enrolledTo || "any"}`,
+      onClear: () => {
+        setEnrolledFrom("");
+        setEnrolledTo("");
+        setPage(1);
+      },
+    });
+  }
+
+  const hasActiveFilters = chips.length > 0 || Boolean(debouncedSearch);
+
+  const clearAllFilters = () => {
+    setSearch("");
+    setStatusFilter(STATUS_FILTER_DEFAULT);
+    setInternshipFilter(ALL_INTERNSHIPS);
+    setInternshipLabel("");
+    setBatchFilter(ALL_BATCHES);
+    setEnrollmentTypeFilter("all");
+    setCertOutcomeFilter("all");
+    setEnrolledFrom("");
+    setEnrolledTo("");
+    setPage(1);
+  };
 
   return (
     <>
       <InternshipAdminListShell
         title="Internship enrollments"
-        subtitle="Learners who are in the program (enrolled, completed, and similar). Use the lifecycle filter to include exam/selection pipeline, or use Entrance exams for cohort tools."
+        subtitle="Learners across the internship lifecycle. Opens on everyone in the program; switch Status to reach the exam and selection pipeline."
         searchPlaceholder="Search by learner email, name, internship title, or batch…"
         searchValue={search}
         onSearchChange={setSearch}
         filterExtras={
           <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-            <div className="sm:w-64">
-              <Select
-                options={LIFECYCLE_FILTER_OPTIONS}
-                value={lifecycleFilter}
-                onChange={(val) => {
-                  setLifecycleFilter(val);
-                  setPage(1);
-                }}
-                placeholder="Lifecycle"
-              />
-            </div>
             <div className="sm:w-56">
               <Select
                 options={STATUS_FILTER_OPTIONS}
@@ -266,82 +445,155 @@ export default function InternshipEnrollmentsAdminPage() {
               />
             </div>
             <div className="sm:w-56">
-              <Select
-                options={CERT_OUTCOME_FILTER_OPTIONS}
-                value={certOutcomeFilter}
-                onChange={(val) => {
-                  setCertOutcomeFilter(val);
+              <AsyncSelect
+                fetchPage={fetchInternshipOptions}
+                value={internshipFilter}
+                selectedLabel={internshipLabel}
+                onChange={(val, label) => {
+                  setInternshipFilter(val);
+                  setInternshipLabel(val === ALL_INTERNSHIPS ? "" : label);
+                  // A cohort only means something inside one programme.
+                  setBatchFilter(ALL_BATCHES);
                   setPage(1);
                 }}
-                placeholder="Certificate"
+                allOption={{ value: ALL_INTERNSHIPS, label: "All internships" }}
+                placeholder="All internships"
+                searchPlaceholder="Search internships…"
+                // Titles run long; let the panel outgrow the trigger.
+                panelClassName="w-[min(26rem,80vw)]"
+              />
+            </div>
+            <div className="sm:w-48">
+              <Select
+                options={batchOptions}
+                value={batchFilter}
+                onChange={(val) => {
+                  setBatchFilter(val);
+                  setPage(1);
+                }}
+                placeholder={
+                  internshipFilter === ALL_INTERNSHIPS
+                    ? "Pick an internship"
+                    : isLoadingBatches
+                      ? "Loading batches…"
+                      : "All batches"
+                }
+                disabled={internshipFilter === ALL_INTERNSHIPS}
+                searchable={batches.length > 8}
+                searchPlaceholder="Search batches…"
               />
             </div>
           </div>
         }
         filterRow2={
-          <>
-            <div className="sm:w-44">
-              <Select
-                options={ENROLLMENT_TYPE_OPTIONS}
-                value={enrollmentTypeFilter}
-                onChange={(val) => {
-                  setEnrollmentTypeFilter(val);
-                  setPage(1);
-                }}
-                placeholder="Path"
-              />
-            </div>
-            <div className="relative sm:w-52">
-              <input
-                type="text"
-                placeholder="Filter by batch name…"
-                value={batchSearch}
-                onChange={(e) => setBatchSearch(e.target.value)}
-                className="w-full px-4 py-3.5 border border-gray-300 rounded-xl bg-white text-sm text-black placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-400 transition-all shadow-sm"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                <input
-                  type="date"
-                  title="Enrolled from"
-                  value={enrolledFrom}
-                  onChange={(e) => {
-                    setEnrolledFrom(e.target.value);
-                    setPage(1);
-                  }}
-                  className="pl-9 pr-3 py-3.5 border border-gray-300 rounded-xl bg-white text-sm text-black focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-400 transition-all shadow-sm w-[152px]"
-                />
-              </div>
-              <span className="text-gray-400 text-sm shrink-0">to</span>
-              <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                <input
-                  type="date"
-                  title="Enrolled to"
-                  value={enrolledTo}
-                  onChange={(e) => {
-                    setEnrolledTo(e.target.value);
-                    setPage(1);
-                  }}
-                  className="pl-9 pr-3 py-3.5 border border-gray-300 rounded-xl bg-white text-sm text-black focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-400 transition-all shadow-sm w-[152px]"
-                />
-              </div>
-              {(enrolledFrom || enrolledTo) && (
-                <button
-                  onClick={() => {
-                    setEnrolledFrom("");
-                    setEnrolledTo("");
-                    setPage(1);
-                  }}
-                  className="text-xs text-gray-500 hover:text-gray-700 whitespace-nowrap underline"
+          <div className="w-full flex flex-col gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowMoreFilters((v) => !v)}
+                className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition-colors cursor-pointer ${
+                  showMoreFilters || moreFiltersCount > 0
+                    ? "border-orange-300 bg-orange-50 text-orange-700"
+                    : "border-gray-300 bg-white text-gray-600 hover:border-orange-400"
+                }`}
+                aria-expanded={showMoreFilters}
+              >
+                <SlidersHorizontal className="w-4 h-4" />
+                More filters
+                {moreFiltersCount > 0 && (
+                  <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-orange-600 px-1.5 text-[11px] font-bold text-white">
+                    {moreFiltersCount}
+                  </span>
+                )}
+              </button>
+
+              {chips.map((chip) => (
+                <span
+                  key={chip.key}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 py-1 pl-3 pr-1.5 text-xs font-medium text-gray-700"
                 >
-                  Clear
+                  <span className="max-w-[220px] truncate">{chip.label}</span>
+                  <button
+                    type="button"
+                    onClick={chip.onClear}
+                    aria-label={`Remove filter ${chip.label}`}
+                    className="rounded-full p-0.5 text-gray-400 hover:bg-gray-200 hover:text-gray-700 cursor-pointer"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              ))}
+
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  onClick={clearAllFilters}
+                  className="text-xs font-semibold text-gray-500 underline hover:text-gray-700 cursor-pointer"
+                >
+                  Clear all
                 </button>
               )}
             </div>
-          </>
+
+            {showMoreFilters && (
+              <div className="flex flex-col gap-3 rounded-xl border border-gray-200 bg-gray-50/60 p-3 sm:flex-row sm:flex-wrap sm:items-center">
+                <div className="sm:w-44">
+                  <Select
+                    options={ENROLLMENT_TYPE_OPTIONS}
+                    value={enrollmentTypeFilter}
+                    onChange={(val) => {
+                      setEnrollmentTypeFilter(val);
+                      setPage(1);
+                    }}
+                    placeholder="Path"
+                  />
+                </div>
+                <div className="sm:w-56">
+                  <Select
+                    options={CERT_OUTCOME_FILTER_OPTIONS}
+                    value={certOutcomeFilter}
+                    onChange={(val) => {
+                      setCertOutcomeFilter(val);
+                      setPage(1);
+                    }}
+                    placeholder="Certificate"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-500 shrink-0">
+                    Enrolled
+                  </span>
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                    <input
+                      type="date"
+                      title="Enrolled from"
+                      value={enrolledFrom}
+                      onChange={(e) => {
+                        setEnrolledFrom(e.target.value);
+                        setPage(1);
+                      }}
+                      className="pl-9 pr-3 py-3.5 border border-gray-300 rounded-xl bg-white text-sm text-black focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-400 transition-all shadow-sm w-[152px]"
+                    />
+                  </div>
+                  <span className="text-gray-400 text-sm shrink-0">to</span>
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                    <input
+                      type="date"
+                      title="Enrolled to"
+                      value={enrolledTo}
+                      onChange={(e) => {
+                        setEnrolledTo(e.target.value);
+                        setPage(1);
+                      }}
+                      className="pl-9 pr-3 py-3.5 border border-gray-300 rounded-xl bg-white text-sm text-black focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-400 transition-all shadow-sm w-[152px]"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         }
       >
         <div className="overflow-x-auto">
@@ -396,9 +648,13 @@ export default function InternshipEnrollmentsAdminPage() {
                         No enrollments found
                       </p>
                       {hasActiveFilters ? (
-                        <p className="text-gray-400 text-sm">
-                          Try adjusting search or status
-                        </p>
+                        <button
+                          type="button"
+                          onClick={clearAllFilters}
+                          className="text-sm font-semibold text-orange-600 underline hover:text-orange-700 cursor-pointer"
+                        >
+                          Clear all filters
+                        </button>
                       ) : null}
                     </div>
                   </td>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { toast } from "react-toastify";
 import { Filter, Loader2, Search, X } from "lucide-react";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
@@ -68,12 +69,26 @@ const ALLOWED_TRANSITIONS: Record<
   rejected: [],
 };
 
+/** Only accept a `status` query param the filter actually offers. */
+function statusFromUrl(raw: string | null): "" | ReferralWithdrawalStatus {
+  return STATUS_OPTIONS.some((o) => o.value === raw)
+    ? (raw as ReferralWithdrawalStatus)
+    : "";
+}
+
 export default function AdminReferralWithdrawalsPage() {
   const { adminListWithdrawals, adminTransitionWithdrawal } = useReferral();
 
-  const [status, setStatus] = useState<"" | ReferralWithdrawalStatus>("");
-  const [searchInput, setSearchInput] = useState("");
-  const [search, setSearch] = useState("");
+  // Deep-linkable: the referral report links here with ?search=<email> so an
+  // admin can jump straight from a referrer's balance to their redeem requests.
+  const searchParams = useSearchParams();
+  const searchFromUrl = searchParams.get("search") ?? "";
+
+  const [status, setStatus] = useState<"" | ReferralWithdrawalStatus>(() =>
+    statusFromUrl(searchParams.get("status")),
+  );
+  const [searchInput, setSearchInput] = useState(searchFromUrl);
+  const [search, setSearch] = useState(searchFromUrl);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
@@ -160,9 +175,15 @@ export default function AdminReferralWithdrawalsPage() {
   return (
     <div className="p-4 sm:p-6 space-y-4">
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <h1 className="text-lg sm:text-2xl font-bold text-black">
-          Referral Withdrawals
-        </h1>
+        <div>
+          <h1 className="text-lg sm:text-2xl font-bold text-black">
+            Referral Withdrawals
+          </h1>
+          <p className="mt-0.5 text-sm text-gray-500">
+            Every redeem request learners have applied for. Filter to
+            &ldquo;Pending&rdquo; for the ones still awaiting a decision.
+          </p>
+        </div>
         <span className="text-sm text-gray-500">
           {loading
             ? "Loading…"

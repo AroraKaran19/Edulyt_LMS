@@ -20,6 +20,15 @@ import {
 } from "../services/admin-enrollments.services";
 import { revokeEnrollmentAdminService } from "../services/enrollment.services";
 import { getTimeSpentPerDayService } from "../services/enrollment.services";
+import {
+  CSV_EXPORT_MAX_ROWS,
+  csvRangeFilename,
+  isFullExport,
+  sendCsvResponse,
+  wantsCsv,
+  type CsvColumn,
+} from "../utils/lib/csv";
+import { parseDateRange, rangeEcho } from "../utils/lib/dateRange";
 
 /**
  * @route   GET /api/admin/dashboard-stats
@@ -168,10 +177,60 @@ export const getTimeSpentPerDayController = asyncHandler(
 );
 
 /**
+ * One CSV line per order. Discounts are broken out individually because
+ * `amount` is already net of all of them, so a finance export needs both sides
+ * to reconcile against an invoice.
+ */
+const ORDER_CSV_COLUMNS: CsvColumn<Record<string, any>>[] = [
+  { header: "Order ID", pick: (o) => String(o._id ?? "") },
+  { header: "Txn ID", pick: (o) => o.txnId },
+  { header: "Date", pick: (o) => o.createdAt },
+  {
+    header: "User",
+    pick: (o) =>
+      [o.userId?.firstName, o.userId?.lastName].filter(Boolean).join(" ") ||
+      o.userName ||
+      "",
+  },
+  { header: "Email", pick: (o) => o.userId?.email ?? "" },
+  { header: "Order Type", pick: (o) => o.orderKind ?? "course" },
+  {
+    header: "Product",
+    pick: (o) =>
+      o.courseId?.title || o.courseName || o.internshipTitle || "",
+  },
+  { header: "Plan", pick: (o) => o.planType ?? "" },
+  { header: "Batch ID", pick: (o) => o.batchId ?? "" },
+  {
+    header: "Success Points Qty",
+    pick: (o) => o.internshipSuccessPointsQuantity ?? "",
+  },
+  { header: "Amount Paid", pick: (o) => o.amount ?? 0 },
+  { header: "Currency", pick: (o) => o.currency ?? "INR" },
+  { header: "Payment Status", pick: (o) => o.paymentStatus },
+  { header: "Payment Mode", pick: (o) => o.paymentMode ?? "" },
+  { header: "Payment Method", pick: (o) => o.paymentMethod ?? "" },
+  { header: "Failure Reason", pick: (o) => o.paymentErrorReason ?? "" },
+  { header: "Coupon Code", pick: (o) => o.couponCode ?? "" },
+  { header: "Coupon Discount", pick: (o) => o.couponDiscount ?? 0 },
+  {
+    header: "Collaboration Discount",
+    pick: (o) => o.collaborationDiscount ?? 0,
+  },
+  { header: "Referral Code", pick: (o) => o.referralCode ?? "" },
+  { header: "Referral Discount", pick: (o) => o.referralDiscount ?? 0 },
+  { header: "Success Points Applied", pick: (o) => o.successPointsApplied ?? 0 },
+  {
+    header: "Success Points Discount",
+    pick: (o) => o.successPointsDiscount ?? 0,
+  },
+];
+
+/**
  * @route   GET /api/admin/orders
  * @desc    Get all orders (enrollments) for admin
  * @access  Admin
- * @query   page, limit, search, paymentStatus
+ * @query   page, limit, search, paymentStatus, from, to, format=csv
  */
 export const getAdminOrdersController = asyncHandler(
   async (req: Request, res: Response) => {
@@ -181,12 +240,30 @@ export const getAdminOrdersController = asyncHandler(
       throw new AppError("Page and limit must be positive numbers", 400);
     }
 
-    const result = await getAdminOrdersService(
-      Number(page),
-      Number(limit),
-      typeof search === "string" ? search : undefined,
-      typeof paymentStatus === "string" ? paymentStatus : undefined
-    );
+    const range = parseDateRange(req.query.from, req.query.to);
+    const exportAll = isFullExport(req.query);
+
+    const result = await getAdminOrdersService({
+      page: Number(page),
+      limit: Number(limit),
+      search: typeof search === "string" ? search : undefined,
+      paymentStatus:
+        typeof paymentStatus === "string" ? paymentStatus : undefined,
+      from: range.from,
+      to: range.to,
+      exportAll,
+      maxRows: CSV_EXPORT_MAX_ROWS,
+    });
+
+    if (wantsCsv(req.query)) {
+      sendCsvResponse(
+        res,
+        result.orders,
+        ORDER_CSV_COLUMNS,
+        csvRangeFilename("orders", rangeEcho(range)),
+      );
+      return;
+    }
 
     sendSuccessResponse(res, result, "Orders fetched successfully", 200);
   }

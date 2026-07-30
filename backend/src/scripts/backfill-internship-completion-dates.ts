@@ -3,15 +3,20 @@
  *
  * WHY THIS EXISTS
  * ---------------
- * Internship certificates were minted with `completionDate = enrolledAt` — the
- * moment an admin marked the learner enrolled. The public verification page
- * labels that field "Completion Date", so every internship certificate claimed
- * the intern finished on the day they started.
+ * Two rounds of the same bug: the field the public verification page labels
+ * "Completion Date" disagreed with the period printed on the certificate.
  *
- * The value is now the end of the learner's own programme: `enrolledAt` plus
- * the duration they chose at registration (see
- * `computeInternshipCompletionDate`). This script applies that same function to
- * certificates already in the database.
+ *   1. Originally `completionDate = enrolledAt`, so every certificate claimed
+ *      the intern finished on the day they started.
+ *   2. Then `enrolledAt + programDurationMonths`. `enrolledAt` is when an admin
+ *      approved the learner, typically weeks BEFORE the batch begins, so the
+ *      completion date landed ahead of the end date on the certificate itself,
+ *      and on early approvals ahead of even its start date.
+ *
+ * `computeInternshipCompletionDate` now resolves the same cohort-anchored window
+ * the printed `internPeriod` uses (stored `endDate`, else cohort start +
+ * duration). This script applies that function to certificates already in the
+ * database, and is safe to re-run after each correction.
  *
  * SCOPE: this touches the CertificateModel row ONLY. The internship template
  * has no date placeholder — `completionDate` never appears on the PDF, only on

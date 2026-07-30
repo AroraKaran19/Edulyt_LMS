@@ -293,9 +293,18 @@ export interface InternshipCertificateContext {
 
 /**
  * The completion date recorded on the certificate and shown on the public
- * verification page: the end of the learner's OWN programme, i.e. the moment
- * an admin marked them enrolled (`enrolledAt`) plus the duration they chose at
- * registration.
+ * verification page: the end of the learner's programme.
+ *
+ * This MUST resolve to the same instant as the end of the `internPeriod` range
+ * printed on the document (see loadInternshipCertificateContext), so the same
+ * sources are used in the same order: the stored `endDate`, else the COHORT
+ * start + the learner's chosen duration.
+ *
+ * It was previously anchored to `enrolledAt` — the moment an admin approved the
+ * learner, typically weeks before the batch begins — which put the verification
+ * page's "Completion Date" ahead of the end date on the certificate itself, and
+ * on early approvals ahead of even its START date. `enrolledAt` survives only as
+ * a last-resort anchor for rows with no endDate and no cohort snapshot.
  */
 export const computeInternshipCompletionDate = (
   enrollment: Record<string, any>,
@@ -311,27 +320,31 @@ export const computeInternshipCompletionDate = (
     Number.isFinite(months) &&
     months >= 1 &&
     months <= 120;
+
+  const cohortAnchored = resolveProgramEndDate({
+    endDate: enrollment.endDate,
+    cohortStart: enrollment.batchSnapshot?.internshipStartDate,
+    durationMonths: hasUsableDuration ? months : null,
+  });
+  if (cohortAnchored && !Number.isNaN(cohortAnchored.getTime())) {
+    return cohortAnchored;
+  }
+
+  // No stored window and no cohort snapshot: fall back to the approval date so a
+  // legacy row still gets a plausible date rather than blocking certificate issue.
   const enrolledAt = enrollment.enrolledAt
     ? new Date(enrollment.enrolledAt)
     : null;
-
   if (enrolledAt && !Number.isNaN(enrolledAt.getTime()) && hasUsableDuration) {
     try {
       const end = computeProgramEndDate(enrolledAt, months);
       if (!Number.isNaN(end.getTime())) return end;
     } catch {
-      // Fall through to the cohort-anchored window below.
+      return null;
     }
   }
 
-  // Legacy rows with no usable enrolledAt + duration keep the cohort-anchored
-  // window rather than blocking certificate issue.
-  const fallback = resolveProgramEndDate({
-    endDate: enrollment.endDate,
-    cohortStart: enrollment.batchSnapshot?.internshipStartDate,
-    durationMonths: hasUsableDuration ? months : null,
-  });
-  return fallback && !Number.isNaN(fallback.getTime()) ? fallback : null;
+  return null;
 };
 
 /**

@@ -68,6 +68,12 @@ export interface GetUsersParams {
   /** Attach `totalSpend` per user. Super-admin only — skipped otherwise, which
    *  also avoids the orders aggregation entirely. */
   includeTotalSpend?: boolean;
+  /** Inclusive signup-date (`createdAt`) window. Both optional. */
+  from?: Date;
+  to?: Date;
+  /** Ignore paging and return every match up to `maxRows`. For the CSV export. */
+  exportAll?: boolean;
+  maxRows?: number;
 }
 
 export interface GetUsersResult {
@@ -122,10 +128,22 @@ export const getUsersService = async (
     excludeEnrolledInCourseIds,
     enrollmentStatusForCourseIds,
     includeTotalSpend = false,
+    from,
+    to,
+    exportAll = false,
   } = params;
+  const maxRows = params.maxRows ?? 50_000;
   const skip = (page - 1) * limit;
 
   let filters: any = {};
+
+  // Signup-date window — the natural meaning of a date range on a lead list.
+  if (from || to) {
+    const clause: Record<string, Date> = {};
+    if (from) clause.$gte = from;
+    if (to) clause.$lte = to;
+    filters.createdAt = clause;
+  }
 
   if (search) {
     filters.$or = [
@@ -157,15 +175,20 @@ export const getUsersService = async (
     filters._id = { $nin: enrolledUserIds };
   }
 
-  const users = await UserModel.find(filters)
+  const query = UserModel.find(filters)
     .select("-password -refreshTokens -__v -successPointsHistory")
-    .skip(skip)
-    .limit(limit)
-    .sort({ createdAt: -1 })
-    .lean();
+    .sort({ createdAt: -1 });
+
+  if (exportAll) {
+    query.limit(maxRows);
+  } else {
+    query.skip(skip).limit(limit);
+  }
+
+  const users = await query.lean();
 
   const total = await UserModel.countDocuments(filters);
-  const totalPages = Math.ceil(total / limit);
+  const totalPages = exportAll ? 1 : Math.ceil(total / limit);
 
   let resultUsers = users as (User & { alreadyEnrolledInSelected?: boolean })[];
 
@@ -218,7 +241,7 @@ export const getUsersService = async (
   return {
     users: resultUsers,
     total,
-    page,
+    page: exportAll ? 1 : page,
     totalPages,
   };
 };

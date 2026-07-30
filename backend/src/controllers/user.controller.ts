@@ -22,6 +22,15 @@ import {
   adminChangeUserPasswordService,
   getAdminUserOptionsService,
 } from "../services/user.services";
+import {
+  CSV_EXPORT_MAX_ROWS,
+  csvRangeFilename,
+  isFullExport,
+  sendCsvResponse,
+  wantsCsv,
+  type CsvColumn,
+} from "../utils/lib/csv";
+import { parseDateRange, rangeEcho } from "../utils/lib/dateRange";
 
 export const getUsers = asyncHandler(async (req: Request, res: Response) => {
   const {
@@ -55,6 +64,9 @@ export const getUsers = asyncHandler(async (req: Request, res: Response) => {
     return arr.length ? arr : undefined;
   };
 
+  const range = parseDateRange(req.query.from, req.query.to);
+  const exportAll = isFullExport(req.query);
+
   const result = await getUsersService({
     page: Number(page),
     limit: Number(limit),
@@ -65,10 +77,58 @@ export const getUsers = asyncHandler(async (req: Request, res: Response) => {
     enrollmentStatusForCourseIds: toStringArray(enrollmentStatusForCourseIds),
     // Spend figures are super-admin only.
     includeTotalSpend: viewerType === "super-admin",
+    from: range.from,
+    to: range.to,
+    exportAll,
+    maxRows: CSV_EXPORT_MAX_ROWS,
   });
+
+  if (wantsCsv(req.query)) {
+    sendCsvResponse(
+      res,
+      result.users,
+      leadCsvColumns(viewerType === "super-admin"),
+      csvRangeFilename("user-leads", rangeEcho(range)),
+    );
+    return;
+  }
 
   sendSuccessResponse(res, result, "Users fetched successfully", 200);
 });
+
+/**
+ * Lead-sheet columns: identity and contact details plus the few qualifying
+ * facts a sales follow-up actually needs. Deliberately excludes profile bulk
+ * (education, experience, social accounts, permissions) — this is a lead list,
+ * not a data dump. `Total Spend` only appears for a super-admin, mirroring the
+ * gate on the list itself.
+ */
+function leadCsvColumns(
+  includeSpend: boolean,
+): CsvColumn<Record<string, any>>[] {
+  const columns: CsvColumn<Record<string, any>>[] = [
+    {
+      header: "Name",
+      pick: (u) => [u.firstName, u.lastName].filter(Boolean).join(" "),
+    },
+    { header: "Email", pick: (u) => u.email ?? "" },
+    { header: "Phone", pick: (u) => u.phone ?? "" },
+    { header: "WhatsApp", pick: (u) => u.whatsappNumber ?? "" },
+    { header: "User Type", pick: (u) => u.userType ?? "" },
+    { header: "Status", pick: (u) => u.status ?? "" },
+    // Denormalised snapshot — survives the linked College being renamed or
+    // deleted, and needs no join.
+    { header: "College", pick: (u) => u.collegeName ?? "" },
+    { header: "City", pick: (u) => u.address?.city ?? "" },
+    { header: "State", pick: (u) => u.address?.state ?? "" },
+    { header: "Signed Up Via", pick: (u) => u.provider ?? "" },
+    { header: "Joined", pick: (u) => u.createdAt },
+  ];
+  if (includeSpend) {
+    columns.push({ header: "Total Spend", pick: (u) => u.totalSpend ?? 0 });
+  }
+  return columns;
+}
 
 export const getAdminUserOptions = asyncHandler(
   async (req: Request, res: Response) => {

@@ -7,6 +7,7 @@ import {
 import {
   adminAdjustSuccessPointsService,
   getSuccessPointsBalanceService,
+  getSuccessPointsHistoryForAdminService,
   getSuccessPointsHistoryService,
   transferSuccessPointsService,
 } from "../services/successPoints.services";
@@ -67,6 +68,23 @@ export const getMySuccessPointsHistory = asyncHandler(
 
     const result = await getSuccessPointsHistoryService(
       String(user._id),
+      Number(page),
+      Number(limit),
+    );
+    sendSuccessResponse(res, result, "Success points history fetched", 200);
+  },
+);
+
+export const getUserSuccessPointsHistory = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { userId } = req.params;
+    const { page = 1, limit = 10 } = req.query as {
+      page?: string | number;
+      limit?: string | number;
+    };
+
+    const result = await getSuccessPointsHistoryForAdminService(
+      String(userId ?? ""),
       Number(page),
       Number(limit),
     );

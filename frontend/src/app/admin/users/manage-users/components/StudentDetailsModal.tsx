@@ -30,6 +30,7 @@ import { User } from "@/types/user";
 import { Enrollment } from "@/types/enrollment";
 import type { InternshipEnrollmentListRow } from "@/types";
 import { cn } from "@/lib/utils";
+import SuccessPointsHistoryModal from "./SuccessPointsHistoryModal";
 import {
   getUserTypeBadgeColor,
   getStatusBadgeColor,
@@ -479,7 +480,7 @@ function TimeSpentGraph({
     <div className="space-y-4">
       <h4 className="text-sm font-semibold text-gray-500 uppercase flex items-center gap-2">
         <BarChart3 className="w-4 h-4" />
-        Time Spent per Day
+        Time Spent on Courses
       </h4>
       <div className="bg-white rounded-xl border border-gray-100 p-4">
         {/* Row 1: Preset buttons + Custom Range */}
@@ -640,9 +641,19 @@ function OverviewSection({
     to: string,
   ) => Promise<{ date: string; minutes: number }[]>;
 }) {
+  const [isPointsHistoryOpen, setIsPointsHistoryOpen] = useState(false);
+
   if (!user) return null;
 
-  const cards = [
+  const userId = (user as { _id?: string })._id ?? "";
+
+  const cards: {
+    icon: React.ElementType;
+    label: string;
+    value: React.ReactNode;
+    color: string;
+    action?: { label: string; onClick: () => void };
+  }[] = [
     {
       icon: IndianRupee,
       label: "Total Spend",
@@ -675,6 +686,14 @@ function OverviewSection({
       label: "Success Points",
       value: (user as { successPoints?: number }).successPoints ?? 0,
       color: "bg-orange-50 border-orange-200 text-orange-700",
+      ...(userId
+        ? {
+            action: {
+              label: "View history",
+              onClick: () => setIsPointsHistoryOpen(true),
+            },
+          }
+        : {}),
     },
     {
       icon: UserIcon,
@@ -699,9 +718,19 @@ function OverviewSection({
             <div className="p-2 bg-white/60 rounded-lg">
               <card.icon className="w-5 h-5" />
             </div>
-            <div>
+            <div className="min-w-0">
               <p className="text-sm font-medium opacity-80">{card.label}</p>
               <p className="text-xl font-bold">{card.value}</p>
+              {card.action && (
+                <button
+                  type="button"
+                  onClick={card.action.onClick}
+                  className="mt-0.5 inline-flex items-center gap-1 text-xs font-semibold underline underline-offset-2 opacity-90 hover:opacity-100 cursor-pointer"
+                >
+                  {card.action.label}
+                  <ChevronRight className="w-3 h-3" />
+                </button>
+              )}
             </div>
           </div>
         ))}
@@ -738,6 +767,17 @@ function OverviewSection({
           />
         </div>
       </div>
+
+      <SuccessPointsHistoryModal
+        isOpen={isPointsHistoryOpen}
+        onClose={() => setIsPointsHistoryOpen(false)}
+        userId={userId}
+        userName={[user.firstName, user.lastName]
+          .filter(Boolean)
+          .join(" ")
+          .trim()}
+        userEmail={user.email}
+      />
     </div>
   );
 }

@@ -183,7 +183,10 @@ export const switchInternshipBatchController = asyncHandler(
 /**
  * @route   GET /api/internship-enrollments/admin
  * @desc    Paginated internship enrollments (admin)
- * @query   page, limit, search, status, internshipId, batchId, lifecycle (program|pipeline|all), enrollmentType, meritPoolFirst (true|false)
+ * @query   page, limit, search, status (one status or a comma-separated group),
+ *          internshipId, batchId, lifecycle (program|pipeline|all),
+ *          certificateOutcome, enrollmentType, enrolledFrom, enrolledTo,
+ *          meritPoolFirst (true|false)
  * @access  Admin
  */
 export const listInternshipEnrollmentsAdminController = asyncHandler(

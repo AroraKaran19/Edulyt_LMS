@@ -7,6 +7,7 @@ import {
   getMySuccessPointsHistory,
   getPublicRedemptionRate,
   getPublicRewardRates,
+  getUserSuccessPointsHistory,
   transferSuccessPoints,
 } from "../controllers/successPoints.controller";
 
@@ -62,6 +63,18 @@ router.post(
   "/admin/adjust",
   ...adminGuard("users.manage"),
   adminAdjustSuccessPoints,
+);
+
+/**
+ * @route   GET /api/success-points/admin/history/:userId
+ * @desc    One student's wallet ledger for the admin user drawer — a page of
+ *          entries (newest first) plus all-time balance / earned / spent.
+ * @access  Admin
+ */
+router.get(
+  "/admin/history/:userId",
+  ...adminGuard("users.manage"),
+  getUserSuccessPointsHistory,
 );
 
 export default router;

@@ -20,6 +20,8 @@ export interface DetailLineItem {
 
 export interface DetailSection {
   title: string;
+  /** Secondary line under the title (batch names, dates, and the like). */
+  subtitle?: string;
   tone?: "credit" | "debit";
   items: DetailLineItem[];
   total: number;
@@ -193,12 +195,19 @@ export default function ReportRowDetailModal({
               )}
             >
               <div className="flex items-baseline justify-between gap-3">
-                <h3 className="text-sm font-semibold text-[#1D2939]">
-                  {section.title}
-                </h3>
+                <div className="min-w-0">
+                  <h3 className="text-sm font-semibold text-[#1D2939]">
+                    {section.title}
+                  </h3>
+                  {section.subtitle ? (
+                    <p className="mt-0.5 text-[11px] text-gray-500">
+                      {section.subtitle}
+                    </p>
+                  ) : null}
+                </div>
                 <span
                   className={cn(
-                    "text-sm font-bold tabular-nums",
+                    "shrink-0 text-sm font-bold tabular-nums",
                     TONE_TEXT[section.tone ?? "neutral"],
                   )}
                 >

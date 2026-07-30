@@ -208,6 +208,7 @@ export async function listInternshipEnrollmentsAdmin(
   limit: number,
   options: {
     search?: string;
+    /** One status, or a comma-separated group of them. Overrides `lifecycle`. */
     status?: string;
     internshipId?: string;
     batchId?: string;
@@ -293,10 +294,23 @@ export async function listInternshipEnrollmentsAdmin(
     }
     if (Object.keys(dateRange).length > 0) preMatch.enrolledAt = dateRange;
   }
-  if (status && status !== "all") {
-    preMatch.status = status;
-  } else if (!status || status === "all") {
-    // lifecycle groups statuses unless a specific status is chosen
+  // `status` accepts one status ("enrolled") or a comma-separated group
+  // ("pending_documentation,docs_under_review") so the admin UI can offer
+  // named sub-groups such as "Documentation pending" without a second param.
+  const statusList =
+    typeof status === "string" && status !== "all"
+      ? status
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : [];
+
+  if (statusList.length === 1) {
+    preMatch.status = statusList[0];
+  } else if (statusList.length > 1) {
+    preMatch.status = { $in: statusList };
+  } else {
+    // lifecycle groups statuses unless specific statuses are chosen
     if (lifecycle === "program") {
       preMatch.status = { $in: [...PROGRAM_STATUSES] };
     } else if (lifecycle === "pipeline") {

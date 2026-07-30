@@ -11,6 +11,12 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 export interface SelectOption {
   value: string;
   label: string;
+  /**
+   * Optional heading this option sits under. Consecutive options sharing a
+   * group render beneath one non-interactive header; options without a group
+   * render exactly as before.
+   */
+  group?: string;
 }
 
 interface SelectProps {
@@ -200,28 +206,39 @@ const Select = ({
                 </div>
               )
             ) : (
-              filteredOptions.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => {
-                  setIsOpen(false);
-                  if (onChange) {
-                    onChange(option.value);
-                  }
-                }}
-                className={cn(
-                  "w-full px-4 py-3 text-left text-sm hover:bg-orange-50",
-                  "transition-colors duration-150 ease-in-out",
-                  "first:rounded-t-xl last:rounded-b-xl",
-                  "focus:bg-orange-50 focus:outline-none",
-                  value === option.value &&
-                    "bg-orange-100 text-orange-700 font-medium"
-                )}
-              >
-                {option.label}
-              </button>
-              ))
+              filteredOptions.map((option, index) => {
+                const previousGroup =
+                  index > 0 ? filteredOptions[index - 1].group : undefined;
+                const startsGroup =
+                  Boolean(option.group) && option.group !== previousGroup;
+                return (
+                  <div key={option.value}>
+                    {startsGroup && (
+                      <div className="px-4 pt-3 pb-1 text-[11px] font-bold uppercase tracking-wide text-gray-400">
+                        {option.group}
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsOpen(false);
+                        if (onChange) {
+                          onChange(option.value);
+                        }
+                      }}
+                      className={cn(
+                        "w-full px-4 py-3 text-left text-sm hover:bg-orange-50",
+                        "transition-colors duration-150 ease-in-out",
+                        "focus:bg-orange-50 focus:outline-none",
+                        value === option.value &&
+                          "bg-orange-100 text-orange-700 font-medium"
+                      )}
+                    >
+                      {option.label}
+                    </button>
+                  </div>
+                );
+              })
             )}
             </div>
           </div>

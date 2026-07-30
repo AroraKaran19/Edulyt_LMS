@@ -542,6 +542,52 @@ export const getMentorInternshipStatsService = async (
   return { totalInternships, enrolledStudents };
 };
 
+export interface InternshipOption {
+  _id: string;
+  title: string;
+}
+
+/**
+ * Admin picker feed: `{ _id, title }` only, paged for infinite scroll.
+ *
+ * Deliberately separate from `listInternshipsAdminService`, which returns whole
+ * internship documents with five populated relations — far too heavy to page
+ * through just to fill a dropdown.
+ */
+export const listInternshipOptionsAdminService = async (
+  page: number,
+  limit: number,
+  search?: string,
+): Promise<{
+  items: InternshipOption[];
+  total: number;
+  page: number;
+  hasMore: boolean;
+}> => {
+  const p = Math.max(1, Math.floor(page) || 1);
+  const l = Math.min(100, Math.max(1, Math.floor(limit) || 20));
+  const skip = (p - 1) * l;
+
+  const filters = buildSearchFilter(search);
+
+  const [total, docs] = await Promise.all([
+    InternshipModel.countDocuments(filters),
+    InternshipModel.find(filters)
+      .select("title")
+      .sort({ updatedAt: -1 })
+      .skip(skip)
+      .limit(l)
+      .lean<{ _id: mongoose.Types.ObjectId; title?: string }[]>(),
+  ]);
+
+  return {
+    items: docs.map((d) => ({ _id: String(d._id), title: d.title ?? "" })),
+    total,
+    page: p,
+    hasMore: skip + docs.length < total,
+  };
+};
+
 /**
  * Admin list: all internships with filters (isActive, audience, search, featured).
  */

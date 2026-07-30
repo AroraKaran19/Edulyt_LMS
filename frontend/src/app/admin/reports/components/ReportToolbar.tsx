@@ -2,66 +2,33 @@
 
 import type { ReactNode } from "react";
 import { Filter, Search } from "lucide-react";
-import type { ReportFilters } from "@/types/report";
 
 interface ReportToolbarProps {
-  /** Committed filters (dates apply immediately, `q` is debounced upstream). */
-  filters: ReportFilters;
   /** Raw search box value, kept separate so typing stays responsive. */
   searchInput: string;
   onSearchInputChange: (value: string) => void;
-  onDateChange: (patch: Partial<Pick<ReportFilters, "from" | "to">>) => void;
   onClear: () => void;
   searchPlaceholder?: string;
   /** The export menu. */
   actions?: ReactNode;
 }
 
-function todayInputValue(): string {
-  const now = new Date();
-  return new Date(now.getTime() - now.getTimezoneOffset() * 60_000)
-    .toISOString()
-    .slice(0, 10);
-}
-
-/** Date range + search + export row shared by every report page. */
+/**
+ * Search + export row shared by every report page.
+ *
+ * Deliberately carries no date pickers: a window scopes either one user's
+ * drill-down (the row modal) or a CSV export, so having a third set here only
+ * duplicated those.
+ */
 export default function ReportToolbar({
-  filters,
   searchInput,
   onSearchInputChange,
-  onDateChange,
   onClear,
   searchPlaceholder = "Search by name or email",
   actions,
 }: ReportToolbarProps) {
-  const max = todayInputValue();
-  const hasFilters =
-    Boolean(filters.from) || Boolean(filters.to) || Boolean(searchInput);
-
   return (
     <div className="flex flex-wrap items-end gap-3 rounded-xl border border-gray-200 bg-white p-3 sm:p-4">
-      <label className="flex flex-col gap-1 text-xs font-medium text-[#344054]">
-        From
-        <input
-          type="date"
-          value={filters.from}
-          max={filters.to || max}
-          onChange={(e) => onDateChange({ from: e.target.value })}
-          className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#F77124] focus:ring-2 focus:ring-[#F77124]/20"
-        />
-      </label>
-      <label className="flex flex-col gap-1 text-xs font-medium text-[#344054]">
-        To
-        <input
-          type="date"
-          value={filters.to}
-          min={filters.from || undefined}
-          max={max}
-          onChange={(e) => onDateChange({ to: e.target.value })}
-          className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#F77124] focus:ring-2 focus:ring-[#F77124]/20"
-        />
-      </label>
-
       <label className="flex min-w-[220px] flex-1 flex-col gap-1 text-xs font-medium text-[#344054]">
         Search
         <div className="relative">
@@ -76,7 +43,7 @@ export default function ReportToolbar({
         </div>
       </label>
 
-      {hasFilters ? (
+      {searchInput ? (
         <button
           type="button"
           onClick={onClear}

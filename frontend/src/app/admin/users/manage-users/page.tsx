@@ -39,8 +39,49 @@ import {
   validatePassword,
   getPasswordRequirementsText,
 } from "@/lib/passwordValidation";
+import ExportCsvMenu from "@/components/admin/ExportCsvMenu";
+import useCsvExport from "@/hooks/useCsvExport";
+import { downloadCsv, type CsvColumn } from "@/lib/csv";
+
+/**
+ * Lead-sheet columns: identity and contact details plus the few qualifying
+ * facts a follow-up needs. Mirrors the server's columns so a "current page"
+ * export and a "date range" export produce the same spreadsheet. Deliberately
+ * excludes profile bulk (education, experience, social accounts) — this is a
+ * lead list, not a data dump.
+ */
+function leadCsvColumns(includeSpend: boolean): CsvColumn<User>[] {
+  const u = (user: User) => user as unknown as Record<string, any>;
+  const columns: CsvColumn<User>[] = [
+    {
+      header: "Name",
+      pick: (user) =>
+        [user.firstName, user.lastName].filter(Boolean).join(" "),
+    },
+    { header: "Email", pick: (user) => user.email ?? "" },
+    { header: "Phone", pick: (user) => u(user).phone ?? "" },
+    { header: "WhatsApp", pick: (user) => u(user).whatsappNumber ?? "" },
+    { header: "User Type", pick: (user) => user.userType ?? "" },
+    { header: "Status", pick: (user) => u(user).status ?? "" },
+    // Denormalised snapshot — survives the linked College being renamed or
+    // deleted, and needs no join.
+    { header: "College", pick: (user) => u(user).collegeName ?? "" },
+    { header: "City", pick: (user) => u(user).address?.city ?? "" },
+    { header: "State", pick: (user) => u(user).address?.state ?? "" },
+    { header: "Signed Up Via", pick: (user) => u(user).provider ?? "" },
+    { header: "Joined", pick: (user) => u(user).createdAt ?? "" },
+  ];
+  if (includeSpend) {
+    columns.push({
+      header: "Total Spend",
+      pick: (user) => u(user).totalSpend ?? 0,
+    });
+  }
+  return columns;
+}
 
 const ManageUsersPage = () => {
+  const exportCsv = useCsvExport();
   const { data: session } = useSession();
   const isSuperAdmin =
     (session?.user as { userType?: string } | undefined)?.userType ===
@@ -640,6 +681,34 @@ const ManageUsersPage = () => {
               </span>
               <span className="font-medium sm:hidden">Partner</span>
             </OrangeButton>
+            {/* Lead export — contact details only, not the full profile */}
+            <ExportCsvMenu
+              pageRowCount={users.length}
+              disabled={isLoading}
+              onExportCurrentPage={() =>
+                downloadCsv(
+                  users,
+                  leadCsvColumns(isSuperAdmin),
+                  `user-leads_page-${currentPage}.csv`,
+                )
+              }
+              // The date range applies to signup date; the type/status/search
+              // filters on screen are carried into the export too.
+              onExportRange={(from, to) =>
+                exportCsv(
+                  "/users/admin",
+                  {
+                    from,
+                    to,
+                    search: debouncedSearch || undefined,
+                    userType:
+                      userTypeFilter !== "all" ? userTypeFilter : undefined,
+                    status: statusFilter !== "all" ? statusFilter : undefined,
+                  },
+                  "user-leads.csv",
+                )
+              }
+            />
           </div>
         </div>
       </div>

@@ -20,7 +20,10 @@ const courseInternshipSchema = new mongoose.Schema(
       lowercase: true,
     },
 
-    mentors: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+    /**
+     * No mentors here on purpose — a course internship inherits the mentors of
+     * the course it is sold with, so duplicating them would let the two drift.
+     */
 
     /** Templates from the shared library at /admin/internships/tasks. */
     taskTemplateIds: [

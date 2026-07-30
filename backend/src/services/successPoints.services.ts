@@ -563,6 +563,146 @@ export async function getSuccessPointsHistoryService(
   };
 }
 
+/**
+ * Credit / debit classification for one ledger entry, inside a `$reduce`
+ * (hence `$$this`). Mirrors the admin platform-points report so the totals an
+ * admin sees on a single student reconcile with that report's columns:
+ * `redeemed` / `transferred_out` store positive magnitudes and are debits by
+ * type, while `admin_adjustment` is the only signed type, so its sign decides
+ * which side it lands on.
+ */
+const LEDGER_CREDIT_EXPR = {
+  $switch: {
+    branches: [
+      {
+        case: { $in: ["$$this.type", ["earned", "reward", "transferred_in"]] },
+        then: { $abs: "$$this.points" },
+      },
+      {
+        case: {
+          $and: [
+            { $eq: ["$$this.type", "admin_adjustment"] },
+            { $gt: ["$$this.points", 0] },
+          ],
+        },
+        then: "$$this.points",
+      },
+    ],
+    default: 0,
+  },
+};
+
+const LEDGER_DEBIT_EXPR = {
+  $switch: {
+    branches: [
+      {
+        case: { $in: ["$$this.type", ["redeemed", "transferred_out"]] },
+        then: { $abs: "$$this.points" },
+      },
+      {
+        case: {
+          $and: [
+            { $eq: ["$$this.type", "admin_adjustment"] },
+            { $lt: ["$$this.points", 0] },
+          ],
+        },
+        then: { $abs: "$$this.points" },
+      },
+    ],
+    default: 0,
+  },
+};
+
+export interface AdminSuccessPointsHistoryPage {
+  items: SuccessPointTransaction[];
+  total: number;
+  page: number;
+  totalPages: number;
+  /** Live wallet balance — all-time, independent of the page being shown. */
+  balance: number;
+  /** All-time credits / debits, classified as in the admin points report. */
+  earned: number;
+  spent: number;
+}
+
+/**
+ * Admin read of one student's wallet ledger: a page of entries (newest first)
+ * plus the all-time balance / earned / spent summary.
+ *
+ * Paging and the summary are computed server-side in a single aggregation on
+ * one `_id`-matched document, so a long ledger never crosses the wire just to
+ * render ten rows.
+ */
+export async function getSuccessPointsHistoryForAdminService(
+  userId: string,
+  page: number,
+  limit: number,
+): Promise<AdminSuccessPointsHistoryPage> {
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    throw new AppError("Invalid user id", 400);
+  }
+
+  const safePage = Math.max(1, Math.floor(page) || 1);
+  const safeLimit = Math.max(1, Math.min(50, Math.floor(limit) || 10));
+  const skip = (safePage - 1) * safeLimit;
+
+  const [doc] = await StudentModel.aggregate<{
+    balance: number;
+    total: number;
+    earned: number;
+    spent: number;
+    items: SuccessPointTransaction[];
+  }>([
+    { $match: { _id: new mongoose.Types.ObjectId(userId) } },
+    {
+      $project: {
+        tx: { $ifNull: ["$successPointsHistory", []] },
+        balance: { $ifNull: ["$successPoints", 0] },
+      },
+    },
+    {
+      $project: {
+        _id: 0,
+        balance: 1,
+        total: { $size: "$tx" },
+        earned: {
+          $reduce: {
+            input: "$tx",
+            initialValue: 0,
+            in: { $add: ["$$value", LEDGER_CREDIT_EXPR] },
+          },
+        },
+        spent: {
+          $reduce: {
+            input: "$tx",
+            initialValue: 0,
+            in: { $add: ["$$value", LEDGER_DEBIT_EXPR] },
+          },
+        },
+        // Entries are only ever appended (`$push`), so the stored order is
+        // already chronological — reversing gives newest-first without a sort.
+        items: { $slice: [{ $reverseArray: "$tx" }, skip, safeLimit] },
+      },
+    },
+  ]);
+
+  if (!doc) {
+    throw new AppError("Student account not found", 404);
+  }
+
+  const total = doc.total ?? 0;
+
+  return {
+    items: doc.items ?? [],
+    total,
+    page: safePage,
+    totalPages: Math.max(1, Math.ceil(total / safeLimit)),
+    balance: doc.balance ?? 0,
+    earned: doc.earned ?? 0,
+    spent: doc.spent ?? 0,
+  };
+}
+
 export interface TransferSuccessPointsInput {
   senderId: string;
   recipientEmail: string;

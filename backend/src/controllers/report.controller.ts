@@ -1,6 +1,13 @@
 import { Request, Response } from "express";
-import { asyncHandler, AppError, sendSuccessResponse } from "../middlewares/error.middleware";
-import { buildCsv, type CsvColumn } from "../utils/lib/csv";
+import { asyncHandler, sendSuccessResponse } from "../middlewares/error.middleware";
+import {
+  csvRangeFilename,
+  isFullExport,
+  sendCsvResponse,
+  wantsCsv,
+  type CsvColumn,
+} from "../utils/lib/csv";
+import { parseDateRange } from "../utils/lib/dateRange";
 import {
   getInternshipSuccessPointsReport,
   getPlatformSuccessPointsReport,
@@ -12,35 +19,8 @@ import {
   type ReportQuery,
 } from "../services/report.services";
 
-/**
- * `from` is snapped to 00:00:00.000 and `to` to 23:59:59.999 so a same-day
- * range (from = to) covers that whole day rather than a zero-width instant.
- * Dates arrive as `YYYY-MM-DD` from the admin date pickers.
- */
-function parseDateParam(raw: unknown, edge: "start" | "end"): Date | undefined {
-  if (typeof raw !== "string" || !raw.trim()) return undefined;
-  const d = new Date(raw.trim());
-  if (Number.isNaN(d.getTime())) {
-    throw new AppError(`Invalid date: ${raw}`, 400);
-  }
-  // Only snap bare calendar dates; a full ISO timestamp is taken as given.
-  if (/^\d{4}-\d{2}-\d{2}$/.test(raw.trim())) {
-    if (edge === "start") d.setUTCHours(0, 0, 0, 0);
-    else d.setUTCHours(23, 59, 59, 999);
-  }
-  return d;
-}
-
 function parseReportQuery(req: Request): ReportQuery {
-  const from = parseDateParam(req.query.from, "start");
-  const to = parseDateParam(req.query.to, "end");
-  if (from && to && from > to) {
-    throw new AppError("`from` must not be after `to`", 400);
-  }
-
-  const exportAll =
-    String(req.query.format ?? "").toLowerCase() === "csv" &&
-    String(req.query.scope ?? "range").toLowerCase() !== "page";
+  const { from, to } = parseDateRange(req.query.from, req.query.to);
 
   return {
     from,
@@ -51,33 +31,8 @@ function parseReportQuery(req: Request): ReportQuery {
       200,
       Math.max(1, parseInt(String(req.query.limit ?? "20"), 10) || 20),
     ),
-    exportAll,
+    exportAll: isFullExport(req.query),
   };
-}
-
-const wantsCsv = (req: Request) =>
-  String(req.query.format ?? "").toLowerCase() === "csv";
-
-/** Builds a filename that records which window the export covers. */
-function csvFilename(base: string, range: { from: string | null; to: string | null }) {
-  const day = (iso: string | null) => (iso ? iso.slice(0, 10) : null);
-  const from = day(range.from);
-  const to = day(range.to);
-  const suffix = from || to ? `_${from ?? "start"}_to_${to ?? "today"}` : "_all-time";
-  return `${base}${suffix}.csv`;
-}
-
-function sendCsv<T>(
-  res: Response,
-  rows: readonly T[],
-  columns: readonly CsvColumn<T>[],
-  filename: string,
-): void {
-  res.setHeader("Content-Type", "text/csv; charset=utf-8");
-  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
-  // Lets the browser read the filename when the request is a same-origin XHR.
-  res.setHeader("Access-Control-Expose-Headers", "Content-Disposition");
-  res.status(200).send(buildCsv(rows, columns));
 }
 
 // ─── Platform success points ─────────────────────────────────────────────────
@@ -106,12 +61,12 @@ export const getPlatformSuccessPointsReportController = asyncHandler(
     const opts = parseReportQuery(req);
     const result = await getPlatformSuccessPointsReport(opts);
 
-    if (wantsCsv(req)) {
-      sendCsv(
+    if (wantsCsv(req.query)) {
+      sendCsvResponse(
         res,
         result.items,
         PLATFORM_COLUMNS,
-        csvFilename("platform-success-points", result.range),
+        csvRangeFilename("platform-success-points", result.range),
       );
       return;
     }
@@ -121,14 +76,73 @@ export const getPlatformSuccessPointsReportController = asyncHandler(
 
 // ─── Internship success points ───────────────────────────────────────────────
 
-const INTERNSHIP_COLUMNS: CsvColumn<InternshipPointsRow>[] = [
+/**
+ * The API nests each learner's internships; a spreadsheet wants them flat, so
+ * the CSV emits one line per (learner × internship). A learner with no
+ * internship slice at all still gets a single line, so nobody vanishes.
+ */
+interface FlatInternshipRow {
+  name: string;
+  email: string;
+  internshipTitle: string;
+  batches: string[];
+  earned: number;
+  tasks: number;
+  meetings: number;
+  purchased: number;
+  currentPoints: number;
+  learnerTotalEarned: number;
+}
+
+function flattenInternshipRows(
+  rows: readonly InternshipPointsRow[],
+): FlatInternshipRow[] {
+  const out: FlatInternshipRow[] = [];
+  for (const r of rows) {
+    if (r.internships.length === 0) {
+      out.push({
+        name: r.name,
+        email: r.email,
+        internshipTitle: "",
+        batches: [],
+        earned: r.earned,
+        tasks: r.earnedBreakdown.tasks,
+        meetings: r.earnedBreakdown.meetings,
+        purchased: r.earnedBreakdown.purchased,
+        currentPoints: r.currentPoints,
+        learnerTotalEarned: r.earned,
+      });
+      continue;
+    }
+    for (const s of r.internships) {
+      out.push({
+        name: r.name,
+        email: r.email,
+        internshipTitle: s.internshipTitle,
+        batches: s.batches,
+        earned: s.earned,
+        tasks: s.tasks,
+        meetings: s.meetings,
+        purchased: s.purchased,
+        currentPoints: s.currentPoints,
+        learnerTotalEarned: r.earned,
+      });
+    }
+  }
+  return out;
+}
+
+const INTERNSHIP_COLUMNS: CsvColumn<FlatInternshipRow>[] = [
   { header: "Name", pick: (r) => r.name },
   { header: "Email", pick: (r) => r.email },
-  { header: "Total Earned", pick: (r) => r.earned },
-  { header: "Total Spent", pick: (r) => r.spent },
-  { header: "Earned: Tasks & Exams", pick: (r) => r.earnedBreakdown.tasks },
-  { header: "Earned: Live Meetings", pick: (r) => r.earnedBreakdown.meetings },
-  { header: "Earned: Purchased", pick: (r) => r.earnedBreakdown.purchased },
+  { header: "Internship", pick: (r) => r.internshipTitle },
+  { header: "Batches", pick: (r) => r.batches.join(" | ") },
+  { header: "Earned (this internship)", pick: (r) => r.earned },
+  { header: "Earned: Tasks & Exams", pick: (r) => r.tasks },
+  { header: "Earned: Live Meetings", pick: (r) => r.meetings },
+  { header: "Earned: Purchased", pick: (r) => r.purchased },
+  { header: "Current Points (all-time)", pick: (r) => r.currentPoints },
+  { header: "Learner Total Earned", pick: (r) => r.learnerTotalEarned },
 ];
 
 export const getInternshipSuccessPointsReportController = asyncHandler(
@@ -136,12 +150,12 @@ export const getInternshipSuccessPointsReportController = asyncHandler(
     const opts = parseReportQuery(req);
     const result = await getInternshipSuccessPointsReport(opts);
 
-    if (wantsCsv(req)) {
-      sendCsv(
+    if (wantsCsv(req.query)) {
+      sendCsvResponse(
         res,
-        result.items,
+        flattenInternshipRows(result.items),
         INTERNSHIP_COLUMNS,
-        csvFilename("internship-success-points", result.range),
+        csvRangeFilename("internship-success-points", result.range),
       );
       return;
     }
@@ -167,12 +181,12 @@ export const getReferralReportController = asyncHandler(
     const opts = parseReportQuery(req);
     const result = await getReferralReport(opts);
 
-    if (wantsCsv(req)) {
-      sendCsv(
+    if (wantsCsv(req.query)) {
+      sendCsvResponse(
         res,
         result.items,
         REFERRAL_COLUMNS,
-        csvFilename("referral-report", result.range),
+        csvRangeFilename("referral-report", result.range),
       );
       return;
     }

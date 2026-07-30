@@ -45,18 +45,55 @@ export {
   createInternshipSuccessPointsAfterPayment,
 } from "./payments/fulfillment";
 
-export const getAdminOrdersService = async (
-  page: number,
-  limit: number,
-  search?: string,
-  paymentStatus?: string
-) => {
+export interface GetAdminOrdersParams {
+  page: number;
+  limit: number;
+  search?: string;
+  /**
+   * One or more payment statuses to include. Empty / omitted means no filter
+   * (every status), which is what the UI sends when all boxes are ticked.
+   */
+  paymentStatus?: string | string[];
+  /** Inclusive `createdAt` window. Both optional. */
+  from?: Date;
+  to?: Date;
+  /**
+   * Ignore paging and return every match up to `maxRows`. Used by the CSV
+   * date-range export.
+   */
+  exportAll?: boolean;
+  maxRows?: number;
+}
+
+export const getAdminOrdersService = async (params: GetAdminOrdersParams) => {
+  const { page, limit, search, paymentStatus, from, to, exportAll } = params;
+  const maxRows = params.maxRows ?? 50_000;
   const skip = (page - 1) * limit;
   const pipeline: any[] = [];
 
+  const VALID_STATUSES = ["pending", "success", "failed"];
+  const statuses = (
+    Array.isArray(paymentStatus)
+      ? paymentStatus
+      : String(paymentStatus ?? "").split(",")
+  )
+    .map((s) => s.trim())
+    .filter((s) => VALID_STATUSES.includes(s));
+
   const initialMatch: Record<string, unknown> = {};
-  if (paymentStatus && ["pending", "success", "failed"].includes(paymentStatus)) {
-    initialMatch.paymentStatus = paymentStatus;
+  // A full selection is the same as no filter, so skip the clause and let the
+  // query keep using the plain `createdAt` index.
+  if (statuses.length > 0 && statuses.length < VALID_STATUSES.length) {
+    initialMatch.paymentStatus =
+      statuses.length === 1 ? statuses[0] : { $in: statuses };
+  }
+  // Rides { paymentStatus, createdAt } / { createdAt } — applied before the
+  // user/course lookups so the joins only run on rows that survive the window.
+  if (from || to) {
+    const clause: Record<string, Date> = {};
+    if (from) clause.$gte = from;
+    if (to) clause.$lte = to;
+    initialMatch.createdAt = clause;
   }
   if (Object.keys(initialMatch).length > 0) {
     pipeline.push({ $match: initialMatch });
@@ -108,12 +145,15 @@ export const getAdminOrdersService = async (
     pipeline.push({ $match: { $or: orConditions } });
   }
 
+  const pagingStages = exportAll
+    ? [{ $limit: maxRows }]
+    : [{ $skip: skip }, { $limit: limit }];
+
   const [orders, countResult] = await Promise.all([
     OrderModel.aggregate([
       ...pipeline,
       { $sort: { createdAt: -1 } },
-      { $skip: skip },
-      { $limit: limit },
+      ...pagingStages,
       {
         $project: {
           _id: 1,
@@ -149,9 +189,9 @@ export const getAdminOrdersService = async (
   ]);
 
   const total = countResult[0]?.total ?? 0;
-  const totalPages = Math.ceil(total / limit);
+  const totalPages = exportAll ? 1 : Math.ceil(total / limit);
 
-  return { orders, total, totalPages, page };
+  return { orders, total, totalPages, page: exportAll ? 1 : page };
 };
 
 export const getSelfOrdersService = async (

@@ -50,24 +50,42 @@ export type PlatformPointsReport = ReportPage<
 
 // ─── Internship success points ───────────────────────────────────────────────
 
+/** One internship's slice of a learner's internship success points. */
+export interface InternshipPointsSlice {
+  internshipId: string;
+  internshipTitle: string;
+  /** Batch name(s) the learner holds for this internship. */
+  batches: string[];
+  earned: number;
+  /** Live counter across the learner's enrollments — always all-time. */
+  currentPoints: number;
+  tasks: number;
+  meetings: number;
+  purchased: number;
+}
+
 export interface InternshipPointsRow {
   userId: string;
   name: string;
   email: string;
+  /** Total across every internship. */
   earned: number;
-  /** Always 0 — internship points have no redemption path. */
-  spent: number;
+  currentPoints: number;
   earnedBreakdown: {
     tasks: number;
     meetings: number;
     purchased: number;
   };
+  /** The learner's points divided by internship, highest earning first. */
+  internships: InternshipPointsSlice[];
 }
 
 export interface InternshipPointsTotals {
-  users: number;
+  /** Row count — one per learner. */
+  learners: number;
+  /** Distinct internships represented across the filtered rows. */
+  internships: number;
   earned: number;
-  spent: number;
   tasks: number;
   meetings: number;
   purchased: number;

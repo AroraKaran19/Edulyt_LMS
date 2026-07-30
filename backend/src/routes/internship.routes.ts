@@ -9,6 +9,7 @@ import {
   listInternshipsPublic,
   listFeaturedInternshipsPublic,
   listInternshipsAdmin,
+  listInternshipOptionsAdmin,
   getInternshipAdmin,
   getInternshipEnrollPreview,
   getInternshipBySlug,
@@ -69,6 +70,17 @@ router.get(
   "/admin",
   requireSectionAccess("internships"),
   listInternshipsAdmin,
+);
+
+/**
+ * @route   GET /api/internships/admin/options
+ * @desc    Paged `{ _id, title }` feed for admin internship pickers.
+ * @access  Admin
+ */
+router.get(
+  "/admin/options",
+  requireSectionAccess("internships"),
+  listInternshipOptionsAdmin,
 );
 
 /**

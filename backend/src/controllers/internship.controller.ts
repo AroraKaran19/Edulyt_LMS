@@ -8,6 +8,7 @@ import {
   listInternshipsPublicService,
   listFeaturedInternshipsPublicService,
   listInternshipsAdminService,
+  listInternshipOptionsAdminService,
   getInternshipByIdAdminService,
   getInternshipBySlugService,
   getInternshipEnrollPreviewService,
@@ -126,6 +127,31 @@ export const listInternshipsAdmin = asyncHandler(
       "Internships fetched successfully",
       200
     );
+  }
+);
+
+/**
+ * @route   GET /api/internships/admin/options
+ * @desc    Lightweight `{ _id, title }` feed for admin internship pickers.
+ *          Paged so dropdowns can infinite-scroll instead of loading every
+ *          internship (and its populated relations) up front.
+ * @query   page, limit, search
+ * @access  Admin
+ */
+export const listInternshipOptionsAdmin = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { page = 1, limit = 20, search } = req.query;
+    const p = Number(page);
+    const l = Number(limit);
+    if (p < 1 || l < 1) {
+      throw new AppError("Page and limit must be positive numbers", 400);
+    }
+    const result = await listInternshipOptionsAdminService(
+      p,
+      l,
+      typeof search === "string" ? search : undefined,
+    );
+    sendSuccessResponse(res, result, "Internship options fetched", 200);
   }
 );
 

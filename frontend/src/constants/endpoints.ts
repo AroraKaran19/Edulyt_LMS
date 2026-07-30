@@ -81,6 +81,8 @@ export const ENDPOINTS = {
     // Admin Routes
     admin: {
       all: "/internships/admin",
+      /** GET — paged `{ _id, title }` feed for pickers. Query: page, limit, search */
+      options: "/internships/admin/options",
       byId: "/internships/admin/id",
     },
 

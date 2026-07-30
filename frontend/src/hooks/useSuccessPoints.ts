@@ -67,6 +67,14 @@ export interface SuccessPointsHistoryResponse {
   totalPages: number;
 }
 
+/** Admin read of one student's ledger — adds the all-time wallet summary. */
+export interface AdminSuccessPointsHistoryResponse
+  extends SuccessPointsHistoryResponse {
+  balance: number;
+  earned: number;
+  spent: number;
+}
+
 export interface TransferResult {
   points: number;
   balance: number;
@@ -117,5 +125,26 @@ export default function useSuccessPoints() {
     [],
   );
 
-  return { getBalance, listHistory, transfer, adminAdjust };
+  const adminListUserHistory = useCallback(
+    async (
+      userId: string,
+      page = 1,
+      limit = 10,
+    ): Promise<AdminSuccessPointsHistoryResponse> => {
+      const res = await apiClient.get(
+        `/success-points/admin/history/${userId}`,
+        { params: { page, limit } },
+      );
+      return res.data.data;
+    },
+    [],
+  );
+
+  return {
+    getBalance,
+    listHistory,
+    transfer,
+    adminAdjust,
+    adminListUserHistory,
+  };
 }

@@ -7,7 +7,6 @@ export type UpsertCourseInternshipBody = {
   description?: string;
   thumbnail?: string;
   slug?: string;
-  mentors?: string[];
   taskTemplateIds?: string[];
   documentationRequired?: boolean;
   documentationDueOffsetDays?: number;
@@ -87,7 +86,6 @@ export const getCourseInternshipByIdService = async (programId: string) => {
     throw new AppError("Invalid program id", 400);
   }
   const program = await CourseInternshipModel.findById(programId)
-    .populate("mentors", "firstName lastName email profilePicture")
     .populate("taskTemplateIds", "title totalScore unlockAfterDays dueDays")
     .lean();
   if (!program) throw new AppError("Program not found", 404);

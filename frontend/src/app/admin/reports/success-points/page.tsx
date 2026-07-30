@@ -16,7 +16,7 @@ const TABS: { key: Part; label: string; blurb: string }[] = [
   {
     key: "internship",
     label: "Internship",
-    blurb: "Certification score points — earned",
+    blurb: "Certification points — earned, split by internship",
   },
 ];
 
@@ -36,8 +36,8 @@ export default function SuccessPointsReportPage() {
           Success Points Report
         </h1>
         <p className="mt-0.5 text-sm text-gray-500">
-          Points earned and spent per user. Totals cover every row matching the
-          filters, not just the page on screen.
+          Points per user, all-time. Click any row for the full breakdown and to
+          scope that user to a date range.
         </p>
       </div>
 

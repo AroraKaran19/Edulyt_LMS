@@ -4,22 +4,17 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { useSession } from "next-auth/react";
 import {
-  ArrowDownLeft,
-  ArrowUpRight,
   ChevronLeft,
   ChevronRight,
   Clock,
-  Gift,
   Loader2,
   Mail,
   Send,
-  ShieldCheck,
-  ShoppingCart,
-  Sparkles,
   Star,
 } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
+import SuccessPointsHistoryRow from "@/components/shared/SuccessPoints/SuccessPointsHistoryRow";
 import useSuccessPoints, {
   type SuccessPointTransaction,
 } from "@/hooks/useSuccessPoints";
@@ -40,165 +35,6 @@ const NAV: { id: Page; label: string; icon: typeof Send; hint: string }[] = [
   { id: "transfer", label: "Transfer", icon: Send, hint: "Send points" },
   { id: "history", label: "History", icon: Clock, hint: "Past activity" },
 ];
-
-function formatDateTime(iso: string): string {
-  try {
-    return new Date(iso).toLocaleString("en-IN", {
-      timeZone: "Asia/Kolkata",
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  } catch {
-    return iso;
-  }
-}
-
-function HistoryRow({ tx }: { tx: SuccessPointTransaction }) {
-  if (tx.type === "transferred_in") {
-    return (
-      <div className="flex items-center gap-3 py-3">
-        <div className="w-9 h-9 rounded-full bg-emerald-50 flex items-center justify-center shrink-0">
-          <ArrowDownLeft className="w-4 h-4 text-emerald-600" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-gray-900 truncate">
-            Received from {tx.fromUserDisplayName || "a user"}
-          </p>
-          <p className="text-[11px] text-gray-400">
-            {formatDateTime(tx.earnedAt)}
-          </p>
-        </div>
-        <span className="text-sm font-bold text-emerald-600 shrink-0">
-          +{tx.points}
-        </span>
-      </div>
-    );
-  }
-  if (tx.type === "transferred_out") {
-    return (
-      <div className="flex items-center gap-3 py-3">
-        <div className="w-9 h-9 rounded-full bg-red-50 flex items-center justify-center shrink-0">
-          <ArrowUpRight className="w-4 h-4 text-red-500" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-gray-900 truncate">
-            Sent to {tx.toUserDisplayName || "a user"}
-          </p>
-          <p className="text-[11px] text-gray-400">
-            {formatDateTime(tx.earnedAt)}
-          </p>
-        </div>
-        <span className="text-sm font-bold text-red-500 shrink-0">
-          -{tx.points}
-        </span>
-      </div>
-    );
-  }
-  if (tx.type === "redeemed") {
-    return (
-      <div className="flex items-center gap-3 py-3">
-        <div className="w-9 h-9 rounded-full bg-rose-50 flex items-center justify-center shrink-0">
-          <ShoppingCart className="w-4 h-4 text-rose-500" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-gray-900 truncate">
-            Redeemed at checkout
-            {tx.courseSnapshot?.title ? ` · ${tx.courseSnapshot.title}` : ""}
-          </p>
-          <p className="text-[11px] text-gray-400">
-            {formatDateTime(tx.earnedAt)}
-          </p>
-        </div>
-        <span className="text-sm font-bold text-rose-500 shrink-0">
-          -{tx.points}
-        </span>
-      </div>
-    );
-  }
-  if (tx.type === "admin_adjustment") {
-    const credited = tx.points >= 0;
-    return (
-      <div className="flex items-center gap-3 py-3">
-        <div
-          className={cn(
-            "w-9 h-9 rounded-full flex items-center justify-center shrink-0",
-            credited ? "bg-emerald-50" : "bg-red-50",
-          )}
-        >
-          <ShieldCheck
-            className={cn(
-              "w-4 h-4",
-              credited ? "text-emerald-600" : "text-red-500",
-            )}
-          />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-gray-900 truncate">
-            Admin adjustment
-          </p>
-          <p className="text-[11px] text-gray-400">
-            {formatDateTime(tx.earnedAt)}
-          </p>
-        </div>
-        <span
-          className={cn(
-            "text-sm font-bold shrink-0",
-            credited ? "text-emerald-600" : "text-red-500",
-          )}
-        >
-          {credited ? `+${tx.points}` : tx.points}
-        </span>
-      </div>
-    );
-  }
-  if (tx.type === "reward") {
-    const REWARD_LABELS: Record<string, string> = {
-      login: "Welcome bonus",
-      community_review: "Community review reward",
-      internship_registration: "Internship registration reward",
-    };
-    const label = REWARD_LABELS[tx.rewardSource ?? ""] ?? "Reward";
-    return (
-      <div className="flex items-center gap-3 py-3">
-        <div className="w-9 h-9 rounded-full bg-amber-50 flex items-center justify-center shrink-0">
-          <Gift className="w-4 h-4 text-amber-500" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-gray-900 truncate">
-            {label}
-          </p>
-          <p className="text-[11px] text-gray-400">
-            {formatDateTime(tx.earnedAt)}
-          </p>
-        </div>
-        <span className="text-sm font-bold text-emerald-600 shrink-0">
-          +{tx.points}
-        </span>
-      </div>
-    );
-  }
-  return (
-    <div className="flex items-center gap-3 py-3">
-      <div className="w-9 h-9 rounded-full bg-orange-50 flex items-center justify-center shrink-0">
-        <Sparkles className="w-4 h-4 text-[#F77124]" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold text-gray-900 truncate">
-          Earned{tx.courseSnapshot?.title ? ` · ${tx.courseSnapshot.title}` : ""}
-        </p>
-        <p className="text-[11px] text-gray-400">
-          {formatDateTime(tx.earnedAt)}
-        </p>
-      </div>
-      <span className="text-sm font-bold text-emerald-600 shrink-0">
-        +{tx.points}
-      </span>
-    </div>
-  );
-}
 
 export default function TransferPointsModal({
   isOpen,
@@ -518,7 +354,7 @@ export default function TransferPointsModal({
                   <ul className="divide-y divide-gray-100 rounded-2xl border border-gray-100 px-3">
                     {history.map((tx) => (
                       <li key={tx.transactionId}>
-                        <HistoryRow tx={tx} />
+                        <SuccessPointsHistoryRow tx={tx} />
                       </li>
                     ))}
                   </ul>

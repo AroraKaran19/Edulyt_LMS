@@ -13,6 +13,9 @@ import Input from "@/components/ui/inputs/Input";
 import Select from "@/components/ui/inputs/Select";
 import { toast } from "react-toastify";
 import Pagination from "@/components/admin/Pagination";
+import ExportCsvMenu from "@/components/admin/ExportCsvMenu";
+import useCsvExport from "@/hooks/useCsvExport";
+import { downloadCsv, type CsvColumn } from "@/lib/csv";
 
 interface OrderUser {
   firstName?: string;
@@ -55,8 +58,64 @@ interface OrderItem {
   updatedAt?: string;
 }
 
+/**
+ * Mirrors the server's order CSV columns so a "current page" export and a
+ * "date range" export produce the same spreadsheet shape.
+ */
+const CSV_COLUMNS: CsvColumn<OrderItem>[] = [
+  { header: "Order ID", pick: (o) => o._id },
+  { header: "Txn ID", pick: (o) => o.txnId },
+  { header: "Date", pick: (o) => o.createdAt },
+  {
+    header: "User",
+    pick: (o) =>
+      [o.userId?.firstName, o.userId?.lastName].filter(Boolean).join(" ") ||
+      o.userName ||
+      "",
+  },
+  { header: "Email", pick: (o) => o.userId?.email ?? "" },
+  { header: "Order Type", pick: (o) => o.orderKind ?? "course" },
+  {
+    header: "Product",
+    pick: (o) => o.courseId?.title || o.courseName || o.internshipTitle || "",
+  },
+  { header: "Plan", pick: (o) => o.planType ?? "" },
+  { header: "Batch ID", pick: (o) => o.batchId ?? "" },
+  {
+    header: "Success Points Qty",
+    pick: (o) => o.internshipSuccessPointsQuantity ?? "",
+  },
+  { header: "Amount Paid", pick: (o) => o.amount ?? 0 },
+  { header: "Currency", pick: (o) => o.currency ?? "INR" },
+  { header: "Payment Status", pick: (o) => o.paymentStatus },
+  { header: "Payment Mode", pick: (o) => o.paymentMode ?? "" },
+  { header: "Payment Method", pick: (o) => o.paymentMethod ?? "" },
+  { header: "Failure Reason", pick: (o) => o.paymentErrorReason ?? "" },
+  { header: "Coupon Code", pick: (o) => o.couponCode ?? "" },
+  { header: "Coupon Discount", pick: (o) => o.couponDiscount ?? 0 },
+  {
+    header: "Collaboration Discount",
+    pick: (o) => o.collaborationDiscount ?? 0,
+  },
+  { header: "Referral Code", pick: (o) => o.referralCode ?? "" },
+  { header: "Referral Discount", pick: (o) => o.referralDiscount ?? 0 },
+  { header: "Success Points Applied", pick: (o) => o.successPointsApplied ?? 0 },
+  {
+    header: "Success Points Discount",
+    pick: (o) => o.successPointsDiscount ?? 0,
+  },
+];
+
+/** Statuses offered as checkboxes in the CSV date-range export. */
+const EXPORT_STATUS_OPTIONS = [
+  { value: "success", label: "Success" },
+  { value: "pending", label: "Pending" },
+  { value: "failed", label: "Failed" },
+];
+
 const OrdersPage = () => {
   const searchParams = useSearchParams();
+  const exportCsv = useCsvExport();
   const searchFromUrl = searchParams.get("search") ?? "";
   const [orders, setOrders] = useState<OrderItem[]>([]);
   const [page, setPage] = useState(1);
@@ -229,6 +288,53 @@ const OrdersPage = () => {
                 setPage(1);
               }}
               placeholder="Payment status"
+            />
+          </div>
+          <div className="flex items-center sm:self-stretch">
+            <ExportCsvMenu
+              pageRowCount={orders.length}
+              disabled={isLoading}
+              extraFilters={[
+                {
+                  key: "paymentStatus",
+                  label: "Payment status",
+                  hint: "All included by default — untick to leave a status out.",
+                  options: EXPORT_STATUS_OPTIONS,
+                },
+              ]}
+              // Filtered in memory: the page's rows are already loaded, so this
+              // needs no round-trip.
+              onExportCurrentPage={(filters) => {
+                const statuses = filters.paymentStatus ?? [];
+                const rows = orders.filter((o) =>
+                  statuses.includes(o.paymentStatus),
+                );
+                if (rows.length === 0) {
+                  toast.info("No orders on this page match those statuses.");
+                  return;
+                }
+                downloadCsv(rows, CSV_COLUMNS, `orders_page-${page}.csv`);
+              }}
+              // Date range applies to the order date. Status comes from the
+              // modal's checkboxes, not the table filter, so an export can
+              // cover statuses the current view doesn't show. A full selection
+              // is sent as no filter at all.
+              onExportRange={(from, to, filters) => {
+                const statuses = filters.paymentStatus ?? [];
+                return exportCsv(
+                  "/admin/orders",
+                  {
+                    from,
+                    to,
+                    search: debouncedSearch || undefined,
+                    paymentStatus:
+                      statuses.length === EXPORT_STATUS_OPTIONS.length
+                        ? undefined
+                        : statuses.join(","),
+                  },
+                  "orders.csv",
+                );
+              }}
             />
           </div>
         </div>

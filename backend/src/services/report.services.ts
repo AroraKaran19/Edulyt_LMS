@@ -19,6 +19,7 @@
 
 import { PipelineStage } from "mongoose";
 import { OrderModel, StudentModel, UserModel } from "../models";
+import { InternshipModel } from "../models/internship.schema";
 import { InternshipEnrollmentModel } from "../models/internshipEnrollment.schema";
 import { InternshipSubmissionModel } from "../models/internshipSubmission.schema";
 import { InternshipLiveMeetingModel } from "../models/liveMeeting.schema";
@@ -362,24 +363,32 @@ export async function getPlatformSuccessPointsReport(
 // 2. Internship success points
 // ═══════════════════════════════════════════════════════════════════════════
 
-export interface InternshipPointsRow {
-  /** Composite row key — the grain is one internship per learner. */
-  id: string;
-  userId: string;
-  name: string;
-  email: string;
+/** One internship's slice of a learner's internship success points. */
+export interface InternshipPointsSlice {
   internshipId: string;
   /** Title snapshotted on the enrollment, so it survives an internship rename. */
   internshipTitle: string;
   /** Batch name(s) the learner holds for this internship. */
   batches: string[];
-  /** tasks + meetings + purchased. */
+  /** tasks + meetings + purchased, for this internship. */
   earned: number;
   /**
-   * Live `internshipSuccessPoints` counter summed across the learner's
-   * enrollments in this internship. Always all-time — a reconciliation check
-   * against `earned`, which is window-scoped.
+   * Live `internshipSuccessPoints` counter across the learner's enrollments in
+   * this internship. Always all-time — a reconciliation check against `earned`,
+   * which is window-scoped.
    */
+  currentPoints: number;
+  tasks: number;
+  meetings: number;
+  purchased: number;
+}
+
+export interface InternshipPointsRow {
+  userId: string;
+  name: string;
+  email: string;
+  /** Total across every internship — tasks + meetings + purchased. */
+  earned: number;
   currentPoints: number;
   earnedBreakdown: {
     /** Graded task / exam submissions (`creditedSuccessPoints`). */
@@ -389,13 +398,15 @@ export interface InternshipPointsRow {
     /** Points bought outright via an `internship_success_points` order. */
     purchased: number;
   };
+  /** The learner's points divided by internship, highest earning first. */
+  internships: InternshipPointsSlice[];
 }
 
 export interface InternshipPointsTotals {
-  /** Distinct learners across the filtered rows. */
+  /** Row count — one per learner. */
   learners: number;
-  /** Row count — (learner × internship) pairs. */
-  rows: number;
+  /** Distinct internships represented across the filtered rows. */
+  internships: number;
   earned: number;
   tasks: number;
   meetings: number;
@@ -415,10 +426,11 @@ export interface InternshipPointsTotals {
  *  - purchases           → `internshipSuccessPointsQuantity` on fulfilled
  *    `internship_success_points` orders, dated by `createdAt`.
  *
- * All three sources carry the internship id, which is what makes the
- * per-internship grain possible. Batches are collapsed into one row per
- * internship: a learner enrolled in two batches of the same programme sees one
- * row listing both batch names.
+ * All three sources carry the internship id, so the aggregation first groups by
+ * (learner × internship) and then rolls those slices up into one row per
+ * learner, keeping the per-internship division in `internships[]` for the
+ * drill-down. Batches collapse into their internship: a learner enrolled in two
+ * batches of the same programme gets one slice listing both batch names.
  *
  * There is no `spent` figure. Internship points are a certification score, not
  * a wallet, and nothing in the codebase debits them; the decrements that exist
@@ -594,7 +606,7 @@ export async function getInternshipSuccessPointsReport(
     // Fallback title for the (rare) row whose enrollment snapshot is empty.
     {
       $lookup: {
-        from: "internships",
+        from: InternshipModel.collection.name,
         localField: "internshipId",
         foreignField: "_id",
         pipeline: [{ $project: { title: 1 } }],
@@ -639,17 +651,41 @@ export async function getInternshipSuccessPointsReport(
       },
     },
     { $project: { enrollments: 0, internshipDoc: 0 } },
+    // Highest-earning internship first — `$push` below preserves this order, so
+    // the drill-down list arrives pre-sorted.
+    { $sort: { earned: -1, internshipId: 1 } },
+    {
+      $group: {
+        _id: "$userId",
+        name: { $first: "$name" },
+        email: { $first: "$email" },
+        earned: { $sum: "$earned" },
+        tasks: { $sum: "$tasks" },
+        meetings: { $sum: "$meetings" },
+        purchased: { $sum: "$purchased" },
+        currentPoints: { $sum: "$currentPoints" },
+        internships: {
+          $push: {
+            internshipId: "$internshipId",
+            internshipTitle: "$internshipTitle",
+            batches: "$batches",
+            earned: "$earned",
+            currentPoints: "$currentPoints",
+            tasks: "$tasks",
+            meetings: "$meetings",
+            purchased: "$purchased",
+          },
+        },
+      },
+    },
     {
       $facet: {
-        rows: [
-          { $sort: { earned: -1, userId: 1, internshipId: 1 } },
-          ...pagingStages(opts),
-        ],
+        rows: [{ $sort: { earned: -1, _id: 1 } }, ...pagingStages(opts)],
         meta: [
           {
             $group: {
               _id: null,
-              rows: { $sum: 1 },
+              learners: { $sum: 1 },
               earned: { $sum: "$earned" },
               tasks: { $sum: "$tasks" },
               meetings: { $sum: "$meetings" },
@@ -657,10 +693,11 @@ export async function getInternshipSuccessPointsReport(
             },
           },
         ],
-        // Row grain is (learner × internship), so the distinct learner count
-        // needs its own branch rather than reusing the row count.
-        learners: [
-          { $group: { _id: "$userId" } },
+        // Distinct internships across the whole filtered set, which the
+        // per-learner rows above can't yield directly.
+        internshipCount: [
+          { $unwind: "$internships" },
+          { $group: { _id: "$internships.internshipId" } },
           { $count: "count" },
         ],
       },
@@ -670,27 +707,34 @@ export async function getInternshipSuccessPointsReport(
   const [facet] = await InternshipSubmissionModel.aggregate<{
     rows: Record<string, unknown>[];
     meta: {
-      rows: number;
+      learners: number;
       earned: number;
       tasks: number;
       meetings: number;
       purchased: number;
     }[];
-    learners: { count: number }[];
+    internshipCount: { count: number }[];
   }>(pipeline).allowDiskUse(true);
 
   const rawRows = facet?.rows ?? [];
   const meta = facet?.meta?.[0];
-  const total = Number(meta?.rows ?? 0);
+  const total = Number(meta?.learners ?? 0);
+
+  const toSlice = (s: Record<string, unknown>): InternshipPointsSlice => ({
+    internshipId: String(s.internshipId ?? ""),
+    internshipTitle: String(s.internshipTitle ?? ""),
+    batches: Array.isArray(s.batches) ? s.batches.map(String) : [],
+    earned: Number(s.earned ?? 0),
+    currentPoints: Number(s.currentPoints ?? 0),
+    tasks: Number(s.tasks ?? 0),
+    meetings: Number(s.meetings ?? 0),
+    purchased: Number(s.purchased ?? 0),
+  });
 
   const items: InternshipPointsRow[] = rawRows.map((r) => ({
-    id: `${String(r.userId)}:${String(r.internshipId)}`,
-    userId: String(r.userId),
+    userId: String(r._id),
     name: String(r.name ?? ""),
     email: String(r.email ?? ""),
-    internshipId: String(r.internshipId ?? ""),
-    internshipTitle: String(r.internshipTitle ?? ""),
-    batches: Array.isArray(r.batches) ? r.batches.map(String) : [],
     earned: Number(r.earned ?? 0),
     currentPoints: Number(r.currentPoints ?? 0),
     earnedBreakdown: {
@@ -698,6 +742,9 @@ export async function getInternshipSuccessPointsReport(
       meetings: Number(r.meetings ?? 0),
       purchased: Number(r.purchased ?? 0),
     },
+    internships: Array.isArray(r.internships)
+      ? (r.internships as Record<string, unknown>[]).map(toSlice)
+      : [],
   }));
 
   return {
@@ -705,8 +752,8 @@ export async function getInternshipSuccessPointsReport(
     total,
     ...pageMeta(opts, total),
     totals: {
-      learners: Number(facet?.learners?.[0]?.count ?? 0),
-      rows: total,
+      learners: total,
+      internships: Number(facet?.internshipCount?.[0]?.count ?? 0),
       earned: Number(meta?.earned ?? 0),
       tasks: Number(meta?.tasks ?? 0),
       meetings: Number(meta?.meetings ?? 0),
