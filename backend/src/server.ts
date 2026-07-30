@@ -8,6 +8,7 @@ import { startCollaborationWorker } from "./workers/collaboration.worker";
 import { startOfferLetterWorker } from "./workers/offerLetter.worker";
 import { startTokenCleanupWorker } from "./workers/tokenCleanup.worker";
 import { startInternshipEvaluationWorker } from "./workers/internshipEvaluation.worker";
+import { startInvoiceWorker } from "./workers/invoice.worker";
 import { flushMailQueue, pendingMailCount } from "./utils/mailer";
 
 dotenv.config();
@@ -32,6 +33,8 @@ const startServer = async () => {
       startOfferLetterWorker();
       startTokenCleanupWorker();
       startInternshipEvaluationWorker();
+      // Self-gates: stays off in development unless INVOICE_WORKER_ENABLED=true.
+      startInvoiceWorker();
     } else {
       console.log("⏭️  Skipping cron & worker (RUN_BACKGROUND_JOBS=false, running behind load balancer)");
     }
