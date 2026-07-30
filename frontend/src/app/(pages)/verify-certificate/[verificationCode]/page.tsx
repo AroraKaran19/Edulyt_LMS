@@ -34,6 +34,30 @@ const DOC_COPY = {
   },
 } as const;
 
+/** Calendar day in IST as `YYYY-MM-DD`, so two dates compare as strings. */
+const istDay = (value: Date | string): string | null => {
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+};
+
+/**
+ * An issue date before the completion date reads as a certificate awarded
+ * before it was earned. That happens when the document was generated ahead of
+ * the programme window closing, so the field is hidden rather than shown wrong.
+ */
+const shouldShowIssuedDate = (
+  issuedAt?: Date | string,
+  completionDate?: Date | string,
+): boolean => {
+  if (!issuedAt) return false;
+  const issued = istDay(issuedAt);
+  if (!issued) return false;
+  const completed = completionDate ? istDay(completionDate) : null;
+  if (!completed) return true;
+  return issued >= completed;
+};
+
 const VerifyCertificatePage = () => {
   const params = useParams();
   const verificationCode = params?.verificationCode as string;
@@ -155,17 +179,22 @@ const VerifyCertificatePage = () => {
               </p>
             </div>
 
-            <div>
-              <p className="text-sm text-gray-500 mb-1">Issued Date</p>
-              <p className="text-lg font-semibold text-gray-900">
-                {new Date(certificate.issuedAt).toLocaleDateString("en-US", {
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                  timeZone: "Asia/Kolkata",
-                })}
-              </p>
-            </div>
+            {shouldShowIssuedDate(
+              certificate.issuedAt,
+              certificate.completionDate,
+            ) && (
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Issued Date</p>
+                <p className="text-lg font-semibold text-gray-900">
+                  {new Date(certificate.issuedAt).toLocaleDateString("en-US", {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                    timeZone: "Asia/Kolkata",
+                  })}
+                </p>
+              </div>
+            )}
 
             <div>
               <p className="text-sm text-gray-500 mb-1">Verification Code</p>
