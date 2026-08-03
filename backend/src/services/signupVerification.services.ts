@@ -109,6 +109,8 @@ const sendVerificationEmail = async (
     { email: pending.email, name: fullName || pending.firstName },
     {
       name: pending.firstName,
+      // The whole code, for the subject line. The tiles below use the digits.
+      otp,
       otp1: digits[0],
       otp2: digits[1],
       otp3: digits[2],

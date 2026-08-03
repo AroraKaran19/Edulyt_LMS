@@ -9,6 +9,12 @@ import { defineMailTemplate } from "../utils/mailTemplates";
  */
 export type SignupVerificationVariables = {
   name: string;
+  /**
+   * The full code. Used by the dashboard subject line, which reads
+   * "{{otp}} is your Airkrit verification code!" - without it the subject
+   * renders with the code missing. The body uses the per-digit variables.
+   */
+  otp: string;
   otp1: string;
   otp2: string;
   otp3: string;
